@@ -34,9 +34,10 @@ created_date: 2026-05-12 00:00
 - **MCP Server**：`McpServer extends Core`，stdio 传输，roots 发现，fallback 模式
 - **Web Server**：`BacklogServer` 基于 `Bun.serve()`，REST API + WebSocket 广播 + React SPA
 - **Markdown 流水线**：`gray-matter` 解析 frontmatter + `structured-sections.ts` 提取 AC/DoD/计划/备注
-- **资源管理**：`AssetManager` 处理上传、data URI、安全远程下载，临时目录 `.temp/` + 保存时 promote 到 `paste/`
+- **资源管理**：`AssetManager` 处理上传、data URI、安全远程下载，临时目录 `.temp/` + 保存时 promote 到 `paste/`（任务、文档、Wiki 编辑器均支持）
 - **Skill 嵌入**：构建时将 `.codex/skills/` 嵌入 `src/skills/embedded/` 供编译后二进制使用
 - **MCP 安全**：stdio-only 传输，Windows 上修复 stdin close 误触发导致的挂起问题
+- **网络错误恢复**：GitOperations 将 SSL 错误（`SSL_ERROR_SYSCALL`、`SSL handshake failed` 等）识别为网络错误并优雅降级到本地数据
 
 ### 项目管理域
 - **里程碑**：创建、分配、完成检测、归档
@@ -57,7 +58,7 @@ created_date: 2026-05-12 00:00
 
 ## 统计
 
-- Sources ingested: 23
+- Sources ingested: 25
 - Concepts extracted: 16
 - Entities catalogued: 2
 - Reports generated: 2
