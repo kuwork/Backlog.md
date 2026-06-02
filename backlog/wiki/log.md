@@ -85,3 +85,40 @@ Chronological, append-only record of all wiki operations.
   - `concepts/cli-entry` — 添加 `wiki install <agent>` 命令
   - `concepts/mcp-workflow` — 添加 Windows MCP document tool 挂起问题与修复
 - **更新导航文件**: `index.md`、`overview.md`
+
+## [2026-05-12 09:14:40] batch-ingest | 增量摄取 BACK-475 docx 上传与内嵌 skill 架构
+
+- **检测基线**: 2026-05-10 01:38:59（上次 batch-ingest）
+- **Git 变更文件**: 1 个 backlog 任务 + 4 个源代码/配置文件
+- **新 source 页面**: 1 个
+  - `sources/docx-upload-task` — BACK-475 Word 文档上传与图片提取
+- **新 concept 页面**: 2 个
+  - `concepts/docx-conversion` — `.docx` 上传、后端 mammoth 提取、前端统一 cleanHtml+Turndown 流水线
+  - `concepts/embedded-skills` — 构建时 skill 嵌入二进制、`embed-wiki-skill.ts` 生成 `Record<string, string>`
+- **更新 concept 页面**: 3 个
+  - `concepts/paste-as-markdown` — 添加 Word 文档上传说明、 mammoth 依赖
+  - `concepts/web-ui-features` — 任务编辑增加 `.docx` 文件上传
+  - `concepts/web-server` — 添加 `/api/docx/convert` 端点
+- **更新导航文件**: `index.md`、`overview.md`
+
+## [2026-05-12 09:45:00] wiki-create | 创建 HonKit 预览用户手册开发者指南
+
+- **新 developer-notes 页面**: `developer-notes/honkit-usermanual-preview` — HonKit 本地预览、静态构建、PDF 生成的完整操作流程
+- **涵盖内容**:
+  - 前置条件与目录结构说明
+  - `npx honkit serve --port 4000` 启动实时预览
+  - `npx honkit build` 构建静态站点到 `_book/`
+  - PDF 生成的 Calibre 依赖与替代方案
+  - 常见问题排查（GitBook CLI 兼容性、中文路径、ebook-convert）
+- **更新导航文件**: `index.md`
+
+## [2026-05-12 09:22:00] usermanual-update | 更新用户手册，添加 docx 粘贴上传与 Wiki Skill 安装章节
+
+- **新增页面**: 2 个
+  - `40-Web界面/06-富文本粘贴与文档上传` — Word/Google Docs 粘贴为 Markdown、.docx 文件上传、图片 promote 机制
+  - `50-AI集成/03-Wiki Skill 安装` — `backlog wiki install` 命令、skill 嵌入二进制架构、Agent 符号链接与 Windows 回退
+- **更新页面**: 4 个
+  - `README.md` — 核心特性增加富文本粘贴与 Wiki 知识库
+  - `00-快速开始/00-产品概述` — Web 界面增加粘贴/上传说明，AI 集成增加 Wiki Skill 安装
+  - `SUMMARY.md` — 添加新页面导航链接
+  - `index.md` — 用户手册目录增加 2 个新条目
