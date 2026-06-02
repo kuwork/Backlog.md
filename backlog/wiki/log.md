@@ -9,6 +9,19 @@ created_date: 2026-05-06 00:00
 
 Chronological, append-only record of all wiki operations.
 
+## [2026-05-17 02:20:03] batch-ingest | 增量摄取 BACK-478 Web UI i18n 支持
+
+- **检测基线**: 2026-05-14 10:35:00（上次 batch-ingest）
+- **Git 变更文件**: 1 个 backlog 任务 + 30 个源代码/配置文件
+- **新 source 页面**: 1 个
+  - `sources/web-ui-i18n-task` — BACK-478 Web UI i18n 支持
+- **新 concept 页面**: 1 个
+  - `concepts/web-ui-i18n` — 零依赖轻量级 i18n 架构、DeepString 类型安全、编译时嵌入策略
+- **更新 concept 页面**: 2 个
+  - `concepts/web-ui-features` — 添加语言切换与国际化技术特性
+  - `concepts/web-server` — 前端技术栈补充 locales/ 目录与 I18nContext
+- **更新导航文件**: `index.md`、`overview.md`
+
 ## [2026-05-14 10:35:00] batch-ingest | Incremental ingest: 7 updated tasks, 1 new source, 2 updated concepts
 
 - **Updated sources**: back-208, back-465, back-467, back-473, back-474, back-475 (verified existing summaries)
@@ -69,8 +82,8 @@ Chronological, append-only record of all wiki operations.
   - 10-任务管理：任务生命周期、创建与编辑任务、草稿管理、子任务与依赖、搜索与序列、归档与清理
   - 20-看板与可视化：TUI 看板、Web 看板、看板导出
   - 30-文档与决策：文档管理、决策记录、里程碑管理
-  - 40-Web 界面：启动与访问、看板视图、任务列表、里程碑管理、文档与决策、设置与主题
-  - 50-AI 集成：MCP 工作流、支持的 AI 工具、代理指令文件
+  - 40-Web界面：启动与访问、看板视图、任务列表、里程碑管理、文档与决策、设置与主题
+  - 50-AI集成：MCP 工作流、支持的 AI 工具、代理指令文件
   - 60-配置与运维：配置管理、Shell 补全
 - 所有页面遵循 usermanual-writing-guide.md 规范：去序号标题、YAML frontmatter、操作类叙事风格
 
