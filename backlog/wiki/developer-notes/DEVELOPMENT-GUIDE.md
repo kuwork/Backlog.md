@@ -2,6 +2,7 @@
 title: 开发指引
 labels:
   - develop
+created_date: '2026-05-15 09:34'
 updated_date: '2026-05-15 09:34'
 ---
 # 开发指引 — Bun + TypeScript + Biome 技术栈
