@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-25 00:45'
+updated_date: '2026-05-25 23:45'
 ---
 # Wiki Content Catalog
 
@@ -40,6 +40,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/draft-filters-task]] | BACK-486 草稿页添加筛选功能 | source, web-ui, drafts, filtering, ux |
 | [[sources/ssl-network-error-fix]] | BACK-487 GitOperations.fetch SSL 网络错误优雅处理 | source, bug, git, network, ssl, error-handling |
 | [[sources/wiki-pasted-images-promote-fix]] | BACK-488 Wiki 粘贴图片保存时 promote 修复 | source, bug, wiki, web-ui, image-handling |
+| [[sources/due-date-fields-task]] | BACK-401 日期字段支持（dueDate / plannedStart / plannedEnd） | source, feature, dates, cli, web-ui, mcp |
 
 ## Execution Notes
 
@@ -47,12 +48,15 @@ Read this file FIRST on any wiki operation.
 |---|---|---|
 | [[execution/image-promote-integration]] | 在编辑器保存流程中集成图片 Promote | 提取临时 URL、调用 promote API、替换内容、更新 state 的标准步骤 |
 | [[execution/network-error-pattern-extension]] | 扩展 Git 网络错误识别模式 | 向 `containsNetworkErrorPattern` 追加新错误类型的标准流程 |
+| [[execution/milestone-update-refactor]] | 里程碑更新重构模式 | renameMilestone → updateMilestone + rawContent 保留 + 关联任务重写优化 |
 
 ## Decisions
 
 | File | Title | Description |
 |---|---|---|
 | [[decisions/reuse-asset-promote-for-wiki-images]] | Wiki 图片 Promote 复用现有 Asset API | BACK-488 选择复用现有端点而非新建后端逻辑 |
+| [[decisions/date-only-storage]] | 日期字段采用 Date-only 存储 | YYYY-MM-DD vs date-time 的权衡与选择 |
+| [[decisions/web-ui-date-autofill]] | Web UI 日期自动填充规则 | dueDate 为空 plannedStart 时的自动填充 UX 决策 |
 
 ## Concepts
 
@@ -74,6 +78,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
 | [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
 | [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
+| [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd） | 三个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
 
 ## Entities
 
