@@ -87,6 +87,44 @@ Chronological, append-only record of all wiki operations.
   - `concepts/mcp-workflow` — 添加 Windows MCP document tool 挂起问题与修复
 - **更新导航文件**: `index.md`、`overview.md`
 
+## [2026-05-23 00:40:21] batch-ingest | 增量摄取 BACK-483 Web UI 侧边栏调整大小
+
+**检测基线**: 2026-05-22 10:00:00（上次 batch-ingest）
+**Git 变更文件**: 1 个 backlog 源文件（未跟踪）
+
+**新 source 页面**: 1 个
+- `sources/sidebar-resize-search-task` — BACK-483 侧边栏拖拽调整大小、ghost bar 预览、localStorage 持久化、搜索类型下拉、Wiki URL 分段编码
+
+**更新 concept 页面**: 1 个
+- `concepts/web-ui-features` — 添加全局布局/侧边栏调整大小章节、所有任务搜索类型下拉、Wiki URL 编码策略
+
+**更新导航文件**: `index.md`、`overview.md`
+- Sources ingested 统计: 20 → 21
+
+## [2026-05-23 00:40:21] lint | Wiki 健康检查：修复 3 个 dangling link、1 个 orphan、2 处 frontmatter
+
+**扫描范围**: `backlog/wiki/` 全部 46 个页面（不含 usermanual）
+
+**修复问题**:
+- **Dangling links (3)**:
+  - `concepts/paste-as-markdown.md:44` — `[[docx-conversion]]` → `[[concepts/docx-conversion]]`
+  - `sources/folder-grouping-for-docs.md:72` — `[[sources/web-ui-i18n]]` → `[[sources/web-ui-i18n-task]]`
+  - `sources/folder-grouping-for-docs.md:73` — `[[sources/web-ui-full-doc-editing]]` → `[[sources/path-autocomplete-task]]`
+- **Orphan page (1)**:
+  - `developer-notes/DEVELOPMENT-GUIDE` — 新增 `index.md` 条目 + `ci-testing-gotchas.md` Related 链接
+- **Frontmatter 缺失 (2)**:
+  - `developer-notes/DEVELOPMENT-GUIDE.md` — 补全 `created_date`
+  - `concepts/paste-as-markdown.md` — 补全 `updated_date`
+
+**产出报告**: `wiki_output/reports/lint-2026-05-23.md`
+
+## [2026-05-23 00:40:21] usermanual-update | 更新用户手册，添加 BACK-483 侧边栏调整大小、搜索类型下拉、Wiki URL 可读路径
+
+**更新页面**: 3 个
+- `40-Web界面/00-启动与访问` — 新增「界面布局」章节，描述左右布局与侧边栏拖拽调整宽度（ghost bar、localStorage 持久化、200–500px 限制）
+- `40-Web界面/02-任务列表` — 「使用搜索框」章节新增「搜索类型下拉」子节（All/Tasks/Documents/Decisions/Wiki）
+- `40-Web界面/07-Wiki浏览与编辑` — 「浏览文件树」章节新增「路径与 URL」子节，说明 `/` 不编码为 `%2F`、特殊字符安全编码、地址栏直接跳转
+
 ## [2026-05-12 09:14:40] batch-ingest | 增量摄取 BACK-475 docx 上传与内嵌 skill 架构
 
 - **检测基线**: 2026-05-10 01:38:59（上次 batch-ingest）

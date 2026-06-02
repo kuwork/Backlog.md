@@ -2,6 +2,7 @@
 title: 粘贴为 Markdown
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: 2026-05-23 00:40
 ---
 
 
@@ -41,7 +42,7 @@ Web UI 编辑器中的智能粘贴功能，自动将富文本（Word、Google Do
 
 - 后端 `mammoth` 将 `.docx` 转为 HTML，提取内嵌图片到 `.temp/`
 - 前端复用同一套 `cleanHtml` + Turndown 流水线，保证 paste 与 upload 输出一致
-- 详见 [[docx-conversion]]
+- 详见 [[concepts/docx-conversion]]
 
 ## 图片粘贴
 

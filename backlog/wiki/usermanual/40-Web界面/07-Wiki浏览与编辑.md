@@ -25,6 +25,16 @@ Backlog.md 的 Web 界面提供完整的 Wiki 模块，用于浏览和编辑 `ba
 - 点击 `.md` 文件即可在右侧查看内容
 - 空文件夹也会显示在树中，可展开查看其子内容
 
+### 路径与 URL
+
+Wiki 页面的 URL 保持目录层级的可读性，`/` 分隔符不会被编码为 `%2F`。例如位于 `concepts/web-ui-features.md` 的页面，地址栏显示为：
+
+```
+http://localhost:6420/wiki/concepts/web-ui-features
+```
+
+路径中的空格、中文等特殊字符会被安全编码，但目录层级始终直观可辨。你可以直接复制或修改地址栏中的路径来快速跳转目标页面。
+
 ## 查看页面内容
 
 Wiki 页面以渲染后的 Markdown 格式展示：
