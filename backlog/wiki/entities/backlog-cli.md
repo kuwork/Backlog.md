@@ -1,8 +1,9 @@
 ---
-type: entity
 title: Backlog.md CLI 工具
-updated: 2026-05-06
+labels: [entity]
+created_date: 2026-05-06 00:00
 ---
+
 
 # Backlog.md CLI 工具
 

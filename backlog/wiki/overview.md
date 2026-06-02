@@ -1,8 +1,9 @@
 ---
-type: overview
 title: Knowledge Base Overview
-updated: 2026-05-12
+labels: [overview]
+created_date: 2026-05-12 00:00
 ---
+
 
 # Knowledge Base Overview
 
@@ -20,7 +21,7 @@ updated: 2026-05-12
 - **AI 集成**：MCP 协议支持 Claude Code、Codex、Gemini CLI、Kiro、Cursor
 - **粘贴为 Markdown**：Word/Excel/Google Docs 富文本自动转换，截图图片上传与嵌入
 - **本地文件预览**：任务 References 和 Markdown 中的本地路径点击预览，支持语法高亮和行范围
-- **Wiki Web UI**：浏览器中浏览 `backlog/wiki/` 文件树，只读渲染 LLM 维护的知识库
+- **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹
 - **Wiki Install**：`backlog wiki install <agent>` 将内置 skill 安装到 Claude/Codex/Agents
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
 
@@ -54,7 +55,7 @@ updated: 2026-05-12
 
 ## 统计
 
-- Sources ingested: 12
+- Sources ingested: 13
 - Concepts extracted: 15
 - Entities catalogued: 2
 - Reports generated: 1

@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-467 本地文件预览与语法高亮
+labels: [source]
 source_path: backlog/tasks/back-467 - Add-local-file-preview-with-syntax-highlighting-and-line-numbers.md
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # BACK-467 本地文件预览与语法高亮
 

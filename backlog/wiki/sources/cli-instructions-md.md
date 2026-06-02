@@ -1,9 +1,10 @@
 ---
-type: source
 title: CLI-INSTRUCTIONS.md 命令参考
+labels: [source]
 source_path: CLI-INSTRUCTIONS.md
-updated: 2026-05-06
+created_date: 2026-05-06 00:00
 ---
+
 
 # CLI-INSTRUCTIONS.md 摘要
 

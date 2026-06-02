@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-475 Word 文档上传与图片提取
+labels: [source]
 source_path: backlog/tasks/back-475 - Add-Word-(docx)-upload-to-enable-image-extraction-for-pasted-Word-content.md
-updated: 2026-05-12
+created_date: 2026-05-12 00:00
 ---
+
 
 # BACK-475 Word 文档上传与图片提取
 
