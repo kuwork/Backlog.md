@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-27 00:00'
+updated_date: '2026-05-29 22:36'
 ---
 # Wiki Content Catalog
 
@@ -44,6 +44,19 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-489-health-indicators-task]] | BACK-489 项目健康指标重构（临期 / 逾期 / 停滞） | source, feature, web-ui, statistics, health |
 | [[sources/back-490-overview-command-task]] | BACK-490 CLI overview 命令（项目级统计） | source, feature, cli, statistics, health |
 | [[sources/smart-gantt-view-task]] | BACK-491 智能甘特图视图 | source, feature, web-ui, gantt, visualization |
+| [[sources/actual-start-end-fields-task]] | BACK-492 actualStart 与 actualEnd 字段支持 | source, feature, dates, cli, web-ui, mcp |
+| [[sources/milestone-actual-dates-task]] | BACK-493 里程碑 actualStart 与 actualEnd 支持 | source, feature, dates, milestones, cli, web-ui, mcp |
+| [[sources/task-edit-modal-keyboard-fix]] | BACK-494 修复任务编辑模态框键盘快捷键与输入冲突 | source, bug, web-ui, keyboard, ux |
+| [[sources/tracking-gantt-view-task]] | BACK-495 跟踪甘特图（计划 vs 实际对比） | source, feature, web-ui, gantt, visualization, tracking |
+| [[sources/tracking-gantt-left-table-task]] | BACK-495.1 跟踪甘特图左表与时间解析引擎 | source, feature, web-ui, gantt, frontend |
+| [[sources/tracking-gantt-dual-layer-task]] | BACK-495.2 双层甘特条渲染（实际条 + 计划边框） | source, feature, web-ui, gantt, frontend, css |
+| [[sources/tracking-gantt-tooltip-legend-task]] | BACK-495.3 跟踪甘特图 Tooltip、图例与交互增强 | source, feature, web-ui, gantt, frontend, ux |
+| [[sources/tracking-gantt-arrow-resolution-task]] | BACK-495.4 跟踪甘特图智能依赖箭头时间解析 | source, feature, web-ui, gantt, frontend |
+| [[sources/subtask-grouping-fix]] | BACK-496 修复子任务在所有视图中按 ID 排序时的分组 | source, bug, web-ui, sorting |
+| [[sources/timezone-handling-fix]] | BACK-497 修复 CLI 与 Web UI 时区处理不一致 | source, bug, timezone, web-ui, core |
+| [[sources/actual-dates-auto-create-task]] | BACK-498 创建任务时自动填充 actualStart 与 actualEnd | source, bug, dates, core |
+| [[sources/tracking-gantt-design-doc]] | doc-6 跟踪甘特图设计方案 | source, design, gantt, visualization, web-ui |
+| [[sources/ganttview-milestone]] | m-7 GanttView 里程碑 | source, milestone, gantt |
 
 ## Execution Notes
 
@@ -53,6 +66,8 @@ Read this file FIRST on any wiki operation.
 | [[execution/network-error-pattern-extension]] | 扩展 Git 网络错误识别模式 | 向 `containsNetworkErrorPattern` 追加新错误类型的标准流程 |
 | [[execution/milestone-update-refactor]] | 里程碑更新重构模式 | renameMilestone → updateMilestone + rawContent 保留 + 关联任务重写优化 |
 | [[execution/statistics-robustness]] | 统计模块健壮性模式 | 阻塞任务检测大小写敏感修复 + recentlyUpdated 回退到 createdDate |
+| [[execution/actual-date-auto-population]] | 实际时间字段自动填充模式 | 跨 createTaskFromInput 和 updateTask 统一实现 actualStart/actualEnd 自动填充 |
+| [[execution/timezone-unification]] | 统一 UTC 存储字符串的时区解析模式 | 修复 `new Date(dateStr)` 误解析为本地时间的问题 |
 
 ## Decisions
 
@@ -63,6 +78,8 @@ Read this file FIRST on any wiki operation.
 | [[decisions/date-only-storage]] | 日期字段采用 Date-only 存储 | YYYY-MM-DD vs date-time 的权衡与选择 |
 | [[decisions/web-ui-date-autofill]] | Web UI 日期自动填充规则 | dueDate 为空 plannedStart 时的自动填充 UX 决策 |
 | [[decisions/remove-json-overview]] | 移除 overview 命令的 --json 选项 | JSON 过于冗长，plain + TUI 覆盖需求 |
+| [[decisions/datetime-vs-date-only]] | actual 字段采用 Date-time 而非 Date-only 存储 | 分钟级精度需求与甘特图小时级视图支撑 |
+| [[decisions/duck-typing-for-testability]] | 使用 Duck-typing 替代 instanceof 以保证可测试性 | Bun 测试运行器中 HTMLElement 不可用 |
 
 ## Concepts
 
@@ -84,9 +101,9 @@ Read this file FIRST on any wiki operation.
 | [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
 | [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
 | [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
-| [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd） | 三个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
+| [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd） | 五个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
 | [[concepts/project-health]] | 项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
-| [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、日期解析、依赖箭头、多级粒度 |
+| [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、跟踪甘特图双层渲染、日期解析、依赖箭头 |
 
 ## Entities
 
@@ -109,6 +126,7 @@ Read this file FIRST on any wiki operation.
 | File | Title | Description |
 |---|---|---|
 | [[reasoning/back-491-smart-gantt-view]] | BACK-491 甘特图视图规划痕迹 | 问题分解、方案对比（外部库 vs 自研）、关键设计决策与风险缓解 |
+| [[reasoning/tracking-gantt-design]] | BACK-495 跟踪甘特图设计推理 | 双层叠加 vs 切换模式 vs 并列条、视觉设计决策与子任务拆分 |
 
 ## Retrospectives
 
@@ -147,7 +165,7 @@ _No comparisons created yet._
 | [[usermanual/40-Web界面/06-富文本粘贴与文档上传]] | 富文本粘贴与文档上传 | Word/Google Docs 粘贴转 Markdown、.docx 上传、图片 promote |
 | [[usermanual/40-Web界面/07-Wiki浏览与编辑]] | Wiki 浏览与编辑 | Web UI Wiki 文件树导航、页面浏览与编辑、实时同步 |
 | [[usermanual/40-Web界面/08-统计页面]] | 统计页面 | 项目健康度、状态概览、优先级分布、最近活动 |
-| [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、五级粒度、依赖箭头、任务排序、时间平移 |
+| [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、跟踪甘特图、五级粒度、依赖箭头、任务排序 |
 | [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
