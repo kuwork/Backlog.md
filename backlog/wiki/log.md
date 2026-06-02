@@ -206,3 +206,15 @@ Chronological, append-only record of all wiki operations.
   - "文档与决策"章节补充文档文件夹树详情（展开/折叠、文件夹操作、无独立重命名、`filteredDocs` 策略）
   - 更新 `updated_date`
 - **更新导航文件**: `index.md`（添加 folder-grouping-for-docs source 引用、更新日期）
+
+## [2026-05-22 10:00:00] batch-ingest | 增量摄取 BACK-481 Wiki 搜索支持、BACK-482 Wikilink 与 Markdown 相对链接预览修复
+
+- **检测基线**: 2026-05-22 02:15:00（上次 source-ingest）
+- **Git 变更文件**: 2 个 backlog 任务 + 4 个源代码/测试文件
+- **新 source 页面**: 2 个
+  - `sources/wiki-search-task` — BACK-481 将 Wiki 纳入 Web 搜索范围：SearchService 索引、ContentStore 集成、Web 搜索 UI 渲染
+  - `sources/wikilink-markdown-preview-fix` — BACK-482 修复 Wikilink 父目录遍历预览、支持标准 Markdown 相对链接预览、readWikiPage rootDir 扩展
+- **更新 concept 页面**: 2 个
+  - `concepts/search-sequences` — 补充 Wiki 搜索实体、fileName 权重、type:wiki 语法
+  - `concepts/web-ui-features` — 补充 Wiki 搜索结果显示、Wikilink 预览模态框、Markdown 相对链接拦截与 SPA 导航
+- **更新导航文件**: `index.md`、`overview.md`
