@@ -2,9 +2,8 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-26 23:42
+updated_date: 2026-05-29 22:36
 ---
-
 
 # Web UI 功能
 
@@ -24,119 +23,121 @@ updated_date: 2026-05-26 23:42
 - 里程碑泳道（Swimlanes）
 - 标签筛选下拉框
 - 实时更新
+- **子任务归组**：按 ID 排序时子任务自动归组到父任务下方（BACK-496）
 
 ### 所有任务（All Tasks）
-- 表格布局（ redesigned ）
+- 表格布局
 - 状态/优先级/标签/里程碑筛选
 - 多状态筛选支持
-- **搜索框与类型下拉**：输入框左侧图标按钮弹出下拉菜单（All / Tasks / Documents / Decisions / Wiki），使用侧边栏同款图标；默认 All，切换后立即触发对应类型过滤
+- **搜索框与类型下拉**：输入框左侧图标按钮弹出下拉菜单（All / Tasks / Documents / Decisions / Wiki）
+- **子任务归组**：按 ID 排序时子任务归组到父任务下方（BACK-496）
 
 ### 里程碑（Milestones）
 - 里程碑列表与详情
 - 未分配任务池
 - 拖放分配任务到里程碑
 - 已完成的里程碑折叠区
-- 里程碑搜索（子串包含匹配 + Fuse.js fallback，修复短数字 ID 误匹配）
-- **里程碑日期编辑**：创建/编辑弹窗提供 `dueDate`、`plannedStart`、`plannedEnd` 三个 date 输入框；里程碑卡片显示日期（如有）
+- 里程碑搜索（子串包含匹配 + Fuse.js fallback）
+- **里程碑日期编辑**：`dueDate`、`plannedStart`、`plannedEnd` 三个 date 输入框；新增 `actualStart` / `actualEnd` datetime-local 输入框（BACK-493）
+- **子任务归组**：按 ID 排序时子任务归组到父任务下方（BACK-496）
 
 ### 文档与决策
-- **文档文件夹树**：侧边栏递归渲染 `backlog/docs/` 目录结构，文件夹可展开/折叠（`localStorage` 持久化），显示文件数量徽标；文件点击导航到 `/documentation/:id`
-- **文件夹操作**：hover 文件夹显示 `+` 下拉菜单，支持"新建文件"和"新建文件夹"；新建文件时通过 `?path` 查询参数预填充目标路径
-- **无独立重命名**：文档遵循 `{id} - {title}.md` 约定，重命名通过编辑标题自动完成（后端 `saveDocument()` 处理文件重命名）
+- **文档文件夹树**：递归渲染 `backlog/docs/` 目录结构，文件夹可展开/折叠，显示文件数量徽标
+- **文件夹操作**：hover 显示 `+` 下拉菜单，支持新建文件/文件夹
+- **无独立重命名**：文档遵循 `{id} - {title}.md` 约定，重命名通过编辑标题自动完成
 - 决策记录查看
 
 ### Wiki
-- 侧边栏可折叠文件树，反映 `backlog/wiki/` 目录结构，文件夹与文件数量实时统计
-- 点击 `.md` 文件导航到 `/wiki/:path`，Markdown 渲染（`MermaidMarkdown`、frontmatter 提取标题）
-- **在线编辑**：标题、正文、labels 均可修改，保存后自动更新 frontmatter（`updated_date`），未保存变更检测与取消/保存操作
-- **Wikilink 交互预览**：`[[wikilinks]]` 渲染为可点击内部链接，点击弹出模态框异步预览目标页面内容，而非直接跳转；含 `..` 的相对 wikilink 会基于当前页面路径解析，逃出项目根目录的链接被渲染为删除线（~~text~~）
-- **Markdown 相对链接预览**：wiki 页面中的标准 Markdown 相对链接（如 `[标题](./path.md)`）被点击拦截器捕获，解析为当前页面相对路径后打开预览模态框或 SPA 导航，避免跳转到错误 URL
-- **Wiki 搜索**：Web 全局搜索栏支持搜索 wiki 页面，结果展示标题与路径，点击导航到对应 wiki 页面；支持 `type:wiki <keyword>` 过滤
-- **文件管理**：侧边栏 hover 显示 `+` 下拉菜单，支持创建文件/文件夹、重命名；重命名当前浏览的页面时自动导航到新路径
-- **Wiki URL 编码**：`encodeWikiPath()` 分段编码策略，`/` 保持可读不转为 `%2F`，空格与 CJK 等字符安全编码
-- **粘贴图片 promote**：Wiki 编辑器使用 `PasteAwareMDEditor`，粘贴的图片先存入 `.temp/`，保存时自动调用 `apiClient.promoteAssets` 迁移到 `paste/` 并更新 Markdown 引用（与任务/文档编辑器行为一致）
-- **实时同步**：文件系统变更通过 WebSocket 广播到所有打开的标签页
-- 深度链接支持
+- 侧边栏可折叠文件树，反映 `backlog/wiki/` 目录结构
+- 点击 `.md` 文件导航到 `/wiki/:path`，Markdown 渲染
+- **在线编辑**：标题、正文、labels 可修改，未保存变更检测
+- **Wikilink 交互预览**：`[[wikilinks]]` 可点击弹出模态框预览
+- **Markdown 相对链接预览**：标准相对链接点击拦截后预览或 SPA 导航
+- **Wiki 搜索**：全局搜索支持 wiki 页面，支持 `type:wiki <keyword>`
+- **文件管理**：创建/重命名/删除文件与文件夹
+- **Wiki URL 编码**：`encodeWikiPath()` 分段编码，`/` 保持可读
+- **粘贴图片 promote**：粘贴图片先存 `.temp/`，保存时自动迁移到 `paste/`
+- 实时同步（WebSocket）
 
 ### 草稿（Drafts）
-- 草稿列表卡片布局：标题 + 优先级徽标、ID、创建/更新时间、负责人、标签
-- **筛选栏**（参考任务列表设计）：
-  - 关键字搜索 — 按草稿 ID 或标题子串匹配，带搜索图标和清除按钮
-  - 状态筛选 — 所有可用状态下拉
-  - 优先级筛选 — 全部 / 高 / 中 / 低
-  - 里程碑筛选 — 全部里程碑 / 无里程碑 / 活跃里程碑
-  - 标签筛选 — `LabelFilterDropdown` 多选 chip 输入
-- **结果计数器**：`显示 X / Y 个草稿`（本地化）
-- **清除筛选**：有活跃筛选时显示，重置全部并清除 URL 参数
-- 空状态双模式：无草稿 vs 筛选无结果
-- 所有筛选客户端执行（`useMemo`），状态同步到 URL 查询参数
+- 草稿列表卡片布局
+- **筛选栏**：关键字搜索、状态、优先级、里程碑、标签筛选
+- 结果计数器、清除筛选、空状态双模式
+- 所有筛选客户端执行，状态同步到 URL 查询参数
+- **提升/降级交互**：草稿可提升为任务（emerald 按钮），非 Done 任务可降级为草稿（amber 按钮）
 
 ### 设置（Settings）
-- 配置管理
-- Definition of Done 默认值编辑
+- 配置管理、Definition of Done 默认值编辑
 - Web UI 主题自定义
-- **语言切换**：英语 / 日语 / 简体中文 / 繁体中文，通过 `/api/config` 持久化
+- **语言切换**：英语 / 日语 / 简体中文 / 繁体中文
 
 ## 任务编辑
 
 - 富文本 Markdown 编辑器（MDEditor）
-- **[[粘贴为 Markdown]]** — 从 Word/Google Docs/网页自动转换为 Markdown，支持 `.docx` 文件上传
-- **[[本地文件预览]]** — 点击本地路径在模态框中查看代码/Markdown
+- **粘贴为 Markdown** — Word/Google Docs/网页自动转换，支持 `.docx` 上传
+- **本地文件预览** — 点击本地路径在模态框中查看
 - 验收标准交互式勾选列表
-- 验收标准同步修复（ContentStore）
 - 任务内容目录（TOC）与滚动监听
 - 富表单：状态、优先级、标签、里程碑、负责人、依赖、引用、文档链接
-- **降级为草稿**：非 Done 任务在 Preview 模式显示 amber 按钮，确认后调用 `POST /api/tasks/:id/demote`，同步刷新任务列表与草稿列表
-- **提升为任务**：草稿任务在 Preview 模式显示 emerald 按钮，确认后调用 `POST /api/drafts/:id/promote`，后端返回完整 `Task` 对象，前端刷新草稿列表并打开新任务详情
-- **路径自动补全**：references 与 documentation 输入框支持项目路径自动补全，键盘导航（上下箭头、Enter、Esc、左右进入/返回目录）
-- **日期字段**：任务详情侧边栏提供 `dueDate`、`plannedStart`、`plannedEnd` 三个 date 输入框；设 `dueDate` 且 `plannedStart` 为空时自动填充 today / dueDate；TaskCard 头部显示日历图标 + `plannedStart~plannedEnd`，脚部显示时钟图标 + `dueDate`；当年份与当前年一致时省略年份；逾期且非终端状态标红
+- **降级为草稿** / **提升为任务**：amber/emerald 按钮，确认后调用 API
+- **路径自动补全**：references 与 documentation 输入框支持键盘导航
+- **日期字段**：`dueDate`/`plannedStart`/`plannedEnd`（date 输入）+ `actualStart`/`actualEnd`（datetime-local 输入）
+- **键盘快捷键修复**：全局快捷键（E/C/D/P/Ctrl+S/Escape）在输入框聚焦时正确抑制（BACK-494）
 
 ## 技术特性
 
-- **国际化（i18n）**：零依赖自定义 React Context + Hook，~300 键覆盖 4 种语言，编译时嵌入单文件二进制
+- **国际化（i18n）**：零依赖自定义 React Context + Hook，~300 键覆盖 4 种语言
 - **实时同步**：文件系统变更自动刷新所有视图
 - **响应式**：桌面与移动端适配
 - **暗黑模式**：Tailwind CSS dark mode
 - **Mermaid 图表**：任务中的 Mermaid 语法自动渲染
-- **图片与附件**：`assets/` 目录下的资源自动提供，支持临时粘贴图片的 promote 机制
+- **图片与附件**：`assets/` 自动提供，临时粘贴图片 promote 机制
 - **预览防崩溃**：尖括号类型字符串过滤
 - **草稿保留**：未保存的草稿在文件刷新后保留
 - **日期指示器**：TaskCard 计划日期与逾期高亮
+- **时区一致性**：所有 UTC 存储字符串统一通过 `parseStoredUtcDate` 解析为本地时间（BACK-497）
 
 ### 甘特图（Gantt View）
 - `/gantt` 路由，左侧任务列表 + 右侧时间线双栏布局
 - 五级时间粒度：日 / 周 / 月 / 季度 / 年
-- 任务起止时间自动解析（`plannedStart` / `plannedEnd` / `createdDate` / `updatedDate`）
-- 最小宽度回退机制：仅有 `createdDate` 的任务在日视图获得 4 小时视觉宽度，年/季度视图固定 8px
-- 依赖箭头可视化：SVG 贝塞尔曲线，点击高亮上下游链
+- **跟踪甘特图**：双层渲染（实际条 + 计划边框），支持计划 vs 实际偏差追踪（BACK-495）
+- 最小宽度回退机制
+- 依赖箭头可视化：SVG 贝塞尔曲线
 - 时间线拖拽平移，左右面板滚动同步
-- 左表支持 ID/标题/开始/结束四列排序
+- 左表支持四列排序，计划/实际时间列可切换显示
+- 子任务 ID 归组（BACK-496）
+- 时区一致（BACK-497）
 
 ### 统计页面（Statistics / Project Health）
-- **顶部健康摘要**：四种风险分类的彩色圆点计数（🟡 临期 / 🔴 逾期 / 🔵 停滞 / 🔴 阻塞），水平排列在统计卡片头部。
-- **详情列表**：按 At Risk / Overdue / Stale / Blocked 分块展示任务卡片。
-  - 临期/逾期卡片展示 **截止日期**（Due by），停滞卡片展示 **更新日期**。
-  - 所有卡片保持点击编辑行为。
-- **Tooltip**：悬停显示单语言描述，4 语言完整覆盖（en / ja / zh-CN / zh-TW）。
+- **顶部健康摘要**：四种风险分类的彩色圆点计数（🟡 临期 / 🔴 逾期 / 🔵 停滞 / 🔴 阻塞）
+- **详情列表**：按 At Risk / Overdue / Stale / Blocked 分块展示任务卡片
+- 所有卡片保持点击编辑行为
 
 ## 排序交互
 
 ### 任务列表表头排序
-所有任务页面的表格表头（ID、标题、状态、优先级、里程碑、创建时间）支持点击排序：
-- 双箭头图标设计：`↑` 在左表示升序，`↓` 在右表示降序
+- 双箭头图标设计：↑ 在左表示升序，↓ 在右表示降序
 - 未激活时两支箭头均为灰色；激活时对应方向高亮
 - 三种状态外框宽度一致（`w-4`），切换时不引起表头抖动
 
 ### 里程碑分组独立排序
-里程碑页面中每个分组（包括「未分配任务」和各个里程碑）拥有独立的排序状态：
+- 每个分组（未分配任务 + 各里程碑）拥有独立排序状态
 - 表头列：ID、标题、状态、优先级
-- 使用与任务列表相同的双箭头图标
-- 用户拥有完全控制权，无自动「Done 沉底」行为
 
 ### 看板列本地排序
-看板列操作菜单（右上角 ⋮）提供 6 个本地排序选项：
-- ID ↑/↓、标题 ↑/↓、优先级 ↑/↓
-- 仅影响当前列的展示顺序，不保存到后端
-- 激活项在菜单中高亮，带 `×` 按钮清除
-- 拖拽任务或执行「Apply Priority Order」后自动清除本地排序，恢复 ordinal 顺序
-- 菜单宽度动态自适应，避免文字换行
+- 操作菜单提供 6 个本地排序选项：ID ↑/↓、标题 ↑/↓、优先级 ↑/↓
+- 仅影响当前列展示顺序，不保存到后端
+- 拖拽任务后自动清除本地排序
+
+## Related Concepts
+- [[concepts/web-server]] — Web Server HTTP API 与后端支撑
+- [[concepts/date-fields]] — 日期字段语义与存储格式
+- [[concepts/gantt-view]] — 甘特图详细技术实现
+- [[concepts/task-lifecycle]] — 任务状态流转
+
+## Related Sources
+- [[sources/web-ui-sort-optimization]] — BACK-484 排序优化
+- [[sources/draft-filters-task]] — BACK-486 草稿筛选
+- [[sources/task-edit-modal-keyboard-fix]] — BACK-494 键盘快捷键修复
+- [[sources/subtask-grouping-fix]] — BACK-496 子任务归组
+- [[sources/timezone-handling-fix]] — BACK-497 时区处理修复
