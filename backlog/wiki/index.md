@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-24 22:40'
+updated_date: '2026-05-25 00:45'
 ---
 # Wiki Content Catalog
 
@@ -38,6 +38,21 @@ Read this file FIRST on any wiki operation.
 | [[sources/web-ui-sort-optimization]] | BACK-484 Web UI 排序优化 | source, web-ui, ui, ux |
 | [[sources/draft-promote-flow-task]] | BACK-485 修复草稿提升流程并统一操作按钮样式 | source, web-ui, drafts, ux |
 | [[sources/draft-filters-task]] | BACK-486 草稿页添加筛选功能 | source, web-ui, drafts, filtering, ux |
+| [[sources/ssl-network-error-fix]] | BACK-487 GitOperations.fetch SSL 网络错误优雅处理 | source, bug, git, network, ssl, error-handling |
+| [[sources/wiki-pasted-images-promote-fix]] | BACK-488 Wiki 粘贴图片保存时 promote 修复 | source, bug, wiki, web-ui, image-handling |
+
+## Execution Notes
+
+| File | Title | Description |
+|---|---|---|
+| [[execution/image-promote-integration]] | 在编辑器保存流程中集成图片 Promote | 提取临时 URL、调用 promote API、替换内容、更新 state 的标准步骤 |
+| [[execution/network-error-pattern-extension]] | 扩展 Git 网络错误识别模式 | 向 `containsNetworkErrorPattern` 追加新错误类型的标准流程 |
+
+## Decisions
+
+| File | Title | Description |
+|---|---|---|
+| [[decisions/reuse-asset-promote-for-wiki-images]] | Wiki 图片 Promote 复用现有 Asset API | BACK-488 选择复用现有端点而非新建后端逻辑 |
 
 ## Concepts
 
@@ -66,6 +81,18 @@ Read this file FIRST on any wiki operation.
 |---|---|---|
 | [[entities/backlog-cli]] | Backlog.md CLI 工具 | 项目技术栈、模块结构与分发渠道 |
 | [[entities/ai-agents]] | AI 代理与集成 | 支持的 AI 工具与集成方式对比 |
+
+## Patterns
+
+_No patterns created yet._
+
+## Reasoning
+
+_No reasoning traces created yet._
+
+## Retrospectives
+
+_No retrospectives created yet._
 
 ## Comparisons
 

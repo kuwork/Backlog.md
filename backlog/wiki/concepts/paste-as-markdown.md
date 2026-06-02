@@ -2,7 +2,7 @@
 title: 粘贴为 Markdown
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-23 00:40
+updated_date: 2026-05-25 00:45
 ---
 
 
@@ -49,6 +49,14 @@ Web UI 编辑器中的智能粘贴功能，自动将富文本（Word、Google Do
 - 截图直接粘贴为 `image/png` blob → 上传至 `.temp/` → 保存时 promote 到 `paste/`
 - Word/网页中的 `<img>`：data URI 提取上传，HTTP(S) URL 由后端安全下载上传
 - `file://` 路径被拒绝（浏览器无法读取本地文件）
+
+### 支持图片 promote 的编辑器
+
+任务编辑器、文档编辑器和 **Wiki 编辑器** 均在保存时执行图片 promote：
+- 前端扫描 Markdown 中的 `/assets/.temp/` 引用
+- 调用 `POST /api/assets/promote` 迁移到 `paste/`
+- 替换 URL 后再执行正常保存 API
+- 详见 [[sources/wiki-pasted-images-promote-fix]]
 
 ## 依赖
 
