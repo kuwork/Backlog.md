@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-22 02:15'
+updated_date: '2026-05-22 10:00'
 ---
 # Wiki Content Catalog
 
@@ -32,6 +32,8 @@ Read this file FIRST on any wiki operation.
 | [[sources/milestone-search-fix]] | BACK-480 修复里程碑页面搜索模糊匹配误报 | source |
 | [[sources/demote-to-draft-action]] | BACK-419 Web UI 降级为草稿操作 | source |
 | [[sources/folder-grouping-for-docs]] | BACK-423 Web UI 文档文件夹分组 | source |
+| [[sources/wiki-search-task]] | BACK-481 将 Wiki 纳入 Web 搜索范围 | source |
+| [[sources/wikilink-markdown-preview-fix]] | BACK-482 修复 Wikilink 与 Markdown 相对链接预览 | source |
 
 ## Concepts
 

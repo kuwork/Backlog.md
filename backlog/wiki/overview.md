@@ -16,12 +16,12 @@ created_date: 2026-05-12 00:00
 ### 核心功能域
 - **任务管理**：CRUD、子任务、草稿、归档、依赖、验收标准、DoD
 - **看板**：终端 TUI 看板、Web 交互式看板、看板导出
-- **搜索**：基于 Fuse.js 的跨任务/文档/决策模糊搜索
+- **搜索**：基于 Fuse.js 的跨任务/文档/决策/wiki 模糊搜索，支持 `type:wiki <keyword>` 语法过滤
 - **Web UI**：React + Tailwind CSS v4 的现代化浏览器界面
 - **AI 集成**：MCP 协议支持 Claude Code、Codex、Gemini CLI、Kiro、Cursor
 - **粘贴为 Markdown**：Word/Excel/Google Docs 富文本自动转换，截图图片上传与嵌入
 - **本地文件预览**：任务 References 和 Markdown 中的本地路径点击预览，支持语法高亮和行范围
-- **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹
+- **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹；Wikilink 点击弹出预览模态框，标准 Markdown 相对链接在 wiki 页面内支持 SPA 导航预览
 - **Wiki Install**：`backlog wiki install <agent>` 将内置 skill 安装到 Claude/Codex/Agents
 - **功能机会分析**：基于现有架构的功能增强建议（Wiki CLI 桥接、任务模板、时间追踪、批量操作等），详见 [[../wiki_output/reports/feature-opportunities]]
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
@@ -57,7 +57,7 @@ created_date: 2026-05-12 00:00
 
 ## 统计
 
-- Sources ingested: 18
+- Sources ingested: 20
 - Concepts extracted: 16
 - Entities catalogued: 2
 - Reports generated: 1
