@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-23 11:15
+updated_date: 2026-05-25 00:45
 ---
 
 
@@ -53,6 +53,7 @@ updated_date: 2026-05-23 11:15
 - **Wiki 搜索**：Web 全局搜索栏支持搜索 wiki 页面，结果展示标题与路径，点击导航到对应 wiki 页面；支持 `type:wiki <keyword>` 过滤
 - **文件管理**：侧边栏 hover 显示 `+` 下拉菜单，支持创建文件/文件夹、重命名；重命名当前浏览的页面时自动导航到新路径
 - **Wiki URL 编码**：`encodeWikiPath()` 分段编码策略，`/` 保持可读不转为 `%2F`，空格与 CJK 等字符安全编码
+- **粘贴图片 promote**：Wiki 编辑器使用 `PasteAwareMDEditor`，粘贴的图片先存入 `.temp/`，保存时自动调用 `apiClient.promoteAssets` 迁移到 `paste/` 并更新 Markdown 引用（与任务/文档编辑器行为一致）
 - **实时同步**：文件系统变更通过 WebSocket 广播到所有打开的标签页
 - 深度链接支持
 
