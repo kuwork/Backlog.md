@@ -360,3 +360,37 @@ Chronological, append-only record of all wiki operations.
 - 更新 `wiki/sources/due-date-fields-task.md` — 移除 Related Sources 中的社区分析链接
 
 **说明**: `wiki_output/reports/community-fork-analysis.md` 等报告文件保留在 wiki_output 中，不受影响。
+
+## [2026-05-26 23:42:00] batch-ingest | 摄取 BACK-489 / BACK-490，新增 project-health 概念
+
+**新增 Sources (2)**:
+- `wiki/sources/back-489-health-indicators-task.md` — BACK-489 项目健康指标重构（临期 / 逾期 / 停滞）
+- `wiki/sources/back-490-overview-command-task.md` — BACK-490 CLI overview 命令（项目级统计）
+
+**新增 Concepts (1)**:
+- `wiki/concepts/project-health.md` — 项目健康度四维指标（At Risk / Overdue / Stale / Blocked）
+
+**更新 Concepts (3)**:
+- `wiki/concepts/cli-entry.md` — 添加 `overview` 命令说明与输出结构
+- `wiki/concepts/web-ui-features.md` — 补充统计页面健康度区域与看板卡片视觉标识
+- `wiki/concepts/date-fields.md` — 无内容变更（BACK-401 source 已完整）
+
+**更新导航 (2)**:
+- `wiki/index.md` — Sources 28 条，Concepts 18 条
+- `wiki/overview.md` — 添加「项目健康度」域覆盖，统计更新
+
+**Pairing Memory (2)**:
+- `wiki/execution/statistics-robustness.md` — 阻塞任务检测大小写敏感修复 + recentlyUpdated 回退模式
+- `wiki/decisions/remove-json-overview.md` — 移除 `--json` 选项，plain + TUI 覆盖需求
+
+## [2026-05-27 00:00:00] pattern-extraction | 从 304 个完成任务中提取 4 个可复用模式
+
+**新增 Patterns (4)**:
+- `wiki/patterns/cross-surface-feature-addition.md` — 跨表面功能添加的 12 层遍历 checklist
+- `wiki/patterns/refactoring-rollout.md` — 重构分阶段推出的 6 阶段子任务推进法
+- `wiki/patterns/bug-fix-prevention.md` — 症状修复 → 根因分析 → 审计扫荡 → 回归测试
+- `wiki/patterns/tui-editor-integration.md` — blessed TUI 中安全启动外部编辑器的 8 步流程
+
+**更新导航 (2)**:
+- `wiki/index.md` — Patterns 区从空变为 4 个条目
+- `wiki/overview.md` — 统计新增 Patterns: 4
