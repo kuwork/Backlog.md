@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-208 粘贴为 Markdown 支持
+labels: [source]
 source_path: backlog/tasks/back-208 - Add-paste-as-markdown-support-in-Web-UI.md
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # BACK-208 粘贴为 Markdown 支持
 

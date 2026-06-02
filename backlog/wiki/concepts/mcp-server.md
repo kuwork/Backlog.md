@@ -1,8 +1,9 @@
 ---
-type: concept
 title: MCP Server 实现
-updated: 2026-05-06
+labels: [concept]
+created_date: 2026-05-06 00:00
 ---
+
 
 # MCP Server 实现
 

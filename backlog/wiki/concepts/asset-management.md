@@ -1,8 +1,9 @@
 ---
-type: concept
 title: 资源管理与临时文件提升
-updated: 2026-05-10
+labels: [concept]
+created_date: 2026-05-10 00:00
 ---
+
 
 # 资源管理与临时文件提升
 

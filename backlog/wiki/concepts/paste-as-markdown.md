@@ -1,8 +1,9 @@
 ---
-type: concept
 title: 粘贴为 Markdown
-updated: 2026-05-10
+labels: [concept]
+created_date: 2026-05-10 00:00
 ---
+
 
 # 粘贴为 Markdown
 
