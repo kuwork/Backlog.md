@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-17 02:20'
+updated_date: '2026-05-20 21:35'
 ---
 # Wiki Content Catalog
 
@@ -109,3 +109,4 @@ _No comparisons created yet._
 | File | Title | Description |
 |---|---|---|
 | [[../wiki_output/reports/backlog-md-user-guide-zh]] | Backlog.md 用户使用指引 | 中文完整用户手册，涵盖安装、任务管理、看板、Web UI、AI 集成等 |
+| [[../wiki_output/reports/feature-opportunities]] | 功能机会分析 | 基于现有架构的功能增强建议与优先级排序 |
