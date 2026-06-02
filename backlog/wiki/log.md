@@ -169,3 +169,5 @@ Chronological, append-only record of all wiki operations.
   - 每个建议包含现状分析、建议命令、价值评估、与现有架构的契合度
   - 架构契合度总结表（复用现有能力 × 新增复杂度）
 - **更新导航文件**: `index.md`（Reports 区域添加引用）、`overview.md`（域覆盖增加功能机会分析）
+
+## [2026-05-20 23:45:00] batch-ingest | 增量摄取 BACK-479 路径自动补全、BACK-480 里程碑搜索修复
