@@ -158,3 +158,25 @@ Chronological, append-only record of all wiki operations.
 - `40-Web界面/01-看板视图` — 扩展标签筛选（颜色自定义、卡片标签宽度自适应）
 - `10-任务管理/01-创建与编辑任务` — 扩展标签输入下拉框与模糊过滤说明
 - `40-Web界面/00-启动与访问` — 扩展侧边栏折叠按钮说明
+
+
+## [2026-05-31 01:11:00] batch-ingest | 增量摄取 BACK-502~503 及相关源码
+
+**检测基线**: 2026-05-30 10:25:00（上次 batch-ingest）
+**Git 变更文件**: 2 个新 backlog 任务 + 16 个源代码/测试/配置文件
+
+**新 source 页面**: 2 个
+- `sources/back-502` — BACK-502 同步 llm-wiki-for-backlog SKILL.md 更新到嵌入代码
+- `sources/task-completion-heatmap-task` — BACK-503 统计页面贡献热力图与服务端缓存
+
+**更新 concept 页面**: 3 个
+- `concepts/web-ui-features` — 扩展热力图、统计缓存、locale 切换防覆盖
+- `concepts/web-server` — 扩展统计缓存架构与 WebSocket 广播
+- `concepts/web-ui-i18n` — 扩展 App.tsx 首次加载限制与 locale 切换修复
+
+**Pairing Memory (3)**:
+- `wiki/execution/statistics-cache-pattern` — 服务端 debounced 缓存 + 客户端 localStorage 双缓存层模式
+- `wiki/decisions/inline-style-over-tailwind-for-heatmap` — Bun CSS build 崩溃迫使热力图使用 inline style
+- `wiki/decisions/sunday-start-week-grid` — 与 GitHub 贡献图保持一致采用周日开始
+
+**更新导航**: `index.md`（Sources 46 条，Execution 8 条，Decisions 11 条）、`overview.md`
