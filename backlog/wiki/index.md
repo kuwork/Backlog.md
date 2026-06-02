@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-20 23:45'
+updated_date: '2026-05-21 22:50'
 ---
 # Wiki Content Catalog
 
@@ -30,6 +30,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/web-ui-i18n-task]] | BACK-478 Web UI i18n 支持 | source |
 | [[sources/path-autocomplete-task]] | BACK-479 Web UI 路径自动补全与文档编辑 | source |
 | [[sources/milestone-search-fix]] | BACK-480 修复里程碑页面搜索模糊匹配误报 | source |
+| [[sources/demote-to-draft-action]] | BACK-419 Web UI 降级为草稿操作 | source |
 
 ## Concepts
 
