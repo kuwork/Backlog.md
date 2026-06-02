@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-22 10:00'
+updated_date: '2026-05-23 00:40'
 ---
 # Wiki Content Catalog
 
@@ -34,6 +34,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/folder-grouping-for-docs]] | BACK-423 Web UI 文档文件夹分组 | source |
 | [[sources/wiki-search-task]] | BACK-481 将 Wiki 纳入 Web 搜索范围 | source |
 | [[sources/wikilink-markdown-preview-fix]] | BACK-482 修复 Wikilink 与 Markdown 相对链接预览 | source |
+| [[sources/sidebar-resize-search-task]] | BACK-483 Web UI 侧边栏调整大小与搜索类型下拉 | source, web-ui, ux |
 
 ## Concepts
 
@@ -109,6 +110,7 @@ _No comparisons created yet._
 | [[developer-notes/ci-testing-gotchas]] | CI 与测试踩坑笔记 | 常见 CI 失败场景、文件系统测试陷阱、Biome 格式化细节 |
 | [[developer-notes/architecture-gotchas]] | 架构分层规范 | Server 层禁止直接拥有文件读取/解析逻辑、HTTP handler 职责边界 |
 | [[developer-notes/security-gotchas]] | 安全检查清单 | 路径遍历防护、SSRF 防护、文件大小限制、新增 API 安全自检 |
+| [[developer-notes/DEVELOPMENT-GUIDE]] | 开发指引 | Bun + TypeScript + Biome 技术栈开发标准与工作流 |
 
 ## Reports
 
