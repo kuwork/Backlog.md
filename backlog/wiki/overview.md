@@ -2,6 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
+updated_date: 2026-05-25 23:45
 ---
 
 
@@ -26,6 +27,7 @@ created_date: 2026-05-12 00:00
 - **功能机会分析**：基于现有架构的功能增强建议（Wiki CLI 桥接、任务模板、时间追踪、批量操作等），详见 [[../wiki_output/reports/feature-opportunities]]
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
 - **Web UI 国际化**：零依赖自定义 i18n（React Context + Hook），4 种语言（en/ja/zh-CN/zh-TW），~300 翻译键编译时嵌入二进制
+- **日期字段支持**：任务与里程碑可选 `dueDate` / `plannedStart` / `plannedEnd`，date-only 存储，跨 CLI/TUI/Web/MCP 一致暴露；Web UI 自动填充规则与逾期高亮
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -58,7 +60,9 @@ created_date: 2026-05-12 00:00
 
 ## 统计
 
-- Sources ingested: 25
-- Concepts extracted: 16
+- Sources ingested: 26
+- Concepts extracted: 17
 - Entities catalogued: 2
+- Execution notes: 3
+- Decisions recorded: 3
 - Reports generated: 2

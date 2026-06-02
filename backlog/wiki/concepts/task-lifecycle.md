@@ -2,6 +2,7 @@
 title: 任务生命周期
 labels: [concept]
 created_date: 2026-05-06 00:00
+updated_date: 2026-05-25 23:45
 ---
 
 
@@ -44,6 +45,8 @@ docs: ["doc-1"]
 ordinal: 1000
 type: feature
 dueDate: "2026-05-20"
+plannedStart: "2026-05-10"
+plannedEnd: "2026-05-18"
 ---
 ```
 
@@ -59,7 +62,9 @@ dueDate: "2026-05-20"
 | `dependencies` | 依赖的其他任务 ID |
 | `ordinal` | 自定义排序权重 |
 | `type` | bug / feature / enhancement / docs / refactor / test |
-| `dueDate` | 截止日期（可选） |
+| `dueDate` | 截止日期（可选，date-only `YYYY-MM-DD`） |
+| `plannedStart` | 计划开始日期（可选，date-only） |
+| `plannedEnd` | 计划结束日期（可选，date-only） |
 
 ## 子任务
 

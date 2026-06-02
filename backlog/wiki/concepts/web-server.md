@@ -2,6 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: 2026-05-25 23:45
 ---
 
 
@@ -37,7 +38,7 @@ RESTful API 按资源组织：
 | 决策 | `/api/decisions` | GET、POST |
 | 决策 | `/api/decisions/:id` | GET、PUT |
 | 里程碑 | `/api/milestones` | GET、POST |
-| 里程碑 | `/api/milestones/:id` | GET、PUT、DELETE |
+| 里程碑 | `/api/milestones/:id` | GET、PUT（含日期字段）、DELETE |
 | 里程碑 | `/api/milestones/:id/archive` | POST |
 | 搜索 | `/api/search` | GET（query、filters、limit） |
 | 序列 | `/api/sequences` | GET |
