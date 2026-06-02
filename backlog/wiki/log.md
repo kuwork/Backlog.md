@@ -306,3 +306,57 @@ Chronological, append-only record of all wiki operations.
 - 更新 `index.md` — 新增 Execution Notes 和 Decisions 区域
 
 **说明**: `src/web/styles/style.css` 的 git diff 仅为 Tailwind CSS 头部注释版本变化，无语义变更，不纳入摄入。
+
+## [2026-05-25 23:45:24] batch-ingest | 增量摄取 BACK-401 日期字段、社区 Fork 分析文档
+
+**检测基线**: 2026-05-25 00:45:24（上次 batch-ingest）
+**Git 变更文件**: 1 个新 backlog 任务（BACK-401）+ 23 个源代码/配置/测试文件 + 2 个未跟踪社区分析文档
+
+**新 source 页面**: 3 个
+- `sources/due-date-fields-task` — BACK-401 dueDate / plannedStart / plannedEnd 跨层支持
+- `sources/community-feature-directions` — 39 个活跃 Fork 功能增强方向分析
+- `sources/community-showcase` — 39 个活跃 Fork 亮点实践 Showcase
+
+**新 concept 页面**: 1 个
+- `concepts/date-fields` — 三个日期字段语义、存储格式、CLI/Web/MCP 使用方式
+
+**更新 concept 页面**: 5 个
+- `concepts/task-lifecycle` — frontmatter 示例与字段说明补充 plannedStart / plannedEnd
+- `concepts/web-ui-features` — 补充里程碑日期编辑、TaskCard 日期指示器、自动填充规则、逾期高亮
+- `concepts/cli-entry` — 补充 `--due-date` 等选项、`milestone edit` 命令、日期字段 CLI 使用
+- `concepts/mcp-server` — 补充 `milestone_edit` 工具（原 milestone_rename）与日期字段 schema
+- `concepts/web-server` — 里程碑 PUT 端点补充含日期字段说明
+
+**Pairing Memory 提取**:
+- `wiki/execution/milestone-update-refactor` — renameMilestone → updateMilestone + rawContent 保留 + 关联任务重写优化
+- `wiki/decisions/date-only-storage` — 日期字段采用 YYYY-MM-DD date-only 存储的决策
+- `wiki/decisions/web-ui-date-autofill` — dueDate 触发 plannedStart / plannedEnd 自动填充的 UX 决策
+
+**更新导航文件**: `index.md`（添加 3 source + 1 concept + 1 execution + 2 decisions 条目）、`overview.md`（域覆盖增加日期字段与社区分析；统计更新）
+
+**未摄取**: `backlog/wiki/Backlog用户手册.zip`（wiki 生成产物，不纳入来源）；`src/web/components/WikiDetail.tsx` 的 BACK-488 后续微小调整已在先前 batch-ingest 覆盖，无实质新内容。
+
+## [2026-05-25 23:45:24] usermanual-update | 更新用户手册，添加 BACK-401 日期字段支持
+
+**更新页面**: 6 个
+- `00-快速开始/00-产品概述` — 新增「日期与计划」核心特性章节
+- `usermanual/README` — 核心特性列表增加日期与计划
+- `10-任务管理/00-任务生命周期` — frontmatter 示例与字段说明补充 `plannedStart` / `plannedEnd`
+- `10-任务管理/01-创建与编辑任务` — 创建/编辑选项表格添加 `--due-date`/`--planned-start`/`--planned-end`/`--clear-*`；新增「日期字段」章节（CLI 用法、Web UI 自动填充规则）
+- `30-文档与决策/02-里程碑管理` — 新增「编辑里程碑」章节（CLI `milestone edit`、日期字段、模糊匹配）
+- `40-Web界面/01-看板视图` — 新增「任务卡片日期指示器」章节（日历图标、计划日期范围、时钟图标、逾期高亮）
+- `40-Web界面/03-里程碑管理` — 新增「编辑里程碑」章节（弹窗编辑、日期字段设置与清空、卡片日期显示）
+
+## [2026-05-25 23:45:24] source-remove | 撤销两个社区分析文档的摄取
+
+**撤销原因**: 用户明确要求不将 `github-issue-community-features.md` 和 `github-issue-community-showcase.md` 纳入 wiki 来源。
+
+**移除内容**:
+- 删除 `wiki/sources/community-feature-directions.md`
+- 删除 `wiki/sources/community-showcase.md`
+- 更新 `wiki/index.md` — 移除 2 个 source 条目
+- 更新 `wiki/overview.md` — Sources ingested 统计 28 → 26，移除「社区 Fork 分析」域覆盖
+- 更新 `wiki/concepts/date-fields.md` — 移除 Related Sources 中的社区分析链接
+- 更新 `wiki/sources/due-date-fields-task.md` — 移除 Related Sources 中的社区分析链接
+
+**说明**: `wiki_output/reports/community-fork-analysis.md` 等报告文件保留在 wiki_output 中，不受影响。
