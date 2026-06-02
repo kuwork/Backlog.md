@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-30 10:20
+updated_date: 2026-05-31 01:11
 ---
 
 # Web UI 功能
@@ -72,6 +72,7 @@ updated_date: 2026-05-30 10:20
 - 配置管理、Definition of Done 默认值编辑
 - Web UI 主题自定义
 - **语言切换**：英语 / 日语 / 简体中文 / 繁体中文
+- **Locale 切换防覆盖**：`App.tsx` 仅在首次加载时从服务器同步 locale，避免后台数据刷新覆盖用户手动选择（BACK-503）
 
 ## 任务编辑
 
@@ -99,6 +100,7 @@ updated_date: 2026-05-30 10:20
 - **草稿保留**：未保存的草稿在文件刷新后保留
 - **日期指示器**：TaskCard 计划日期与逾期高亮
 - **时区一致性**：所有 UTC 存储字符串统一通过 `parseStoredUtcDate` 解析为本地时间（BACK-497）
+- **统计缓存**：服务端 debounced 缓存 + 客户端 localStorage 双缓存层，确保统计页面瞬时加载且数据实时同步（BACK-503）
 
 ### 甘特图（Gantt View）
 - `/gantt` 路由，左侧任务列表 + 右侧时间线双栏布局
@@ -113,6 +115,8 @@ updated_date: 2026-05-30 10:20
 
 ### 统计页面（Statistics / Project Health）
 - **顶部健康摘要**：四种风险分类的彩色圆点计数（🟡 临期 / 🔴 逾期 / 🔵 停滞 / 🔴 阻塞）
+- **GitHub 风格贡献热力图**：7×53 网格，周日开始，inline style 配色，hover/click tooltip 显示日期和完成数，支持 4 语言本地化（BACK-503）
+- **服务端缓存自动刷新**：CLI 创建任务后 500ms 内统计自动更新，WebSocket 推送 `"statistics-updated"`，客户端 `localStorage` 缓存瞬时加载
 - **详情列表**：按 At Risk / Overdue / Stale / Blocked 分块展示任务卡片
 - 所有卡片保持点击编辑行为
 
