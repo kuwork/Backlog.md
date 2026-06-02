@@ -34,6 +34,14 @@ Web UI 编辑器中的智能粘贴功能，自动将富文本（Word、Google Do
 | 表格首行 | `<td>` → `<th>` 使 GFM 识别表头 |
 | Excel `<colgroup>` | 剥离以允许表格识别 |
 
+## Word 文档上传
+
+除剪贴板粘贴外，编辑器还支持直接上传 `.docx` 文件：
+
+- 后端 `mammoth` 将 `.docx` 转为 HTML，提取内嵌图片到 `.temp/`
+- 前端复用同一套 `cleanHtml` + Turndown 流水线，保证 paste 与 upload 输出一致
+- 详见 [[docx-conversion]]
+
 ## 图片粘贴
 
 - 截图直接粘贴为 `image/png` blob → 上传至 `.temp/` → 保存时 promote 到 `paste/`
@@ -43,3 +51,4 @@ Web UI 编辑器中的智能粘贴功能，自动将富文本（Word、Google Do
 ## 依赖
 
 - `turndown` + `turndown-plugin-gfm`
+- `mammoth` — Word 文档解析（`.docx` 上传路径）
