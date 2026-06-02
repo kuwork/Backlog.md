@@ -1,7 +1,7 @@
 ---
 type: overview
 title: Knowledge Base Overview
-updated: 2026-05-10
+updated: 2026-05-12
 ---
 
 # Knowledge Base Overview
@@ -22,6 +22,7 @@ updated: 2026-05-10
 - **本地文件预览**：任务 References 和 Markdown 中的本地路径点击预览，支持语法高亮和行范围
 - **Wiki Web UI**：浏览器中浏览 `backlog/wiki/` 文件树，只读渲染 LLM 维护的知识库
 - **Wiki Install**：`backlog wiki install <agent>` 将内置 skill 安装到 Claude/Codex/Agents
+- **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -31,6 +32,7 @@ updated: 2026-05-10
 - **Web Server**：`BacklogServer` 基于 `Bun.serve()`，REST API + WebSocket 广播 + React SPA
 - **Markdown 流水线**：`gray-matter` 解析 frontmatter + `structured-sections.ts` 提取 AC/DoD/计划/备注
 - **资源管理**：`AssetManager` 处理上传、data URI、安全远程下载，临时目录 `.temp/` + 保存时 promote 到 `paste/`
+- **Skill 嵌入**：构建时将 `.codex/skills/` 嵌入 `src/skills/embedded/` 供编译后二进制使用
 - **MCP 安全**：stdio-only 传输，Windows 上修复 stdin close 误触发导致的挂起问题
 
 ### 项目管理域
@@ -44,6 +46,7 @@ updated: 2026-05-10
 - **编辑器**：VIM/Neovim/Helix/nano 等，支持 TUI 挂起恢复
 - **后台服务**：systemd/launchd/Task Scheduler/NSSM
 - **Shell 补全**：bash/zsh/fish/PowerShell 动态补全
+- **文档构建**：HonKit 本地预览、静态站点生成、PDF 导出（依赖 Calibre）
 
 ## 主要产出
 
@@ -51,7 +54,7 @@ updated: 2026-05-10
 
 ## 统计
 
-- Sources ingested: 11
-- Concepts extracted: 13
+- Sources ingested: 12
+- Concepts extracted: 15
 - Entities catalogued: 2
 - Reports generated: 1
