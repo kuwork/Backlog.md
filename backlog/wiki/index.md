@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-29 22:36'
+updated_date: '2026-05-30 15:02'
 ---
 # Wiki Content Catalog
 
@@ -32,6 +32,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/milestone-search-fix]] | BACK-480 修复里程碑页面搜索模糊匹配误报 | source |
 | [[sources/demote-to-draft-action]] | BACK-419 Web UI 降级为草稿操作 | source |
 | [[sources/folder-grouping-for-docs]] | BACK-423 Web UI 文档文件夹分组 | source |
+| [[sources/back-502]] | BACK-502 同步 llm-wiki-for-backlog SKILL.md 更新到嵌入代码 | source |
 | [[sources/wiki-search-task]] | BACK-481 将 Wiki 纳入 Web 搜索范围 | source |
 | [[sources/wikilink-markdown-preview-fix]] | BACK-482 修复 Wikilink 与 Markdown 相对链接预览 | source |
 | [[sources/sidebar-resize-search-task]] | BACK-483 Web UI 侧边栏调整大小与搜索类型下拉 | source, web-ui, ux |
@@ -123,6 +124,7 @@ Read this file FIRST on any wiki operation.
 | [[patterns/refactoring-rollout]] | 重构分阶段推出模式 | 核心抽象变更的 6 阶段子任务推进法 |
 | [[patterns/bug-fix-prevention]] | Bug 修复 → 预防模式 | 症状修复 → 根因分析 → 审计扫荡 → 回归测试 |
 | [[patterns/tui-editor-integration]] | TUI / 编辑器集成模式 | blessed TUI 中安全启动外部编辑器的 8 步流程 |
+| [[patterns/skill-file-change-sync]] | Skill 文件变更 → 嵌入代码同步模式 | 修改 Skill 源文件后必须重新运行 embed 脚本并提交生成文件 |
 
 ## Reasoning
 
