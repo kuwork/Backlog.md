@@ -19,7 +19,7 @@ Backlog.md 将任意 Git 仓库目录转变为自包含的项目看板。每个�
 - **AI-Ready**：支持 Claude Code、Gemini CLI、Codex、Kiro、Cursor 等 AI 助手
 - **双模式界面**：终端 TUI 看板 + 现代 Web 浏览器界面
 - **富文本粘贴**：从 Word、Google Docs 一键粘贴为 Markdown，支持 `.docx` 文件上传
-- **Wiki 知识库**：AI 维护的增量式项目知识库，内置 skill 可安装到 Claude/Codex
+- **Wiki 知识库**：LLM 维护的增量式项目知识库，人类可读可编辑；浏览器中支持文件树导航、在线编辑、labels 标签与实时同步；内置 skill 可安装到 Claude/Codex
 - **跨平台**：macOS、Linux、Windows
 
 ## 两种使用路径
