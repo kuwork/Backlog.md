@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-474 Wiki Install 命令
+labels: [source]
 source_path: backlog/tasks/back-474 - Add-wiki-install-command.md
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # BACK-474 Wiki Install 命令
 
