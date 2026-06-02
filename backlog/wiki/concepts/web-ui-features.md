@@ -2,13 +2,20 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-22 10:00
+updated_date: 2026-05-23 00:40
 ---
 
 
 # Web UI 功能
 
 `backlog browser` 启动的现代化 Web 界面，基于 React + Tailwind CSS v4。
+
+## 全局布局
+
+### 侧边栏
+- 可拖拽调整宽度：右边缘 1px 手柄，拖拽时显示蓝色 ghost bar（直接操作 DOM 避免 React 重渲染卡顿）
+- 松开鼠标后应用宽度并持久化到 `localStorage`
+- 最小 200px / 最大 500px 限制
 
 ## 页面与视图
 
@@ -22,7 +29,7 @@ updated_date: 2026-05-22 10:00
 - 表格布局（ redesigned ）
 - 状态/优先级/标签/里程碑筛选
 - 多状态筛选支持
-- 搜索框
+- **搜索框与类型下拉**：输入框左侧图标按钮弹出下拉菜单（All / Tasks / Documents / Decisions / Wiki），使用侧边栏同款图标；默认 All，切换后立即触发对应类型过滤
 
 ### 里程碑（Milestones）
 - 里程碑列表与详情
@@ -45,6 +52,7 @@ updated_date: 2026-05-22 10:00
 - **Markdown 相对链接预览**：wiki 页面中的标准 Markdown 相对链接（如 `[标题](./path.md)`）被点击拦截器捕获，解析为当前页面相对路径后打开预览模态框或 SPA 导航，避免跳转到错误 URL
 - **Wiki 搜索**：Web 全局搜索栏支持搜索 wiki 页面，结果展示标题与路径，点击导航到对应 wiki 页面；支持 `type:wiki <keyword>` 过滤
 - **文件管理**：侧边栏 hover 显示 `+` 下拉菜单，支持创建文件/文件夹、重命名；重命名当前浏览的页面时自动导航到新路径
+- **Wiki URL 编码**：`encodeWikiPath()` 分段编码策略，`/` 保持可读不转为 `%2F`，空格与 CJK 等字符安全编码
 - **实时同步**：文件系统变更通过 WebSocket 广播到所有打开的标签页
 - 深度链接支持
 
