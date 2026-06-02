@@ -67,4 +67,6 @@ RESTful API 按资源组织：
 `src/web/` 目录包含浏览器前端：
 - `main.tsx` / `App.tsx`：React 应用入口
 - `index.html`：HTML 模板，被 Bun 作为 `HTMLBundle` 导入
+- `locales/`：翻译字典（`en.ts` `ja.ts` `zh-CN.ts` `zh-TW.ts`），编译时嵌入二进制
+- `contexts/I18nContext.tsx` + `hooks/useI18n.ts`：零依赖国际化层
 - 通过 Bun 的 import attributes（`with { type: "file" }`）内联 favicon
