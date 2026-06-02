@@ -1,12 +1,21 @@
 ---
-type: log
 title: Wiki Operations Log
-updated: 2026-05-06
+labels: [log]
+created_date: 2026-05-06 00:00
 ---
+
 
 # Wiki Operations Log
 
 Chronological, append-only record of all wiki operations.
+
+## [2026-05-14 10:35:00] batch-ingest | Incremental ingest: 7 updated tasks, 1 new source, 2 updated concepts
+
+- **Updated sources**: back-208, back-465, back-467, back-473, back-474, back-475 (verified existing summaries)
+- **New source**: [[sources/inline-code-html-escaping-fix]] — BACK-476 行内代码 HTML 实体转义修复
+- **Updated concepts**: [[concepts/markdown-pipeline]] — 添加渲染安全章节（HTML 实体转义保护机制）; [[concepts/web-ui-features]] — 更新 Wiki 功能描述（在线编辑、实时同步、文件管理）
+- **Updated index.md**: added new source entry, migrated table column `Type` → `Labels`
+- **Updated overview.md**: updated domain coverage (Wiki 在线编辑), stats (13 sources)
 
 ## [2026-05-06 21:24:47] init | Wiki initialized
 
