@@ -1,9 +1,10 @@
 ---
-type: source
 title: 源代码架构总览
+labels: [source]
 source_path: src/
-updated: 2026-05-06
+created_date: 2026-05-06 00:00
 ---
+
 
 # 源代码架构总览
 

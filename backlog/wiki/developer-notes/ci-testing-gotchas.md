@@ -1,9 +1,10 @@
 ---
-type: developer-note
 title: CI 与测试踩坑笔记
+labels: [developer-note]
 created: 2026-05-10
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # CI 与测试踩坑笔记
 
