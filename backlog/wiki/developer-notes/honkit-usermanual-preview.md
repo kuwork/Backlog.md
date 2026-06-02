@@ -1,9 +1,10 @@
 ---
-type: developer-notes
 title: HonKit 预览用户手册
+labels: [developer-notes]
 description: 使用 HonKit 本地预览和构建 usermanual 的完整操作流程
-updated: 2026-05-12
+created_date: 2026-05-12 00:00
 ---
+
 
 # HonKit 预览用户手册
 

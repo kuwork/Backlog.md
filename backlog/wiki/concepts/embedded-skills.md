@@ -1,8 +1,9 @@
 ---
-type: concept
 title: 内嵌 Skill 架构
-updated: 2026-05-12
+labels: [concept]
+created_date: 2026-05-12 00:00
 ---
+
 
 # 内嵌 Skill 架构
 

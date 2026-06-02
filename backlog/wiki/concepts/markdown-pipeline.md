@@ -1,8 +1,9 @@
 ---
-type: concept
 title: Markdown 解析与序列化流水线
-updated: 2026-05-06
+labels: [concept]
+created_date: 2026-05-06 00:00
 ---
+
 
 # Markdown 解析与序列化流水线
 
@@ -63,6 +64,15 @@ FileSystem.saveTask() — 写入磁盘
 - **文档**：`doc-{id} - {title}.md`
 - **决策**：`decision-{id} - {title}.md`
 - **里程碑**：`{id}.md`
+
+## 渲染安全：HTML 实体转义
+
+`MermaidMarkdown.tsx` 中的 `sanitizeMarkdownSource` 在渲染前对 `<` 进行转义（`→ &lt;`），防止 HTML-like 标签被浏览器解析为实际 DOM 元素。
+
+**保护机制（BACK-476）**：
+- 先扫描围栏代码块（`` ``` ``）和行内代码（`` ` ``）的偏移范围
+- `<` 替换时跳过受保护范围，避免代码内容被双重编码
+- 代码区外的 URI/邮箱自动链接（`<mailto:...>`）仍正常豁免
 
 ## 跨分支兼容性
 

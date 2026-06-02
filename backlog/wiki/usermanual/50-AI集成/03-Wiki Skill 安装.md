@@ -1,8 +1,9 @@
 ---
-type: usermanual
 title: Wiki Skill 安装
-updated: 2026-05-12
+labels: [usermanual]
+created_date: 2026-05-12 00:00
 ---
+
 
 # Wiki Skill 安装
 

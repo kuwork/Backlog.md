@@ -1,8 +1,9 @@
 ---
-type: concept
 title: Word 文档转换
-updated: 2026-05-12
+labels: [concept]
+created_date: 2026-05-12 00:00
 ---
+
 
 # Word 文档转换
 

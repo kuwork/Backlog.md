@@ -1,8 +1,9 @@
 ---
-type: usermanual
 title: Shell 补全
-updated: 2026-05-07
+labels: [usermanual]
+created_date: 2026-05-07 00:00
 ---
+
 
 # Shell 补全
 

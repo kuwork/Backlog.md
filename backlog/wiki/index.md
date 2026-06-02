@@ -1,8 +1,9 @@
 ---
-type: index
 title: Wiki Content Catalog
-updated: 2026-05-12
+labels: [index]
+created_date: 2026-05-12 00:00
 ---
+
 
 # Wiki Content Catalog
 
@@ -10,7 +11,7 @@ Read this file FIRST on any wiki operation.
 
 ## Sources
 
-| File | Title | Type |
+| File | Title | Labels |
 |---|---|---|
 | [[sources/readme-md]] | README.md 产品概述 | source |
 | [[sources/cli-instructions-md]] | CLI-INSTRUCTIONS.md 命令参考 | source |
@@ -24,6 +25,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/wiki-web-ui-task]] | BACK-473 Web UI Wiki 区域与文件树导航 | source |
 | [[sources/wiki-install-task]] | BACK-474 Wiki Install 命令 | source |
 | [[sources/docx-upload-task]] | BACK-475 Word 文档上传与图片提取 | source |
+| [[sources/inline-code-html-escaping-fix]] | BACK-476 行内代码 HTML 实体转义修复 | source |
 
 ## Concepts
 
