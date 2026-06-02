@@ -1,8 +1,9 @@
 ---
-type: concept
 title: Web Server 与浏览器界面
-updated: 2026-05-10
+labels: [concept]
+created_date: 2026-05-10 00:00
 ---
+
 
 # Web Server 与浏览器界面
 

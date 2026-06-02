@@ -1,9 +1,10 @@
 ---
-type: source
 title: 配置文档与决策记录
+labels: [source]
 source_path: backlog/docs/ + backlog/decisions/
-updated: 2026-05-06
+created_date: 2026-05-06 00:00
 ---
+
 
 # 配置与决策摘要
 

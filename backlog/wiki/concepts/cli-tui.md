@@ -1,8 +1,9 @@
 ---
-type: concept
 title: CLI 与 TUI 界面
-updated: 2026-05-06
+labels: [concept]
+created_date: 2026-05-06 00:00
 ---
+
 
 # CLI 与 TUI 界面
 

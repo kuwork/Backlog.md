@@ -1,8 +1,9 @@
 ---
-type: entity
 title: AI 代理与集成
-updated: 2026-05-06
+labels: [entity]
+created_date: 2026-05-06 00:00
 ---
+
 
 # AI 代理与集成
 

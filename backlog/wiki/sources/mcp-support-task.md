@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-287 MCP 支持实现
+labels: [source]
 source_path: backlog/completed/back-287 - Add-MCP-support-for-agent-integration.md
-updated: 2026-05-06
+created_date: 2026-05-06 00:00
 ---
+
 
 # BACK-287 摘要
 

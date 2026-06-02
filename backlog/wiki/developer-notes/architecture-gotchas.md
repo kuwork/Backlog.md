@@ -1,9 +1,10 @@
 ---
-type: developer-note
 title: 架构分层规范
+labels: [developer-note]
 created: 2026-05-10
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # 架构分层规范
 
