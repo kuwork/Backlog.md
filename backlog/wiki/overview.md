@@ -29,6 +29,7 @@ updated_date: 2026-05-27 00:00
 - **Web UI 国际化**：零依赖自定义 i18n（React Context + Hook），4 种语言（en/ja/zh-CN/zh-TW），~300 翻译键编译时嵌入二进制
 - **日期字段支持**：任务与里程碑可选 `dueDate` / `plannedStart` / `plannedEnd`，date-only 存储，跨 CLI/TUI/Web/MCP 一致暴露；Web UI 自动填充规则与逾期高亮
 - **项目健康度**：临期 / 逾期 / 停滞 / 阻塞 四维指标，Web 统计页与 CLI `overview` 命令统一呈现
+- **智能甘特图**：`/gantt` 纯 React/CSS 时间线视图，五级粒度（日/周/月/季度/年），自动日期解析与最小宽度回退，任务依赖箭头可视化
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -61,10 +62,12 @@ updated_date: 2026-05-27 00:00
 
 ## 统计
 
-- Sources ingested: 29
-- Concepts extracted: 18
+- Sources ingested: 30
+- Concepts extracted: 19
 - Entities catalogued: 2
 - Execution notes: 4
-- Decisions recorded: 4
+- Decisions recorded: 5
 - Patterns: 4
+- Reasoning traces: 1
+- User manual pages: 24
 - Reports generated: 2

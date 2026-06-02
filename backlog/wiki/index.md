@@ -43,6 +43,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/due-date-fields-task]] | BACK-401 日期字段支持（dueDate / plannedStart / plannedEnd） | source, feature, dates, cli, web-ui, mcp |
 | [[sources/back-489-health-indicators-task]] | BACK-489 项目健康指标重构（临期 / 逾期 / 停滞） | source, feature, web-ui, statistics, health |
 | [[sources/back-490-overview-command-task]] | BACK-490 CLI overview 命令（项目级统计） | source, feature, cli, statistics, health |
+| [[sources/smart-gantt-view-task]] | BACK-491 智能甘特图视图 | source, feature, web-ui, gantt, visualization |
 
 ## Execution Notes
 
@@ -58,6 +59,7 @@ Read this file FIRST on any wiki operation.
 | File | Title | Description |
 |---|---|---|
 | [[decisions/reuse-asset-promote-for-wiki-images]] | Wiki 图片 Promote 复用现有 Asset API | BACK-488 选择复用现有端点而非新建后端逻辑 |
+| [[decisions/no-external-gantt-library]] | 不使用外部甘特图库 | BACK-491 选择纯 React/CSS 自研而非引入第三方 Gantt 库 |
 | [[decisions/date-only-storage]] | 日期字段采用 Date-only 存储 | YYYY-MM-DD vs date-time 的权衡与选择 |
 | [[decisions/web-ui-date-autofill]] | Web UI 日期自动填充规则 | dueDate 为空 plannedStart 时的自动填充 UX 决策 |
 | [[decisions/remove-json-overview]] | 移除 overview 命令的 --json 选项 | JSON 过于冗长，plain + TUI 覆盖需求 |
@@ -84,6 +86,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
 | [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd） | 三个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
 | [[concepts/project-health]] | 项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
+| [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、日期解析、依赖箭头、多级粒度 |
 
 ## Entities
 
@@ -103,7 +106,9 @@ Read this file FIRST on any wiki operation.
 
 ## Reasoning
 
-_No reasoning traces created yet._
+| File | Title | Description |
+|---|---|---|
+| [[reasoning/back-491-smart-gantt-view]] | BACK-491 甘特图视图规划痕迹 | 问题分解、方案对比（外部库 vs 自研）、关键设计决策与风险缓解 |
 
 ## Retrospectives
 
@@ -141,12 +146,15 @@ _No comparisons created yet._
 | [[usermanual/40-Web界面/05-设置与主题]] | 设置与主题 | 配置编辑、DoD 默认值、MDEditor、Mermaid |
 | [[usermanual/40-Web界面/06-富文本粘贴与文档上传]] | 富文本粘贴与文档上传 | Word/Google Docs 粘贴转 Markdown、.docx 上传、图片 promote |
 | [[usermanual/40-Web界面/07-Wiki浏览与编辑]] | Wiki 浏览与编辑 | Web UI Wiki 文件树导航、页面浏览与编辑、实时同步 |
+| [[usermanual/40-Web界面/08-统计页面]] | 统计页面 | 项目健康度、状态概览、优先级分布、最近活动 |
+| [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、五级粒度、依赖箭头、任务排序、时间平移 |
 | [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
 | [[usermanual/50-AI集成/03-Wiki Skill 安装]] | Wiki Skill 安装 | backlog wiki install、skill 嵌入二进制、Agent 符号链接 |
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
+| [[usermanual/60-配置与运维/02-项目概览]] | 项目概览 | CLI overview 命令、项目级统计、健康指标 |
 
 ## Developer Notes
 
