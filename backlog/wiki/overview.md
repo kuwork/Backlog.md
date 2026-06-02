@@ -37,6 +37,8 @@ updated_date: 2026-05-31 01:11
 - **贡献热力图**：Statistics 页面顶部 GitHub 风格 7×53 网格，周日开始，GitHub 官方色板（inline style），hover/click tooltip，4 语言本地化（BACK-503）
 - **统计缓存自动刷新**：服务端 `cachedStatisticsResponse` + 500ms debounce `invalidateStatistics()`，ContentStore 变更触发重新计算，WebSocket 广播 `"statistics-updated"`，客户端 `localStorage` 缓存瞬时加载（BACK-503）
 - **Locale 切换可靠性**：修复 `App.tsx` `loadAllData()` 无条件覆盖 locale 的 bug，仅首次加载时同步服务器配置（BACK-503）
+- **看板拖拽修复**：拖拽开始时不再清除列排序，避免任务在光标下跳动；`draggedTaskId` 提升到 Board 级别，跨列拖拽支持精确插入到任意位置（BACK-504）
+- **依赖项钻取导航**：任务详情面板中 Dependencies 标签可点击打开子任务，标题栏左侧返回按钮回到父任务，关闭按钮清空整个浏览堆栈（BACK-505）
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -69,11 +71,11 @@ updated_date: 2026-05-31 01:11
 
 ## 统计
 
-- Sources ingested: 46
+- Sources ingested: 48
 - Concepts extracted: 19
 - Entities catalogued: 2
-- Execution notes: 8
-- Decisions recorded: 11
+- Execution notes: 9
+- Decisions recorded: 13
 - Patterns: 4
 - Reasoning traces: 2
 - User manual pages: 24
