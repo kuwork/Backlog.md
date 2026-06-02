@@ -63,3 +63,8 @@ Windows 开发机上 `git config core.autocrlf=true` 会把文件检出为 CRLF�
 - [ ] `bunx tsc --noEmit` 无类型错误
 - [ ] `npx biome check <改动文件>` 通过（注意区分 CRLF 伪错误）
 - [ ] 如果涉及文件系统操作，检查测试里的目录前置条件
+
+## Related
+
+- [[developer-notes/DEVELOPMENT-GUIDE]] — 通用开发规范（Bun + TypeScript + Biome 技术栈）
+- [[developer-notes/architecture-gotchas]] — 架构分层约束
