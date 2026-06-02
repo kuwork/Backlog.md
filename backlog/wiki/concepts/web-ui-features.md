@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-25 00:45
+updated_date: 2026-05-25 23:45
 ---
 
 
@@ -37,6 +37,7 @@ updated_date: 2026-05-25 00:45
 - 拖放分配任务到里程碑
 - 已完成的里程碑折叠区
 - 里程碑搜索（子串包含匹配 + Fuse.js fallback，修复短数字 ID 误匹配）
+- **里程碑日期编辑**：创建/编辑弹窗提供 `dueDate`、`plannedStart`、`plannedEnd` 三个 date 输入框；里程碑卡片显示日期（如有）
 
 ### 文档与决策
 - **文档文件夹树**：侧边栏递归渲染 `backlog/docs/` 目录结构，文件夹可展开/折叠（`localStorage` 持久化），显示文件数量徽标；文件点击导航到 `/documentation/:id`
@@ -88,6 +89,7 @@ updated_date: 2026-05-25 00:45
 - **降级为草稿**：非 Done 任务在 Preview 模式显示 amber 按钮，确认后调用 `POST /api/tasks/:id/demote`，同步刷新任务列表与草稿列表
 - **提升为任务**：草稿任务在 Preview 模式显示 emerald 按钮，确认后调用 `POST /api/drafts/:id/promote`，后端返回完整 `Task` 对象，前端刷新草稿列表并打开新任务详情
 - **路径自动补全**：references 与 documentation 输入框支持项目路径自动补全，键盘导航（上下箭头、Enter、Esc、左右进入/返回目录）
+- **日期字段**：任务详情侧边栏提供 `dueDate`、`plannedStart`、`plannedEnd` 三个 date 输入框；设 `dueDate` 且 `plannedStart` 为空时自动填充 today / dueDate；TaskCard 头部显示日历图标 + `plannedStart~plannedEnd`，脚部显示时钟图标 + `dueDate`；当年份与当前年一致时省略年份；逾期且非终端状态标红
 
 ## 技术特性
 
@@ -99,6 +101,7 @@ updated_date: 2026-05-25 00:45
 - **图片与附件**：`assets/` 目录下的资源自动提供，支持临时粘贴图片的 promote 机制
 - **预览防崩溃**：尖括号类型字符串过滤
 - **草稿保留**：未保存的草稿在文件刷新后保留
+- **日期指示器**：TaskCard 计划日期与逾期高亮
 
 ## 排序交互
 
