@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-21 22:50
+updated_date: 2026-05-22 02:15
 ---
 
 
@@ -32,7 +32,9 @@ updated_date: 2026-05-21 22:50
 - 里程碑搜索（子串包含匹配 + Fuse.js fallback，修复短数字 ID 误匹配）
 
 ### 文档与决策
-- 文档列表（支持子文件夹分组）
+- **文档文件夹树**：侧边栏递归渲染 `backlog/docs/` 目录结构，文件夹可展开/折叠（`localStorage` 持久化），显示文件数量徽标；文件点击导航到 `/documentation/:id`
+- **文件夹操作**：hover 文件夹显示 `+` 下拉菜单，支持"新建文件"和"新建文件夹"；新建文件时通过 `?path` 查询参数预填充目标路径
+- **无独立重命名**：文档遵循 `{id} - {title}.md` 约定，重命名通过编辑标题自动完成（后端 `saveDocument()` 处理文件重命名）
 - 决策记录查看
 
 ### Wiki
