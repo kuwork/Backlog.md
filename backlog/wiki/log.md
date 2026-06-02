@@ -194,3 +194,15 @@ Chronological, append-only record of all wiki operations.
   - 更新 `updated_date`
 - **更新导航文件**: `index.md`（添加 demote-to-draft-action source 引用、更新日期）
 - **更新概览**: `overview.md`（Sources ingested: 17 → 18）
+
+
+## [2026-05-22 02:15:00] source-ingest | 摄取 BACK-423 Web UI 文档文件夹分组
+
+- **新建 source 页面**: `sources/folder-grouping-for-docs` — BACK-423 任务摘要、后端/前端实现细节、关键设计决策
+  - 后端：`DocsTreeNode`、`getDocsTree()`、`createDocsFolder()`、`GET /api/docs/tree`、`POST /api/docs/folder`
+  - 前端：`DocTreeItem`、`DocActionDropdown`、`docsTree` 状态、`?path` 查询参数预填充
+  - 设计决策：独立 `docsTree` 而非从 `docs` 数组派生、无独立重命名操作、树节点标题解析策略
+- **更新 concept 页面**: `concepts/web-ui-features`
+  - "文档与决策"章节补充文档文件夹树详情（展开/折叠、文件夹操作、无独立重命名、`filteredDocs` 策略）
+  - 更新 `updated_date`
+- **更新导航文件**: `index.md`（添加 folder-grouping-for-docs source 引用、更新日期）
