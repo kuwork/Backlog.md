@@ -171,3 +171,26 @@ Chronological, append-only record of all wiki operations.
 - **更新导航文件**: `index.md`（Reports 区域添加引用）、`overview.md`（域覆盖增加功能机会分析）
 
 ## [2026-05-20 23:45:00] batch-ingest | 增量摄取 BACK-479 路径自动补全、BACK-480 里程碑搜索修复
+
+## [2026-05-21 22:50:00] batch-ingest | 增量摄取 BACK-419 降级为草稿、BACK-480 搜索修复、源码变更
+
+**变更文件**
+- `backlog/tasks/back-480` — 里程碑搜索模糊匹配误报修复（已更新 source 页面）
+- `backlog/tasks/back-419` — Web UI 降级为草稿操作（新建 source 页面）
+- `src/server/index.ts` — 新增 `POST /api/tasks/:id/demote` 端点
+- `src/web/components/TaskDetailsModal.tsx` — demote 按钮、i18n 硬编码修复
+- `src/web/lib/api.ts` — `apiClient.demoteTask(id)`
+- `src/web/locales/*` — demote 翻译键（en/ja/zh-CN/zh-TW）
+- `src/web/components/MilestonesPage.tsx` — 子串包含匹配 + Fuse.js fallback 搜索策略
+- `src/test/server-demote-endpoint.test.ts` — demote API 测试
+- `src/test/web-milestones-page-search.test.tsx` — 搜索测试补充 I18nProvider
+
+**Wiki 更新**
+- **新建 source 页面**: `sources/demote-to-draft-action` — BACK-419 任务摘要、出现条件、后端/前端实现细节
+- **更新 source 页面**: `sources/milestone-search-fix` — 补充三层匹配策略、测试修复细节
+- **更新 concept 页面**: `concepts/web-ui-features`
+  - 任务编辑章节补充"降级为草稿"功能描述
+  - 里程碑章节补充搜索误匹配修复说明
+  - 更新 `updated_date`
+- **更新导航文件**: `index.md`（添加 demote-to-draft-action source 引用、更新日期）
+- **更新概览**: `overview.md`（Sources ingested: 17 → 18）
