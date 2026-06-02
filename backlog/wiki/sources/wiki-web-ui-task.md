@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-473 Web UI Wiki 区域与文件树导航
+labels: [source]
 source_path: backlog/tasks/back-473 - Add-wiki-section-to-web-UI-with-file-tree-navigation.md
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # BACK-473 Web UI Wiki 区域与文件树导航
 

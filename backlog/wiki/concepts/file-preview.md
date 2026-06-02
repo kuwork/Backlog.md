@@ -1,8 +1,9 @@
 ---
-type: concept
 title: 本地文件预览
-updated: 2026-05-10
+labels: [concept]
+created_date: 2026-05-10 00:00
 ---
+
 
 # 本地文件预览
 

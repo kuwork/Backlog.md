@@ -1,8 +1,9 @@
 ---
-type: usermanual
 title: MCP 工作流
-updated: 2026-05-07
+labels: [usermanual]
+created_date: 2026-05-07 00:00
 ---
+
 
 # MCP 工作流
 

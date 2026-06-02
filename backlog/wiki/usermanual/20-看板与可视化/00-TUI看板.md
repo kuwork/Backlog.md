@@ -1,8 +1,9 @@
 ---
-type: usermanual
 title: TUI 看板
-updated: 2026-05-07
+labels: [usermanual]
+created_date: 2026-05-07 00:00
 ---
+
 
 # TUI 看板
 

@@ -1,8 +1,9 @@
 ---
-type: concept
 title: 任务生命周期
-updated: 2026-05-06
+labels: [concept]
+created_date: 2026-05-06 00:00
 ---
+
 
 # 任务生命周期
 

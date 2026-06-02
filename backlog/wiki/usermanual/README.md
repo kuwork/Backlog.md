@@ -1,8 +1,9 @@
 ---
-type: usermanual
 title: Backlog.md 用户手册
-updated: 2026-05-07
+labels: [usermanual]
+created_date: 2026-05-07 00:00
 ---
+
 
 # Backlog.md 用户手册
 
