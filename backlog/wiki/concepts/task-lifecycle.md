@@ -2,9 +2,8 @@
 title: 任务生命周期
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-05-25 23:45
+updated_date: 2026-05-29 22:36
 ---
-
 
 # 任务生命周期
 
@@ -47,6 +46,8 @@ type: feature
 dueDate: "2026-05-20"
 plannedStart: "2026-05-10"
 plannedEnd: "2026-05-18"
+actual_start: "2026-05-10 09:00"
+actual_end: "2026-05-15 18:30"
 ---
 ```
 
@@ -62,10 +63,30 @@ plannedEnd: "2026-05-18"
 | `dependencies` | 依赖的其他任务 ID |
 | `ordinal` | 自定义排序权重 |
 | `type` | bug / feature / enhancement / docs / refactor / test |
-| `dueDate` | 截止日期（可选，date-only `YYYY-MM-DD`） |
+| `dueDate` | 截止日期（可选，date-only） |
 | `plannedStart` | 计划开始日期（可选，date-only） |
 | `plannedEnd` | 计划结束日期（可选，date-only） |
+| `actual_start` | 实际开始时间（可选，datetime UTC） |
+| `actual_end` | 实际结束时间（可选，datetime UTC） |
+
+## 实际时间自动填充
+
+- 状态变更为**进行中**且 `actualStart` 为空 → 自动设为当前日期时间
+- 状态变更为**终态/Done**且 `actualEnd` 为空 → 自动设为当前日期时间
+- 创建时直接指定进行中/终态也会触发（BACK-498）
+- 仅字段为空时填充，尊重手动覆盖
 
 ## 子任务
 
 使用小数编号：`back-4.1`、`back-4.2`。通过 `--parent` 参数创建：`backlog task create -p 4 "子任务标题"`。
+
+在 Web UI 中，按 ID 排序时子任务自动归组到父任务下方（BACK-496）。
+
+## Related Concepts
+- [[concepts/date-fields]] — 日期字段详细语义
+- [[concepts/web-ui-features]] — Web UI 任务编辑与看板
+
+## Related Sources
+- [[sources/actual-start-end-fields-task]] — BACK-492 actual 字段实现
+- [[sources/actual-dates-auto-create-task]] — BACK-498 创建时自动填充
+- [[sources/subtask-grouping-fix]] — BACK-496 子任务归组修复
