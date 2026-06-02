@@ -1,8 +1,9 @@
 ---
-type: concept
 title: Web UI 功能
-updated: 2026-05-10
+labels: [concept]
+created_date: 2026-05-10 00:00
 ---
+
 
 # Web UI 功能
 
@@ -36,7 +37,10 @@ updated: 2026-05-10
 ### Wiki
 - 侧边栏可折叠文件树，反映 `backlog/wiki/` 目录结构
 - 点击 `.md` 文件导航到 `/wiki/:path`
-- 只读 Markdown 渲染（`MermaidMarkdown`、frontmatter 提取标题）
+- Markdown 渲染（`MermaidMarkdown`、frontmatter 提取标题）
+- **在线编辑**：标题、正文、labels 均可修改，保存后自动更新 frontmatter
+- **实时同步**：文件系统变更通过 WebSocket 广播到所有打开的标签页
+- **文件管理**：侧边栏 hover 显示 `+` 下拉菜单，支持创建文件/文件夹、重命名
 - 深度链接支持
 
 ### 设置（Settings）

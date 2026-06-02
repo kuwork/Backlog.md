@@ -1,9 +1,10 @@
 ---
-type: source
 title: README.md 产品概述
+labels: [source]
 source_path: README.md
-updated: 2026-05-06
+created_date: 2026-05-06 00:00
 ---
+
 
 # README.md 摘要
 

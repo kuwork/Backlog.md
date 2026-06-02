@@ -1,8 +1,9 @@
 ---
-type: concept
 title: MCP 工作流与 AI 集成
-updated: 2026-05-10
+labels: [concept]
+created_date: 2026-05-10 00:00
 ---
+
 
 # MCP 工作流与 AI 集成
 
