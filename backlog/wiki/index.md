@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-23 11:15'
+updated_date: '2026-05-23 15:18'
 ---
 # Wiki Content Catalog
 
@@ -36,6 +36,8 @@ Read this file FIRST on any wiki operation.
 | [[sources/wikilink-markdown-preview-fix]] | BACK-482 修复 Wikilink 与 Markdown 相对链接预览 | source |
 | [[sources/sidebar-resize-search-task]] | BACK-483 Web UI 侧边栏调整大小与搜索类型下拉 | source, web-ui, ux |
 | [[sources/web-ui-sort-optimization]] | BACK-484 Web UI 排序优化 | source, web-ui, ui, ux |
+| [[sources/draft-promote-flow-task]] | BACK-485 修复草稿提升流程并统一操作按钮样式 | source, web-ui, drafts, ux |
+| [[sources/draft-filters-task]] | BACK-486 草稿页添加筛选功能 | source, web-ui, drafts, filtering, ux |
 
 ## Concepts
 
