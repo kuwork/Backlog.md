@@ -180,3 +180,28 @@ Chronological, append-only record of all wiki operations.
 - `wiki/decisions/sunday-start-week-grid` — 与 GitHub 贡献图保持一致采用周日开始
 
 **更新导航**: `index.md`（Sources 46 条，Execution 8 条，Decisions 11 条）、`overview.md`
+
+## [2026-06-01 22:50:00] batch-ingest | 增量摄取 BACK-504~505 及相关源码
+
+**检测基线**: 2026-05-31 01:11:00（上次 batch-ingest）
+**Git 变更文件**: 2 个新 backlog 任务 + 16 个源代码/测试/配置文件
+
+**新 source 页面**: 2 个
+- `sources/back-504` — BACK-504 修复看板拖拽列排序重置与跨列放置定位
+- `sources/back-505` — BACK-505 Web UI 任务依赖项钻取导航
+
+**更新 concept 页面**: 1 个
+- `concepts/web-ui-features` — 扩展看板拖拽修复、依赖项钻取导航
+
+**Pairing Memory (4)**:
+- `wiki/execution/task-drill-down-navigation-pattern` — 任务详情钻取导航模式（taskHistory 堆栈管理）
+- `wiki/decisions/draggedtaskid-lift-to-board` — draggedTaskId 提升到 Board 组件以支持跨列拖拽
+- `wiki/decisions/task-history-stack-over-route` — 使用任务历史堆栈替代路由实现钻取导航
+
+**更新导航**: `index.md`（Sources 48 条，Execution 9 条，Decisions 13 条）、`overview.md`
+
+## [2026-06-01 22:55:00] usermanual-update | 更新用户手册，添加依赖项钻取与看板拖拽修复
+
+**更新页面**: 2 个
+- `10-任务管理/03-子任务与依赖` — 新增 Web UI 依赖项钻取导航说明（点击依赖标签、返回按钮、关闭堆栈）
+- `40-Web界面/01-看板视图` — 扩展拖拽行为细节（保持列排序、跨列精确放置、跨列后排序恢复）
