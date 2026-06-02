@@ -2,7 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-25 23:45
+updated_date: 2026-05-26 23:42
 ---
 
 
@@ -40,6 +40,7 @@ updated_date: 2026-05-25 23:45
 | `mcp start` | 启动 MCP 服务器 |
 | `wiki install <agent>` | 安装 LLM wiki skill 到指定 Agent |
 | `config get/set/list` | 配置管理 |
+| `overview` | 项目级统计概览（TUI / `--plain`） |
 | `completion install` | Shell 补全安装 |
 
 ### 交互式 vs 非交互式
@@ -75,6 +76,22 @@ backlog milestone edit M1 --due-date 2026-06-01 --description "第一阶段"
 - 日期格式为 `YYYY-MM-DD`（date-only）。
 - 交互式向导（`task-wizard.ts`）在 TTY 模式下会提示输入日期。
 - `task view --plain` 显示 Due / Planned Start / Planned End。
+
+## overview 命令
+
+```bash
+backlog overview         # 交互式彩色 TUI（终端原生滚动）
+backlog overview --plain # 纯文本输出（无颜色，适合管道处理）
+```
+
+输出维度：
+- 总任务数、完成百分比、草稿数
+- 按状态分布 + 百分比
+- 按优先级分布 + 百分比
+- 最近活动（最近 7 天创建/更新）
+- 项目健康度：平均任务年龄、临期 / 逾期 / 停滞 / 阻塞任务列表
+
+TUI 使用直接 ANSI 彩色终端输出（非 blessed 盒子），避免 Windows 与 VS Code 终端的滚动/resize 问题。
 
 ## Wiki Install 命令
 

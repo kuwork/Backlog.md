@@ -20,6 +20,7 @@ Backlog.md 将任意 Git 仓库目录转变为自包含的项目看板。每个�
 - **双模式界面**：终端 TUI 看板 + 现代 Web 浏览器界面
 - **富文本粘贴**：从 Word、Google Docs 一键粘贴为 Markdown，支持 `.docx` 文件上传
 - **日期与计划**：任务与里程碑支持 `dueDate`、`plannedStart`、`plannedEnd`，看板卡片实时显示计划窗口与逾期高亮
+- **项目健康度**：临期、逾期、停滞、阻塞四维指标，Web 统计页与 CLI `overview` 命令统一呈现
 - **Wiki 知识库**：LLM 维护的增量式项目知识库，人类可读可编辑；浏览器中支持文件树导航、在线编辑、labels 标签与实时同步；内置 skill 可安装到 Claude/Codex
 - **跨平台**：macOS、Linux、Windows
 
