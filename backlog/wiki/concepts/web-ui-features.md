@@ -2,6 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: 2026-05-20 21:30
 ---
 
 
@@ -35,12 +36,12 @@ created_date: 2026-05-10 00:00
 - 决策记录查看
 
 ### Wiki
-- 侧边栏可折叠文件树，反映 `backlog/wiki/` 目录结构
-- 点击 `.md` 文件导航到 `/wiki/:path`
-- Markdown 渲染（`MermaidMarkdown`、frontmatter 提取标题）
-- **在线编辑**：标题、正文、labels 均可修改，保存后自动更新 frontmatter
+- 侧边栏可折叠文件树，反映 `backlog/wiki/` 目录结构，文件夹与文件数量实时统计
+- 点击 `.md` 文件导航到 `/wiki/:path`，Markdown 渲染（`MermaidMarkdown`、frontmatter 提取标题）
+- **在线编辑**：标题、正文、labels 均可修改，保存后自动更新 frontmatter（`updated_date`），未保存变更检测与取消/保存操作
+- **Wikilink 交互预览**：`[[wikilinks]]` 渲染为可点击内部链接，点击弹出模态框异步预览目标页面内容，而非直接跳转
+- **文件管理**：侧边栏 hover 显示 `+` 下拉菜单，支持创建文件/文件夹、重命名；重命名当前浏览的页面时自动导航到新路径
 - **实时同步**：文件系统变更通过 WebSocket 广播到所有打开的标签页
-- **文件管理**：侧边栏 hover 显示 `+` 下拉菜单，支持创建文件/文件夹、重命名
 - 深度链接支持
 
 ### 设置（Settings）
