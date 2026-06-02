@@ -69,6 +69,6 @@ updated_date: 2026-05-22 02:15
 
 ## 相关来源
 
-- [[sources/web-ui-i18n]]
-- [[sources/web-ui-full-doc-editing]]
+- [[sources/web-ui-i18n-task]]
+- [[sources/path-autocomplete-task]]
 - [[sources/milestone-search-fix]]
