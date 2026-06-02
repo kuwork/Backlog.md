@@ -24,6 +24,7 @@ created_date: 2026-05-12 00:00
 - **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹
 - **Wiki Install**：`backlog wiki install <agent>` 将内置 skill 安装到 Claude/Codex/Agents
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
+- **Web UI 国际化**：零依赖自定义 i18n（React Context + Hook），4 种语言（en/ja/zh-CN/zh-TW），~300 翻译键编译时嵌入二进制
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -55,7 +56,7 @@ created_date: 2026-05-12 00:00
 
 ## 统计
 
-- Sources ingested: 13
-- Concepts extracted: 15
+- Sources ingested: 14
+- Concepts extracted: 16
 - Entities catalogued: 2
 - Reports generated: 1

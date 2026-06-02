@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-15 19:55'
+updated_date: '2026-05-17 02:20'
 ---
 # Wiki Content Catalog
 
@@ -27,6 +27,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/wiki-install-task]] | BACK-474 Wiki Install 命令 | source |
 | [[sources/docx-upload-task]] | BACK-475 Word 文档上传与图片提取 | source |
 | [[sources/inline-code-html-escaping-fix]] | BACK-476 行内代码 HTML 实体转义修复 | source |
+| [[sources/web-ui-i18n-task]] | BACK-478 Web UI i18n 支持 | source |
 
 ## Concepts
 
@@ -47,6 +48,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/file-preview]] | 本地文件预览 | 代码/Markdown 文件预览、语法高亮、行号、行范围 |
 | [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
 | [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
+| [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
 
 ## Entities
 
