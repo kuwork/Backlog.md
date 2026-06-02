@@ -394,3 +394,43 @@ Chronological, append-only record of all wiki operations.
 **更新导航 (2)**:
 - `wiki/index.md` — Patterns 区从空变为 4 个条目
 - `wiki/overview.md` — 统计新增 Patterns: 4
+
+
+## [2026-05-28 00:50:54] batch-ingest | 摄取 BACK-491 智能甘特图视图
+
+**Git 基线**: 2026-05-26 23:42:00 → 2026-05-28 00:50:54
+
+**新增 Sources (1)**:
+- `backlog/tasks/back-491 - Add-smart-Gantt-View.md` → `wiki/sources/smart-gantt-view-task.md`
+
+**新增 Concepts (1)**:
+- `wiki/concepts/gantt-view.md` — Gantt 甘特图视图（纯 React/CSS 渲染、时间解析、依赖箭头、多级粒度）
+
+**更新 Concepts (1)**:
+- `wiki/concepts/web-ui-features.md` — 添加"甘特图（Gantt View）"小节
+
+**新增 Reasoning (1)**:
+- `wiki/reasoning/back-491-smart-gantt-view.md` — 问题分解、方案对比、关键设计决策与风险缓解
+
+**新增 Decisions (1)**:
+- `wiki/decisions/no-external-gantt-library.md` — 纯 React/CSS 自研 vs 引入第三方 Gantt 库的决策
+
+**更新导航 (2)**:
+- `wiki/index.md` — Sources +1, Concepts +1, Reasoning 从空变为 1 个条目, Decisions +1
+- `wiki/overview.md` — 领域覆盖新增"智能甘特图"，统计更新
+
+
+## [2026-05-28 00:50:54] usermanual-update | 更新用户手册，添加甘特图视图章节
+
+**新增用户手册页面 (1)**:
+- `wiki/usermanual/40-Web界面/09-甘特图视图.md` — 甘特图视图完整使用指南（页面布局、时间粒度、日期解析、最小宽度回退、任务条交互、依赖箭头、排序、时间线平移、暗黑模式）
+
+**更新用户手册页面 (1)**:
+- `wiki/usermanual/20-看板与可视化/01-Web看板.md` — 在「所有任务视图」后新增「甘特图视图」小节并链接到详情章节
+
+**修复索引遗漏 (2)**:
+- `wiki/index.md` 补录 `40-Web界面/08-统计页面`（此前存在文件但未索引）
+- `wiki/index.md` 补录 `60-配置与运维/02-项目概览`（此前存在文件但未索引）
+
+**导航更新 (1)**:
+- `wiki/usermanual/SUMMARY.md` — Web 界面章节新增「甘特图视图」条目
