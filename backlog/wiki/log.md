@@ -131,3 +131,30 @@ Chronological, append-only record of all wiki operations.
 - `30-文档与决策/02-里程碑管理` — 扩展里程碑 actualStart/actualEnd 支持与自动填充规则
 
 **新增用户手册页面**: 0 个
+
+## [2026-05-30 10:25:00] batch-ingest | 增量摄取 BACK-499~501
+
+**检测基线**: 2026-05-29 22:36:00（上次 batch-ingest）
+**Git 变更文件**: 3 个 backlog 任务 + 16 个源代码/测试/配置文件
+
+**新 source 页面**: 3 个
+- `sources/sidebar-collapse-button-fix` — BACK-499 修复侧边栏折叠按钮与 resize handle 重叠
+- `sources/label-color-customization-task` — BACK-500 看板标签颜色自定义与卡片标签溢出优化
+- `sources/task-detail-label-dropdown-task` — BACK-501 任务详情标签输入添加下拉框与模糊过滤
+
+**更新 concept 页面**: 1 个
+- `concepts/web-ui-features` — 扩展标签颜色自定义、卡片标签宽度自适应、标签输入下拉框
+
+**Pairing Memory (3)**:
+- `wiki/decisions/color-key-over-raw-css` — 标签颜色使用 key 字符串而非原始 CSS 存储
+- `wiki/decisions/width-aware-label-measurement` — 隐藏测量容器 + ResizeObserver 实现宽度自适应标签
+- `wiki/execution/label-color-persistence-pattern` — 标签颜色持久化模式（配置中存储非默认映射）
+
+**更新导航**: `index.md`（Sources 44 条，Decisions 9 条，Execution 7 条）、`overview.md`
+
+## [2026-05-30 10:30:00] usermanual-update | 更新用户手册，添加标签颜色自定义、标签输入下拉框、侧边栏折叠
+
+**更新页面**: 3 个
+- `40-Web界面/01-看板视图` — 扩展标签筛选（颜色自定义、卡片标签宽度自适应）
+- `10-任务管理/01-创建与编辑任务` — 扩展标签输入下拉框与模糊过滤说明
+- `40-Web界面/00-启动与访问` — 扩展侧边栏折叠按钮说明
