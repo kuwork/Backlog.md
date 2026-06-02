@@ -26,6 +26,8 @@ updated_date: 2026-05-31 01:11
 - **子任务归组**：按 ID 排序时子任务自动归组到父任务下方（BACK-496）
 - **标签颜色自定义**：`LabelFilterDropdown` 中每个标签可设置预设颜色，持久化到 `config.yml`，卡片标签渲染对应背景色（BACK-500）
 - **卡片标签宽度自适应**：`TaskCard` 根据容器宽度动态计算可显示标签数量，而非硬编码限制 3 个（BACK-500）
+- **拖拽时保持列排序稳定**：拖拽开始不再清除本地排序，避免任务在光标下跳动（BACK-504）
+- **跨列精确放置**：`draggedTaskId` 提升到 Board 级别，跨列拖拽支持插入到目标列任意位置（BACK-504）
 
 ### 所有任务（All Tasks）
 - 表格布局
@@ -87,6 +89,7 @@ updated_date: 2026-05-31 01:11
 - **路径自动补全**：references 与 documentation 输入框支持键盘导航
 - **日期字段**：`dueDate`/`plannedStart`/`plannedEnd`（date 输入）+ `actualStart`/`actualEnd`（datetime-local 输入）
 - **键盘快捷键修复**：全局快捷键（E/C/D/P/Ctrl+S/Escape）在输入框聚焦时正确抑制（BACK-494）
+- **依赖项钻取导航**：Dependencies 区域的依赖任务标签可点击，直接打开该任务详情；标题栏左侧显示返回按钮可回到父任务（BACK-505）
 
 ## 技术特性
 
@@ -151,3 +154,5 @@ updated_date: 2026-05-31 01:11
 - [[sources/sidebar-collapse-button-fix]] — BACK-499 折叠按钮与 resize handle 重叠修复
 - [[sources/label-color-customization-task]] — BACK-500 标签颜色自定义与宽度自适应
 - [[sources/task-detail-label-dropdown-task]] — BACK-501 标签输入下拉框与模糊过滤
+- [[sources/back-504]] — BACK-504 看板拖拽修复
+- [[sources/back-505]] — BACK-505 依赖项钻取导航
