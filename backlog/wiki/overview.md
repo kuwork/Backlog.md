@@ -2,9 +2,8 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-05-27 00:00
+updated_date: 2026-05-29 22:36
 ---
-
 
 # Knowledge Base Overview
 
@@ -27,9 +26,11 @@ updated_date: 2026-05-27 00:00
 - **功能机会分析**：基于现有架构的功能增强建议（Wiki CLI 桥接、任务模板、时间追踪、批量操作等），详见 [[../wiki_output/reports/feature-opportunities]]
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
 - **Web UI 国际化**：零依赖自定义 i18n（React Context + Hook），4 种语言（en/ja/zh-CN/zh-TW），~300 翻译键编译时嵌入二进制
-- **日期字段支持**：任务与里程碑可选 `dueDate` / `plannedStart` / `plannedEnd`，date-only 存储，跨 CLI/TUI/Web/MCP 一致暴露；Web UI 自动填充规则与逾期高亮
+- **日期字段支持**：任务与里程碑可选 `dueDate` / `plannedStart` / `plannedEnd`（date-only）与 `actualStart` / `actualEnd`（datetime UTC）；跨 CLI/TUI/Web/MCP 一致暴露；Web UI 自动填充规则与逾期高亮
 - **项目健康度**：临期 / 逾期 / 停滞 / 阻塞 四维指标，Web 统计页与 CLI `overview` 命令统一呈现
 - **智能甘特图**：`/gantt` 纯 React/CSS 时间线视图，五级粒度（日/周/月/季度/年），自动日期解析与最小宽度回退，任务依赖箭头可视化
+- **跟踪甘特图**：在同一行上双层渲染实际条（状态色实心）与计划边框（60° 斜线填充），支持计划 vs 实际偏差追踪（早开始、正常、延期），含 Tooltip、图例与智能依赖箭头
+- **时区一致性**：所有 UTC 存储字符串统一通过 `parseStoredUtcDate` 解析为本地时间，消除 CLI 与 Web UI 显示偏差
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -44,7 +45,7 @@ updated_date: 2026-05-27 00:00
 - **网络错误恢复**：GitOperations 将 SSL 错误（`SSL_ERROR_SYSCALL`、`SSL handshake failed` 等）识别为网络错误并优雅降级到本地数据
 
 ### 项目管理域
-- **里程碑**：创建、分配、完成检测、归档
+- **里程碑**：创建、分配、完成检测、归档；支持 actualStart/actualEnd 自动填充
 - **序列**：从依赖关系计算可并行任务组
 - **文档**：Markdown 文档创建与管理，支持子文件夹
 - **决策记录**：ADR 格式，支持状态流转
@@ -62,12 +63,12 @@ updated_date: 2026-05-27 00:00
 
 ## 统计
 
-- Sources ingested: 30
+- Sources ingested: 41
 - Concepts extracted: 19
 - Entities catalogued: 2
-- Execution notes: 4
-- Decisions recorded: 5
+- Execution notes: 6
+- Decisions recorded: 7
 - Patterns: 4
-- Reasoning traces: 1
+- Reasoning traces: 2
 - User manual pages: 24
 - Reports generated: 2
