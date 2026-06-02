@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-100 嵌入式 Web 服务器
+labels: [source]
 source_path: backlog/completed/back-100 - Add-embedded-web-server-to-Backlog-CLI.md
-updated: 2026-05-06
+created_date: 2026-05-06 00:00
 ---
+
 
 # BACK-100 摘要
 
