@@ -256,3 +256,10 @@ Chronological, append-only record of all wiki operations.
   - `concepts/search-sequences` — 补充 Wiki 搜索实体、fileName 权重、type:wiki 语法
   - `concepts/web-ui-features` — 补充 Wiki 搜索结果显示、Wikilink 预览模态框、Markdown 相对链接拦截与 SPA 导航
 - **更新导航文件**: `index.md`、`overview.md`
+
+## [2026-05-23 11:15:00] source-ingest | BACK-484 Web UI sort optimization
+
+- **新 source 页面**: `sources/web-ui-sort-optimization` — 任务列表双箭头排序图标、里程碑分组独立排序表头、看板列操作菜单本地排序
+- **更新 concept 页面**: `concepts/web-ui-features`
+  - 新增「排序交互」章节，涵盖任务列表表头排序、里程碑分组独立排序、看板列本地排序
+- **更新导航文件**: `index.md`（添加 web-ui-sort-optimization source 引用、更新日期）
