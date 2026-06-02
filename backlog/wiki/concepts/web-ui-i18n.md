@@ -2,7 +2,7 @@
 title: Web UI 国际化（i18n）
 labels: [concept]
 created_date: 2026-05-17 02:20
-updated_date: 2026-05-17 02:20
+updated_date: 2026-05-31 01:11
 ---
 
 # Web UI 国际化（i18n）
@@ -49,7 +49,7 @@ type DeepString<T> = T extends (...args: infer P) => infer R
 | `documents` / `decisions` | 文档与决策编辑器 |
 | `settings` | 设置页面全部标签与验证消息 |
 | `cleanup` | 清理已完成任务向导 |
-| `statistics` | 统计图表与指标名称 |
+| `statistics` | 统计图表与指标名称、热力图标签、贡献标题 pluralization |
 | `init` | 初始化向导全部步骤 |
 | `filePreview` | 文件预览模态框 |
 | `pasteAwareMDEditor` | 粘贴编辑器提示 |
@@ -73,7 +73,7 @@ const { t } = useI18n();
 
 ### App.tsx 集成
 
-`loadAllData()` 在获取配置后调用 `setLocale(configData.locale)`，确保页面加载时立即应用已保存的语言设置。
+`loadAllData()` 在**首次加载**时调用 `setLocale(configData.locale)`，确保页面加载时立即应用已保存的语言设置。后续后台数据刷新（WebSocket 事件触发的 `loadAllData()`）不再覆盖用户手动切换的语言，防止 locale 回退 bug（BACK-503）。
 
 ## 编译时嵌入
 
@@ -97,3 +97,4 @@ const { t } = useI18n();
 
 ## Related Sources
 - [[sources/web-ui-i18n-task]] — BACK-478 原始任务与实现笔记
+- [[sources/task-completion-heatmap-task]] — BACK-503 热力图 i18n 与 locale 切换修复
