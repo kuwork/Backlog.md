@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-25 23:45
+updated_date: 2026-05-31 01:11
 ---
 
 
@@ -43,7 +43,7 @@ RESTful API 按资源组织：
 | 搜索 | `/api/search` | GET（query、filters、limit） |
 | 序列 | `/api/sequences` | GET |
 | 序列 | `/api/sequences/move` | POST |
-| 统计 | `/api/statistics` | GET |
+| 统计 | `/api/statistics` | GET（服务端缓存，500ms debounced 自动刷新） |
 | 配置 | `/api/config` | GET、PUT |
 | 初始化 | `/api/init` | POST |
 | 文件内容 | `/api/file-content` | GET（本地文件预览） |
@@ -55,9 +55,10 @@ RESTful API 按资源组织：
 
 ## 实时同步
 
-- **WebSocket**：客户端连接后收到 `tasks-updated` 和 `config-updated` 消息
+- **WebSocket**：客户端连接后收到 `tasks-updated`、`config-updated` 和 `statistics-updated` 消息
 - **ContentStore 订阅**：`BacklogServer` 订阅 `ContentStore` 的变更事件，自动广播给所有 WebSocket 客户端
-- **无缓存策略**：所有 GET/HEAD 响应附加 `no-store` 缓存头，确保浏览器始终获取最新数据
+- **统计缓存**：`cachedStatisticsResponse` 缓存 JSON 响应，`invalidateStatistics()` 在 ContentStore 变更时触发 500ms debounce，重新计算后广播 `"statistics-updated"`。`handleGetStatistics()` 优先返回缓存，无缓存时即时计算（BACK-503）
+- **无缓存策略**：除统计 API 外，所有 GET/HEAD 响应附加 `no-store` 缓存头，确保浏览器始终获取最新数据
 
 ## SPA 路由
 
