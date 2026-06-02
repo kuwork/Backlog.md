@@ -1,9 +1,10 @@
 ---
-type: source
 title: BACK-465 Windows MCP document tool 挂起修复
+labels: [source]
 source_path: backlog/tasks/back-465 - Fix-Windows-MCP-document-tool-hangs.md
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # BACK-465 Windows MCP document tool 挂起修复
 

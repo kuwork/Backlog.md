@@ -1,9 +1,10 @@
 ---
-type: developer-note
 title: 安全检查清单
+labels: [developer-note]
 created: 2026-05-10
-updated: 2026-05-10
+created_date: 2026-05-10 00:00
 ---
+
 
 # 安全检查清单
 
