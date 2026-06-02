@@ -274,3 +274,35 @@ Chronological, append-only record of all wiki operations.
 - **更新 concept 页面**: `concepts/web-ui-features`
   - 新增「草稿页面」章节，涵盖筛选栏布局、5 个筛选维度、客户端过滤、URL 同步、空状态
 - **更新导航文件**: `index.md`（添加 2 个 source 引用、更新日期）
+
+## [2026-05-25 00:45:24] batch-ingest | 增量摄取 BACK-487 SSL 错误处理、BACK-488 Wiki 粘贴图片 promote 修复
+
+**检测基线**: 2026-05-23 15:18:00（上次 batch-ingest）
+**Git 变更文件**: 2 个 backlog 任务 + 2 个源代码文件
+
+**新 source 页面**: 2 个
+- `sources/ssl-network-error-fix` — BACK-487 GitOperations.fetch SSL 网络错误未优雅处理修复
+- `sources/wiki-pasted-images-promote-fix` — BACK-488 Wiki 页面保存时粘贴图片未迁移到 paste/ 修复
+
+**更新 source 页面**: 1 个
+- `sources/paste-as-markdown-task` — 添加 BACK-488 后续修复说明与关联链接
+
+**更新 concept 页面**: 2 个
+- `concepts/paste-as-markdown` — 补充 Wiki 编辑器也支持图片 promote 的说明
+- `concepts/web-ui-features` — Wiki 章节补充「粘贴图片 promote」功能描述
+
+**更新导航文件**: `index.md`、`overview.md`
+- Sources ingested 统计: 23 → 25
+- Overview 补充网络错误恢复能力说明
+
+## [2026-05-25 00:45:24] pairing-memory-extraction | 补做遗漏的配对记忆提取
+
+**背景**: 用户在摄取完成后指出未按技能说明执行 pairing memory extraction 步骤。
+
+**补做内容**:
+- `wiki/execution/image-promote-integration` — 从 BACK-208/488 提取「编辑器保存流程中集成图片 promote」的可复用步骤
+- `wiki/execution/network-error-pattern-extension` — 从 BACK-487 提取「扩展 Git 网络错误识别模式」的标准流程
+- `wiki/decisions/reuse-asset-promote-for-wiki-images` — 记录 BACK-488 选择复用现有 API 而非新建后端逻辑的决策
+- 更新 `index.md` — 新增 Execution Notes 和 Decisions 区域
+
+**说明**: `src/web/styles/style.css` 的 git diff 仅为 Tailwind CSS 头部注释版本变化，无语义变更，不纳入摄入。
