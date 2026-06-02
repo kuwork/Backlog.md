@@ -49,6 +49,7 @@ RESTful API 按资源组织：
 | 资源提升 | `/api/assets/promote` | POST（`.temp/` → `paste/`） |
 | Wiki 树 | `/api/wiki/tree` | GET |
 | Wiki 页面 | `/api/wiki/*` | GET |
+| Word 转换 | `/api/docx/convert` | POST |
 
 ## 实时同步
 
