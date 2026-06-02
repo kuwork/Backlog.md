@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-05-30 15:02'
+updated_date: '2026-05-31 01:11'
 ---
 # Wiki Content Catalog
 
@@ -72,6 +72,9 @@ Read this file FIRST on any wiki operation.
 | [[execution/statistics-robustness]] | 统计模块健壮性模式 | 阻塞任务检测大小写敏感修复 + recentlyUpdated 回退到 createdDate |
 | [[execution/actual-date-auto-population]] | 实际时间字段自动填充模式 | 跨 createTaskFromInput 和 updateTask 统一实现 actualStart/actualEnd 自动填充 |
 | [[execution/timezone-unification]] | 统一 UTC 存储字符串的时区解析模式 | 修复 `new Date(dateStr)` 误解析为本地时间的问题 |
+| [[execution/statistics-cache-pattern]] | 统计缓存实现模式 | 服务端 debounced 缓存 + 客户端 localStorage 双缓存层，CLI 变更后自动刷新 |
+
+## Decisions
 
 ## Decisions
 
@@ -84,6 +87,8 @@ Read this file FIRST on any wiki operation.
 | [[decisions/remove-json-overview]] | 移除 overview 命令的 --json 选项 | JSON 过于冗长，plain + TUI 覆盖需求 |
 | [[decisions/datetime-vs-date-only]] | actual 字段采用 Date-time 而非 Date-only 存储 | 分钟级精度需求与甘特图小时级视图支撑 |
 | [[decisions/duck-typing-for-testability]] | 使用 Duck-typing 替代 instanceof 以保证可测试性 | Bun 测试运行器中 HTMLElement 不可用 |
+| [[decisions/inline-style-over-tailwind-for-heatmap]] | 热力图配色使用 inline style 替代 Tailwind 类 | Bun CSS build 在 Windows 上崩溃，新 Tailwind 类不可用 |
+| [[decisions/sunday-start-week-grid]] | 热力图网格采用周日开始而非周一开始 | 与 GitHub 贡献图保持一致，符合用户心智模型 |
 
 ## Concepts
 
