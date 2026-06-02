@@ -9,27 +9,6 @@ created_date: 2026-05-06 00:00
 
 Chronological, append-only record of all wiki operations.
 
-## [2026-05-17 02:20:03] batch-ingest | 增量摄取 BACK-478 Web UI i18n 支持
-
-- **检测基线**: 2026-05-14 10:35:00（上次 batch-ingest）
-- **Git 变更文件**: 1 个 backlog 任务 + 30 个源代码/配置文件
-- **新 source 页面**: 1 个
-  - `sources/web-ui-i18n-task` — BACK-478 Web UI i18n 支持
-- **新 concept 页面**: 1 个
-  - `concepts/web-ui-i18n` — 零依赖轻量级 i18n 架构、DeepString 类型安全、编译时嵌入策略
-- **更新 concept 页面**: 2 个
-  - `concepts/web-ui-features` — 添加语言切换与国际化技术特性
-  - `concepts/web-server` — 前端技术栈补充 locales/ 目录与 I18nContext
-- **更新导航文件**: `index.md`、`overview.md`
-
-## [2026-05-14 10:35:00] batch-ingest | Incremental ingest: 7 updated tasks, 1 new source, 2 updated concepts
-
-- **Updated sources**: back-208, back-465, back-467, back-473, back-474, back-475 (verified existing summaries)
-- **New source**: [[sources/inline-code-html-escaping-fix]] — BACK-476 行内代码 HTML 实体转义修复
-- **Updated concepts**: [[concepts/markdown-pipeline]] — 添加渲染安全章节（HTML 实体转义保护机制）; [[concepts/web-ui-features]] — 更新 Wiki 功能描述（在线编辑、实时同步、文件管理）
-- **Updated index.md**: added new source entry, migrated table column `Type` → `Labels`
-- **Updated overview.md**: updated domain coverage (Wiki 在线编辑), stats (13 sources)
-
 ## [2026-05-06 21:24:47] init | Wiki initialized
 
 - Created `backlog/wiki/` directory structure
@@ -123,6 +102,17 @@ Chronological, append-only record of all wiki operations.
   - `concepts/web-server` — 添加 `/api/docx/convert` 端点
 - **更新导航文件**: `index.md`、`overview.md`
 
+## [2026-05-12 09:22:00] usermanual-update | 更新用户手册，添加 docx 粘贴上传与 Wiki Skill 安装章节
+
+- **新增页面**: 2 个
+  - `40-Web界面/06-富文本粘贴与文档上传` — Word/Google Docs 粘贴为 Markdown、.docx 文件上传、图片 promote 机制
+  - `50-AI集成/03-Wiki Skill 安装` — `backlog wiki install` 命令、skill 嵌入二进制架构、Agent 符号链接与 Windows 回退
+- **更新页面**: 4 个
+  - `README.md` — 核心特性增加富文本粘贴与 Wiki 知识库
+  - `00-快速开始/00-产品概述` — Web 界面增加粘贴/上传说明，AI 集成增加 Wiki Skill 安装
+  - `SUMMARY.md` — 添加新页面导航链接
+  - `index.md` — 用户手册目录增加 2 个新条目
+
 ## [2026-05-12 09:45:00] wiki-create | 创建 HonKit 预览用户手册开发者指南
 
 - **新 developer-notes 页面**: `developer-notes/honkit-usermanual-preview` — HonKit 本地预览、静态构建、PDF 生成的完整操作流程
@@ -134,13 +124,48 @@ Chronological, append-only record of all wiki operations.
   - 常见问题排查（GitBook CLI 兼容性、中文路径、ebook-convert）
 - **更新导航文件**: `index.md`
 
-## [2026-05-12 09:22:00] usermanual-update | 更新用户手册，添加 docx 粘贴上传与 Wiki Skill 安装章节
+## [2026-05-14 10:35:00] batch-ingest | Incremental ingest: 7 updated tasks, 1 new source, 2 updated concepts
 
-- **新增页面**: 2 个
-  - `40-Web界面/06-富文本粘贴与文档上传` — Word/Google Docs 粘贴为 Markdown、.docx 文件上传、图片 promote 机制
-  - `50-AI集成/03-Wiki Skill 安装` — `backlog wiki install` 命令、skill 嵌入二进制架构、Agent 符号链接与 Windows 回退
-- **更新页面**: 4 个
-  - `README.md` — 核心特性增加富文本粘贴与 Wiki 知识库
-  - `00-快速开始/00-产品概述` — Web 界面增加粘贴/上传说明，AI 集成增加 Wiki Skill 安装
-  - `SUMMARY.md` — 添加新页面导航链接
-  - `index.md` — 用户手册目录增加 2 个新条目
+- **Updated sources**: back-208, back-465, back-467, back-473, back-474, back-475 (verified existing summaries)
+- **New source**: [[sources/inline-code-html-escaping-fix]] — BACK-476 行内代码 HTML 实体转义修复
+- **Updated concepts**: [[concepts/markdown-pipeline]] — 添加渲染安全章节（HTML 实体转义保护机制）; [[concepts/web-ui-features]] — 更新 Wiki 功能描述（在线编辑、实时同步、文件管理）
+- **Updated index.md**: added new source entry, migrated table column `Type` → `Labels`
+- **Updated overview.md**: updated domain coverage (Wiki 在线编辑), stats (13 sources)
+
+## [2026-05-17 02:20:03] batch-ingest | 增量摄取 BACK-478 Web UI i18n 支持
+
+- **检测基线**: 2026-05-14 10:35:00（上次 batch-ingest）
+- **Git 变更文件**: 1 个 backlog 任务 + 30 个源代码/配置文件
+- **新 source 页面**: 1 个
+  - `sources/web-ui-i18n-task` — BACK-478 Web UI i18n 支持
+- **新 concept 页面**: 1 个
+  - `concepts/web-ui-i18n` — 零依赖轻量级 i18n 架构、DeepString 类型安全、编译时嵌入策略
+- **更新 concept 页面**: 2 个
+  - `concepts/web-ui-features` — 添加语言切换与国际化技术特性
+  - `concepts/web-server` — 前端技术栈补充 locales/ 目录与 I18nContext
+- **更新导航文件**: `index.md`、`overview.md`
+
+## [2026-05-20 21:30:00] source-update | 修正 BACK-473 Web UI Wiki 任务描述，同步代码迭代后的实际功能
+
+- **更新 source 页面**: `sources/wiki-web-ui-task`
+  - 修正原始任务中"Wiki 内容只读"的过时描述 → 补充在线编辑、Wikilink 预览、文件管理三大演进功能
+  - 补充扩展后的后端 API 表格（PUT 更新、POST 创建、PATCH 重命名）
+  - 补充前端技术细节（`PasteAwareMDEditor`、`WikiLinkPreview`、`hasChanges` 检测）
+- **更新 concept 页面**: `concepts/web-ui-features`
+  - Wiki 章节补充 Wikilink 交互预览模态框、目录文件数量统计、未保存变更检测
+  - 更新 `updated_date`
+- **更新导航文件**: `index.md` 的 `updated_date`
+
+**背景**: BACK-473 原始任务限定 Wiki 为"只读"（`[[wikilinks]]` 渲染为粗体），但代码后续迭代增加了在线编辑、可点击 wikilink 预览、侧边栏文件/文件夹创建与重命名等功能。wiki 中的 source 摘要停留在任务完成时的快照，与实际代码脱节，现已修正。
+
+
+## [2026-05-20 21:40:00] report-create | 创建功能机会分析报告
+
+- **新报告**: `wiki_output/reports/feature-opportunities` — 基于 Backlog.md 现有架构的功能增强建议
+- **涵盖内容**:
+  - **高优先级**: Wiki CLI 桥接（`wiki ingest`/`search`/`status`）、任务模板系统（`backlog template`）
+  - **中优先级**: 轻量级时间追踪（`task start/stop/log`）、批量操作（`task bulk`）、依赖关系可视化（`backlog graph`）
+  - **低优先级/长期**: Git Hook 集成（自动状态流转）、Sprint/迭代管理、日历视图
+  - 每个建议包含现状分析、建议命令、价值评估、与现有架构的契合度
+  - 架构契合度总结表（复用现有能力 × 新增复杂度）
+- **更新导航文件**: `index.md`（Reports 区域添加引用）、`overview.md`（域覆盖增加功能机会分析）
