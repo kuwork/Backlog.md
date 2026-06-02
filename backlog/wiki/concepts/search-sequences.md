@@ -33,6 +33,15 @@ backlog search "feature" --plain
 
 支持命令过滤（command filters）和模糊匹配。
 
+### 里程碑页面搜索
+
+`MilestonesPage.tsx` 使用分层匹配策略避免 Fuse.js 短查询误报：
+1. **精确 ID 匹配**：`task.id.toLowerCase() === query`
+2. **子串包含匹配**：`task.id.includes(query) || task.title.includes(query)`
+3. **Fuse.js 模糊匹配**：仅当前两步无结果时作为 fallback（threshold: 0.35）
+
+此策略解决了搜索短数字 ID（如 `479`）时因编辑距离阈值过宽而误匹配无关任务（如 `BACK-349`）的问题。
+
 ## 序列（Sequences）
 
 从任务依赖关系自动计算出的可并行执行的任务组。
