@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-05-29 22:36
+updated_date: 2026-05-30 10:25
 ---
 
 # Knowledge Base Overview
@@ -31,6 +31,9 @@ updated_date: 2026-05-29 22:36
 - **智能甘特图**：`/gantt` 纯 React/CSS 时间线视图，五级粒度（日/周/月/季度/年），自动日期解析与最小宽度回退，任务依赖箭头可视化
 - **跟踪甘特图**：在同一行上双层渲染实际条（状态色实心）与计划边框（60° 斜线填充），支持计划 vs 实际偏差追踪（早开始、正常、延期），含 Tooltip、图例与智能依赖箭头
 - **时区一致性**：所有 UTC 存储字符串统一通过 `parseStoredUtcDate` 解析为本地时间，消除 CLI 与 Web UI 显示偏差
+- **标签颜色自定义**：看板标签可设置 17 种预设颜色，持久化到 `config.yml`，支持暗黑模式自动切换（BACK-500）
+- **卡片标签宽度自适应**：TaskCard 根据容器宽度动态计算可显示标签数量，ResizeObserver 实时响应（BACK-500）
+- **标签输入下拉框**：任务详情模态框的 ChipInput 支持自动完成，模糊搜索过滤，大小写不敏感重复检测（BACK-501）
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -63,11 +66,11 @@ updated_date: 2026-05-29 22:36
 
 ## 统计
 
-- Sources ingested: 41
+- Sources ingested: 44
 - Concepts extracted: 19
 - Entities catalogued: 2
-- Execution notes: 6
-- Decisions recorded: 7
+- Execution notes: 7
+- Decisions recorded: 9
 - Patterns: 4
 - Reasoning traces: 2
 - User manual pages: 24

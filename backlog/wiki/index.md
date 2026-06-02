@@ -57,6 +57,9 @@ Read this file FIRST on any wiki operation.
 | [[sources/actual-dates-auto-create-task]] | BACK-498 创建任务时自动填充 actualStart 与 actualEnd | source, bug, dates, core |
 | [[sources/tracking-gantt-design-doc]] | doc-6 跟踪甘特图设计方案 | source, design, gantt, visualization, web-ui |
 | [[sources/ganttview-milestone]] | m-7 GanttView 里程碑 | source, milestone, gantt |
+| [[sources/sidebar-collapse-button-fix]] | BACK-499 修复侧边栏折叠按钮与 resize handle 重叠 | source, web-ui, bug |
+| [[sources/label-color-customization-task]] | BACK-500 看板标签颜色自定义与卡片标签溢出优化 | source, web-ui, enhancement |
+| [[sources/task-detail-label-dropdown-task]] | BACK-501 任务详情标签输入添加下拉框与模糊过滤 | source, web-ui, enhancement |
 
 ## Execution Notes
 

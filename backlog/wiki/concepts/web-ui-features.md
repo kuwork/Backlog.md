@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-29 22:36
+updated_date: 2026-05-30 10:20
 ---
 
 # Web UI 功能
@@ -24,6 +24,8 @@ updated_date: 2026-05-29 22:36
 - 标签筛选下拉框
 - 实时更新
 - **子任务归组**：按 ID 排序时子任务自动归组到父任务下方（BACK-496）
+- **标签颜色自定义**：`LabelFilterDropdown` 中每个标签可设置预设颜色，持久化到 `config.yml`，卡片标签渲染对应背景色（BACK-500）
+- **卡片标签宽度自适应**：`TaskCard` 根据容器宽度动态计算可显示标签数量，而非硬编码限制 3 个（BACK-500）
 
 ### 所有任务（All Tasks）
 - 表格布局
@@ -79,6 +81,7 @@ updated_date: 2026-05-29 22:36
 - 验收标准交互式勾选列表
 - 任务内容目录（TOC）与滚动监听
 - 富表单：状态、优先级、标签、里程碑、负责人、依赖、引用、文档链接
+- **标签输入下拉框**：`ChipInput` 支持自动完成，focus 时显示项目已有标签，支持模糊过滤，Enter 创建新标签，大小写不敏感重复检测（BACK-501）
 - **降级为草稿** / **提升为任务**：amber/emerald 按钮，确认后调用 API
 - **路径自动补全**：references 与 documentation 输入框支持键盘导航
 - **日期字段**：`dueDate`/`plannedStart`/`plannedEnd`（date 输入）+ `actualStart`/`actualEnd`（datetime-local 输入）
@@ -141,3 +144,6 @@ updated_date: 2026-05-29 22:36
 - [[sources/task-edit-modal-keyboard-fix]] — BACK-494 键盘快捷键修复
 - [[sources/subtask-grouping-fix]] — BACK-496 子任务归组
 - [[sources/timezone-handling-fix]] — BACK-497 时区处理修复
+- [[sources/sidebar-collapse-button-fix]] — BACK-499 折叠按钮与 resize handle 重叠修复
+- [[sources/label-color-customization-task]] — BACK-500 标签颜色自定义与宽度自适应
+- [[sources/task-detail-label-dropdown-task]] — BACK-501 标签输入下拉框与模糊过滤
