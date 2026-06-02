@@ -1,0 +1,87 @@
+---
+type: log
+title: Wiki Operations Log
+updated: 2026-05-06
+---
+
+# Wiki Operations Log
+
+Chronological, append-only record of all wiki operations.
+
+## [2026-05-06 21:24:47] init | Wiki initialized
+
+- Created `backlog/wiki/` directory structure
+- Created `backlog/wiki_output/` directory structure
+- Injected wiki guidelines into `AGENTS.md`
+- Generated `index.md`, `log.md`, `overview.md`
+- Project: Backlog.md CLI/MCP tool
+
+## [2026-05-06 21:24:47] source-ingest | 摄取项目源代码目录 src/
+
+- 扫描 src/ 目录全部模块（16 个子目录，~10,000+ 行核心代码）
+- 摄取关键源文件：
+  - `src/index.ts` — 公共 API 导出门面
+  - `src/cli.ts` — CLI 入口与命令体系
+  - `src/core/backlog.ts` — Core 领域类（任务 CRUD、ID 生成、配置迁移、跨分支查询）
+  - `src/core/content-store.ts` — ContentStore 内存缓存与文件监视器
+  - `src/core/search-service.ts` — SearchService Fuse.js 搜索索引
+  - `src/file-system/operations.ts` — FileSystem 文件系统操作
+  - `src/types/index.ts` — 领域类型定义
+  - `src/mcp/server.ts` — McpServer MCP 协议层
+  - `src/server/index.ts` — BacklogServer HTTP API 与 WebSocket
+  - `src/markdown/parser.ts` — Markdown 解析流水线
+- 创建 source 页面：`sources/src-architecture`
+- 创建 5 个 concept 页面：核心架构与数据流、CLI 入口与命令体系、MCP Server 实现、Web Server 与浏览器界面、Markdown 解析与序列化流水线
+- 更新 `index.md`、`overview.md`
+
+## [2026-05-06 21:24:47] batch-ingest | 批量摄取任务与文档
+
+- 扫描并分析了 backlog 全部目录结构（tasks/ 154 个、completed/ 304 个、docs/ 4 个、decisions/ 2 个、drafts/ 16 个、milestones/ 2 个、archive/ 47 个）
+- 摄取关键源文件：README.md、CLI-INSTRUCTIONS.md、BACK-287、BACK-100、doc-001~003、decision-1、BACK-383、BACK-428、BACK-3、BACK-4、BACK-7、BACK-5、BACK-173、BACK-273、BACK-308、BACK-213、BACK-174、BACK-180、BACK-401、BACK-346
+- 创建 5 个 source 摘要页面
+- 创建 5 个 concept 页面：任务生命周期、CLI/TUI、Web UI、MCP 工作流、搜索与序列
+- 创建 2 个 entity 页面：Backlog.md CLI 工具、AI 代理与集成
+- 生成中文用户使用指引：`wiki_output/reports/backlog-md-user-guide-zh.md`
+- 更新 `index.md`、`overview.md`
+
+## [2026-05-07 01:43:12] rename | 用户手册目录与输出文件重命名
+
+- 将 `wiki/userguide/` 重命名为 `wiki/usermanual/`，以更准确反映其用途
+- 合并输出文件从 `guide.md` 改为 `manual.md`
+- 更新 `AGENTS.md` Wiki Structure 说明
+- 输出：`backlog/wiki_output/用户手册/manual.md`（294 个资产）
+
+## [2026-05-07 01:59:00] usermanual-create | 根据 wiki 内容生成用户手册全部章节
+
+- 基于 wiki concepts、entities、sources 内容，生成 `wiki/usermanual/` 结构化用户手册
+- 创建 README.md（封面/简介）和 SUMMARY.md（目录导航）
+- 7 个章节共 22 个页面：
+  - 00-快速开始：产品概述、安装与初始化、AI 集成设置
+  - 10-任务管理：任务生命周期、创建与编辑任务、草稿管理、子任务与依赖、搜索与序列、归档与清理
+  - 20-看板与可视化：TUI 看板、Web 看板、看板导出
+  - 30-文档与决策：文档管理、决策记录、里程碑管理
+  - 40-Web 界面：启动与访问、看板视图、任务列表、里程碑管理、文档与决策、设置与主题
+  - 50-AI 集成：MCP 工作流、支持的 AI 工具、代理指令文件
+  - 60-配置与运维：配置管理、Shell 补全
+- 所有页面遵循 usermanual-writing-guide.md 规范：去序号标题、YAML frontmatter、操作类叙事风格
+
+## [2026-05-10 01:38:59] batch-ingest | 增量摄取 5 个新任务与相关源代码变更
+
+- **检测基线**: 2026-05-06 21:24:47（上次 batch-ingest）
+- **Git 变更文件**: 5 个 backlog 任务 + 25 个源代码文件
+- **新 source 页面**: 5 个
+  - `sources/paste-as-markdown-task` — BACK-208 富文本粘贴转 Markdown
+  - `sources/windows-mcp-fix-task` — BACK-465 Windows MCP stdio 挂起修复
+  - `sources/file-preview-task` — BACK-467 本地文件预览与语法高亮
+  - `sources/wiki-web-ui-task` — BACK-473 Web UI Wiki 区域与文件树导航
+  - `sources/wiki-install-task` — BACK-474 Wiki Install CLI 命令
+- **新 concept 页面**: 3 个
+  - `concepts/paste-as-markdown` — Turndown 转换引擎、Word HTML 清理、图片粘贴 promote 机制
+  - `concepts/asset-management` — AssetManager 类、临时目录设计、SSRF 安全下载
+  - `concepts/file-preview` — `/api/file-content`、语法高亮、行号、行范围
+- **更新 concept 页面**: 4 个
+  - `concepts/web-ui-features` — 添加 Wiki 区域、粘贴为 Markdown、本地文件预览
+  - `concepts/web-server` — 添加 `/api/file-content`、upload/promote、wiki tree/page API
+  - `concepts/cli-entry` — 添加 `wiki install <agent>` 命令
+  - `concepts/mcp-workflow` — 添加 Windows MCP document tool 挂起问题与修复
+- **更新导航文件**: `index.md`、`overview.md`
