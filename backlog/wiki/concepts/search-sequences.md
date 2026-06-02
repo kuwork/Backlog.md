@@ -15,6 +15,7 @@ Backlog.md 使用 Fuse.js 提供统一的模糊搜索服务，覆盖所有入口
 - 任务（tasks）
 - 文档（docs）
 - 决策（decisions）
+- Wiki 页面（wiki）— 自 BACK-481 起纳入索引，支持 `type:wiki <keyword>` 过滤
 
 ### CLI 搜索
 
@@ -32,6 +33,18 @@ backlog search "feature" --plain
 ### Web 搜索
 
 支持命令过滤（command filters）和模糊匹配。
+
+### Wiki 搜索（BACK-481）
+
+Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchService`，与 tasks/documents/decisions 共用同一套缓存失效机制。
+
+- **Wiki 搜索实体** (`WikiSearchEntity`)：
+  - `title`：frontmatter.title → 文件名去 `.md` 的降级策略
+  - `bodyText`：页面正文内容
+  - `fileName`：文件名（weight 0.25），支持按文件名搜索
+  - `path`：wiki 相对路径
+- **CLI 范围**：`--type wiki` 被识别，但纯文本输出故意跳过（TUI 无 wiki 查看器），Web 独占
+- **Web 搜索 UI**：`SideNavigation.tsx` 渲染 wiki 结果时显示书本图标，点击导航到 `/wiki/${path}`
 
 ### 里程碑页面搜索
 
