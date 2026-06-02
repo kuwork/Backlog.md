@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-20 23:45
+updated_date: 2026-05-21 22:50
 ---
 
 
@@ -29,7 +29,7 @@ updated_date: 2026-05-20 23:45
 - 未分配任务池
 - 拖放分配任务到里程碑
 - 已完成的里程碑折叠区
-- 里程碑搜索（子串包含匹配 + Fuse.js fallback）
+- 里程碑搜索（子串包含匹配 + Fuse.js fallback，修复短数字 ID 误匹配）
 
 ### 文档与决策
 - 文档列表（支持子文件夹分组）
@@ -59,6 +59,7 @@ updated_date: 2026-05-20 23:45
 - 验收标准同步修复（ContentStore）
 - 任务内容目录（TOC）与滚动监听
 - 富表单：状态、优先级、标签、里程碑、负责人、依赖、引用、文档链接
+- **降级为草稿**：非 Done 任务在 Preview 模式显示 amber 按钮，确认后调用 `POST /api/tasks/:id/demote`，同步刷新任务列表与草稿列表
 - **路径自动补全**：references 与 documentation 输入框支持项目路径自动补全，键盘导航（上下箭头、Enter、Esc、左右进入/返回目录）
 
 ## 技术特性
