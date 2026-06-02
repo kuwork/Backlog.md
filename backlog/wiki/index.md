@@ -1,7 +1,7 @@
 ---
 type: index
 title: Wiki Content Catalog
-updated: 2026-05-10
+updated: 2026-05-12
 ---
 
 # Wiki Content Catalog
@@ -23,6 +23,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/file-preview-task]] | BACK-467 本地文件预览与语法高亮 | source |
 | [[sources/wiki-web-ui-task]] | BACK-473 Web UI Wiki 区域与文件树导航 | source |
 | [[sources/wiki-install-task]] | BACK-474 Wiki Install 命令 | source |
+| [[sources/docx-upload-task]] | BACK-475 Word 文档上传与图片提取 | source |
 
 ## Concepts
 
@@ -41,6 +42,8 @@ Read this file FIRST on any wiki operation.
 | [[concepts/paste-as-markdown]] | 粘贴为 Markdown | 富文本自动转换为 Markdown，支持图片上传 |
 | [[concepts/asset-management]] | 资源管理与临时文件提升 | AssetManager、临时目录、安全下载、promote 机制 |
 | [[concepts/file-preview]] | 本地文件预览 | 代码/Markdown 文件预览、语法高亮、行号、行范围 |
+| [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
+| [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
 
 ## Entities
 
@@ -79,9 +82,11 @@ _No comparisons created yet._
 | [[usermanual/40-Web界面/03-里程碑管理]] | Web 里程碑管理 | 里程碑详情、任务分配、折叠区、搜索 |
 | [[usermanual/40-Web界面/04-文档与决策]] | Web 文档与决策 | 文档列表、子文件夹、决策查看 |
 | [[usermanual/40-Web界面/05-设置与主题]] | 设置与主题 | 配置编辑、DoD 默认值、MDEditor、Mermaid |
+| [[usermanual/40-Web界面/06-富文本粘贴与文档上传]] | 富文本粘贴与文档上传 | Word/Google Docs 粘贴转 Markdown、.docx 上传、图片 promote |
 | [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
+| [[usermanual/50-AI集成/03-Wiki Skill 安装]] | Wiki Skill 安装 | backlog wiki install、skill 嵌入二进制、Agent 符号链接 |
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
 
@@ -89,6 +94,7 @@ _No comparisons created yet._
 
 | File | Title | Description |
 |---|---|---|
+| [[developer-notes/honkit-usermanual-preview]] | HonKit 预览用户手册 | 本地预览、构建静态站点、生成 PDF 的完整操作流程 |
 | [[developer-notes/ci-testing-gotchas]] | CI 与测试踩坑笔记 | 常见 CI 失败场景、文件系统测试陷阱、Biome 格式化细节 |
 | [[developer-notes/architecture-gotchas]] | 架构分层规范 | Server 层禁止直接拥有文件读取/解析逻辑、HTTP handler 职责边界 |
 | [[developer-notes/security-gotchas]] | 安全检查清单 | 路径遍历防护、SSRF 防护、文件大小限制、新增 API 安全自检 |

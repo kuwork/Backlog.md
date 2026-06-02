@@ -47,7 +47,7 @@ updated: 2026-05-10
 ## 任务编辑
 
 - 富文本 Markdown 编辑器（MDEditor）
-- **[[粘贴为 Markdown]]** — 从 Word/Google Docs/网页自动转换为 Markdown
+- **[[粘贴为 Markdown]]** — 从 Word/Google Docs/网页自动转换为 Markdown，支持 `.docx` 文件上传
 - **[[本地文件预览]]** — 点击本地路径在模态框中查看代码/Markdown
 - 验收标准交互式勾选列表
 - 验收标准同步修复（ContentStore）
