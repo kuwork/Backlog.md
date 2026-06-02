@@ -2,6 +2,7 @@
 title: MCP Server 实现
 labels: [concept]
 created_date: 2026-05-06 00:00
+updated_date: 2026-05-25 23:45
 ---
 
 
@@ -35,7 +36,7 @@ McpServer extends Core
 |---|---|
 | 任务管理 | `create_task`、`update_task`、`list_tasks`、`search_tasks`、`complete_task` |
 | 文档管理 | `create_document`、`update_document`、`list_documents` |
-| 里程碑 | `create_milestone`、`list_milestones`、`archive_milestone` |
+| 里程碑 | `create_milestone`、`list_milestones`、`milestone_edit`、`archive_milestone` |
 | 决策记录 | `create_decision`、`list_decisions` |
 | DoD | `add_definition_of_done`、`check_definition_of_done` |
 | 工作流 | `get_workflow_instructions` |

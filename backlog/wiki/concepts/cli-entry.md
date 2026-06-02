@@ -2,6 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: 2026-05-25 23:45
 ---
 
 
@@ -18,8 +19,8 @@ created_date: 2026-05-10 00:00
 | 命令 | 功能 |
 |---|---|
 | `init [projectName]` | 项目初始化，含交互式配置向导 |
-| `task add [title]` | 创建任务，支持 `--plain` 非交互模式 |
-| `task edit <id>` | 编辑任务 |
+| `task add [title]` | 创建任务，支持 `--plain` 非交互模式（含日期选项） |
+| `task edit <id>` | 编辑任务（支持 `--due-date`、`--planned-start`、`--planned-end` 及 `--clear-*`） |
 | `task show <id>` | 查看任务详情 |
 | `task list` | 列表，支持多维过滤 |
 | `task search <query>` | Fuse.js 模糊搜索 |
@@ -33,6 +34,7 @@ created_date: 2026-05-10 00:00
 | `doc add <title>` | 创建文档 |
 | `decision add <title>` | 创建决策记录 |
 | `milestone add <title>` | 创建里程碑 |
+| `milestone edit <id>` | 编辑里程碑（标题、描述、日期字段） |
 | `browser` | 启动 Web UI 服务器 |
 | `board` | 生成看板 |
 | `mcp start` | 启动 MCP 服务器 |
@@ -59,6 +61,20 @@ CLI 启动时（除 `init`/`--help`/`--version` 外）自动运行配置迁移�
 - **MCP connector**（推荐）：通过 `claude mcp add` / `codex mcp add` 等方式注册
 - **CLI commands**：生成 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` 等代理指令文件
 - **Skip**：不配置 AI 集成
+
+## 日期字段 CLI 支持
+
+`task create` / `task edit` / `milestone edit` 均支持三个可选日期字段：
+
+```bash
+backlog task add "API 文档" --due-date 2026-06-01 --planned-start 2026-05-25 --planned-end 2026-05-30
+backlog task edit back-10 --clear-due-date --clear-planned-start
+backlog milestone edit M1 --due-date 2026-06-01 --description "第一阶段"
+```
+
+- 日期格式为 `YYYY-MM-DD`（date-only）。
+- 交互式向导（`task-wizard.ts`）在 TTY 模式下会提示输入日期。
+- `task view --plain` 显示 Due / Planned Start / Planned End。
 
 ## Wiki Install 命令
 
