@@ -57,7 +57,7 @@ created_date: 2026-05-12 00:00
 
 ## 统计
 
-- Sources ingested: 14
+- Sources ingested: 17
 - Concepts extracted: 16
 - Entities catalogued: 2
 - Reports generated: 1
