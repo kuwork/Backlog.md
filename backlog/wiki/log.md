@@ -263,3 +263,14 @@ Chronological, append-only record of all wiki operations.
 - **更新 concept 页面**: `concepts/web-ui-features`
   - 新增「排序交互」章节，涵盖任务列表表头排序、里程碑分组独立排序、看板列本地排序
 - **更新导航文件**: `index.md`（添加 web-ui-sort-optimization source 引用、更新日期）
+
+## [2026-05-23 15:18:00] batch-ingest | 增量摄取 BACK-485 草稿提升流程修复、BACK-486 草稿页筛选功能
+
+- **检测基线**: 2026-05-23 11:15:00（上次 source-ingest）
+- **Git 变更文件**: 2 个 backlog 任务 + 6 个源代码/测试/本地化文件
+- **新 source 页面**: 2 个
+  - `sources/draft-promote-flow-task` — BACK-485 修复草稿提升流程并统一操作按钮样式：草稿检测、Promote/Demote 按钮、翡翠绿/琥珀色配色、后端返回 Task 对象、按钮样式统一
+  - `sources/draft-filters-task` — BACK-486 草稿页添加筛选功能：关键字搜索、状态/优先级/里程碑/标签筛选、结果计数器、URL 同步、空状态适配
+- **更新 concept 页面**: `concepts/web-ui-features`
+  - 新增「草稿页面」章节，涵盖筛选栏布局、5 个筛选维度、客户端过滤、URL 同步、空状态
+- **更新导航文件**: `index.md`（添加 2 个 source 引用、更新日期）
