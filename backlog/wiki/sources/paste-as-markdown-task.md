@@ -82,3 +82,7 @@ created_date: 2026-05-10 00:00
 - **Excel 表格粘贴未转换**: Excel 用 `<colgroup><col>` 包装表格，Turndown GFM 规则无法识别。修复：`cleanHtml` 现在剥离这些标签。
 - **Excel 粘贴丢失截图**: Excel 同时在剪贴板放置 `text/html`（表格）和 `image/png`（截图）。修复：`handlePasteAsMarkdown` 返回 Markdown 字符串，`PasteAwareMDEditor` 接收后追加任何独立图片 blob。
 - **Word `file://` 图片引用**: Word 复制图片为本地文件路径，浏览器无法读取，后端也拒绝 `file://` 访问。当前行为：静默移除 `file://` `<img>` 标签。用户可直接粘贴截图（Win+Shift+S）。
+
+## 后续修复
+
+- [[sources/wiki-pasted-images-promote-fix]] — BACK-488 修复 wiki 页面保存时未复用 temp → paste 图片迁移逻辑的问题。Wiki 编辑器已使用 `PasteAwareMDEditor` 支持图片粘贴，但 `WikiDetail.tsx` 的 `handleSave` 遗漏了 promote 步骤，现已补齐。
