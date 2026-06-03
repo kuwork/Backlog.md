@@ -17,7 +17,7 @@ const cleanedArgs = rawArgs.filter((arg) => {
 	if (arg === binaryPath) return false;
 	// Filter any accidental deep path to our platform package binary
 	try {
-		const pattern = /node_modules[/\\]backlog\.md-(darwin|linux|windows)-[^/\\]+[/\\]backlog(\.exe)?$/i;
+		const pattern = /node_modules[/\\](@kuwork\/)?backlog\.md-(darwin|linux|windows)-[^/\\]+[/\\]backlog(\.exe)?$/i;
 		return !pattern.test(arg);
 	} catch {
 		return true;

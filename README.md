@@ -1,8 +1,9 @@
 <h1 align="center">Backlog.md</h1>
-<p align="center">Markdown‑native Task Manager &amp; Kanban visualizer for any Git repository</p>
+<p align="center">:us: <a href="./README.en.md">English</a></p>
+<p align="center">适用于任何 Git 仓库的本地 Markdown 任务管理器 &amp; 看板视图</p>
 
 <p align="center">
-<code>npm i -g backlog.md</code> or <code>bun add -g backlog.md</code> or <code>brew install backlog-md</code> or <code>nix run github:MrLesk/Backlog.md</code>
+<code>npm i -g @kuwork/backlog.md</code> 或 <code>bun add -g @kuwork/backlog.md</code> 或 <code>brew install backlog-md</code>（上游）或 <code>nix run github:MrLesk/Backlog.md</code>（上游）
 </p>
 
 ![Backlog demo GIF using: backlog board](./.github/backlog-v1.40.gif)
@@ -10,152 +11,218 @@
 
 ---
 
-> **Backlog.md** turns any folder with a Git repo into a **self‑contained project board**
-> powered by plain Markdown files and a zero‑config CLI.
-> Built for **spec‑driven AI development** — structure your tasks so AI agents deliver predictable results.
+> **Backlog.md** 让任何含 Git 仓库的文件夹都能成为**独立的项目看板**
+> 由纯 Markdown 文件和零配置 CLI 驱动。
+> 为**规范驱动的 AI 开发**量身打造 —— 通过结构化任务让 AI 智能体产出可预期的结果。
 
-## Features
+## 功能特性
 
-* 📝 **Markdown-native tasks** -- manage every issue as a plain `.md` file
+* 📝 **本地 Markdown 任务** —— 每个事项都是一份纯 `.md` 文件
 
-* 🤖 **AI-Ready** -- Works with Claude Code, Gemini CLI, Codex, Kiro & any other MCP or CLI compatible AI assistants
+* 🤖 **为 AI 而生** —— 兼容 Claude Code、Gemini CLI、Codex、Kiro 及任何其他支持 MCP 或 CLI 的 AI 助手
 
-* 📊 **Instant terminal Kanban** -- `backlog board` paints a live board in your shell
+* 📊 **即时终端看板** —— `backlog board` 在终端中实时呈现看板
 
-* 🌐 **Modern web interface** -- `backlog browser` launches a sleek web UI for visual task management
+* 🌐 **现代 Web 界面** —— `backlog browser` 启动精致的 Web UI，让任务管理一目了然
 
-* 🔍 **Powerful search** -- fuzzy search across tasks, docs & decisions with `backlog search`
+* 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
 
-* 📋 **Rich query commands** -- view, list, filter, or archive tasks with ease
-* ✅ **Definition of Done defaults** -- add a reusable checklist to every new task
+* 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
 
-* 📤 **Board export** -- `backlog board export` creates shareable markdown reports
+* 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
 
-* 🔒 **100 % private & offline** -- backlog lives entirely inside your repo and you can manage everything locally
+* 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
 
-* 💻 **Cross-platform** -- runs on macOS, Linux, and Windows
+* 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
 
-* 🆓 **MIT-licensed & open-source** -- free for personal or commercial use
+* 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
+* ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
+
+* 📤 **看板导出** —— `backlog board export` 创建可共享的 Markdown 报告
+
+* 🔒 **100% 隐私保护 &amp; 离线储存** —— backlog 完全存储在您的仓库内部，所有操作都在本地完成
+
+* 💻 **跨平台** —— 支持 macOS、Linux 和 Windows
+
+* 🆓 **MIT 许可证 &amp; 开源** —— 个人或商业用途均免费
 
 
 ---
 
-## <img src="./.github/5-minute-tour-256.png" alt="Getting started" width="28" height="28" align="center"> Getting started
+## 🧠 LLM Wiki 知识库
+
+Backlog.md 内置由 LLM 自动维护的 **Wiki 知识库**，让人类与 AI 的每一次结对执行都沉淀为可复用的知识结晶。
+
+### 结对编程思路
+
+> 人类主导策略 → AI 拆解任务 → 结对执行 → 知识自动沉淀到 Wiki
+
+```
+头脑风暴 → doc → AI 规划 → tasks → 结对执行 → wiki
+```
+
+| 层级 | 载体 | 内容 | 所有者 |
+|------|------|------|--------|
+| **规划层** | `backlog/docs/` | 开发策略、技术方案 | 人类主导，AI 辅助 |
+| **执行层** | `backlog/tasks/` | 具体任务、验收标准 | AI 创建，人类审核 |
+| **记忆层** | `backlog/wiki/` | 知识结晶、模式提取 | AI 维护，人类审阅 |
+
+### 如何使用
+
+Wiki 由 LLM 全自动维护，无需手动创建文件。在对话中触发以下关键词，AI 即会接管：
+
+| 触发词 | 作用 |
+|--------|------|
+| `build wiki` / `init wiki` / `搭建知识库` | 初始化 Wiki 目录结构，注入工作流指引 |
+| `ingest` / `process source` / `摄取` | 将 backlog 源文件（tasks/docs/decisions 等）吸入 Wiki |
+| `wiki query` / `知识库查询` | 基于已积累的知识回答问题、生成报告 |
+| `lint wiki` / `health check` / `检查 wiki` | 扫描矛盾、孤儿页面和过时内容 |
+
+Wiki 遵循**非正式、轻量、AI 维护、可质疑**四大原则——它不是企业知识库，而是你和 AI 的"结对笔记本"。
+
+![Backlog 从结对执行到知识结晶](./backlog/assets/paste/Backlog从结对执行到知识结晶.png)
+
+---
+
+## <img src="./.github/5-minute-tour-256.png" alt="快速入门" width="28" height="28" align="center"> 快速入门
 
 ```bash
-# Install
-bun i -g backlog.md
-# or: npm i -g backlog.md
-# or: brew install backlog-md
+# 安装
+bun i -g @kuwork/backlog.md
+# 或：npm i -g @kuwork/backlog.md
+# 或：brew install backlog-md
 
-# Initialize in any Git repo
+# 在任何 Git 仓库中初始化
 backlog init "My Awesome Project"
 
-# Or initialize without Git for local/non-code projects
+# 或无 Git 初始化，用于本地/非代码项目
 backlog init "Personal Planning" --no-git
 ```
 
-The init wizard will ask how you want to connect AI tools:
-- **MCP connector** (recommended) — auto-configures Claude Code, Codex, Gemini CLI, Kiro or Cursor and adds workflow instructions for your agents.
-- **CLI commands** — creates instruction files (CLAUDE.md, AGENTS.md, etc.) so agents use Backlog via CLI.
-- **Skip** — no AI setup; use Backlog.md purely as a task manager.
+初始化向导会询问您希望如何接入 AI 工具：
+- **MCP 连接器**（推荐）—— 自动配置 Claude Code、Codex、Gemini CLI、Kiro 或 Cursor，并为您的智能体添加工作流指引。
+- **CLI 命令** —— 创建指令文件（CLAUDE.md、AGENTS.md 等），以便智能体通过 CLI 使用 Backlog。
+- **跳过** —— 不设置 AI；仅将 Backlog.md 作为任务管理器使用。
 
-Backlog data is stored in a project-local backlog folder such as `backlog/`, `.backlog/`, or a custom project-relative path configured through `backlog.config.yml`. Tasks remain human-readable Markdown files (e.g. `task-10 - Add core search functionality.md`). Git is optional: `backlog init --no-git` creates a filesystem-only project and disables cross-branch checks, remote operations, and auto-commit.
-
----
-
-### Working with AI agents
-
-This is the recommended flow for Claude Code, Codex, Gemini CLI, Kiro and similar tools — following the **spec‑driven AI development** approach.
-After running `backlog init` and choosing the MCP or CLI integration, work in this loop:
-
-**Step 1 — Describe your idea.** Tell the agent what you want to build and ask it to split the work into small tasks with clear descriptions and acceptance criteria.
-
-**🤖 Ask your AI Agent:**
-> I want to add a search feature to the web view that searches tasks, docs, and decisions. Please decompose this into small Backlog.md tasks.
-
-> [!NOTE]
-> **Review checkpoint #1** — read the task descriptions and acceptance criteria.
-
-**Step 2 — One task at a time.** Work on a single task per agent session, one PR per task. Good task splitting means each session can work independently without conflicts. Make sure each task is small enough to complete in a single conversation. You want to avoid running out of context window.
-
-**Step 3 — Plan before coding.** Ask the agent to research and write an implementation plan in the task. Do this right before implementation so the plan reflects the current state of the codebase.
-
-**🤖 Ask your AI Agent:**
-> Work on BACK-10 only. Research the codebase and write an implementation plan in the task. Wait for my approval before coding.
-
-> [!NOTE]
-> **Review checkpoint #2** — read the plan. Does the approach make sense? Approve it or ask the agent to revise.
-
-**Step 4 — Implement and verify.** Let the agent implement the task.
-
-> [!NOTE]
-> **Review checkpoint #3** — review the code, run tests, check linting, and verify the results match your expectations.
-
-If the output is not good enough: clear the plan/notes/final summary, refine the task description and acceptance criteria, and run the task again in a fresh session.
+Backlog 数据存储在项目本地的 backlog 文件夹中，例如 `backlog/`、`.backlog/`，或通过 `backlog.config.yml` 配置的项目相对路径。任务仍是可直接阅读的 Markdown 文件（例如 `task-10 - Add core search functionality.md`）。Git 是可选的：`backlog init --no-git` 创建纯文件系统项目，并禁用跨分支检查、远程操作和自动提交。
 
 ---
 
-### Working without AI agents
+### 与 AI 智能体协作
 
-Use Backlog.md as a standalone task manager from the terminal or browser.
+这是针对 Claude Code、Codex、Gemini CLI、Kiro 及类似工具的推荐工作流 —— 遵循**规范驱动的 AI 开发**方法。
+运行 `backlog init` 并选择 MCP 或 CLI 集成后，遵循以下迭代循环：
+
+**步骤 1 —— 描述您的想法。** 告诉智能体您想构建什么，并要求它将工作拆分为小任务，附上清晰的描述和验收标准。
+
+**🤖 询问您的 AI 智能体：**
+> 我想为 Web 视图添加一个搜索功能，用于搜索任务、文档和决策。请将其分解为小的 Backlog.md 任务。
+
+> [!NOTE]
+> **审查检查点 #1** —— 阅读任务描述和验收标准。
+
+**步骤 2 —— 一次一个任务。** 每个 AI 会话只处理一个任务，一个任务对应一个 PR。良好的任务拆分意味着每个会话可以独立工作、互不冲突。确保每个任务足够小，能在一次对话中完成，避免超出上下文窗口上限。
+
+**步骤 3 —— 编码前先规划。** 要求智能体调研代码库，并在任务中编写实施计划。就在实施前执行这一步，确保计划反映代码库的当前状态。
+
+**🤖 询问您的 AI 智能体：**
+> 只处理 BACK-10。研究代码库并在任务中编写实施计划。在编码前等待我的批准。
+
+> [!NOTE]
+> **审查检查点 #2** —— 阅读计划。方法是否合理？批准或要求智能体修正。
+
+**步骤 4 —— 实施和验证。** 让智能体实施任务。
+
+> [!NOTE]
+> **审查检查点 #3** —— 审查代码、运行测试、检查代码规范，并验证结果是否符合您的预期。
+
+如果结果不理想：清除计划/备注/最终总结，完善任务描述和验收标准，然后在新的会话中重新处理该任务。
+
+---
+
+### 不与 AI 智能体协作
+
+直接在终端或浏览器中使用 Backlog.md 管理任务。
 
 ```bash
-# Create and refine tasks
+# 创建和完善任务
 backlog task create "Render markdown as kanban"
 backlog task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
 
-# Track work
+# 跟踪工作
 backlog task list -s "To Do"
 backlog search "kanban"
 backlog board
 
-# Work visually in the browser
+# 在浏览器中可视化工作
 backlog browser
 ```
 
-You can switch between AI-assisted and manual workflows at any time — both operate on the same Markdown task files. It is recommended to modify tasks via Backlog.md commands (CLI/MCP/Web) rather than editing task files manually, so field types and metadata stay consistent. Tasks can record project-root-relative modified files and later be found with `backlog search --modified-file src/path.ts --plain`.
+您可以随时在 AI 辅助和手动工作流之间切换 —— 两者都基于相同的 Markdown 任务文件。建议通过 Backlog.md 命令（CLI/MCP/Web）修改任务，而不是手动编辑任务文件，以保持字段类型和元数据的一致性。任务可记录项目根目录下的已修改文件，之后通过 `backlog search --modified-file src/path.ts --plain` 即可找到。
 
-**Learn more:** [CLI reference](CLI-INSTRUCTIONS.md) | [Advanced configuration](ADVANCED-CONFIG.md)
+**了解更多：** [CLI 参考](CLI-INSTRUCTIONS.md) | [高级配置](ADVANCED-CONFIG.md)
 
 ---
 
-## <img src="./.github/web-interface-256.png" alt="Web Interface" width="28" height="28" align="center"> Web Interface
+## <img src="./.github/web-interface-256.png" alt="Web 界面" width="28" height="28" align="center"> Web 界面
 
-Launch a modern, responsive web interface for visual task management:
+启动现代、响应式的 Web 界面，用于可视化任务管理：
 
 ```bash
-# Start the web server (opens browser automatically)
+# 启动 Web 服务器（自动打开浏览器）
 backlog browser
 
-# Custom port
+# 自定义端口
 backlog browser --port 8080
 
-# Don't open browser automatically
+# 不自动打开浏览器
 backlog browser --no-open
 ```
 
-**Features:**
-- Interactive Kanban board with drag-and-drop
-- Task creation and editing with rich forms
-- Interactive acceptance criteria editor with checklists
-- Real-time updates across all views
-- Responsive design for desktop and mobile
-- Task archiving with confirmation dialogs
-- Seamless CLI integration - all changes sync with markdown files
+**功能特性：**
+- 支持拖放的交互式看板
+- 带有丰富表单的任务创建和编辑
+- 带有检查清单的交互式验收标准编辑器
+- 所有视图的实时更新
+- 支持桌面和移动设备的响应式设计
+- 带确认对话框的任务归档
+- 与 CLI 无缝集成 —— 所有更改与 Markdown 文件同步
 
-![Web Interface Screenshot](./.github/web.jpeg)
+![Web Interface Screenshot](./.github/web.cn.jpeg)
 
-To keep the Web UI running as an auto-starting local service, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
+### 甘特图视图
+
+`backlog browser` 内置甘特图视图，支持五种时间粒度（日/周/月/季度/年），纯 React/CSS 实现，零外部依赖：
+
+- **计划时间**：`plannedStart` / `plannedEnd`（`YYYY-MM-DD`）绘制计划边框
+- **实际时间**：`actualStart` / `actualEnd`（`YYYY-MM-DD HH:MM` UTC）自动随状态变更填充，绘制状态色实心条
+- **跟踪对比**：同一行叠加计划边框与实际条，延期/提前一目了然
+- **依赖箭头**：SVG 智能连接任务依赖关系
+
+时间字段支持 CLI 直接设置：
+
+```bash
+# 计划字段（Date-only）
+backlog task edit BACK-10 --planned-start 2026-06-01 --planned-end 2026-06-07 --due-date 2026-06-10
+
+# 实际字段（Date-time UTC），状态变更时自动填充
+backlog task edit BACK-10 --status "In Progress"  # actualStart 自动设为当前时间
+```
+
+![甘特图视图](./backlog/assets/paste/gantt.gif)
+
+![项目健康](./backlog/assets/paste/0ca49969-1353-4303-820c-ea85df1cba65.png)
+
+要使 Web UI 作为自动启动的本地服务持续运行，请参阅 [将 Backlog.md 作为服务运行](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md)。
 
 ---
 
-## 🔧 MCP Integration (Model Context Protocol)
+## 🔧 MCP 集成（Model Context Protocol）
 
-The easiest way to connect Backlog.md to AI coding assistants like Claude Code, Codex, Gemini CLI and Kiro is via the MCP protocol.
-You can run `backlog init` (even if you already initialized Backlog.md) to set up MCP integration automatically, or follow the manual steps below.
+将 Backlog.md 连接到 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手的最佳方式是通过 MCP 协议。
+您可以运行 `backlog init`（即使您已经初始化了 Backlog.md）来自动设置 MCP 集成，或按照以下手动步骤操作。
 
-### Client guides
+### 客户端指南
 
 <details>
   <summary><strong>Claude Code</strong></summary>
@@ -193,9 +260,9 @@ You can run `backlog init` (even if you already initialized Backlog.md) to set u
 
 </details>
 
-Use the shared `backlog` server name everywhere – the MCP server auto-detects whether the current directory is initialized and falls back to `backlog://init-required` when needed.
+处处统一使用 `backlog` 作为服务器名称 —— MCP 服务器会自动检测当前目录是否已初始化，并在需要时回退到 `backlog://init-required`。
 
-### Manual config
+### 手动配置
 
 ```json
 {
@@ -211,64 +278,64 @@ Use the shared `backlog` server name everywhere – the MCP server auto-detects 
 }
 ```
 
-If your IDE can't set the process working directory for MCP servers, set `BACKLOG_CWD` as shown above.
-If your IDE supports custom args but not env vars, you can also use `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`.
+如果您的 IDE 无法为 MCP 服务器设置进程工作目录，如上所示设置 `BACKLOG_CWD`。
+如果您的 IDE 支持自定义参数但不支持环境变量，您也可以使用 `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`。
 
 > [!IMPORTANT]
-> When adding the MCP server manually, you should add some extra instructions in your CLAUDE.md/AGENTS.md files to inform the agent about Backlog.md.
-> This step is not required when using `backlog init` as it adds these instructions automatically.
-> Backlog.md's instructions for agents are available at [`/src/guidelines/mcp/agent-nudge.md`](/src/guidelines/mcp/agent-nudge.md).
+> 手动添加 MCP 服务器时，建议在 CLAUDE.md/AGENTS.md 文件中补充说明，让智能体了解 Backlog.md 的工作方式。
+> 使用 `backlog init` 时无需此步骤，因为它会自动添加这些说明。
+> Backlog.md 面向智能体的说明可在 [`/src/guidelines/mcp/agent-nudge.md`](/src/guidelines/mcp/agent-nudge.md) 查看。
 
 
-Once connected, agents can read the Backlog.md workflow instructions via the resource `backlog://docs/task-workflow`.
-Use `/mcp` command in your AI tool (Claude Code, Codex, Kiro) to verify if the connection is working.
-
----
-
-## <img src="./.github/cli-reference-256.png" alt="CLI Reference" width="28" height="28" align="center"> CLI reference
-
-Full command reference — task management, search, board, docs, decisions, and more: **[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
-
-Quick examples: `backlog task create`, `backlog task list`, `backlog task edit`, `backlog search`, `backlog board`, `backlog browser`.
-
-Full help: `backlog --help`
+连接后，智能体可以通过资源 `backlog://docs/task-workflow` 读取 Backlog.md 工作流说明。
+在您的 AI 工具（Claude Code、Codex、Kiro）中使用 `/mcp` 命令验证连接是否正常工作。
 
 ---
 
-## <img src="./.github/configuration-256.png" alt="Configuration" width="28" height="28" align="center"> Configuration
+## <img src="./.github/cli-reference-256.png" alt="CLI 参考" width="28" height="28" align="center"> CLI 参考
 
-Backlog.md merges the following layers (highest → lowest):
+完整命令参考 —— 任务管理、搜索、看板、文档、决策等：**[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
 
-1. CLI flags
-2. Project config file:
-   - `backlog.config.yml` when present
-   - otherwise `backlog/config.yml` or `.backlog/config.yml`
-3. Built‑ins
+快速示例：`backlog task create`、`backlog task list`、`backlog task edit`、`backlog search`、`backlog board`、`backlog browser`。
 
-### Interactive wizard (`backlog config`)
+完整帮助：`backlog --help`
 
-Run `backlog config` with no arguments to launch the full interactive wizard. This is the same experience triggered from `backlog init` when you opt into advanced settings, and it walks through the complete configuration surface:
-- Cross-branch accuracy: `checkActiveBranches`, `remoteOperations`, and `activeBranchDays`.
-- Git workflow: `autoCommit` and `bypassGitHooks`.
-- ID formatting: enable or size `zeroPaddedIds`.
-- Editor integration: pick a `defaultEditor` with availability checks.
-- Definition of Done defaults: interactively add/remove/reorder/clear project-level `definition_of_done` checklist items.
-- Web UI defaults: choose `defaultPort` and whether `autoOpenBrowser` should run.
+---
 
-Skipping the wizard (answering "No" during init) applies the safe defaults that ship with Backlog.md:
-- `checkActiveBranches=true`, `remoteOperations=true`, `activeBranchDays=30`.
-- `autoCommit=false`, `bypassGitHooks=false`.
-- `zeroPaddedIds` disabled.
-- `defaultEditor` unset (falls back to your environment).
-- `defaultPort=6420`, `autoOpenBrowser=true`.
+## <img src="./.github/configuration-256.png" alt="配置" width="28" height="28" align="center"> 配置
 
-For filesystem-only projects, run `backlog init --no-git`. Backlog.md will not run `git init`, and the saved config forces `checkActiveBranches=false`, `remoteOperations=false`, and `autoCommit=false` so CLI, Web, and MCP local-file workflows do not depend on a Git repository.
+Backlog.md 的配置按以下层次叠加（优先级从高到低）：
 
-Whenever you revisit `backlog init` or rerun `backlog config`, the wizard pre-populates prompts with your current values so you can adjust only what changed.
+1. CLI 参数
+2. 项目配置文件：
+   - 存在时使用 `backlog.config.yml`
+   - 否则使用 `backlog/config.yml` 或 `.backlog/config.yml`
+3. 内置默认值
 
-### Definition of Done defaults
+### 交互式向导（`backlog config`）
 
-Set project-wide DoD items with `backlog config` (or during `backlog init` advanced setup), in the Web UI (Settings → Definition of Done Defaults), or by editing the project config file directly:
+不带参数运行 `backlog config` 以启动完整的交互式向导。这与在 `backlog init` 中选择开启高级设置时触发的体验相同，它会引导您完成所有配置项：
+- 跨分支准确性：`checkActiveBranches`、`remoteOperations` 和 `activeBranchDays`。
+- Git 工作流：`autoCommit` 和 `bypassGitHooks`。
+- ID 格式化：启用 `zeroPaddedIds` 或设置其长度。
+- 编辑器集成：选择一个带可用性检查的 `defaultEditor`。
+- 完成定义默认值：交互式添加/删除/重新排序/清除项目级 `definition_of_done` 检查清单项。
+- Web UI 默认值：选择 `defaultPort` 以及是否启用 `autoOpenBrowser`。
+
+跳过向导（在 init 期间回答"否"）将应用 Backlog.md 内置的安全默认设置：
+- `checkActiveBranches=true`、`remoteOperations=true`、`activeBranchDays=30`。
+- `autoCommit=false`、`bypassGitHooks=false`。
+- `zeroPaddedIds` 禁用。
+- `defaultEditor` 未设置（回退到您的环境配置）。
+- `defaultPort=6420`、`autoOpenBrowser=true`。
+
+对于纯文件系统项目，运行 `backlog init --no-git`。Backlog.md 不会运行 `git init`，保存的配置会强制设置 `checkActiveBranches=false`、`remoteOperations=false` 和 `autoCommit=false`，以便 CLI、Web 和 MCP 本地文件工作流不依赖 Git 仓库。
+
+每当您重新访问 `backlog init` 或重新运行 `backlog config` 时，向导都会用您当前的值预填充提示，以便您只调整已更改的内容。
+
+### 完成定义默认值
+
+使用 `backlog config`（或在 `backlog init` 高级设置期间）、在 Web UI 中（设置 → 完成定义默认值），或直接编辑项目配置文件来设置项目范围的 DoD 项：
 
 ```yaml
 definition_of_done:
@@ -277,20 +344,20 @@ definition_of_done:
   - No regressions introduced
 ```
 
-When a project uses root config discovery, edit `backlog.config.yml` instead of `backlog/config.yml`.
+当项目使用根目录配置自动发现时，请编辑 `backlog.config.yml` 而不是 `backlog/config.yml`。
 
-These items are added to every new task by default. You can add more on create with `--dod`, or disable defaults per task with `--no-dod-defaults`.
+这些检查项默认添加到每个新任务中。您可以在创建时使用 `--dod` 添加更多，或使用 `--no-dod-defaults` 为单个任务禁用默认值。
 
-For the full configuration reference (all options, commands, and detailed notes), see **[ADVANCED-CONFIG.md](ADVANCED-CONFIG.md)**.
-
----
-
-## 🌐 Community Tools
-
-- **[vscode-backlog-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-backlog-md)** - VS Code extension with issues panel, kanban view, and editing. ([ysamlan/vscode-backlog-md](https://github.com/ysamlan/vscode-backlog-md))
+有关完整配置参考（所有选项、命令和详细说明），请参阅 **[ADVANCED-CONFIG.md](ADVANCED-CONFIG.md)**。
 
 ---
 
-### License
+## 🌐 社区工具
 
-Backlog.md is released under the **MIT License** – do anything, just give credit. See [LICENSE](LICENSE).
+- **[vscode-backlog-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-backlog-md)** - VS Code 扩展，包含事项面板、看板视图和编辑功能。([ysamlan/vscode-backlog-md](https://github.com/ysamlan/vscode-backlog-md))
+
+---
+
+### 许可证
+
+Backlog.md 采用 **MIT 许可证**发布 —— 随意使用，只需注明出处。请参阅 [LICENSE](LICENSE)。
