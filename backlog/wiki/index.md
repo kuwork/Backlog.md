@@ -196,6 +196,7 @@ _No comparisons created yet._
 | [[developer-notes/architecture-gotchas]] | 架构分层规范 | Server 层禁止直接拥有文件读取/解析逻辑、HTTP handler 职责边界 |
 | [[developer-notes/security-gotchas]] | 安全检查清单 | 路径遍历防护、SSRF 防护、文件大小限制、新增 API 安全自检 |
 | [[developer-notes/DEVELOPMENT-GUIDE]] | 开发指引 | Bun + TypeScript + Biome 技术栈开发标准与工作流 |
+| [[developer-notes/npm-publish-guide]] | npm 发布流程指南 | Fork 后发布 scoped 包到 npm 的完整流程与版本号陷阱 |
 
 ## Reports
 
