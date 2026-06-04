@@ -200,6 +200,36 @@ Chronological, append-only record of all wiki operations.
 
 **更新导航**: `index.md`（Sources 48 条，Execution 9 条，Decisions 13 条）、`overview.md`
 
+## [2026-06-04 16:34:00] batch-ingest | 增量摄取 BACK-506~508
+
+**后续更正**: BACK-507、BACK-508 为非正式占位任务，已从 backlog/tasks/ 删除，对应 wiki source 页面已移除。
+
+## [2026-06-04 16:34:00] source-remove | 移除 BACK-507、BACK-508 非正式任务 source 页面
+
+- 删除 `wiki/sources/back-507-no-git-task.md`
+- 删除 `wiki/sources/back-508-example.md`
+- 更新 `index.md` Sources 统计：49 条
+- 更新 `overview.md` Sources 统计：49 条
+
+## [2026-06-04 16:34:00] batch-ingest | 增量摄取 BACK-506~508
+
+**检测基线**: 2026-06-01 22:50:00（上次 batch-ingest）
+**Git 变更文件**: 1 个已提交任务（BACK-506）+ 2 个未追踪新增任务（BACK-507、BACK-508）
+
+**新 source 页面**: 3 个
+- `sources/back-506-cli-utc-conversion-fix` — BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复
+- `sources/back-507-no-git-task` — BACK-507 占位任务
+- `sources/back-508-example` — BACK-508 占位示例任务
+
+**更新 concept 页面**: 2 个
+- `concepts/date-fields` — 扩展 CLI UTC 转换说明（BACK-506）
+- `concepts/cli-entry` — 扩展 actual 字段 local→UTC 转换说明
+
+**更新 execution 页面**: 1 个
+- `execution/timezone-unification` — 补充 `localDateTimeToStoredUtc` 工具与 BACK-506 引用
+
+**更新导航**: `index.md`（Sources 51 条）、`overview.md`
+
 ## [2026-06-01 22:55:00] usermanual-update | 更新用户手册，添加依赖项钻取与看板拖拽修复
 
 **更新页面**: 2 个

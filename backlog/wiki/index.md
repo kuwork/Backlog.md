@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-06-01 22:50'
+updated_date: '2026-06-04 16:34'
 ---
 # Wiki Content Catalog
 
@@ -61,6 +61,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/sidebar-collapse-button-fix]] | BACK-499 修复侧边栏折叠按钮与 resize handle 重叠 | source, web-ui, bug |
 | [[sources/label-color-customization-task]] | BACK-500 看板标签颜色自定义与卡片标签溢出优化 | source, web-ui, enhancement |
 | [[sources/task-detail-label-dropdown-task]] | BACK-501 任务详情标签输入添加下拉框与模糊过滤 | source, web-ui, enhancement |
+| [[sources/back-506-cli-utc-conversion-fix]] | BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复 | source, bug, cli, dates, timezone |
 
 ## Execution Notes
 

@@ -77,6 +77,7 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 - 实际字段格式为 `YYYY-MM-DD HH:MM`
 - 交互式向导（`task-wizard.ts`）在 TTY 模式下会提示输入日期
 - `task view --plain` 显示 Due / Planned / Actual 全部日期字段
+- **local→UTC 转换**：核心层在 `createTask` / `updateTask` 中通过 `localDateTimeToStoredUtc` 将 CLI 本地时间统一转为 UTC 存储，确保与 Web UI 输入等价（BACK-506）
 
 ## overview 命令
 
@@ -105,3 +106,4 @@ backlog overview --plain # 纯文本输出
 - [[sources/due-date-fields-task]] — BACK-401 日期字段
 - [[sources/actual-start-end-fields-task]] — BACK-492 actual 字段
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actual 字段
+- [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
