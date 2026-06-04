@@ -52,6 +52,7 @@ import { viewTaskEnhanced } from "./ui/task-viewer-with-search.ts";
 import { scrollableViewer } from "./ui/tui.ts";
 import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-selection.ts";
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
+import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { createMilestoneFilterValueResolver, resolveClosestMilestoneFilterValue } from "./utils/milestone-filter.ts";
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
@@ -1592,8 +1593,10 @@ taskCmd
 				dueDate: typeof options.dueDate === "string" ? options.dueDate.trim() : undefined,
 				plannedStart: typeof options.plannedStart === "string" ? options.plannedStart.trim() : undefined,
 				plannedEnd: typeof options.plannedEnd === "string" ? options.plannedEnd.trim() : undefined,
-				actualStart: typeof options.actualStart === "string" ? options.actualStart.trim() : undefined,
-				actualEnd: typeof options.actualEnd === "string" ? options.actualEnd.trim() : undefined,
+				actualStart:
+					typeof options.actualStart === "string" ? localDateTimeToStoredUtc(options.actualStart.trim()) : undefined,
+				actualEnd:
+					typeof options.actualEnd === "string" ? localDateTimeToStoredUtc(options.actualEnd.trim()) : undefined,
 			});
 
 			if (usePlainOutput) {
@@ -2471,10 +2474,10 @@ taskCmd
 			editArgs.plannedEnd = options.plannedEnd.trim();
 		}
 		if (typeof options.actualStart === "string") {
-			editArgs.actualStart = options.actualStart.trim();
+			editArgs.actualStart = localDateTimeToStoredUtc(options.actualStart.trim());
 		}
 		if (typeof options.actualEnd === "string") {
-			editArgs.actualEnd = options.actualEnd.trim();
+			editArgs.actualEnd = localDateTimeToStoredUtc(options.actualEnd.trim());
 		}
 		if (options.clearDueDate) {
 			editArgs.dueDate = "";
@@ -2926,8 +2929,8 @@ milestoneCmd
 				options.dueDate,
 				options.plannedStart,
 				options.plannedEnd,
-				options.actualStart,
-				options.actualEnd,
+				options.actualStart ? localDateTimeToStoredUtc(options.actualStart) : undefined,
+				options.actualEnd ? localDateTimeToStoredUtc(options.actualEnd) : undefined,
 			);
 
 			console.log(`Created milestone "${milestone.title}" (${milestone.id}).`);
@@ -3002,8 +3005,16 @@ milestoneCmd
 			const dueDate = options.clearDueDate ? "" : options.dueDate;
 			const plannedStart = options.clearPlannedStart ? "" : options.plannedStart;
 			const plannedEnd = options.clearPlannedEnd ? "" : options.plannedEnd;
-			const actualStart = options.clearActualStart ? "" : options.actualStart;
-			const actualEnd = options.clearActualEnd ? "" : options.actualEnd;
+			const actualStart = options.clearActualStart
+				? ""
+				: options.actualStart
+					? localDateTimeToStoredUtc(options.actualStart)
+					: undefined;
+			const actualEnd = options.clearActualEnd
+				? ""
+				: options.actualEnd
+					? localDateTimeToStoredUtc(options.actualEnd)
+					: undefined;
 
 			const result = await core.updateMilestone(
 				milestone.id,

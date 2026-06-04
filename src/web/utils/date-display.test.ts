@@ -75,6 +75,7 @@ describe("storedUtcToDateTimeLocal", () => {
 		const [hours, minutes] = timePart.split(":");
 		expect(hours).toBeDefined();
 		expect(minutes).toBeDefined();
+		if (!hours || !minutes) throw new Error("Expected hours and minutes to be defined");
 		const localDate = new Date(2026, 1, 9, Number.parseInt(hours, 10), Number.parseInt(minutes, 10), 0);
 		expect(localDate.toISOString()).toBe("2026-02-09T06:01:00.000Z");
 	});
@@ -99,7 +100,8 @@ describe("dateTimeLocalToStoredUtc", () => {
 		expect(dateTimeLocalToStoredUtc("")).toBe("");
 	});
 
-	it("falls back to space replacement for non-datetime-local input", () => {
-		expect(dateTimeLocalToStoredUtc("2026-02-09 06:01")).toBe("2026-02-09 06:01");
+	it("converts space-separated local datetime to stored UTC format", () => {
+		const localDate = new Date(2026, 1, 9, 6, 1, 0);
+		expect(dateTimeLocalToStoredUtc("2026-02-09 06:01")).toBe(localDate.toISOString().slice(0, 16).replace("T", " "));
 	});
 });

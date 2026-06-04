@@ -64,3 +64,53 @@ export function getStoredUtcTimestamp(dateStr: string): number {
 	const parsed = parseStoredUtcDate(dateStr);
 	return parsed ? parsed.getTime() : 0;
 }
+
+/**
+ * Converts a user-local datetime string to a stored UTC string.
+ *
+ * Supports:
+ *   - YYYY-MM-DD        (treated as 00:00 local time)
+ *   - YYYY-MM-DD HH:MM
+ *   - YYYY-MM-DDTHH:MM
+ *
+ * Non-matching strings are returned as-is.
+ */
+export function localDateTimeToStoredUtc(dateStr: string): string {
+	if (typeof dateStr !== "string") return String(dateStr ?? "");
+	const normalized = dateStr.trim();
+	if (!normalized) return "";
+
+	// datetime format: YYYY-MM-DD HH:MM or YYYY-MM-DDTHH:MM
+	const dateTimeMatch = normalized.match(DATE_TIME_REGEX);
+	if (dateTimeMatch) {
+		const y = dateTimeMatch[1];
+		const m = dateTimeMatch[2];
+		const d = dateTimeMatch[3];
+		const hh = dateTimeMatch[4];
+		const mm = dateTimeMatch[5];
+		if (!y || !m || !d || !hh || !mm) return normalized;
+		const year = parseIntStrict(y);
+		const month = parseIntStrict(m) - 1;
+		const day = parseIntStrict(d);
+		const hours = parseIntStrict(hh);
+		const minutes = parseIntStrict(mm);
+		const date = new Date(year, month, day, hours, minutes, 0);
+		return date.toISOString().slice(0, 16).replace("T", " ");
+	}
+
+	// date-only format: YYYY-MM-DD — treated as 00:00 local time
+	const dateOnlyMatch = normalized.match(DATE_ONLY_REGEX);
+	if (dateOnlyMatch) {
+		const y = dateOnlyMatch[1];
+		const m = dateOnlyMatch[2];
+		const d = dateOnlyMatch[3];
+		if (!y || !m || !d) return normalized;
+		const year = parseIntStrict(y);
+		const month = parseIntStrict(m) - 1;
+		const day = parseIntStrict(d);
+		const date = new Date(year, month, day, 0, 0, 0);
+		return date.toISOString().slice(0, 16).replace("T", " ");
+	}
+
+	return normalized;
+}

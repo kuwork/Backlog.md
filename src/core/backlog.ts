@@ -1032,6 +1032,9 @@ export class Core {
 		});
 		const resolvedStatus = isDraft ? "Draft" : status || config?.defaultStatus || FALLBACK_STATUS;
 
+		const actualStartInput = input.actualStart;
+		const actualEndInput = input.actualEnd;
+
 		const { task, filePath } = await this.withCreateLock(async () => {
 			const id = await this.generateNextId(entityType, isDraft ? undefined : input.parentTaskId);
 			const ordinal = await this.resolveCreateOrdinal(input.ordinal, isDraft);
@@ -1063,8 +1066,8 @@ export class Core {
 				...(input.dueDate && { dueDate: input.dueDate }),
 				...(input.plannedStart && { plannedStart: input.plannedStart }),
 				...(input.plannedEnd && { plannedEnd: input.plannedEnd }),
-				...(input.actualStart && { actualStart: input.actualStart }),
-				...(input.actualEnd && { actualEnd: input.actualEnd }),
+				...(actualStartInput && { actualStart: actualStartInput }),
+				...(actualEndInput && { actualEnd: actualEndInput }),
 			};
 
 			// Auto-populate actualStart / actualEnd when created directly in terminal / in-progress status
