@@ -94,3 +94,4 @@ milestone edit M1 --actual-start "2026-05-25 09:00"
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actual 字段
 - [[sources/actual-dates-auto-create-task]] — BACK-498 创建时自动填充
 - [[sources/timezone-handling-fix]] — BACK-497 时区一致性修复
+- [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
