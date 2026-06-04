@@ -16,6 +16,7 @@ extracted_from:
 1. **创建共享工具**（`src/utils/date-utc.ts`）
    - `parseStoredUtcDate(dateStr: string): Date` — 将 `YYYY-MM-DD HH:MM` 按 UTC 解析
    - `getStoredUtcTimestamp(dateStr: string): number` — 获取 UTC 时间戳
+   - `localDateTimeToStoredUtc(dateStr: string): string` — 将本地时间输入（`YYYY-MM-DD`、`YYYY-MM-DD HH:MM`、`YYYY-MM-DDTHH:MM`）转换为 UTC 存储字符串（BACK-506）
 
 2. **审计所有解析点**
    - Web 组件：`DraftsList.tsx`、`CleanupModal.tsx`、`GanttView.tsx`
@@ -36,3 +37,4 @@ CLI 写入的 UTC 时间（如 `'2026-05-29 10:32'`）不带 Z/T 后缀，因此
 
 ## Related Sources
 - [[sources/timezone-handling-fix]] — BACK-497 修复详情
+- [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI actualStart/actualEnd UTC 转换修复
