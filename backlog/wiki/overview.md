@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-05-31 01:11
+updated_date: 2026-06-05 15:19
 ---
 
 # Knowledge Base Overview
@@ -43,6 +43,8 @@ updated_date: 2026-05-31 01:11
 - **Wiki 编辑模式修复**：切换 Wiki 页面时自动退出编辑模式，避免新页面内容在编辑器中误显示（BACK-510）
 - **本地 URL 短别名**：Markdown 中同源 URL 渲染为 `DOC#:id`、`Decisions#:id`、`TASK#:id`、`WIKI#:path` 别名，提升可读性同时保持点击性与模态框导航（BACK-511）
 - **CLI 日期 UTC 转换**：`actualStart`/`actualEnd` 在 CLI/MCP 入口统一通过 `localDateTimeToStoredUtc` 转换为 UTC 存储，消除与 Web UI 的输入偏差（BACK-506）
+- **CLI description 转义**：`--description`/`--desc` 支持跨平台一致的 `\n` 换行输入；Windows 上模拟 bash 双引号层后统一应用 C-style 转义（BACK-508）
+- **看板跨分支列菜单**：列含跨分支任务时仍显示本地排序，仅隐藏会修改 ordinal 的 Apply Priority Order（BACK-512）
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -75,12 +77,12 @@ updated_date: 2026-05-31 01:11
 
 ## 统计
 
-- Sources ingested: 52
-- Concepts extracted: 19
+- Sources ingested: 56
+- Concepts extracted: 20
 - Entities catalogued: 2
-- Execution notes: 9
-- Decisions recorded: 16
-- Patterns: 4
+- Execution notes: 10
+- Decisions recorded: 17
+- Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24
-- Reports generated: 2
+- Reports generated: 3

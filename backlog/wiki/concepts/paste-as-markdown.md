@@ -12,7 +12,7 @@ Web UI 编辑器中的智能粘贴功能，自动将富文本（Word、Google Do
 
 ## 组件
 
-- **[[PasteAwareMDEditor]]** — 包装 `@uiw/react-md-editor`，拦截底层 `<textarea>` 的 `onPaste`
+- **PasteAwareMDEditor** — 包装 `@uiw/react-md-editor`，拦截底层 `<textarea>` 的 `onPaste`
 - **`handlePasteAsMarkdown`** — 核心转换引擎，位于 `src/web/utils/paste-as-markdown.ts`
 
 ## 转换流程
