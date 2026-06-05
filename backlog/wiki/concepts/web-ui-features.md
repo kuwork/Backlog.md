@@ -61,6 +61,7 @@ updated_date: 2026-05-31 01:11
 - **文件管理**：创建/重命名/删除文件与文件夹
 - **Wiki URL 编码**：`encodeWikiPath()` 分段编码，`/` 保持可读
 - **粘贴图片 promote**：粘贴图片先存 `.temp/`，保存时自动迁移到 `paste/`
+- **页面切换退出编辑**：切换 Wiki 页面时自动退出编辑模式，避免新页面内容在编辑器中误显示（BACK-510）
 - 实时同步（WebSocket）
 
 ### 草稿（Drafts）
@@ -90,6 +91,8 @@ updated_date: 2026-05-31 01:11
 - **日期字段**：`dueDate`/`plannedStart`/`plannedEnd`（date 输入）+ `actualStart`/`actualEnd`（datetime-local 输入）
 - **键盘快捷键修复**：全局快捷键（E/C/D/P/Ctrl+S/Escape）在输入框聚焦时正确抑制（BACK-494）
 - **依赖项钻取导航**：Dependencies 区域的依赖任务标签可点击，直接打开该任务详情；标题栏左侧显示返回按钮可回到父任务（BACK-505）
+- **稳定任务模态框 URL**：`/task/:id` 路由支持从任意视图打开任务详情，底层页面保持可见；支持前缀无关匹配（`506` → `BACK-506`）；裸 `/task/:id` 自动重定向到 `/task/:id/:title`（BACK-509）
+- **本地 URL 短别名**：Markdown 中同源 URL 渲染为 `DOC#:id`、`Decisions#:id`、`TASK#:id`、`WIKI#:path` 别名，提升可读性（BACK-511）
 
 ## 技术特性
 
@@ -156,3 +159,6 @@ updated_date: 2026-05-31 01:11
 - [[sources/task-detail-label-dropdown-task]] — BACK-501 标签输入下拉框与模糊过滤
 - [[sources/back-504]] — BACK-504 看板拖拽修复
 - [[sources/back-505]] — BACK-505 依赖项钻取导航
+- [[sources/stable-task-modal-urls-task]] — BACK-509 稳定任务模态框 URL
+- [[sources/wiki-page-switch-edit-mode-fix]] — BACK-510 Wiki 编辑模式修复
+- [[sources/local-url-short-aliases-task]] — BACK-511 本地 URL 短别名

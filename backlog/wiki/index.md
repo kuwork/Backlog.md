@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-06-04 16:34'
+updated_date: '2026-06-05 15:19'
 ---
 # Wiki Content Catalog
 
@@ -62,6 +62,9 @@ Read this file FIRST on any wiki operation.
 | [[sources/label-color-customization-task]] | BACK-500 看板标签颜色自定义与卡片标签溢出优化 | source, web-ui, enhancement |
 | [[sources/task-detail-label-dropdown-task]] | BACK-501 任务详情标签输入添加下拉框与模糊过滤 | source, web-ui, enhancement |
 | [[sources/back-506-cli-utc-conversion-fix]] | BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复 | source, bug, cli, dates, timezone |
+| [[sources/stable-task-modal-urls-task]] | BACK-509 稳定任务模态框 URL 与钻取支持 | source, feature, web-ui, routing, modal |
+| [[sources/wiki-page-switch-edit-mode-fix]] | BACK-510 修复 Wiki 页面切换不退出编辑模式 | source, bug, web-ui, wiki |
+| [[sources/local-url-short-aliases-task]] | BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
 
 ## Execution Notes
 
@@ -74,7 +77,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/actual-date-auto-population]] | 实际时间字段自动填充模式 | 跨 createTaskFromInput 和 updateTask 统一实现 actualStart/actualEnd 自动填充 |
 | [[execution/timezone-unification]] | 统一 UTC 存储字符串的时区解析模式 | 修复 `new Date(dateStr)` 误解析为本地时间的问题 |
 | [[execution/statistics-cache-pattern]] | 统计缓存实现模式 | 服务端 debounced 缓存 + 客户端 localStorage 双缓存层，CLI 变更后自动刷新 |
-| [[execution/task-drill-down-navigation-pattern]] | 任务详情钻取导航模式 | 在全局 Modal 中通过 taskHistory 堆栈实现子任务钻取与返回 |
+| [[execution/task-drill-down-navigation-pattern]] | 任务详情钻取导航模式 | 在全局 Modal 中通过 taskHistory 堆栈 + URL 路由层实现子任务钻取与返回 |
 
 ## Decisions
 
@@ -93,6 +96,9 @@ Read this file FIRST on any wiki operation.
 | [[decisions/sunday-start-week-grid]] | 热力图网格采用周日开始而非周一开始 | 与 GitHub 贡献图保持一致，符合用户心智模型 |
 | [[decisions/draggedtaskid-lift-to-board]] | draggedTaskId 状态提升到 Board 组件 | 跨列拖拽需要所有列共享拖拽状态 |
 | [[decisions/task-history-stack-over-route]] | 使用任务历史堆栈替代路由实现钻取导航 | 保持单 Modal 架构，避免引入路由复杂性 |
+| [[decisions/background-location-modal-route]] | 使用 backgroundLocation 实现模态框背景保持 | React Router state 模式，保持底层页面可见 |
+| [[decisions/replace-over-navigate-minus-one]] | 模态框关闭使用 replace 替代 navigate(-1) | 消除关闭竞态，避免历史残留 |
+| [[decisions/anchor-prefix-guard]] | Markdown 链接解析添加 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
 
 ## Concepts
 
