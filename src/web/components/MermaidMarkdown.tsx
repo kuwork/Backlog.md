@@ -7,6 +7,8 @@ import { useI18n } from '../hooks/useI18n';
 interface Props {
 	source: string;
 	onFileClick?: (path: string) => void;
+	onTaskClick?: (taskId: string) => void;
+	onDraftClick?: (draftId: string) => void;
 }
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\u0000-\u0020]*>/;
@@ -47,7 +49,29 @@ function isExternalLink(href?: string): boolean {
 	return false;
 }
 
-export default function MermaidMarkdown({ source, onFileClick }: Props) {
+function parseTaskUrl(href: string): string | null {
+	try {
+		const url = new URL(href, window.location.href);
+		if (url.origin !== window.location.origin) return null;
+		const match = url.pathname.match(/^\/task\/([^/]+)/);
+		return match?.[1] ?? null;
+	} catch {
+		return null;
+	}
+}
+
+function parseDraftUrl(href: string): string | null {
+	try {
+		const url = new URL(href, window.location.href);
+		if (url.origin !== window.location.origin) return null;
+		const match = url.pathname.match(/^\/draft\/([^/]+)/);
+		return match?.[1] ?? null;
+	} catch {
+		return null;
+	}
+}
+
+export default function MermaidMarkdown({ source, onFileClick, onTaskClick, onDraftClick }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = sanitizeMarkdownSource(source);
 	const { t } = useI18n();
@@ -68,6 +92,37 @@ export default function MermaidMarkdown({ source, onFileClick }: Props) {
 
 	const LinkComponent = React.useCallback(
 		({ href, children }: { href?: string; children?: React.ReactNode }) => {
+			const taskId = href ? parseTaskUrl(href) : null;
+			const draftId = href ? parseDraftUrl(href) : null;
+			if (taskId && onTaskClick) {
+				return (
+					<a
+						href={href}
+						onClick={(e) => {
+							e.preventDefault();
+							onTaskClick(taskId);
+						}}
+						className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+					>
+						{children}
+					</a>
+				);
+			}
+			if (draftId && onDraftClick) {
+				return (
+					<a
+						href={href}
+						onClick={(e) => {
+							e.preventDefault();
+							onDraftClick(draftId);
+						}}
+						className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+					>
+						{children}
+					</a>
+				);
+			}
+
 			if (isExternalLink(href)) {
 				return (
 					<a href={href} target="_blank" rel="noopener noreferrer">
@@ -104,7 +159,7 @@ export default function MermaidMarkdown({ source, onFileClick }: Props) {
 				</a>
 			);
 		},
-		[onFileClick, t],
+		[onFileClick, onTaskClick, t],
 	);
 
 	return (

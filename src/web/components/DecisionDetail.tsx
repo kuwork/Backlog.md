@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../lib/api';
 import MDEditor from '@uiw/react-md-editor';
 import MermaidMarkdown from './MermaidMarkdown';
@@ -17,15 +17,19 @@ const stripIdPrefix = (id: string): string => {
 };
 
 // Custom MDEditor wrapper for proper height handling
-const MarkdownEditor = memo(function MarkdownEditor({ 
-	value, 
-	onChange, 
-	isEditing 
+const MarkdownEditor = memo(function MarkdownEditor({
+	value,
+	onChange,
+	isEditing,
+	onTaskClick,
+	onDraftClick,
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
 	isEditing: boolean;
 	isReadonly?: boolean;
+	onTaskClick?: (taskId: string) => void;
+	onDraftClick?: (draftId: string) => void;
 }) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
@@ -33,7 +37,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 		// Preview mode - just show the rendered markdown without editor UI
 			return (
 				<div className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" data-color-mode={theme}>
-					<MermaidMarkdown source={value} />
+					<MermaidMarkdown source={value} onTaskClick={onTaskClick} onDraftClick={onDraftClick} />
 				</div>
 			);
 	}
@@ -76,6 +80,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	const { t } = useI18n();
 	const { id, title } = useParams<{ id: string; title: string }>();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [decision, setDecision] = useState<Decision | null>(null);
 	const [content, setContent] = useState<string>('');
@@ -353,6 +358,8 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 						value={content}
 						onChange={(val) => setContent(val || '')}
 						isEditing={isEditing}
+						onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+						onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
 					/>
 				</div>
 			</div>

@@ -276,6 +276,10 @@ export class ApiClient {
 		});
 	}
 
+	async fetchDrafts(): Promise<Task[]> {
+		return this.fetchJson<Task[]>(`${API_BASE}/drafts`);
+	}
+
 	async promoteDraft(id: string): Promise<Task> {
 		return this.fetchJson<Task>(`${API_BASE}/drafts/${id}/promote`, {
 			method: "POST",

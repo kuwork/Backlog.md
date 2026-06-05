@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { stripAnyPrefix } from "../../utils/prefix-config";
 import type { AcceptanceCriterion, Milestone, Task } from "../../types";
 import Modal from "./Modal";
 import { apiClient } from "../lib/api";
@@ -80,6 +82,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 }) => {
   const { theme } = useTheme();
   const { t } = useI18n();
+  const navigate = useNavigate();
   const isCreateMode = !task;
   const isFromOtherBranch = Boolean(task?.branch);
   const [mode, setMode] = useState<Mode>(isCreateMode ? "create" : "preview");
@@ -251,8 +254,27 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [actualEnd, setActualEnd] = useState<string>(task?.actualEnd || "");
 
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
+  const [availableDrafts, setAvailableDrafts] = useState<Task[]>([]);
   const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
   const milestoneSelectionValue = resolveMilestoneToId(milestone);
+
+  const handleTaskClick = useCallback((taskId: string) => {
+    const targetTask = availableTasks.find(t => stripAnyPrefix(t.id) === taskId || t.id === taskId);
+    if (targetTask && onDrillDown) {
+      onDrillDown(targetTask);
+    } else {
+      navigate(`/task/${taskId}`);
+    }
+  }, [availableTasks, onDrillDown, navigate]);
+
+  const handleDraftClick = useCallback((draftId: string) => {
+    const targetDraft = availableDrafts.find(d => stripAnyPrefix(d.id) === draftId || d.id === draftId);
+    if (targetDraft && onDrillDown) {
+      onDrillDown(targetDraft);
+    } else {
+      navigate(`/draft/${draftId}`);
+    }
+  }, [availableDrafts, onDrillDown, navigate]);
   const hasMilestoneSelection = (milestoneEntities ?? []).some((milestoneEntity) => milestoneEntity.id === milestoneSelectionValue);
 
   // Keep a baseline for dirty-check
@@ -357,6 +379,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     setError(null);
     // Preload tasks for dependency picker
     apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
+    apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
   }, [task, isOpen, isCreateMode, isDraftMode, availableStatuses, defaultDefinitionOfDone]);
 
   const handleCancelEdit = () => {
@@ -828,7 +851,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               description ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDescription}</div>
@@ -1072,7 +1095,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               plan ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noPlan}</div>
@@ -1096,7 +1119,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               notes ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noNotes}</div>
@@ -1120,7 +1143,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               <SectionHeader title={t.taskDetails.section.finalSummary} right={t.taskDetails.section.completionSummary} />
               {mode === "preview" ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-md">
