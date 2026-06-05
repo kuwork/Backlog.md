@@ -19,6 +19,7 @@ import {
 } from "../utils/date-display";
 import { isTypingTarget } from "../utils/keyboard";
 import { useI18n } from "../hooks/useI18n";
+import { encodeWikiPath } from "../utils/urlHelpers";
 
 interface Props {
   task?: Task; // Optional for create mode
@@ -266,7 +267,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
       navigate(`/task/${taskId}`);
     }
   }, [availableTasks, onDrillDown, navigate]);
-
+  const handleDocClick = useCallback((docId: string) => {
+    navigate(`/documentation/${docId}`);
+  }, [navigate]);
+  const handleDecisionClick = useCallback((decisionId: string) => {
+    navigate(`/decisions/${decisionId}`);
+  }, [navigate]);
+  const handleWikiClick = useCallback((wikiPath: string) => {
+    navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
+  }, [navigate]);
   const handleDraftClick = useCallback((draftId: string) => {
     const targetDraft = availableDrafts.find(d => stripAnyPrefix(d.id) === draftId || d.id === draftId);
     if (targetDraft && onDrillDown) {
@@ -851,7 +860,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               description ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
+                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDescription}</div>
@@ -1095,7 +1104,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               plan ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
+                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noPlan}</div>
@@ -1119,7 +1128,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               notes ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
+                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noNotes}</div>
@@ -1143,7 +1152,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               <SectionHeader title={t.taskDetails.section.finalSummary} right={t.taskDetails.section.completionSummary} />
               {mode === "preview" ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} />
+                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-md">

@@ -127,14 +127,6 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 				return;
 			}
 
-			if (href.startsWith("/draft/")) {
-				e.preventDefault();
-				const draftId = href.slice("/draft/".length).split('/')[0];
-				navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } });
-				onClose();
-				return;
-			}
-
 			if (
 				path &&
 				!href.startsWith("http") &&
@@ -196,7 +188,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 						className="prose prose-sm !max-w-none w-full p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 						data-color-mode={theme}
 					>
-						<MermaidMarkdown source={previewContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} />
+						<MermaidMarkdown source={previewContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
 					</div>
 				</div>
 			)}
@@ -279,13 +271,6 @@ export default function WikiDetail() {
 				e.preventDefault();
 				const taskId = href.slice("/task/".length).split('/')[0];
 				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
-				return;
-			}
-
-			if (href.startsWith("/draft/")) {
-				e.preventDefault();
-				const draftId = href.slice("/draft/".length).split('/')[0];
-				navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } });
 				return;
 			}
 
@@ -551,7 +536,7 @@ export default function WikiDetail() {
 								className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 								data-color-mode={theme}
 							>
-								<MermaidMarkdown source={sanitizedContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} />
+								<MermaidMarkdown source={sanitizedContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
 							</div>
 						)}
 					</div>
