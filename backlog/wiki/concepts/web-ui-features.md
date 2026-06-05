@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-31 01:11
+updated_date: 2026-06-05 15:19
 ---
 
 # Web UI 功能
@@ -28,6 +28,7 @@ updated_date: 2026-05-31 01:11
 - **卡片标签宽度自适应**：`TaskCard` 根据容器宽度动态计算可显示标签数量，而非硬编码限制 3 个（BACK-500）
 - **拖拽时保持列排序稳定**：拖拽开始不再清除本地排序，避免任务在光标下跳动（BACK-504）
 - **跨列精确放置**：`draggedTaskId` 提升到 Board 级别，跨列拖拽支持插入到目标列任意位置（BACK-504）
+- **跨分支任务列排序菜单**：列含跨分支任务时仍显示本地排序菜单（ID/标题/优先级），仅隐藏会修改 ordinal 的「Apply Priority Order」按钮（BACK-512）
 
 ### 所有任务（All Tasks）
 - 表格布局
@@ -162,3 +163,4 @@ updated_date: 2026-05-31 01:11
 - [[sources/stable-task-modal-urls-task]] — BACK-509 稳定任务模态框 URL
 - [[sources/wiki-page-switch-edit-mode-fix]] — BACK-510 Wiki 编辑模式修复
 - [[sources/local-url-short-aliases-task]] — BACK-511 本地 URL 短别名
+- [[sources/back-512-kanban-column-sort-menu-cross-branch]] — BACK-512 看板列跨分支排序菜单修复
