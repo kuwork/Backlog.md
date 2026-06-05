@@ -8,7 +8,7 @@ created_date: 2026-05-12 00:00
 
 # HonKit 预览用户手册
 
-[[usermanual/README|Backlog.md 用户手册]] 采用 GitBook 风格的目录结构组织（`README.md` + `SUMMARY.md`），可以直接用 [[entities/backlog-cli|HonKit]] 在本地预览和构建。
+[[usermanual/README]]（Backlog.md 用户手册）采用 GitBook 风格的目录结构组织（`README.md` + `SUMMARY.md`），可以直接用 [[entities/backlog-cli]]（HonKit）在本地预览和构建。
 
 ## 前置条件
 
