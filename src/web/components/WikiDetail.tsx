@@ -247,6 +247,7 @@ export default function WikiDetail() {
 
 	useEffect(() => {
 		if (wikiPath) {
+			setIsEditing(false);
 			loadWikiPage();
 		}
 	}, [wikiPath, loadWikiPage]);
