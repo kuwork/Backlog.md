@@ -2,7 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-29 22:36
+updated_date: 2026-06-05 15:19
 ---
 
 # CLI 入口与命令体系
@@ -79,6 +79,14 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 - `task view --plain` 显示 Due / Planned / Actual 全部日期字段
 - **local→UTC 转换**：核心层在 `createTask` / `updateTask` 中通过 `localDateTimeToStoredUtc` 将 CLI 本地时间统一转为 UTC 存储，确保与 Web UI 输入等价（BACK-506）
 
+### description 转义处理
+
+`--description` / `--desc` 值支持跨平台一致的换行输入：
+
+- Windows 上先模拟 bash 双引号转义层（`\\` → `\`），再统一应用 C-style 转义（`\n` → 换行，`\\` → 字面反斜杠）
+- 非 Windows 直接应用 C-style 转义
+- 覆盖 `task create/edit`、`draft create`、`milestone create/edit` 五个入口（BACK-508）
+
 ## overview 命令
 
 ```bash
@@ -107,3 +115,4 @@ backlog overview --plain # 纯文本输出
 - [[sources/actual-start-end-fields-task]] — BACK-492 actual 字段
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actual 字段
 - [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
+- [[sources/back-508-cli-description-escapes]] — BACK-508 CLI description 转义修复
