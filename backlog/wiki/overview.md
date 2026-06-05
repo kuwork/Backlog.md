@@ -39,6 +39,9 @@ updated_date: 2026-05-31 01:11
 - **Locale 切换可靠性**：修复 `App.tsx` `loadAllData()` 无条件覆盖 locale 的 bug，仅首次加载时同步服务器配置（BACK-503）
 - **看板拖拽修复**：拖拽开始时不再清除列排序，避免任务在光标下跳动；`draggedTaskId` 提升到 Board 级别，跨列拖拽支持精确插入到任意位置（BACK-504）
 - **依赖项钻取导航**：任务详情面板中 Dependencies 标签可点击打开子任务，标题栏左侧返回按钮回到父任务，关闭按钮清空整个浏览堆栈（BACK-505）
+- **稳定任务模态框 URL**：`/task/:id` 路由支持从任意视图打开任务详情，底层页面保持可见；前缀无关匹配（`506` → `BACK-506`）；裸 `/task/:id` 自动重定向到 `/task/:id/:title`；Markdown 中的 `/task/` 链接在模态框内打开（BACK-509）
+- **Wiki 编辑模式修复**：切换 Wiki 页面时自动退出编辑模式，避免新页面内容在编辑器中误显示（BACK-510）
+- **本地 URL 短别名**：Markdown 中同源 URL 渲染为 `DOC#:id`、`Decisions#:id`、`TASK#:id`、`WIKI#:path` 别名，提升可读性同时保持点击性与模态框导航（BACK-511）
 - **CLI 日期 UTC 转换**：`actualStart`/`actualEnd` 在 CLI/MCP 入口统一通过 `localDateTimeToStoredUtc` 转换为 UTC 存储，消除与 Web UI 的输入偏差（BACK-506）
 
 ### 源代码架构域
@@ -72,11 +75,11 @@ updated_date: 2026-05-31 01:11
 
 ## 统计
 
-- Sources ingested: 49
+- Sources ingested: 52
 - Concepts extracted: 19
 - Entities catalogued: 2
 - Execution notes: 9
-- Decisions recorded: 13
+- Decisions recorded: 16
 - Patterns: 4
 - Reasoning traces: 2
 - User manual pages: 24
