@@ -59,12 +59,19 @@ Read this file FIRST on any wiki operation.
 | [[sources/tracking-gantt-design-doc]] | doc-6 跟踪甘特图设计方案 | source, design, gantt, visualization, web-ui |
 | [[sources/ganttview-milestone]] | m-7 GanttView 里程碑 | source, milestone, gantt |
 | [[sources/sidebar-collapse-button-fix]] | BACK-499 修复侧边栏折叠按钮与 resize handle 重叠 | source, web-ui, bug |
+| [[sources/task-completion-heatmap-task]] | BACK-503 统计页面 GitHub 风格贡献热力图 | source, feature, web-ui, statistics, visualization |
 | [[sources/label-color-customization-task]] | BACK-500 看板标签颜色自定义与卡片标签溢出优化 | source, web-ui, enhancement |
 | [[sources/task-detail-label-dropdown-task]] | BACK-501 任务详情标签输入添加下拉框与模糊过滤 | source, web-ui, enhancement |
+| [[sources/back-504]] | BACK-504 修复看板拖拽列排序重置与跨列放置定位 | source, bug, web-ui |
+| [[sources/back-505]] | BACK-505 Web UI 任务依赖项钻取导航 | source, feature, web-ui |
 | [[sources/back-506-cli-utc-conversion-fix]] | BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复 | source, bug, cli, dates, timezone |
 | [[sources/stable-task-modal-urls-task]] | BACK-509 稳定任务模态框 URL 与钻取支持 | source, feature, web-ui, routing, modal |
 | [[sources/wiki-page-switch-edit-mode-fix]] | BACK-510 修复 Wiki 页面切换不退出编辑模式 | source, bug, web-ui, wiki |
 | [[sources/local-url-short-aliases-task]] | BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
+| [[sources/wiki-page-switch-edit-mode-fix]] | BACK-510 修复 Wiki 页面切换不退出编辑模式 | source, bug, web-ui, wiki |
+| [[sources/local-url-short-aliases-task]] | BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
+| [[sources/back-508-cli-description-escapes]] | BACK-508 CLI description 换行符转义修复 | source, bug, cli, ux |
+| [[sources/back-512-kanban-column-sort-menu-cross-branch]] | BACK-512 看板列排序菜单跨分支任务修复 | source, web-ui, bug |
 
 ## Execution Notes
 
@@ -78,8 +85,8 @@ Read this file FIRST on any wiki operation.
 | [[execution/timezone-unification]] | 统一 UTC 存储字符串的时区解析模式 | 修复 `new Date(dateStr)` 误解析为本地时间的问题 |
 | [[execution/statistics-cache-pattern]] | 统计缓存实现模式 | 服务端 debounced 缓存 + 客户端 localStorage 双缓存层，CLI 变更后自动刷新 |
 | [[execution/task-drill-down-navigation-pattern]] | 任务详情钻取导航模式 | 在全局 Modal 中通过 taskHistory 堆栈 + URL 路由层实现子任务钻取与返回 |
-
-## Decisions
+| [[execution/cli-cross-platform-escape-pattern]] | CLI 跨平台转义一致性模式 | Windows 模拟 bash 双引号层 + 全平台统一 C-style 转义的两层架构 |
+| [[execution/label-color-persistence-pattern]] | 标签颜色持久化模式 | 将 UI 自定义样式映射持久化到项目配置，仅存储非默认值 |
 
 ## Decisions
 
@@ -94,11 +101,14 @@ Read this file FIRST on any wiki operation.
 | [[decisions/duck-typing-for-testability]] | 使用 Duck-typing 替代 instanceof 以保证可测试性 | Bun 测试运行器中 HTMLElement 不可用 |
 | [[decisions/inline-style-over-tailwind-for-heatmap]] | 热力图配色使用 inline style 替代 Tailwind 类 | Bun CSS build 在 Windows 上崩溃，新 Tailwind 类不可用 |
 | [[decisions/sunday-start-week-grid]] | 热力图网格采用周日开始而非周一开始 | 与 GitHub 贡献图保持一致，符合用户心智模型 |
+| [[decisions/color-key-over-raw-css]] | 标签颜色使用 key 字符串而非原始 CSS 存储 | BACK-500 选择 key 字符串映射 Tailwind 类对 |
+| [[decisions/width-aware-label-measurement]] | 使用隐藏测量容器 + ResizeObserver 实现宽度自适应标签 | BACK-500 精确测量标签宽度 |
 | [[decisions/draggedtaskid-lift-to-board]] | draggedTaskId 状态提升到 Board 组件 | 跨列拖拽需要所有列共享拖拽状态 |
 | [[decisions/task-history-stack-over-route]] | 使用任务历史堆栈替代路由实现钻取导航 | 保持单 Modal 架构，避免引入路由复杂性 |
 | [[decisions/background-location-modal-route]] | 使用 backgroundLocation 实现模态框背景保持 | React Router state 模式，保持底层页面可见 |
 | [[decisions/replace-over-navigate-minus-one]] | 模态框关闭使用 replace 替代 navigate(-1) | 消除关闭竞态，避免历史残留 |
 | [[decisions/anchor-prefix-guard]] | Markdown 链接解析添加 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
+| [[decisions/simulate-bash-escape-on-windows]] | Windows 上模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
 
 ## Concepts
 
@@ -120,6 +130,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
 | [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
 | [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
+| [[concepts/wikilink]] | Wikilink | wiki 页面间交叉引用语法 `[[path/to/page]]` |
 | [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd） | 五个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
 | [[concepts/project-health]] | 项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
 | [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、跟踪甘特图双层渲染、日期解析、依赖箭头 |

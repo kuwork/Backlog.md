@@ -7,7 +7,7 @@ created_date: 2026-05-12 00:00
 
 # Word 文档转换
 
-Backlog.md Web UI 支持将 Microsoft Word（`.docx`）文件上传并转换为 Markdown，同时提取内嵌图片。该功能是对 [[粘贴为 Markdown]] 的延伸，共享同一套 HTML 清理与 Turndown 转换流水线。
+Backlog.md Web UI 支持将 Microsoft Word（`.docx`）文件上传并转换为 Markdown，同时提取内嵌图片。该功能是对 [[concepts/paste-as-markdown]] 的延伸，共享同一套 HTML 清理与 Turndown 转换流水线。
 
 ## 架构
 
