@@ -235,3 +235,34 @@ Chronological, append-only record of all wiki operations.
 **更新页面**: 2 个
 - `10-任务管理/03-子任务与依赖` — 新增 Web UI 依赖项钻取导航说明（点击依赖标签、返回按钮、关闭堆栈）
 - `40-Web界面/01-看板视图` — 扩展拖拽行为细节（保持列排序、跨列精确放置、跨列后排序恢复）
+
+## [2026-06-05 15:19:06] batch-ingest | 增量摄取 BACK-509~511
+
+**检测基线**: 2026-06-04 16:34:00（上次 batch-ingest）
+**Git 变更文件**: 3 个新 backlog 任务（BACK-509、BACK-510、BACK-511）
+
+**新 source 页面**: 3 个
+- `sources/stable-task-modal-urls-task` — BACK-509 稳定任务模态框 URL 与钻取支持
+- `sources/wiki-page-switch-edit-mode-fix` — BACK-510 修复 Wiki 页面切换不退出编辑模式
+- `sources/local-url-short-aliases-task` — BACK-511 Markdown 本地 URL 短别名渲染
+
+**更新 concept 页面**: 1 个
+- `concepts/web-ui-features` — 扩展任务模态框 URL、Wiki 编辑模式修复、本地 URL 别名
+
+**Pairing Memory (4)**:
+- `wiki/execution/task-drill-down-navigation-pattern` — 扩展 URL 路由层（backgroundLocation、URL sync effect、replace 关闭、Markdown 拦截、前缀无关匹配）
+- `wiki/decisions/background-location-modal-route` — 采用 React Router backgroundLocation state 模式保持模态框底层页面
+- `wiki/decisions/replace-over-navigate-minus-one` — 关闭模态框使用 replace 导航消除竞态
+- `wiki/decisions/anchor-prefix-guard` — parseLocalUrl 中添加 `#` 前缀守卫防止 heading anchor 误识别
+
+**更新导航**: `index.md`（Sources 52 条，Decisions 16 条）、`overview.md`
+
+## [2026-06-05 15:25:00] usermanual-update | 更新用户手册，添加任务模态框 URL、Wiki 编辑模式修复、本地 URL 别名
+
+**更新页面**: 4 个
+- `40-Web界面/01-看板视图` — 新增「打开任务详情」章节，说明模态框打开、URL 同步、钻取导航
+- `40-Web界面/02-任务列表` — 重写「进入任务详情」章节，扩展为模态框与背景页面、稳定 URL 与分享、依赖项钻取
+- `10-任务管理/03-子任务与依赖` — 扩展 Web UI 依赖项钻取，新增 Markdown 链接钻取、稳定 URL 与分享
+- `40-Web界面/07-Wiki浏览与编辑` — 新增「切换页面自动退出编辑」章节（BACK-510）
+
+**新增用户手册页面**: 0 个
