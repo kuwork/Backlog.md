@@ -19,7 +19,7 @@ created_date: 2026-05-10 00:00
 
 ## 核心架构
 
-- **[[PasteAwareMDEditor]]** — 包装 `@uiw/react-md-editor`，拦截底层 `<textarea>` 的 `onPaste` 事件。
+- **PasteAwareMDEditor** — 包装 `@uiw/react-md-editor`，拦截底层 `<textarea>` 的 `onPaste` 事件。
 - **`handlePasteAsMarkdown`** — 核心粘贴处理器，检测剪贴板上的富文本 HTML，清理 Word 垃圾标记，通过 Turndown 转换为 Markdown，在光标处插入。
 
 ## 关键技术

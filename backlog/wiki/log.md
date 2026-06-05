@@ -266,3 +266,47 @@ Chronological, append-only record of all wiki operations.
 - `40-Web界面/07-Wiki浏览与编辑` — 新增「切换页面自动退出编辑」章节（BACK-510）
 
 **新增用户手册页面**: 0 个
+
+## [2026-06-06 01:00:21] batch-ingest | 增量摄取 BACK-508、BACK-512
+
+**检测基线**: 2026-06-05 15:19:06（上次 batch-ingest）
+**Git 变更文件**: 2 个新 backlog 任务 + 5 个源代码/测试文件
+
+**新 source 页面**: 2 个
+- `sources/back-508-cli-description-escapes` — BACK-508 CLI description 换行符转义修复
+- `sources/back-512-kanban-column-sort-menu-cross-branch` — BACK-512 看板列排序菜单跨分支任务修复
+
+**更新 concept 页面**: 2 个
+- `concepts/cli-entry` — 扩展 description 转义处理说明
+- `concepts/web-ui-features` — 扩展跨分支任务列排序菜单
+
+**Pairing Memory (2)**:
+- `wiki/execution/cli-cross-platform-escape-pattern` — CLI 跨平台转义一致性两层架构
+- `wiki/decisions/simulate-bash-escape-on-windows` — 选择模拟 bash 行为而非引入新 API
+
+**更新用户手册**: 2 个页面
+- `10-任务管理/01-创建与编辑任务` — 新增 description 换行输入说明
+- `40-Web界面/01-看板视图` — 新增跨分支任务列菜单限制说明
+
+**更新导航**: `index.md`（Sources 54 条，Execution 10 条，Decisions 17 条）、`overview.md`
+
+## [2026-06-06 01:03:00] lint | Wiki 健康检查与修复
+
+**扫描范围**: 148 个页面
+**报告**: `wiki_output/reports/lint-2026-06-06.md`
+
+**发现问题**:
+- 6 个缺失页面（被引用但文件不存在）
+- 6 个页面未入 index
+- 2 处非法 wikilink（管道符）
+- 1 处重复标题
+- 统计不一致
+- 3 个概念缺口
+
+**修复内容**:
+- 新建 `sources/stable-task-modal-urls-task`、`sources/wiki-page-switch-edit-mode-fix`、`sources/local-url-short-aliases-task`
+- 新建 `decisions/anchor-prefix-guard`、`decisions/background-location-modal-route`、`decisions/replace-over-navigate-minus-one`
+- 新建 `concepts/wikilink`
+- `index.md` 补全 6 个缺失条目，删除重复 `## Decisions`
+- `developer-notes/honkit-usermanual-preview.md` 修正非法 wikilink
+- `overview.md` 修正统计为 Sources 56 / Concepts 20 / Decisions 17 / Reports 3
