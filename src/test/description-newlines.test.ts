@@ -63,12 +63,32 @@ describe("CLI description newline handling", () => {
 		expect(updatedBody).toContain(desc);
 	});
 
-	it("should not interpret \\n sequences as newlines", async () => {
-		const literal = "First line\\nSecond line";
+	it("should interpret \\n sequences as newlines", async () => {
+		const literal = "First line\nSecond line";
 		await $`bun ${[cliPath, "task", "create", "Literal", "--desc", literal]}`.cwd(TEST_DIR).quiet();
 
 		const core = new Core(TEST_DIR);
 		const body = await core.getTaskContent("task-1");
+		expect(body).toContain("First line\nSecond line");
+	});
+
+	it("should produce literal backslash-n when appropriately escaped", async () => {
+		// On Windows: user types \\\\n (4 backslashes) → CLI sees \\n → simulates bash → \n → C-escape → literal \n
+		// On non-Windows: user types \\n (2 backslashes) → CLI sees \\n → C-escape → literal \n
+		const desc = process.platform === "win32" ? "First line\\\\\\\\nSecond line" : "First line\\\\nSecond line";
+		await $`bun ${[cliPath, "task", "create", "Literal", "--desc", desc]}`.cwd(TEST_DIR).quiet();
+
+		const core = new Core(TEST_DIR);
+		const body = await core.getTaskContent("task-1");
 		expect(body).toContain("First line\\nSecond line");
+	});
+
+	it("should handle double newline", async () => {
+		const literal = "First line\n\nSecond line";
+		await $`bun ${[cliPath, "task", "create", "Literal", "--desc", literal]}`.cwd(TEST_DIR).quiet();
+
+		const core = new Core(TEST_DIR);
+		const body = await core.getTaskContent("task-1");
+		expect(body).toContain("First line\n\nSecond line");
 	});
 });

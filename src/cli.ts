@@ -241,6 +241,47 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 	);
 }
 
+function processCliEscapes(input: string): string {
+	// On Windows, simulate bash double-quote escape layer first
+	let processed = input;
+	if (process.platform === "win32") {
+		const bashResult: string[] = [];
+		for (let i = 0; i < processed.length; i++) {
+			const char = processed.charAt(i);
+			if (char === "\\" && i + 1 < processed.length && processed.charAt(i + 1) === "\\") {
+				bashResult.push("\\");
+				i++;
+			} else {
+				bashResult.push(char);
+			}
+		}
+		processed = bashResult.join("");
+	}
+
+	// Then apply C-style escape processing
+	const result: string[] = [];
+	for (let i = 0; i < processed.length; i++) {
+		const char = processed.charAt(i);
+		if (char === "\\" && i + 1 < processed.length) {
+			const next = processed.charAt(i + 1);
+			if (next === "n") {
+				result.push("\n");
+				i++;
+			} else if (next === "\\") {
+				result.push("\\");
+				i++;
+			} else {
+				result.push("\\");
+				result.push(next);
+				i++;
+			}
+		} else {
+			result.push(char);
+		}
+	}
+	return result.join("");
+}
+
 async function resolveCliMilestoneInput(core: Core, milestone: string): Promise<string> {
 	const [activeMilestones, archivedMilestones] = await Promise.all([
 		core.filesystem.listMilestones(),
@@ -1566,7 +1607,10 @@ taskCmd
 				typeof options.milestone === "string" ? await resolveCliMilestoneInput(core, options.milestone) : undefined;
 			const { task, filePath } = await core.createTaskFromInput({
 				title: title ?? "",
-				description: options.description || options.desc ? String(options.description || options.desc) : undefined,
+				description:
+					options.description || options.desc
+						? processCliEscapes(String(options.description || options.desc))
+						: undefined,
 				status: createAsDraft ? "Draft" : options.status ? String(options.status) : undefined,
 				assignee: options.assignee ? [String(options.assignee)] : undefined,
 				labels: options.labels
@@ -2408,7 +2452,7 @@ taskCmd
 		}
 		const descriptionOption = options.description ?? options.desc;
 		if (descriptionOption !== undefined) {
-			editArgs.description = String(descriptionOption);
+			editArgs.description = processCliEscapes(String(descriptionOption));
 		}
 		if (canonicalStatus) {
 			editArgs.status = canonicalStatus;
@@ -2728,7 +2772,10 @@ draftCmd
 		try {
 			const { task, filePath } = await core.createTaskFromInput({
 				title,
-				description: options.description || options.desc ? String(options.description || options.desc) : undefined,
+				description:
+					options.description || options.desc
+						? processCliEscapes(String(options.description || options.desc))
+						: undefined,
 				status: "Draft",
 				assignee: options.assignee ? [String(options.assignee)] : undefined,
 				labels: options.labels
@@ -2925,7 +2972,7 @@ milestoneCmd
 
 			const milestone = await core.filesystem.createMilestone(
 				title.trim(),
-				options.description,
+				options.description ? processCliEscapes(options.description) : undefined,
 				options.dueDate,
 				options.plannedStart,
 				options.plannedEnd,
@@ -3023,7 +3070,7 @@ milestoneCmd
 				dueDate,
 				plannedStart,
 				plannedEnd,
-				options.description,
+				options.description ? processCliEscapes(options.description) : undefined,
 				actualStart,
 				actualEnd,
 			);
