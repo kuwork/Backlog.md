@@ -2,7 +2,8 @@
 id: BACK-483
 title: 'Web UI: Sidebar resize and search type dropdown'
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-22 15:17'
 updated_date: '2026-05-22 16:20'
 labels:

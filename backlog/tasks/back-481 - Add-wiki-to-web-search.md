@@ -2,7 +2,8 @@
 id: BACK-481
 title: Add wiki to web search
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-22'
 updated_date: '2026-05-22'
 labels:

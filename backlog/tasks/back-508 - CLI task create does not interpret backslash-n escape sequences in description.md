@@ -2,7 +2,8 @@
 id: BACK-508
 title: CLI task create does not interpret \n escape sequences in description
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-04 15:27'
 updated_date: '2026-06-05 05:46'
 labels:

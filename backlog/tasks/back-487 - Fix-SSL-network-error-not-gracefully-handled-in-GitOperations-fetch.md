@@ -1,8 +1,9 @@
 ---
 id: BACK-487
-title: 'Fix SSL network error not gracefully handled in GitOperations.fetch'
+title: Fix SSL network error not gracefully handled in GitOperations.fetch
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-24 12:10'
 updated_date: '2026-05-24 12:10'
 labels:
@@ -11,6 +12,7 @@ labels:
   - network
   - ssl
   - error-handling
+dependencies: []
 priority: high
 ordinal: 33400
 ---

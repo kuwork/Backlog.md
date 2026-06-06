@@ -2,7 +2,8 @@
 id: BACK-498
 title: Auto-populate actualStart and actualEnd on task creation
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-29 10:57'
 updated_date: '2026-05-29 10:59'
 labels: []

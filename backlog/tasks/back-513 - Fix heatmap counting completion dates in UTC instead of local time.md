@@ -2,7 +2,8 @@
 id: BACK-513
 title: Fix heatmap counting completion dates in UTC instead of local time
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-05 17:31'
 updated_date: '2026-06-05 17:36'
 labels:

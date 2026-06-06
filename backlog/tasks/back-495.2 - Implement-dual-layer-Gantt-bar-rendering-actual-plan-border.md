@@ -2,7 +2,8 @@
 id: BACK-495.2
 title: Implement dual-layer Gantt bar rendering (actual + plan border)
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-28 08:32'
 updated_date: '2026-05-29 18:14'
 labels:

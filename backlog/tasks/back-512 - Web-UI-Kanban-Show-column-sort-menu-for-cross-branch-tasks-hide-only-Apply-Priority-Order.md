@@ -4,7 +4,8 @@ title: >-
   Web UI Kanban: Show column sort menu for cross-branch tasks, hide only Apply
   Priority Order
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-05 16:25'
 updated_date: '2026-06-05 16:38'
 labels:

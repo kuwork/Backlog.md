@@ -2,7 +2,8 @@
 id: BACK-507
 title: Fix Windows npm install failure caused by sh-dependent postinstall script
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-04 13:55'
 updated_date: '2026-06-04 13:59'
 labels:

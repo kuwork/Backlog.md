@@ -2,7 +2,8 @@
 id: BACK-510
 title: Fix wiki page switch not exiting edit mode
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-04 15:43'
 updated_date: '2026-06-05 05:59'
 labels:

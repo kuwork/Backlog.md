@@ -2,7 +2,8 @@
 id: BACK-497
 title: Fix inconsistent timezone handling between CLI and web UI
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-29 10:43'
 updated_date: '2026-06-04 08:14'
 labels:

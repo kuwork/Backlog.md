@@ -2,7 +2,8 @@
 id: BACK-504
 title: Fix kanban drag-and-drop column sort reset and cross-column drop positioning
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-31 10:56'
 updated_date: '2026-05-31 13:51'
 labels:

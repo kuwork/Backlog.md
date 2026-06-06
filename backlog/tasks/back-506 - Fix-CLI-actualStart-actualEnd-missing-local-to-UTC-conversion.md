@@ -2,7 +2,8 @@
 id: BACK-506
 title: Fix CLI actualStart/actualEnd missing local-to-UTC conversion
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-04 07:36'
 updated_date: '2026-06-04 14:16'
 labels:

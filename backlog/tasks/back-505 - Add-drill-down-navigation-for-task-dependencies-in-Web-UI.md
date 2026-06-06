@@ -2,7 +2,8 @@
 id: BACK-505
 title: Add drill-down navigation for task dependencies in Web UI
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-06-01 14:25'
 updated_date: '2026-06-01 14:41'
 labels: []

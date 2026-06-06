@@ -2,7 +2,8 @@
 id: BACK-495.4
 title: Implement smart dependency arrow time resolution for tracking Gantt
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-28 08:34'
 updated_date: '2026-05-29 18:23'
 labels:
