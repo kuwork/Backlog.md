@@ -99,5 +99,8 @@
   "trustedDependencies": [
     "@biomejs/biome",
     "node-pty"
-  ]
+  ],
+  "dependencies": {
+    "get-port": "^7.2.0"
+  }
 }

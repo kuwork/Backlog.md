@@ -320,6 +320,7 @@ export interface BacklogConfig {
 	taskResolutionStrategy?: "most_recent" | "most_progressed";
 	defaultEditor?: string;
 	autoOpenBrowser?: boolean;
+	autoPort?: boolean;
 	defaultPort?: number;
 	locale?: string;
 	remoteOperations?: boolean;

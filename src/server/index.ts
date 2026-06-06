@@ -1,6 +1,7 @@
 import { dirname, join } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import { $ } from "bun";
+import getPort, { portNumbers } from "get-port";
 import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { convertDocxToMarkdown } from "../core/docx-converter.ts";
@@ -347,7 +348,8 @@ export class BacklogServer {
 		const config = await this.core.filesystem.loadConfig();
 
 		// Use config default port if no port specified
-		const finalPort = port ?? config?.defaultPort ?? 6420;
+		const preferredPort = port ?? config?.defaultPort ?? 6420;
+		const autoPortEnabled = config?.autoPort ?? true;
 		this.projectName = config?.projectName || "Untitled Project";
 
 		// Check if browser should open (config setting or CLI override)
@@ -361,11 +363,45 @@ export class BacklogServer {
 			},
 		});
 
+		let bindPort: number;
+
+		if (autoPortEnabled) {
+			const portCandidates =
+				preferredPort >= 1024 && preferredPort < 65535
+					? portNumbers(preferredPort, Math.min(preferredPort + 100, 65535))
+					: preferredPort;
+			const temporaryPort = await getPort({ port: portCandidates });
+
+			// Verify the returned port is within the candidate range.
+			// get-port falls back to an OS-assigned port when all candidates are occupied;
+			// we treat that as a failure and exit with a clear message.
+			// Only enforce the range check for user-specified ports (>= 1024).
+			// Port 0 is a special value that lets the OS assign any available port.
+			const maxCandidate = Math.min(preferredPort + 100, 65535);
+			if (preferredPort >= 1024 && (temporaryPort < preferredPort || temporaryPort > maxCandidate)) {
+				console.error(`\n❌ Error: Default port ${preferredPort} is occupied, and automatic port switching failed.`);
+				console.error(`   Scanned ports ${preferredPort}-${maxCandidate}: all in use.`);
+				console.log("\n💡 Suggestions:");
+				console.log(`   1. Free up port ${preferredPort} or a port in the range ${preferredPort}-${maxCandidate}`);
+				console.log("   2. Disable auto-port selection: backlog config set autoPort false");
+				console.log("   3. Specify a different default port: backlog config set defaultPort <port>\n");
+				process.exit(1);
+			}
+
+			bindPort = temporaryPort;
+
+			if (temporaryPort !== preferredPort && preferredPort > 0) {
+				console.log(`ℹ️  Default port ${preferredPort} is occupied. Using temporary port ${temporaryPort}.`);
+			}
+		} else {
+			bindPort = preferredPort;
+		}
+
 		try {
 			await this.ensureServicesReady();
 			void this.cleanupTempAssets();
 			const serveOptions = {
-				port: finalPort,
+				port: bindPort,
 				development: process.env.NODE_ENV === "development",
 				routes: {
 					"/": spaIndexHtml,
@@ -578,7 +614,7 @@ export class BacklogServer {
 			};
 			this.server = Bun.serve(serveOptions as unknown as Parameters<typeof Bun.serve>[0]);
 
-			const url = `http://localhost:${finalPort}`;
+			const url = `http://localhost:${bindPort}`;
 			console.log(`🚀 Backlog.md browser interface running at ${url}`);
 			console.log(`📊 Project: ${this.projectName}`);
 			const stopKey = process.platform === "darwin" ? "Cmd+C" : "Ctrl+C";
@@ -591,18 +627,19 @@ export class BacklogServer {
 				console.log("💡 Open your browser and navigate to the URL above");
 			}
 		} catch (error) {
-			// Handle port already in use error
+			// Handle port already in use error only when autoPort is disabled.
+			// When autoPort is enabled, getPort already guarantees an available port.
 			const errorCode = (error as { code?: string })?.code;
 			const errorMessage = (error as Error)?.message;
-			if (errorCode === "EADDRINUSE" || errorMessage?.includes("address already in use")) {
-				console.error(`\n❌ Error: Port ${finalPort} is already in use.\n`);
+			if (!autoPortEnabled && (errorCode === "EADDRINUSE" || errorMessage?.includes("address already in use"))) {
+				console.error(`\n❌ Error: Port ${bindPort} is already in use.\n`);
 				console.log("💡 Suggestions:");
-				console.log(`   1. Try a different port: backlog browser --port ${finalPort + 1}`);
-				console.log(`   2. Find what's using port ${finalPort}:`);
+				console.log(`   1. Try a different port: backlog browser --port ${bindPort + 1}`);
+				console.log(`   2. Find what's using port ${bindPort}:`);
 				if (process.platform === "darwin" || process.platform === "linux") {
-					console.log(`      Run: lsof -i :${finalPort}`);
+					console.log(`      Run: lsof -i :${bindPort}`);
 				} else if (process.platform === "win32") {
-					console.log(`      Run: netstat -ano | findstr :${finalPort}`);
+					console.log(`      Run: netstat -ano | findstr :${bindPort}`);
 				}
 				console.log("   3. Or kill the process using the port and try again\n");
 				process.exit(1);
