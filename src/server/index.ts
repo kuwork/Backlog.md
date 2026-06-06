@@ -1795,6 +1795,11 @@ export class BacklogServer {
 				return Response.json({ error: "Milestone title is required" }, { status: 400 });
 			}
 
+			const sourceMilestone = await this.core.filesystem.loadMilestone(milestoneId);
+			if (!sourceMilestone) {
+				return Response.json({ error: "Milestone not found", code: "NOT_FOUND" }, { status: 404 });
+			}
+
 			const bodyJson = body as Record<string, unknown>;
 			const updateTasks = bodyJson.updateTasks !== false;
 			const result = await new MilestoneHandlers(this.core).editMilestone({
@@ -1808,9 +1813,11 @@ export class BacklogServer {
 				actualEnd: typeof bodyJson.actualEnd === "string" ? bodyJson.actualEnd : undefined,
 			});
 			this.broadcastTasksUpdated();
+			const updatedMilestone = await this.core.filesystem.loadMilestone(sourceMilestone.id);
 			return Response.json({
 				success: true,
 				message: this.getMilestoneMutationMessage(result),
+				milestone: updatedMilestone ?? null,
 			});
 		} catch (error) {
 			return this.milestoneMutationErrorResponse(error, "Error updating milestone");
