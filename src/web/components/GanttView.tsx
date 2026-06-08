@@ -371,7 +371,9 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 	const [viewEnd, setViewEnd] = useState<Date>(new Date());
 	const [isDragging, setIsDragging] = useState(false);
 	const dragStartX = useRef(0);
-	const viewStartAtDrag = useRef<Date>(new Date());
+	const dragStartY = useRef(0);
+	const scrollLeftAtDrag = useRef(0);
+	const scrollTopAtDrag = useRef(0);
 	const leftScrollRef = useRef<HTMLDivElement>(null);
 	const timelineContainerRef = useRef<HTMLDivElement>(null);
 
@@ -555,19 +557,21 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 		if ((e.target as HTMLElement).closest("[data-task-bar]")) return;
 		setIsDragging(true);
 		dragStartX.current = e.clientX;
-		viewStartAtDrag.current = new Date(viewStart.getTime());
-	}, [viewStart]);
+		dragStartY.current = e.clientY;
+		scrollLeftAtDrag.current = timelineContainerRef.current?.scrollLeft ?? 0;
+		scrollTopAtDrag.current = timelineContainerRef.current?.scrollTop ?? 0;
+	}, []);
 
 	const handleMouseMove = useCallback((e: React.MouseEvent) => {
 		if (!isDragging) return;
 		const deltaX = e.clientX - dragStartX.current;
-		const pxPerDay = config.pxPerDay;
-		const deltaDays = deltaX / pxPerDay;
-		const newStart = new Date(viewStartAtDrag.current.getTime() - deltaDays * DAY);
-		const rangeMs = viewEnd.getTime() - viewStart.getTime();
-		setViewStart(newStart);
-		setViewEnd(new Date(newStart.getTime() + rangeMs));
-	}, [isDragging, config.pxPerDay, viewEnd, viewStart]);
+		const deltaY = e.clientY - dragStartY.current;
+		const container = timelineContainerRef.current;
+		if (container) {
+			container.scrollLeft = scrollLeftAtDrag.current - deltaX;
+			container.scrollTop = scrollTopAtDrag.current - deltaY;
+		}
+	}, [isDragging]);
 
 	const handleMouseUp = useCallback(() => {
 		setIsDragging(false);
