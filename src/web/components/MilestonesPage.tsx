@@ -772,7 +772,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							onClick={() => setExpandedBuckets((c) => ({ ...c, [bucket.key]: !isExpanded }))}
 							className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
 						>
-							{isExpanded ? t.milestones.hideTasks : t.milestones.showTasks} {t.milestones.tasks}
+							{isExpanded ? t.milestones.hideTasks : t.milestones.showTasks}
 							<svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
 							</svg>
