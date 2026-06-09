@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-06-05 15:19'
+updated_date: '2026-06-09 01:35'
 ---
 # Wiki Content Catalog
 
@@ -68,10 +68,18 @@ Read this file FIRST on any wiki operation.
 | [[sources/stable-task-modal-urls-task]] | BACK-509 稳定任务模态框 URL 与钻取支持 | source, feature, web-ui, routing, modal |
 | [[sources/wiki-page-switch-edit-mode-fix]] | BACK-510 修复 Wiki 页面切换不退出编辑模式 | source, bug, web-ui, wiki |
 | [[sources/local-url-short-aliases-task]] | BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
-| [[sources/wiki-page-switch-edit-mode-fix]] | BACK-510 修复 Wiki 页面切换不退出编辑模式 | source, bug, web-ui, wiki |
-| [[sources/local-url-short-aliases-task]] | BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
 | [[sources/back-508-cli-description-escapes]] | BACK-508 CLI description 换行符转义修复 | source, bug, cli, ux |
 | [[sources/back-512-kanban-column-sort-menu-cross-branch]] | BACK-512 看板列排序菜单跨分支任务修复 | source, web-ui, bug |
+| [[sources/back-470-task-comments]] | BACK-470 任务评论功能 | source, feature, comments, cli, mcp, web-ui, tui |
+| [[sources/back-470-1-core-task-comments]] | BACK-470.1 核心评论模型与 Markdown 持久化 | source, comments, core, markdown, search |
+| [[sources/back-470-2-cli-mcp-task-comments]] | BACK-470.2 CLI 与 MCP 暴露评论功能 | source, comments, cli, mcp |
+| [[sources/back-470-3-server-web-task-comments]] | BACK-470.3 Server API 与 Web UI 评论 | source, comments, server, web-ui |
+| [[sources/back-470-4-tui-docs-task-comments]] | BACK-470.4 TUI 渲染与公共文档评论 | source, comments, tui, docs |
+| [[sources/back-514-auto-port]] | BACK-514 浏览器 Web UI 自动端口选择 | source, feature, web-ui, server, port, enhancement |
+| [[sources/back-515-milestone-update-fix]] | BACK-515 Web API 里程碑更新返回修复 | source, bug, web-api, milestones |
+| [[sources/back-516-gantt-drag-fix]] | BACK-516 甘特图拖拽改为滚动而非修改视图范围 | source, bug, web-ui, gantt |
+| [[sources/back-517-i18n-fragmentation-fix]] | BACK-517 里程碑展开/折叠按钮 i18n 字符串碎片化修复 | source, bug, web-ui, milestones, i18n |
+| [[sources/back-518-tui-theme-adaptive]] | BACK-518 TUI 主题自适应渲染：移除硬编码颜色 | source, ui, board, ux |
 
 ## Execution Notes
 
@@ -134,6 +142,10 @@ Read this file FIRST on any wiki operation.
 | [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd） | 五个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
 | [[concepts/project-health]] | 项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
 | [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、跟踪甘特图双层渲染、日期解析、依赖箭头 |
+| [[concepts/task-comments]] | 任务评论 | 结构化追加式讨论机制、Markdown 持久化、CLI/MCP/Web/TUI 统一视图 |
+| [[concepts/auto-port]] | 自动端口选择 | autoPort 配置、端口扫描逻辑、多实例并发启动 |
+| [[concepts/i18n-string-fragmentation]] | i18n 字符串拼接反模式 | 运行时拼接导致翻译断裂、完整短语替代方案 |
+| [[concepts/tui-theme-adaptive]] | TUI 主题自适应渲染 | 逆视频高亮、移除硬编码 ANSI 颜色、跨主题兼容 |
 
 ## Entities
 
