@@ -310,3 +310,30 @@ Chronological, append-only record of all wiki operations.
 - `index.md` 补全 6 个缺失条目，删除重复 `## Decisions`
 - `developer-notes/honkit-usermanual-preview.md` 修正非法 wikilink
 - `overview.md` 修正统计为 Sources 56 / Concepts 20 / Decisions 17 / Reports 3
+
+## [2026-06-09 00:40:40] batch-ingest | Ingest BACK-470 comment feature, BACK-514 autoPort, BACK-515-518 fixes
+
+**检测基线**: 2026-06-06 01:03:00（上次 batch-ingest / lint）
+**Git 变更文件**: 10 个 backlog 任务
+
+**新 source 页面**: 10 个
+- `sources/back-470-task-comments` — BACK-470 任务评论功能（父任务）
+- `sources/back-470-1-core-task-comments` — BACK-470.1 核心任务评论模型与 Markdown 持久化
+- `sources/back-470-2-cli-mcp-task-comments` — BACK-470.2 CLI 与 MCP 评论暴露
+- `sources/back-470-3-server-web-task-comments` — BACK-470.3 Server API 与 Web UI 评论支持
+- `sources/back-470-4-tui-docs-task-comments` — BACK-470.4 终端 UI 评论渲染与公共文档更新
+- `sources/back-514-auto-port` — BACK-514 浏览器 Web UI 自动端口选择
+- `sources/back-515-milestone-update-fix` — BACK-515 修复 Web API 里程碑更新响应缺失里程碑对象
+- `sources/back-516-gantt-drag-fix` — BACK-516 修复甘特图拖拽交互改为滚动而非修改视图范围
+- `sources/back-517-i18n-fragmentation-fix` — BACK-517 修复里程碑展开/折叠按钮 i18n 字符串拼接反模式
+- `sources/back-518-tui-theme-adaptive` — BACK-518 TUI 主题自适应渲染：移除硬编码颜色
+
+**新 concept 页面**: 4 个
+- `concepts/task-comments` — 任务评论模型、Markdown 持久化、跨表面暴露、搜索索引
+- `concepts/auto-port` — autoPort 配置、动态端口扫描、多实例并发
+- `concepts/i18n-string-fragmentation` — i18n 字符串拼接反模式与完整短语替代方案
+- `concepts/tui-theme-adaptive` — 逆视频高亮、移除硬编码 ANSI 颜色、跨主题兼容
+
+**更新导航**: `index.md`（Sources 66 条，Concepts 24 条）、`overview.md`
+
+## [2026-06-09 01:35:00] batch-ingest | Ingest BACK-470 comment feature (5 sources), BACK-514 autoPort, BACK-515-518 fixes; add concepts/task-comments, concepts/auto-port; update usermanual
