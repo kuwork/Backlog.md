@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-06-05 15:19
+updated_date: 2026-06-09 00:40
 ---
 
 # Knowledge Base Overview
@@ -45,6 +45,12 @@ updated_date: 2026-06-05 15:19
 - **CLI 日期 UTC 转换**：`actualStart`/`actualEnd` 在 CLI/MCP 入口统一通过 `localDateTimeToStoredUtc` 转换为 UTC 存储，消除与 Web UI 的输入偏差（BACK-506）
 - **CLI description 转义**：`--description`/`--desc` 支持跨平台一致的 `\n` 换行输入；Windows 上模拟 bash 双引号层后统一应用 C-style 转义（BACK-508）
 - **看板跨分支列菜单**：列含跨分支任务时仍显示本地排序，仅隐藏会修改 ordinal 的 Apply Priority Order（BACK-512）
+- **任务评论**：结构化追加式讨论机制，支持 Markdown 正文、可选作者、时间戳；通过 CLI `--comment`、MCP `commentsAppend`、Web UI 编辑模式表单追加；评论文本参与搜索；以 sentinel-delimited `## Comments` 章节持久化于任务 Markdown 中（BACK-470）
+- **自动端口选择**：`autoPort` 配置（默认 `true`），默认端口被占用时自动扫描接下来 100 个用户端口；拒绝 OS 分配的超出范围端口；设置面板提供开关；显式关闭时保留原有 EADDRINUSE 报错行为（BACK-514）
+- **里程碑 API 修复**：`PUT /api/milestones/:id` 现在在响应中返回更新后的里程碑对象，修复前端测试失败（BACK-515）
+- **甘特图拖拽修复**：拖拽操作改为直接操作 `scrollLeft`/`scrollTop` 而非修改 `viewStart`/`viewEnd`，避免日期尺度和任务位置被意外改变（BACK-516）
+- **i18n 字符串碎片化修复**：里程碑展开/折叠按钮从运行时拼接（`hideTasks + tasks`）改为完整短语键，消除日语/中文等非英语语种的语法断裂（BACK-517）
+- **TUI 主题自适应**：所有高亮/选择样式从硬编码 ANSI 颜色（`fg: white`, `bg: black`, `bg: blue`）切换为 `inverse + bold`，兼容任意终端主题包括单色配色（BACK-518）
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -77,8 +83,8 @@ updated_date: 2026-06-05 15:19
 
 ## 统计
 
-- Sources ingested: 56
-- Concepts extracted: 20
+- Sources ingested: 66
+- Concepts extracted: 24
 - Entities catalogued: 2
 - Execution notes: 10
 - Decisions recorded: 17
