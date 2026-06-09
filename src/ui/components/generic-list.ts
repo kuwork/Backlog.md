@@ -44,8 +44,8 @@ export interface GenericListOptions<T extends GenericListItem> {
 	};
 	style?: {
 		border?: { fg: string };
-		selected?: { fg: string; bg: string };
-		item?: { fg: string; bg?: string };
+		selected?: { fg?: string; bg?: string; inverse?: boolean; bold?: boolean };
+		item?: { fg?: string; bg?: string };
 		focus?: { border: { fg: string } };
 		bg?: string;
 	};
@@ -140,7 +140,7 @@ export class GenericList<T extends GenericListItem> implements GenericListContro
 		// Create screen if not provided
 		if (!this.options.parent) {
 			this.screen = createScreen({
-				style: { fg: "white", bg: "black" },
+				style: {},
 			});
 		}
 
@@ -149,8 +149,8 @@ export class GenericList<T extends GenericListItem> implements GenericListContro
 		// Default styling
 		const defaultStyle = {
 			border: { fg: "blue" },
-			selected: { fg: "white", bg: "blue" },
-			item: { fg: "white" },
+			selected: { inverse: true, bold: true },
+			item: {},
 			focus: { border: { fg: "yellow" } },
 		};
 

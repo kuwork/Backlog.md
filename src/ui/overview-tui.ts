@@ -64,7 +64,7 @@ export async function renderOverviewTui(statistics: TaskStatistics, projectName:
 	};
 	for (const [priority, count] of statistics.priorityCounts) {
 		if (count > 0) {
-			const colorFn = priorityColors[priority] || picocolors.white;
+			const colorFn = priorityColors[priority] || picocolors.gray;
 			const percentage = statistics.totalTasks > 0 ? Math.round((count / statistics.totalTasks) * 100) : 0;
 			const displayPriority =
 				priority === "none" ? "No Priority" : priority.charAt(0).toUpperCase() + priority.slice(1);

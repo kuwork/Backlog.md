@@ -36,7 +36,7 @@ export function extractCodePaths(text: string): string[] {
  * Style a code path for blessed display
  */
 export function styleCodePath(path: string): string {
-	return `{gray-fg}\`${path}\`{/gray-fg}`;
+	return `{cyan-fg}\`${path}\`{/cyan-fg}`;
 }
 
 /**

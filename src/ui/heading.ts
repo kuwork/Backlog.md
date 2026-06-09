@@ -11,7 +11,7 @@ export function getHeadingStyle(level: HeadingLevel): { color: string; bold: boo
 		case 2:
 			return { color: "cyan", bold: false };
 		default:
-			return { color: "white", bold: false };
+			return { color: "gray", bold: false };
 	}
 }
 

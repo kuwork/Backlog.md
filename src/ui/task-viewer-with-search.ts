@@ -32,7 +32,7 @@ import { openHelpPopup } from "./components/help-popup.ts";
 import { formatFooterContent } from "./footer-content.ts";
 import { formatHeading } from "./heading.ts";
 import { createLoadingScreen } from "./loading.ts";
-import { formatStatusWithIcon, getStatusColor } from "./status-icon.ts";
+import { formatStatusWithIcon, getStatusColor, wrapStatusColor } from "./status-icon.ts";
 import { createScreen } from "./tui.ts";
 
 function getPriorityDisplay(priority?: "high" | "medium" | "low"): string {
@@ -775,7 +775,7 @@ export async function viewTaskEnhanced(
 				const isCrossBranch = Boolean((task as Task & { branch?: string }).branch);
 				const branchText = isCrossBranch ? ` {green-fg}(${(task as Task & { branch?: string }).branch}){/}` : "";
 
-				const content = `{${statusColor}-fg}${statusIcon}{/} {bold}${task.id}{/bold} - ${task.title}${priorityText}${assigneeText}${labelsText}${branchText}`;
+				const content = `${wrapStatusColor(statusIcon, statusColor)} {bold}${task.id}{/bold} - ${task.title}${priorityText}${assigneeText}${labelsText}${branchText}`;
 				// Dim cross-branch tasks to indicate read-only status
 				return isCrossBranch ? `{gray-fg}${content}{/}` : content;
 			},
@@ -1325,7 +1325,7 @@ function generateDetailContent(
 	resolveMilestoneLabel?: (milestone: string) => string,
 ): { headerContent: string[]; bodyContent: string[] } {
 	const headerContent = [
-		` {${getStatusColor(task.status)}-fg}${formatStatusWithIcon(task.status)}{/} {bold}{blue-fg}${task.id}{/blue-fg}{/bold} - ${task.title}`,
+		` ${wrapStatusColor(formatStatusWithIcon(task.status), getStatusColor(task.status))} {bold}{blue-fg}${task.id}{/blue-fg}{/bold} - ${task.title}`,
 	];
 
 	// Add cross-branch indicator if task is from another branch
@@ -1565,7 +1565,7 @@ export async function createTaskPopup(
 		right: 1,
 		width: 5,
 		height: 1,
-		style: { fg: "white", bg: "blue" },
+		style: { inverse: true, bold: true },
 	});
 
 	const contentArea = scrollabletext({

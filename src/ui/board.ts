@@ -440,7 +440,7 @@ export async function renderBoardTui(
 					mouse: true,
 					scrollable: true,
 					tags: true,
-					style: { selected: { fg: "white" } },
+					style: { selected: {} },
 				});
 
 				const renderedItems = getFormattedItems(columnData.tasks);
@@ -487,9 +487,22 @@ export async function renderBoardTui(
 
 		const setColumnActiveState = (column: ColumnView | undefined, active: boolean) => {
 			if (!column) return;
-			const listStyle = column.list.style as { selected?: { bg?: string } };
-			// In move mode, use green highlight for the moving task
-			if (listStyle.selected) listStyle.selected.bg = moveOp && active ? "green" : active ? "blue" : undefined;
+			const listStyle = column.list.style as {
+				selected?: { bg?: string; fg?: string; inverse?: boolean; bold?: boolean };
+			};
+			if (listStyle.selected) {
+				if (active) {
+					listStyle.selected.inverse = true;
+					listStyle.selected.bold = !moveOp;
+					listStyle.selected.bg = moveOp ? "cyan" : undefined;
+					listStyle.selected.fg = moveOp ? "black" : undefined;
+				} else {
+					listStyle.selected.inverse = false;
+					listStyle.selected.bold = false;
+					listStyle.selected.bg = undefined;
+					listStyle.selected.fg = undefined;
+				}
+			}
 			const boxStyle = column.box.style as { border?: { fg?: string } };
 			if (boxStyle.border) boxStyle.border.fg = active ? "yellow" : "gray";
 			syncColumnSelectionDisplay(column, active);
