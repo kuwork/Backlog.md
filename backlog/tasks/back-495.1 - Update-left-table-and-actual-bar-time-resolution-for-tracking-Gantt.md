@@ -2,7 +2,8 @@
 id: BACK-495.1
 title: Update left table and actual bar time resolution for tracking Gantt
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-28 08:32'
 updated_date: '2026-05-29 18:14'
 labels:

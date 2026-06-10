@@ -2,18 +2,20 @@
 id: BACK-480
 title: Fix WebUI milestone page search fuzzy matching false positives
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-20 16:01'
 updated_date: '2026-05-20 16:40'
 labels:
   - web-ui
   - bug
-priority: medium
-ordinal: 26001
+dependencies: []
 modified_files:
   - src/web/components/MilestonesPage.tsx
   - src/test/web-milestones-page-search.test.tsx
   - src/test/web-milestones-page-unassigned-filter.test.tsx
+priority: medium
+ordinal: 26001
 ---
 
 ## Description

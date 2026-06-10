@@ -2,7 +2,8 @@
 id: BACK-495.3
 title: 'Add tooltip, legend and interaction enhancements for tracking Gantt'
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-28 08:33'
 updated_date: '2026-05-29 18:23'
 labels:

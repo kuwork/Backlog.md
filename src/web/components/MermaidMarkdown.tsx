@@ -7,6 +7,11 @@ import { useI18n } from '../hooks/useI18n';
 interface Props {
 	source: string;
 	onFileClick?: (path: string) => void;
+	onTaskClick?: (taskId: string) => void;
+	onDraftClick?: (draftId: string) => void;
+	onDocClick?: (docId: string) => void;
+	onDecisionClick?: (decisionId: string) => void;
+	onWikiClick?: (wikiPath: string) => void;
 }
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\u0000-\u0020]*>/;
@@ -47,7 +52,52 @@ function isExternalLink(href?: string): boolean {
 	return false;
 }
 
-export default function MermaidMarkdown({ source, onFileClick }: Props) {
+interface LocalLinkInfo {
+	type: "task" | "draft" | "doc" | "decision" | "wiki";
+	id: string;
+	alias: string;
+}
+
+function parseLocalUrl(href: string): LocalLinkInfo | null {
+	if (href.startsWith("#")) return null;
+	try {
+		const url = new URL(href, window.location.href);
+		if (url.origin !== window.location.origin) return null;
+
+		const taskMatch = url.pathname.match(/^\/task\/([^/]+)/);
+		if (taskMatch) return { type: "task", id: taskMatch[1]!, alias: `TASK#${taskMatch[1]!}` };
+
+		const draftMatch = url.pathname.match(/^\/draft\/([^/]+)/);
+		if (draftMatch) return { type: "draft", id: draftMatch[1]!, alias: `DRAFT#${draftMatch[1]!}` };
+
+		const docMatch = url.pathname.match(/^\/documentation\/([^/]+)/);
+		if (docMatch) return { type: "doc", id: docMatch[1]!, alias: `DOC#${docMatch[1]!}` };
+
+		const decisionMatch = url.pathname.match(/^\/decisions\/([^/]+)/);
+		if (decisionMatch) return { type: "decision", id: decisionMatch[1]!, alias: `Decisions#${decisionMatch[1]!}` };
+
+		const wikiMatch = url.pathname.match(/^\/wiki\/(.+)/);
+		if (wikiMatch) return { type: "wiki", id: decodeURIComponent(wikiMatch[1]!), alias: `WIKI#${decodeURIComponent(wikiMatch[1]!)}` };
+
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+function parseTaskUrl(href: string): string | null {
+	if (href.startsWith("#")) return null;
+	try {
+		const url = new URL(href, window.location.href);
+		if (url.origin !== window.location.origin) return null;
+		const match = url.pathname.match(/^\/task\/([^/]+)/);
+		return match?.[1] ?? null;
+	} catch {
+		return null;
+	}
+}
+
+export default function MermaidMarkdown({ source, onFileClick, onTaskClick, onDraftClick, onDocClick, onDecisionClick, onWikiClick }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = sanitizeMarkdownSource(source);
 	const { t } = useI18n();
@@ -68,6 +118,104 @@ export default function MermaidMarkdown({ source, onFileClick }: Props) {
 
 	const LinkComponent = React.useCallback(
 		({ href, children }: { href?: string; children?: React.ReactNode }) => {
+			const localLink = href ? parseLocalUrl(href) : null;
+
+			if (localLink) {
+				if (localLink.type === "task" && onTaskClick) {
+					return (
+						<a
+							href={href}
+							onClick={(e) => {
+								e.preventDefault();
+								onTaskClick(localLink.id);
+							}}
+							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+						>
+							{localLink.alias}
+						</a>
+					);
+				}
+				if (localLink.type === "draft" && onDraftClick) {
+					return (
+						<a
+							href={href}
+							onClick={(e) => {
+								e.preventDefault();
+								onDraftClick(localLink.id);
+							}}
+							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+						>
+							{localLink.alias}
+						</a>
+					);
+				}
+				if (localLink.type === "doc" && onDocClick) {
+					return (
+						<a
+							href={href}
+							onClick={(e) => {
+								e.preventDefault();
+								onDocClick(localLink.id);
+							}}
+							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+						>
+							{localLink.alias}
+						</a>
+					);
+				}
+				if (localLink.type === "decision" && onDecisionClick) {
+					return (
+						<a
+							href={href}
+							onClick={(e) => {
+								e.preventDefault();
+								onDecisionClick(localLink.id);
+							}}
+							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+						>
+							{localLink.alias}
+						</a>
+					);
+				}
+				if (localLink.type === "wiki" && onWikiClick) {
+					return (
+						<a
+							href={href}
+							onClick={(e) => {
+								e.preventDefault();
+								onWikiClick(localLink.id);
+							}}
+							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+						>
+							{localLink.alias}
+						</a>
+					);
+				}
+				// Local link matched but no handler provided: render alias as plain link
+				return (
+					<a href={href} className="text-blue-600 dark:text-blue-400 hover:underline">
+						{localLink.alias}
+					</a>
+				);
+			}
+
+			// Legacy task URL parsing for consumers that only pass onTaskClick
+			const taskId = href ? parseTaskUrl(href) : null;
+			if (taskId && onTaskClick) {
+				return (
+					<a
+						href={href}
+						onClick={(e) => {
+							e.preventDefault();
+							onTaskClick(taskId);
+						}}
+						className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+					>
+						{children}
+					</a>
+				);
+			}
+
 			if (isExternalLink(href)) {
 				return (
 					<a href={href} target="_blank" rel="noopener noreferrer">
@@ -104,7 +252,7 @@ export default function MermaidMarkdown({ source, onFileClick }: Props) {
 				</a>
 			);
 		},
-		[onFileClick, t],
+		[onFileClick, onTaskClick, onDraftClick, onDocClick, onDecisionClick, onWikiClick, t],
 	);
 
 	return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, useMatch } from 'react-router-dom';
 import Layout from './components/Layout';
 import BoardPage from './components/BoardPage';
 import DocumentationDetail from './components/DocumentationDetail';
@@ -35,6 +35,8 @@ import { useI18nContext } from './contexts/I18nContext';
 import { isValidLocale } from './locales';
 import { getWebVersion } from './utils/version';
 import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from './utils/milestones';
+import { stripAnyPrefix } from '../utils/prefix-config';
+import { sanitizeUrlTitle } from './utils/urlHelpers';
 
 const buildMilestoneAliasMap = (milestones: Milestone[], archivedMilestones: Milestone[]): Map<string, string> => {
   const aliasMap = new Map<string, string>();
@@ -168,6 +170,27 @@ const canonicalizeMilestone = (value: string | null | undefined, aliasMap?: Map<
 };
 
 function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const state = location.state as { backgroundLocation?: Location } | null;
+  const taskRouteMatch = useMatch('/task/:id');
+  const taskRouteMatchWildcard = useMatch('/task/:id/*');
+  const taskIdFromUrl = taskRouteMatch?.params?.id ?? taskRouteMatchWildcard?.params?.id;
+
+  const draftRouteMatch = useMatch('/draft/:id');
+  const draftRouteMatchWildcard = useMatch('/draft/:id/*');
+  const draftIdFromUrl = draftRouteMatch?.params?.id ?? draftRouteMatchWildcard?.params?.id;
+
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskHistory, setTaskHistory] = useState<Task[]>([]);
@@ -184,18 +207,19 @@ function App() {
   const [archivedMilestones, setArchivedMilestones] = useState<Milestone[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [taskConfirmation, setTaskConfirmation] = useState<{task: Task, isDraft: boolean} | null>(null);
-  
+
   // Initialization state
   const [isInitialized, setIsInitialized] = useState<boolean | null>(null);
-  
+
   // Centralized data state
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [drafts, setDrafts] = useState<Task[]>([]);
   const [docs, setDocs] = useState<Document[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [wikiTree, setWikiTree] = useState<WikiTreeNode[]>([]);
   const [docsTree, setDocsTree] = useState<DocsTreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const { isOnline } = useHealthCheckContext();
   const { setLocale } = useI18nContext();
   const previousOnlineRef = useRef<boolean | null>(null);
@@ -288,10 +312,11 @@ function App() {
       if (isFirstLoad) {
         setIsLoading(true);
       }
-      const [statusesData, configData, searchResults, milestonesData, archivedMilestonesData, wikiTreeData, docsTreeData] = await Promise.all([
+      const [statusesData, configData, searchResults, draftsData, milestonesData, archivedMilestonesData, wikiTreeData, docsTreeData] = await Promise.all([
         apiClient.fetchStatuses(),
         apiClient.fetchConfig(),
         apiClient.search(),
+        apiClient.fetchDrafts(),
         apiClient.fetchMilestones(),
         apiClient.fetchArchivedMilestones(),
         apiClient.fetchWikiTree(),
@@ -316,6 +341,7 @@ function App() {
           (milestone) => !archivedKeys.has(milestoneKey(milestone)),
         ),
       );
+      setDrafts(draftsData);
       setWikiTree(wikiTreeData);
       setDocsTree(docsTreeData);
     } catch (error) {
@@ -392,66 +418,149 @@ function App() {
       }, 4000);
       return () => clearTimeout(timer);
     }
-    
+
     // Update the ref for next time
     previousOnlineRef.current = isOnline;
   }, [isOnline]);
 
-  const handleNewTask = () => {
+  const getTaskUrlPath = useCallback((task: Task): string => {
+    const slug = sanitizeUrlTitle(task.title);
+    if (task.id.startsWith('DRAFT-')) {
+      return `/draft/${stripAnyPrefix(task.id)}/${slug}`;
+    }
+    return `/task/${stripAnyPrefix(task.id)}/${slug}`;
+  }, []);
+
+  // Sync modal state with URL /task/:id and /draft/:id
+  useEffect(() => {
+    const idFromUrl = taskIdFromUrl || draftIdFromUrl;
+    if (!idFromUrl) {
+      if (showModal && editingTask) {
+        // URL navigated away from /task/* or /draft/* (e.g. browser back) – close modal
+        setShowModal(false);
+        setEditingTask(null);
+        setTaskHistory([]);
+        setIsDraftMode(false);
+      }
+      return;
+    }
+
+    if (!isInitialized || isLoading) return;
+
+    let matchedTask: Task | undefined;
+    let matchedIsDraft = false;
+
+    if (draftIdFromUrl) {
+      matchedTask = drafts.find(d => stripAnyPrefix(d.id) === draftIdFromUrl || d.id === draftIdFromUrl);
+      matchedIsDraft = true;
+    } else if (taskIdFromUrl) {
+      matchedTask = tasks.find(t => stripAnyPrefix(t.id) === taskIdFromUrl || t.id === taskIdFromUrl);
+      matchedIsDraft = false;
+    }
+
+    if (matchedTask) {
+      // Normalize bare URL to slugged /:type/:id/:title
+      const expectedSlug = sanitizeUrlTitle(matchedTask.title);
+      const currentSlug = draftIdFromUrl ? draftRouteMatchWildcard?.params['*'] : taskRouteMatchWildcard?.params['*'];
+      if (currentSlug !== expectedSlug) {
+        navigate(getTaskUrlPath(matchedTask), { replace: true, state: location.state });
+      }
+
+      if (!showModal) {
+        setEditingTask(matchedTask);
+        setTaskHistory([]);
+        setIsDraftMode(matchedIsDraft);
+        setShowModal(true);
+      } else if (editingTask && editingTask.id !== matchedTask.id) {
+        const topOfStack = taskHistoryRef.current[taskHistoryRef.current.length - 1];
+        if (topOfStack?.id === idFromUrl || stripAnyPrefix(topOfStack?.id || '') === idFromUrl) {
+          // Browser back/forward to parent task
+          setTaskHistory(prev => prev.slice(0, -1));
+          setEditingTask(topOfStack || null);
+          setIsDraftMode(topOfStack?.id?.startsWith('DRAFT-') ?? false);
+        } else {
+          // Drill down into dependency task
+          setTaskHistory(prev => [...prev, editingTask]);
+          setEditingTask(matchedTask);
+          setIsDraftMode(matchedIsDraft);
+        }
+      }
+    } else if (!isLoading) {
+      // Unknown task ID – fall back to home
+      navigate('/', { replace: true });
+    }
+  }, [taskIdFromUrl, draftIdFromUrl, tasks, drafts, isInitialized, isLoading, showModal, editingTask, navigate, getTaskUrlPath]);
+
+  const handleOpenTask = useCallback((task: Task) => {
+    navigate(getTaskUrlPath(task), { state: { backgroundLocation: location } });
+  }, [navigate, location, getTaskUrlPath]);
+
+  const handleNewTask = useCallback(() => {
+    if (taskIdFromUrl) {
+      const backgroundPath = state?.backgroundLocation
+        ? `${state.backgroundLocation.pathname}${state.backgroundLocation.search}`
+        : '/';
+      navigate(backgroundPath, { replace: true });
+    }
     setEditingTask(null);
     setTaskHistory([]);
     setIsDraftMode(false);
     setShowModal(true);
-  };
+  }, [taskIdFromUrl, navigate, state]);
 
-  const handleNewDraft = () => {
-    // Create a draft task (same as new task but with status 'Draft')
+  const handleNewDraft = useCallback(() => {
+    if (taskIdFromUrl) {
+      const backgroundPath = state?.backgroundLocation
+        ? `${state.backgroundLocation.pathname}${state.backgroundLocation.search}`
+        : '/';
+      navigate(backgroundPath, { replace: true });
+    }
     setEditingTask(null);
     setTaskHistory([]);
     setIsDraftMode(true);
     setShowModal(true);
-  };
+  }, [taskIdFromUrl, navigate, state]);
 
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setTaskHistory([]);
-    setShowModal(true);
-  };
-
-  const handlePromotedTask = (task: Task) => {
+  const handlePromotedTask = useCallback((task: Task) => {
     setEditingTask(task);
     setTaskHistory([]);
     setIsDraftMode(false);
     setShowModal(true);
-  };
+    if (taskIdFromUrl || draftIdFromUrl) {
+      navigate(getTaskUrlPath(task), { replace: true, state: { backgroundLocation: state?.backgroundLocation || location } });
+    }
+  }, [taskIdFromUrl, draftIdFromUrl, navigate, state, location, getTaskUrlPath]);
 
   const handleDrillDown = useCallback((task: Task) => {
-    if (editingTask) {
-      setTaskHistory(prev => [...prev, editingTask]);
-    }
-    setEditingTask(task);
-  }, [editingTask]);
+    navigate(getTaskUrlPath(task), { state: { backgroundLocation: state?.backgroundLocation || location } });
+  }, [navigate, state, location, getTaskUrlPath]);
 
   const handleBack = useCallback(() => {
-    const prevHistory = taskHistoryRef.current;
-    const parentTask = prevHistory[prevHistory.length - 1] ?? null;
-    setTaskHistory(prevHistory.slice(0, -1));
-    setEditingTask(parentTask);
-  }, []);
+    const parentTask = taskHistoryRef.current[taskHistoryRef.current.length - 1];
+    if (parentTask) {
+      navigate(getTaskUrlPath(parentTask), { state: { backgroundLocation: state?.backgroundLocation || location } });
+    }
+  }, [navigate, state, location, getTaskUrlPath]);
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingTask(null);
-    setTaskHistory([]);
-    setIsDraftMode(false);
-  };
+  const handleCloseModal = useCallback(() => {
+    if (taskIdFromUrl || draftIdFromUrl) {
+      const backgroundPath = state?.backgroundLocation
+        ? `${state.backgroundLocation.pathname}${state.backgroundLocation.search}`
+        : '/';
+      navigate(backgroundPath, { replace: true });
+    } else {
+      setShowModal(false);
+      setEditingTask(null);
+      setTaskHistory([]);
+      setIsDraftMode(false);
+    }
+  }, [navigate, state, taskIdFromUrl, draftIdFromUrl]);
 
   const refreshData = useCallback(async () => {
     await loadAllData();
   }, [loadAllData]);
 
   // Sync editingTask with refreshed tasks data to prevent stale state
-  // This fixes the bug where acceptance criteria disappears after save (GitHub #467)
   useEffect(() => {
     if (editingTask && showModal) {
       const updatedTask = tasks.find(t => t.id === editingTask.id);
@@ -514,143 +623,143 @@ function App() {
     }
   };
 
+  const layoutProps = {
+    projectName,
+    showSuccessToast,
+    onDismissToast: () => setShowSuccessToast(false),
+    tasks,
+    docs,
+    decisions,
+    wikiTree,
+    docsTree,
+    isLoading,
+    onRefreshData: refreshData,
+  };
+
+  const boardPageProps = {
+    onEditTask: handleOpenTask,
+    onNewTask: handleNewTask,
+    tasks,
+    onRefreshData: refreshData,
+    statuses,
+    milestones,
+    availableLabels: collectAvailableLabels(tasks, availableLabels),
+    milestoneEntities,
+    archivedMilestones,
+    isLoading,
+    labelColors,
+    onLabelColorsChange: handleLabelColorsChange,
+  };
+
+  const mainLocation = state?.backgroundLocation || location;
+
   // Show loading state while checking initialization
   if (isInitialized === null) {
     return (
-      <ThemeProvider>
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading...</div>
-        </div>
-      </ThemeProvider>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="text-lg text-gray-600 dark:text-gray-300">Loading...</div>
+      </div>
     );
   }
 
   // Show initialization screen if not initialized
   if (isInitialized === false) {
-    return (
-      <ThemeProvider>
-        <InitializationScreen onInitialized={handleInitialized} />
-      </ThemeProvider>
-    );
+    return <InitializationScreen onInitialized={handleInitialized} />;
   }
 
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-            <Route
-            path="/"
+    <>
+      <Routes location={mainLocation}>
+        <Route path="/" element={<Layout {...layoutProps} />}>
+          <Route index element={<BoardPage {...boardPageProps} />} />
+          <Route
+            path="tasks"
             element={
-              <Layout
-                projectName={projectName}
-                showSuccessToast={showSuccessToast}
-                onDismissToast={() => setShowSuccessToast(false)}
+              <TaskList
+                onEditTask={handleOpenTask}
+                onNewTask={handleNewTask}
                 tasks={tasks}
-                docs={docs}
-                decisions={decisions}
-                wikiTree={wikiTree}
-                docsTree={docsTree}
-                isLoading={isLoading}
+                availableStatuses={statuses}
+                availableLabels={availableLabels}
+                availableMilestones={milestones}
+                milestoneEntities={milestoneEntities}
+                archivedMilestones={archivedMilestones}
                 onRefreshData={refreshData}
               />
             }
-          >
-            <Route
-              index
-              element={
-                <BoardPage
-                  onEditTask={handleEditTask}
-                  onNewTask={handleNewTask}
-                  tasks={tasks}
-                  onRefreshData={refreshData}
-                  statuses={statuses}
-                  milestones={milestones}
-                  availableLabels={collectAvailableLabels(tasks, availableLabels)}
-                  milestoneEntities={milestoneEntities}
-                  archivedMilestones={archivedMilestones}
-                  isLoading={isLoading}
-                  labelColors={labelColors}
-                  onLabelColorsChange={handleLabelColorsChange}
-                />
-            }
           />
-            <Route
-              path="tasks"
-              element={
-	                <TaskList
-	                  onEditTask={handleEditTask}
-	                  onNewTask={handleNewTask}
-	                  tasks={tasks}
-	                  availableStatuses={statuses}
-	                  availableLabels={availableLabels}
-	                  availableMilestones={milestones}
-	                  milestoneEntities={milestoneEntities}
-	                  archivedMilestones={archivedMilestones}
-	                  onRefreshData={refreshData}
-	                />
-	              }
-	            />
-            <Route
-              path="milestones"
-              element={
+          <Route
+            path="milestones"
+            element={
               <MilestonesPage
                 tasks={tasks}
                 statuses={statuses}
                 milestoneEntities={milestoneEntities}
                 archivedMilestones={archivedMilestones}
-                onEditTask={handleEditTask}
+                onEditTask={handleOpenTask}
                 onRefreshData={refreshData}
               />
             }
           />
-            <Route path="drafts" element={<DraftsList onEditTask={handleEditTask} onNewDraft={handleNewDraft} availableStatuses={statuses} availableMilestones={milestones} milestoneEntities={milestoneEntities} availableLabels={availableLabels} />} />
-            <Route path="documentation" element={<DocumentationDetail docs={docs} onRefreshData={refreshData} />} />
-            <Route path="documentation/:id" element={<DocumentationDetail docs={docs} onRefreshData={refreshData} />} />
-            <Route path="documentation/:id/:title" element={<DocumentationDetail docs={docs} onRefreshData={refreshData} />} />
-            <Route path="decisions" element={<DecisionDetail decisions={decisions} onRefreshData={refreshData} />} />
-            <Route path="decisions/:id" element={<DecisionDetail decisions={decisions} onRefreshData={refreshData} />} />
-            <Route path="decisions/:id/:title" element={<DecisionDetail decisions={decisions} onRefreshData={refreshData} />} />
-            <Route path="wiki" element={<WikiDetail />} />
-            <Route path="wiki/*" element={<WikiDetail />} />
-            <Route path="statistics" element={<Statistics tasks={tasks} isLoading={isLoading} onEditTask={handleEditTask} projectName={projectName} />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleEditTask} />} />
-          </Route>
-        </Routes>
+          <Route path="drafts" element={<DraftsList onEditTask={handleOpenTask} onNewDraft={handleNewDraft} availableStatuses={statuses} availableMilestones={milestones} milestoneEntities={milestoneEntities} availableLabels={availableLabels} />} />
+          <Route path="documentation" element={<DocumentationDetail docs={docs} onRefreshData={refreshData} />} />
+          <Route path="documentation/:id" element={<DocumentationDetail docs={docs} onRefreshData={refreshData} />} />
+          <Route path="documentation/:id/:title" element={<DocumentationDetail docs={docs} onRefreshData={refreshData} />} />
+          <Route path="decisions" element={<DecisionDetail decisions={decisions} onRefreshData={refreshData} />} />
+          <Route path="decisions/:id" element={<DecisionDetail decisions={decisions} onRefreshData={refreshData} />} />
+          <Route path="decisions/:id/:title" element={<DecisionDetail decisions={decisions} onRefreshData={refreshData} />} />
+          <Route path="wiki" element={<WikiDetail />} />
+          <Route path="wiki/*" element={<WikiDetail />} />
+          <Route path="statistics" element={<Statistics tasks={tasks} isLoading={isLoading} onEditTask={handleOpenTask} projectName={projectName} />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleOpenTask} />} />
+        </Route>
+        <Route path="task/:id" element={<Layout {...layoutProps} />}>
+          <Route index element={<BoardPage {...boardPageProps} />} />
+        </Route>
+        <Route path="task/:id/*" element={<Layout {...layoutProps} />}>
+          <Route index element={<BoardPage {...boardPageProps} />} />
+        </Route>
+        <Route path="draft/:id" element={<Layout {...layoutProps} />}>
+          <Route index element={<BoardPage {...boardPageProps} />} />
+        </Route>
+        <Route path="draft/:id/*" element={<Layout {...layoutProps} />}>
+          <Route index element={<BoardPage {...boardPageProps} />} />
+        </Route>
+      </Routes>
 
-        <TaskDetailsModal
-          task={editingTask || undefined}
-          isOpen={showModal}
-          onClose={handleCloseModal}
-          onSaved={refreshData}
-          onSubmit={handleSubmitTask}
-          onArchive={editingTask ? () => handleArchiveTask(editingTask.id) : undefined}
-          onPromoted={handlePromotedTask}
-          onDrillDown={handleDrillDown}
-          onBack={taskHistory.length > 0 ? handleBack : undefined}
-          availableStatuses={isDraftMode ? ['Draft', ...statuses] : statuses}
-          availableMilestones={milestones}
-          milestoneEntities={milestoneEntities}
-          archivedMilestoneEntities={archivedMilestones}
-          isDraftMode={isDraftMode}
-          definitionOfDoneDefaults={config?.definitionOfDone ?? []}
-          availableLabels={collectAvailableLabels(tasks, availableLabels)}
+      <TaskDetailsModal
+        task={editingTask || undefined}
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        onSaved={refreshData}
+        onSubmit={handleSubmitTask}
+        onArchive={editingTask ? () => handleArchiveTask(editingTask.id) : undefined}
+        onPromoted={handlePromotedTask}
+        onDrillDown={handleDrillDown}
+        onBack={taskHistory.length > 0 ? handleBack : undefined}
+        availableStatuses={isDraftMode ? ['Draft', ...statuses] : statuses}
+        availableMilestones={milestones}
+        milestoneEntities={milestoneEntities}
+        archivedMilestoneEntities={archivedMilestones}
+        isDraftMode={isDraftMode}
+        definitionOfDoneDefaults={config?.definitionOfDone ?? []}
+        availableLabels={collectAvailableLabels(tasks, availableLabels)}
+      />
+
+      {/* Task Creation Confirmation Toast */}
+      {taskConfirmation && (
+        <SuccessToast
+          message={`${taskConfirmation.isDraft ? 'Draft' : 'Task'} "${taskConfirmation.task.title}" created successfully! (${taskConfirmation.task.id.replace('task-', '')})`}
+          onDismiss={() => setTaskConfirmation(null)}
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
         />
-
-        {/* Task Creation Confirmation Toast */}
-        {taskConfirmation && (
-          <SuccessToast
-            message={`${taskConfirmation.isDraft ? 'Draft' : 'Task'} "${taskConfirmation.task.title}" created successfully! (${taskConfirmation.task.id.replace('task-', '')})`}
-            onDismiss={() => setTaskConfirmation(null)}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-          />
-        )}
-      </BrowserRouter>
-    </ThemeProvider>
+      )}
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { apiClient } from "../lib/api";
 import MermaidMarkdown from "./MermaidMarkdown";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -73,6 +73,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 	const { t } = useI18n();
 	const previewContentRef = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
+	const location = useLocation();
 
 	useEffect(() => {
 		let cancelled = false;
@@ -114,6 +115,14 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 					return;
 				}
 				navigate(`/wiki/${encodeWikiPath(resolvedPath)}`);
+				onClose();
+				return;
+			}
+
+			if (href.startsWith("/task/")) {
+				e.preventDefault();
+				const taskId = href.slice("/task/".length).split('/')[0];
+				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
 				onClose();
 				return;
 			}
@@ -179,7 +188,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 						className="prose prose-sm !max-w-none w-full p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 						data-color-mode={theme}
 					>
-						<MermaidMarkdown source={previewContent} />
+						<MermaidMarkdown source={previewContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
 					</div>
 				</div>
 			)}
@@ -190,6 +199,8 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 export default function WikiDetail() {
 	const { "*": wikiPath } = useParams();
 	const { t } = useI18n();
+	const navigate = useNavigate();
+	const location = useLocation();
 	const [page, setPage] = useState<WikiPage | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
@@ -228,6 +239,7 @@ export default function WikiDetail() {
 
 	useEffect(() => {
 		if (wikiPath) {
+			setIsEditing(false);
 			loadWikiPage();
 		}
 	}, [wikiPath, loadWikiPage]);
@@ -252,6 +264,13 @@ export default function WikiDetail() {
 					return;
 				}
 				setPreviewPath(resolvedPath);
+				return;
+			}
+
+			if (href.startsWith("/task/")) {
+				e.preventDefault();
+				const taskId = href.slice("/task/".length).split('/')[0];
+				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
 				return;
 			}
 
@@ -517,7 +536,7 @@ export default function WikiDetail() {
 								className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 								data-color-mode={theme}
 							>
-								<MermaidMarkdown source={sanitizedContent} />
+								<MermaidMarkdown source={sanitizedContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
 							</div>
 						)}
 					</div>

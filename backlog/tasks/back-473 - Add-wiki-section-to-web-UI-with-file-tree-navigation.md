@@ -2,7 +2,8 @@
 id: BACK-473
 title: Add wiki section to web UI with file tree navigation
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-07 21:18'
 updated_date: '2026-05-07 14:31'
 labels:

@@ -1424,6 +1424,9 @@ export class FileSystem {
 				case "auto_open_browser":
 					config.autoOpenBrowser = value.toLowerCase() === "true";
 					break;
+				case "auto_port":
+					config.autoPort = value.toLowerCase() === "true";
+					break;
 				case "default_port":
 					config.defaultPort = Number.parseInt(value, 10);
 					break;
@@ -1506,6 +1509,7 @@ export class FileSystem {
 			maxColumnWidth: config.maxColumnWidth,
 			defaultEditor: config.defaultEditor,
 			autoOpenBrowser: config.autoOpenBrowser,
+			autoPort: config.autoPort,
 			defaultPort: config.defaultPort,
 			remoteOperations: config.remoteOperations,
 			autoCommit: config.autoCommit,
@@ -1538,6 +1542,7 @@ export class FileSystem {
 			...(config.maxColumnWidth ? [`max_column_width: ${config.maxColumnWidth}`] : []),
 			...(config.defaultEditor ? [`default_editor: "${config.defaultEditor}"`] : []),
 			...(typeof config.autoOpenBrowser === "boolean" ? [`auto_open_browser: ${config.autoOpenBrowser}`] : []),
+			...(typeof config.autoPort === "boolean" ? [`auto_port: ${config.autoPort}`] : []),
 			...(config.defaultPort ? [`default_port: ${config.defaultPort}`] : []),
 			...(typeof config.remoteOperations === "boolean" ? [`remote_operations: ${config.remoteOperations}`] : []),
 			...(typeof config.autoCommit === "boolean" ? [`auto_commit: ${config.autoCommit}`] : []),

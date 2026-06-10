@@ -47,7 +47,8 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   const [columnSort, setColumnSort] = React.useState<{ field: "id" | "title" | "priority"; direction: "asc" | "desc" } | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const columnActionsId = React.useId();
-  const canSort = Boolean(onTaskReorder) && tasks.length > 1 && tasks.every(task => !task.branch);
+  const canReorder = Boolean(onTaskReorder) && tasks.every(task => !task.branch);
+  const showColumnMenu = Boolean(onTaskReorder) && tasks.length > 1;
 
   React.useEffect(() => {
     if (!showMenu) return;
@@ -113,7 +114,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   };
 
   const handleApplyPriorityOrder = () => {
-    if (!onTaskReorder || !canSort) {
+    if (!onTaskReorder || !canReorder) {
       setShowMenu(false);
       return;
     }
@@ -267,7 +268,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
           </span>
         </div>
         
-        {canSort && (
+        {showColumnMenu && (
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -326,18 +327,22 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
                     </button>
                   );
                 })}
-                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleApplyPriorityOrder}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors duration-150 whitespace-nowrap"
-                >
-                  <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l4-4m-4 4v-12" />
-                  </svg>
-                  {t.taskColumn.sortByPriority}
-                </button>
+                {canReorder && (
+                  <>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleApplyPriorityOrder}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors duration-150 whitespace-nowrap"
+                    >
+                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l4-4m-4 4v-12" />
+                      </svg>
+                      {t.taskColumn.sortByPriority}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>

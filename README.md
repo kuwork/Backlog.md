@@ -151,6 +151,7 @@ backlog task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
 
 # 跟踪工作
 backlog task list -s "To Do"
+backlog task edit BACK-1 --comment "Can we split the UI work into a separate PR?" --comment-author @sara
 backlog search "kanban"
 backlog board
 
@@ -158,7 +159,7 @@ backlog board
 backlog browser
 ```
 
-您可以随时在 AI 辅助和手动工作流之间切换 —— 两者都基于相同的 Markdown 任务文件。建议通过 Backlog.md 命令（CLI/MCP/Web）修改任务，而不是手动编辑任务文件，以保持字段类型和元数据的一致性。任务可记录项目根目录下的已修改文件，之后通过 `backlog search --modified-file src/path.ts --plain` 即可找到。
+您可以随时在 AI 辅助和手动工作流之间切换 —— 两者都基于相同的 Markdown 任务文件。建议通过 Backlog.md 命令（CLI/MCP/Web）修改任务，而不是手动编辑任务文件，以保持字段类型和元数据的一致性。任务可记录项目根目录下的已修改文件，之后通过 `backlog search --modified-file src/path.ts --plain` 即可找到。使用任务评论进行讨论和审阅记录；评论正文支持 Markdown，但单独的 `---` 行被保留为评论分隔符。使用执行记录跟踪执行进度，使用最终总结编写类似 PR 的完成说明。
 
 **了解更多：** [CLI 参考](CLI-INSTRUCTIONS.md) | [高级配置](ADVANCED-CONFIG.md)
 

@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { AcceptanceCriterion, Milestone, Task } from "../../types";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { stripAnyPrefix } from "../../utils/prefix-config";
+import type { AcceptanceCriterion, Milestone, Task, TaskComment } from "../../types";
 import Modal from "./Modal";
 import { apiClient } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
@@ -17,6 +19,7 @@ import {
 } from "../utils/date-display";
 import { isTypingTarget } from "../utils/keyboard";
 import { useI18n } from "../hooks/useI18n";
+import { encodeWikiPath } from "../utils/urlHelpers";
 
 interface Props {
   task?: Task; // Optional for create mode
@@ -45,11 +48,15 @@ type TaskUpdatePayload = Partial<Task> & {
   definitionOfDoneCheck?: number[];
   definitionOfDoneUncheck?: number[];
   disableDefinitionOfDoneDefaults?: boolean;
+  commentsAppend?: string[];
+  commentAuthor?: string;
 };
 
 type InlineMetaUpdatePayload = Omit<Partial<Task>, "milestone"> & {
   milestone?: string | null;
 };
+
+const containsCommentDelimiterLine = (value: string): boolean => /^\s*---\s*$/m.test(value.replace(/\r\n/g, "\n"));
 
 const SectionHeader: React.FC<{ title: string; right?: React.ReactNode }> = ({ title, right }) => (
   <div className="flex items-center justify-between mb-3">
@@ -80,9 +87,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
 }) => {
   const { theme } = useTheme();
   const { t } = useI18n();
+  const navigate = useNavigate();
   const isCreateMode = !task;
   const isFromOtherBranch = Boolean(task?.branch);
   const [mode, setMode] = useState<Mode>(isCreateMode ? "create" : "preview");
+  const modeRef = useRef(mode);
+  const previousTaskId = useRef(task?.id ?? "");
+  const previousIsOpen = useRef(isOpen);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +104,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [description, setDescription] = useState(task?.description || "");
   const [plan, setPlan] = useState(task?.implementationPlan || "");
   const [notes, setNotes] = useState(task?.implementationNotes || "");
+  const [displayComments, setDisplayComments] = useState<TaskComment[]>(task?.comments ?? []);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentAuthor, setCommentAuthor] = useState("");
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [commentsChanged, setCommentsChanged] = useState(false);
+  const preserveEditModeAfterCommentRefresh = useRef(false);
   const [finalSummary, setFinalSummary] = useState(task?.finalSummary || "");
   const [criteria, setCriteria] = useState<AcceptanceCriterion[]>(task?.acceptanceCriteriaItems || []);
   const defaultDefinitionOfDone = useMemo(
@@ -251,8 +268,35 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [actualEnd, setActualEnd] = useState<string>(task?.actualEnd || "");
 
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
+  const [availableDrafts, setAvailableDrafts] = useState<Task[]>([]);
   const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
   const milestoneSelectionValue = resolveMilestoneToId(milestone);
+
+  const handleTaskClick = useCallback((taskId: string) => {
+    const targetTask = availableTasks.find(t => stripAnyPrefix(t.id) === taskId || t.id === taskId);
+    if (targetTask && onDrillDown) {
+      onDrillDown(targetTask);
+    } else {
+      navigate(`/task/${taskId}`);
+    }
+  }, [availableTasks, onDrillDown, navigate]);
+  const handleDocClick = useCallback((docId: string) => {
+    navigate(`/documentation/${docId}`);
+  }, [navigate]);
+  const handleDecisionClick = useCallback((decisionId: string) => {
+    navigate(`/decisions/${decisionId}`);
+  }, [navigate]);
+  const handleWikiClick = useCallback((wikiPath: string) => {
+    navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
+  }, [navigate]);
+  const handleDraftClick = useCallback((draftId: string) => {
+    const targetDraft = availableDrafts.find(d => stripAnyPrefix(d.id) === draftId || d.id === draftId);
+    if (targetDraft && onDrillDown) {
+      onDrillDown(targetDraft);
+    } else {
+      navigate(`/draft/${draftId}`);
+    }
+  }, [availableDrafts, onDrillDown, navigate]);
   const hasMilestoneSelection = (milestoneEntities ?? []).some((milestoneEntity) => milestoneEntity.id === milestoneSelectionValue);
 
   // Keep a baseline for dirty-check
@@ -290,6 +334,10 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   const isDoneStatus = (status || "").toLowerCase().includes("done");
   const isDraftTask = task?.id?.startsWith("DRAFT-") ?? false;
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   // Intercept Escape to cancel edit (not close modal) when in edit mode
   useEffect(() => {
@@ -333,10 +381,22 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   // Reset local state when task changes or modal opens
   useEffect(() => {
+    const nextTaskId = task?.id ?? "";
+    const sameOpenTaskRefresh = isOpen && previousIsOpen.current && nextTaskId.length > 0 && previousTaskId.current === nextTaskId;
+    const shouldPreserveEditMode =
+      !isCreateMode &&
+      sameOpenTaskRefresh &&
+      (modeRef.current === "edit" || preserveEditModeAfterCommentRefresh.current);
+
     setTitle(task?.title || "");
     setDescription(task?.description || "");
     setPlan(task?.implementationPlan || "");
     setNotes(task?.implementationNotes || "");
+    setDisplayComments(task?.comments ?? []);
+    setCommentBody("");
+    setCommentAuthor("");
+    setCommentSaving(false);
+    setCommentsChanged(false);
     setFinalSummary(task?.finalSummary || "");
     setCriteria(task?.acceptanceCriteriaItems || []);
     setDefinitionOfDone(task?.definitionOfDoneItems || (isCreateMode ? defaultDefinitionOfDone : []));
@@ -353,11 +413,21 @@ export const TaskDetailsModal: React.FC<Props> = ({
     setPlannedEnd(task?.plannedEnd || "");
     setActualStart(task?.actualStart || "");
     setActualEnd(task?.actualEnd || "");
-    setMode(isCreateMode ? "create" : "preview");
+    setMode(shouldPreserveEditMode ? "edit" : isCreateMode ? "create" : "preview");
+    preserveEditModeAfterCommentRefresh.current = false;
+    previousTaskId.current = nextTaskId;
+    previousIsOpen.current = isOpen;
     setError(null);
     // Preload tasks for dependency picker
     apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
+    apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
   }, [task, isOpen, isCreateMode, isDraftMode, availableStatuses, defaultDefinitionOfDone]);
+
+  const refreshAfterCommentChange = useCallback(() => {
+    if (!commentsChanged) return;
+    setCommentsChanged(false);
+    if (onSaved) void onSaved();
+  }, [commentsChanged, onSaved]);
 
   const handleCancelEdit = () => {
     if (isDirty) {
@@ -372,6 +442,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
       setDescription(task?.description || "");
       setPlan(task?.implementationPlan || "");
       setNotes(task?.implementationNotes || "");
+      setCommentBody("");
+      setCommentAuthor("");
       setFinalSummary(task?.finalSummary || "");
       setCriteria(task?.acceptanceCriteriaItems || []);
       setDefinitionOfDone(task?.definitionOfDoneItems || []);
@@ -381,6 +453,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
       setActualStart(task?.actualStart || "");
       setActualEnd(task?.actualEnd || "");
       setMode("preview");
+      refreshAfterCommentChange();
     }
   };
 
@@ -560,6 +633,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
         await apiClient.updateTask(task.id, taskData);
         setMode("preview");
         if (onSaved) await onSaved();
+        setCommentsChanged(false);
       }
     } catch (err) {
       // Extract and display the error message from API response
@@ -638,6 +712,39 @@ export const TaskDetailsModal: React.FC<Props> = ({
     }
   };
 
+  const handleAddComment = async () => {
+    if (!task || isFromOtherBranch) return;
+    const body = commentBody.trim();
+    if (!body) return;
+    const author = commentAuthor.trim();
+    if (containsCommentDelimiterLine(body)) {
+      setError("Comment body cannot contain standalone '---' delimiter lines.");
+      return;
+    }
+    if (author && containsCommentDelimiterLine(author)) {
+      setError("Comment author cannot contain standalone '---' delimiter lines.");
+      return;
+    }
+    setCommentSaving(true);
+    setError(null);
+    preserveEditModeAfterCommentRefresh.current = true;
+    try {
+      const updatedTask = await apiClient.updateTask(task.id, {
+        commentsAppend: [body],
+        ...(author.length > 0 && { commentAuthor: author }),
+      });
+      setDisplayComments(updatedTask.comments ?? []);
+      setCommentsChanged(true);
+      setCommentBody("");
+      setCommentAuthor("");
+    } catch (err) {
+      preserveEditModeAfterCommentRefresh.current = false;
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCommentSaving(false);
+    }
+  };
+
   // labels handled via ChipInput; no textarea parsing
 
 	const handleComplete = async () => {
@@ -689,6 +796,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const totalCount = (criteria || []).length;
   const definitionCheckedCount = (definitionOfDone || []).filter((c) => c.checked).length;
   const definitionTotalCount = (definitionOfDone || []).length;
+  const comments = displayComments;
 
   const displayId = task?.id ?? "";
 
@@ -702,6 +810,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
         if (mode === "edit" && isDirty) {
           if (!window.confirm(t.taskDetails.discardAndClosePrompt)) return;
         }
+        refreshAfterCommentChange();
         onClose();
       }}
       title={isCreateMode ? (isDraftMode ? t.taskDetails.createDraft : t.taskDetails.createTask) : `${displayId} — ${task.title}`}
@@ -828,7 +937,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               description ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDescription}</div>
@@ -894,7 +1003,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
               )}
-              {!isFromOtherBranch && (
+              {mode === "preview" && !isFromOtherBranch && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1072,7 +1181,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               plan ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noPlan}</div>
@@ -1096,7 +1205,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               notes ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noNotes}</div>
@@ -1114,13 +1223,66 @@ export const TaskDetailsModal: React.FC<Props> = ({
             )}
           </div>
 
+          {/* Comments */}
+          {!isCreateMode && (
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+              <SectionHeader title={`${t.taskDetails.section.comments}${comments.length ? ` (${comments.length})` : ""}`} />
+              {comments.length > 0 ? (
+                <div className="space-y-4">
+                  {comments.map((comment) => (
+                    <article key={`${comment.index}-${comment.createdDate}`} className="border-l-2 border-gray-200 dark:border-gray-700 pl-3">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">#{comment.index}</span>
+                        {comment.author ? <span>{comment.author}</span> : null}
+                        {comment.createdDate ? <span>{formatStoredUtcDateForDisplay(comment.createdDate)}</span> : null}
+                      </div>
+                      <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
+                        <MermaidMarkdown source={comment.body} />
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noComments}</div>
+              )}
+              {mode === "edit" && !isFromOtherBranch && (
+                <div className="mt-4 space-y-2">
+                  <input
+                    type="text"
+                    value={commentAuthor}
+                    onChange={(e) => setCommentAuthor(e.target.value)}
+                    placeholder={t.taskDetails.placeholderCommentAuthor}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+                  />
+                  <textarea
+                    value={commentBody}
+                    onChange={(e) => setCommentBody(e.target.value)}
+                    rows={4}
+                    placeholder={t.taskDetails.placeholderCommentBody}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleAddComment()}
+                      disabled={commentSaving || commentBody.trim().length === 0}
+                      className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                    >
+                      {commentSaving ? t.taskDetails.addingComment : t.taskDetails.addComment}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Final Summary */}
           {(mode !== "preview" || finalSummary.trim().length > 0) && (
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
               <SectionHeader title={t.taskDetails.section.finalSummary} right={t.taskDetails.section.completionSummary} />
               {mode === "preview" ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} />
+                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-md">

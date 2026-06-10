@@ -75,7 +75,7 @@ export async function scrollableViewer(content: string): Promise<void> {
 
 	return new Promise<void>((resolve) => {
 		const screen = createScreen({
-			style: { fg: "white", bg: "black" },
+			style: {},
 		});
 
 		const viewer = box({

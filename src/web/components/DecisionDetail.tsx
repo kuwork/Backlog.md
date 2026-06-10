@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../lib/api';
 import MDEditor from '@uiw/react-md-editor';
 import MermaidMarkdown from './MermaidMarkdown';
@@ -7,7 +7,7 @@ import { type Decision } from '../../types';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { SuccessToast } from './SuccessToast';
 import { useTheme } from '../contexts/ThemeContext';
-import { sanitizeUrlTitle } from '../utils/urlHelpers';
+import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { useI18n } from '../hooks/useI18n';
 
 // Utility function for ID transformations
@@ -17,15 +17,25 @@ const stripIdPrefix = (id: string): string => {
 };
 
 // Custom MDEditor wrapper for proper height handling
-const MarkdownEditor = memo(function MarkdownEditor({ 
-	value, 
-	onChange, 
-	isEditing 
+const MarkdownEditor = memo(function MarkdownEditor({
+	value,
+	onChange,
+	isEditing,
+	onTaskClick,
+	onDraftClick,
+	onDocClick,
+	onDecisionClick,
+	onWikiClick,
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
 	isEditing: boolean;
 	isReadonly?: boolean;
+	onTaskClick?: (taskId: string) => void;
+	onDraftClick?: (draftId: string) => void;
+	onDocClick?: (docId: string) => void;
+	onDecisionClick?: (decisionId: string) => void;
+	onWikiClick?: (wikiPath: string) => void;
 }) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
@@ -33,7 +43,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 		// Preview mode - just show the rendered markdown without editor UI
 			return (
 				<div className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" data-color-mode={theme}>
-					<MermaidMarkdown source={value} />
+					<MermaidMarkdown source={value} onTaskClick={onTaskClick} onDraftClick={onDraftClick} onDocClick={onDocClick} onDecisionClick={onDecisionClick} onWikiClick={onWikiClick} />
 				</div>
 			);
 	}
@@ -76,6 +86,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	const { t } = useI18n();
 	const { id, title } = useParams<{ id: string; title: string }>();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [decision, setDecision] = useState<Decision | null>(null);
 	const [content, setContent] = useState<string>('');
@@ -118,6 +129,15 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			});
 		}
 	}, [searchParams, setSearchParams]);
+
+	// Normalize bare /decisions/:id to slugged /decisions/:id/:title
+	useEffect(() => {
+		if (!id || id === 'new' || isLoading || !decision) return;
+		const expectedSlug = sanitizeUrlTitle(decisionTitle);
+		if (title !== expectedSlug) {
+			navigate(`/decisions/${id}/${expectedSlug}`, { replace: true });
+		}
+	}, [id, decisionTitle, decision, isLoading, title, navigate]);
 
 	const loadDecisionContent = async () => {
 		if (!id) return;
@@ -353,6 +373,11 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 						value={content}
 						onChange={(val) => setContent(val || '')}
 						isEditing={isEditing}
+						onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+						onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
+						onDocClick={(docId) => navigate(`/documentation/${docId}`)}
+						onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
+						onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
 					/>
 				</div>
 			</div>

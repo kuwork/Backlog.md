@@ -1,6 +1,6 @@
-import { DATE_TIME_REGEX, parseIntStrict, parseStoredUtcDate } from "../../utils/date-utc.ts";
+import { DATE_TIME_REGEX, localDateTimeToStoredUtc, parseStoredUtcDate } from "../../utils/date-utc.ts";
 
-export { parseStoredUtcDate };
+export { localDateTimeToStoredUtc as dateTimeLocalToStoredUtc, parseStoredUtcDate };
 
 export function formatStoredUtcDateForDisplay(dateStr: string): string {
 	const parsed = parseStoredUtcDate(dateStr);
@@ -27,24 +27,6 @@ export function storedUtcToDateTimeLocal(dateStr: string): string {
 	const minutes = String(parsed.getMinutes()).padStart(2, "0");
 
 	return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-export function dateTimeLocalToStoredUtc(localStr: string): string {
-	const normalized = localStr.trim();
-	if (!normalized) return "";
-
-	const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
-	if (!match) return normalized.replace("T", " ");
-
-	const [, yearStr, monthStr, dayStr, hoursStr, minutesStr] = match;
-	const year = parseIntStrict(yearStr);
-	const month = parseIntStrict(monthStr) - 1;
-	const day = parseIntStrict(dayStr);
-	const hours = parseIntStrict(hoursStr);
-	const minutes = parseIntStrict(minutesStr);
-
-	const date = new Date(year, month, day, hours, minutes, 0);
-	return date.toISOString().slice(0, 16).replace("T", " ");
 }
 
 export function formatStoredUtcDateForCompactDisplay(dateStr: string, now: Date = new Date()): string {

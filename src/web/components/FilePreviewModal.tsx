@@ -4,6 +4,7 @@ import { apiClient } from "../lib/api";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
+import { encodeWikiPath } from "../utils/urlHelpers";
 
 interface Props {
 	path: string;
@@ -123,7 +124,14 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose }) => {
 							className="prose prose-sm !max-w-none wmde-markdown rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800"
 							data-color-mode={theme}
 						>
-							<MermaidMarkdown source={content} />
+								<MermaidMarkdown
+									source={content}
+									onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
+									onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
+									onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
+									onDecisionClick={(decisionId) => window.open(`/decisions/${decisionId}`, "_blank")}
+									onWikiClick={(wikiPath) => window.open(`/wiki/${encodeWikiPath(wikiPath)}`, "_blank")}
+								/>
 						</div>
 					) : (
 						<div className="rounded-lg border border-gray-200 dark:border-gray-700 max-h-[60vh] overflow-auto">

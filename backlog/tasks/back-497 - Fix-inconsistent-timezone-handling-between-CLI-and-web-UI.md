@@ -2,17 +2,29 @@
 id: BACK-497
 title: Fix inconsistent timezone handling between CLI and web UI
 status: Done
-assignee: []
+assignee:
+  - '@kimi'
 created_date: '2026-05-29 10:43'
-updated_date: '2026-05-29 10:53'
-labels: []
+updated_date: '2026-06-04 08:14'
+labels:
+  - web-ui
 dependencies: []
 ordinal: 155400
 planned_start: '2026-05-29'
 planned_end: '2026-05-30'
-actual_start: '2026-05-29 09:47'
-actual_end: '2026-05-29 10:53'
+actual_start: '2026-05-29 01:47'
+actual_end: '2026-05-29 02:53'
 ---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+CLI writes UTC timestamps (e.g. '2026-05-29 10:32'), but various places in the codebase used new Date(dateStr) which browsers/Node.js interpret as LOCAL time for strings without 'Z' or 'T'. This caused:
+
+-   TaskDetailsModal showing correct local time (via parseStoredUtcDate)
+-   DraftsList / board / statistics showing wrong time (via new Date)
+-   Gantt chart displaying raw UTC time instead of local time
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

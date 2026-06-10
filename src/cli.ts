@@ -52,6 +52,7 @@ import { viewTaskEnhanced } from "./ui/task-viewer-with-search.ts";
 import { scrollableViewer } from "./ui/tui.ts";
 import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-selection.ts";
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
+import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { createMilestoneFilterValueResolver, resolveClosestMilestoneFilterValue } from "./utils/milestone-filter.ts";
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
@@ -222,6 +223,8 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.acceptanceCriteria !== undefined ||
 			options.plan !== undefined ||
 			options.notes !== undefined ||
+			options.comment !== undefined ||
+			options.commentAuthor !== undefined ||
 			options.finalSummary !== undefined ||
 			options.appendNotes !== undefined ||
 			options.appendFinalSummary !== undefined ||
@@ -238,6 +241,47 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.plannedStart !== undefined ||
 			options.plannedEnd !== undefined,
 	);
+}
+
+function processCliEscapes(input: string): string {
+	// On Windows, simulate bash double-quote escape layer first
+	let processed = input;
+	if (process.platform === "win32") {
+		const bashResult: string[] = [];
+		for (let i = 0; i < processed.length; i++) {
+			const char = processed.charAt(i);
+			if (char === "\\" && i + 1 < processed.length && processed.charAt(i + 1) === "\\") {
+				bashResult.push("\\");
+				i++;
+			} else {
+				bashResult.push(char);
+			}
+		}
+		processed = bashResult.join("");
+	}
+
+	// Then apply C-style escape processing
+	const result: string[] = [];
+	for (let i = 0; i < processed.length; i++) {
+		const char = processed.charAt(i);
+		if (char === "\\" && i + 1 < processed.length) {
+			const next = processed.charAt(i + 1);
+			if (next === "n") {
+				result.push("\n");
+				i++;
+			} else if (next === "\\") {
+				result.push("\\");
+				i++;
+			} else {
+				result.push("\\");
+				result.push(next);
+				i++;
+			}
+		} else {
+			result.push(char);
+		}
+	}
+	return result.join("");
 }
 
 async function resolveCliMilestoneInput(core: Core, milestone: string): Promise<string> {
@@ -1565,7 +1609,10 @@ taskCmd
 				typeof options.milestone === "string" ? await resolveCliMilestoneInput(core, options.milestone) : undefined;
 			const { task, filePath } = await core.createTaskFromInput({
 				title: title ?? "",
-				description: options.description || options.desc ? String(options.description || options.desc) : undefined,
+				description:
+					options.description || options.desc
+						? processCliEscapes(String(options.description || options.desc))
+						: undefined,
 				status: createAsDraft ? "Draft" : options.status ? String(options.status) : undefined,
 				assignee: options.assignee ? [String(options.assignee)] : undefined,
 				labels: options.labels
@@ -1592,8 +1639,10 @@ taskCmd
 				dueDate: typeof options.dueDate === "string" ? options.dueDate.trim() : undefined,
 				plannedStart: typeof options.plannedStart === "string" ? options.plannedStart.trim() : undefined,
 				plannedEnd: typeof options.plannedEnd === "string" ? options.plannedEnd.trim() : undefined,
-				actualStart: typeof options.actualStart === "string" ? options.actualStart.trim() : undefined,
-				actualEnd: typeof options.actualEnd === "string" ? options.actualEnd.trim() : undefined,
+				actualStart:
+					typeof options.actualStart === "string" ? localDateTimeToStoredUtc(options.actualStart.trim()) : undefined,
+				actualEnd:
+					typeof options.actualEnd === "string" ? localDateTimeToStoredUtc(options.actualEnd.trim()) : undefined,
 			});
 
 			if (usePlainOutput) {
@@ -2190,6 +2239,12 @@ taskCmd
 	.option("--acceptance-criteria <criteria>", "set acceptance criteria (comma-separated or use multiple times)")
 	.option("--plan <text>", "set implementation plan")
 	.option("--notes <text>", "set implementation notes (replaces existing)")
+	.option(
+		"--comment <text>",
+		"append a task comment; standalone '---' lines are reserved (can be used multiple times)",
+		createMultiValueAccumulator(),
+	)
+	.option("--comment-author <author>", "author to record for appended comments")
 	.option("--final-summary <text>", "set final summary (replaces existing)")
 	.option(
 		"--append-notes <text>",
@@ -2397,6 +2452,7 @@ taskCmd
 		const normalizedModifiedFiles = parseDelimitedStringList(options.modifiedFile);
 
 		const notesAppendValues = toStringArray(options.appendNotes);
+		const commentsAppendValues = toStringArray(options.comment);
 		const finalSummaryAppendValues = toStringArray(options.appendFinalSummary);
 
 		const editArgs: TaskEditArgs = {};
@@ -2405,7 +2461,7 @@ taskCmd
 		}
 		const descriptionOption = options.description ?? options.desc;
 		if (descriptionOption !== undefined) {
-			editArgs.description = String(descriptionOption);
+			editArgs.description = processCliEscapes(String(descriptionOption));
 		}
 		if (canonicalStatus) {
 			editArgs.status = canonicalStatus;
@@ -2452,6 +2508,12 @@ taskCmd
 		if (notesAppendValues.length > 0) {
 			editArgs.notesAppend = notesAppendValues;
 		}
+		if (commentsAppendValues.length > 0) {
+			editArgs.commentsAppend = commentsAppendValues;
+		}
+		if (typeof options.commentAuthor === "string") {
+			editArgs.commentAuthor = String(options.commentAuthor);
+		}
 		if (typeof options.finalSummary === "string") {
 			editArgs.finalSummary = String(options.finalSummary);
 		}
@@ -2471,10 +2533,10 @@ taskCmd
 			editArgs.plannedEnd = options.plannedEnd.trim();
 		}
 		if (typeof options.actualStart === "string") {
-			editArgs.actualStart = options.actualStart.trim();
+			editArgs.actualStart = localDateTimeToStoredUtc(options.actualStart.trim());
 		}
 		if (typeof options.actualEnd === "string") {
-			editArgs.actualEnd = options.actualEnd.trim();
+			editArgs.actualEnd = localDateTimeToStoredUtc(options.actualEnd.trim());
 		}
 		if (options.clearDueDate) {
 			editArgs.dueDate = "";
@@ -2725,7 +2787,10 @@ draftCmd
 		try {
 			const { task, filePath } = await core.createTaskFromInput({
 				title,
-				description: options.description || options.desc ? String(options.description || options.desc) : undefined,
+				description:
+					options.description || options.desc
+						? processCliEscapes(String(options.description || options.desc))
+						: undefined,
 				status: "Draft",
 				assignee: options.assignee ? [String(options.assignee)] : undefined,
 				labels: options.labels
@@ -2922,12 +2987,12 @@ milestoneCmd
 
 			const milestone = await core.filesystem.createMilestone(
 				title.trim(),
-				options.description,
+				options.description ? processCliEscapes(options.description) : undefined,
 				options.dueDate,
 				options.plannedStart,
 				options.plannedEnd,
-				options.actualStart,
-				options.actualEnd,
+				options.actualStart ? localDateTimeToStoredUtc(options.actualStart) : undefined,
+				options.actualEnd ? localDateTimeToStoredUtc(options.actualEnd) : undefined,
 			);
 
 			console.log(`Created milestone "${milestone.title}" (${milestone.id}).`);
@@ -3002,8 +3067,16 @@ milestoneCmd
 			const dueDate = options.clearDueDate ? "" : options.dueDate;
 			const plannedStart = options.clearPlannedStart ? "" : options.plannedStart;
 			const plannedEnd = options.clearPlannedEnd ? "" : options.plannedEnd;
-			const actualStart = options.clearActualStart ? "" : options.actualStart;
-			const actualEnd = options.clearActualEnd ? "" : options.actualEnd;
+			const actualStart = options.clearActualStart
+				? ""
+				: options.actualStart
+					? localDateTimeToStoredUtc(options.actualStart)
+					: undefined;
+			const actualEnd = options.clearActualEnd
+				? ""
+				: options.actualEnd
+					? localDateTimeToStoredUtc(options.actualEnd)
+					: undefined;
 
 			const result = await core.updateMilestone(
 				milestone.id,
@@ -3012,7 +3085,7 @@ milestoneCmd
 				dueDate,
 				plannedStart,
 				plannedEnd,
-				options.description,
+				options.description ? processCliEscapes(options.description) : undefined,
 				actualStart,
 				actualEnd,
 			);

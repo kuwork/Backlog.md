@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "backlog.md",
+      "dependencies": {
+        "get-port": "^7.2.0",
+      },
       "devDependencies": {
         "@biomejs/biome": "2.4.12",
         "@clack/core": "1.2.0",
@@ -38,12 +41,12 @@
         "turndown-plugin-gfm": "1.0.2",
       },
       "optionalDependencies": {
-        "backlog.md-darwin-arm64": "*",
-        "backlog.md-darwin-x64": "*",
-        "backlog.md-linux-arm64": "*",
-        "backlog.md-linux-x64": "*",
-        "backlog.md-windows-arm64": "*",
-        "backlog.md-windows-x64": "*",
+        "@kuwork/backlog.md-darwin-arm64": "*",
+        "@kuwork/backlog.md-darwin-x64": "*",
+        "@kuwork/backlog.md-linux-arm64": "*",
+        "@kuwork/backlog.md-linux-x64": "*",
+        "@kuwork/backlog.md-windows-arm64": "*",
+        "@kuwork/backlog.md-windows-x64": "*",
       },
     },
   },
@@ -387,18 +390,6 @@
 
     "await-to-js": ["await-to-js@3.0.0", "", {}, "sha512-zJAaP9zxTcvTHRlejau3ZOY4V7SRpiByf3/dxx2uyKxxor19tpmpV2QRsTKikckwhaPmr2dVpxxMr7jOCYVp5g=="],
 
-    "backlog.md-darwin-arm64": ["backlog.md-darwin-arm64@1.14.4", "", { "os": "darwin", "cpu": "arm64" }, "sha512-f6AcF+CZpw7BrRJlIhD1PuNWNYUrMRlAaP7v4sr/xwespAqWBc2xT0MS0ba2ory9cEFup16W2K5H789i1mBQ2Q=="],
-
-    "backlog.md-darwin-x64": ["backlog.md-darwin-x64@1.14.4", "", { "os": "darwin", "cpu": "x64" }, "sha512-DDuT04LqZgTWDJD42wl9Bw/gJACfsAuI1ZPZvqMSh9PtjySC25iCKmjflsgrkgRvGI49Cx7dCONTVfvILZZCTg=="],
-
-    "backlog.md-linux-arm64": ["backlog.md-linux-arm64@1.14.4", "", { "os": "linux", "cpu": "arm64" }, "sha512-efMv+NVoC5MkRfHg6rvSEw+MAjMF6w+FUjLtMuOtAR4vdL8sVUNqHgi9zsjQ6glnnz9/JBFtnYjjkRCozZuYuw=="],
-
-    "backlog.md-linux-x64": ["backlog.md-linux-x64@1.14.4", "", { "os": "linux", "cpu": "x64" }, "sha512-h3RT7jMqFZqQ/Sf49oB7ggqGJ2+p53nIqW544Ue+6RLL7VOmXieLU+hQlG5sh1rACbg22Y5gOhpvdnVvNgfiMA=="],
-
-    "backlog.md-windows-arm64": ["backlog.md-windows-arm64@1.45.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-LCotlXCwS5b+K3aYeeoIP78jYT3Af9NKOcvLZ9B8J/74MwWWOv3qM5CWwXqxSw2Rat62TtdvAkQfS7pQHyny2w=="],
-
-    "backlog.md-windows-x64": ["backlog.md-windows-x64@1.14.4", "", { "os": "win32", "cpu": "x64" }, "sha512-8gpi4GVY7wW6Ci8tXfHuodoXFPY4I2hsmOFMK7ggmhhImThALoaw2MTPoJbbFAXS0x5t9lL0R5toufZcmcJwyA=="],
-
     "bail": ["bail@2.0.2", "", {}, "sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw=="],
 
     "base64-js": ["base64-js@1.5.1", "", {}, "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA=="],
@@ -658,6 +649,8 @@
     "get-east-asian-width": ["get-east-asian-width@1.4.0", "", {}, "sha512-QZjmEOC+IT1uk6Rx0sX22V6uHWVwbdbxf1faPqJ1QhLdGgsRGCZoyaQBm/piRdJy/D2um6hM1UP7ZEeQ4EkP+Q=="],
 
     "get-intrinsic": ["get-intrinsic@1.3.0", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.2", "es-define-property": "^1.0.1", "es-errors": "^1.3.0", "es-object-atoms": "^1.1.1", "function-bind": "^1.1.2", "get-proto": "^1.0.1", "gopd": "^1.2.0", "has-symbols": "^1.1.0", "hasown": "^2.0.2", "math-intrinsics": "^1.1.0" } }, "sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ=="],
+
+    "get-port": ["get-port@7.2.0", "", {}, "sha512-afP4W205ONCuMoPBqcR6PSXnzX35KTcJygfJfcp+QY+uwm3p20p1YczWXhlICIzGMCxYBQcySEcOgsJcrkyobg=="],
 
     "get-proto": ["get-proto@1.0.1", "", { "dependencies": { "dunder-proto": "^1.0.1", "es-object-atoms": "^1.0.0" } }, "sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g=="],
 
