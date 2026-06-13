@@ -633,6 +633,16 @@ export const zhCN: TranslationDict = {
 		clickToPreview: "点击预览文件",
 	},
 
+	imageLightbox: {
+		viewImage: "查看图片",
+		zoomIn: "放大",
+		zoomOut: "缩小",
+		resetZoom: "重置缩放",
+		rotateLeft: "向左旋转",
+		rotateRight: "向右旋转",
+		goToImage: "转到第 {index} 张图片",
+	},
+
 	taskColumn: {
 		actions: "列操作",
 		cleanUpOld: "清理旧已完成任务",

@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from "react";
 import MDEditor from "@uiw/react-md-editor";
-import { renderMermaidIn } from "../utils/mermaid";
+import React, { useEffect, useRef } from "react";
+import { useImageLightbox } from "../contexts/ImageLightboxContext";
+import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
-import { useI18n } from '../hooks/useI18n';
+import { renderMermaidIn } from "../utils/mermaid";
 
 interface Props {
 	source: string;
@@ -77,7 +78,12 @@ function parseLocalUrl(href: string): LocalLinkInfo | null {
 		if (decisionMatch) return { type: "decision", id: decisionMatch[1]!, alias: `Decisions#${decisionMatch[1]!}` };
 
 		const wikiMatch = url.pathname.match(/^\/wiki\/(.+)/);
-		if (wikiMatch) return { type: "wiki", id: decodeURIComponent(wikiMatch[1]!), alias: `WIKI#${decodeURIComponent(wikiMatch[1]!)}` };
+		if (wikiMatch)
+			return {
+				type: "wiki",
+				id: decodeURIComponent(wikiMatch[1]!),
+				alias: `WIKI#${decodeURIComponent(wikiMatch[1]!)}`,
+			};
 
 		return null;
 	} catch {
@@ -97,7 +103,49 @@ function parseTaskUrl(href: string): string | null {
 	}
 }
 
-export default function MermaidMarkdown({ source, onFileClick, onTaskClick, onDraftClick, onDocClick, onDecisionClick, onWikiClick }: Props) {
+function LightboxImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+	const { openLightbox } = useImageLightbox();
+	const { t } = useI18n();
+	const { className, onClick, onKeyDown, alt, ...rest } = props;
+
+	const handleActivate = (target: HTMLImageElement) => {
+		const rawSrc = target.getAttribute("src");
+		if (rawSrc) openLightbox(rawSrc);
+	};
+
+	return (
+		<img
+			{...rest}
+			data-lightbox-img
+			alt={alt ?? ""}
+			className={`${className ?? ""} cursor-zoom-in max-w-full`.trim()}
+			role="button"
+			tabIndex={0}
+			aria-label={alt || t.imageLightbox.viewImage}
+			onClick={(e) => {
+				handleActivate(e.currentTarget);
+				onClick?.(e);
+			}}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					handleActivate(e.currentTarget);
+				}
+				onKeyDown?.(e);
+			}}
+		/>
+	);
+}
+
+export default function MermaidMarkdown({
+	source,
+	onFileClick,
+	onTaskClick,
+	onDraftClick,
+	onDocClick,
+	onDecisionClick,
+	onWikiClick,
+}: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = sanitizeMarkdownSource(source);
 	const { t } = useI18n();
@@ -257,7 +305,7 @@ export default function MermaidMarkdown({ source, onFileClick, onTaskClick, onDr
 
 	return (
 		<div ref={ref} className="wmde-markdown">
-			<MDEditor.Markdown source={safeSource} components={{ a: LinkComponent }} />
+			<MDEditor.Markdown source={safeSource} components={{ a: LinkComponent, img: LightboxImage }} />
 		</div>
 	);
 }

@@ -639,6 +639,16 @@ export const ja: TranslationDict = {
 		clickToPreview: "クリックしてファイルをプレビュー",
 	},
 
+	imageLightbox: {
+		viewImage: "画像を表示",
+		zoomIn: "拡大",
+		zoomOut: "縮小",
+		resetZoom: "ズームをリセット",
+		rotateLeft: "左回転",
+		rotateRight: "右回転",
+		goToImage: "{index}枚目の画像へ",
+	},
+
 	taskColumn: {
 		actions: "列アクション",
 		cleanUpOld: "古い完了タスクをクリーンアップ",

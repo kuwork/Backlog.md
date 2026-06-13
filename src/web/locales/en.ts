@@ -646,6 +646,16 @@ export const en = {
 		clickToPreview: "Click to preview file",
 	},
 
+	imageLightbox: {
+		viewImage: "View image",
+		zoomIn: "Zoom in",
+		zoomOut: "Zoom out",
+		resetZoom: "Reset zoom",
+		rotateLeft: "Rotate left",
+		rotateRight: "Rotate right",
+		goToImage: "Go to image {index}",
+	},
+
 	taskColumn: {
 		actions: "Column actions",
 		cleanUpOld: "Clean up old completed tasks",
