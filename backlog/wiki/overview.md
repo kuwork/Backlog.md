@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-06-09 00:40
+updated_date: 2026-06-24 00:30
 ---
 
 # Knowledge Base Overview
@@ -56,12 +56,13 @@ updated_date: 2026-06-09 00:40
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
 - **数据流**：Markdown 文件 → `FileSystem` → `ContentStore`（内存缓存 + 文件监视）→ `SearchService`（Fuse.js 索引）
 - **CLI**：`cli.ts` 单文件大入口，Commander.js + Clack 交互式向导，支持 TTY 检测与 plain 回退
-- **MCP Server**：`McpServer extends Core`，stdio 传输，roots 发现，fallback 模式
+- **MCP Server**：`McpServer extends Core`，stdio 传输，roots 发现，fallback 模式；正常启动路径也跟随客户端 workspace roots（BACK-522），`--cwd`/`BACKLOG_CWD` 可 pinned 固定根目录
 - **Web Server**：`BacklogServer` 基于 `Bun.serve()`，REST API + WebSocket 广播 + React SPA
 - **Markdown 流水线**：`gray-matter` 解析 frontmatter + `structured-sections.ts` 提取 AC/DoD/计划/备注
 - **资源管理**：`AssetManager` 处理上传、data URI、安全远程下载，临时目录 `.temp/` + 保存时 promote 到 `paste/`（任务、文档、Wiki 编辑器均支持）
 - **Skill 嵌入**：构建时将 `.codex/skills/` 嵌入 `src/skills/embedded/` 供编译后二进制使用
 - **MCP 安全**：stdio-only 传输，Windows 上修复 stdin close 误触发导致的挂起问题
+- **MCP 客户端设置**：统一 helper 支持 Claude/Codex/Gemini/Kiro；Codex 使用 `--` stdio 分隔符；新增编译二进制 MCP stdio smoke 测试（BACK-520）
 - **网络错误恢复**：GitOperations 将 SSL 错误（`SSL_ERROR_SYSCALL`、`SSL handshake failed` 等）识别为网络错误并优雅降级到本地数据
 
 ### 项目管理域
@@ -83,12 +84,12 @@ updated_date: 2026-06-09 00:40
 
 ## 统计
 
-- Sources ingested: 66
+- Sources ingested: 68
 - Concepts extracted: 24
 - Entities catalogued: 2
-- Execution notes: 10
-- Decisions recorded: 17
+- Execution notes: 11
+- Decisions recorded: 18
 - Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24
-- Reports generated: 3
+- Reports generated: 7

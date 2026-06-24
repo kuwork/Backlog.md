@@ -136,4 +136,20 @@ Backlog.md 的 MCP 实现从设计层面保障安全性：
 - **stdio-only 传输**：AI 客户端与 MCP 服务器之间仅通过标准输入输出通信，不监听任何网络端口，外部无法直接访问
 - **localhost-only 运行时验证**：Web UI 等服务默认仅绑定本地地址
 - **纯协议包装器**：MCP 层不包含任何业务逻辑，所有操作最终通过 Core 层统一处理，与 CLI 和 Web UI 共享同一套数据验证规则
-- **roots 发现机制**：MCP 客户端发送 workspace 根目录列表，Backlog.md 自动在目录中查找有效项目，未找到时降级为最小功能模式，仅暴露 `init` 相关工具
+- **roots 发现机制**：MCP 客户端发送 workspace 根目录列表，Backlog.md 自动在目录中查找有效项目。正常启动路径也会跟随客户端 workspace roots 变化（BACK-522），未找到时降级为最小功能模式，仅暴露 `init` 相关工具
+- **固定项目根目录**：如需锁定到固定目录（例如全局 `~/.backlog`），使用 `--cwd` 或 `BACKLOG_CWD` 环境变量启动；此时服务器不会跟随客户端 workspace roots
+
+## 常见问题
+
+**Codex 无法连接 Backlog.md MCP 服务器**
+- 现象：Codex 报告 MCP 服务器启动失败或超时
+- 常见原因：本地 `backlog` 命令解析到了陈旧/损坏的 `dist/backlog` 二进制
+- 解决：
+  1. 重新构建项目（`bun run build`）
+  2. 使用当前 Codex 命令格式：`codex mcp add backlog -- backlog mcp start`
+  3. 单独测试 `backlog mcp start` 是否能正常启动
+
+**共享 MCP 服务器写入错误项目**
+- 现象：在用户级或共享服务器场景下，AI 创建的任务出现在错误目录
+- 原因：旧版本服务器只在启动时解析一次 project root
+- 解决：升级到已包含 BACK-522 的版本；如需固定目录，使用 `backlog mcp start --cwd <path>`
