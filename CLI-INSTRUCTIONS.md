@@ -135,8 +135,9 @@ Milestones are managed through milestone files. Use CLI commands instead of edit
 | List completed milestones too | `backlog milestone list --show-completed --plain` |
 | Add milestone | `backlog milestone add "Release 1.0"` |
 | Add with description | `backlog milestone add "Beta" --description "Beta scope"` |
-| Rename and update tasks | `backlog milestone rename "Release 1.0" "Release 2.0"` |
-| Rename without task updates | `backlog milestone rename m-1 "Release 2.0" --no-update-tasks` |
+| Edit title and update tasks | `backlog milestone edit "Release 1.0" --title "Release 2.0"` |
+| Edit dates | `backlog milestone edit "Release 1.0" --due-date 2026-06-15 --planned-start 2026-06-01` |
+| Edit title without task updates | `backlog milestone edit m-1 --title "Release 2.0" --no-update-tasks` |
 | Remove and clear task milestones | `backlog milestone remove "Release 1.0"` |
 | Remove and keep task values | `backlog milestone remove "Release 1.0" --task-handling keep` |
 | Remove and reassign tasks | `backlog milestone remove "Release 1.0" --task-handling reassign --reassign-to "Release 2.0"` |

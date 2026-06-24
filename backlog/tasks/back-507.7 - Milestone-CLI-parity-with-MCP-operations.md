@@ -5,66 +5,66 @@ status: Done
 assignee:
   - '@gpt-5.5-xhigh'
 created_date: '2026-06-13 21:12'
-updated_date: '2026-06-13 21:19'
+updated_date: '2026-06-24 06:12'
 labels: []
-dependencies: []
+dependencies:
+  - BACK-401
 modified_files:
   - src/cli.ts
+  - src/mcp/tools/milestones/handlers.ts
   - src/test/cli-milestone-management.test.ts
   - CLI-INSTRUCTIONS.md
   - README.md
-  - src/guidelines/cli-instructions/overview.md
-  - src/test/cli-doc-search.test.ts
+  - src/guidelines/agent-guidelines.md
 parent_task_id: BACK-507
 priority: high
 ordinal: 38000
+actual_start: '2026-06-24 06:03'
+actual_end: '2026-06-24 06:11'
 ---
 
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Add non-interactive CLI commands for milestone add, rename, and remove so CLI users and agents can perform the same milestone management operations currently exposed through MCP. Keep behavior aligned with the existing MCP handlers/schemas for validation, task reassignment, archived milestone handling, and error messages where practical. Update command help and public docs so agents can discover these operations from the CLI surface.
+Add non-interactive CLI commands for milestone add, edit, and remove on top of BACK-401, so CLI users and agents can perform the same milestone management operations currently exposed through MCP. Keep behavior aligned with the post-401 MCP handlers/schemas for validation, task reassignment, archived milestone handling, date-field support, and error messages where practical. Update command help and public docs so agents can discover these operations from the CLI surface.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 backlog milestone add <name> creates a milestone file with optional description and validates duplicates consistently with MCP milestone_add.
-- [x] #2 backlog milestone rename <from> <to> supports the MCP updateTasks behavior, defaults to updating local tasks, and exposes a clear CLI flag for disabling task updates.
-- [x] #3 backlog milestone remove <name> supports clear, keep, and reassign task-handling modes, including validation for required reassign targets.
-- [x] #4 Milestone command help includes input schema sections, read/write behavior, outputs, and examples for add, rename, remove, list, and archive.
-- [x] #5 Tests cover CLI add/rename/remove success paths, validation failures, task reference updates, and parity with MCP milestone handler behavior.
+- [x] #2 backlog milestone remove <name> supports clear, keep, and reassign task-handling modes, including validation for required reassign targets.
+- [x] #3 backlog milestone edit <name> supports title, description, dueDate, plannedStart, and plannedEnd updates; it preserves the BACK-401 updateTasks behavior, rewriting local task milestone references only when the title changes, and exposes `--no-update-tasks` to disable even title-driven rewrites.
+- [x] #4 Milestone command help includes input schema sections, read/write behavior, outputs, and examples for add, edit, remove, list, and archive, including date-field types for edit.
+- [x] #5 Tests cover CLI add/edit/remove success paths, validation failures, title-driven task reference updates, date field updates, archived milestone handling, and parity with MCP milestone handler behavior.
 - [x] #6 README or CLI reference docs mention the new milestone commands where milestone management is documented.
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Inspect existing milestone MCP handlers, core milestone/task helpers, CLI command patterns, help text conventions, and CLI milestone tests to identify reusable behavior.
-2. Add non-interactive `milestone add`, `milestone rename`, and `milestone remove` commands in `src/cli.ts`, delegating to the same core milestone operations used by MCP where possible.
-3. Expand milestone command help with schema/read-write/output/example sections for add, rename, remove, list, and archive.
-4. Add focused CLI tests covering success paths, validation failures, task updates, and behavior parity with MCP milestone handlers.
-5. Update public docs for milestone management commands.
-6. Run focused milestone CLI tests, `bunx tsc --noEmit`, and `bun run check .`; then check acceptance criteria, final summary, and mark the task Done if all pass.
+1. Remove the legacy CLI `milestone create` and `milestone rename` commands so the milestone surface matches the post-401 MCP shape.
+2. Make `milestone edit <name>` the single mutation command, with `--title`, `--description`, `--due-date`, `--planned-start`, `--planned-end`, and `--clear-*` options plus `--no-update-tasks`.
+3. Route `milestone add`, `edit`, `remove`, and `archive` through the shared `MilestoneHandlers` so validation, task-reference updates, archived milestone handling, auto-commit, and error text stay aligned with MCP.
+4. Add a description-changed check to the MCP `editMilestone` handler and remove the unused `renameMilestone` alias.
+5. Update milestone command help schemas and public docs (CLI-INSTRUCTIONS.md, README.md, agent-guidelines.md).
+6. Update the focused CLI milestone management test suite to cover add, edit (title/dates/description/clears), remove, validation, help schema, and MCP parity.
+7. Run scoped milestone tests, type-check the modified files, and run Biome on the changed source files.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Started implementation for BACK-507.7. The task is already In Progress and assigned to @gpt-5.5-xhigh; recorded the implementation plan before code changes.
-
-Discovery: CLI milestone list/archive are in src/cli.ts; MCP add/rename/remove behavior is centralized in src/mcp/tools/milestones/handlers.ts with the needed alias, archived milestone, task update, and auto-commit handling. Chosen approach is to delegate new CLI mutation commands to MilestoneHandlers rather than duplicate that logic.
-
-Implemented milestone CLI parity by routing `backlog milestone add`, `rename`, `remove`, and `archive` through the existing MilestoneHandlers so duplicate/alias validation, task update behavior, archived milestone handling, auto-commit staging, and error text stay aligned with MCP behavior. Added focused CLI tests and public docs. Verification passed: `bun test src/test/cli-milestone-management.test.ts`; `bun test src/test/cli-milestone-management.test.ts src/test/cli-task-milestone.test.ts src/test/cli-milestone-filter.test.ts src/test/mcp-milestones.test.ts`; `bunx tsc --noEmit`; `bun run check .`.
+Implemented BACK-507.7 on top of BACK-401. Unified the CLI milestone surface around `add`, `edit`, `remove`, `archive`, and `list`. Removed the standalone `create` and `rename` commands; `edit` now accepts `--title`, `--description`, `--due-date`, `--planned-start`, `--planned-end`, and corresponding `--clear-*` flags, plus `--no-update-tasks`. Title-driven task reference rewrites are handled by the shared `MilestoneHandlers.editMilestone` path, so date-only edits do not touch tasks. Updated CLI help schemas, CLI reference docs, README, and agent guidelines. Added focused CLI milestone management tests covering add, edit (title/dates/description/clears), remove, validation, and MCP output parity.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented non-interactive CLI milestone management parity with the existing MCP milestone operations. `backlog milestone add`, `rename`, and `remove` now exist under the milestone command group, with rename defaulting to local task updates and `--no-update-tasks` available, and remove supporting `--task-handling clear|keep|reassign` plus `--reassign-to` validation. The commands delegate to the existing milestone handler logic to keep validation, task reference updates, archived milestone behavior, and output aligned with MCP.
+Implemented non-interactive CLI milestone management parity on top of BACK-401. The CLI milestone surface is now `add`, `edit`, `remove`, `archive`, and `list`. The old `create` and `rename` commands were removed. `edit` supports `--title`, `--description`, `--due-date`, `--planned-start`, `--planned-end`, and `--clear-due-date/--clear-planned-start/--clear-planned-end`, plus `--no-update-tasks`. It delegates to the shared `MilestoneHandlers.editMilestone` path, so task milestone references are only rewritten when the title actually changes; date-only edits do not touch tasks.
 
-Updated milestone help schemas, CLI reference docs, README quick examples, and CLI workflow overview guidance. Added a focused CLI milestone management test suite covering add/rename/remove success paths, validation failures, task updates, help schema output, and direct MCP handler output parity. Also applied a small Biome regex lint fix in `src/test/cli-doc-search.test.ts` required for `bun run check .`.
+Updated milestone help schemas and public docs (CLI-INSTRUCTIONS.md, README.md, agent-guidelines.md). Added/updated focused CLI milestone management tests covering add, edit (title/dates/description/clears), remove, validation, help schema output, and MCP output parity. Also added a description-changed check to the MCP `editMilestone` handler so description-only edits are applied, and removed the now-unused `renameMilestone` handler alias.
 
-Verification passed: `bun test src/test/cli-milestone-management.test.ts`; `bun test src/test/cli-milestone-management.test.ts src/test/cli-task-milestone.test.ts src/test/cli-milestone-filter.test.ts src/test/mcp-milestones.test.ts`; `bunx tsc --noEmit`; `bun run check .`.
+Verification passed: `bun test src/test/cli-milestone-management.test.ts src/test/cli-task-milestone.test.ts src/test/cli-milestone-filter.test.ts src/test/mcp-milestones.test.ts`; `bunx tsc --noEmit`; `bunx biome check` on modified files.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done

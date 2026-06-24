@@ -3313,59 +3313,50 @@ addHelpSchema(milestoneCmd.command("list"), {
 		}
 	});
 
-milestoneCmd
-	.command("create <title>")
-	.description("create a new milestone")
-	.option("-d, --description <description>", "milestone description")
-	.option("--due-date <date>", "due date (YYYY-MM-DD)")
-	.option("--planned-start <date>", "planned start date (YYYY-MM-DD)")
-	.option("--planned-end <date>", "planned end date (YYYY-MM-DD)")
-	.option("--actual-start <date>", "actual start date (YYYY-MM-DD HH:MM)")
-	.option("--actual-end <date>", "actual end date (YYYY-MM-DD HH:MM)")
-	.action(
-		async (
-			title: string,
-			options: {
-				description?: string;
-				dueDate?: string;
-				plannedStart?: string;
-				plannedEnd?: string;
-				actualStart?: string;
-				actualEnd?: string;
-			},
-		) => {
-			const cwd = await requireProjectRoot();
-			const core = new Core(cwd);
-
-			const milestone = await core.filesystem.createMilestone(
-				title.trim(),
-				options.description ? processCliEscapes(options.description) : undefined,
-				options.dueDate,
-				options.plannedStart,
-				options.plannedEnd,
-				options.actualStart ? localDateTimeToStoredUtc(options.actualStart) : undefined,
-				options.actualEnd ? localDateTimeToStoredUtc(options.actualEnd) : undefined,
-			);
-
-			console.log(`Created milestone "${milestone.title}" (${milestone.id}).`);
+addHelpSchema(milestoneCmd.command("edit <name>"), {
+	reads: "Active and archived milestone files, plus local tasks when the title changes and task updates are enabled",
+	required: [{ name: "name", type: "Milestone ID or title", description: "Existing active milestone to edit" }],
+	optional: [
+		{ name: "title", type: "String", description: "New milestone title; checked for alias conflicts" },
+		{ name: "description", type: "Markdown", description: "New milestone description" },
+		{ name: "due-date", type: "Date (YYYY-MM-DD)", description: "Due date; use --clear-due-date to remove" },
+		{
+			name: "planned-start",
+			type: "Date (YYYY-MM-DD)",
+			description: "Planned start date; use --clear-planned-start to remove",
 		},
-	);
-
-milestoneCmd
-	.command("edit <name>")
+		{
+			name: "planned-end",
+			type: "Date (YYYY-MM-DD)",
+			description: "Planned end date; use --clear-planned-end to remove",
+		},
+		{
+			name: "update-tasks",
+			type: "Boolean",
+			description:
+				"Update local task milestone references when the title changes; default true, disable with --no-update-tasks",
+		},
+	],
+	writes:
+		"Updates the milestone file and, when the title changes and updateTasks is true, updates matching local task milestone values",
+	output: "Edit summary, task update count, and file move path when changed",
+	examples: [
+		'backlog milestone edit "Release 1.0" --title "Release 2.0"',
+		'backlog milestone edit "Release 1.0" --description "Updated scope"',
+		'backlog milestone edit "Release 1.0" --due-date 2026-06-15 --planned-start 2026-06-01',
+		'backlog milestone edit m-1 --title "Release 2.0" --no-update-tasks',
+	],
+})
 	.description("edit a milestone title, description, and/or dates")
 	.option("-t, --title <title>", "new milestone title")
-	.option("-d, --description <description>", "new milestone description")
+	.option("-d, --description <text>", "new milestone description")
 	.option("--due-date <date>", "due date (YYYY-MM-DD)")
 	.option("--planned-start <date>", "planned start date (YYYY-MM-DD)")
 	.option("--planned-end <date>", "planned end date (YYYY-MM-DD)")
-	.option("--actual-start <date>", "actual start date (YYYY-MM-DD HH:MM)")
-	.option("--actual-end <date>", "actual end date (YYYY-MM-DD HH:MM)")
 	.option("--clear-due-date", "clear due date")
 	.option("--clear-planned-start", "clear planned start date")
 	.option("--clear-planned-end", "clear planned end date")
-	.option("--clear-actual-start", "clear actual start date")
-	.option("--clear-actual-end", "clear actual end date")
+	.option("--no-update-tasks", "do not update local tasks that reference the milestone")
 	.action(
 		async (
 			name: string,
@@ -3375,82 +3366,23 @@ milestoneCmd
 				dueDate?: string;
 				plannedStart?: string;
 				plannedEnd?: string;
-				actualStart?: string;
-				actualEnd?: string;
 				clearDueDate?: boolean;
 				clearPlannedStart?: boolean;
 				clearPlannedEnd?: boolean;
-				clearActualStart?: boolean;
-				clearActualEnd?: boolean;
+				updateTasks?: boolean;
 			},
 		) => {
-			const cwd = await requireProjectRoot();
-			const core = new Core(cwd);
-
-			const hasEditFlags =
-				options.title ||
-				options.description ||
-				options.dueDate ||
-				options.plannedStart ||
-				options.plannedEnd ||
-				options.actualStart ||
-				options.actualEnd ||
-				options.clearDueDate ||
-				options.clearPlannedStart ||
-				options.clearPlannedEnd ||
-				options.clearActualStart ||
-				options.clearActualEnd;
-			if (!hasEditFlags) {
-				console.error(
-					"No edits specified. Use --title, --description, --due-date, --planned-start, --planned-end, --actual-start, --actual-end, or --clear-* options.",
-				);
-				process.exitCode = 1;
-				return;
-			}
-
-			const milestone = await core.filesystem.loadMilestone(name);
-			if (!milestone) {
-				console.error(`Milestone "${name}" not found.`);
-				process.exitCode = 1;
-				return;
-			}
-
-			const title = options.title?.trim() || milestone.title;
-			const dueDate = options.clearDueDate ? "" : options.dueDate;
-			const plannedStart = options.clearPlannedStart ? "" : options.plannedStart;
-			const plannedEnd = options.clearPlannedEnd ? "" : options.plannedEnd;
-			const actualStart = options.clearActualStart
-				? ""
-				: options.actualStart
-					? localDateTimeToStoredUtc(options.actualStart)
-					: undefined;
-			const actualEnd = options.clearActualEnd
-				? ""
-				: options.actualEnd
-					? localDateTimeToStoredUtc(options.actualEnd)
-					: undefined;
-
-			const result = await core.updateMilestone(
-				milestone.id,
-				title,
-				undefined,
-				dueDate,
-				plannedStart,
-				plannedEnd,
-				options.description ? processCliEscapes(options.description) : undefined,
-				actualStart,
-				actualEnd,
+			await runMilestoneMutation((handlers) =>
+				handlers.editMilestone({
+					from: name,
+					to: options.title ?? name,
+					updateTasks: options.updateTasks !== false,
+					description: options.description ? processCliEscapes(options.description) : undefined,
+					dueDate: options.clearDueDate ? "" : options.dueDate,
+					plannedStart: options.clearPlannedStart ? "" : options.plannedStart,
+					plannedEnd: options.clearPlannedEnd ? "" : options.plannedEnd,
+				}),
 			);
-
-			if (!result.success) {
-				console.error(`Failed to edit milestone "${name}".`);
-				process.exitCode = 1;
-				return;
-			}
-
-			const label = result.milestone?.title ?? name;
-			const id = result.milestone?.id;
-			console.log(`Updated milestone "${label}"${id ? ` (${id})` : ""}.`);
 		},
 	);
 
@@ -3466,34 +3398,6 @@ addHelpSchema(milestoneCmd.command("add <name>"), {
 	.option("-d, --description <text>", "milestone description")
 	.action(async (name: string, options: { description?: string }) => {
 		await runMilestoneMutation((handlers) => handlers.addMilestone({ name, description: options.description }));
-	});
-
-addHelpSchema(milestoneCmd.command("rename <from> <to>"), {
-	reads: "Active and archived milestone files, plus local tasks when task updates are enabled",
-	required: [
-		{ name: "from", type: "Milestone ID or title", description: "Existing active milestone to rename" },
-		{ name: "to", type: "String", description: "New milestone title; checked for alias conflicts" },
-	],
-	optional: [
-		{
-			name: "update-tasks",
-			type: "Boolean",
-			description: "Update local task milestone references; default true, disable with --no-update-tasks",
-		},
-	],
-	writes: "Renames the milestone file and, by default, updates matching local task milestone values",
-	output: "Rename summary, task update count, and file move path when changed",
-	examples: [
-		'backlog milestone rename "Release 1.0" "Release 2.0"',
-		'backlog milestone rename m-1 "Release 2.0" --no-update-tasks',
-	],
-})
-	.description("rename a milestone file and update local tasks by default")
-	.option("--no-update-tasks", "do not update local tasks that reference the milestone")
-	.action(async (from: string, to: string, options: { updateTasks?: boolean }) => {
-		await runMilestoneMutation((handlers) =>
-			handlers.renameMilestone({ from, to, updateTasks: options.updateTasks !== false }),
-		);
 	});
 
 addHelpSchema(milestoneCmd.command("remove <name>"), {

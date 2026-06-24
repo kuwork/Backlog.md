@@ -95,18 +95,18 @@ describe("CLI milestone management", () => {
 		expect(await core.git.getLastCommitMessage()).toContain("backlog: Add milestone m-0");
 	});
 
-	it("renames milestones and updates local task references by default", async () => {
+	it("edits milestone titles and updates local task references by default", async () => {
 		const core = new Core(TEST_DIR);
 
 		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
 		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
 		await core.editTask("task-1", { milestone: "Release A" }, false);
 
-		const rename = await $`bun ${cliPath} milestone rename "Release A" "Release Prime"`.cwd(TEST_DIR).quiet();
+		const edit = await $`bun ${cliPath} milestone edit "Release A" --title "Release Prime"`.cwd(TEST_DIR).quiet();
 
-		expect(rename.exitCode).toBe(0);
-		expect(rename.stdout.toString()).toContain('Renamed milestone "Release A" (m-0) → "Release Prime" (m-0).');
-		expect(rename.stdout.toString()).toContain("Updated 1 local task: TASK-1");
+		expect(edit.exitCode).toBe(0);
+		expect(edit.stdout.toString()).toContain('Renamed milestone "Release A" (m-0) → "Release Prime" (m-0).');
+		expect(edit.stdout.toString()).toContain("Updated 1 local task: TASK-1");
 
 		const task = await core.filesystem.loadTask("task-1");
 		expect(task?.milestone).toBe("m-0");
@@ -115,22 +115,94 @@ describe("CLI milestone management", () => {
 		expect(milestones[0]?.title).toBe("Release Prime");
 	});
 
-	it("supports disabling task updates during milestone rename", async () => {
+	it("supports disabling task updates during milestone title edit", async () => {
 		const core = new Core(TEST_DIR);
 
 		await $`bun ${cliPath} milestone add "Legacy Release"`.cwd(TEST_DIR).quiet();
 		await $`bun ${cliPath} task create "Legacy task" --milestone "Legacy Release" --plain`.cwd(TEST_DIR).quiet();
 		await core.editTask("task-1", { milestone: "Legacy Release" }, false);
 
-		const rename = await $`bun ${cliPath} milestone rename "Legacy Release" "Renamed Release" --no-update-tasks`
+		const edit = await $`bun ${cliPath} milestone edit "Legacy Release" --title "Renamed Release" --no-update-tasks`
 			.cwd(TEST_DIR)
 			.quiet();
 
-		expect(rename.exitCode).toBe(0);
-		expect(rename.stdout.toString()).toContain("Skipped updating tasks (updateTasks=false).");
+		expect(edit.exitCode).toBe(0);
+		expect(edit.stdout.toString()).toContain("Skipped updating tasks (updateTasks=false).");
 
 		const task = await core.filesystem.loadTask("task-1");
 		expect(task?.milestone).toBe("Legacy Release");
+	});
+
+	it("edits milestone date fields without rewriting task references", async () => {
+		const core = new Core(TEST_DIR);
+
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
+
+		const edit =
+			await $`bun ${cliPath} milestone edit "Release A" --due-date 2026-06-15 --planned-start 2026-06-01 --planned-end 2026-06-10`
+				.cwd(TEST_DIR)
+				.quiet();
+
+		expect(edit.exitCode).toBe(0);
+
+		const milestone = (await core.filesystem.listMilestones())[0];
+		expect(milestone?.title).toBe("Release A");
+		expect(milestone?.dueDate).toBe("2026-06-15");
+		expect(milestone?.plannedStart).toBe("2026-06-01");
+		expect(milestone?.plannedEnd).toBe("2026-06-10");
+
+		const task = await core.filesystem.loadTask("task-1");
+		expect(task?.milestone).toBe("m-0");
+	});
+
+	it("edits milestone descriptions", async () => {
+		const core = new Core(TEST_DIR);
+
+		await $`bun ${cliPath} milestone add "Release A" --description "Initial scope"`.cwd(TEST_DIR).quiet();
+
+		const editDesc = await $`bun ${cliPath} milestone edit "Release A" --description "Updated scope"`
+			.cwd(TEST_DIR)
+			.quiet();
+		expect(editDesc.exitCode).toBe(0);
+		expect((await core.filesystem.listMilestones())[0]?.description).toBe("Updated scope");
+	});
+
+	it("clears milestone date fields when requested", async () => {
+		const core = new Core(TEST_DIR);
+
+		await core.filesystem.createMilestone("Release A", undefined, "2026-06-15", "2026-06-01", "2026-06-10");
+
+		const edit =
+			await $`bun ${cliPath} milestone edit "Release A" --clear-due-date --clear-planned-start --clear-planned-end`
+				.cwd(TEST_DIR)
+				.quiet();
+
+		expect(edit.exitCode).toBe(0);
+
+		const milestone = (await core.filesystem.listMilestones())[0];
+		expect(milestone?.dueDate).toBeUndefined();
+		expect(milestone?.plannedStart).toBeUndefined();
+		expect(milestone?.plannedEnd).toBeUndefined();
+	});
+
+	it("rejects edit targets that collide with another milestone alias", async () => {
+		const core = new Core(TEST_DIR);
+
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} milestone add "Release B"`.cwd(TEST_DIR).quiet();
+
+		const conflict = await $`bun ${cliPath} milestone edit "Release A" --title "Release B"`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		const output = conflict.stdout.toString() + conflict.stderr.toString();
+
+		expect(conflict.exitCode).toBe(1);
+		expect(output).toContain('Milestone alias conflict: "Release B" matches existing milestone "Release B" (m-1).');
+
+		const milestones = await core.filesystem.listMilestones();
+		expect(milestones.find((m) => m.id === "m-0")?.title).toBe("Release A");
 	});
 
 	it("removes milestones and clears matching task values by default", async () => {
@@ -199,7 +271,7 @@ describe("CLI milestone management", () => {
 		const helpByCommand = new Map([
 			["list", await $`bun ${cliPath} milestone list --help`.cwd(TEST_DIR).text()],
 			["add", await $`bun ${cliPath} milestone add --help`.cwd(TEST_DIR).text()],
-			["rename", await $`bun ${cliPath} milestone rename --help`.cwd(TEST_DIR).text()],
+			["edit", await $`bun ${cliPath} milestone edit --help`.cwd(TEST_DIR).text()],
 			["remove", await $`bun ${cliPath} milestone remove --help`.cwd(TEST_DIR).text()],
 			["archive", await $`bun ${cliPath} milestone archive --help`.cwd(TEST_DIR).text()],
 		]);
@@ -214,7 +286,12 @@ describe("CLI milestone management", () => {
 			}
 		}
 
-		expect(helpByCommand.get("rename")).toContain("disable with --no-update-tasks");
+		const editHelp = helpByCommand.get("edit") ?? "";
+		expect(editHelp).toContain("due-date: Date (YYYY-MM-DD)");
+		expect(editHelp).toContain("planned-start: Date (YYYY-MM-DD)");
+		expect(editHelp).toContain("planned-end: Date (YYYY-MM-DD)");
+		expect(editHelp).toContain("disable with --no-update-tasks");
+		expect(editHelp).toContain("update-tasks: Boolean");
 		expect(helpByCommand.get("remove")).toContain("task-handling: one of: clear, keep, reassign");
 		expect(helpByCommand.get("remove")).toContain("reassign-to: Milestone ID or title");
 	});
@@ -229,9 +306,9 @@ describe("CLI milestone management", () => {
 		const mcpAdd = await mcpHandlers.addMilestone({ name: "Parity A" });
 		expect(cliAdd.stdout.toString().trim()).toBe(toolText(mcpAdd).trim());
 
-		const cliRename = await $`bun ${cliPath} milestone rename "Parity A" "Parity B"`.cwd(TEST_DIR).quiet();
-		const mcpRename = await mcpHandlers.renameMilestone({ from: "Parity A", to: "Parity B" });
-		expect(normalizeRenamePaths(cliRename.stdout.toString())).toBe(normalizeRenamePaths(toolText(mcpRename)));
+		const cliEdit = await $`bun ${cliPath} milestone edit "Parity A" --title "Parity B"`.cwd(TEST_DIR).quiet();
+		const mcpEdit = await mcpHandlers.editMilestone({ from: "Parity A", to: "Parity B" });
+		expect(normalizeRenamePaths(cliEdit.stdout.toString())).toBe(normalizeRenamePaths(toolText(mcpEdit)));
 
 		const cliRemove = await $`bun ${cliPath} milestone remove "Parity B" --task-handling keep`.cwd(TEST_DIR).quiet();
 		const mcpRemove = await mcpHandlers.removeMilestone({ name: "Parity B", taskHandling: "keep" });

@@ -297,7 +297,7 @@ CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，B
 
 完整命令参考 —— 任务管理、搜索、看板、文档、决策等：**[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
 
-快速示例：`backlog`、`backlog instructions`、`backlog task create`、`backlog task list`、`backlog task edit`、`backlog milestone add`、`backlog milestone rename`、`backlog milestone remove`、`backlog search`、`backlog board`、`backlog browser`。
+快速示例：`backlog`、`backlog instructions`、`backlog task create`、`backlog task list`、`backlog task edit`、`backlog milestone add`、`backlog milestone edit`、`backlog milestone remove`、`backlog search`、`backlog board`、`backlog browser`。
 
 完整帮助：`backlog --help`
 

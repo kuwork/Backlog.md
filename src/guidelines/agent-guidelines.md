@@ -753,21 +753,20 @@ backlog doc view doc-1
 
 Use Backlog.md public interfaces for milestone creation, listing, and archival so IDs, frontmatter, paths, and task relationships stay consistent.
 
-> **Important**: Assigning a milestone name to a task via `--milestone` only records the name on the task file; it **does not create a milestone file**. To create a milestone with an ID, dates, or other metadata, you must explicitly create it first using `milestone create` or `milestone_add`, then assign tasks to it.
+> **Important**: Assigning a milestone name to a task via `--milestone` only records the name on the task file; it **does not create a milestone file**. To create a milestone with an ID and metadata, you must explicitly add it first using `milestone add`, then assign tasks to it.
 
 #### CLI Usage
 
-The CLI supports creating, listing, and archiving milestones.
+The CLI supports adding, editing, removing, listing, and archiving milestones.
 
 ```bash
-# Create a new milestone file explicitly (saved under backlog/milestones/)
-backlog milestone create "Release 2.0" -d "Ship the v2.0 release"
+# Add a new milestone file explicitly (saved under backlog/milestones/)
+backlog milestone add "Release 2.0" -d "Ship the v2.0 release"
 
 # Edit a milestone (title, description, dates)
 backlog milestone edit "Release 2.0" -t "Release 2.1" -d "Updated scope"
 backlog milestone edit "Release 2.0" --due-date 2026-06-15
 backlog milestone edit "Release 2.0" --planned-start 2026-06-01 --planned-end 2026-06-10
-backlog milestone edit "Release 2.0" --actual-start "2026-06-02 09:30" --actual-end "2026-06-09 17:00"
 backlog milestone edit "Release 2.0" --clear-due-date --clear-planned-start
 
 # List active milestones (shows completion ratio)
@@ -778,6 +777,11 @@ backlog milestone list --show-completed
 
 # Plain text output (AI-friendly)
 backlog milestone list --plain
+
+# Remove a milestone and clear, keep, or reassign its tasks
+backlog milestone remove "Release 2.0"
+backlog milestone remove "Release 2.0" --task-handling keep
+backlog milestone remove "Release 2.0" --task-handling reassign --reassign-to "Release 3.0"
 
 # Archive a completed milestone
 backlog milestone archive "Release 2.0"
