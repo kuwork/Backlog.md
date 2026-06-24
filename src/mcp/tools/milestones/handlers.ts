@@ -378,6 +378,10 @@ export class MilestoneHandlers {
 			args.actualStart,
 			args.actualEnd,
 		);
+		const milestonePath = await this.core.filesystem.getMilestoneFilePath(milestone.id);
+		await this.commitMilestoneMutation(`backlog: Add milestone ${milestone.id}`, {
+			taskFilePaths: milestonePath ? [milestonePath] : [],
+		});
 
 		return {
 			content: [
@@ -403,6 +407,8 @@ export class MilestoneHandlers {
 			throw new BacklogToolError(`Milestone not found: "${fromName}"`, "NOT_FOUND");
 		}
 		const isTitleChanged = toName !== sourceMilestone.title.trim();
+		const isDescriptionChanged =
+			args.description !== undefined && args.description !== (sourceMilestone.description ?? "");
 		const isDueDateChanged = args.dueDate !== undefined && args.dueDate !== (sourceMilestone.dueDate ?? "");
 		const isPlannedStartChanged =
 			args.plannedStart !== undefined && args.plannedStart !== (sourceMilestone.plannedStart ?? "");
@@ -413,6 +419,7 @@ export class MilestoneHandlers {
 
 		if (
 			!isTitleChanged &&
+			!isDescriptionChanged &&
 			!isDueDateChanged &&
 			!isPlannedStartChanged &&
 			!isPlannedEndChanged &&

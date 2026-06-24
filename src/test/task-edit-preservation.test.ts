@@ -265,4 +265,40 @@ Keep me exactly.
 		expect(result).toContain("Updated minimal description");
 		expect(result).toContain("No acceptance criteria defined");
 	});
+
+	it("clears task date fields with --clear-* flags", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-6",
+				title: "Date clear test",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-07-04",
+				labels: [],
+				dependencies: [],
+				description: "Date clearing test",
+				dueDate: "2026-07-15",
+				plannedStart: "2026-07-01",
+				plannedEnd: "2026-07-10",
+				actualStart: "2026-07-01 09:00",
+				actualEnd: "2026-07-05 18:00",
+			},
+			false,
+		);
+
+		const before = await $`bun ${cliPath} task 6 --plain`.cwd(TEST_DIR).text();
+		expect(before).toContain("Due:");
+		expect(before).toContain("Planned End:");
+		expect(before).toContain("Actual Start:");
+
+		await $`bun ${cliPath} task edit 6 --clear-due-date --clear-planned-end --clear-actual-start`.cwd(TEST_DIR).quiet();
+
+		const after = await $`bun ${cliPath} task 6 --plain`.cwd(TEST_DIR).text();
+		expect(after).not.toContain("Due:");
+		expect(after).not.toContain("Planned End:");
+		expect(after).not.toContain("Actual Start:");
+		expect(after).toContain("Planned Start:");
+		expect(after).toContain("Actual End:");
+	});
 });

@@ -100,8 +100,8 @@ backlog init "Personal Planning" --no-git
 ```
 
 The init wizard will ask how you want to connect AI tools:
-- **MCP connector** (recommended) — auto-configures Claude Code, Codex, Gemini CLI, Kiro or Cursor and adds workflow instructions for your agents.
-- **CLI commands** — creates instruction files (CLAUDE.md, AGENTS.md, etc.) so agents use Backlog via CLI.
+- **CLI instructions** (recommended) — creates a short instruction file that tells agents to run `backlog instructions overview`.
+- **MCP connector** — if you prefer MCP, auto-configures Claude Code, Codex, Gemini CLI, Kiro or Cursor.
 - **Skip** — no AI setup; use Backlog.md purely as a task manager.
 
 Backlog data is stored in a project-local backlog folder such as `backlog/`, `.backlog/`, or a custom project-relative path configured through `backlog.config.yml`. Tasks remain human-readable Markdown files (e.g. `task-10 - Add core search functionality.md`). Git is optional: `backlog init --no-git` creates a filesystem-only project and disables cross-branch checks, remote operations, and auto-commit.
@@ -111,7 +111,7 @@ Backlog data is stored in a project-local backlog folder such as `backlog/`, `.b
 ### Working with AI agents
 
 This is the recommended flow for Claude Code, Codex, Gemini CLI, Kiro and similar tools — following the **spec‑driven AI development** approach.
-After running `backlog init` and choosing the MCP or CLI integration, work in this loop:
+After running `backlog init`, agents should start by running `backlog instructions overview`, then work in this loop:
 
 **Step 1 — Describe your idea.** Tell the agent what you want to build and ask it to split the work into small tasks with clear descriptions and acceptance criteria.
 
@@ -200,7 +200,7 @@ backlog browser --no-open
 - **Tracking comparison**: Planned border and actual bar overlaid on the same row—delays and early starts visible at a glance
 - **Dependency arrows**: SVG smart-connects task dependencies
 
-Date fields can be set directly via CLI:
+Date fields can be set or cleared directly via CLI:
 
 ```bash
 # Planned fields (Date-only)
@@ -208,6 +208,12 @@ backlog task edit BACK-10 --planned-start 2026-06-01 --planned-end 2026-06-07 --
 
 # Actual fields (Date-time UTC), auto-populated on status change
 backlog task edit BACK-10 --status "In Progress"  # actualStart auto-set to current time
+
+# Clear any task date field
+backlog task edit BACK-10 --clear-due-date --clear-planned-start --clear-planned-end --clear-actual-start --clear-actual-end
+
+# Clear milestone date fields
+backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --clear-planned-end
 ```
 
 ![Gantt Chart View](./backlog/assets/paste/gantt.gif)
@@ -220,8 +226,8 @@ To keep the Web UI running as an auto-starting local service, see [Running Backl
 
 ## 🔧 MCP Integration (Model Context Protocol)
 
-The easiest way to connect Backlog.md to AI coding assistants like Claude Code, Codex, Gemini CLI and Kiro is via the MCP protocol.
-You can run `backlog init` (even if you already initialized Backlog.md) to set up MCP integration automatically, or follow the manual steps below.
+CLI instructions are the default AI integration method. If you explicitly prefer an MCP connector, Backlog.md still supports AI coding assistants like Claude Code, Codex, Gemini CLI and Kiro.
+You can run `backlog init` (even if you already initialized Backlog.md) and choose MCP integration, or follow the manual steps below.
 
 ### Client guides
 
@@ -238,7 +244,7 @@ You can run `backlog init` (even if you already initialized Backlog.md) to set u
   <summary><strong>Codex</strong></summary>
 
   ```bash
-  codex mcp add backlog backlog mcp start
+  codex mcp add backlog -- backlog mcp start
   ```
 
 </details>
@@ -283,12 +289,12 @@ If your IDE can't set the process working directory for MCP servers, set `BACKLO
 If your IDE supports custom args but not env vars, you can also use `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`.
 
 > [!IMPORTANT]
-> When adding the MCP server manually, you should add some extra instructions in your CLAUDE.md/AGENTS.md files to inform the agent about Backlog.md.
+> When adding the MCP server manually, add a short instruction in your CLAUDE.md/AGENTS.md files telling the agent to read `backlog://workflow/overview`.
 > This step is not required when using `backlog init` as it adds these instructions automatically.
-> Backlog.md's instructions for agents are available at [`/src/guidelines/mcp/agent-nudge.md`](/src/guidelines/mcp/agent-nudge.md).
+> For CLI-based setups, use `backlog instructions overview` to fetch the current workflow guidance.
 
 
-Once connected, agents can read the Backlog.md workflow instructions via the resource `backlog://docs/task-workflow`.
+Once connected, agents can read the Backlog.md workflow instructions via `backlog://workflow/overview`, with detailed guides at `backlog://workflow/task-creation`, `backlog://workflow/task-execution`, and `backlog://workflow/task-finalization`.
 Use `/mcp` command in your AI tool (Claude Code, Codex, Kiro) to verify if the connection is working.
 
 ---
@@ -297,7 +303,7 @@ Use `/mcp` command in your AI tool (Claude Code, Codex, Kiro) to verify if the c
 
 Full command reference — task management, search, board, docs, decisions, and more: **[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
 
-Quick examples: `backlog task create`, `backlog task list`, `backlog task edit`, `backlog search`, `backlog board`, `backlog browser`.
+Quick examples: `backlog`, `backlog instructions`, `backlog task create`, `backlog task list`, `backlog task edit`, `backlog milestone add`, `backlog milestone edit`, `backlog milestone remove`, `backlog search`, `backlog board`, `backlog browser`.
 
 Full help: `backlog --help`
 
