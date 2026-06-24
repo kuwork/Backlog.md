@@ -2,7 +2,7 @@
 title: MCP Server 实现
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-05-25 23:45
+updated_date: 2026-06-24 00:30
 ---
 
 
@@ -47,6 +47,21 @@ McpServer extends Core
 2. 对每个 root URI（`file://` 协议），调用 `resolveBacklogDirectory()` 检查是否存在有效配置
 3. 找到第一个有效项目后，调用 `upgradeToProject()` 重新初始化 Core 并注册完整工具集
 4. 未找到时保持 fallback 模式，只暴露 `init` 和项目发现相关资源
+
+### 正常启动路径也跟随 Roots（BACK-522）
+
+- 从 #608/BACK-434 的 fallback-only roots 发现扩展到**正常（已初始化）启动路径**。
+- `pinned` 标志由 `src/commands/mcp.ts` 根据目录来源设置：
+  - `--cwd`/`BACKLOG_CWD` → `pinned = true`，固定 project root，不查询 roots。
+  - `process.cwd()` → `pinned = false`，启用 request-scoped roots 发现。
+- `startupHasProject` 标志保证：正常基线启动已有项目时，即使客户端 workspace 没有 backlog，也保留原项目（只有 fallback 基线才会降级到 init-required）。
+- `upgradeToProject` 的 no-op 短路覆盖正常基线，避免客户端 root 与启动目录相同时重复注册。
+
+### 约束
+
+- 每个 root 直接检查，不递归。
+- 多 root 时选择**第一个**包含有效 backlog 配置的 root。
+- Single-flight：并发请求共享同一次 roots 解析结果。
 
 ## 与 CLI 的关系
 
