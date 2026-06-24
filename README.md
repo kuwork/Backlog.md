@@ -100,8 +100,8 @@ backlog init "Personal Planning" --no-git
 ```
 
 初始化向导会询问您希望如何接入 AI 工具：
-- **MCP 连接器**（推荐）—— 自动配置 Claude Code、Codex、Gemini CLI、Kiro 或 Cursor，并为您的智能体添加工作流指引。
-- **CLI 命令** —— 创建指令文件（CLAUDE.md、AGENTS.md 等），以便智能体通过 CLI 使用 Backlog。
+- **CLI 指令**（推荐）—— 创建简短的指令文件，告诉智能体运行 `backlog instructions overview`。
+- **MCP 连接器** —— 如果您更偏好 MCP，可以自动配置 Claude Code、Codex、Gemini CLI、Kiro 或 Cursor。
 - **跳过** —— 不设置 AI；仅将 Backlog.md 作为任务管理器使用。
 
 Backlog 数据存储在项目本地的 backlog 文件夹中，例如 `backlog/`、`.backlog/`，或通过 `backlog.config.yml` 配置的项目相对路径。任务仍是可直接阅读的 Markdown 文件（例如 `task-10 - Add core search functionality.md`）。Git 是可选的：`backlog init --no-git` 创建纯文件系统项目，并禁用跨分支检查、远程操作和自动提交。
@@ -111,7 +111,7 @@ Backlog 数据存储在项目本地的 backlog 文件夹中，例如 `backlog/`�
 ### 与 AI 智能体协作
 
 这是针对 Claude Code、Codex、Gemini CLI、Kiro 及类似工具的推荐工作流 —— 遵循**规范驱动的 AI 开发**方法。
-运行 `backlog init` 并选择 MCP 或 CLI 集成后，遵循以下迭代循环：
+运行 `backlog init` 后，智能体应首先运行 `backlog instructions overview`，然后按以下循环工作：
 
 **步骤 1 —— 描述您的想法。** 告诉智能体您想构建什么，并要求它将工作拆分为小任务，附上清晰的描述和验收标准。
 
@@ -220,8 +220,8 @@ backlog task edit BACK-10 --status "In Progress"  # actualStart 自动设为当�
 
 ## 🔧 MCP 集成（Model Context Protocol）
 
-将 Backlog.md 连接到 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手的最佳方式是通过 MCP 协议。
-您可以运行 `backlog init`（即使您已经初始化了 Backlog.md）来自动设置 MCP 集成，或按照以下手动步骤操作。
+CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，Backlog.md 仍支持 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手。
+您可以运行 `backlog init`（即使您已经初始化了 Backlog.md）并选择 MCP 集成，或按照以下手动步骤操作。
 
 ### 客户端指南
 
@@ -283,12 +283,12 @@ backlog task edit BACK-10 --status "In Progress"  # actualStart 自动设为当�
 如果您的 IDE 支持自定义参数但不支持环境变量，您也可以使用 `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`。
 
 > [!IMPORTANT]
-> 手动添加 MCP 服务器时，建议在 CLAUDE.md/AGENTS.md 文件中补充说明，让智能体了解 Backlog.md 的工作方式。
+> 手动添加 MCP 服务器时，建议在 CLAUDE.md/AGENTS.md 文件中补充简短说明，让智能体读取 `backlog://workflow/overview`。
 > 使用 `backlog init` 时无需此步骤，因为它会自动添加这些说明。
-> Backlog.md 面向智能体的说明可在 [`/src/guidelines/mcp/agent-nudge.md`](/src/guidelines/mcp/agent-nudge.md) 查看。
+> 基于 CLI 的 setup，请使用 `backlog instructions overview` 获取当前工作流指引。
 
 
-连接后，智能体可以通过资源 `backlog://docs/task-workflow` 读取 Backlog.md 工作流说明。
+连接后，智能体可以通过 `backlog://workflow/overview` 读取 Backlog.md 工作流说明，详细指南位于 `backlog://workflow/task-creation`、`backlog://workflow/task-execution` 和 `backlog://workflow/task-finalization`。
 在您的 AI 工具（Claude Code、Codex、Kiro）中使用 `/mcp` 命令验证连接是否正常工作。
 
 ---
@@ -297,7 +297,7 @@ backlog task edit BACK-10 --status "In Progress"  # actualStart 自动设为当�
 
 完整命令参考 —— 任务管理、搜索、看板、文档、决策等：**[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
 
-快速示例：`backlog task create`、`backlog task list`、`backlog task edit`、`backlog search`、`backlog board`、`backlog browser`。
+快速示例：`backlog`、`backlog instructions`、`backlog task create`、`backlog task list`、`backlog task edit`、`backlog milestone add`、`backlog milestone rename`、`backlog milestone remove`、`backlog search`、`backlog board`、`backlog browser`。
 
 完整帮助：`backlog --help`
 

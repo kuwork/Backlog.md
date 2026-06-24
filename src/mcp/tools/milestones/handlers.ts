@@ -378,6 +378,10 @@ export class MilestoneHandlers {
 			args.actualStart,
 			args.actualEnd,
 		);
+		const milestonePath = await this.core.filesystem.getMilestoneFilePath(milestone.id);
+		await this.commitMilestoneMutation(`backlog: Add milestone ${milestone.id}`, {
+			taskFilePaths: milestonePath ? [milestonePath] : [],
+		});
 
 		return {
 			content: [
@@ -567,6 +571,10 @@ export class MilestoneHandlers {
 				},
 			],
 		};
+	}
+
+	async renameMilestone(args: { from: string; to: string; updateTasks?: boolean }): Promise<CallToolResult> {
+		return this.editMilestone(args);
 	}
 
 	async removeMilestone(args: MilestoneRemoveArgs): Promise<CallToolResult> {

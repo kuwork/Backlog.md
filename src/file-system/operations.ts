@@ -1086,6 +1086,11 @@ export class FileSystem {
 		}
 	}
 
+	async getMilestoneFilePath(identifier: string): Promise<string | null> {
+		const match = await this.findMilestoneFile(identifier, "active");
+		return match?.filepath ?? null;
+	}
+
 	async loadMilestone(id: string): Promise<Milestone | null> {
 		try {
 			const milestoneMatch = await this.findMilestoneFile(id, "active");
