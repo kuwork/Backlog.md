@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-06-09 01:35'
+updated_date: '2026-06-24 00:30'
 ---
 # Wiki Content Catalog
 
@@ -80,6 +80,8 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-516-gantt-drag-fix]] | BACK-516 甘特图拖拽改为滚动而非修改视图范围 | source, bug, web-ui, gantt |
 | [[sources/back-517-i18n-fragmentation-fix]] | BACK-517 里程碑展开/折叠按钮 i18n 字符串碎片化修复 | source, bug, web-ui, milestones, i18n |
 | [[sources/back-518-tui-theme-adaptive]] | BACK-518 TUI 主题自适应渲染：移除硬编码颜色 | source, ui, board, ux |
+| [[sources/back-520-fix-codex-mcp-connection-failure]] | BACK-520 修复 Codex MCP 连接失败 | source, mcp, codex, bug |
+| [[sources/back-522-resolve-mcp-project-root-from-client-workspace-roots]] | BACK-522 从客户端 workspace roots 解析 MCP project root | source, mcp, bug, roots, workspace |
 
 ## Execution Notes
 
@@ -95,6 +97,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/task-drill-down-navigation-pattern]] | 任务详情钻取导航模式 | 在全局 Modal 中通过 taskHistory 堆栈 + URL 路由层实现子任务钻取与返回 |
 | [[execution/cli-cross-platform-escape-pattern]] | CLI 跨平台转义一致性模式 | Windows 模拟 bash 双引号层 + 全平台统一 C-style 转义的两层架构 |
 | [[execution/label-color-persistence-pattern]] | 标签颜色持久化模式 | 将 UI 自定义样式映射持久化到项目配置，仅存储非默认值 |
+| [[execution/mcp-client-setup-pattern]] | MCP 客户端设置共享 Helper 模式 | 统一 Claude/Codex/Gemini/Kiro 的 MCP 注册与错误处理 |
 
 ## Decisions
 
@@ -117,6 +120,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/replace-over-navigate-minus-one]] | 模态框关闭使用 replace 替代 navigate(-1) | 消除关闭竞态，避免历史残留 |
 | [[decisions/anchor-prefix-guard]] | Markdown 链接解析添加 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
 | [[decisions/simulate-bash-escape-on-windows]] | Windows 上模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
+| [[decisions/mcp-roots-discovery-scope]] | MCP Roots 发现扩展至正常启动路径并保留 Pinned CWD | BACK-522 选择复用现有 roots 发现而非重写 resolver |
 
 ## Concepts
 
