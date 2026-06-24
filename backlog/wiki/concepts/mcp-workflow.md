@@ -2,6 +2,7 @@
 title: MCP 工作流与 AI 集成
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: 2026-06-24 00:30
 ---
 
 
@@ -56,7 +57,28 @@ AI 代理可通过 MCP 执行：
 - localhost-only 运行时验证
 - 纯协议包装器，零业务逻辑在 MCP 层
 
+## AI 客户端设置
+
+Backlog.md 提供统一的 MCP 客户端设置辅助函数，供 Claude、Codex、Gemini、Kiro 等 AI 工具使用（BACK-520）：
+
+- `src/utils/mcp-client-setup.ts` 中的共享 helper 统一了 CLI 和 `core/init.ts` 中的客户端注册逻辑。
+- Codex 设置命令使用当前 stdio 分隔符格式：
+  ```bash
+  codex mcp add backlog -- backlog mcp start
+  ```
+- 设置命令非零退出时现在会正确报错，而不是被忽略为成功。
+- README 中的 Codex 手动安装说明已同步更新。
+
 ## 已知问题与修复
+
+**Codex MCP 连接失败**
+- **现象**: Codex 无法连接 Backlog.md MCP 服务器
+- **根因**: 本地 `backlog` 命令解析到了陈旧/损坏的 `dist/backlog` 二进制；源码路径启动正常，但打包路径在 MCP 初始化期间退出
+- **修复**:
+  - 添加共享 MCP 客户端设置 helper
+  - 更新 Codex 设置使用 `--` stdio 分隔符
+  - 设置命令正确报告非零退出
+  - 新增编译二进制 MCP stdio smoke 测试
 
 **Windows MCP document tool 挂起（#640）**
 - **现象**: `backlog.cmd mcp start --cwd <project>` 在 Windows 上调用 `document_create` 时无限挂起

@@ -337,3 +337,37 @@ Chronological, append-only record of all wiki operations.
 **更新导航**: `index.md`（Sources 66 条，Concepts 24 条）、`overview.md`
 
 ## [2026-06-09 01:35:00] batch-ingest | Ingest BACK-470 comment feature (5 sources), BACK-514 autoPort, BACK-515-518 fixes; add concepts/task-comments, concepts/auto-port; update usermanual
+
+## [2026-06-24 00:30:00] batch-ingest | Ingest BACK-520 Codex MCP fix, BACK-522 MCP roots discovery, doc-001 testing style guide
+
+**检测基线**: 2026-06-09 01:35:00（上次 batch-ingest）
+**Git 变更文件**: 3 个 backlog 源文件（当前 wiki-tmp 分支可见）
+
+**新 source 页面**: 3 个
+- `sources/back-520-fix-codex-mcp-connection-failure` — BACK-520 修复 Codex MCP 连接失败
+- `sources/back-522-resolve-mcp-project-root-from-client-workspace-roots` — BACK-522 从客户端 workspace roots 解析 MCP project root
+- `sources/doc-001-testing-style-guide` — doc-001 测试风格指南
+
+**更新 concept 页面**: 2 个
+- `concepts/mcp-server` — 补充正常启动路径 roots 发现、`pinned` 标志、`startupHasProject` 行为
+- `concepts/mcp-workflow` — 补充统一 MCP 客户端设置 helper、Codex `--` 分隔符、已知问题
+
+**新 execution 页面**: 1 个
+- `execution/mcp-client-setup-pattern` — 统一 AI 客户端 MCP 注册与错误处理模式
+
+**新 decision 页面**: 1 个
+- `decisions/mcp-roots-discovery-scope` — 将 roots 发现扩展到正常启动路径并保留 pinned CWD
+
+**更新导航**: `index.md`（Sources 69 条，Execution 11 条，Decisions 18 条）、`overview.md`
+
+## [2026-06-24 00:35:00] adjust | Revert doc-001 ingestion
+
+**调整原因**: 用户要求去掉 doc-001 的更新内容。
+
+**撤销内容**:
+- 删除 `sources/doc-001-testing-style-guide`
+- 从 `index.md` 移除 doc-001 条目
+- 从 `overview.md` 移除测试风格指南领域描述
+- `overview.md` Sources 统计从 69 调整为 68
+
+**保留内容**: BACK-520、BACK-522 相关 sources、concepts、execution、decision 及用户手册更新不变。
