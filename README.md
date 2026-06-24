@@ -267,7 +267,7 @@ CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，B
 
 </details>
 
-处处统一使用 `backlog` 作为服务器名称 —— MCP 服务器会自动检测当前目录是否已初始化，并在需要时回退到 `backlog://init-required`。
+处处统一使用 `backlog` 作为服务器名称。服务器会从客户端的 MCP roots 中查找当前项目，并在切换工作区或 worktree 时重新解析。找到项目前，它会提供 `backlog://init-required`。一个用户级服务器即可覆盖所有仓库。
 
 ### 手动配置
 
@@ -285,7 +285,7 @@ CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，B
 }
 ```
 
-如果您的 IDE 无法为 MCP 服务器设置进程工作目录，如上所示设置 `BACKLOG_CWD`。
+设置 `BACKLOG_CWD` 可将服务器固定到单个项目并停止工作区跟随。当你始终想定位同一个 backlog，或客户端无法上报 MCP roots 时使用它。
 如果您的 IDE 支持自定义参数但不支持环境变量，您也可以使用 `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`。
 
 > [!IMPORTANT]
