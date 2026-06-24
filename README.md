@@ -238,7 +238,7 @@ backlog task edit BACK-10 --status "In Progress"  # actualStart 自动设为当�
   <summary><strong>Codex</strong></summary>
 
   ```bash
-  codex mcp add backlog backlog mcp start
+  codex mcp add backlog -- backlog mcp start
   ```
 
 </details>

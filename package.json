@@ -1,6 +1,6 @@
 {
   "name": "@kuwork/backlog.md",
-  "version": "1.46.0-CN",
+  "version": "1.46.1-CN",
   "type": "module",
   "module": "src/cli.ts",
   "files": [
