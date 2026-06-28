@@ -37,7 +37,7 @@ async function main(): Promise<void> {
 			const escaped = content
 				.replace(/\\/g, "\\\\")
 				.replace(/`/g, "\\`")
-				.replace(/\$/g, "\\$");
+				.replace(/\${/g, "\\${");
 			return `\t"${path}": \`${escaped}\`,`;
 		})
 		.join("\n");

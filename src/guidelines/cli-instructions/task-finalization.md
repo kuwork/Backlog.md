@@ -13,7 +13,7 @@ Use this guide when implementation is complete and you are ready to hand off the
 4. Update implementation notes if important context changed:
    - `backlog task edit {{TASK_ID:123}} --append-notes "Validation passed: bun test ..."`
 5. Write a concise final summary:
-   - `backlog task edit {{TASK_ID:123}} --final-summary "Changed X, verified with Y."`
+   - `backlog task edit {{TASK_ID:123}} --final-summary "Implemented project-wide search in the CLI.\n\nChanges:\n- Added fuzzy matching across tasks, docs, and decisions\n- Added --plain output for AI consumers\n- Updated tests and docs\n\nVerification:\n- bun test src/test/search.test.ts\n- bun run check ."`
 6. Mark the task with the configured terminal status:
    - Inspect accepted statuses if needed: `backlog task edit {{TASK_ID:123}} --help`
    - `backlog task edit {{TASK_ID:123}} -s "<terminal status>"`
@@ -46,6 +46,8 @@ backlog task edit {{TASK_ID:123}} --comment "Ready for review" --comment-author 
 backlog task edit {{TASK_ID:123}} --append-notes "Chose approach A because ..."
 backlog task edit {{TASK_ID:123}} --final-summary "Implemented ..., verified with ..."
 ```
+
+Use `\n` inside quoted strings for line breaks. The same works for `--desc`, `--plan`, `--notes`, `--append-notes`, `--comment`, and `--final-summary`.
 
 ### Follow-up Work
 

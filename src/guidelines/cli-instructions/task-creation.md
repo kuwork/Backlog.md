@@ -77,6 +77,16 @@ backlog task create "Add settings docs" \
   --ref https://example.com/spec
 ```
 
+Multi-line descriptions, plans, notes, and final summaries can use `\n` escape sequences inside the quoted string:
+
+```bash
+backlog task create "Add project search" \
+  -d "Adds a unified search command across tasks, documents, and decisions.\n\nWhy: users currently need to run separate searches or browse folders to find content.\nScope: CLI only; web UI search is a follow-up task." \
+  --ac "Search returns matching tasks by title and description" \
+  --ac "Search supports --plain output" \
+  --ac "Tests cover task, document, and decision results"
+```
+
 ### Task Dates
 
 Tasks support optional `dueDate`, `plannedStart`, `plannedEnd`, `actualStart`, and `actualEnd` fields. Set them at creation:

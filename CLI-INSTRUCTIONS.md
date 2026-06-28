@@ -92,9 +92,16 @@ Task comments are append-only discussion entries with optional author labels. Us
 
 ### Multi-line input (description/plan/notes/comments/final summary)
 
-The CLI preserves input literally — `\n` sequences are not auto-converted. Use one of the following forms (recommended order for AI agents):
+For `--desc` / `--description`, the CLI interprets `\n` as a newline. For `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants, include real line breaks inside the quoted string. Use one of the following forms (recommended order for AI agents):
 
-**1. Repeat `--append-*` for each line (works in every shell, including Claude Code / Codex / agent sandboxes):**
+**1. Escape sequences for `--desc` / `--description` (single line — easiest for AI agents):**
+
+```bash
+backlog task create "Feature" --desc "1. Analyze\n2. Refactor\n3. Test"
+backlog task edit 7 --desc "First line\nSecond line"
+```
+
+**2. Repeat `--append-*` for each line (works in every shell, including Claude Code / Codex / agent sandboxes):**
 
 ```bash
 backlog task edit 7 --notes "First line"
@@ -102,10 +109,17 @@ backlog task edit 7 --append-notes "Second line"
 backlog task edit 7 --append-notes "Third line"
 ```
 
-**2. Real newlines inside double quotes (single command):**
+**3. Real newlines inside double quotes (single command):**
 
 ```bash
+# Create with a multi-line description
 backlog task create "Feature" --desc "Line1
+Line2
+
+Final paragraph"
+
+# Edit with a multi-line description (same shape as --plan)
+backlog task edit 7 --desc "Line1
 Line2
 
 Final paragraph"
@@ -113,7 +127,7 @@ Final paragraph"
 
 The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants.
 
-**3. Shell-specific shorthand (interactive shells only — rejected by tree-sitter-based agent sandboxes, see [#595](https://github.com/MrLesk/Backlog.md/issues/595)):**
+**4. Shell-specific shorthand (interactive shells only — rejected by tree-sitter-based agent sandboxes, see [#595](https://github.com/MrLesk/Backlog.md/issues/595)):**
 
 - **Bash/Zsh (ANSI-C quoting)**
 

@@ -267,6 +267,42 @@ Before building the wiki, verify that Backlog.md has been initialized in the pro
 - [[sources/adr-003-security-model]] — Security ADR
 ```
 
+**Alias and attribute syntax (also supported):**
+
+```markdown
+[[target|custom label]]
+[[target]]{style="color: red;"}
+[[target]]{.some-class}
+```
+
+- The alias portion supports inline Markdown formatting (code, bold, italic, strikethrough) and arbitrary inline HTML:
+  ```markdown
+  [[concepts/demo|`inline code`]]
+  [[concepts/demo|**bold** and *italic* and ~~strikethrough~~]]
+  [[concepts/demo|<span style="color: red;">custom HTML</span>]]
+  [[concepts/demo|<span style="color: red;">custom HTML</span> middle content <span style="color: blue;">custom HTML</span>]]
+  ```
+- Attribute blocks support `style`, `class` (or `.class`), `id` (or `#id`), and arbitrary `key="value"` pairs.
+
+**Media wikilinks for embedded assets:**
+
+```markdown
+![[assets/photo.png]]
+![[assets/photo.png|alt text]]
+![[assets/photo.png|alt text|200x300]]
+![[assets/photo.png|alt text|200]]
+![[assets/demo.mp4|caption|400]]
+![[assets/audio.mp3]]
+```
+
+- `![[path]]` embeds an image, video, or audio file from `backlog/assets/`.
+- The second pipe segment is alt text / caption.
+- The third pipe segment is an optional size:
+  - `200x300` — width and height
+  - `200` or `200x0` — width only
+  - `0x300` — height only
+- Sizes apply to images and videos; audio ignores size specs and renders with full-width controls.
+
 **❌ NEVER use standard Markdown links for internal wiki pages:**
 ```markdown
 | Source | Labels | Summary |
@@ -362,6 +398,10 @@ Key behaviors:
   - Example: `| [[sources/task-1-feature]] | Task | Description |` — NOT `| [task-1](sources/task-1.md) | Task | Description |`
   - **CRITICAL:** In page bodies (sources, concepts, entities), Related Concepts / Related Sources / Related Entities sections must also use `[[path/to/file]]`, not `[text](path.md)`
   - Example: `- [[concepts/keyvault]]` — NOT `- [KeyVault](concepts/keyvault.md)`
+- Alias and attribute syntax is supported for wiki links: `[[target|alias]]`, `[[target]]{style="..."}`, `[[target]]{.class}`
+  - Aliases support inline Markdown (code, bold, italic, strikethrough) and arbitrary inline HTML such as `<span style="color: red;">...</span>`
+- Media wikilinks embed assets from `backlog/assets/`: `![[assets/photo.png]]`, `![[assets/demo.mp4|caption|400]]`, `![[assets/audio.mp3]]`
+  - Size syntax: `200x300` (width + height), `200` or `200x0` (width only), `0x300` (height only). Applies to images and videos; audio ignores sizes.
 - Append-only for `wiki/log.md`
 - YAML frontmatter on every wiki page at minimum: `title`, `created_date`, `updated_date`; `labels` as optional array of tags
 - Filenames: lowercase-with-hyphens

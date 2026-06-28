@@ -16,7 +16,7 @@ Before writing code for non-trivial work:
 5. Draft an implementation plan.
 6. Present the plan to the user when approval is expected.
 7. Record the approved plan:
-   - `backlog task edit {{TASK_ID:123}} --plan "1. ..."`
+   - `backlog task edit {{TASK_ID:123}} --plan "1. Analyze current implementation\n2. Design minimal API change\n3. Implement and add tests\n4. Run checks and verify"`
 
 Keep the Backlog task as the plan of record. If the approach changes, update the plan through `backlog task edit` before continuing.
 
@@ -27,11 +27,11 @@ Work in short loops:
 1. Implement a focused slice.
 2. Run relevant tests or checks.
 3. Record useful progress:
-   - `backlog task edit {{TASK_ID:123}} --append-notes "Implemented parser and added tests."`
+   - `backlog task edit {{TASK_ID:123}} --append-notes "Implemented parser and added tests.\nNext: wire parser into the search command."`
 4. Check acceptance criteria as they become true:
    - `backlog task edit {{TASK_ID:123}} --check-ac 1`
 5. Add comments for discussion or review questions:
-   - `backlog task edit {{TASK_ID:123}} --comment "Question for review" --comment-author @your-name`
+   - `backlog task edit {{TASK_ID:123}} --comment "Question for review:\nShould we include archived tasks in search results by default?" --comment-author @your-name`
 
 Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields.
 

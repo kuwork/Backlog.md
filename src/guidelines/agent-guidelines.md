@@ -582,9 +582,16 @@ backlog search --modified-file src/server/api.ts --plain
 
 ### Multi‑line Input (Description/Plan/Notes/Comments/Final Summary)
 
-The CLI preserves input literally — shells do not convert `\n` inside normal quotes. Use one of the following forms, listed in order of preference for AI agents:
+For `--desc` / `--description`, the CLI interprets `\n` as a newline. For `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants, include real line breaks inside the quoted string. Use one of the following forms, listed in order of preference for AI agents:
 
-**1. Repeat `--append-*` for each line (works in every shell, including sandboxes that block other forms):**
+**1. Escape sequences for `--desc` / `--description` (single line — easiest for AI agents):**
+
+```bash
+backlog task create "Feature" --desc "1. Analyze\n2. Refactor\n3. Test"
+backlog task edit 42 --desc "First line\nSecond line"
+```
+
+**2. Repeat `--append-*` for each line (works in every shell, including sandboxes that block other forms):**
 
 ```bash
 backlog task edit 42 --notes "First line"
@@ -592,18 +599,25 @@ backlog task edit 42 --append-notes "Second line"
 backlog task edit 42 --append-notes "Third line"
 ```
 
-**2. Real newlines inside double quotes (single command — pass an actual line break inside the string):**
+**3. Real newlines inside double quotes (single command — pass an actual line break inside the string):**
 
 ```bash
-backlog task edit 42 --notes "First line
+# Create with a multi-line description
+backlog task create "Feature" --desc "First line
+Second line
+
+Final paragraph"
+
+# Edit with a multi-line description (same shape as --plan)
+backlog task edit 42 --desc "First line
 Second line
 
 Final paragraph"
 ```
 
-The same shape works for `--desc`, `--plan`, `--comment`, `--final-summary`, and the `--append-*` variants.
+The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants.
 
-**3. Shell-specific shorthand (interactive shells only — some AI agent sandboxes reject these):**
+**4. Shell-specific shorthand (interactive shells only — some AI agent sandboxes reject these):**
 
 - Bash/Zsh (ANSI‑C quoting):
 
@@ -625,7 +639,7 @@ The same shape works for `--desc`, `--plan`, `--comment`, `--final-summary`, and
 
 Prefer forms **1** and **2** when running under Claude Code, Codex, or any agent harness that screens commands through a tree‑sitter AST walker — those harnesses reject ANSI‑C strings, command substitutions, and heredoc forms (see issue [#595](https://github.com/MrLesk/Backlog.md/issues/595)).
 
-Do not expect the literal sequence `\n` inside double quotes to become a newline. The CLI stores the backslash and `n` as written.
+To store a literal backslash-n sequence (`\n`) inside a `--desc` / `--description` value, double the backslashes according to your shell rules. For `--plan`, `--notes`, `--comment`, `--final-summary`, and `--append-*`, `\n` is already stored literally.
 
 ### Implementation Notes Formatting
 
