@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-06-05 15:19
+updated_date: 2026-06-27 21:00
 ---
 
 # Web UI 功能
@@ -57,6 +57,9 @@ updated_date: 2026-06-05 15:19
 - 点击 `.md` 文件导航到 `/wiki/:path`，Markdown 渲染
 - **在线编辑**：标题、正文、labels 可修改，未保存变更检测
 - **Wikilink 交互预览**：`[[wikilinks]]` 可点击弹出模态框预览
+  - 支持别名语法 `[[target|alias]]`，别名内可使用 Markdown 行内格式与 HTML（BACK-523）
+  - 支持属性块 `[[target]]{...}`（BACK-523）
+  - 支持媒体嵌入 `![[path|alt|WxH]]`（图片/视频/音频，BACK-524）
 - **Markdown 相对链接预览**：标准相对链接点击拦截后预览或 SPA 导航
 - **Wiki 搜索**：全局搜索支持 wiki 页面，支持 `type:wiki <keyword>`
 - **文件管理**：创建/重命名/删除文件与文件夹

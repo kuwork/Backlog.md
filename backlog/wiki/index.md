@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-06-24 00:30'
+updated_date: '2026-06-27 21:00'
 ---
 # Wiki Content Catalog
 
@@ -82,6 +82,9 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-518-tui-theme-adaptive]] | BACK-518 TUI 主题自适应渲染：移除硬编码颜色 | source, ui, board, ux |
 | [[sources/back-520-fix-codex-mcp-connection-failure]] | BACK-520 修复 Codex MCP 连接失败 | source, mcp, codex, bug |
 | [[sources/back-522-resolve-mcp-project-root-from-client-workspace-roots]] | BACK-522 从客户端 workspace roots 解析 MCP project root | source, mcp, bug, roots, workspace |
+| [[sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs]] | BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持 | source, wiki, feature, frontend, wikilink |
+| [[sources/back-524-add-media-wikilink-support-for-images-video-and-audio]] | BACK-524 媒体 wikilink 支持（图片/视频/音频） | source, web-ui, wiki, feature, media |
+| [[sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs]] | BACK-525 更新 wiki skill 与 CLI 多行输入文档 | source, wiki, docs, cli, skill |
 
 ## Execution Notes
 
@@ -98,6 +101,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/cli-cross-platform-escape-pattern]] | CLI 跨平台转义一致性模式 | Windows 模拟 bash 双引号层 + 全平台统一 C-style 转义的两层架构 |
 | [[execution/label-color-persistence-pattern]] | 标签颜色持久化模式 | 将 UI 自定义样式映射持久化到项目配置，仅存储非默认值 |
 | [[execution/mcp-client-setup-pattern]] | MCP 客户端设置共享 Helper 模式 | 统一 Claude/Codex/Gemini/Kiro 的 MCP 注册与错误处理 |
+| [[execution/wikilink-media-rendering-pattern]] | Wikilink 媒体渲染模式 | 解析、路径解析、尺寸控制与组件注册的标准步骤 |
 
 ## Decisions
 
@@ -121,6 +125,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/anchor-prefix-guard]] | Markdown 链接解析添加 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
 | [[decisions/simulate-bash-escape-on-windows]] | Windows 上模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
 | [[decisions/mcp-roots-discovery-scope]] | MCP Roots 发现扩展至正常启动路径并保留 Pinned CWD | BACK-522 选择复用现有 roots 发现而非重写 resolver |
+| [[decisions/wikilink-regex-pipeline]] | Wikilink 别名与属性块使用轻量正则流水线 | BACK-523 选择正则流水线而非完整 remark/rehype AST 处理 |
 
 ## Concepts
 
@@ -142,7 +147,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
 | [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
 | [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
-| [[concepts/wikilink]] | Wikilink | wiki 页面间交叉引用语法 `[[path/to/page]]` |
+| [[concepts/wikilink]] | Wikilink | wiki 页面间交叉引用语法 `[[path/to/page]]`，支持别名、属性块、媒体嵌入 |
 | [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd） | 五个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
 | [[concepts/project-health]] | 项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
 | [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、跟踪甘特图双层渲染、日期解析、依赖箭头 |
