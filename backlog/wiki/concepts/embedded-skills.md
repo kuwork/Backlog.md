@@ -2,6 +2,7 @@
 title: 内嵌 Skill 架构
 labels: [concept]
 created_date: 2026-05-12 00:00
+updated_date: '2026-06-27 21:00'
 ---
 
 
@@ -49,3 +50,5 @@ export const LLM_WIKI_FOR_BACKLOG_SKILL: Record<string, string> = {
 ## 维护
 
 修改 skill 内容时，应编辑 `.codex/skills/llm-wiki-for-backlog/` 下的文件，然后重新运行嵌入脚本生成 TypeScript 模块。不要直接修改 `src/skills/embedded/llm-wiki-for-backlog.ts`。
+
+**近期更新（BACK-525）**：同步了 wikilink 别名、属性块与媒体 wikilink 的文档说明，并修复了 `scripts/embed-wiki-skill.ts` 中 `$` 转义问题。
