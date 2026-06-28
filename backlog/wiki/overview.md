@@ -42,6 +42,8 @@ updated_date: 2026-06-24 00:30
 - **稳定任务模态框 URL**：`/task/:id` 路由支持从任意视图打开任务详情，底层页面保持可见；前缀无关匹配（`506` → `BACK-506`）；裸 `/task/:id` 自动重定向到 `/task/:id/:title`；Markdown 中的 `/task/` 链接在模态框内打开（BACK-509）
 - **Wiki 编辑模式修复**：切换 Wiki 页面时自动退出编辑模式，避免新页面内容在编辑器中误显示（BACK-510）
 - **本地 URL 短别名**：Markdown 中同源 URL 渲染为 `DOC#:id`、`Decisions#:id`、`TASK#:id`、`WIKI#:path` 别名，提升可读性同时保持点击性与模态框导航（BACK-511）
+- **Wikilink 增强**：支持别名语法 `[[target|alias]]`（含 Markdown 行内格式与任意 HTML）、markdown-it-attrs 属性块 `[[target]]{...}`、媒体嵌入 `![[path|alt|WxH]]`（图片/视频/音频）及尺寸控制（BACK-523 / BACK-524）
+- **Wiki skill 与 CLI 文档同步**：更新内嵌 skill 文档以覆盖 wikilink 新语法，修复 `scripts/embed-wiki-skill.ts` 的 `$` 转义问题；更新 CLI 多行输入指南（`--desc`/`--plan`/`--notes`/`--comment`/`--final-summary`）（BACK-525）
 - **CLI 日期 UTC 转换**：`actualStart`/`actualEnd` 在 CLI/MCP 入口统一通过 `localDateTimeToStoredUtc` 转换为 UTC 存储，消除与 Web UI 的输入偏差（BACK-506）
 - **CLI description 转义**：`--description`/`--desc` 支持跨平台一致的 `\n` 换行输入；Windows 上模拟 bash 双引号层后统一应用 C-style 转义（BACK-508）
 - **看板跨分支列菜单**：列含跨分支任务时仍显示本地排序，仅隐藏会修改 ordinal 的 Apply Priority Order（BACK-512）
@@ -84,11 +86,11 @@ updated_date: 2026-06-24 00:30
 
 ## 统计
 
-- Sources ingested: 68
+- Sources ingested: 71
 - Concepts extracted: 24
 - Entities catalogued: 2
-- Execution notes: 11
-- Decisions recorded: 18
+- Execution notes: 12
+- Decisions recorded: 19
 - Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24

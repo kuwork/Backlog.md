@@ -371,3 +371,31 @@ Chronological, append-only record of all wiki operations.
 - `overview.md` Sources 统计从 69 调整为 68
 
 **保留内容**: BACK-520、BACK-522 相关 sources、concepts、execution、decision 及用户手册更新不变。
+
+## [2026-06-27 21:05:00] batch-ingest | Ingest BACK-523 wikilink alias/attrs, BACK-524 media wikilinks, BACK-525 skill/docs sync
+
+**检测基线**: 2026-06-24 00:30:00（上次 batch-ingest）
+**Git 变更文件**: 20 个 backlog 源文件（当前分支可见），其中 16 个（back-507.*、m-7 agent-cli-workflow）已不在工作树中，4 个当前存在：BACK-522、BACK-523、BACK-524、BACK-525。
+**实际处理**: BACK-522 已存在最新 source 页面且内容一致，跳过；处理 BACK-523、BACK-524、BACK-525。
+
+**新 source 页面**: 3 个
+- `sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs` — BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持
+- `sources/back-524-add-media-wikilink-support-for-images-video-and-audio` — BACK-524 媒体 wikilink 支持（图片/视频/音频）
+- `sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs` — BACK-525 更新 wiki skill 与 CLI 多行输入文档
+
+**更新 concept 页面**: 3 个
+- `concepts/wikilink` — 补充别名语法、markdown-it-attrs 属性块、媒体 wikilink、Web UI 渲染方式
+- `concepts/embedded-skills` — 补充 BACK-525 skill 文档同步与 `$` 转义修复说明
+- `concepts/web-ui-features` — 在 Wiki 功能中列出别名、属性块、媒体嵌入支持
+
+**新 decision 页面**: 1 个
+- `decisions/wikilink-regex-pipeline` — BACK-523 选择轻量正则流水线而非 remark/rehype
+
+**新 execution 页面**: 1 个
+- `execution/wikilink-media-rendering-pattern` — 媒体 wikilink 的解析、路径解析、尺寸控制与组件注册模式
+
+**更新导航**: `index.md`（Sources 71 条，Decisions 19 条，Execution 12 条）、`overview.md`
+
+**跳过**: BACK-522（已是最新），以及历史提交中已删除的 back-507.* / m-7 agent-cli-workflow 源文件。
+
+**mini-lint**: 新页面 wikilink 交叉引用均已验证存在，无孤立页面。
