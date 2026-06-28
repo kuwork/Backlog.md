@@ -4,6 +4,7 @@ import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { renderMermaidIn } from "../utils/mermaid";
+import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
 
 interface Props {
 	source: string;
@@ -13,6 +14,7 @@ interface Props {
 	onDocClick?: (docId: string) => void;
 	onDecisionClick?: (decisionId: string) => void;
 	onWikiClick?: (wikiPath: string) => void;
+	wikilinkBasePath?: string;
 }
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\u0000-\u0020]*>/;
@@ -145,9 +147,12 @@ export default function MermaidMarkdown({
 	onDocClick,
 	onDecisionClick,
 	onWikiClick,
+	wikilinkBasePath,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
-	const safeSource = sanitizeMarkdownSource(source);
+	const safeSource = wikilinkBasePath
+		? prepareWikiMarkdown(source, wikilinkBasePath)
+		: sanitizeMarkdownSource(source);
 	const { t } = useI18n();
 
 	useEffect(() => {
@@ -165,10 +170,32 @@ export default function MermaidMarkdown({
 	}, [safeSource]);
 
 	const LinkComponent = React.useCallback(
-		({ href, children }: { href?: string; children?: React.ReactNode }) => {
+		({
+			href,
+			children,
+			className,
+			style,
+			id,
+			"data-wikilink": dataWikilink,
+		}: {
+			href?: string;
+			children?: React.ReactNode;
+			className?: string;
+			style?: React.CSSProperties | string;
+			id?: string;
+			"data-wikilink"?: string;
+		}) => {
+			const parsedStyle = typeof style === "string" ? parseStyleString(style) : style;
+			const combinedClassName = [className, "text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"]
+				.filter(Boolean)
+				.join(" ");
+
 			const localLink = href ? parseLocalUrl(href) : null;
 
 			if (localLink) {
+				const isWikilink = dataWikilink === "true";
+				const content = localLink.type === "wiki" && isWikilink ? children : localLink.alias;
+
 				if (localLink.type === "task" && onTaskClick) {
 					return (
 						<a
@@ -177,9 +204,11 @@ export default function MermaidMarkdown({
 								e.preventDefault();
 								onTaskClick(localLink.id);
 							}}
-							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+							className={combinedClassName}
+							style={parsedStyle}
+							id={id}
 						>
-							{localLink.alias}
+							{content}
 						</a>
 					);
 				}
@@ -191,9 +220,11 @@ export default function MermaidMarkdown({
 								e.preventDefault();
 								onDraftClick(localLink.id);
 							}}
-							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+							className={combinedClassName}
+							style={parsedStyle}
+							id={id}
 						>
-							{localLink.alias}
+							{content}
 						</a>
 					);
 				}
@@ -205,9 +236,11 @@ export default function MermaidMarkdown({
 								e.preventDefault();
 								onDocClick(localLink.id);
 							}}
-							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+							className={combinedClassName}
+							style={parsedStyle}
+							id={id}
 						>
-							{localLink.alias}
+							{content}
 						</a>
 					);
 				}
@@ -219,9 +252,11 @@ export default function MermaidMarkdown({
 								e.preventDefault();
 								onDecisionClick(localLink.id);
 							}}
-							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+							className={combinedClassName}
+							style={parsedStyle}
+							id={id}
 						>
-							{localLink.alias}
+							{content}
 						</a>
 					);
 				}
@@ -233,16 +268,18 @@ export default function MermaidMarkdown({
 								e.preventDefault();
 								onWikiClick(localLink.id);
 							}}
-							className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+							className={combinedClassName}
+							style={parsedStyle}
+							id={id}
 						>
-							{localLink.alias}
+							{content}
 						</a>
 					);
 				}
 				// Local link matched but no handler provided: render alias as plain link
 				return (
-					<a href={href} className="text-blue-600 dark:text-blue-400 hover:underline">
-						{localLink.alias}
+					<a href={href} className={combinedClassName} style={parsedStyle} id={id}>
+						{content}
 					</a>
 				);
 			}
@@ -257,7 +294,9 @@ export default function MermaidMarkdown({
 							e.preventDefault();
 							onTaskClick(taskId);
 						}}
-						className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+						className={combinedClassName}
+						style={parsedStyle}
+						id={id}
 					>
 						{children}
 					</a>
@@ -266,14 +305,18 @@ export default function MermaidMarkdown({
 
 			if (isExternalLink(href)) {
 				return (
-					<a href={href} target="_blank" rel="noopener noreferrer">
+					<a href={href} target="_blank" rel="noopener noreferrer" className={className} style={parsedStyle} id={id}>
 						{children}
 					</a>
 				);
 			}
 
 			if (!onFileClick) {
-				return <a href={href}>{children}</a>;
+				return (
+					<a href={href} className={className} style={parsedStyle} id={id}>
+						{children}
+					</a>
+				);
 			}
 
 			const handleClick = async (e: React.MouseEvent) => {
@@ -293,7 +336,9 @@ export default function MermaidMarkdown({
 				<a
 					href={href}
 					onClick={handleClick}
-					className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+					className={combinedClassName}
+					style={parsedStyle}
+					id={id}
 					title={t.mermaidMarkdown.clickToPreview}
 				>
 					{children}

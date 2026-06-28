@@ -937,7 +937,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               description ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
+                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDescription}</div>
@@ -1181,7 +1181,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               plan ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
+                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noPlan}</div>
@@ -1205,7 +1205,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               notes ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
+                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noNotes}</div>
@@ -1237,7 +1237,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                         {comment.createdDate ? <span>{formatStoredUtcDateForDisplay(comment.createdDate)}</span> : null}
                       </div>
                       <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                        <MermaidMarkdown source={comment.body} />
+                        <MermaidMarkdown source={comment.body} wikilinkBasePath="index.md" />
                       </div>
                     </article>
                   ))}
@@ -1282,7 +1282,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               <SectionHeader title={t.taskDetails.section.finalSummary} right={t.taskDetails.section.completionSummary} />
               {mode === "preview" ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} />
+                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-md">

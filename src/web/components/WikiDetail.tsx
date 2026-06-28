@@ -10,37 +10,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import ChipInput from "./ChipInput";
 import { useI18n } from '../hooks/useI18n';
 import { encodeWikiPath } from '../utils/urlHelpers';
+import { resolveWikiPath } from '../utils/wikiLinks';
 import type { WikiPage } from "../../types";
-
-/**
- * Resolve a wikilink path relative to the current wiki page path.
- * The current page is considered to live under the `wiki/` subdirectory;
- * resolved paths are relative to the backlog project root.
- * Returns null if the resolved path would escape the project root.
- */
-export function resolveWikiPath(currentPagePath: string, linkPath: string): string | null {
-	// Absolute paths are rejected on the frontend
-	if (linkPath.startsWith("/")) return null;
-	// No relative segments — already project-root-relative
-	if (!linkPath.startsWith(".") && !linkPath.includes("/.")) return linkPath;
-
-	// Treat the current page as residing under wiki/ for correct relative resolution
-	const actualCurrentPath = `wiki/${currentPagePath}`;
-	const currentDir = actualCurrentPath.split("/").slice(0, -1).join("/");
-	const rawPath = currentDir ? `${currentDir}/${linkPath}` : linkPath;
-
-	const parts = rawPath.split("/");
-	const resolved: string[] = [];
-	for (const part of parts) {
-		if (part === "..") {
-			if (resolved.length === 0) return null; // Would escape project root
-			resolved.pop();
-		} else if (part !== "." && part !== "") {
-			resolved.push(part);
-		}
-	}
-	return resolved.join("/");
-}
 
 /**
  * Resolve a standard Markdown relative link against the current wiki page path.
@@ -156,14 +127,6 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 			? previewPage.frontmatter.title
 			: path.split("/").pop()?.replace(/\.md$/i, "") || path;
 
-	const previewContent = previewPage?.content.replace(/\[\[([^\]]+)\]\]/g, (_match, p1) => {
-		const linkText = p1;
-		const resolved = resolveWikiPath(path, p1);
-		if (resolved === null) return linkText;
-		const linkPath = encodeWikiPath(resolved);
-		return `[${linkText}](/wiki/${linkPath})`;
-	}) || "";
-
 	return (
 		<Modal isOpen={true} onClose={onClose} title={previewTitle} maxWidthClass="max-w-3xl">
 			{previewLoading ? (
@@ -188,7 +151,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 						className="prose prose-sm !max-w-none w-full p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 						data-color-mode={theme}
 					>
-						<MermaidMarkdown source={previewContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
+						<MermaidMarkdown source={previewPage?.content || ""} wikilinkBasePath={path} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
 					</div>
 				</div>
 			)}
@@ -399,13 +362,7 @@ export default function WikiDetail() {
 			? page.frontmatter.title
 			: page.path.split("/").pop()?.replace(/\.md$/i, "") || page.path;
 
-	const sanitizedContent = page.content.replace(/\[\[([^\]]+)\]\]/g, (_match, p1) => {
-		const linkText = p1;
-		const resolved = wikiPath ? resolveWikiPath(wikiPath, p1) : p1;
-		if (resolved === null) return `~~${linkText}~~`;
-		const linkPath = encodeWikiPath(resolved);
-		return `[${linkText}](/wiki/${linkPath})`;
-	});
+
 
 	return (
 		<ErrorBoundary>
@@ -536,7 +493,7 @@ export default function WikiDetail() {
 								className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 								data-color-mode={theme}
 							>
-								<MermaidMarkdown source={sanitizedContent} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
+								<MermaidMarkdown source={page.content} wikilinkBasePath={wikiPath} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
 							</div>
 						)}
 					</div>

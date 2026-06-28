@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { resolveWikiPath } from "../web/components/WikiDetail.tsx";
+import { resolveWikiPath } from "../web/utils/wikiLinks.ts";
 
 describe("resolveWikiPath", () => {
 	it("resolves parent-directory traversal from a nested wiki page to another wiki page", () => {
@@ -42,16 +42,13 @@ describe("resolveWikiPath", () => {
 		expect(result).toBe("wiki/a/d/e");
 	});
 
-	it("resolves path from a report sub-page to a sibling report inside wiki", () => {
+	it("resolves path from a report sub-page to a sibling report inside wiki_output", () => {
 		const result = resolveWikiPath("wiki_output/reports/backlog-md-user-guide-zh.md", "./feature-opportunities");
-		expect(result).toBe("wiki/wiki_output/reports/feature-opportunities");
+		expect(result).toBe("wiki_output/reports/feature-opportunities");
 	});
 
-	it("correctly normalizes mixed relative segments", () => {
-		const result = resolveWikiPath(
-			"wiki_output/reports/backlog-md-user-guide-zh.md",
-			"../wiki_output/reports/feature-opportunities",
-		);
-		expect(result).toBe("wiki/wiki_output/wiki_output/reports/feature-opportunities");
+	it("resolves parent traversal from a nested wiki_output page to a sibling page", () => {
+		const result = resolveWikiPath("wiki_output/reports/backlog-md-user-guide-zh.md", "../feature-opportunities");
+		expect(result).toBe("wiki_output/feature-opportunities");
 	});
 });
