@@ -3,6 +3,43 @@ import { encodeWikiPath } from "./urlHelpers";
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/;
 const EMAIL_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+>/;
 
+const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "svg", "webp", "avif", "bmp", "ico"]);
+const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "ogv", "mov"]);
+const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "ogg", "m4a", "flac", "aac", "opus", "wma"]);
+
+type MediaType = "image" | "video" | "audio";
+
+function getMediaType(filename: string): MediaType | null {
+	const ext = (filename.match(/\.([^./]+)$/) || [])[1]?.toLowerCase() || "";
+	if (IMAGE_EXTENSIONS.has(ext)) return "image";
+	if (VIDEO_EXTENSIONS.has(ext)) return "video";
+	if (AUDIO_EXTENSIONS.has(ext)) return "audio";
+	return null;
+}
+
+function parseDimensions(sizeSpec: string): { width?: number; height?: number } | null {
+	// "200" is treated as "200x0" (width only).
+	const plainMatch = sizeSpec.match(/^(\d+)$/);
+	if (plainMatch) {
+		const width = Number.parseInt(plainMatch[1] as string, 10);
+		return width > 0 ? { width } : null;
+	}
+
+	const match = sizeSpec.match(/^(\d+)?x(\d+)?$/i);
+	if (!match) return null;
+	const width = match[1] ? Number.parseInt(match[1] as string, 10) : 0;
+	const height = match[2] ? Number.parseInt(match[2] as string, 10) : 0;
+	if (width === 0 && height === 0) return null;
+	return {
+		width: width > 0 ? width : undefined,
+		height: height > 0 ? height : undefined,
+	};
+}
+
+function looksLikeDimensions(value: string): boolean {
+	return parseDimensions(value) !== null;
+}
+
 interface ProtectedRange {
 	start: number;
 	end: number;
@@ -136,8 +173,8 @@ function parseMarkdownAttrs(attrsString: string): ParsedAttrs {
 	return result;
 }
 
-function attrsToHtmlString(attrs: ParsedAttrs): string {
-	const parts: string[] = ['data-wikilink="true"'];
+function attrsToHtmlString(attrs: ParsedAttrs, marker?: string): string {
+	const parts: string[] = marker ? [`data-${marker}="true"`] : [];
 	if (attrs.id) parts.push(`id="${escapeAttr(attrs.id)}"`);
 	if (attrs.className) parts.push(`class="${escapeAttr(attrs.className)}"`);
 	if (attrs.style) parts.push(`style="${escapeAttr(attrs.style)}"`);
@@ -209,9 +246,96 @@ function buildWikilinkHtml(inner: string, attrsRaw: string | undefined, basePath
 
 	const href = `/wiki/${encodeWikiPath(resolved)}`;
 	const attrs = attrsRaw ? parseMarkdownAttrs(attrsRaw.slice(1, -1)) : {};
-	const attrsHtml = attrsToHtmlString(attrs);
+	const attrsHtml = attrsToHtmlString(attrs, "wikilink");
 	const aliasHtml = renderInlineMarkdownToHtml(alias);
 	return `<a href="${escapeAttr(href)}" ${attrsHtml}>${aliasHtml}</a>`;
+}
+
+/**
+ * Resolve a media path referenced by a wikilink.
+ * Paths that do not start with a dot are treated as project-root-relative
+ * (under the backlog directory). Paths that start with a dot are resolved
+ * relative to the current page's directory.
+ * Returns null if the resolved path would escape the project root.
+ */
+export function resolveMediaPath(currentPagePath: string, mediaPath: string): string | null {
+	if (mediaPath.startsWith("/")) return null;
+
+	let rawPath: string;
+	if (mediaPath.startsWith(".")) {
+		const actualCurrentPath =
+			currentPagePath.startsWith("wiki/") || currentPagePath.startsWith("wiki_output/")
+				? currentPagePath
+				: `wiki/${currentPagePath}`;
+		const currentDir = actualCurrentPath.split("/").slice(0, -1).join("/");
+		rawPath = currentDir ? `${currentDir}/${mediaPath}` : mediaPath;
+	} else {
+		rawPath = mediaPath;
+	}
+
+	const parts = rawPath.split("/");
+	const resolved: string[] = [];
+	for (const part of parts) {
+		if (part === "..") {
+			if (resolved.length === 0) return null;
+			resolved.pop();
+		} else if (part !== "." && part !== "") {
+			resolved.push(part);
+		}
+	}
+	return resolved.join("/");
+}
+
+function buildWikilinkMediaHtml(inner: string, attrsRaw: string | undefined, basePath: string): string {
+	const segments = inner.split("|").map((s) => s.trim());
+	const target = segments[0] ?? "";
+
+	// Support both `![[path|alt|200x0]]` and the shorthand `![[path|200x0]]`.
+	let alt = "";
+	let sizeSpec = "";
+	if (segments.length === 2 && looksLikeDimensions(segments[1] ?? "")) {
+		sizeSpec = segments[1] ?? "";
+	} else {
+		alt = segments[1] ?? "";
+		sizeSpec = segments[2] ?? "";
+	}
+
+	const resolved = resolveMediaPath(basePath, target);
+	if (resolved === null) {
+		return `<del>${escapeHtml(alt || target)}</del>`;
+	}
+
+	const mediaType = getMediaType(resolved) ?? getMediaType(target) ?? "image";
+	const assetPath = resolved.startsWith("assets/") ? resolved.slice("assets/".length) : resolved;
+	const src = `/assets/${encodeWikiPath(assetPath)}`;
+	const dimensions = sizeSpec ? parseDimensions(sizeSpec) : null;
+	const attrs = attrsRaw ? parseMarkdownAttrs(attrsRaw.slice(1, -1)) : {};
+
+	const dimensionParts: string[] = [];
+	if (dimensions?.width) dimensionParts.push(`width="${dimensions.width}"`);
+	if (dimensions?.height) dimensionParts.push(`height="${dimensions.height}"`);
+	if (dimensions?.width || dimensions?.height) {
+		attrs.style = attrs.style ? `${attrs.style}; max-width: 100%;` : "max-width: 100%;";
+	}
+
+	const attrsHtml = attrsToHtmlString(attrs, "wikilink-media");
+	const escapedSrc = escapeAttr(src);
+
+	if (mediaType === "image") {
+		const commonAttrs = `src="${escapedSrc}" ${dimensionParts.join(" ")} ${attrsHtml}`.trim().replace(/\s+/g, " ");
+		return `<img ${commonAttrs} alt="${escapeAttr(alt)}" />`;
+	}
+	if (mediaType === "video") {
+		const commonAttrs = `src="${escapedSrc}" ${dimensionParts.join(" ")} ${attrsHtml}`.trim().replace(/\s+/g, " ");
+		return `<video ${commonAttrs} controls preload="metadata"><a href="${escapedSrc}">${escapeHtml(alt || "Video")}</a></video>`;
+	}
+	if (mediaType === "audio") {
+		// Audio controls do not support explicit dimensions; ignore the size spec.
+		const attrsHtmlAudio = attrsToHtmlString(attrs, "wikilink-media");
+		const commonAttrs = `src="${escapedSrc}" ${attrsHtmlAudio}`.trim().replace(/\s+/g, " ");
+		return `<audio ${commonAttrs} controls preload="metadata"><a href="${escapedSrc}">${escapeHtml(alt || "Audio")}</a></audio>`;
+	}
+	return `<del>${escapeHtml(alt || target)}</del>`;
 }
 
 /**
@@ -224,7 +348,7 @@ function buildWikilinkHtml(inner: string, attrsRaw: string | undefined, basePath
 export function prepareWikiMarkdown(source: string, basePath: string): string {
 	const codeRanges = getCodeProtectedRanges(source);
 
-	const wikilinkRegex = /\[\[([\s\S]*?)\]\](\{[^{}]*\})?/g;
+	const wikilinkRegex = /!?\[\[([\s\S]*?)\]\](\{[^{}]*\})?/g;
 	let transformed = "";
 	let lastIndex = 0;
 	const wikiRanges: ProtectedRange[] = [];
@@ -234,7 +358,10 @@ export function prepareWikiMarkdown(source: string, basePath: string): string {
 		if (isInsideRange(match.index, codeRanges)) continue;
 
 		transformed += source.slice(lastIndex, match.index);
-		const replacement = buildWikilinkHtml(match[1] as string, match[2] as string | undefined, basePath);
+		const isMedia = match[0].startsWith("!");
+		const replacement = isMedia
+			? buildWikilinkMediaHtml(match[1] as string, match[2] as string | undefined, basePath)
+			: buildWikilinkHtml(match[1] as string, match[2] as string | undefined, basePath);
 		const start = transformed.length;
 		transformed += replacement;
 		wikiRanges.push({ start, end: transformed.length });

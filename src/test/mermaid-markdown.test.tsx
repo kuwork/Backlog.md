@@ -3,11 +3,14 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import MermaidMarkdown from "../web/components/MermaidMarkdown.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 
 const render = (source: string, props?: Partial<React.ComponentProps<typeof MermaidMarkdown>>) =>
 	renderToString(
 		<I18nProvider initialLocale="en">
-			<MermaidMarkdown source={source} {...props} />
+			<ImageLightboxProvider>
+				<MermaidMarkdown source={source} {...props} />
+			</ImageLightboxProvider>
 		</I18nProvider>,
 	);
 
@@ -92,7 +95,7 @@ describe("MermaidMarkdown", () => {
 		const html = render(source, { wikilinkBasePath: "index.md" });
 
 		expect(html).toContain('href="/wiki/concepts/demo"');
-		expect(html).toContain('class="some-class"');
+		expect(html).toMatch(/class="[^"]*some-class/);
 	});
 
 	it("does not transform wikilinks without wikilinkBasePath", () => {
@@ -134,6 +137,68 @@ describe("MermaidMarkdown", () => {
 			expect(html).toContain('href="/wiki/concepts/demo"');
 			expect(html).toContain(">Demo page</a>");
 			expect(html).not.toContain(">WIKI#concepts/demo</a>");
+		});
+	});
+
+	describe("media wikilinks", () => {
+		it("renders image wikilink as img tag", () => {
+			const source = "![[assets/photo.png|A photo]]";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+
+			expect(html).toContain('src="/assets/photo.png"');
+			expect(html).toContain('alt="A photo"');
+			expect(html).toContain("data-lightbox-img");
+		});
+
+		it("renders video wikilink as video tag", () => {
+			const source = "![[assets/demo.mp4|Demo video]]";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+
+			expect(html).toContain('<video');
+			expect(html).toContain('src="/assets/demo.mp4"');
+			expect(html).toContain('controls');
+		});
+
+		it("renders audio wikilink as audio tag", () => {
+			const source = "![[assets/demo.mp3]]";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+
+			expect(html).toContain('<audio');
+			expect(html).toContain('src="/assets/demo.mp3"');
+			expect(html).toContain('controls');
+		});
+
+		it("applies dimensions to image wikilink", () => {
+			const source = "![[assets/photo.png|A photo|200x300]]";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+
+			expect(html).toContain('width="200"');
+			expect(html).toContain('height="300"');
+		});
+
+		it("applies shorthand width to image wikilink", () => {
+			const source = "![[assets/photo.png|A photo|200]]";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+
+			expect(html).toContain('width="200"');
+			expect(html).not.toContain('height=');
+		});
+
+		it("applies shorthand width to video wikilink", () => {
+			const source = "![[assets/demo.mp4|Demo video|200]]";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+
+			expect(html).toContain('src="/assets/demo.mp4"');
+			expect(html).toContain('width="200"');
+			expect(html).not.toContain('height=');
+		});
+
+		it("does not render media wikilinks without wikilinkBasePath", () => {
+			const source = "![[assets/photo.png]]";
+			const html = render(source);
+
+			expect(html).toContain("![[assets/photo.png]]");
+			expect(html).not.toContain('src="/assets/photo.png"');
 		});
 	});
 });

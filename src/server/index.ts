@@ -761,6 +761,21 @@ export class BacklogServer {
 				txt: "text/plain",
 				css: "text/css",
 				js: "application/javascript",
+				// Video
+				mp4: "video/mp4",
+				webm: "video/webm",
+				ogv: "video/ogg",
+				mov: "video/quicktime",
+				mkv: "video/x-matroska",
+				// Audio
+				mp3: "audio/mpeg",
+				wav: "audio/wav",
+				ogg: "audio/ogg",
+				m4a: "audio/mp4",
+				flac: "audio/flac",
+				aac: "audio/aac",
+				opus: "audio/opus",
+				wma: "audio/x-ms-wma",
 			};
 
 			const mime = mimeMap[ext] ?? "application/octet-stream";

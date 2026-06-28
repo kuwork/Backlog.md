@@ -45,6 +45,8 @@ describe("BacklogServer asset serving", () => {
 		// write a small test asset and a text file
 		await Bun.write(join(assetsDir, "images", "test.png"), "PNGTEST");
 		await Bun.write(join(assetsDir, "docs", "readme.txt"), "Hello assets\n");
+		await Bun.write(join(assetsDir, "demo.mp4"), "VIDEOTEST");
+		await Bun.write(join(assetsDir, "demo.mp3"), "AUDIOTEST");
 
 		server = new BacklogServer(TEST_DIR);
 		await server.start(0, false);
@@ -102,5 +104,21 @@ describe("BacklogServer asset serving", () => {
 		// encoded traversal
 		const res2 = await fetchWithTimeout("/assets/%2e%2e/config.yml");
 		expect(res2.status).toBe(404);
+	});
+
+	it("serves video assets with video/mp4 Content-Type", async () => {
+		const res = await fetchWithTimeout("/assets/demo.mp4");
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toBe("video/mp4");
+		const body = await res.text();
+		expect(body).toBe("VIDEOTEST");
+	});
+
+	it("serves audio assets with audio/mpeg Content-Type", async () => {
+		const res = await fetchWithTimeout("/assets/demo.mp3");
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toBe("audio/mpeg");
+		const body = await res.text();
+		expect(body).toBe("AUDIOTEST");
 	});
 });

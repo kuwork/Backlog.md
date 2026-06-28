@@ -139,6 +139,16 @@ function LightboxImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
 	);
 }
 
+function VideoPlayer(props: React.VideoHTMLAttributes<HTMLVideoElement>) {
+	const { className, ...rest } = props;
+	return <video {...rest} className={`${className ?? ""} max-w-full`.trim()} controls preload="metadata" />;
+}
+
+function AudioPlayer(props: React.AudioHTMLAttributes<HTMLAudioElement>) {
+	const { className, ...rest } = props;
+	return <audio {...rest} className={`${className ?? ""} w-full`.trim()} controls preload="metadata" />;
+}
+
 export default function MermaidMarkdown({
 	source,
 	onFileClick,
@@ -350,7 +360,7 @@ export default function MermaidMarkdown({
 
 	return (
 		<div ref={ref} className="wmde-markdown">
-			<MDEditor.Markdown source={safeSource} components={{ a: LinkComponent, img: LightboxImage }} />
+			<MDEditor.Markdown source={safeSource} components={{ a: LinkComponent, img: LightboxImage, video: VideoPlayer, audio: AudioPlayer }} />
 		</div>
 	);
 }

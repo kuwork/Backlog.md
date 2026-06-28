@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { prepareWikiMarkdown, resolveWikiPath } from "../web/utils/wikiLinks.ts";
+import { prepareWikiMarkdown, resolveMediaPath, resolveWikiPath } from "../web/utils/wikiLinks.ts";
 
 describe("resolveWikiPath", () => {
 	it("resolves project-root-relative paths as-is", () => {
@@ -135,5 +135,133 @@ describe("prepareWikiMarkdown", () => {
 	it("renders unresolved wikilinks as deleted text", () => {
 		const result = prepareWikiMarkdown("[[../../../etc/passwd|bad]]", "concepts/demo.md");
 		expect(result).toContain("<del>bad</del>");
+	});
+});
+
+describe("resolveMediaPath", () => {
+	it("treats non-relative paths as project-root-relative", () => {
+		expect(resolveMediaPath("concepts/demo.md", "assets/photo.png")).toBe("assets/photo.png");
+	});
+
+	it("resolves dot-relative paths against the current page directory", () => {
+		expect(resolveMediaPath("concepts/demo.md", "./photo.png")).toBe("wiki/concepts/photo.png");
+	});
+
+	it("resolves parent traversal to escape wiki subdirectory", () => {
+		expect(resolveMediaPath("concepts/demo.md", "../../assets/photo.png")).toBe("assets/photo.png");
+	});
+
+	it("resolves parent traversal within wiki for sibling assets", () => {
+		expect(resolveMediaPath("concepts/demo.md", "../assets/photo.png")).toBe("wiki/assets/photo.png");
+	});
+
+	it("rejects absolute paths", () => {
+		expect(resolveMediaPath("concepts/demo.md", "/etc/passwd")).toBeNull();
+	});
+
+	it("returns null when traversal escapes project root", () => {
+		expect(resolveMediaPath("concepts/demo.md", "../../../outside.png")).toBeNull();
+	});
+});
+
+describe("prepareWikiMarkdown media wikilinks", () => {
+	it("renders image wikilink as img tag", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png]]", "index.md");
+		expect(result).toContain("<img");
+		expect(result).toContain('src="/assets/photo.png"');
+		expect(result).toContain('data-wikilink-media="true"');
+		expect(result).toContain('alt=""');
+	});
+
+	it("renders image wikilink with custom alt text", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|A photo]]", "index.md");
+		expect(result).toContain('src="/assets/photo.png"');
+		expect(result).toContain('alt="A photo"');
+	});
+
+	it("renders image wikilink with dimensions", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|A photo|200x300]]", "index.md");
+		expect(result).toContain('width="200"');
+		expect(result).toContain('height="300"');
+		expect(result).toContain("max-width: 100%;");
+	});
+
+	it("renders image wikilink with width only", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|A photo|200x0]]", "index.md");
+		expect(result).toContain('width="200"');
+		expect(result).not.toContain("height=");
+	});
+
+	it("renders image wikilink with shorthand width", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|A photo|200]]", "index.md");
+		expect(result).toContain('width="200"');
+		expect(result).not.toContain("height=");
+	});
+
+	it("renders image wikilink with shorthand width and no alt", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|200]]", "index.md");
+		expect(result).toContain('width="200"');
+		expect(result).toContain('alt=""');
+	});
+
+	it("renders image wikilink with height only", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|A photo|0x200]]", "index.md");
+		expect(result).not.toContain("width=");
+		expect(result).toContain('height="200"');
+	});
+
+	it("renders video wikilink as video tag", () => {
+		const result = prepareWikiMarkdown("![[assets/demo.mp4|Demo video]]", "index.md");
+		expect(result).toContain("<video");
+		expect(result).toContain('src="/assets/demo.mp4"');
+		expect(result).toContain("controls");
+		expect(result).toContain(">Demo video</a>");
+	});
+
+	it("renders video wikilink with shorthand width", () => {
+		const result = prepareWikiMarkdown("![[assets/demo.mp4|Demo video|200]]", "index.md");
+		expect(result).toContain('src="/assets/demo.mp4"');
+		expect(result).toContain('width="200"');
+		expect(result).not.toContain("height=");
+	});
+
+	it("renders audio wikilink as audio tag", () => {
+		const result = prepareWikiMarkdown("![[assets/demo.mp3]]", "index.md");
+		expect(result).toContain("<audio");
+		expect(result).toContain('src="/assets/demo.mp3"');
+		expect(result).toContain("controls");
+	});
+
+	it("resolves relative media paths against the current page", () => {
+		const result = prepareWikiMarkdown("![[../../assets/photo.png]]", "concepts/demo.md");
+		expect(result).toContain('src="/assets/photo.png"');
+	});
+
+	it("renders unresolved media wikilinks as deleted text", () => {
+		const result = prepareWikiMarkdown("![[../../../outside.png|bad]]", "concepts/demo.md");
+		expect(result).toContain("<del>bad</del>");
+	});
+
+	it("does not transform media wikilinks inside inline code", () => {
+		const result = prepareWikiMarkdown("Use `![[assets/photo.png]]` syntax.", "index.md");
+		expect(result).not.toContain("data-wikilink-media");
+		expect(result).toContain("![[assets/photo.png]]");
+	});
+
+	it("does not transform media wikilinks inside fenced code blocks", () => {
+		const result = prepareWikiMarkdown("```\n![[assets/photo.png]]\n```", "index.md");
+		expect(result).not.toContain("data-wikilink-media");
+		expect(result).toContain("![[assets/photo.png]]");
+	});
+
+	it("supports markdown-it-attrs on media wikilinks", () => {
+		const result = prepareWikiMarkdown("![[assets/photo.png|A photo]]{.rounded}", "index.md");
+		expect(result).toContain('class="rounded"');
+		expect(result).toContain('data-wikilink-media="true"');
+	});
+
+	it("encodes media paths with special characters", () => {
+		const result = prepareWikiMarkdown("![[assets/一片 狗尾草.jpg]]", "index.md");
+		expect(result).toContain('src="/assets/%E4%B8%80%E7%89%87%20%E7%8B%97%E5%B0%BE%E8%8D%89.jpg"');
 	});
 });

@@ -276,4 +276,28 @@ describe("ImageLightbox", () => {
 
 		document.removeEventListener("keydown", bubbleListener);
 	});
+
+	describe("wikilink media images", () => {
+		it("renders wikilink image with lightbox markers", () => {
+			setupDom();
+			const html = renderStatic(<MermaidMarkdown source="![[assets/sample.png]]" wikilinkBasePath="index.md" />);
+			expect(html).toContain("data-lightbox-img");
+			expect(html).toContain("cursor-zoom-in");
+			expect(html).toContain('src="/assets/sample.png"');
+		});
+
+		it("opens lightbox for wikilink image and shows the clicked image", async () => {
+			const container = renderInteractive(<MermaidMarkdown source="![[assets/a.png]] ![[assets/b.png]]" wikilinkBasePath="index.md" />);
+
+			const images = container.querySelectorAll("[data-lightbox-img]");
+			expect(images.length).toBe(2);
+
+			await clickElement(images[0] as HTMLImageElement);
+
+			const overlay = document.querySelector(".fixed.inset-0.bg-black\\/90");
+			expect(overlay).toBeTruthy();
+			const lightboxImg = document.querySelector(".fixed.inset-0 img");
+			expect(lightboxImg?.getAttribute("src")).toBe("/assets/a.png");
+		});
+	});
 });
