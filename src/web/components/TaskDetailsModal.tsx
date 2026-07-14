@@ -616,11 +616,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
         references,
         documentation,
         milestone: milestone.trim().length > 0 ? milestone.trim() : undefined,
-        dueDate: dueDate.trim().length > 0 ? dueDate.trim() : undefined,
-        plannedStart: plannedStart.trim().length > 0 ? plannedStart.trim() : undefined,
-        plannedEnd: plannedEnd.trim().length > 0 ? plannedEnd.trim() : undefined,
-        actualStart: actualStart.trim().length > 0 ? actualStart.trim() : undefined,
-        actualEnd: actualEnd.trim().length > 0 ? actualEnd.trim() : undefined,
+        dueDate: dueDate.trim(),
+        plannedStart: plannedStart.trim(),
+        plannedEnd: plannedEnd.trim(),
+        actualStart: actualStart.trim(),
+        actualEnd: actualEnd.trim(),
       };
 
       if (isCreateMode && onSubmit) {
@@ -1446,7 +1446,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                   onChange={(e) => {
                     const value = e.target.value;
                     setDueDate(value);
-                    let updates: InlineMetaUpdatePayload = { dueDate: value || undefined };
+                    let updates: InlineMetaUpdatePayload = { dueDate: value };
                     if (value && !plannedStart) {
                       const today = new Date().toISOString().slice(0, 10);
                       if (value >= today) {
@@ -1473,7 +1473,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     const value = e.target.value;
                     setPlannedStart(value);
                     if (task && !isCreateMode) {
-                      handleInlineMetaUpdate({ plannedStart: value || undefined });
+                      handleInlineMetaUpdate({ plannedStart: value });
                     }
                   }}
                   disabled={isFromOtherBranch}
@@ -1489,7 +1489,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     const value = e.target.value;
                     setPlannedEnd(value);
                     if (task && !isCreateMode) {
-                      handleInlineMetaUpdate({ plannedEnd: value || undefined });
+                      handleInlineMetaUpdate({ plannedEnd: value });
                     }
                   }}
                   disabled={isFromOtherBranch}
@@ -1505,7 +1505,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     const value = dateTimeLocalToStoredUtc(e.target.value);
                     setActualStart(value);
                     if (task && !isCreateMode) {
-                      handleInlineMetaUpdate({ actualStart: value || undefined });
+                      handleInlineMetaUpdate({ actualStart: value });
                     }
                   }}
                   disabled={isFromOtherBranch}
@@ -1521,7 +1521,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     const value = dateTimeLocalToStoredUtc(e.target.value);
                     setActualEnd(value);
                     if (task && !isCreateMode) {
-                      handleInlineMetaUpdate({ actualEnd: value || undefined });
+                      handleInlineMetaUpdate({ actualEnd: value });
                     }
                   }}
                   disabled={isFromOtherBranch}
