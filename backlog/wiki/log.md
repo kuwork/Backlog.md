@@ -399,3 +399,44 @@ Chronological, append-only record of all wiki operations.
 **跳过**: BACK-522（已是最新），以及历史提交中已删除的 back-507.* / m-7 agent-cli-workflow 源文件。
 
 **mini-lint**: 新页面 wikilink 交叉引用均已验证存在，无孤立页面。
+
+## [2026-07-14 07:14:00] batch-ingest | 增量摄取 BACK-526~528
+
+**检测基线**: 2026-06-27 21:05:00（上次 batch-ingest）
+**Git 变更文件**: 3 个新 backlog 任务 + 4 个源代码/测试文件
+
+**新 source 页面**: 3 个
+- `sources/back-526-create-task-references-and-backlog-autocomplete` — BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现
+- `sources/back-527-cli-escape-sequences-for-plan-notes-summary` — BACK-527 CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列
+- `sources/back-528-web-task-detail-date-clear-persisting` — BACK-528 修复 Web 任务详情日期清除不持久化
+
+**更新 concept 页面**: 3 个
+- `concepts/web-ui-features` — 扩展创建任务 references/documentation、.backlog 自动补全、日期清除持久化
+- `concepts/cli-entry` — 扩展 plan/notes/finalSummary 的 processCliEscapes 支持
+- `concepts/date-fields` — 补充 Web UI 空字符串清除机制
+
+**更新 execution 页面**: 1 个
+- `execution/cli-cross-platform-escape-pattern` — 补充 BACK-527 扩展应用
+
+**新 decision 页面**: 3 个
+- `decisions/allow-backlog-directory-in-autocomplete` — BACK-526 选择放行 .backlog 同时隐藏其他点目录
+- `decisions/reuse-processCliEscapes-for-plan-notes-summary` — BACK-527 选择复用现有转义函数
+- `decisions/empty-string-over-undefined-for-date-clear` — BACK-528 选择空字符串清除日期
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 更新 CLI 跨平台转义模式
+- [x] `wiki/decisions/` — 提取 3 个微决策
+- [ ] `wiki/reasoning/` — 无复杂规划需记录
+- [ ] `wiki/patterns/` — 无 3+ 相似任务
+- [ ] `wiki/retrospectives/` — 非周期性回顾时机
+
+**更新导航**: `index.md`（Sources 74 条，Decisions 22 条）、`overview.md`
+
+**mini-lint**: 新页面 wikilink 交叉引用均已验证存在，无孤立页面。
+
+
+## [2026-07-14 07:14:00] usermanual-update | 更新创建与编辑任务章节
+
+**更新页面**: 1 个
+- `10-任务管理/01-创建与编辑任务` — 扩展 `--plan`/`--notes`/`--final-summary` 的 `\n` 换行转义说明、Web UI 创建任务 references/documentation 支持、.backlog 路径自动补全、日期清除持久化行为
+
