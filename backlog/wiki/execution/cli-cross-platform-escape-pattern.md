@@ -2,7 +2,7 @@
 title: CLI 跨平台转义一致性模式
 labels: [execution, cli, cross-platform]
 created_date: '2026-06-05 15:19'
-updated_date: '2026-06-05 15:19'
+updated_date: '2026-07-14 07:14'
 ---
 
 # CLI 跨平台转义一致性模式
@@ -28,7 +28,9 @@ updated_date: '2026-06-05 15:19'
 
 ## 应用实例
 
-BACK-508 的 `processCliEscapes` 应用于 `task create/edit`、`draft create`、`milestone create/edit` 的 `--description`/`--desc`。
+- BACK-508 将 `processCliEscapes` 应用于 `task create/edit`、`draft create`、`milestone create/edit` 的 `--description`/`--desc`
+- BACK-527 扩展应用到 `task create/edit` 的 `--plan`、`--notes`、`--final-summary`，保持与 description 一致的跨平台多行输入体验
 
 ## 相关来源
 - [[sources/back-508-cli-description-escapes]]
+- [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]]
