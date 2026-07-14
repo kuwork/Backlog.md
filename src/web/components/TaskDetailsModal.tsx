@@ -613,6 +613,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
         labels,
         priority: (priority === "" ? undefined : priority) as "high" | "medium" | "low" | undefined,
         dependencies,
+        references,
+        documentation,
         milestone: milestone.trim().length > 0 ? milestone.trim() : undefined,
         dueDate: dueDate.trim().length > 0 ? dueDate.trim() : undefined,
         plannedStart: plannedStart.trim().length > 0 ? plannedStart.trim() : undefined,
@@ -1003,7 +1005,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
               )}
-              {mode === "preview" && !isFromOtherBranch && (
+              {!isFromOtherBranch && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();

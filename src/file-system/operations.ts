@@ -1804,14 +1804,14 @@ export class FileSystem {
 		const lowerQuery = query.toLowerCase();
 		const results: { name: string; path: string; type: "file" | "directory" }[] = [];
 
-		const excludeDirs = new Set(["node_modules", ".git", "dist", "build", ".backlog", ".locks"]);
+		const excludeDirs = new Set(["node_modules", ".git", "dist", "build", ".locks"]);
 
 		const walk = async (dirPath: string, relPath: string): Promise<void> => {
 			if (results.length >= MAX_RESULTS) return;
 			const entries = await readdir(dirPath, { withFileTypes: true });
 			for (const entry of entries) {
 				if (results.length >= MAX_RESULTS) return;
-				if (entry.name.startsWith(".")) continue;
+				if (entry.name.startsWith(".") && entry.name !== ".backlog") continue;
 				const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
 				if (entry.isDirectory()) {
 					if (excludeDirs.has(entry.name)) continue;
