@@ -1738,9 +1738,9 @@ addHelpSchema(taskCmd.command("create [title]"), {
 				priority: options.priority ? (String(options.priority).toLowerCase() as "high" | "medium" | "low") : undefined,
 				...(ordinalValue !== undefined ? { ordinal: ordinalValue } : {}),
 				milestone,
-				implementationPlan: options.plan ? String(options.plan) : undefined,
-				implementationNotes: options.notes ? String(options.notes) : undefined,
-				finalSummary: options.finalSummary ? String(options.finalSummary) : undefined,
+				implementationPlan: options.plan ? processCliEscapes(String(options.plan)) : undefined,
+				implementationNotes: options.notes ? processCliEscapes(String(options.notes)) : undefined,
+				finalSummary: options.finalSummary ? processCliEscapes(String(options.finalSummary)) : undefined,
 				acceptanceCriteria: criteria.map((text) => ({ text, checked: false })),
 				definitionOfDoneAdd: toStringArray(options.dod),
 				disableDefinitionOfDoneDefaults: options.dodDefaults === false,
@@ -2748,10 +2748,10 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			editArgs.modifiedFiles = normalizedModifiedFiles;
 		}
 		if (typeof options.plan === "string") {
-			editArgs.planSet = String(options.plan);
+			editArgs.planSet = processCliEscapes(String(options.plan));
 		}
 		if (typeof options.notes === "string") {
-			editArgs.notesSet = String(options.notes);
+			editArgs.notesSet = processCliEscapes(String(options.notes));
 		}
 		if (notesAppendValues.length > 0) {
 			editArgs.notesAppend = notesAppendValues;
@@ -2763,7 +2763,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			editArgs.commentAuthor = String(options.commentAuthor);
 		}
 		if (typeof options.finalSummary === "string") {
-			editArgs.finalSummary = String(options.finalSummary);
+			editArgs.finalSummary = processCliEscapes(String(options.finalSummary));
 		}
 		if (finalSummaryAppendValues.length > 0) {
 			editArgs.finalSummaryAppend = finalSummaryAppendValues;
