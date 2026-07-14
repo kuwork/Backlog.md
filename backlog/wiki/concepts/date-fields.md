@@ -2,7 +2,7 @@
 title: 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd）
 labels: [concept, dates, task, milestone]
 created_date: 2026-05-25 23:45
-updated_date: 2026-05-29 22:36
+updated_date: 2026-07-14 07:14
 ---
 
 # 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd）
@@ -71,6 +71,7 @@ milestone edit M1 --actual-start "2026-05-25 09:00"
 - **自动填充规则**：设置 `dueDate` 且 `plannedStart` 为空时，自动填充 `plannedStart = 今天`、`plannedEnd = dueDate`
 - **TaskCard 指示器**：头部日历图标 + `plannedStart~plannedEnd`；脚部时钟图标 + `dueDate`；逾期标红
 - **时区一致性**：`datetime-local` 输入通过 `storedUtcToDateTimeLocal` / `dateTimeLocalToStoredUtc` 正确转换 UTC 存储与本地显示（BACK-497）
+- **清除机制**：Web UI 点击 Clear 后客户端发送空字符串，服务端 `applyOptionalDateField` 将空字符串转为 `undefined` 并删除字段；CLI 使用 `--clear-due-date` 等显式清除标志（BACK-528）
 
 ## MCP 支持
 
@@ -95,3 +96,4 @@ milestone edit M1 --actual-start "2026-05-25 09:00"
 - [[sources/actual-dates-auto-create-task]] — BACK-498 创建时自动填充
 - [[sources/timezone-handling-fix]] — BACK-497 时区一致性修复
 - [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
+- [[sources/back-528-web-task-detail-date-clear-persisting]] — BACK-528 Web 日期清除持久化
