@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-06-24 00:30
+updated_date: 2026-07-14 07:14
 ---
 
 # Knowledge Base Overview
@@ -46,6 +46,10 @@ updated_date: 2026-06-24 00:30
 - **Wiki skill 与 CLI 文档同步**：更新内嵌 skill 文档以覆盖 wikilink 新语法，修复 `scripts/embed-wiki-skill.ts` 的 `$` 转义问题；更新 CLI 多行输入指南（`--desc`/`--plan`/`--notes`/`--comment`/`--final-summary`）（BACK-525）
 - **CLI 日期 UTC 转换**：`actualStart`/`actualEnd` 在 CLI/MCP 入口统一通过 `localDateTimeToStoredUtc` 转换为 UTC 存储，消除与 Web UI 的输入偏差（BACK-506）
 - **CLI description 转义**：`--description`/`--desc` 支持跨平台一致的 `\n` 换行输入；Windows 上模拟 bash 双引号层后统一应用 C-style 转义（BACK-508）
+- **CLI plan/notes/finalSummary 转义**：`--plan`、`--notes`、`--final-summary` 在 `task create/edit` 中同样应用 `processCliEscapes`，实现多行输入（BACK-527）
+- **创建任务引用与文档**：Web 创建任务模态框现在支持添加 References 和 Documentation，并持久化到任务文件（BACK-526）
+- **路径自动补全发现 .backlog**：全局文件搜索从排除列表中移除 `.backlog`，允许用户通过 `.back` 发现 backlog 工作目录，其他点前缀目录仍隐藏（BACK-526）
+- **Web 日期清除持久化**：任务详情模态框点击日期选择器 Clear 后客户端发送空字符串，服务端将其识别为删除指令，解决清除不生效问题（BACK-528）
 - **看板跨分支列菜单**：列含跨分支任务时仍显示本地排序，仅隐藏会修改 ordinal 的 Apply Priority Order（BACK-512）
 - **任务评论**：结构化追加式讨论机制，支持 Markdown 正文、可选作者、时间戳；通过 CLI `--comment`、MCP `commentsAppend`、Web UI 编辑模式表单追加；评论文本参与搜索；以 sentinel-delimited `## Comments` 章节持久化于任务 Markdown 中（BACK-470）
 - **自动端口选择**：`autoPort` 配置（默认 `true`），默认端口被占用时自动扫描接下来 100 个用户端口；拒绝 OS 分配的超出范围端口；设置面板提供开关；显式关闭时保留原有 EADDRINUSE 报错行为（BACK-514）
@@ -86,11 +90,11 @@ updated_date: 2026-06-24 00:30
 
 ## 统计
 
-- Sources ingested: 71
+- Sources ingested: 74
 - Concepts extracted: 24
 - Entities catalogued: 2
 - Execution notes: 12
-- Decisions recorded: 19
+- Decisions recorded: 22
 - Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24

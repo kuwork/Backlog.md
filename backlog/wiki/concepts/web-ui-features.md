@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-06-27 21:00
+updated_date: 2026-07-14 07:14
 ---
 
 # Web UI 功能
@@ -89,10 +89,12 @@ updated_date: 2026-06-27 21:00
 - 验收标准交互式勾选列表
 - 任务内容目录（TOC）与滚动监听
 - 富表单：状态、优先级、标签、里程碑、负责人、依赖、引用、文档链接
+- **References / Documentation 可在创建模式添加**：创建任务时即可通过路径自动补全添加引用和文档链接（BACK-526）
 - **标签输入下拉框**：`ChipInput` 支持自动完成，focus 时显示项目已有标签，支持模糊过滤，Enter 创建新标签，大小写不敏感重复检测（BACK-501）
 - **降级为草稿** / **提升为任务**：amber/emerald 按钮，确认后调用 API
-- **路径自动补全**：references 与 documentation 输入框支持键盘导航
+- **路径自动补全**：references 与 documentation 输入框支持键盘导航；输入 `.back` 可发现 `.backlog` 目录，其他点前缀目录仍隐藏（BACK-526）
 - **日期字段**：`dueDate`/`plannedStart`/`plannedEnd`（date 输入）+ `actualStart`/`actualEnd`（datetime-local 输入）
+- **日期清除持久化**：点击日期选择器 Clear 后客户端发送空字符串而非 `undefined`，确保清除操作被服务端接收并保存（BACK-528）
 - **键盘快捷键修复**：全局快捷键（E/C/D/P/Ctrl+S/Escape）在输入框聚焦时正确抑制（BACK-494）
 - **依赖项钻取导航**：Dependencies 区域的依赖任务标签可点击，直接打开该任务详情；标题栏左侧显示返回按钮可回到父任务（BACK-505）
 - **稳定任务模态框 URL**：`/task/:id` 路由支持从任意视图打开任务详情，底层页面保持可见；支持前缀无关匹配（`506` → `BACK-506`）；裸 `/task/:id` 自动重定向到 `/task/:id/:title`（BACK-509）
@@ -167,3 +169,5 @@ updated_date: 2026-06-27 21:00
 - [[sources/wiki-page-switch-edit-mode-fix]] — BACK-510 Wiki 编辑模式修复
 - [[sources/local-url-short-aliases-task]] — BACK-511 本地 URL 短别名
 - [[sources/back-512-kanban-column-sort-menu-cross-branch]] — BACK-512 看板列跨分支排序菜单修复
+- [[sources/back-526-create-task-references-and-backlog-autocomplete]] — BACK-526 创建任务引用与 .backlog 自动补全
+- [[sources/back-528-web-task-detail-date-clear-persisting]] — BACK-528 Web 日期清除持久化
