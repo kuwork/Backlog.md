@@ -2,7 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-06-05 15:19
+updated_date: 2026-07-14 07:14
 ---
 
 # CLI 入口与命令体系
@@ -86,6 +86,7 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 - Windows 上先模拟 bash 双引号转义层（`\\` → `\`），再统一应用 C-style 转义（`\n` → 换行，`\\` → 字面反斜杠）
 - 非 Windows 直接应用 C-style 转义
 - 覆盖 `task create/edit`、`draft create`、`milestone create/edit` 五个入口（BACK-508）
+- `--plan`、`--notes`、`--final-summary` 在 `task create/edit` 中同样应用 `processCliEscapes`，实现多行计划、备注与总结（BACK-527）
 
 ## overview 命令
 
@@ -116,3 +117,4 @@ backlog overview --plain # 纯文本输出
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actual 字段
 - [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
 - [[sources/back-508-cli-description-escapes]] — BACK-508 CLI description 转义修复
+- [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]] — BACK-527 plan/notes/finalSummary 转义支持
