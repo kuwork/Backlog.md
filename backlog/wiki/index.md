@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-06-27 21:00'
+updated_date: '2026-07-14 07:14'
 ---
 # Wiki Content Catalog
 
@@ -85,6 +85,9 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs]] | BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持 | source, wiki, feature, frontend, wikilink |
 | [[sources/back-524-add-media-wikilink-support-for-images-video-and-audio]] | BACK-524 媒体 wikilink 支持（图片/视频/音频） | source, web-ui, wiki, feature, media |
 | [[sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs]] | BACK-525 更新 wiki skill 与 CLI 多行输入文档 | source, wiki, docs, cli, skill |
+| [[sources/back-526-create-task-references-and-backlog-autocomplete]] | BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现 | source, bug, web-ui, cli, autocomplete |
+| [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]] | BACK-527 CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列 | source, bug, cli, ux |
+| [[sources/back-528-web-task-detail-date-clear-persisting]] | BACK-528 修复 Web 任务详情日期清除不持久化 | source, bug, web-ui, dates |
 
 ## Execution Notes
 
@@ -126,6 +129,9 @@ Read this file FIRST on any wiki operation.
 | [[decisions/simulate-bash-escape-on-windows]] | Windows 上模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
 | [[decisions/mcp-roots-discovery-scope]] | MCP Roots 发现扩展至正常启动路径并保留 Pinned CWD | BACK-522 选择复用现有 roots 发现而非重写 resolver |
 | [[decisions/wikilink-regex-pipeline]] | Wikilink 别名与属性块使用轻量正则流水线 | BACK-523 选择正则流水线而非完整 remark/rehype AST 处理 |
+| [[decisions/allow-backlog-directory-in-autocomplete]] | 路径自动补全允许发现 .backlog 目录 | BACK-526 选择从排除列表中移除 .backlog 同时保留其他点前缀目录隐藏 |
+| [[decisions/reuse-processCliEscapes-for-plan-notes-summary]] | 复用 processCliEscapes 处理 plan、notes 与 finalSummary | BACK-527 选择复用现有转义函数而非新增独立逻辑 |
+| [[decisions/empty-string-over-undefined-for-date-clear]] | Web 日期清除使用空字符串而非 undefined | BACK-528 选择让客户端发送空字符串避免 JSON 丢弃 undefined |
 
 ## Concepts
 
