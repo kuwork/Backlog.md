@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-07-14 07:14'
+updated_date: '2026-07-14 11:20'
 ---
 # Wiki Content Catalog
 
@@ -88,6 +88,12 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-526-create-task-references-and-backlog-autocomplete]] | BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现 | source, bug, web-ui, cli, autocomplete |
 | [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]] | BACK-527 CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列 | source, bug, cli, ux |
 | [[sources/back-528-web-task-detail-date-clear-persisting]] | BACK-528 修复 Web 任务详情日期清除不持久化 | source, bug, web-ui, dates |
+| [[sources/back-521]] | BACK-521 CLI-first agent workflow refactor and local instruction surface | source, cli, agent-guidance, mcp |
+| [[sources/back-521.1]] | BACK-521.1 Shared workflow instruction registry and CLI access | source, cli, agent-guidance |
+| [[sources/back-521.2]] | BACK-521.2 短 CLI nudge 与 init 默认迁移 | source, cli, agent-guidance, init |
+| [[sources/back-521.6]] | BACK-521.6 Root command local instruction hub | source, cli, agent-guidance |
+| [[sources/back-521.7]] | BACK-521.7 Milestone CLI parity with MCP operations | source, cli, milestones, mcp |
+| [[sources/back-521.14]] | BACK-521.14 更新 CLI/MCP 指令指南缺失的代理指导 | source, docs, agent-guidance, cli, mcp |
 
 ## Execution Notes
 
@@ -105,6 +111,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/label-color-persistence-pattern]] | 标签颜色持久化模式 | 将 UI 自定义样式映射持久化到项目配置，仅存储非默认值 |
 | [[execution/mcp-client-setup-pattern]] | MCP 客户端设置共享 Helper 模式 | 统一 Claude/Codex/Gemini/Kiro 的 MCP 注册与错误处理 |
 | [[execution/wikilink-media-rendering-pattern]] | Wikilink 媒体渲染模式 | 解析、路径解析、尺寸控制与组件注册的标准步骤 |
+| [[execution/instruction-guide-backport-pattern]] | agent-guidelines 运营指导回传到 CLI/MCP 指令表面 | 差距审计、内容拆分、两边同步、注册新指南、测试与构建的标准步骤 |
 
 ## Decisions
 
@@ -132,6 +139,8 @@ Read this file FIRST on any wiki operation.
 | [[decisions/allow-backlog-directory-in-autocomplete]] | 路径自动补全允许发现 .backlog 目录 | BACK-526 选择从排除列表中移除 .backlog 同时保留其他点前缀目录隐藏 |
 | [[decisions/reuse-processCliEscapes-for-plan-notes-summary]] | 复用 processCliEscapes 处理 plan、notes 与 finalSummary | BACK-527 选择复用现有转义函数而非新增独立逻辑 |
 | [[decisions/empty-string-over-undefined-for-date-clear]] | Web 日期清除使用空字符串而非 undefined | BACK-528 选择让客户端发送空字符串避免 JSON 丢弃 undefined |
+| [[decisions/cli-instructions-default-over-mcp]] | CLI instructions 作为默认 AI 集成路径 | BACK-521.2 选择 CLI instructions 为默认，MCP 作为可选 |
+| [[decisions/short-cli-nudge-over-long-guide]] | 使用短 CLI nudge 替代长 agent instruction 指南 | BACK-521.2 选择短 nudge + 动态 `backlog instructions` |
 
 ## Concepts
 
@@ -161,6 +170,8 @@ Read this file FIRST on any wiki operation.
 | [[concepts/auto-port]] | 自动端口选择 | autoPort 配置、端口扫描逻辑、多实例并发启动 |
 | [[concepts/i18n-string-fragmentation]] | i18n 字符串拼接反模式 | 运行时拼接导致翻译断裂、完整短语替代方案 |
 | [[concepts/tui-theme-adaptive]] | TUI 主题自适应渲染 | 逆视频高亮、移除硬编码 ANSI 颜色、跨主题兼容 |
+| [[concepts/cli-instructions]] | CLI 指令表面 | `backlog instructions` 提供的本地工作流指南与 CLI 优先代理集成 |
+| [[concepts/milestones]] | 里程碑管理 | 里程碑创建、分配、归档，CLI 与 MCP 操作语义 |
 
 ## Entities
 
