@@ -1,8 +1,8 @@
 ---
 title: CLI 入口与命令体系
 labels: [concept]
-created_date: 2026-05-10 00:00
-updated_date: 2026-07-14 07:14
+created_date: '2026-05-10 00:00'
+updated_date: '2026-07-14 11:20'
 ---
 
 # CLI 入口与命令体系
@@ -34,9 +34,13 @@ updated_date: 2026-07-14 07:14
 | `decision add <title>` | 创建决策记录 |
 | `milestone add <title>` | 创建里程碑 |
 | `milestone edit <id>` | 编辑里程碑 |
+| `milestone list` | 列出里程碑 |
+| `milestone remove <id>` | 移除里程碑 |
+| `milestone archive <id>` | 归档里程碑 |
 | `browser` | 启动 Web UI 服务器 |
 | `board` | 生成看板 |
 | `mcp start` | 启动 MCP 服务器 |
+| `instructions [guide]` | 查看工作流指南 |
 | `wiki install <agent>` | 安装 LLM wiki skill |
 | `config get/set/list` | 配置管理 |
 | `overview` | 项目级统计概览 |
@@ -54,7 +58,26 @@ CLI 启动时（除 `init`/`--help`/`--version` 外）自动运行配置迁移�
 
 ### AI 集成模式选择
 
-`init` 命令引导用户选择 MCP connector、CLI commands 或 Skip。
+`init` 命令引导用户选择 AI 集成方式：
+- **CLI instructions**（默认推荐）：生成短 nudge 到 `AGENTS.md` 等文件，代理通过 `backlog instructions` 读取指南。
+- **MCP connector**：AI 直接调用 MCP 工具。
+- **Skip**：不配置 AI 集成。
+
+## 指令指南命令
+
+`backlog instructions` 是 CLI 优先的本地工作流指南入口（[[concepts/cli-instructions]]）：
+
+```bash
+backlog instructions                  # 列出指南
+backlog instructions overview         # 工作流概览
+backlog instructions task-creation    # 任务创建指南
+backlog instructions task-execution   # 任务执行指南
+backlog instructions task-finalization # 任务完结指南
+backlog instructions milestones       # 里程碑指南
+backlog instructions init-required    # 未初始化回退指南
+```
+
+裸 `backlog` 输出现在指向本地指令命令而非旧在线文档。
 
 ## 日期字段 CLI 支持
 
@@ -77,16 +100,16 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 - 实际字段格式为 `YYYY-MM-DD HH:MM`
 - 交互式向导（`task-wizard.ts`）在 TTY 模式下会提示输入日期
 - `task view --plain` 显示 Due / Planned / Actual 全部日期字段
-- **local→UTC 转换**：核心层在 `createTask` / `updateTask` 中通过 `localDateTimeToStoredUtc` 将 CLI 本地时间统一转为 UTC 存储，确保与 Web UI 输入等价（BACK-506）
+- **local→UTC 转换**：核心层在 `createTask` / `updateTask` 中通过 `localDateTimeToStoredUtc` 将 CLI 本地时间统一转为 UTC 存储，确保与 Web UI 输入等价（[[sources/back-506-cli-utc-conversion-fix|BACK-506]]）
 
-### description 转义处理
+### description 与多行字段转义处理
 
-`--description` / `--desc` 值支持跨平台一致的换行输入：
+`--description` / `--desc`、`--plan`、`--notes`、`--final-summary` 值支持跨平台一致的换行输入：
 
 - Windows 上先模拟 bash 双引号转义层（`\\` → `\`），再统一应用 C-style 转义（`\n` → 换行，`\\` → 字面反斜杠）
 - 非 Windows 直接应用 C-style 转义
-- 覆盖 `task create/edit`、`draft create`、`milestone create/edit` 五个入口（BACK-508）
-- `--plan`、`--notes`、`--final-summary` 在 `task create/edit` 中同样应用 `processCliEscapes`，实现多行计划、备注与总结（BACK-527）
+- 覆盖 `task create/edit`、`draft create`、`milestone create/edit` 五个入口（[[sources/back-508-cli-description-escapes|BACK-508]]）
+- `--plan`、`--notes`、`--final-summary` 在 `task create/edit` 中同样应用 `processCliEscapes`，实现多行计划、备注与总结（[[sources/back-527-cli-escape-sequences-for-plan-notes-summary|BACK-527]]）
 
 ## overview 命令
 
@@ -106,12 +129,18 @@ backlog overview --plain # 纯文本输出
 
 ## Related Concepts
 
+- [[concepts/cli-instructions]] — CLI 指令表面
 - [[concepts/date-fields]] — 日期字段语义与格式
 - [[concepts/mcp-server]] — MCP 服务器实现
 - [[concepts/web-server]] — Web Server HTTP API
+- [[concepts/milestones]] — 里程碑管理
 
 ## Related Sources
 
+- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
+- [[sources/back-521.1]] — BACK-521.1 Shared workflow instruction registry and CLI access
+- [[sources/back-521.2]] — BACK-521.2 Short agent nudge and init default migration
+- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
 - [[sources/due-date-fields-task]] — BACK-401 日期字段
 - [[sources/actual-start-end-fields-task]] — BACK-492 actual 字段
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actual 字段

@@ -1,18 +1,15 @@
 ---
 title: MCP 工作流与 AI 集成
 labels: [concept]
-created_date: 2026-05-10 00:00
-updated_date: 2026-06-24 00:30
+created_date: '2026-05-10 00:00'
+updated_date: '2026-07-14 11:20'
 ---
-
 
 # MCP 工作流与 AI 集成
 
-Backlog.md 通过 Model Context Protocol (MCP) 与 AI 编码助手深度集成。
+Backlog.md 通过 Model Context Protocol (MCP) 与 AI 编码助手深度集成。MCP 是 AI 代理（Claude Code、Codex、Gemini CLI、Kiro、Cursor）直接调用 Backlog.md 功能工具的标准化协议。
 
-## 什么是 MCP 集成？
-
-MCP 是一种标准化协议，允许 AI 代理（Claude Code、Codex、Gemini CLI、Kiro、Cursor）直接调用 Backlog.md 的功能工具，无需用户手动输入 CLI 命令。
+> 注意：CLI instructions 是 `backlog init` 默认推荐的 AI 集成路径；MCP 作为可选连接器保留（[[sources/back-521.2|BACK-521.2]]）。
 
 ## 推荐 AI 工作流（Spec-Driven）
 
@@ -23,7 +20,7 @@ MCP 是一种标准化协议，允许 AI 代理（Claude Code、Codex、Gemini C
 每个代理会话只处理一个任务，一个任务一个 PR。确保任务足够小，能在单次对话中完成。
 
 ### 步骤 3：编码前写计划
-在实施前让代理研究代码库并撰写实现计划（Implementation Plan），放在任务中。这确保了计划反映代码库当前状态。
+在实施前让代理研究代码库并撰写 Implementation Plan，放在任务中。计划必须经用户批准或显式跳过审查后才能开始编码。
 
 ### 步骤 4：实施与验证
 让代理实施任务。完成后审查代码、运行测试、检查 lint，验证结果。
@@ -41,15 +38,21 @@ AI 代理可通过 MCP 执行：
 - 里程碑管理（列出、创建、重命名、归档、任务分配）
 - 看板状态读取
 - 依赖管理
-- 序列（Sequences）查看与操作
+- 序列查看与操作
 - 配置读取
 - 项目统计与指标
 
-## 资源与提示
+## 工作流指南资源
 
-- `backlog://docs/task-workflow` — 任务工作流指南
-- `backlog://workflow/overview` — 工作流概览
-- `backlog://init-required` — 未初始化时的回退资源
+MCP 客户端通过 `get_backlog_instructions` 工具或 `backlog://workflow/...` 资源读取指南：
+
+| 指南 | 资源 URI | 用途 |
+|---|---|---|
+| 概览 | `backlog://workflow/overview` | 何时创建任务、基本工作流 |
+| 任务创建 | `backlog://workflow/task-creation` | 搜索、范围评估、创建任务 |
+| 任务执行 | `backlog://workflow/task-execution` | 规划、字段编辑、进度记录 |
+| 任务完结 | `backlog://workflow/task-finalization` | 验证、总结、收尾 |
+| 里程碑 | `backlog://workflow/milestones` | 里程碑创建、编辑、移除、归档 |
 
 ## 安全
 
@@ -59,7 +62,7 @@ AI 代理可通过 MCP 执行：
 
 ## AI 客户端设置
 
-Backlog.md 提供统一的 MCP 客户端设置辅助函数，供 Claude、Codex、Gemini、Kiro 等 AI 工具使用（BACK-520）：
+Backlog.md 提供统一的 MCP 客户端设置辅助函数，供 Claude、Codex、Gemini、Kiro 等 AI 工具使用（[[sources/back-520-fix-codex-mcp-connection-failure|BACK-520]]）：
 
 - `src/utils/mcp-client-setup.ts` 中的共享 helper 统一了 CLI 和 `core/init.ts` 中的客户端注册逻辑。
 - Codex 设置命令使用当前 stdio 分隔符格式：
@@ -86,3 +89,23 @@ Backlog.md 提供统一的 MCP 客户端设置辅助函数，供 Claude、Codex�
 - **修复**: 
   - Windows 上忽略 stdin 'close' 作为关闭信号
   - `isGitRepository` 通过 `Bun.spawn` 运行并忽略 stdin
+
+## Related Concepts
+
+- [[concepts/cli-instructions]] — CLI 指令表面
+- [[concepts/cli-entry]] — CLI 入口与命令体系
+- [[concepts/mcp-server]] — MCP Server 实现
+- [[concepts/task-lifecycle]] — 任务生命周期
+- [[concepts/milestones]] — 里程碑管理
+
+## Related Entities
+
+- [[entities/ai-agents]] — AI 代理与集成
+- [[entities/backlog-cli]] — Backlog.md CLI 工具
+
+## Related Sources
+
+- [[sources/back-520-fix-codex-mcp-connection-failure]] — BACK-520 修复 Codex MCP 连接失败
+- [[sources/back-522-resolve-mcp-project-root-from-client-workspace-roots]] — BACK-522 MCP project root 从客户端 workspace roots 解析
+- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
+- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
