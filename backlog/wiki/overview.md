@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-07-14 07:14
+updated_date: 2026-07-14 11:20
 ---
 
 # Knowledge Base Overview
@@ -18,7 +18,7 @@ updated_date: 2026-07-14 07:14
 - **看板**：终端 TUI 看板、Web 交互式看板、看板导出
 - **搜索**：基于 Fuse.js 的跨任务/文档/决策/wiki 模糊搜索，支持 `type:wiki <keyword>` 语法过滤
 - **Web UI**：React + Tailwind CSS v4 的现代化浏览器界面
-- **AI 集成**：MCP 协议支持 Claude Code、Codex、Gemini CLI、Kiro、Cursor
+- **AI 集成**：CLI instructions 为默认代理集成路径，`backlog instructions` 提供本地工作流指南；MCP 协议仍支持 Claude Code、Codex、Gemini CLI、Kiro、Cursor 作为可选连接器
 - **粘贴为 Markdown**：Word/Excel/Google Docs 富文本自动转换，截图图片上传与嵌入
 - **本地文件预览**：任务 References 和 Markdown 中的本地路径点击预览，支持语法高亮和行范围
 - **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹；Wikilink 点击弹出预览模态框，标准 Markdown 相对链接在 wiki 页面内支持 SPA 导航预览
@@ -44,6 +44,7 @@ updated_date: 2026-07-14 07:14
 - **本地 URL 短别名**：Markdown 中同源 URL 渲染为 `DOC#:id`、`Decisions#:id`、`TASK#:id`、`WIKI#:path` 别名，提升可读性同时保持点击性与模态框导航（BACK-511）
 - **Wikilink 增强**：支持别名语法 `[[target|alias]]`（含 Markdown 行内格式与任意 HTML）、markdown-it-attrs 属性块 `[[target]]{...}`、媒体嵌入 `![[path|alt|WxH]]`（图片/视频/音频）及尺寸控制（BACK-523 / BACK-524）
 - **Wiki skill 与 CLI 文档同步**：更新内嵌 skill 文档以覆盖 wikilink 新语法，修复 `scripts/embed-wiki-skill.ts` 的 `$` 转义问题；更新 CLI 多行输入指南（`--desc`/`--plan`/`--notes`/`--comment`/`--final-summary`）（BACK-525）
+- **CLI 指令表面**：`backlog instructions` 暴露 overview/task-creation/task-execution/task-finalization/milestones/init-required 等本地指南；裸 `backlog` 输出指向本地指令入口而非旧在线文档；`backlog init` 默认安装短 CLI nudge 到 `AGENTS.md`（BACK-521 / BACK-521.2 / BACK-521.6 / BACK-521.14）
 - **CLI 日期 UTC 转换**：`actualStart`/`actualEnd` 在 CLI/MCP 入口统一通过 `localDateTimeToStoredUtc` 转换为 UTC 存储，消除与 Web UI 的输入偏差（BACK-506）
 - **CLI description 转义**：`--description`/`--desc` 支持跨平台一致的 `\n` 换行输入；Windows 上模拟 bash 双引号层后统一应用 C-style 转义（BACK-508）
 - **CLI plan/notes/finalSummary 转义**：`--plan`、`--notes`、`--final-summary` 在 `task create/edit` 中同样应用 `processCliEscapes`，实现多行输入（BACK-527）
@@ -69,6 +70,8 @@ updated_date: 2026-07-14 07:14
 - **Skill 嵌入**：构建时将 `.codex/skills/` 嵌入 `src/skills/embedded/` 供编译后二进制使用
 - **MCP 安全**：stdio-only 传输，Windows 上修复 stdin close 误触发导致的挂起问题
 - **MCP 客户端设置**：统一 helper 支持 Claude/Codex/Gemini/Kiro；Codex 使用 `--` stdio 分隔符；新增编译二进制 MCP stdio smoke 测试（BACK-520）
+- **CLI/MCP 指令指南补齐**：将 agent-guidelines.md 中缺失的运营指导（目录布局、黄金法则、任务字段速查、里程碑指南、图片/资源处理、常见问题含文档引用路径示例）回传到 CLI/MCP 指令表面；明确创建任务时不包含 Implementation Plan，执行前需用户批准（BACK-521.14）
+- **里程碑 CLI 与 MCP 指南**：新增独立 milestones 指南，统一 CLI `backlog milestone ...` 与 MCP `milestone_*` 工具的创建、编辑、移除、归档、分配语义（BACK-521.7 / BACK-521.14）
 - **网络错误恢复**：GitOperations 将 SSL 错误（`SSL_ERROR_SYSCALL`、`SSL handshake failed` 等）识别为网络错误并优雅降级到本地数据
 
 ### 项目管理域
@@ -90,11 +93,11 @@ updated_date: 2026-07-14 07:14
 
 ## 统计
 
-- Sources ingested: 74
-- Concepts extracted: 24
+- Sources ingested: 80
+- Concepts extracted: 26
 - Entities catalogued: 2
-- Execution notes: 12
-- Decisions recorded: 22
+- Execution notes: 13
+- Decisions recorded: 24
 - Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24

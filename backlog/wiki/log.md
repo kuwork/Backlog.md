@@ -440,3 +440,47 @@ Chronological, append-only record of all wiki operations.
 **更新页面**: 1 个
 - `10-任务管理/01-创建与编辑任务` — 扩展 `--plan`/`--notes`/`--final-summary` 的 `\n` 换行转义说明、Web UI 创建任务 references/documentation 支持、.backlog 路径自动补全、日期清除持久化行为
 
+
+## [2026-07-14 11:20:27] batch-ingest | 增量摄取 BACK-521.2 / BACK-521.14 及相关指令指南源码
+
+**检测基线**: 2026-07-14 07:14:00（上次 batch-ingest）
+**Git 变更文件**: 2 个 backlog 任务 + 11 个指令指南/源码/测试文件
+
+**新 source 页面**: 6 个
+- `sources/back-521` — BACK-521 CLI-first agent workflow refactor
+- `sources/back-521.1` — BACK-521.1 Shared workflow instruction registry and CLI access
+- `sources/back-521.2` — BACK-521.2 短 CLI nudge 与 init 默认迁移
+- `sources/back-521.6` — BACK-521.6 Root command local instruction hub
+- `sources/back-521.7` — BACK-521.7 Milestone CLI parity with MCP operations
+- `sources/back-521.14` — BACK-521.14 更新 CLI/MCP 指令指南缺失的代理指导
+
+**新 concept 页面**: 2 个
+- `concepts/cli-instructions` — CLI 指令表面与 CLI 优先代理集成
+- `concepts/milestones` — 里程碑管理（CLI 与 MCP 语义统一）
+
+**更新 concept 页面**: 3 个
+- `concepts/mcp-workflow` — 补充 CLI instructions 为默认路径、最新 MCP 指南结构、里程碑指南
+- `concepts/cli-entry` — 补充 `backlog instructions` 命令、里程碑命令、AI 集成默认选择
+- `concepts/task-lifecycle` — 补充创建任务不含 Implementation Plan、执行前需用户批准、禁止直接编辑任务
+
+**更新 entity 页面**: 2 个
+- `entities/ai-agents` — 更新默认 CLI instructions、短 nudge、MCP 可选
+- `entities/backlog-cli` — 补充指令指南模块与注册表
+
+**新 decision 页面**: 2 个
+- `decisions/cli-instructions-default-over-mcp` — CLI instructions 作为默认 AI 集成路径
+- `decisions/short-cli-nudge-over-long-guide` — 短 CLI nudge 替代长 agent instruction 指南
+
+**新 execution 页面**: 1 个
+- `execution/instruction-guide-backport-pattern` — agent-guidelines 运营指导回传到 CLI/MCP 指令表面的模式
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 提取 instruction-guide-backport-pattern
+- [x] `wiki/decisions/` — 提取 2 个微决策
+- [ ] `wiki/reasoning/` — 无复杂规划需记录
+- [ ] `wiki/patterns/` — 无 3+ 相似任务
+- [ ] `wiki/retrospectives/` — 非周期性回顾时机
+
+**更新导航**: `index.md`（Sources 80 条，Concepts 26 条，Decisions 24 条，Execution 13 条）、`overview.md`
+
+**mini-lint**: 新页面 wikilink 交叉引用均已验证存在，无孤立页面。
