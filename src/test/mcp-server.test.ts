@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { $ } from "bun";
 import {
+	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
 	MCP_TASK_EXECUTION_GUIDE,
 	MCP_TASK_FINALIZATION_GUIDE,
@@ -60,7 +61,7 @@ describe("McpServer bootstrap", () => {
 			properties: {
 				instruction: {
 					type: "string",
-					enum: ["overview", "task-creation", "task-execution", "task-finalization"],
+					enum: ["overview", "task-creation", "task-execution", "task-finalization", "milestones"],
 				},
 			},
 			required: [],
@@ -73,6 +74,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/task-creation",
 			"backlog://workflow/task-execution",
 			"backlog://workflow/task-finalization",
+			"backlog://workflow/milestones",
 		]);
 
 		const prompts = await server.testInterface.listPrompts();
@@ -146,6 +148,19 @@ describe("McpServer bootstrap", () => {
 		await server.stop();
 	});
 
+	it("milestones guide resource returns correct content", async () => {
+		const server = await bootstrapServer();
+
+		const result = await server.testInterface.readResource({
+			params: { uri: "backlog://workflow/milestones" },
+		});
+
+		expect(result.contents).toHaveLength(1);
+		expect(getContentsText(result.contents)).toBe(MCP_MILESTONES_GUIDE);
+
+		await server.stop();
+	});
+
 	it("workflow tool returns overview by default and selected guide content when requested", async () => {
 		const server = await bootstrapServer();
 
@@ -193,6 +208,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/task-creation",
 			"backlog://workflow/task-execution",
 			"backlog://workflow/task-finalization",
+			"backlog://workflow/milestones",
 		]);
 		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");
 
@@ -245,6 +261,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/task-creation",
 			"backlog://workflow/task-execution",
 			"backlog://workflow/task-finalization",
+			"backlog://workflow/milestones",
 		]);
 		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");
 

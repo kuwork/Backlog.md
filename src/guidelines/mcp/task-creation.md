@@ -72,6 +72,8 @@ Create all tasks in the same session to maintain consistency and context.
 **Title and description**: Explain desired outcome and user value (the WHY). Keep the description focused on outcome and essential handoff context.
 
 **Acceptance criteria**: `acceptanceCriteria` is an array of strings; each item should be specific, testable, and independent (the WHAT)
+
+**Do NOT include an Implementation Plan when creating a task.** The plan is written later by the agent who executes the task. After the task is created, the executing agent will set it In Progress, assign themselves, draft a plan, share it with the user, and wait for approval before writing code.
 - Keep each checklist item atomic (e.g., "Display saves when user presses Ctrl+S")
 - Include negative or edge scenarios when relevant
 - Capture testing expectations explicitly

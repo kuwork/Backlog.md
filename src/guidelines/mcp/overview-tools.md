@@ -25,9 +25,11 @@ Your client is using Backlog.md via tools. Use the following MCP tools to retrie
 
 Use this tool to retrieve the required Backlog.md guidance in markdown form:
 
-- `get_backlog_instructions` — Returns workflow guidance. Leave `instruction` empty for the overview, or select `task-creation`, `task-execution`, or `task-finalization`.
+- `get_backlog_instructions` — Returns workflow guidance. Leave `instruction` empty for the overview, or select `task-creation`, `task-execution`, `task-finalization`, or `milestones`.
 
 The tool returns the same content that resource-capable clients read via `backlog://workflow/...` URIs. The overview response is tool-oriented when `instruction` is omitted or set to `overview`.
+
+**Required: fetch and read the matching guide (`task-creation`, `task-execution`, `task-finalization`) before creating, executing, or finalizing tasks — do not act from this overview alone.** Also read `milestones` before managing milestones. The guides define the required procedure; skipping them produces inconsistent tasks and metadata.
 
 ### Typical Workflow (Tools)
 
@@ -35,6 +37,7 @@ The tool returns the same content that resource-capable clients read via `backlo
 2. **If found:** read details via `task_view`; follow execution/plan guidance from the retrieved markdown
 3. **If not found:** call `get_backlog_instructions` with `instruction="task-creation"`, then create tasks with `task_create`
 4. **Execute & finalize:** call `get_backlog_instructions` with `instruction="task-execution"` or `instruction="task-finalization"` to manage status, plans, notes, and acceptance criteria via `task_edit`
+5. **Manage milestones:** call `get_backlog_instructions` with `instruction="milestones"` before creating, editing, removing, or archiving milestones
 
 **Note:** "Done" tasks stay in Done until periodic cleanup. Moving to the completed folder (`task_complete`) is a batch operation run occasionally, not part of finishing each task. Do not use `task_archive` for completed work—archive is only for duplicate, canceled, or invalid tasks.
 
@@ -48,8 +51,9 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `task_list`, `task_search`, `task_view`, `task_create`, `task_edit`, `task_complete`, `task_archive`
 - `task_search` accepts `modifiedFiles` for case-insensitive substring filtering against project-root-relative modified file paths
 - `task_edit` accepts `commentsAppend` and optional `commentAuthor` to append task discussion or review comments
+- `task_edit` also supports acceptance criteria operations (`acceptanceCriteriaSet/Add/Remove/Check/Uncheck`) and task-level Definition of Done operations (`definitionOfDoneAdd/Remove/Check/Uncheck`)
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters
-- `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_archive`
+- `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_remove`, `milestone_archive` — for details read the `milestones` guide via `get_backlog_instructions`
 - `document_list`, `document_view`, `document_create`, `document_update`, `document_search`
 - `document_create` and `document_update` support docs-directory-relative `path` values such as `guides/setup`; absolute paths and `..` traversal are rejected
 - `definition_of_done_defaults_get`, `definition_of_done_defaults_upsert`
@@ -61,5 +65,9 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `task_edit` accepts `definitionOfDoneAdd`, `definitionOfDoneRemove`, `definitionOfDoneCheck`, `definitionOfDoneUncheck` for **exceptional** task-level DoD updates only
 - DoD is a completion checklist, not acceptance criteria: keep scope/behavior in acceptance criteria, not DoD fields
 - `task_view` output includes the Definition of Done checklist with checked state
+
+**Task images:** place image files under `backlog/assets/` and reference them in task content with `assets/<relative-path>`. Supported formats: png, jpg, jpeg, gif, svg, webp, avif.
+
+**Backlog directory layout:** tasks in `backlog/tasks/`, drafts in `backlog/drafts/`, docs in `backlog/docs/`, decisions in `backlog/decisions/`, assets in `backlog/assets/`, milestones in `backlog/milestones/`, completed in `backlog/completed/`, archive in `backlog/archive/`, wiki in `backlog/wiki/` (LLM-managed, do not edit manually), wiki output in `backlog/wiki_output/`.
 
 **Always operate through the MCP tools above. Never edit markdown files directly; use the tools so relationships, metadata, and history stay consistent.**

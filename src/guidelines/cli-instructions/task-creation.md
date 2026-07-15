@@ -61,6 +61,8 @@ Include:
 - References or documentation when they are needed for implementation.
 - Dependencies when work must happen in order.
 
+**Do NOT include an Implementation Plan when creating a task.** The plan is written later by the agent who executes the task. After the task is created, the executing agent will set it In Progress, assign themselves, draft a plan, share it with the user, and wait for approval before writing code.
+
 Examples:
 
 ```bash

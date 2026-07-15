@@ -1,11 +1,13 @@
 import {
 	CLI_INIT_REQUIRED_GUIDE,
+	CLI_MILESTONES_GUIDE,
 	CLI_TASK_CREATION_GUIDE,
 	CLI_TASK_EXECUTION_GUIDE,
 	CLI_TASK_FINALIZATION_GUIDE,
 	CLI_WORKFLOW_OVERVIEW,
 } from "../guidelines/cli-instructions/index.ts";
 import {
+	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
 	MCP_TASK_EXECUTION_GUIDE,
 	MCP_TASK_FINALIZATION_GUIDE,
@@ -13,7 +15,13 @@ import {
 	MCP_WORKFLOW_OVERVIEW_TOOLS,
 } from "../guidelines/mcp/index.ts";
 
-export const WORKFLOW_GUIDE_KEYS = ["overview", "task-creation", "task-execution", "task-finalization"] as const;
+export const WORKFLOW_GUIDE_KEYS = [
+	"overview",
+	"task-creation",
+	"task-execution",
+	"task-finalization",
+	"milestones",
+] as const;
 export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
 
 export type WorkflowGuideKey = (typeof WORKFLOW_GUIDE_KEYS)[number];
@@ -63,6 +71,14 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 		mimeType: "text/markdown",
 		resourceText: MCP_TASK_FINALIZATION_GUIDE,
 	},
+	{
+		key: "milestones",
+		uri: "backlog://workflow/milestones",
+		name: "Milestones Guide",
+		description: "How to create, edit, remove, and archive milestones",
+		mimeType: "text/markdown",
+		resourceText: MCP_MILESTONES_GUIDE,
+	},
 ];
 
 const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
@@ -70,6 +86,7 @@ const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
 	"task-creation": CLI_TASK_CREATION_GUIDE,
 	"task-execution": CLI_TASK_EXECUTION_GUIDE,
 	"task-finalization": CLI_TASK_FINALIZATION_GUIDE,
+	milestones: CLI_MILESTONES_GUIDE,
 };
 
 export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [

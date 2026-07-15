@@ -36,13 +36,12 @@ Searching first avoids duplicate tasks and helps you understand existing context
 
 ### Detailed Guidance (Required)
 
-Read these resources to get essential instructions when:
+**Read the matching resource below before creating, executing, finalizing tasks, or managing milestones — do not act from this overview alone.** The overview only tells you when to act; these resources define the required procedure, and skipping them produces inconsistent tasks and metadata.
 
 - **Creating tasks** → `backlog://workflow/task-creation` - Scope assessment, acceptance criteria, parent/subtasks structure
 - **Planning & executing work** → `backlog://workflow/task-execution` - Planning workflow, implementation discipline, scope changes
 - **Finalizing tasks** → `backlog://workflow/task-finalization` - Definition of Done, finalization checklist, next steps
-
-These guides contain critical workflows you need to follow for proper task management.
+- **Managing milestones** → `backlog://workflow/milestones` - How to create, edit, remove, and archive milestones
 
 ### Core Principle
 
@@ -74,3 +73,116 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 **Document path rules:** document paths are relative to the docs directory. Use `path` values like `guides/setup`; absolute paths and `..` traversal are rejected.
 
 **Always operate through MCP tools. Never edit markdown files directly so relationships, metadata, and history stay consistent.**
+
+---
+
+## Backlog Directory Layout
+
+- Markdown task files live under **`backlog/tasks/`** (drafts under **`backlog/drafts/`**)
+- Project documentation is in **`backlog/docs/`**
+- Project decisions are in **`backlog/decisions/`**
+- Local images and assets are in **`backlog/assets/`**
+- Milestones are stored as Markdown files in **`backlog/milestones/`**
+- Completed tasks are moved to **`backlog/completed/`**
+- Archived/canceled/invalid tasks are moved to **`backlog/archive/`**
+- LLM-managed wiki knowledge base is in **`backlog/wiki/`** (do not edit manually)
+- Wiki query products and generated artifacts go in **`backlog/wiki_output/`**
+
+## ⚠️ CRITICAL: NEVER EDIT TASK FILES DIRECTLY. Edit Only via MCP Tools
+
+**ALL task operations MUST use the Backlog.md MCP tools**
+
+- ✅ **DO**: Use `task_edit` and other MCP tools
+- ✅ **DO**: Use `task_create` to create new tasks
+- ✅ **DO**: Use `task_edit` with `acceptanceCriteriaCheck` to mark acceptance criteria
+- ❌ **DON'T**: Edit markdown files directly
+- ❌ **DON'T**: Manually change checkboxes in files
+- ❌ **DON'T**: Add or modify text in task files without using MCP tools
+
+**Why?** Direct file editing breaks metadata synchronization, Git tracking, and task relationships.
+
+## Task Images (Local Assets)
+
+Tasks may include images for screenshots, diagrams, or visual references. Local images are served automatically when using `backlog browser`.
+
+**Storage location:**
+- Place image files under the `assets/` folder inside your backlog directory (e.g., `backlog/assets/images/screenshot.png`)
+
+**Supported formats:**
+- png, jpg, jpeg, gif, svg, webp, avif
+
+**Markdown syntax in tasks:**
+```markdown
+![example](assets/images/screenshot.png)
+```
+
+**Workflow when adding images to tasks:**
+1. Move or copy the image file into the `assets/` folder inside your backlog directory
+2. Then add or edit the task content via `task_edit`, referencing the image using the `assets/<relative-path>` path
+
+**Key points:**
+- The path in Markdown starts with `assets/` and maps to the backlog directory's `assets/` folder; do **not** include the backlog directory name itself
+- When `backlog browser` is running, these files are automatically available at `assets/<relative-path>`
+- You can add images to descriptions, implementation notes, or final summaries using `task_edit`
+
+## Search Quick Reference
+
+- `task_search` — fuzzy search by title and description; supports `query`, `status`, `priority`, `modifiedFiles`, and `limit`
+- `task_list` — list tasks with filters: `status`, `assignee`, `milestone`, `labels`, `search`, `limit`
+- `search` (global) — searches tasks, docs, and decisions; supports `--type task`, `--status`, `--priority`, `--modified-file`
+
+**Key points:**
+- Fuzzy matching finds related terms (e.g., "auth" matches "authentication")
+- `modifiedFiles` filters by case-insensitive substring against project-root-relative paths
+- Use `--plain` with CLI commands for AI-readable output
+
+## Other Useful Tools
+
+- `task_archive` — archive a task that should not be completed (duplicate, canceled, invalid)
+- `task_complete` — move a Done task to the completed folder (cleanup, not finalization)
+- `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_remove`, `milestone_archive` — milestone management
+- `definition_of_done_defaults_get` / `definition_of_done_defaults_upsert` — project-level DoD defaults
+
+For milestone details, read `backlog://workflow/milestones`.
+
+## Common Issues
+
+| Problem              | Solution                                                           |
+|----------------------|--------------------------------------------------------------------|
+| Task not found       | Use `task_list` or `task_search` to confirm the ID                 |
+| AC won't check       | Use `task_view` to see current AC numbers                          |
+| Changes not saving   | Ensure you're using MCP tools, not editing files                   |
+| Metadata out of sync | Re-edit via `task_edit` to fix                                     |
+| Broken doc reference | Use project-root-relative paths or URLs, not bare doc IDs (see below) |
+
+### References and Documentation Paths
+
+The `references` and `documentation` fields on a task should point to actual locations, not just short IDs. Use project-root-relative paths or URLs.
+
+❌ **Wrong:**
+
+```
+task_create: { title: "Feature", documentation: ["doc-001"] }
+task_edit: { id: "BACK-42", references: ["doc-001"] }
+```
+
+✅ **Correct:**
+
+```
+task_create: {
+  title: "Feature",
+  documentation: ["backlog/docs/doc-001 - Testing-Style-Guide.md"],
+  references: ["src/server/api.ts", "https://github.com/org/repo/issues/123"]
+}
+
+task_edit: {
+  id: "BACK-42",
+  documentation: ["backlog/docs/architecture.md"],
+  references: ["backlog/decisions/adr-001 - Use-Postgres.md"]
+}
+```
+
+## Remember: The Golden Rule
+
+**🎯 If you want to change ANYTHING in a task, use the `task_edit` tool.**
+**📖 Use MCP tools to read tasks, exceptionally READ task files directly, never WRITE to them.**

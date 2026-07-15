@@ -43,6 +43,43 @@
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters
 - Keep task status aligned with reality via `task_edit`
 
+### Task Field Quick Reference
+
+Use `task_edit` to modify these fields:
+
+| What You Want to Change | MCP Field(s) |
+|-------------------------|--------------|
+| Title | `title` |
+| Status | `status` |
+| Assignee | `assignee` (array) |
+| Labels | `labels` (array) |
+| Due Date | `dueDate` |
+| Planned Start/End | `plannedStart` / `plannedEnd` |
+| Actual Start/End | `actualStart` / `actualEnd` |
+| Description | `description` |
+| Add AC | `acceptanceCriteriaAdd` |
+| Check/Uncheck AC | `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck` |
+| Remove AC | `acceptanceCriteriaRemove` |
+| Add DoD | `definitionOfDoneAdd` |
+| Check/Uncheck DoD | `definitionOfDoneCheck` / `definitionOfDoneUncheck` |
+| Remove DoD | `definitionOfDoneRemove` |
+| Plan | `planSet` / `planAppend` / `planClear` |
+| Notes | `notesSet` / `notesAppend` / `notesClear` |
+| Comment | `commentsAppend` with optional `commentAuthor` |
+| Final Summary | `finalSummary` / `finalSummaryAppend` / `finalSummaryClear` |
+| Dependencies | `dependencies` |
+| References | `references` / `addReferences` / `removeReferences` |
+| Documentation | `documentation` / `addDocumentation` / `removeDocumentation` |
+| Modified Files | `modifiedFiles` |
+| Milestone | `milestone` |
+
+### Acceptance Criteria and Definition of Done Operations
+
+- `acceptanceCriteriaAdd` accepts multiple items in one call
+- `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck` / `acceptanceCriteriaRemove` accept arrays of 1-based indices
+- Mixed operations can be combined in a single `task_edit` call
+- `definitionOfDoneAdd` / `definitionOfDoneCheck` / `definitionOfDoneUncheck` / `definitionOfDoneRemove` work the same way for task-level DoD items
+
 ### Handling Scope Changes
 
 If new work appears during implementation that wasn't in the original acceptance criteria:

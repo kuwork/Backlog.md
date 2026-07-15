@@ -59,6 +59,7 @@ describe("CLI Integration", () => {
 			expect(output).toContain("task-creation");
 			expect(output).toContain("task-execution");
 			expect(output).toContain("task-finalization");
+			expect(output).toContain("milestones");
 			expect(output).toContain("init-required");
 			expect(output).toContain("How to verify, summarize, and finish work");
 			expect(output).not.toContain("mark work Done");
@@ -82,6 +83,7 @@ describe("CLI Integration", () => {
 			expect(output).toContain("task-creation");
 			expect(output).toContain("task-execution");
 			expect(output).toContain("task-finalization");
+			expect(output).toContain("milestones");
 			expect(output).toContain("init-required");
 		});
 
@@ -94,18 +96,17 @@ describe("CLI Integration", () => {
 			const taskFinalization = normalizeCliOutput(
 				await $`bun ${CLI_PATH} instructions task-finalization`.cwd(TEST_DIR).text(),
 			);
+			const milestones = normalizeCliOutput(await $`bun ${CLI_PATH} instructions milestones`.cwd(TEST_DIR).text());
 			const initRequired = normalizeCliOutput(await $`bun ${CLI_PATH} instructions init-required`.cwd(TEST_DIR).text());
 
 			expect(overview).toContain("## Backlog.md Overview (CLI)");
 			expect(overview).toContain("### Start Every Request Here");
-			expect(overview).toContain(
-				"Use this overview to decide what to read or run next. The detailed guides contain the procedure for creating, executing, and finalizing tasks.",
-			);
+			expect(overview).toContain("Use this overview to decide what to read or run next.");
 			expect(overview).toContain('backlog search "query" --plain');
 			expect(overview).toContain('backlog task list --search "login" --labels frontend,bug --limit 20 --plain');
 			expect(overview).toContain("backlog task view BACK-123 --plain");
 			expect(overview).toContain(
-				"Always read the relevant guide before that part of the workflow. Do not rely on this overview alone for these actions:",
+				"Required: read the matching guide below before creating, executing, or finalizing tasks. Do not rely on this overview alone for these actions.",
 			);
 			expect(overview).toContain(
 				"`backlog instructions task-creation`\n  -> Read before creating tasks: how to search, scope, and create tasks",
@@ -116,15 +117,20 @@ describe("CLI Integration", () => {
 			expect(overview).toContain(
 				"`backlog instructions task-finalization`\n  -> Read before finishing tasks: how to verify, summarize, and finish tasks",
 			);
-			expect(overview).not.toContain('backlog task create "Title"');
-			expect(overview).not.toContain("backlog task edit BACK-123 --plan");
-			expect(overview).not.toContain("backlog task edit BACK-123 --check-ac 1");
-			expect(overview).not.toContain("backlog task edit BACK-123 -s Done");
+			expect(overview).toContain(
+				"`backlog instructions milestones`\n  -> Read before managing milestones: how to create, edit, remove, and archive milestones",
+			);
 			expect(overview).toContain(
 				"Important: Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use Backlog commands so automatic metadata stays complete.",
 			);
+			expect(overview).toContain("## ⚠️ CRITICAL: NEVER EDIT TASK FILES DIRECTLY. Edit Only via CLI");
+			expect(overview).toContain("## Task Images (Local Assets)");
 			expect(overview).not.toContain("MCP Tools Quick Reference");
+			expect(taskExecution).toContain("## Task Field Quick Reference");
+			expect(taskExecution).toContain("## Acceptance Criteria and Definition of Done Operations");
 			expect(overview).not.toContain("backlog://workflow/");
+			expect(milestones).toContain("## Milestones");
+			expect(milestones).toContain("backlog milestone add");
 			expect(taskCreation).toContain("## Task Creation Guide");
 			expect(taskCreation).toContain('backlog task create "Add project search"');
 			expect(taskCreation).toContain('backlog search "desktop app" --plain');
@@ -215,8 +221,9 @@ describe("CLI Integration", () => {
 			const taskCreation = await $`bun ${CLI_PATH} instructions task-creation`.cwd(TEST_DIR).text();
 			const taskExecution = await $`bun ${CLI_PATH} instructions task-execution`.cwd(TEST_DIR).text();
 			const taskFinalization = await $`bun ${CLI_PATH} instructions task-finalization`.cwd(TEST_DIR).text();
+			const milestones = await $`bun ${CLI_PATH} instructions milestones`.cwd(TEST_DIR).text();
 
-			for (const guide of [overview, taskCreation, taskExecution, taskFinalization, CLI_AGENT_NUDGE]) {
+			for (const guide of [overview, taskCreation, taskExecution, taskFinalization, milestones, CLI_AGENT_NUDGE]) {
 				expect(guide).not.toContain("backlog task complete");
 				expect(guide).not.toContain("task complete");
 				expect(guide).not.toContain("task_complete");
