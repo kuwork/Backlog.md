@@ -65,7 +65,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `document_update` — update document content, append content blocks, optional title/type/tags, and optional docs-directory-relative path
 - `document_search` — search documents using the shared fuzzy index
 - `task_create` — create new tasks with description and acceptance criteria; DoD fields are for **exceptional** task-level overrides only (`definitionOfDoneAdd`, `disableDefinitionOfDoneDefaults`)
-- `task_edit` — update task metadata, status, plan, notes, comments (`commentsAppend` with optional `commentAuthor`), final summary, acceptance criteria, task-level Definition of Done (`definitionOfDoneAdd/Remove/Check/Uncheck`) for **exceptional** per-task updates, and dependencies
+- `task_edit` — update task metadata, status, description (`description` or `descriptionAppend`), plan, notes, comments (`commentsAppend` with optional `commentAuthor`), final summary, acceptance criteria, task-level Definition of Done (`definitionOfDoneAdd/Remove/Check/Uncheck`) for **exceptional** per-task updates, and dependencies
 - DoD is not acceptance criteria: acceptance criteria define scope/behavior, while DoD tracks completion hygiene
 - Comments are for discussion and review notes; Implementation Notes are for execution progress; Final Summary is the PR-style completion summary. Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters.
 - `task_complete` — move a Done task to the completed folder (periodic cleanup, not immediate)

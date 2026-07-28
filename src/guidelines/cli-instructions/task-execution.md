@@ -54,6 +54,7 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Clear Actual Start      | `backlog task edit {{TASK_ID:123}} --clear-actual-start` |
 | Clear Actual End        | `backlog task edit {{TASK_ID:123}} --clear-actual-end`   |
 | Description             | `backlog task edit {{TASK_ID:123}} -d "New description"` |
+| Append Description      | `backlog task edit {{TASK_ID:123}} --append-description "Extra context"` |
 | Add AC                  | `backlog task edit {{TASK_ID:123}} --ac "New criterion"` |
 | Add DoD                 | `backlog task edit {{TASK_ID:123}} --dod "Ship notes"`   |
 | Check AC #1             | `backlog task edit {{TASK_ID:123}} --check-ac 1`         |

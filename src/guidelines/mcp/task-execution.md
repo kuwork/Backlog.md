@@ -57,6 +57,7 @@ Use `task_edit` to modify these fields:
 | Planned Start/End | `plannedStart` / `plannedEnd` |
 | Actual Start/End | `actualStart` / `actualEnd` |
 | Description | `description` |
+| Append Description | `descriptionAppend` |
 | Add AC | `acceptanceCriteriaAdd` |
 | Check/Uncheck AC | `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck` |
 | Remove AC | `acceptanceCriteriaRemove` |

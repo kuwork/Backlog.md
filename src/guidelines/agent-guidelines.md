@@ -181,6 +181,7 @@ PR-style summary of what was implemented.
 | Clear Actual Start      | `backlog task edit 42 --clear-actual-start`              |
 | Clear Actual End        | `backlog task edit 42 --clear-actual-end`                |
 | Description             | `backlog task edit 42 -d "New description"`              |
+| Append Description      | `backlog task edit 42 --append-description "Extra context"` |
 | Add AC                  | `backlog task edit 42 --ac "New criterion"`              |
 | Add DoD                 | `backlog task edit 42 --dod "Ship notes"`                |
 | Check AC #1             | `backlog task edit 42 --check-ac 1`                      |
@@ -544,6 +545,7 @@ backlog search --modified-file src/server/api.ts --plain
 |------------------|---------------------------------------------|
 | Edit title       | `backlog task edit 42 -t "New Title"`       |
 | Edit description | `backlog task edit 42 -d "New description"` |
+| Append description | `backlog task edit 42 --append-description "Extra context"` |
 | Change status    | `backlog task edit 42 -s "In Progress"`     |
 | Assign           | `backlog task edit 42 -a @sara`             |
 | Add labels       | `backlog task edit 42 -l backend,api`       |
@@ -571,6 +573,7 @@ backlog search --modified-file src/server/api.ts --plain
 |------------------|----------------------------------------------------------|
 | Add plan         | `backlog task edit 42 --plan "1. Step one\n2. Step two"` |
 | Add notes        | `backlog task edit 42 --notes "Implementation details"`  |
+| Append description | `backlog task edit 42 --append-description "Extra context"` |
 | Add comment      | `backlog task edit 42 --comment "Review question" --comment-author @agent` |
 | Add final summary | `backlog task edit 42 --final-summary "PR-style summary"` |
 | Append final summary | `backlog task edit 42 --append-final-summary "More details"` |
@@ -582,13 +585,14 @@ backlog search --modified-file src/server/api.ts --plain
 
 ### Multi‑line Input (Description/Plan/Notes/Comments/Final Summary)
 
-For `--desc` / `--description`, the CLI interprets `\n` as a newline. For `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants, include real line breaks inside the quoted string. Use one of the following forms, listed in order of preference for AI agents:
+For `--desc` / `--description` and `--append-description`, the CLI interprets `\n` as a newline. For `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, and `--append-final-summary`, include real line breaks inside the quoted string. Use one of the following forms, listed in order of preference for AI agents:
 
-**1. Escape sequences for `--desc` / `--description` (single line — easiest for AI agents):**
+**1. Escape sequences for `--desc` / `--description` / `--append-description` (single line — easiest for AI agents):**
 
 ```bash
 backlog task create "Feature" --desc "1. Analyze\n2. Refactor\n3. Test"
 backlog task edit 42 --desc "First line\nSecond line"
+backlog task edit 42 --append-description "Extra context\nSecond line"
 ```
 
 **2. Repeat `--append-*` for each line (works in every shell, including sandboxes that block other forms):**
@@ -615,7 +619,7 @@ Second line
 Final paragraph"
 ```
 
-The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants.
+The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, and `--append-final-summary`.
 
 **4. Shell-specific shorthand (interactive shells only — some AI agent sandboxes reject these):**
 
@@ -639,7 +643,7 @@ The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, an
 
 Prefer forms **1** and **2** when running under Claude Code, Codex, or any agent harness that screens commands through a tree‑sitter AST walker — those harnesses reject ANSI‑C strings, command substitutions, and heredoc forms (see issue [#595](https://github.com/MrLesk/Backlog.md/issues/595)).
 
-To store a literal backslash-n sequence (`\n`) inside a `--desc` / `--description` value, double the backslashes according to your shell rules. For `--plan`, `--notes`, `--comment`, `--final-summary`, and `--append-*`, `\n` is already stored literally.
+To store a literal backslash-n sequence (`\n`) inside a `--desc` / `--description` or `--append-description` value, double the backslashes according to your shell rules. For `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, and `--append-final-summary`, `\n` is already stored literally.
 
 ### Implementation Notes Formatting
 

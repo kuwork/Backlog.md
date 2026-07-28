@@ -87,6 +87,8 @@ Use the detailed guides when needed:
 - `backlog instructions task-creation` for creating or splitting tasks
 - `backlog instructions task-execution` for planning and implementation workflow
 - `backlog instructions task-finalization` for completion and handoff
+- `backlog instructions milestones` for creating, editing, removing, and archiving milestones
+- `backlog instructions documents` for creating, updating, listing, and viewing project documents
 
 Use `backlog <command> --help` before running unfamiliar commands. Help shows options, fields, and examples.
 

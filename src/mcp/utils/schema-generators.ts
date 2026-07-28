@@ -193,6 +193,15 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 				type: "string",
 				maxLength: 10000,
 			},
+			descriptionAppend: {
+				type: "array",
+				items: {
+					type: "string",
+					maxLength: 5000,
+				},
+				maxItems: 20,
+				description: "Append blocks to the existing task description",
+			},
 			status: generateStatusFieldSchema(config),
 			priority: {
 				type: "string",

@@ -136,6 +136,7 @@ export interface TaskCreateInput {
 export interface TaskUpdateInput {
 	title?: string;
 	description?: string;
+	descriptionAppend?: string[];
 	status?: TaskStatus;
 	priority?: "high" | "medium" | "low";
 	milestone?: string | null;

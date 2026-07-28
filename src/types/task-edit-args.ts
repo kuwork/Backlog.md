@@ -1,6 +1,7 @@
 export interface TaskEditArgs {
 	title?: string;
 	description?: string;
+	descriptionAppend?: string[];
 	status?: string;
 	priority?: "high" | "medium" | "low";
 	milestone?: string | null;

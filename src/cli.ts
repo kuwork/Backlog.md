@@ -326,6 +326,8 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 		options.title !== undefined ||
 			options.description !== undefined ||
 			options.desc !== undefined ||
+			options.appendDescription !== undefined ||
+			options.appendDesc !== undefined ||
 			options.assignee !== undefined ||
 			options.status !== undefined ||
 			options.label !== undefined ||
@@ -2414,6 +2416,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 	optional: [
 		{ name: "title", type: "String", description: "Replacement task title" },
 		{ name: "description", type: "Markdown", description: "Replacement description" },
+		{ name: "descriptionAppend", type: "Array of Markdown", description: "Append blocks to the existing description" },
 		{ name: "status", type: statusType, description: "Project task status; case-insensitive" },
 		{ name: "plan", type: "Markdown", description: "Replacement implementation plan" },
 		{ name: "notes", type: "Markdown", description: "Replacement implementation notes" },
@@ -2432,6 +2435,12 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 	.option("-t, --title <title>")
 	.option("-d, --description <text>", "task description (multi-line: include real newlines inside the quoted string)")
 	.option("--desc <text>", "alias for --description")
+	.option(
+		"--append-description <text>",
+		"append to task description (can be used multiple times)",
+		createMultiValueAccumulator(),
+	)
+	.option("--append-desc <text>", "alias for --append-description", createMultiValueAccumulator())
 	.option("-a, --assignee <assignee>")
 	.option("-s, --status <status>")
 	.option("-l, --label <labels>")
@@ -2710,6 +2719,10 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const descriptionOption = options.description ?? options.desc;
 		if (descriptionOption !== undefined) {
 			editArgs.description = processCliEscapes(String(descriptionOption));
+		}
+		const descriptionAppendValues = [...toStringArray(options.appendDescription), ...toStringArray(options.appendDesc)];
+		if (descriptionAppendValues.length > 0) {
+			editArgs.descriptionAppend = descriptionAppendValues.map((value) => processCliEscapes(value));
 		}
 		if (canonicalStatus) {
 			editArgs.status = canonicalStatus;

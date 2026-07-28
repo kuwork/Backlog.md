@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-07-28 00:42'
-updated_date: '2026-07-28 01:34'
+updated_date: '2026-07-28 02:03'
 labels:
   - cli
   - mcp
@@ -65,6 +65,8 @@ Scope:
 
 <!-- SECTION:NOTES:BEGIN -->
 Verified with bun test src/test/doc-content-newlines.test.ts (6 pass) and bunx tsc --noEmit (pass). Note: bun run check . reports pre-existing CRLF formatting issues across the entire repo, unrelated to this change.
+
+Also updated src/guidelines/cli-agent-nudge.md and AGENTS.md to list milestones and documents guides in the critical instruction block.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -92,6 +94,7 @@ Changes:
 - src/guidelines/mcp/index.ts: exported MCP_DOCUMENTS_GUIDE.
 - src/guidelines/mcp/overview.md: references documents guide and mentions append_content support.
 - src/mcp/workflow-guides.ts: registered documents as a workflow guide for both CLI and MCP instructions.
+- src/guidelines/cli-agent-nudge.md and AGENTS.md: critical instruction now lists milestones and documents guides.
 
 Verification:
 - bun test src/test/doc-content-newlines.test.ts (6 pass)

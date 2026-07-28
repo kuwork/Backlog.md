@@ -1653,6 +1653,15 @@ export class Core {
 			}
 		}
 
+		const descriptionAppends = sanitizeAppendInput(input.descriptionAppend);
+		if (descriptionAppends.length > 0) {
+			const { value, changed } = appendBlock(task.description, descriptionAppends);
+			if (changed) {
+				task.description = value;
+				mutated = true;
+			}
+		}
+
 		let acceptanceCriteria = Array.isArray(task.acceptanceCriteriaItems)
 			? task.acceptanceCriteriaItems.map((criterion) => ({ ...criterion }))
 			: [];

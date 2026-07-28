@@ -36,6 +36,11 @@ export function buildTaskUpdateInput(args: TaskEditArgs): TaskUpdateInput {
 		updateInput.description = args.description;
 	}
 
+	const descriptionAppends = sanitizeAppend(args.descriptionAppend);
+	if (descriptionAppends) {
+		updateInput.descriptionAppend = descriptionAppends;
+	}
+
 	if (typeof args.status === "string") {
 		updateInput.status = args.status;
 	}
