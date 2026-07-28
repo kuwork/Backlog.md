@@ -269,10 +269,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
   const [availableDrafts, setAvailableDrafts] = useState<Task[]>([]);
-  const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
+  type PreviewTarget =
+    | { kind: "file"; path: string }
+    | { kind: "entity"; type: "task" | "draft" | "doc" | "decision" | "wiki"; id: string; lineStart?: number; lineEnd?: number };
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
   const milestoneSelectionValue = resolveMilestoneToId(milestone);
 
-  const handleTaskClick = useCallback((taskId: string) => {
+  const handleTaskClick = useCallback((taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+    if (range?.lineStart !== undefined) {
+      setPreviewTarget({ kind: "entity", type: "task", id: taskId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+      return;
+    }
     const targetTask = availableTasks.find(t => stripAnyPrefix(t.id) === taskId || t.id === taskId);
     if (targetTask && onDrillDown) {
       onDrillDown(targetTask);
@@ -280,16 +287,32 @@ export const TaskDetailsModal: React.FC<Props> = ({
       navigate(`/task/${taskId}`);
     }
   }, [availableTasks, onDrillDown, navigate]);
-  const handleDocClick = useCallback((docId: string) => {
+  const handleDocClick = useCallback((docId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+    if (range?.lineStart !== undefined) {
+      setPreviewTarget({ kind: "entity", type: "doc", id: docId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+      return;
+    }
     navigate(`/documentation/${docId}`);
   }, [navigate]);
-  const handleDecisionClick = useCallback((decisionId: string) => {
+  const handleDecisionClick = useCallback((decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+    if (range?.lineStart !== undefined) {
+      setPreviewTarget({ kind: "entity", type: "decision", id: decisionId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+      return;
+    }
     navigate(`/decisions/${decisionId}`);
   }, [navigate]);
-  const handleWikiClick = useCallback((wikiPath: string) => {
+  const handleWikiClick = useCallback((wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => {
+    if (range?.lineStart !== undefined) {
+      setPreviewTarget({ kind: "entity", type: "wiki", id: wikiPath, lineStart: range.lineStart, lineEnd: range.lineEnd });
+      return;
+    }
     navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
   }, [navigate]);
-  const handleDraftClick = useCallback((draftId: string) => {
+  const handleDraftClick = useCallback((draftId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+    if (range?.lineStart !== undefined) {
+      setPreviewTarget({ kind: "entity", type: "draft", id: draftId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+      return;
+    }
     const targetDraft = availableDrafts.find(d => stripAnyPrefix(d.id) === draftId || d.id === draftId);
     if (targetDraft && onDrillDown) {
       onDrillDown(targetDraft);
@@ -939,7 +962,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               description ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
+                  <MermaidMarkdown source={description} onFileClick={(path) => setPreviewTarget({ kind: "file", path })} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDescription}</div>
@@ -977,7 +1000,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                           </a>
                         ) : (
                           <button
-                            onClick={() => setPreviewFilePath(ref)}
+                            onClick={() => setPreviewTarget({ kind: "file", path: ref })}
                             className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
                             title={t.taskDetails.clickToPreview}
                           >
@@ -1054,7 +1077,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                           </a>
                         ) : (
                           <button
-                            onClick={() => setPreviewFilePath(doc)}
+                            onClick={() => setPreviewTarget({ kind: "file", path: doc })}
                             className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
                             title={t.taskDetails.clickToPreview}
                           >
@@ -1183,7 +1206,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               plan ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
+                  <MermaidMarkdown source={plan} onFileClick={(path) => setPreviewTarget({ kind: "file", path })} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noPlan}</div>
@@ -1207,7 +1230,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             {mode === "preview" ? (
               notes ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
+                  <MermaidMarkdown source={notes} onFileClick={(path) => setPreviewTarget({ kind: "file", path })} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noNotes}</div>
@@ -1284,7 +1307,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               <SectionHeader title={t.taskDetails.section.finalSummary} right={t.taskDetails.section.completionSummary} />
               {mode === "preview" ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewFilePath(path)} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
+                  <MermaidMarkdown source={finalSummary} onFileClick={(path) => setPreviewTarget({ kind: "file", path })} onTaskClick={handleTaskClick} onDraftClick={handleDraftClick} onDocClick={handleDocClick} onDecisionClick={handleDecisionClick} onWikiClick={handleWikiClick} wikilinkBasePath="index.md" />
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-md">
@@ -1548,10 +1571,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
         </div>
       </div>
     </Modal>
-    {previewFilePath && (
+    {previewTarget?.kind === "file" && (
       <FilePreviewModal
-        path={previewFilePath}
-        onClose={() => setPreviewFilePath(null)}
+        path={previewTarget.path}
+        onClose={() => setPreviewTarget(null)}
+      />
+    )}
+    {previewTarget?.kind === "entity" && (
+      <FilePreviewModal
+        path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}
+        onClose={() => setPreviewTarget(null)}
+        loader={() => apiClient.fetchPreview(previewTarget.type, previewTarget.id, previewTarget.lineStart, previewTarget.lineEnd)}
       />
     )}
     </>

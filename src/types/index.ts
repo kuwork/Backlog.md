@@ -201,6 +201,7 @@ export interface Decision {
 	consequences: string;
 	alternatives?: string;
 	readonly rawContent: string; // Raw markdown content without frontmatter
+	filePath?: string;
 }
 
 export interface Milestone {

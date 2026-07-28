@@ -3,6 +3,7 @@ import {useParams, useNavigate, useLocation, useSearchParams} from 'react-router
 import {apiClient} from '../lib/api';
 import { PasteAwareMDEditor } from './PasteAwareMDEditor';
 import MermaidMarkdown from './MermaidMarkdown';
+import FilePreviewModal from './FilePreviewModal';
 import {type Document} from '../../types';
 import ErrorBoundary from '../components/ErrorBoundary';
 import {SuccessToast} from './SuccessToast';
@@ -15,6 +16,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	value,
 	onChange,
 	isEditing,
+	onFileClick,
 	onTaskClick,
 	onDraftClick,
 	onDocClick,
@@ -25,11 +27,12 @@ const MarkdownEditor = memo(function MarkdownEditor({
     onChange?: (val: string | undefined) => void;
     isEditing: boolean;
     isReadonly?: boolean;
-    onTaskClick?: (taskId: string) => void;
-    onDraftClick?: (draftId: string) => void;
-    onDocClick?: (docId: string) => void;
-    onDecisionClick?: (decisionId: string) => void;
-    onWikiClick?: (wikiPath: string) => void;
+    onFileClick?: (path: string) => void;
+    onTaskClick?: (taskId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+    onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+    onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+    onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+    onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 }) {
     const { t } = useI18n();
     const { theme } = useTheme();
@@ -39,7 +42,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
             <div
                 className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
                 data-color-mode={theme}>
-                <MermaidMarkdown source={value} onTaskClick={onTaskClick} onDraftClick={onDraftClick} onDocClick={onDocClick} onDecisionClick={onDecisionClick} onWikiClick={onWikiClick} wikilinkBasePath="index.md" />
+                <MermaidMarkdown source={value} onFileClick={onFileClick} onTaskClick={onTaskClick} onDraftClick={onDraftClick} onDocClick={onDocClick} onDecisionClick={onDecisionClick} onWikiClick={onWikiClick} wikilinkBasePath="index.md" />
             </div>
         );
     }
@@ -103,6 +106,10 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
     const [saveError, setSaveError] = useState<Error | null>(null);
     const [isNewDocument, setIsNewDocument] = useState(false);
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+    type PreviewTarget =
+        | { kind: "file"; path: string }
+        | { kind: "entity"; type: "task" | "draft" | "doc" | "decision" | "wiki"; id: string; lineStart?: number; lineEnd?: number };
+    const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 
     useEffect(() => {
         if (id === 'new') {
@@ -189,6 +196,42 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
             setIsLoading(false);
         }
     }, [id, docs]);
+
+    const handleTaskClick = useCallback((taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+        if (range?.lineStart !== undefined) {
+            setPreviewTarget({ kind: "entity", type: "task", id: taskId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+            return;
+        }
+        navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
+    }, [navigate, location]);
+    const handleDraftClick = useCallback((draftId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+        if (range?.lineStart !== undefined) {
+            setPreviewTarget({ kind: "entity", type: "draft", id: draftId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+            return;
+        }
+        navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } });
+    }, [navigate, location]);
+    const handleDocClick = useCallback((docId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+        if (range?.lineStart !== undefined) {
+            setPreviewTarget({ kind: "entity", type: "doc", id: docId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+            return;
+        }
+        navigate(`/documentation/${docId}`);
+    }, [navigate]);
+    const handleDecisionClick = useCallback((decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+        if (range?.lineStart !== undefined) {
+            setPreviewTarget({ kind: "entity", type: "decision", id: decisionId, lineStart: range.lineStart, lineEnd: range.lineEnd });
+            return;
+        }
+        navigate(`/decisions/${decisionId}`);
+    }, [navigate]);
+    const handleWikiClick = useCallback((wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => {
+        if (range?.lineStart !== undefined) {
+            setPreviewTarget({ kind: "entity", type: "wiki", id: wikiPath, lineStart: range.lineStart, lineEnd: range.lineEnd });
+            return;
+        }
+        navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
+    }, [navigate]);
 
     const extractTempImageUrls = (text: string): string[] => {
         const matches = text.match(/\/assets\/\.temp\/[^)\s\\"']+/g);
@@ -447,11 +490,12 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
                             value={content}
                             onChange={(val) => setContent(val || '')}
                             isEditing={isEditing}
-                            onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
-                            onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
-                            onDocClick={(docId) => navigate(`/documentation/${docId}`)}
-                            onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
-                            onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
+                            onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
+                            onTaskClick={handleTaskClick}
+                            onDraftClick={handleDraftClick}
+                            onDocClick={handleDocClick}
+                            onDecisionClick={handleDecisionClick}
+                            onWikiClick={handleWikiClick}
                         />
                     </div>
                 </div>
@@ -490,6 +534,19 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
                                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     }
+                />
+            )}
+            {previewTarget?.kind === "file" && (
+                <FilePreviewModal
+                    path={previewTarget.path}
+                    onClose={() => setPreviewTarget(null)}
+                />
+            )}
+            {previewTarget?.kind === "entity" && (
+                <FilePreviewModal
+                    path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}
+                    onClose={() => setPreviewTarget(null)}
+                    loader={() => apiClient.fetchPreview(previewTarget.type, previewTarget.id, previewTarget.lineStart, previewTarget.lineEnd)}
                 />
             )}
         </ErrorBoundary>

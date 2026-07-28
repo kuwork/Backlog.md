@@ -6,9 +6,19 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { encodeWikiPath } from "../utils/urlHelpers";
 
+interface FileContentResult {
+	content: string;
+	path: string;
+	lineStart?: number;
+	lineEnd?: number;
+	totalLines: number;
+	isMarkdown: boolean;
+}
+
 interface Props {
 	path: string;
 	onClose: () => void;
+	loader?: () => Promise<FileContentResult>;
 }
 
 const LANG_MAP: Record<string, string> = {
@@ -52,7 +62,7 @@ function wrapInCodeBlock(content: string, language: string): string {
 	return `${fence}${language}\n${content}\n${fence}`;
 }
 
-export const FilePreviewModal: React.FC<Props> = ({ path, onClose }) => {
+export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => {
 	const { theme } = useTheme();
 	const { t } = useI18n();
 	const [content, setContent] = useState<string>("");
@@ -71,7 +81,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose }) => {
 			setLoading(true);
 			setError(null);
 			try {
-				const data = await apiClient.fetchFileContent(path);
+				const data = loader ? await loader() : await apiClient.fetchFileContent(path);
 				if (cancelled) return;
 				setContent(data.content);
 				setFilePath(data.path);
@@ -92,7 +102,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose }) => {
 		return () => {
 			cancelled = true;
 		};
-	}, [path]);
+	}, [path, loader]);
 
 	const titleParts = [filePath || path];
 	if (lineStart !== undefined && lineEnd !== undefined) {

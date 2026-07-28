@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import { $ } from "bun";
 import getPort, { portNumbers } from "get-port";
@@ -509,6 +509,9 @@ export class BacklogServer {
 					"/api/drafts": {
 						GET: async () => await this.handleListDrafts(),
 					},
+					"/api/drafts/:id": {
+						GET: async (req: Request & { params: { id: string } }) => await this.handleGetDraft(req.params.id),
+					},
 					"/api/drafts/:id/promote": {
 						POST: async (req: Request & { params: { id: string } }) => await this.handlePromoteDraft(req.params.id),
 					},
@@ -552,6 +555,9 @@ export class BacklogServer {
 					},
 					"/api/search": {
 						GET: async (req: Request) => await this.handleSearch(req),
+					},
+					"/api/preview": {
+						GET: async (req: Request) => await this.handleGetPreview(req),
 					},
 					"/api/file-content": {
 						GET: async (req: Request) => await this.handleGetFileContent(req),
@@ -1546,10 +1552,8 @@ export class BacklogServer {
 
 	private async handleGetDecision(decisionId: string): Promise<Response> {
 		try {
-			const store = await this.getContentStoreInstance();
 			const normalizedId = decisionId.startsWith("decision-") ? decisionId : `decision-${decisionId}`;
-			const decision = store.getDecisions().find((item) => item.id === normalizedId || item.id === decisionId);
-
+			const decision = await this.core.filesystem.loadDecision(normalizedId);
 			if (!decision) {
 				return Response.json({ error: "Decision not found" }, { status: 404 });
 			}
@@ -1645,6 +1649,19 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error listing drafts:", error);
 			return Response.json([]);
+		}
+	}
+
+	private async handleGetDraft(draftId: string): Promise<Response> {
+		try {
+			const draft = await this.core.filesystem.loadDraft(draftId);
+			if (!draft) {
+				return Response.json({ error: "Draft not found" }, { status: 404 });
+			}
+			return Response.json(draft);
+		} catch (error) {
+			console.error("Error loading draft:", error);
+			return Response.json({ error: "Draft not found" }, { status: 404 });
 		}
 	}
 
@@ -2136,6 +2153,83 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error searching files:", error);
 			const message = error instanceof Error ? error.message : "Failed to search files";
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	private async handleGetPreview(req: Request): Promise<Response> {
+		try {
+			const url = new URL(req.url);
+			const type = url.searchParams.get("type");
+			const id = url.searchParams.get("id") || "";
+			const lineStartParam = url.searchParams.get("lineStart");
+			const lineEndParam = url.searchParams.get("lineEnd");
+			const allowedTypes = new Set(["task", "draft", "doc", "decision", "wiki"]);
+			if (!type || !allowedTypes.has(type)) {
+				return Response.json({ error: "Invalid preview type" }, { status: 400 });
+			}
+			if (!id) {
+				return Response.json({ error: "id parameter is required" }, { status: 400 });
+			}
+
+			const lineStart = lineStartParam ? Number.parseInt(lineStartParam, 10) : undefined;
+			const lineEnd = lineEndParam ? Number.parseInt(lineEndParam, 10) : undefined;
+
+			const toProjectRelative = (absolutePath: string): string => {
+				return relative(this.core.filesystem.rootDir, absolutePath).replace(/\\/g, "/");
+			};
+
+			let filePath: string | undefined;
+			switch (type) {
+				case "task": {
+					const task = await this.core.filesystem.loadTask(id);
+					filePath = task?.filePath ? toProjectRelative(task.filePath) : undefined;
+					break;
+				}
+				case "draft": {
+					const draft = await this.core.filesystem.loadDraft(id);
+					filePath = draft?.filePath ? toProjectRelative(draft.filePath) : undefined;
+					break;
+				}
+				case "doc": {
+					const doc = await this.core.filesystem.loadDocument(id);
+					filePath = `${this.core.filesystem.backlogDirName}/docs/${doc.path}`;
+					break;
+				}
+				case "decision": {
+					const decision = await this.core.filesystem.loadDecision(id);
+					filePath = decision?.filePath ? toProjectRelative(decision.filePath) : undefined;
+					break;
+				}
+				case "wiki": {
+					const wikiPath = id.endsWith(".md") ? id : `${id}.md`;
+					filePath = `${this.core.filesystem.backlogDirName}/wiki/${wikiPath}`;
+					break;
+				}
+			}
+
+			if (!filePath) {
+				return Response.json({ error: "Entity not found" }, { status: 404 });
+			}
+
+			const rangeSuffix =
+				lineStart !== undefined
+					? `:${lineStart}${lineEnd !== undefined && lineEnd !== lineStart ? `-${lineEnd}` : ""}`
+					: "";
+			const result = await this.core.filesystem.readProjectFile(`${filePath}${rangeSuffix}`);
+			return Response.json(result);
+		} catch (error) {
+			console.error("Error reading preview:", error);
+			const message = error instanceof Error ? error.message : "Failed to read preview";
+			if (message === "Access denied") {
+				return Response.json({ error: message }, { status: 403 });
+			}
+			if (message === "File not found" || message === "Path is a directory" || message === "Entity not found") {
+				return Response.json({ error: message }, { status: 404 });
+			}
+			if (message === "Invalid line range" || message === "File too large") {
+				return Response.json({ error: message }, { status: 400 });
+			}
 			return Response.json({ error: message }, { status: 500 });
 		}
 	}

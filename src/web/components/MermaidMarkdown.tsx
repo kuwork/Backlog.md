@@ -9,11 +9,11 @@ import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
 interface Props {
 	source: string;
 	onFileClick?: (path: string) => void;
-	onTaskClick?: (taskId: string) => void;
-	onDraftClick?: (draftId: string) => void;
-	onDocClick?: (docId: string) => void;
-	onDecisionClick?: (decisionId: string) => void;
-	onWikiClick?: (wikiPath: string) => void;
+	onTaskClick?: (taskId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	wikilinkBasePath?: string;
 }
 
@@ -48,6 +48,34 @@ function sanitizeMarkdownSource(source: string): string {
 	});
 }
 
+function encodeLocalFileLinkDestinations(source: string): string {
+	const protectedRanges: { start: number; end: number }[] = [];
+
+	// Protect code blocks (```...```)
+	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
+		protectedRanges.push({ start: match.index!, end: match.index! + match[0].length });
+	}
+
+	// Protect inline code (`...`)
+	for (const match of source.matchAll(/`[^`\n]+`/g)) {
+		protectedRanges.push({ start: match.index!, end: match.index! + match[0].length });
+	}
+
+	return source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, ...args) => {
+		const offset = args[args.length - 2] as number;
+		for (const range of protectedRanges) {
+			if (offset >= range.start && offset < range.end) return match;
+		}
+		const text = args[0] as string;
+		const url = args[1] as string;
+		if (!url) return match;
+		if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("#")) return match;
+		const encodedUrl = url.replace(/ /g, "%20");
+		if (encodedUrl === url) return match;
+		return `[${text}](${encodedUrl})`;
+	});
+}
+
 function isExternalLink(href?: string): boolean {
 	if (!href) return true;
 	if (href.startsWith("#")) return false;
@@ -55,37 +83,86 @@ function isExternalLink(href?: string): boolean {
 	return false;
 }
 
+interface LineRange {
+	lineStart?: number;
+	lineEnd?: number;
+}
+
 interface LocalLinkInfo {
 	type: "task" | "draft" | "doc" | "decision" | "wiki";
 	id: string;
 	alias: string;
+	range?: LineRange;
 }
 
-function parseLocalUrl(href: string): LocalLinkInfo | null {
+function parseLineRange(segment: string): { id: string; range?: LineRange } | null {
+	const match = segment.match(/^([^:]+)(?::(\d+)(?:-(\d+))?)?$/);
+	if (!match) return null;
+	const id = match[1]!;
+	if (!id) return null;
+	if (!match[2]) return { id };
+	const lineStart = Number.parseInt(match[2], 10);
+	const lineEndRaw = match[3];
+	const lineEnd = lineEndRaw ? Number.parseInt(lineEndRaw, 10) : lineStart;
+	return { id, range: { lineStart, lineEnd } };
+}
+
+function formatAliasWithRange(baseAlias: string, range?: LineRange): string {
+	if (!range) return baseAlias;
+	if (range.lineEnd === range.lineStart) return `${baseAlias}:${range.lineStart}`;
+	return `${baseAlias}:${range.lineStart}-${range.lineEnd}`;
+}
+
+export function parseLocalUrl(href: string): LocalLinkInfo | null {
 	if (href.startsWith("#")) return null;
+	// Absolute paths and full URLs can be short local links. Relative paths
+	// (e.g. backlog/docs/file.md) must be handled by the file/navigation
+	// handlers, not misinterpreted as /task/* /doc/* relative to the current
+	// page URL.
+	if (!href.startsWith("/") && !/^[a-z][a-z0-9+.-]*:/i.test(href)) return null;
 	try {
 		const url = new URL(href, window.location.href);
 		if (url.origin !== window.location.origin) return null;
 
 		const taskMatch = url.pathname.match(/^\/task\/([^/]+)/);
-		if (taskMatch) return { type: "task", id: taskMatch[1]!, alias: `TASK#${taskMatch[1]!}` };
+		if (taskMatch) {
+			const parsed = parseLineRange(taskMatch[1]!);
+			if (!parsed) return null;
+			return { type: "task", id: parsed.id, alias: formatAliasWithRange(`TASK#${parsed.id}`, parsed.range), range: parsed.range };
+		}
 
 		const draftMatch = url.pathname.match(/^\/draft\/([^/]+)/);
-		if (draftMatch) return { type: "draft", id: draftMatch[1]!, alias: `DRAFT#${draftMatch[1]!}` };
+		if (draftMatch) {
+			const parsed = parseLineRange(draftMatch[1]!);
+			if (!parsed) return null;
+			return { type: "draft", id: parsed.id, alias: formatAliasWithRange(`DRAFT#${parsed.id}`, parsed.range), range: parsed.range };
+		}
 
 		const docMatch = url.pathname.match(/^\/documentation\/([^/]+)/);
-		if (docMatch) return { type: "doc", id: docMatch[1]!, alias: `DOC#${docMatch[1]!}` };
+		if (docMatch) {
+			const parsed = parseLineRange(docMatch[1]!);
+			if (!parsed) return null;
+			return { type: "doc", id: parsed.id, alias: formatAliasWithRange(`DOC#${parsed.id}`, parsed.range), range: parsed.range };
+		}
 
 		const decisionMatch = url.pathname.match(/^\/decisions\/([^/]+)/);
-		if (decisionMatch) return { type: "decision", id: decisionMatch[1]!, alias: `Decisions#${decisionMatch[1]!}` };
+		if (decisionMatch) {
+			const parsed = parseLineRange(decisionMatch[1]!);
+			if (!parsed) return null;
+			return { type: "decision", id: parsed.id, alias: formatAliasWithRange(`Decisions#${parsed.id}`, parsed.range), range: parsed.range };
+		}
 
 		const wikiMatch = url.pathname.match(/^\/wiki\/(.+)/);
-		if (wikiMatch)
+		if (wikiMatch) {
+			const parsed = parseLineRange(decodeURIComponent(wikiMatch[1]!));
+			if (!parsed) return null;
 			return {
 				type: "wiki",
-				id: decodeURIComponent(wikiMatch[1]!),
-				alias: `WIKI#${decodeURIComponent(wikiMatch[1]!)}`,
+				id: parsed.id,
+				alias: formatAliasWithRange(`WIKI#${parsed.id}`, parsed.range),
+				range: parsed.range,
 			};
+		}
 
 		return null;
 	} catch {
@@ -95,6 +172,8 @@ function parseLocalUrl(href: string): LocalLinkInfo | null {
 
 function parseTaskUrl(href: string): string | null {
 	if (href.startsWith("#")) return null;
+	// Absolute paths and full URLs can be legacy task links; relative paths are not.
+	if (!href.startsWith("/") && !/^[a-z][a-z0-9+.-]*:/i.test(href)) return null;
 	try {
 		const url = new URL(href, window.location.href);
 		if (url.origin !== window.location.origin) return null;
@@ -161,8 +240,8 @@ export default function MermaidMarkdown({
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = wikilinkBasePath
-		? prepareWikiMarkdown(source, wikilinkBasePath)
-		: sanitizeMarkdownSource(source);
+		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(source, wikilinkBasePath))
+		: sanitizeMarkdownSource(encodeLocalFileLinkDestinations(source));
 	const { t } = useI18n();
 
 	useEffect(() => {
@@ -204,7 +283,21 @@ export default function MermaidMarkdown({
 
 			if (localLink) {
 				const isWikilink = dataWikilink === "true";
-				const content = localLink.type === "wiki" && isWikilink ? children : localLink.alias;
+				// For wikilinks, always use the explicit alias text. For short local
+				// markdown links, prefer a non-URL custom label if one was provided;
+				// otherwise fall back to the system alias (with line range when present).
+				const hasCustomLabel =
+					typeof children === "string" &&
+					children.trim().length > 0 &&
+					!children.startsWith("/") &&
+					!/^[a-z][a-z0-9+.-]*:/i.test(children) &&
+					children !== href;
+				const content =
+					localLink.type === "wiki" && isWikilink
+						? children
+						: hasCustomLabel
+							? children
+							: localLink.alias;
 
 				if (localLink.type === "task" && onTaskClick) {
 					return (
@@ -212,7 +305,7 @@ export default function MermaidMarkdown({
 							href={href}
 							onClick={(e) => {
 								e.preventDefault();
-								onTaskClick(localLink.id);
+								onTaskClick(localLink.id, localLink.range);
 							}}
 							className={combinedClassName}
 							style={parsedStyle}
@@ -228,7 +321,7 @@ export default function MermaidMarkdown({
 							href={href}
 							onClick={(e) => {
 								e.preventDefault();
-								onDraftClick(localLink.id);
+								onDraftClick(localLink.id, localLink.range);
 							}}
 							className={combinedClassName}
 							style={parsedStyle}
@@ -244,7 +337,7 @@ export default function MermaidMarkdown({
 							href={href}
 							onClick={(e) => {
 								e.preventDefault();
-								onDocClick(localLink.id);
+								onDocClick(localLink.id, localLink.range);
 							}}
 							className={combinedClassName}
 							style={parsedStyle}
@@ -260,7 +353,7 @@ export default function MermaidMarkdown({
 							href={href}
 							onClick={(e) => {
 								e.preventDefault();
-								onDecisionClick(localLink.id);
+								onDecisionClick(localLink.id, localLink.range);
 							}}
 							className={combinedClassName}
 							style={parsedStyle}
@@ -276,7 +369,7 @@ export default function MermaidMarkdown({
 							href={href}
 							onClick={(e) => {
 								e.preventDefault();
-								onWikiClick(localLink.id);
+								onWikiClick(localLink.id, localLink.range);
 							}}
 							className={combinedClassName}
 							style={parsedStyle}
@@ -332,10 +425,13 @@ export default function MermaidMarkdown({
 			const handleClick = async (e: React.MouseEvent) => {
 				e.preventDefault();
 				if (!href) return;
+				// Markdown-it requires percent-encoded spaces in link destinations;
+				// decode back to the real project path before checking/previewing the file.
+				const decodedHref = decodeURIComponent(href);
 				try {
 					// Verify file exists before opening preview
-					await apiClient.fetchFileContent(href);
-					onFileClick(href);
+					await apiClient.fetchFileContent(decodedHref);
+					onFileClick(decodedHref);
 				} catch {
 					// File not found or inaccessible: fall back to normal link behavior
 					window.open(href, "_blank");

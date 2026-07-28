@@ -770,7 +770,7 @@ export class FileSystem {
 
 			const filepath = join(decisionsDir, decisionFile);
 			const content = await Bun.file(filepath).text();
-			return parseDecision(content);
+			return { ...parseDecision(content), filePath: filepath };
 		} catch (_error) {
 			return null;
 		}

@@ -1,9 +1,49 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import React from "react";
+import { act } from "react";
 import { renderToString } from "react-dom/server";
-import MermaidMarkdown from "../web/components/MermaidMarkdown.tsx";
+import { createRoot, type Root } from "react-dom/client";
+import { JSDOM } from "jsdom";
+import MermaidMarkdown, { parseLocalUrl } from "../web/components/MermaidMarkdown.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
+
+const originalFetch = globalThis.fetch;
+const originalWindowGlobal = (globalThis as { window?: typeof window }).window;
+
+function setupInteractiveDom() {
+	const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
+		url: "http://localhost:6421/documentation/4/test",
+	});
+	(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	globalThis.window = dom.window as unknown as Window & typeof globalThis;
+	globalThis.document = dom.window.document as unknown as Document;
+	globalThis.navigator = dom.window.navigator as unknown as Navigator;
+	globalThis.localStorage = dom.window.localStorage as unknown as Storage;
+	globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => setTimeout(callback, 0) as unknown as number;
+	globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);
+	globalThis.fetch = (() => Promise.resolve(new Response("{}", { status: 200 }))) as unknown as typeof fetch;
+
+	if (!window.matchMedia) {
+		window.matchMedia = () =>
+			({
+				matches: false,
+				media: "",
+				onchange: null,
+				addListener: () => {},
+				removeListener: () => {},
+				addEventListener: () => {},
+				removeEventListener: () => {},
+				dispatchEvent: () => false,
+			}) as MediaQueryList;
+	}
+	return dom;
+}
+
+function cleanupInteractiveDom() {
+	(globalThis as { window?: typeof window }).window = originalWindowGlobal;
+	globalThis.fetch = originalFetch;
+}
 
 const render = (source: string, props?: Partial<React.ComponentProps<typeof MermaidMarkdown>>) =>
 	renderToString(
@@ -39,6 +79,14 @@ describe("MermaidMarkdown", () => {
 
 		expect(html).toContain('href="ftp://example.com/file"');
 		expect(html).toContain('href="mailto:foo@example.com"');
+	});
+
+	it("encodes spaces in local file link destinations so markdown parses them", () => {
+		const source = "[相对路径](backlog/docs/doc-001 - Configuring VIM and Neovim as Default Editor.md)";
+		const html = render(source, { onFileClick: () => {} });
+
+		expect(html).toContain('href="backlog/docs/doc-001%20-%20Configuring');
+		expect(html).toContain(">相对路径</a>");
 	});
 
 	it("renders wikilinks when wikilinkBasePath is provided", () => {
@@ -122,12 +170,11 @@ describe("MermaidMarkdown", () => {
 		});
 
 		it("renders plain local wiki links as WIKI# alias", () => {
-			const source = "See [custom text](/wiki/concepts/demo).";
+			const source = "See [/wiki/concepts/demo](/wiki/concepts/demo).";
 			const html = render(source, { onWikiClick: () => {} });
 
 			expect(html).toContain('href="/wiki/concepts/demo"');
 			expect(html).toContain(">WIKI#concepts/demo</a>");
-			expect(html).not.toContain(">custom text</a>");
 		});
 
 		it("still renders wikilinks with custom alias even when onWikiClick is provided", () => {
@@ -137,6 +184,96 @@ describe("MermaidMarkdown", () => {
 			expect(html).toContain('href="/wiki/concepts/demo"');
 			expect(html).toContain(">Demo page</a>");
 			expect(html).not.toContain(">WIKI#concepts/demo</a>");
+		});
+
+		it("renders local task links as TASK# alias", () => {
+			const source = "See [/task/42](/task/42).";
+			const html = render(source, { onTaskClick: () => {} });
+
+			expect(html).toContain('href="/task/42"');
+			expect(html).toContain(">TASK#42</a>");
+		});
+
+		it("renders local doc links as DOC# alias with line range", () => {
+			const source = "See [/documentation/5:19-29](/documentation/5:19-29).";
+			const html = render(source, { onDocClick: () => {} });
+
+			expect(html).toContain('href="/documentation/5:19-29"');
+			expect(html).toContain(">DOC#5:19-29</a>");
+		});
+
+		it("preserves custom label on local doc links with line range", () => {
+			const source = "See [doc-5 A1](/documentation/5:16-27).";
+			const html = render(source, { onDocClick: () => {} });
+
+			expect(html).toContain('href="/documentation/5:16-27"');
+			expect(html).toContain(">doc-5 A1</a>");
+			expect(html).not.toContain(">DOC#5:16-27</a>");
+		});
+
+		it("preserves line-range suffix in local wiki link href", () => {
+			const source = "See [/wiki/concepts/demo:10-20](/wiki/concepts/demo:10-20).";
+			const html = render(source, { onWikiClick: () => {} });
+
+			expect(html).toContain('href="/wiki/concepts/demo:10-20"');
+			expect(html).toContain(">WIKI#concepts/demo:10-20</a>");
+		});
+
+		describe("parseLocalUrl", () => {
+			const originalWindow = (globalThis as { window?: typeof window }).window;
+
+			beforeEach(() => {
+				(globalThis as { window?: typeof window }).window = {
+					location: {
+						href: "http://localhost:6420/wiki/index",
+						origin: "http://localhost:6420",
+					},
+				} as typeof window;
+			});
+
+			afterEach(() => {
+				(globalThis as { window?: typeof window }).window = originalWindow;
+			});
+
+			it("parses single-line range on task links", () => {
+				const result = parseLocalUrl("/task/42:15");
+				expect(result).toEqual({ type: "task", id: "42", alias: "TASK#42:15", range: { lineStart: 15, lineEnd: 15 } });
+			});
+
+			it("parses full same-origin task URLs", () => {
+				const result = parseLocalUrl("http://localhost:6420/task/506/Fix-CLI-actualStart-actualEnd-missing-local-to-UTC-conversion");
+				expect(result).toEqual({ type: "task", id: "506", alias: "TASK#506" });
+			});
+
+			it("parses line range on doc links", () => {
+				const result = parseLocalUrl("/documentation/5:19-29");
+				expect(result).toEqual({ type: "doc", id: "5", alias: "DOC#5:19-29", range: { lineStart: 19, lineEnd: 29 } });
+			});
+
+			it("parses full same-origin documentation URLs", () => {
+				const result = parseLocalUrl("http://localhost:6420/documentation/001/testing-style-guide");
+				expect(result).toEqual({ type: "doc", id: "001", alias: "DOC#001" });
+			});
+
+			it("parses line range on wiki links", () => {
+				const result = parseLocalUrl("/wiki/concepts/demo:10-20");
+				expect(result).toEqual({ type: "wiki", id: "concepts/demo", alias: "WIKI#concepts/demo:10-20", range: { lineStart: 10, lineEnd: 20 } });
+			});
+
+			it("returns no range for plain local links", () => {
+				const result = parseLocalUrl("/task/42");
+				expect(result).toEqual({ type: "task", id: "42", alias: "TASK#42" });
+			});
+
+			it("parses line range on draft links", () => {
+				const result = parseLocalUrl("/draft/3:8-12");
+				expect(result).toEqual({ type: "draft", id: "3", alias: "DRAFT#3:8-12", range: { lineStart: 8, lineEnd: 12 } });
+			});
+
+			it("parses line range on decision links", () => {
+				const result = parseLocalUrl("/decisions/7:5-10");
+				expect(result).toEqual({ type: "decision", id: "7", alias: "Decisions#7:5-10", range: { lineStart: 5, lineEnd: 10 } });
+			});
 		});
 	});
 
@@ -199,6 +336,69 @@ describe("MermaidMarkdown", () => {
 
 			expect(html).toContain("![[assets/photo.png]]");
 			expect(html).not.toContain('src="/assets/photo.png"');
+		});
+	});
+
+	describe("file path link click", () => {
+		let root: Root | null = null;
+		let container: HTMLElement | null = null;
+		let dom: ReturnType<typeof setupInteractiveDom> | null = null;
+
+		beforeEach(() => {
+			dom = setupInteractiveDom();
+			container = document.getElementById("root");
+			expect(container).toBeTruthy();
+			root = createRoot(container as HTMLElement);
+		});
+
+		afterEach(() => {
+			act(() => {
+				root?.unmount();
+			});
+			cleanupInteractiveDom();
+		});
+
+		it("does not parse relative file paths as short local links", () => {
+			expect(parseLocalUrl("backlog/docs/migration/doc-001.md")).toBeNull();
+			expect(parseLocalUrl("task/42.md")).toBeNull();
+		});
+
+		it("calls onFileClick when a relative file path link is clicked", async () => {
+			let clickedPath: string | null = null;
+			const source = "[相对路径](backlog/docs/doc-001 - Configuring VIM and Neovim as Default Editor.md)";
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<MermaidMarkdown
+								source={source}
+								onFileClick={(path) => {
+									clickedPath = path;
+								}}
+							/>
+						</ImageLightboxProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			const link = container?.querySelector("a");
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute("href")).toContain("backlog/docs/doc-001%20");
+			expect(link?.getAttribute("title")).toBe("Click to preview file");
+
+			const MouseEventCtor = (dom?.window as unknown as { MouseEvent: typeof MouseEvent })?.MouseEvent;
+			await act(async () => {
+				link?.dispatchEvent(new MouseEventCtor("click", { bubbles: true, cancelable: true }));
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			});
+
+			expect(clickedPath).not.toBeNull();
+			expect(clickedPath ?? "").toContain("backlog/docs/doc-001 - Configuring");
 		});
 	});
 });

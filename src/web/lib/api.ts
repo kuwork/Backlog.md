@@ -699,6 +699,40 @@ export class ApiClient {
 		}>(`${API_BASE}/file-content?path=${encodeURIComponent(path)}`);
 	}
 
+	async fetchDraft(id: string): Promise<Task> {
+		const response = await fetch(`${API_BASE}/drafts/${encodeURIComponent(id)}`);
+		if (!response.ok) {
+			throw new Error("Failed to fetch draft");
+		}
+		return response.json();
+	}
+
+	async fetchPreview(
+		type: "task" | "draft" | "doc" | "decision" | "wiki",
+		id: string,
+		lineStart?: number,
+		lineEnd?: number,
+	): Promise<{
+		content: string;
+		path: string;
+		lineStart?: number;
+		lineEnd?: number;
+		totalLines: number;
+		isMarkdown: boolean;
+	}> {
+		const params = new URLSearchParams({ type, id });
+		if (lineStart !== undefined) params.set("lineStart", String(lineStart));
+		if (lineEnd !== undefined) params.set("lineEnd", String(lineEnd));
+		return this.fetchJson<{
+			content: string;
+			path: string;
+			lineStart?: number;
+			lineEnd?: number;
+			totalLines: number;
+			isMarkdown: boolean;
+		}>(`${API_BASE}/preview?${params.toString()}`);
+	}
+
 	async uploadTempAsset(file: File): Promise<{ url: string }> {
 		const formData = new FormData();
 		formData.append("file", file);
