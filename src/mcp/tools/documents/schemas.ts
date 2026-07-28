@@ -74,6 +74,11 @@ export const documentUpdateSchema: JsonSchema = {
 		content: {
 			type: "string",
 		},
+		appendContent: {
+			type: "array",
+			items: { type: "string" },
+			maxItems: 50,
+		},
 		type: {
 			type: "string",
 			maxLength: 50,

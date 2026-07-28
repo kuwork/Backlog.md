@@ -3694,17 +3694,35 @@ addHelpSchema(docCmd.command("update <docId>"), {
 	optional: [
 		{ name: "title", type: "String", description: "Replacement title" },
 		{ name: "content", type: "Markdown", description: "Replacement document body" },
+		{
+			name: "append-content",
+			type: "Markdown",
+			description: "Append a block to the document body (can be used multiple times)",
+		},
 		{ name: "path", type: "Docs-relative path", description: "Move document under backlog/docs" },
 		{ name: "type", type: choiceType(DOCUMENT_TYPE_VALUES), description: "Document type" },
 		{ name: "tags", type: "Comma-separated strings", description: "Replacement tags" },
 	],
 	writes: "Updates document content, metadata, or docs-relative path",
 	output: "Updated document ID and path",
-	examples: ['backlog doc update doc-1 --content "Updated markdown"', "backlog doc update doc-1 -p guides"],
+	examples: [
+		'backlog doc update doc-1 --content "Updated markdown"',
+		'backlog doc update doc-1 --content "Line 1\\nLine 2"',
+		'backlog doc update doc-1 --append-content "Additional section"',
+		"backlog doc update doc-1 -p guides",
+	],
 })
 	.description("update a document")
 	.option("--title <title>", "update document title")
-	.option("--content <content>", "replace document markdown content")
+	.option(
+		"--content <content>",
+		"replace document markdown content (multi-line: include real newlines or \\n escape sequences inside the quoted string)",
+	)
+	.option(
+		"--append-content <text>",
+		"append a block to the document content (can be used multiple times; \\n escape sequences become newlines)",
+		createMultiValueAccumulator(),
+	)
 	.option("-p, --path <path>", "move document under a docs-relative path (absolute paths and .. are rejected)")
 	.option("-t, --type <type>", `document type (${DOCUMENT_TYPE_VALUES.join(", ")})`)
 	.option("--tags <tags>", "set tags (comma-separated or use multiple times)", createMultiValueAccumulator())
@@ -3716,10 +3734,15 @@ addHelpSchema(docCmd.command("update <docId>"), {
 			throw new Error(`Document not found: ${docId}`);
 		}
 
+		const appendContent = toStringArray(options.appendContent)
+			.map((chunk) => processCliEscapes(String(chunk)))
+			.filter((chunk) => chunk.length > 0);
+
 		const document = await core.updateDocumentFromInput({
 			id: docId,
 			title: options.title,
-			content: options.content ?? existingDocument.rawContent,
+			content: typeof options.content === "string" ? processCliEscapes(options.content) : existingDocument.rawContent,
+			...(appendContent.length > 0 && { appendContent }),
 			type: options.type,
 			path: options.path,
 			...(options.tags !== undefined && { tags: parseDelimitedStringList(options.tags) ?? [] }),

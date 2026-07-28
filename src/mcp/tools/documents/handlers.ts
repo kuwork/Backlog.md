@@ -24,6 +24,7 @@ export type DocumentUpdateArgs = {
 	id: string;
 	title?: string;
 	content: string;
+	appendContent?: string[];
 	type?: Document["type"];
 	path?: string;
 	tags?: string[];
@@ -140,6 +141,7 @@ export class DocumentHandlers {
 			const document = await this.core.updateDocumentFromInput({
 				id: args.id,
 				content: args.content,
+				...(args.appendContent && args.appendContent.length > 0 && { appendContent: args.appendContent }),
 				title: args.title,
 				type: args.type,
 				path: args.path,

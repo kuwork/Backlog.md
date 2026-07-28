@@ -1,4 +1,5 @@
 import {
+	CLI_DOCUMENTS_GUIDE,
 	CLI_INIT_REQUIRED_GUIDE,
 	CLI_MILESTONES_GUIDE,
 	CLI_TASK_CREATION_GUIDE,
@@ -7,6 +8,7 @@ import {
 	CLI_WORKFLOW_OVERVIEW,
 } from "../guidelines/cli-instructions/index.ts";
 import {
+	MCP_DOCUMENTS_GUIDE,
 	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
 	MCP_TASK_EXECUTION_GUIDE,
@@ -21,6 +23,7 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"task-execution",
 	"task-finalization",
 	"milestones",
+	"documents",
 ] as const;
 export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
 
@@ -79,6 +82,14 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 		mimeType: "text/markdown",
 		resourceText: MCP_MILESTONES_GUIDE,
 	},
+	{
+		key: "documents",
+		uri: "backlog://workflow/documents",
+		name: "Document Management Guide",
+		description: "How to create, update, list, and view project documents",
+		mimeType: "text/markdown",
+		resourceText: MCP_DOCUMENTS_GUIDE,
+	},
 ];
 
 const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
@@ -87,6 +98,7 @@ const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
 	"task-execution": CLI_TASK_EXECUTION_GUIDE,
 	"task-finalization": CLI_TASK_FINALIZATION_GUIDE,
 	milestones: CLI_MILESTONES_GUIDE,
+	documents: CLI_DOCUMENTS_GUIDE,
 };
 
 export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [

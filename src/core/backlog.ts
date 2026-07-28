@@ -2664,12 +2664,21 @@ export class Core {
 			input.path === undefined
 				? getDocumentSubPathFromRelativePath(existingDoc.path)
 				: normalizeDocumentSubPath(input.path);
+
+		const appendChunks = (input.appendContent ?? [])
+			.map((chunk) => chunk.replace(/\r\n/g, "\n").trim())
+			.filter((chunk) => chunk.length > 0);
+		let rawContent = input.content;
+		if (appendChunks.length > 0) {
+			rawContent = rawContent ? `${rawContent}\n\n${appendChunks.join("\n\n")}` : appendChunks.join("\n\n");
+		}
+
 		const updatedDoc: Document = {
 			...existingDoc,
 			id: normalizeDocumentId(existingDoc.id),
 			title: normalizedTitle ?? existingDoc.title,
 			type,
-			rawContent: input.content,
+			rawContent,
 			updatedDate: new Date().toISOString().slice(0, 16).replace("T", " "),
 			tags: tags && tags.length > 0 ? tags : undefined,
 		};

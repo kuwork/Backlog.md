@@ -37,6 +37,8 @@ Search and read before changing anything:
   -> Read before finishing tasks: how to verify, summarize, and finish tasks
 - `backlog instructions milestones`
   -> Read before managing milestones: how to create, edit, remove, and archive milestones
+- `backlog instructions documents`
+  -> Read when creating or updating project documents: doc types, paths, multi-line content, and append rules
 
 Use `backlog <command> --help` before unfamiliar operations. Command help includes input fields, read/write behavior, output shape, and examples.
 

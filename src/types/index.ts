@@ -242,6 +242,7 @@ export interface DocumentCreateInput {
 export interface DocumentUpdateInput {
 	id: string;
 	content: string;
+	appendContent?: string[];
 	title?: string;
 	type?: Document["type"];
 	path?: string | null;

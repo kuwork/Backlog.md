@@ -280,4 +280,31 @@ describe("MCP document tools", () => {
 		expect(searchText).toContain("doc-1 - Architecture Overview (doc-1 - Architecture-Overview.md)");
 		expect(searchText).toMatch(/\[score [0-1]\.\d{3}]/);
 	});
+
+	it("appends content blocks to an existing document", async () => {
+		await mcpServer.testInterface.callTool({
+			params: {
+				name: "document_create",
+				arguments: {
+					title: "Runbook",
+					content: "Initial content",
+				},
+			},
+		});
+
+		const updateResult = await mcpServer.testInterface.callTool({
+			params: {
+				name: "document_update",
+				arguments: {
+					id: "doc-1",
+					content: "Initial content",
+					appendContent: ["First appended block", "Second appended block"],
+				},
+			},
+		});
+
+		const updateText = getText(updateResult.content);
+		expect(updateText).toContain("Document updated successfully.");
+		expect(updateText).toContain("Initial content\n\nFirst appended block\n\nSecond appended block");
+	});
 });

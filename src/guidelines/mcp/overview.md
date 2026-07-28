@@ -42,6 +42,7 @@ Searching first avoids duplicate tasks and helps you understand existing context
 - **Planning & executing work** → `backlog://workflow/task-execution` - Planning workflow, implementation discipline, scope changes
 - **Finalizing tasks** → `backlog://workflow/task-finalization` - Definition of Done, finalization checklist, next steps
 - **Managing milestones** → `backlog://workflow/milestones` - How to create, edit, remove, and archive milestones
+- **Managing documents** → `backlog://workflow/documents` - How to create, update, list, and view project documents
 
 ### Core Principle
 
@@ -61,7 +62,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `document_list` — list documents, including type, path, timestamps, and tags
 - `document_view` — view document metadata and markdown content
 - `document_create` — create a document with title, content, optional type/tags, and optional docs-directory-relative path
-- `document_update` — update document content, optional title/type/tags, and optional docs-directory-relative path
+- `document_update` — update document content, append content blocks, optional title/type/tags, and optional docs-directory-relative path
 - `document_search` — search documents using the shared fuzzy index
 - `task_create` — create new tasks with description and acceptance criteria; DoD fields are for **exceptional** task-level overrides only (`definitionOfDoneAdd`, `disableDefinitionOfDoneDefaults`)
 - `task_edit` — update task metadata, status, plan, notes, comments (`commentsAppend` with optional `commentAuthor`), final summary, acceptance criteria, task-level Definition of Done (`definitionOfDoneAdd/Remove/Check/Uncheck`) for **exceptional** per-task updates, and dependencies
