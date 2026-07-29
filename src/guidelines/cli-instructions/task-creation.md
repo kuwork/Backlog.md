@@ -32,6 +32,23 @@ Ask:
 4. Does the work span multiple subsystems, layers, or ownership areas?
 5. Are multiple tasks likely to touch the same component?
 
+If the scope is too unclear to write concrete acceptance criteria, do not create a task yet. Capture the idea as a draft, refine it, and promote it to a task once the scope is clear. See `backlog instructions drafts` for the full workflow.
+
+```bash
+backlog draft create "Spike GraphQL resolver"
+# -> Created draft DRAFT-1
+
+# Later, once scoped
+backlog draft promote DRAFT-1
+# -> Promoted draft 1 to task 7
+
+backlog task edit 7 -d "Adds a GraphQL resolver for user queries" \
+  --ac "Resolver returns correct data for happy path" \
+  --ac "Error response matches REST format"
+```
+
+> Note: `backlog draft promote` and `backlog task demote` output the new ID without its prefix (e.g., `task 7`, `draft 5`). Use that bare number or the full prefixed ID in the next command.
+
 ### Step 3: Choose Task Structure
 
 Use subtasks when the work shares one goal and one subsystem:

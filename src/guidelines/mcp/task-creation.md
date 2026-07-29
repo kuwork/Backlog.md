@@ -93,7 +93,29 @@ Create all tasks in the same session to maintain consistency and context.
 
 **Ask for clarification** if requirements are ambiguous
 
-**Drafts (exceptional):** Default to creating regular tasks (e.g., To Do) for any work you are committing to track. Only create a Draft when the user explicitly requests a draft, or when there is clear uncertainty that makes a commitment inappropriate (e.g., missing requirements and the user wants a placeholder). Use `task_create` with status `Draft` to create a draft, `task_edit` to promote/demote by changing status, and pass status `Draft` to `task_list`/`task_search` to include drafts. Drafts are excluded unless explicitly filtered.
+**Drafts (exceptional):** Default to creating regular tasks (e.g., To Do) for any work you are committing to track. Only create a Draft when the user explicitly requests a draft, or when there is clear uncertainty that makes a commitment inappropriate (e.g., missing requirements and the user wants a placeholder).
+
+If the scope is too unclear to write concrete acceptance criteria, do not create a task yet. Create a draft, refine it, and promote it to a task once the scope is clear. Read `backlog://workflow/drafts` (or call `get_backlog_instructions` with `instruction="drafts"`) for the full workflow.
+
+```json
+// Create a draft
+{
+  "title": "Spike GraphQL resolver",
+  "status": "Draft"
+}
+
+// Later, once scoped, promote by changing status
+{
+  "id": "DRAFT-1",
+  "status": "To Do",
+  "acceptanceCriteria": [
+    "Resolver returns correct data for happy path",
+    "Error response matches REST format"
+  ]
+}
+```
+
+> Note: promoting a draft rewrites its ID to a task ID, and demoting a task rewrites its ID to a draft ID. Always use the new ID returned by `task_edit` in subsequent commands.
 
 ### Step 6: Report created tasks
 

@@ -43,6 +43,7 @@ Searching first avoids duplicate tasks and helps you understand existing context
 - **Finalizing tasks** → `backlog://workflow/task-finalization` - Definition of Done, finalization checklist, next steps
 - **Managing milestones** → `backlog://workflow/milestones` - How to create, edit, remove, and archive milestones
 - **Managing documents** → `backlog://workflow/documents` - How to create, update, list, and view project documents
+- **Managing drafts** → `backlog://workflow/drafts` - How to create, promote, demote, and archive drafts
 
 ### Core Principle
 
@@ -145,6 +146,7 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 - `definition_of_done_defaults_get` / `definition_of_done_defaults_upsert` — project-level DoD defaults
 
 For milestone details, read `backlog://workflow/milestones`.
+For draft details, read `backlog://workflow/drafts`.
 
 ## Common Issues
 

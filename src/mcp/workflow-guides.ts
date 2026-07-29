@@ -1,5 +1,6 @@
 import {
 	CLI_DOCUMENTS_GUIDE,
+	CLI_DRAFTS_GUIDE,
 	CLI_INIT_REQUIRED_GUIDE,
 	CLI_MILESTONES_GUIDE,
 	CLI_TASK_CREATION_GUIDE,
@@ -9,6 +10,7 @@ import {
 } from "../guidelines/cli-instructions/index.ts";
 import {
 	MCP_DOCUMENTS_GUIDE,
+	MCP_DRAFTS_GUIDE,
 	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
 	MCP_TASK_EXECUTION_GUIDE,
@@ -24,6 +26,7 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"task-finalization",
 	"milestones",
 	"documents",
+	"drafts",
 ] as const;
 export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
 
@@ -90,6 +93,14 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 		mimeType: "text/markdown",
 		resourceText: MCP_DOCUMENTS_GUIDE,
 	},
+	{
+		key: "drafts",
+		uri: "backlog://workflow/drafts",
+		name: "Drafts Guide",
+		description: "How to create, promote, demote, and archive drafts",
+		mimeType: "text/markdown",
+		resourceText: MCP_DRAFTS_GUIDE,
+	},
 ];
 
 const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
@@ -99,6 +110,7 @@ const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
 	"task-finalization": CLI_TASK_FINALIZATION_GUIDE,
 	milestones: CLI_MILESTONES_GUIDE,
 	documents: CLI_DOCUMENTS_GUIDE,
+	drafts: CLI_DRAFTS_GUIDE,
 };
 
 export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [

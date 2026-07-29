@@ -39,6 +39,8 @@ Search and read before changing anything:
   -> Read before managing milestones: how to create, edit, remove, and archive milestones
 - `backlog instructions documents`
   -> Read when creating or updating project documents: doc types, paths, multi-line content, and append rules
+- `backlog instructions drafts`
+  -> Read when creating, promoting, demoting, or archiving drafts: full workflow and ID handling
 
 Use `backlog <command> --help` before unfamiliar operations. Command help includes input fields, read/write behavior, output shape, and examples.
 
@@ -151,8 +153,11 @@ backlog search --modified-file src/server/api.ts --plain
 # Archive a task that should not be completed
 backlog task archive 42
 
-# Demote a task back to draft
+# Demote a task back to draft (full workflow: `backlog instructions drafts`)
 backlog task demote 42
+
+# Draft workflow guide
+backlog instructions drafts
 
 # Project overview and health stats
 backlog overview --plain

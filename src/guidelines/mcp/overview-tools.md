@@ -25,11 +25,11 @@ Your client is using Backlog.md via tools. Use the following MCP tools to retrie
 
 Use this tool to retrieve the required Backlog.md guidance in markdown form:
 
-- `get_backlog_instructions` — Returns workflow guidance. Leave `instruction` empty for the overview, or select `task-creation`, `task-execution`, `task-finalization`, or `milestones`.
+- `get_backlog_instructions` — Returns workflow guidance. Leave `instruction` empty for the overview, or select `task-creation`, `task-execution`, `task-finalization`, `milestones`, or `drafts`.
 
 The tool returns the same content that resource-capable clients read via `backlog://workflow/...` URIs. The overview response is tool-oriented when `instruction` is omitted or set to `overview`.
 
-**Required: fetch and read the matching guide (`task-creation`, `task-execution`, `task-finalization`) before creating, executing, or finalizing tasks — do not act from this overview alone.** Also read `milestones` before managing milestones. The guides define the required procedure; skipping them produces inconsistent tasks and metadata.
+**Required: fetch and read the matching guide (`task-creation`, `task-execution`, `task-finalization`) before creating, executing, or finalizing tasks — do not act from this overview alone.** Also read `milestones` before managing milestones and `drafts` before creating, promoting, demoting, or archiving drafts. The guides define the required procedure; skipping them produces inconsistent tasks and metadata.
 
 ### Typical Workflow (Tools)
 
@@ -37,7 +37,8 @@ The tool returns the same content that resource-capable clients read via `backlo
 2. **If found:** read details via `task_view`; follow execution/plan guidance from the retrieved markdown
 3. **If not found:** call `get_backlog_instructions` with `instruction="task-creation"`, then create tasks with `task_create`
 4. **Execute & finalize:** call `get_backlog_instructions` with `instruction="task-execution"` or `instruction="task-finalization"` to manage status, plans, notes, and acceptance criteria via `task_edit`
-5. **Manage milestones:** call `get_backlog_instructions` with `instruction="milestones"` before creating, editing, removing, or archiving milestones
+5. **Manage drafts:** call `get_backlog_instructions` with `instruction="drafts"` before creating, promoting, demoting, or archiving drafts
+6. **Manage milestones:** call `get_backlog_instructions` with `instruction="milestones"` before creating, editing, removing, or archiving milestones
 
 **Note:** "Done" tasks stay in Done until periodic cleanup. Moving to the completed folder (`task_complete`) is a batch operation run occasionally, not part of finishing each task. Do not use `task_archive` for completed work—archive is only for duplicate, canceled, or invalid tasks.
 
