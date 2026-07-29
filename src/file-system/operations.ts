@@ -1377,6 +1377,7 @@ export class FileSystem {
 	private parseConfig(content: string): BacklogConfig {
 		const config: Partial<BacklogConfig> = {};
 		const parsedDefinitionOfDone = this.parseDefinitionOfDone(content);
+		const parsedListValues = this.parseConfigListValues(content);
 		const lines = content.split("\n");
 
 		for (const line of lines) {
@@ -1403,8 +1404,11 @@ export class FileSystem {
 					config.defaultStatus = value.replace(/['"]/g, "");
 					break;
 				case "statuses":
-				case "labels":
-					if (value.startsWith("[") && value.endsWith("]")) {
+				case "labels": {
+					const parsedList = parsedListValues[key];
+					if (parsedList) {
+						config[key] = parsedList;
+					} else if (value.startsWith("[") && value.endsWith("]")) {
 						const arrayContent = value.slice(1, -1);
 						config[key] = arrayContent
 							.split(",")
@@ -1412,6 +1416,7 @@ export class FileSystem {
 							.filter(Boolean);
 					}
 					break;
+				}
 				case "definition_of_done":
 					if (parsedDefinitionOfDone !== undefined) {
 						config.definitionOfDone = parsedDefinitionOfDone;
@@ -1572,6 +1577,28 @@ export class FileSystem {
 		];
 
 		return `${lines.join("\n")}\n`;
+	}
+
+	/**
+	 * Parse the list-valued config keys with a real YAML parser so block-style
+	 * sequences and quoted values work like inline arrays. Returns nothing for a
+	 * key when the document is not valid YAML, so the legacy inline-bracket line
+	 * parse stays the fallback.
+	 */
+	private parseConfigListValues(content: string): Partial<Record<"statuses" | "labels", string[]>> {
+		const result: Partial<Record<"statuses" | "labels", string[]>> = {};
+		try {
+			const data = matter(`---\n${content.trimEnd()}\n---\n`).data as Record<string, unknown>;
+			for (const key of ["statuses", "labels"] as const) {
+				const value = data[key];
+				if (Array.isArray(value)) {
+					result[key] = value.map((item) => String(item).trim()).filter((item) => item.length > 0);
+				}
+			}
+		} catch {
+			// Not valid YAML; the caller falls back to the line-based parse.
+		}
+		return result;
 	}
 
 	private parseDefinitionOfDone(content: string): string[] | undefined {

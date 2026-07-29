@@ -174,6 +174,61 @@ describe("Config commands", () => {
 		expect(listOutput).toContain("milestones: [m-0]");
 	});
 
+	it("parses block-style YAML sequences identically to inline arrays for list keys", async () => {
+		const configPath = core.filesystem.configFilePath;
+
+		await Bun.write(configPath, 'project_name: "P"\nstatuses: ["To Do", "Done"]\nlabels: ["a", "b"]\n');
+		core.filesystem.invalidateConfigCache();
+		const inline = await core.filesystem.loadConfig();
+
+		await Bun.write(configPath, 'project_name: "P"\nstatuses:\n  - To Do\n  - Done\nlabels:\n  - a\n  - b\n');
+		core.filesystem.invalidateConfigCache();
+		const block = await core.filesystem.loadConfig();
+
+		expect(block?.statuses).toEqual(inline?.statuses);
+		expect(block?.labels).toEqual(inline?.labels);
+		expect(block?.labels).toEqual(["a", "b"]);
+	});
+
+	it("preserves commas inside quoted list values", async () => {
+		const configPath = core.filesystem.configFilePath;
+		await Bun.write(configPath, 'project_name: "P"\nlabels: ["A, B", "C"]\n');
+		core.filesystem.invalidateConfigCache();
+		const config = await core.filesystem.loadConfig();
+		expect(config?.labels).toEqual(["A, B", "C"]);
+	});
+
+	it("honors block-style labels end-to-end through config get", async () => {
+		const configPath = core.filesystem.configFilePath;
+		await Bun.write(configPath, 'project_name: "P"\nstatuses:\n  - To Do\n  - Done\nlabels:\n  - frontend\n  - bug\n');
+		core.filesystem.invalidateConfigCache();
+
+		const labels = await $`bun ${CLI_PATH} config get labels`.cwd(TEST_DIR).text();
+		expect(labels.trim()).toBe("frontend, bug");
+	});
+
+	it("gives accurate guidance when setting list keys and consistent unknown-key lists", async () => {
+		const labels = await $`bun ${CLI_PATH} config set labels urgent`.cwd(TEST_DIR).nothrow().quiet();
+		const labelsError = labels.stderr.toString();
+		expect(labels.exitCode).not.toBe(0);
+		expect(labelsError).toContain("labels cannot be set directly");
+		expect(labelsError).toContain("backlog config get labels");
+		expect(labelsError).not.toContain("list-labels");
+
+		const statuses = await $`bun ${CLI_PATH} config set statuses Done`.cwd(TEST_DIR).nothrow().quiet();
+		const statusesError = statuses.stderr.toString();
+		expect(statuses.exitCode).not.toBe(0);
+		expect(statusesError).toContain("statuses cannot be set directly");
+		expect(statusesError).not.toContain("Unknown config key");
+
+		const unknownGet = await $`bun ${CLI_PATH} config get nosuchkey`.cwd(TEST_DIR).nothrow().quiet();
+		const unknownSet = await $`bun ${CLI_PATH} config set nosuchkey value`.cwd(TEST_DIR).nothrow().quiet();
+		const getKeys = unknownGet.stderr.toString().match(/Available keys: .*/)?.[0];
+		const setKeys = unknownSet.stderr.toString().match(/Available keys: .*/)?.[0];
+		expect(getKeys).toBeDefined();
+		expect(setKeys).toEqual(getKeys);
+	});
+
 	afterEach(async () => {
 		try {
 			await safeCleanup(TEST_DIR);
