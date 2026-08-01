@@ -111,6 +111,46 @@ export interface TuiTaskEditResult {
 	reason?: TuiTaskEditFailureReason;
 }
 
+function buildUpdatedDateComparableTask(task: Task): Record<string, unknown> {
+	return {
+		id: task.id,
+		title: task.title,
+		status: task.status,
+		assignee: task.assignee ?? [],
+		reporter: task.reporter,
+		createdDate: task.createdDate,
+		labels: task.labels ?? [],
+		milestone: task.milestone,
+		dependencies: task.dependencies ?? [],
+		references: task.references ?? [],
+		documentation: task.documentation ?? [],
+		modifiedFiles: task.modifiedFiles ?? [],
+		rawContent: task.rawContent ?? "",
+		description: task.description,
+		implementationPlan: task.implementationPlan,
+		implementationNotes: task.implementationNotes,
+		comments: task.comments ?? [],
+		finalSummary: task.finalSummary,
+		acceptanceCriteriaItems: task.acceptanceCriteriaItems ?? [],
+		definitionOfDoneItems: task.definitionOfDoneItems ?? [],
+		parentTaskId: task.parentTaskId,
+		subtasks: task.subtasks ?? [],
+		priority: task.priority,
+		onStatusChange: task.onStatusChange,
+	};
+}
+
+function hasUpdatedDateRelevantChanges(originalTask: Task | null, nextTask: Task): boolean {
+	if (!originalTask) {
+		return true;
+	}
+
+	return (
+		JSON.stringify(buildUpdatedDateComparableTask(originalTask)) !==
+		JSON.stringify(buildUpdatedDateComparableTask(nextTask))
+	);
+}
+
 function buildLatestStateMap(
 	stateEntries: BranchTaskStateEntry[] = [],
 	localTasks: Array<Task & { lastModified?: Date; updatedDate?: string }> = [],
@@ -1120,8 +1160,14 @@ export class Core {
 		const newStatus = task.status ?? "";
 		const statusChanged = oldStatus !== newStatus;
 
-		// Always set updatedDate when updating a task
-		task.updatedDate = new Date().toISOString().slice(0, 16).replace("T", " ");
+		// Preserve updatedDate when only the ordinal changed; otherwise stamp it now.
+		if (hasUpdatedDateRelevantChanges(originalTask, task)) {
+			task.updatedDate = new Date().toISOString().slice(0, 16).replace("T", " ");
+		} else if (originalTask?.updatedDate) {
+			task.updatedDate = originalTask.updatedDate;
+		} else {
+			delete task.updatedDate;
+		}
 
 		// Auto-populate actualStart / actualEnd on status changes
 		if (statusChanged) {
