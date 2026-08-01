@@ -56,6 +56,75 @@ type InlineMetaUpdatePayload = Omit<Partial<Task>, "milestone"> & {
   milestone?: string | null;
 };
 
+type TaskDetailsFormState = {
+  title: string;
+  description: string;
+  plan: string;
+  notes: string;
+  displayComments: TaskComment[];
+  finalSummary: string;
+  criteria: AcceptanceCriterion[];
+  definitionOfDone: AcceptanceCriterion[];
+  status: string;
+  assignee: string[];
+  labels: string[];
+  priority: string;
+  dependencies: string[];
+  references: string[];
+  documentation: string[];
+  milestone: string;
+  dueDate: string;
+  plannedStart: string;
+  plannedEnd: string;
+  actualStart: string;
+  actualEnd: string;
+};
+
+const areJsonEqual = (first: unknown, second: unknown): boolean => JSON.stringify(first) === JSON.stringify(second);
+
+const preserveDirtyRefreshValue = <T,>(
+  current: T,
+  previous: T,
+  next: T,
+  isEqual: (first: T, second: T) => boolean = Object.is,
+): T => (isEqual(current, previous) ? next : current);
+
+const buildTaskDetailsFormState = ({
+  task,
+  isCreateMode,
+  isDraftMode,
+  availableStatuses,
+  defaultDefinitionOfDone,
+}: {
+  task?: Task;
+  isCreateMode: boolean;
+  isDraftMode?: boolean;
+  availableStatuses?: string[];
+  defaultDefinitionOfDone: AcceptanceCriterion[];
+}): TaskDetailsFormState => ({
+  title: task?.title || "",
+  description: task?.description || "",
+  plan: task?.implementationPlan || "",
+  notes: task?.implementationNotes || "",
+  displayComments: task?.comments ?? [],
+  finalSummary: task?.finalSummary || "",
+  criteria: task?.acceptanceCriteriaItems || [],
+  definitionOfDone: task?.definitionOfDoneItems || (isCreateMode ? defaultDefinitionOfDone : []),
+  status: task?.status || (isDraftMode ? "Draft" : (availableStatuses?.[0] || "To Do")),
+  assignee: task?.assignee || [],
+  labels: task?.labels || [],
+  priority: task?.priority || "",
+  dependencies: task?.dependencies || [],
+  references: task?.references || [],
+  documentation: task?.documentation || [],
+  milestone: task?.milestone || "",
+  dueDate: task?.dueDate || "",
+  plannedStart: task?.plannedStart || "",
+  plannedEnd: task?.plannedEnd || "",
+  actualStart: task?.actualStart || "",
+  actualEnd: task?.actualEnd || "",
+});
+
 const containsCommentDelimiterLine = (value: string): boolean => /^\s*---\s*$/m.test(value.replace(/\r\n/g, "\n"));
 
 const SectionHeader: React.FC<{ title: string; right?: React.ReactNode }> = ({ title, right }) => (
@@ -94,6 +163,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const modeRef = useRef(mode);
   const previousTaskId = useRef(task?.id ?? "");
   const previousIsOpen = useRef(isOpen);
+  const formBaselineRef = useRef<TaskDetailsFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -405,41 +475,120 @@ export const TaskDetailsModal: React.FC<Props> = ({
   // Reset local state when task changes or modal opens
   useEffect(() => {
     const nextTaskId = task?.id ?? "";
-    const sameOpenTaskRefresh = isOpen && previousIsOpen.current && nextTaskId.length > 0 && previousTaskId.current === nextTaskId;
+    const nextFormState = buildTaskDetailsFormState({
+      task,
+      isCreateMode,
+      isDraftMode,
+      availableStatuses,
+      defaultDefinitionOfDone,
+    });
+    const previousFormState = formBaselineRef.current;
+    const sameOpenModalRefresh =
+      Boolean(previousFormState) && isOpen && previousIsOpen.current && previousTaskId.current === nextTaskId;
     const shouldPreserveEditMode =
       !isCreateMode &&
-      sameOpenTaskRefresh &&
+      sameOpenModalRefresh &&
       (modeRef.current === "edit" || preserveEditModeAfterCommentRefresh.current);
 
-    setTitle(task?.title || "");
-    setDescription(task?.description || "");
-    setPlan(task?.implementationPlan || "");
-    setNotes(task?.implementationNotes || "");
-    setDisplayComments(task?.comments ?? []);
+    if (sameOpenModalRefresh && previousFormState) {
+      setTitle((current) => preserveDirtyRefreshValue(current, previousFormState.title, nextFormState.title));
+      setDescription((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.description, nextFormState.description),
+      );
+      setPlan((current) => preserveDirtyRefreshValue(current, previousFormState.plan, nextFormState.plan));
+      setNotes((current) => preserveDirtyRefreshValue(current, previousFormState.notes, nextFormState.notes));
+      setDisplayComments(nextFormState.displayComments);
+      setCommentSaving(false);
+      setCommentsChanged(false);
+      setFinalSummary((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.finalSummary, nextFormState.finalSummary),
+      );
+      setCriteria((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.criteria, nextFormState.criteria, areJsonEqual),
+      );
+      setDefinitionOfDone((current) =>
+        preserveDirtyRefreshValue(
+          current,
+          previousFormState.definitionOfDone,
+          nextFormState.definitionOfDone,
+          areJsonEqual,
+        ),
+      );
+      setStatus((current) => preserveDirtyRefreshValue(current, previousFormState.status, nextFormState.status));
+      setAssignee((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.assignee, nextFormState.assignee, areJsonEqual),
+      );
+      setLabels((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.labels, nextFormState.labels, areJsonEqual),
+      );
+      setPriority((current) => preserveDirtyRefreshValue(current, previousFormState.priority, nextFormState.priority));
+      setDependencies((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.dependencies, nextFormState.dependencies, areJsonEqual),
+      );
+      setReferences((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.references, nextFormState.references, areJsonEqual),
+      );
+      setDocumentation((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.documentation, nextFormState.documentation, areJsonEqual),
+      );
+      setMilestone((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.milestone, nextFormState.milestone),
+      );
+      setDueDate((current) => preserveDirtyRefreshValue(current, previousFormState.dueDate, nextFormState.dueDate));
+      setPlannedStart((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.plannedStart, nextFormState.plannedStart),
+      );
+      setPlannedEnd((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.plannedEnd, nextFormState.plannedEnd),
+      );
+      setActualStart((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.actualStart, nextFormState.actualStart),
+      );
+      setActualEnd((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.actualEnd, nextFormState.actualEnd),
+      );
+      setMode(shouldPreserveEditMode ? "edit" : isCreateMode ? "create" : modeRef.current);
+      preserveEditModeAfterCommentRefresh.current = false;
+      previousTaskId.current = nextTaskId;
+      previousIsOpen.current = isOpen;
+      formBaselineRef.current = nextFormState;
+      setError(null);
+      // Preload tasks for dependency picker
+      apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
+      apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
+      return;
+    }
+
+    setTitle(nextFormState.title);
+    setDescription(nextFormState.description);
+    setPlan(nextFormState.plan);
+    setNotes(nextFormState.notes);
+    setDisplayComments(nextFormState.displayComments);
     setCommentBody("");
     setCommentAuthor("");
     setCommentSaving(false);
     setCommentsChanged(false);
-    setFinalSummary(task?.finalSummary || "");
-    setCriteria(task?.acceptanceCriteriaItems || []);
-    setDefinitionOfDone(task?.definitionOfDoneItems || (isCreateMode ? defaultDefinitionOfDone : []));
-    setStatus(task?.status || (isDraftMode ? "Draft" : (availableStatuses?.[0] || "To Do")));
-    setAssignee(task?.assignee || []);
-    setLabels(task?.labels || []);
-    setPriority(task?.priority || "");
-    setDependencies(task?.dependencies || []);
-    setReferences(task?.references || []);
-    setDocumentation(task?.documentation || []);
-    setMilestone(task?.milestone || "");
-    setDueDate(task?.dueDate || "");
-    setPlannedStart(task?.plannedStart || "");
-    setPlannedEnd(task?.plannedEnd || "");
-    setActualStart(task?.actualStart || "");
-    setActualEnd(task?.actualEnd || "");
-    setMode(shouldPreserveEditMode ? "edit" : isCreateMode ? "create" : "preview");
+    setFinalSummary(nextFormState.finalSummary);
+    setCriteria(nextFormState.criteria);
+    setDefinitionOfDone(nextFormState.definitionOfDone);
+    setStatus(nextFormState.status);
+    setAssignee(nextFormState.assignee);
+    setLabels(nextFormState.labels);
+    setPriority(nextFormState.priority);
+    setDependencies(nextFormState.dependencies);
+    setReferences(nextFormState.references);
+    setDocumentation(nextFormState.documentation);
+    setMilestone(nextFormState.milestone);
+    setDueDate(nextFormState.dueDate);
+    setPlannedStart(nextFormState.plannedStart);
+    setPlannedEnd(nextFormState.plannedEnd);
+    setActualStart(nextFormState.actualStart);
+    setActualEnd(nextFormState.actualEnd);
+    setMode(isCreateMode ? "create" : "preview");
     preserveEditModeAfterCommentRefresh.current = false;
     previousTaskId.current = nextTaskId;
     previousIsOpen.current = isOpen;
+    formBaselineRef.current = nextFormState;
     setError(null);
     // Preload tasks for dependency picker
     apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
