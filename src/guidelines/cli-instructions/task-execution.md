@@ -55,7 +55,8 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Clear Actual End        | `backlog task edit {{TASK_ID:123}} --clear-actual-end`   |
 | Description             | `backlog task edit {{TASK_ID:123}} -d "New description"` |
 | Append Description      | `backlog task edit {{TASK_ID:123}} --append-description "Extra context"` |
-| Add AC                  | `backlog task edit {{TASK_ID:123}} --ac "New criterion"` |
+| Add AC                  | `backlog task edit {{TASK_ID:123}} --ac "New criterion"` or `--acceptance-criteria "New criterion"` |
+| Clear all AC            | `backlog task edit {{TASK_ID:123}} --clear-ac`                                                    |
 | Add DoD                 | `backlog task edit {{TASK_ID:123}} --dod "Ship notes"`   |
 | Check AC #1             | `backlog task edit {{TASK_ID:123}} --check-ac 1`         |
 | Check DoD #1            | `backlog task edit {{TASK_ID:123}} --check-dod 1`        |
@@ -73,6 +74,13 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 
 ### Acceptance Criteria and Definition of Done Operations
 
+**Acceptance Criteria edit semantics:**
+
+- `--ac` and `--acceptance-criteria` are additive aliases in `task edit`.
+- For small or index-specific changes, use `--remove-ac`, `--check-ac`, or `--uncheck-ac`.
+- For large replacements (especially when acceptance criteria are still unchecked), prefer `--clear-ac` to atomically remove all criteria, then run `task edit` again with batch `--ac` or `--acceptance-criteria` to add the replacement list.
+- If the CLI cannot express the exact change, editing the task Markdown file directly is a fallback.
+
 **Adding criteria (`--ac`)** accepts multiple flags: `--ac "First" --ac "Second"` ✅
 **Checking/unchecking/removing** accept multiple flags too: `--check-ac 1 --check-ac 2` ✅
 **Mixed operations** work in a single command: `--check-ac 1 --uncheck-ac 2 --remove-ac 3` ✅
@@ -82,6 +90,10 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 backlog task edit {{TASK_ID:123}} --ac "User can login" --ac "Session persists"
 backlog task edit {{TASK_ID:123}} --check-ac 1 --check-ac 2 --check-ac 3
 backlog task edit {{TASK_ID:123}} --check-ac 1 --uncheck-ac 2 --remove-ac 3
+
+# Clear-then-replace full list
+backlog task edit {{TASK_ID:123}} --clear-ac
+backlog task edit {{TASK_ID:123}} --ac "New criterion 1" --ac "New criterion 2"
 
 # DoD examples
 backlog task edit {{TASK_ID:123}} --dod "Run tests" --dod "Update docs"

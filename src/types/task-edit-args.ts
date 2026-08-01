@@ -32,6 +32,7 @@ export interface TaskEditArgs {
 	finalSummaryAppend?: string[];
 	finalSummaryClear?: boolean;
 	acceptanceCriteriaSet?: string[];
+	acceptanceCriteriaClear?: boolean;
 	acceptanceCriteriaAdd?: string[];
 	acceptanceCriteriaRemove?: number[];
 	acceptanceCriteriaCheck?: number[];

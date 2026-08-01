@@ -231,6 +231,12 @@ function parsePositiveIntegerOption(value: unknown, optionName: string, helpComm
 
 function formatTaskEditError(error: unknown, taskId: string): string {
 	const message = error instanceof Error ? error.message : String(error);
+	if (
+		message.startsWith("Malformed Acceptance Criteria markers:") ||
+		message.startsWith("Malformed Definition of Done markers:")
+	) {
+		return `${message}\nThe edit was not applied. Run 'backlog task view ${taskId} --plain' to locate the task file, repair or remove the malformed marker block in that Markdown file, then rerun the edit.`;
+	}
 	if (message.startsWith("Invalid index:")) {
 		return `${message} Try 'backlog task edit ${taskId} --help' for index options.`;
 	}
@@ -339,6 +345,7 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.addLabel !== undefined ||
 			options.removeLabel !== undefined ||
 			options.ac !== undefined ||
+			options.clearAc ||
 			options.dod !== undefined ||
 			options.removeAc !== undefined ||
 			options.removeDod !== undefined ||
@@ -2423,6 +2430,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		{ name: "comment", type: "Markdown", description: "Append a discussion comment" },
 		{ name: "final-summary", type: "Markdown", description: "Completion summary" },
 		{ name: "check-ac", type: "Integer", description: "1-based acceptance criterion index" },
+		{ name: "clear-ac", type: "Boolean", description: "Remove all acceptance criteria" },
 	],
 	writes: "Updates task metadata and structured task sections through Backlog.md",
 	output: "Updated task details; use --plain for text output",
@@ -2462,6 +2470,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 	.option("--add-label <label>")
 	.option("--remove-label <label>")
 	.option("--ac <criteria>", "add acceptance criteria (can be used multiple times)", createMultiValueAccumulator())
+	.option("--clear-ac", "remove all acceptance criteria (cannot combine with acceptance criteria mutation options)")
 	.option("--dod <item>", "add Definition of Done item (can be used multiple times)", createMultiValueAccumulator())
 	.option(
 		"--remove-ac <index>",
@@ -2692,6 +2701,21 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			return;
 		}
 
+		if (
+			options.clearAc &&
+			(options.ac !== undefined ||
+				options.acceptanceCriteria !== undefined ||
+				options.removeAc !== undefined ||
+				options.checkAc !== undefined ||
+				options.uncheckAc !== undefined)
+		) {
+			console.error(
+				"Cannot combine --clear-ac with --ac, --acceptance-criteria, --remove-ac, --check-ac, or --uncheck-ac. Use --clear-ac by itself.",
+			);
+			process.exitCode = 1;
+			return;
+		}
+
 		const labelValues = parseDelimitedStringList(options.label) ?? [];
 		const addLabelValues = parseDelimitedStringList(options.addLabel) ?? [];
 		const removeLabelValues = parseDelimitedStringList(options.removeLabel) ?? [];
@@ -2813,6 +2837,9 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		}
 		if (options.clearActualEnd) {
 			editArgs.actualEnd = "";
+		}
+		if (options.clearAc) {
+			editArgs.acceptanceCriteriaSet = [];
 		}
 		if (acceptanceAdditions.length > 0) {
 			editArgs.acceptanceCriteriaAdd = acceptanceAdditions;

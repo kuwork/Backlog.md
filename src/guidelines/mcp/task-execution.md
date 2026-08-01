@@ -59,6 +59,7 @@ Use `task_edit` to modify these fields:
 | Description | `description` |
 | Append Description | `descriptionAppend` |
 | Add AC | `acceptanceCriteriaAdd` |
+| Clear all AC | `acceptanceCriteriaClear` |
 | Check/Uncheck AC | `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck` |
 | Remove AC | `acceptanceCriteriaRemove` |
 | Add DoD | `definitionOfDoneAdd` |
@@ -76,9 +77,16 @@ Use `task_edit` to modify these fields:
 
 ### Acceptance Criteria and Definition of Done Operations
 
+**Acceptance Criteria edit semantics:**
+
+- `acceptanceCriteriaAdd` is additive. `task_edit` has no full-list replacement field for acceptance criteria; use clear-then-add instead.
+- For small or index-specific changes, use `acceptanceCriteriaRemove`, `acceptanceCriteriaCheck`, or `acceptanceCriteriaUncheck`.
+- For large replacements (especially when acceptance criteria are still unchecked), use `acceptanceCriteriaClear` to atomically remove all criteria, then call `task_edit` again with `acceptanceCriteriaAdd` to add the replacement list. `acceptanceCriteriaClear` cannot be combined with `acceptanceCriteriaSet`, `acceptanceCriteriaAdd`, `acceptanceCriteriaRemove`, `acceptanceCriteriaCheck`, or `acceptanceCriteriaUncheck` in the same call.
+- If the MCP fields cannot express the exact change, editing the task Markdown file directly is a fallback.
+
 - `acceptanceCriteriaAdd` accepts multiple items in one call
 - `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck` / `acceptanceCriteriaRemove` accept arrays of 1-based indices
-- Mixed operations can be combined in a single `task_edit` call
+- Mixed incremental operations can be combined in a single `task_edit` call
 - `definitionOfDoneAdd` / `definitionOfDoneCheck` / `definitionOfDoneUncheck` / `definitionOfDoneRemove` work the same way for task-level DoD items
 
 ### Handling Scope Changes

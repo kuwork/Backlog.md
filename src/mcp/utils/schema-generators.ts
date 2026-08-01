@@ -369,6 +369,11 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 				},
 				maxItems: 50,
 			},
+			acceptanceCriteriaClear: {
+				type: "boolean",
+				description:
+					"Remove all acceptance criteria. Cannot be combined with acceptanceCriteriaAdd, Remove, Check, or Uncheck. For large replacements, use this field alone, then call task_edit again with acceptanceCriteriaAdd.",
+			},
 			acceptanceCriteriaAdd: {
 				type: "array",
 				items: {

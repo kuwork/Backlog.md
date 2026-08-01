@@ -3,7 +3,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
-import { AcceptanceCriteriaManager } from "../markdown/structured-sections.ts";
+import { AcceptanceCriteriaManager, DefinitionOfDoneManager } from "../markdown/structured-sections.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -658,5 +658,432 @@ describe("AcceptanceCriteriaManager unit tests", () => {
 			expect(checkResult.stderr.toString()).toContain(`backlog task view ${taskId} --plain`);
 			expect(checkResult.stderr.toString()).toContain(`backlog task edit ${taskId} --help`);
 		});
+	});
+});
+
+describe("--clear-ac CLI option", () => {
+	let TEST_DIR_CLEAR: string;
+	const CLI_PATH_CLEAR = join(process.cwd(), "src", "cli.ts");
+
+	beforeEach(async () => {
+		TEST_DIR_CLEAR = createUniqueTestDir("test-clear-ac");
+		await rm(TEST_DIR_CLEAR, { recursive: true, force: true }).catch(() => {});
+		await mkdir(TEST_DIR_CLEAR, { recursive: true });
+		await $`git init -b main`.cwd(TEST_DIR_CLEAR).quiet();
+		await $`git config user.name "Test User"`.cwd(TEST_DIR_CLEAR).quiet();
+		await $`git config user.email test@example.com`.cwd(TEST_DIR_CLEAR).quiet();
+
+		const core = new Core(TEST_DIR_CLEAR);
+		await initializeTestProject(core, "Clear AC Test Project");
+	});
+
+	afterEach(async () => {
+		try {
+			await safeCleanup(TEST_DIR_CLEAR);
+		} catch {
+			// Ignore cleanup errors
+		}
+	});
+
+	it("clears all acceptance criteria with --clear-ac", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Clear AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: `## Description
+
+Test task.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First criterion
+- [ ] #2 Second criterion
+- [ ] #3 Third criterion
+<!-- AC:END -->`,
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac`.cwd(TEST_DIR_CLEAR).quiet();
+		expect(result.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-1");
+		expect(task).not.toBeNull();
+		const body = task?.rawContent || "";
+		expect(body).not.toContain("## Acceptance Criteria");
+		expect(body).not.toContain("<!-- AC:BEGIN -->");
+		expect(body).not.toContain("First criterion");
+		expect(body).not.toContain("Second criterion");
+		expect(body).not.toContain("Third criterion");
+		expect(body).toContain("## Description");
+	});
+
+	it("rejects combining --clear-ac with --ac", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Reject Clear AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: "## Description\n\nTest.",
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac --ac "New"`.cwd(TEST_DIR_CLEAR).nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-ac");
+	});
+
+	it("rejects combining --clear-ac with --acceptance-criteria", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Reject Clear AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: "## Description\n\nTest.",
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac --acceptance-criteria "New"`
+			.cwd(TEST_DIR_CLEAR)
+			.nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-ac");
+	});
+
+	it("rejects combining --clear-ac with --remove-ac", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Reject Clear AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: "## Description\n\nTest.",
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac --remove-ac 1`.cwd(TEST_DIR_CLEAR).nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-ac");
+	});
+
+	it("rejects combining --clear-ac with --check-ac", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Reject Clear AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: "## Description\n\nTest.",
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac --check-ac 1`.cwd(TEST_DIR_CLEAR).nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-ac");
+	});
+
+	it("rejects combining --clear-ac with --uncheck-ac", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Reject Clear AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: "## Description\n\nTest.",
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac --uncheck-ac 1`.cwd(TEST_DIR_CLEAR).nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-ac");
+	});
+
+	it("keeps --acceptance-criteria additive in task edit", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Additive Alias Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: `## Description
+
+Test.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Existing criterion
+<!-- AC:END -->`,
+			},
+			false,
+		);
+
+		const result = await $`bun ${CLI_PATH_CLEAR} task edit 1 --acceptance-criteria "Added criterion"`
+			.cwd(TEST_DIR_CLEAR)
+			.quiet();
+		expect(result.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-1");
+		expect(task?.rawContent).toContain("- [ ] #1 Existing criterion");
+		expect(task?.rawContent).toContain("- [ ] #2 Added criterion");
+	});
+
+	it("supports clear-then-add replacement workflow", async () => {
+		const core = new Core(TEST_DIR_CLEAR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Replace AC Task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-06-19",
+				labels: [],
+				dependencies: [],
+				rawContent: `## Description
+
+Test.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Old criterion
+<!-- AC:END -->`,
+			},
+			false,
+		);
+
+		const clearResult = await $`bun ${CLI_PATH_CLEAR} task edit 1 --clear-ac`.cwd(TEST_DIR_CLEAR).quiet();
+		expect(clearResult.exitCode).toBe(0);
+
+		const addResult = await $`bun ${CLI_PATH_CLEAR} task edit 1 --ac "New first" --ac "New second"`
+			.cwd(TEST_DIR_CLEAR)
+			.quiet();
+		expect(addResult.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-1");
+		expect(task?.rawContent).not.toContain("Old criterion");
+		expect(task?.rawContent).toContain("- [ ] #1 New first");
+		expect(task?.rawContent).toContain("- [ ] #2 New second");
+	});
+});
+
+describe("AcceptanceCriteriaManager deterministic serialization", () => {
+	it("preserves canonical section order when re-adding after removal", () => {
+		const base = `## Description
+
+Description text.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+<!-- AC:END -->
+
+## Implementation Plan
+
+1. Plan item
+
+## Implementation Notes
+
+Note.
+
+## Final Summary
+
+Summary.`;
+
+		const cleared = AcceptanceCriteriaManager.updateContent(base, []);
+		const reAdded = AcceptanceCriteriaManager.updateContent(cleared, [{ index: 1, text: "Re-added", checked: false }]);
+
+		expect(reAdded.indexOf("## Acceptance Criteria")).toBeLessThan(reAdded.indexOf("## Implementation Plan"));
+		expect(reAdded.indexOf("## Implementation Plan")).toBeLessThan(reAdded.indexOf("## Implementation Notes"));
+		expect(reAdded.indexOf("## Implementation Notes")).toBeLessThan(reAdded.indexOf("## Final Summary"));
+		expect(reAdded).toContain("- [ ] #1 Re-added");
+	});
+
+	it("preserves CRLF line endings", () => {
+		const base =
+			"## Description\r\n\r\nDesc.\r\n\r\n## Acceptance Criteria\r\n<!-- AC:BEGIN -->\r\n- [ ] #1 First\r\n<!-- AC:END -->\r\n";
+		const updated = AcceptanceCriteriaManager.updateContent(base, [
+			{ index: 1, text: "First", checked: false },
+			{ index: 2, text: "Second", checked: true },
+		]);
+		expect(updated).toContain("\r\n");
+		expect(updated).not.toContain("\r\n\r\n\r\n");
+		expect(updated).toContain("- [ ] #1 First\r\n");
+		expect(updated).toContain("- [x] #2 Second\r\n");
+	});
+
+	it("retains custom headings and whitespace between checklist items", () => {
+		const base = `## Acceptance Criteria
+<!-- AC:BEGIN -->
+### Critical
+
+- [ ] #1 Must authenticate
+
+### Optional
+
+- [ ] #2 Show logs
+<!-- AC:END -->`;
+
+		const updated = AcceptanceCriteriaManager.updateContent(base, [
+			{ index: 1, text: "Must authenticate", checked: true },
+			{ index: 2, text: "Show logs", checked: false },
+		]);
+		const bodyMatch = updated.match(/<!-- AC:BEGIN -->([\s\S]*?)<!-- AC:END -->/);
+		expect(bodyMatch).not.toBeNull();
+		const body = bodyMatch?.[1] ?? "";
+		expect(body).toContain("### Critical");
+		expect(body).toContain("### Optional");
+		expect(body).toContain("- [x] #1 Must authenticate");
+		expect(body).toContain("- [ ] #2 Show logs");
+	});
+
+	it("removes the checklist section cleanly when empty", () => {
+		const base = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+<!-- AC:END -->
+
+## Implementation Plan
+
+Plan.`;
+
+		const updated = AcceptanceCriteriaManager.updateContent(base, []);
+		expect(updated).not.toContain("## Acceptance Criteria");
+		expect(updated).not.toContain("<!-- AC:BEGIN -->");
+		expect(updated).not.toContain("<!-- AC:END -->");
+		expect(updated).toContain("## Description");
+		expect(updated).toContain("## Implementation Plan");
+	});
+
+	it("fails closed on malformed markers", () => {
+		const base = `## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+`; // missing AC:END
+
+		expect(() => AcceptanceCriteriaManager.updateContent(base, [{ index: 1, text: "Only", checked: false }])).toThrow(
+			"Malformed Acceptance Criteria markers",
+		);
+	});
+
+	it("is byte-stable outside the intended change on repeated add/remove cycles", () => {
+		const base = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+<!-- AC:END -->
+
+## Implementation Plan
+
+Plan item.
+
+## Implementation Notes
+
+Notes.`;
+
+		let content = base;
+		content = AcceptanceCriteriaManager.updateContent(content, [
+			{ index: 1, text: "First", checked: false },
+			{ index: 2, text: "Temporary", checked: false },
+		]);
+		content = AcceptanceCriteriaManager.updateContent(content, [{ index: 1, text: "First", checked: false }]);
+		expect(content).toBe(base);
+	});
+});
+
+describe("DefinitionOfDoneManager deterministic serialization", () => {
+	it("preserves canonical section order and DoD content", () => {
+		const base = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 AC
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Run tests
+<!-- DOD:END -->
+
+## Implementation Plan
+
+Plan.`;
+
+		const updated = DefinitionOfDoneManager.updateContent(base, [
+			{ index: 1, text: "Run tests", checked: true },
+			{ index: 2, text: "Update docs", checked: false },
+		]);
+		expect(updated.indexOf("## Acceptance Criteria")).toBeLessThan(updated.indexOf("## Definition of Done"));
+		expect(updated.indexOf("## Definition of Done")).toBeLessThan(updated.indexOf("## Implementation Plan"));
+		expect(updated).toContain("- [x] #1 Run tests");
+		expect(updated).toContain("- [ ] #2 Update docs");
+	});
+
+	it("preserves CRLF line endings for DoD", () => {
+		const base =
+			"## Description\r\n\r\nDesc.\r\n\r\n## Definition of Done\r\n<!-- DOD:BEGIN -->\r\n- [ ] #1 Run tests\r\n<!-- DOD:END -->\r\n";
+		const updated = DefinitionOfDoneManager.updateContent(base, [
+			{ index: 1, text: "Run tests", checked: false },
+			{ index: 2, text: "Update docs", checked: false },
+		]);
+		expect(updated).toContain("\r\n");
+		expect(updated).toContain("- [ ] #1 Run tests\r\n");
+		expect(updated).toContain("- [ ] #2 Update docs\r\n");
+	});
+
+	it("fails closed on malformed DoD markers", () => {
+		const base = `## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Run tests
+<!-- DOD:END -->
+<!-- DOD:END -->`;
+
+		expect(() =>
+			DefinitionOfDoneManager.updateContent(base, [{ index: 1, text: "Run tests", checked: false }]),
+		).toThrow("Malformed Definition of Done markers");
 	});
 });

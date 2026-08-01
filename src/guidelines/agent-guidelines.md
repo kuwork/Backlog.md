@@ -182,8 +182,9 @@ PR-style summary of what was implemented.
 | Clear Actual End        | `backlog task edit 42 --clear-actual-end`                |
 | Description             | `backlog task edit 42 -d "New description"`              |
 | Append Description      | `backlog task edit 42 --append-description "Extra context"` |
-| Add AC                  | `backlog task edit 42 --ac "New criterion"`              |
-| Add DoD                 | `backlog task edit 42 --dod "Ship notes"`                |
+| Add AC                  | `backlog task edit 42 --ac "New criterion"` or `--acceptance-criteria "New criterion"` |
+| Clear all AC            | `backlog task edit 42 --clear-ac`                                                    |
+| Add DoD                 | `backlog task edit 42 --dod "Ship notes"`                                            |
 | Check AC #1             | `backlog task edit 42 --check-ac 1`                      |
 | Check DoD #1            | `backlog task edit 42 --check-dod 1`                     |
 | Uncheck AC #2           | `backlog task edit 42 --uncheck-ac 2`                    |
@@ -236,15 +237,20 @@ Provide a concise summary of the task purpose and its goal. Explains the context
 
 ⚠️ **IMPORTANT: How AC Commands Work**
 
-- **Adding criteria (`--ac`)** accepts multiple flags: `--ac "First" --ac "Second"` ✅
+- **Adding criteria (`--ac` and `--acceptance-criteria`)** are additive aliases in `task edit`: `--ac "First" --ac "Second"` or `--acceptance-criteria "First" --acceptance-criteria "Second"` ✅
 - **Checking/unchecking/removing** accept multiple flags too: `--check-ac 1 --check-ac 2` ✅
 - **Mixed operations** work in a single command: `--check-ac 1 --uncheck-ac 2 --remove-ac 3` ✅
+- **Clearing all criteria** is atomic with `--clear-ac`; it cannot be combined with `--ac`, `--acceptance-criteria`, `--remove-ac`, `--check-ac`, or `--uncheck-ac` in the same command ✅
 
 ```bash
 # Examples
 
 # Add new criteria (MULTIPLE values allowed)
 backlog task edit 42 --ac "User can login" --ac "Session persists"
+
+# Clear all criteria, then add a replacement list (two separate commands)
+backlog task edit 42 --clear-ac
+backlog task edit 42 --ac "New first criterion" --ac "New second criterion"
 
 # Check specific criteria by index (MULTIPLE values supported)
 backlog task edit 42 --check-ac 1 --check-ac 2 --check-ac 3  # Check multiple ACs
@@ -259,11 +265,14 @@ backlog task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3
 # backlog task edit 42 --check-ac 1,2,3  # No comma-separated values
 # backlog task edit 42 --check-ac 1-3    # No ranges
 # backlog task edit 42 --check 1         # Wrong flag name
+# backlog task edit 42 --clear-ac --ac "New"  # Cannot combine clear with add
 
 # Multiple operations of same type
 backlog task edit 42 --uncheck-ac 1 --uncheck-ac 2  # Uncheck multiple ACs
 backlog task edit 42 --remove-ac 2 --remove-ac 4    # Remove multiple ACs (processed high-to-low)
 ```
+
+**Full-list replacement strategy:** When you need to replace many acceptance criteria while they are still unchecked (for example before execution), the deterministic approach is to run `--clear-ac` first, then run `task edit` again with batch `--ac` or `--acceptance-criteria` to add the new list. For one-off or index-specific tweaks, use `--remove-ac`, `--check-ac`, or `--uncheck-ac`. If the CLI cannot express the exact change you need, editing the task Markdown file directly is a fallback, but prefer CLI operations so metadata and serialization stay consistent.
 
 ### Definition of Done checklist (per-task)
 
@@ -530,7 +539,7 @@ backlog search --modified-file src/server/api.ts --plain
 |------------------|-------------------------------------------------------------------------------------|
 | Create task      | `backlog task create "Title"`                                                       |
 | With description | `backlog task create "Title" -d "Description"`                                      |
-| With AC          | `backlog task create "Title" --ac "Criterion 1" --ac "Criterion 2"`                 |
+| With AC          | `backlog task create "Title" --ac "Criterion 1" --ac "Criterion 2"` or `--acceptance-criteria "Criterion 1"` |
 | With final summary | `backlog task create "Title" --final-summary "PR-style summary"`                 |
 | With references  | `backlog task create "Title" --ref src/api.ts --ref https://github.com/issue/123`   |
 | With documentation | `backlog task create "Title" --doc https://design-docs.example.com`               |
@@ -557,15 +566,16 @@ backlog search --modified-file src/server/api.ts --plain
 
 ### Acceptance Criteria Management
 
-| Action              | Command                                                                     |
-|---------------------|-----------------------------------------------------------------------------|
-| Add AC              | `backlog task edit 42 --ac "New criterion" --ac "Another"`                  |
-| Remove AC #2        | `backlog task edit 42 --remove-ac 2`                                        |
-| Remove multiple ACs | `backlog task edit 42 --remove-ac 2 --remove-ac 4`                          |
-| Check AC #1         | `backlog task edit 42 --check-ac 1`                                         |
-| Check multiple ACs  | `backlog task edit 42 --check-ac 1 --check-ac 3`                            |
-| Uncheck AC #3       | `backlog task edit 42 --uncheck-ac 3`                                       |
-| Mixed operations    | `backlog task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3 --ac "New"` |
+| Action              | Command                                                                                            |
+|---------------------|----------------------------------------------------------------------------------------------------|
+| Add AC              | `backlog task edit 42 --ac "New criterion" --ac "Another"` or `--acceptance-criteria "New criterion"` |
+| Clear all AC        | `backlog task edit 42 --clear-ac`                                                                  |
+| Remove AC #2        | `backlog task edit 42 --remove-ac 2`                                                               |
+| Remove multiple ACs | `backlog task edit 42 --remove-ac 2 --remove-ac 4`                                               |
+| Check AC #1         | `backlog task edit 42 --check-ac 1`                                                                |
+| Check multiple ACs  | `backlog task edit 42 --check-ac 1 --check-ac 3`                                                   |
+| Uncheck AC #3       | `backlog task edit 42 --uncheck-ac 3`                                                              |
+| Mixed operations    | `backlog task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3 --ac "New"`                      |
 
 ### Task Content
 

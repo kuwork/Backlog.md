@@ -6,6 +6,7 @@ import {
 	serializeTask,
 	updateTaskAcceptanceCriteria,
 } from "../markdown/serializer.ts";
+import { AcceptanceCriteriaManager, DefinitionOfDoneManager } from "../markdown/structured-sections.ts";
 import type { Decision, Document, Task } from "../types/index.ts";
 
 describe("Markdown Parser", () => {
@@ -765,5 +766,181 @@ Description here.`;
 			expect(parsed.actualStart).toBe("2026-06-02 09:30");
 			expect(parsed.actualEnd).toBe("2026-06-09 17:00");
 		});
+	});
+});
+
+describe("Deterministic checklist serialization", () => {
+	it("keeps Acceptance Criteria in canonical order relative to other structured sections", () => {
+		const content = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Run tests
+<!-- DOD:END -->
+
+## Implementation Plan
+
+Plan.
+
+## Implementation Notes
+
+Notes.
+
+## Final Summary
+
+Summary.`;
+
+		const updated = AcceptanceCriteriaManager.updateContent(content, [
+			{ index: 1, text: "First", checked: false },
+			{ index: 2, text: "Second", checked: true },
+		]);
+
+		expect(updated.indexOf("## Acceptance Criteria")).toBeLessThan(updated.indexOf("## Definition of Done"));
+		expect(updated.indexOf("## Definition of Done")).toBeLessThan(updated.indexOf("## Implementation Plan"));
+		expect(updated.indexOf("## Implementation Plan")).toBeLessThan(updated.indexOf("## Implementation Notes"));
+		expect(updated.indexOf("## Implementation Notes")).toBeLessThan(updated.indexOf("## Final Summary"));
+	});
+
+	it("preserves CRLF line endings through AC updates", () => {
+		const content = "## Acceptance Criteria\r\n<!-- AC:BEGIN -->\r\n- [ ] #1 First\r\n<!-- AC:END -->\r\n";
+		const updated = AcceptanceCriteriaManager.updateContent(content, [
+			{ index: 1, text: "First", checked: true },
+			{ index: 2, text: "Second", checked: false },
+		]);
+		expect(updated).toContain("\r\n");
+		expect(updated).toContain("- [x] #1 First\r\n");
+		expect(updated).toContain("- [ ] #2 Second\r\n");
+	});
+
+	it("preserves custom content between checklist items", () => {
+		const content = `## Acceptance Criteria
+<!-- AC:BEGIN -->
+### Critical
+
+- [ ] #1 Must authenticate
+
+### Optional
+
+- [ ] #2 Show logs
+<!-- AC:END -->`;
+
+		const updated = AcceptanceCriteriaManager.updateContent(content, [
+			{ index: 1, text: "Must authenticate", checked: true },
+			{ index: 2, text: "Show logs", checked: true },
+			{ index: 3, text: "Document", checked: false },
+		]);
+
+		const bodyMatch = updated.match(/<!-- AC:BEGIN -->([\s\S]*?)<!-- AC:END -->/);
+		expect(bodyMatch).not.toBeNull();
+		const body = bodyMatch?.[1] ?? "";
+		expect(body).toContain("### Critical");
+		expect(body).toContain("### Optional");
+		expect(body).toContain("- [x] #1 Must authenticate");
+		expect(body).toContain("- [x] #2 Show logs");
+		expect(body).toContain("- [ ] #3 Document");
+	});
+
+	it("removes the AC section entirely when criteria are cleared", () => {
+		const content = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+<!-- AC:END -->
+
+## Implementation Plan
+
+Plan.`;
+
+		const updated = AcceptanceCriteriaManager.updateContent(content, []);
+		expect(updated).not.toContain("## Acceptance Criteria");
+		expect(updated).not.toContain("<!-- AC:BEGIN -->");
+		expect(updated).not.toContain("- [ ] #1 First");
+		expect(updated).toContain("## Description");
+		expect(updated).toContain("## Implementation Plan");
+	});
+
+	it("is stable across repeated add and remove cycles", () => {
+		const content = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+<!-- AC:END -->
+
+## Implementation Plan
+
+Plan.`;
+
+		let current = content;
+		current = AcceptanceCriteriaManager.updateContent(current, [
+			{ index: 1, text: "First", checked: false },
+			{ index: 2, text: "Temp", checked: false },
+		]);
+		current = AcceptanceCriteriaManager.updateContent(current, [{ index: 1, text: "First", checked: false }]);
+		expect(current).toBe(content);
+	});
+
+	it("fails closed on malformed Acceptance Criteria markers", () => {
+		const content = `## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 First
+`; // missing AC:END
+
+		expect(() =>
+			AcceptanceCriteriaManager.updateContent(content, [{ index: 1, text: "First", checked: false }]),
+		).toThrow("Malformed Acceptance Criteria markers");
+	});
+
+	it("applies deterministic serialization to Definition of Done", () => {
+		const content = `## Description
+
+Desc.
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 AC
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Run tests
+<!-- DOD:END -->
+
+## Implementation Plan
+
+Plan.`;
+
+		const updated = DefinitionOfDoneManager.updateContent(content, [
+			{ index: 1, text: "Run tests", checked: true },
+			{ index: 2, text: "Update docs", checked: false },
+		]);
+
+		expect(updated.indexOf("## Acceptance Criteria")).toBeLessThan(updated.indexOf("## Definition of Done"));
+		expect(updated.indexOf("## Definition of Done")).toBeLessThan(updated.indexOf("## Implementation Plan"));
+		expect(updated).toContain("- [x] #1 Run tests");
+		expect(updated).toContain("- [ ] #2 Update docs");
+	});
+
+	it("fails closed on malformed Definition of Done markers", () => {
+		const content = `## Definition of Done
+<!-- DOD:END -->
+- [ ] #1 Run tests
+<!-- DOD:BEGIN -->`;
+
+		expect(() =>
+			DefinitionOfDoneManager.updateContent(content, [{ index: 1, text: "Run tests", checked: false }]),
+		).toThrow("Malformed Definition of Done markers");
 	});
 });

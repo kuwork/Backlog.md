@@ -503,6 +503,22 @@ export class TaskHandlers {
 				throw new BacklogToolError("Ordinal must be a non-negative number.", "VALIDATION_ERROR");
 			}
 
+			if (args.acceptanceCriteriaClear) {
+				if (
+					(args.acceptanceCriteriaSet && args.acceptanceCriteriaSet.length > 0) ||
+					(args.acceptanceCriteriaAdd && args.acceptanceCriteriaAdd.length > 0) ||
+					(args.acceptanceCriteriaRemove && args.acceptanceCriteriaRemove.length > 0) ||
+					(args.acceptanceCriteriaCheck && args.acceptanceCriteriaCheck.length > 0) ||
+					(args.acceptanceCriteriaUncheck && args.acceptanceCriteriaUncheck.length > 0)
+				) {
+					throw new BacklogToolError(
+						"Cannot combine acceptanceCriteriaClear with acceptanceCriteriaSet, Add, Remove, Check, or Uncheck. Use acceptanceCriteriaClear alone, then call task_edit again with acceptanceCriteriaAdd to replace the full list.",
+						"VALIDATION_ERROR",
+					);
+				}
+				args.acceptanceCriteriaSet = [];
+			}
+
 			const updateInput = buildTaskUpdateInput(args);
 			if (typeof updateInput.milestone === "string") {
 				updateInput.milestone = await this.resolveMilestoneInput(updateInput.milestone);

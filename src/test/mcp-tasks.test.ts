@@ -865,4 +865,124 @@ describe("MCP task tools (MVP)", () => {
 		expect(standaloneText).not.toContain("Subtasks (");
 		expect(standaloneText).not.toContain("Subtasks:");
 	});
+
+	describe("task_edit acceptanceCriteriaClear", () => {
+		it("clears all acceptance criteria", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "AC Clear Test",
+						acceptanceCriteria: ["First", "Second", "Third"],
+					},
+				},
+			});
+
+			const clearResult = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						acceptanceCriteriaClear: true,
+					},
+				},
+			});
+
+			const clearText = getText(clearResult.content);
+			expect(clearText).toContain("Task TASK-1 - AC Clear Test");
+			expect(clearText).toContain("No acceptance criteria defined");
+			expect(clearText).not.toContain("- [ ] #1 First");
+			expect(clearText).not.toContain("- [ ] #2 Second");
+			expect(clearText).not.toContain("- [ ] #3 Third");
+		});
+
+		it("rejects combining acceptanceCriteriaClear with acceptanceCriteriaAdd", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "AC Clear Reject Test",
+						acceptanceCriteria: ["First"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						acceptanceCriteriaClear: true,
+						acceptanceCriteriaAdd: ["New"],
+					},
+				},
+			});
+
+			expect(result.isError).toBe(true);
+			expect(getText(result.content)).toContain("Cannot combine acceptanceCriteriaClear");
+		});
+
+		it("rejects combining acceptanceCriteriaClear with acceptanceCriteriaCheck", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "AC Clear Reject Check Test",
+						acceptanceCriteria: ["First"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						acceptanceCriteriaClear: true,
+						acceptanceCriteriaCheck: [1],
+					},
+				},
+			});
+
+			expect(result.isError).toBe(true);
+			expect(getText(result.content)).toContain("Cannot combine acceptanceCriteriaClear");
+		});
+
+		it("supports clear followed by add in separate calls", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "AC Clear Then Add Test",
+						acceptanceCriteria: ["Old"],
+					},
+				},
+			});
+
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						acceptanceCriteriaClear: true,
+					},
+				},
+			});
+
+			const addResult = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						acceptanceCriteriaAdd: ["New first", "New second"],
+					},
+				},
+			});
+
+			const addText = getText(addResult.content);
+			expect(addText).toContain("- [ ] #1 New first");
+			expect(addText).toContain("- [ ] #2 New second");
+			expect(addText).not.toContain("Old");
+		});
+	});
 });
