@@ -25,11 +25,14 @@ import Layout from "./components/Layout";
 import MilestonesPage from "./components/MilestonesPage";
 import Settings from "./components/Settings";
 import Statistics from "./components/Statistics";
+import DuplicateTaskRepairModal from "./components/DuplicateTaskRepairModal";
 import { SuccessToast } from "./components/SuccessToast";
 import TaskDetailsModal from "./components/TaskDetailsModal";
 import TaskList from "./components/TaskList";
 import WikiDetail from "./components/WikiDetail";
+import type { DuplicateRepairPlan } from "../core/duplicate-task-repair.ts";
 import { useHealthCheckContext } from "./contexts/HealthCheckContext";
+import { useI18n } from "./hooks/useI18n";
 import { useI18nContext } from "./contexts/I18nContext";
 import { ImageLightboxProvider } from "./contexts/ImageLightboxContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -224,8 +227,11 @@ function AppContent() {
 	const [wikiTree, setWikiTree] = useState<WikiTreeNode[]>([]);
 	const [docsTree, setDocsTree] = useState<DocsTreeNode[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [duplicatePlan, setDuplicatePlan] = useState<DuplicateRepairPlan | null>(null);
+	const [showDuplicateRepairModal, setShowDuplicateRepairModal] = useState(false);
 
 	const { isOnline } = useHealthCheckContext();
+	const { t } = useI18n();
 	const { setLocale } = useI18nContext();
 	const previousOnlineRef = useRef<boolean | null>(null);
 	const hasBeenRunningRef = useRef(false);
@@ -360,6 +366,14 @@ function AppContent() {
 			setDrafts(draftsData);
 			setWikiTree(wikiTreeData);
 			setDocsTree(docsTreeData);
+
+			try {
+				const duplicatePreview = await apiClient.getDuplicateTaskIdsPreview();
+				setDuplicatePlan(duplicatePreview);
+			} catch (error) {
+				console.error("Failed to load duplicate task ID preview:", error);
+				setDuplicatePlan(null);
+			}
 		} catch (error) {
 			console.error("Failed to load data:", error);
 		} finally {
@@ -398,6 +412,14 @@ function AppContent() {
 							(milestone) => !archivedKeys.has(milestoneKey(milestone)),
 						),
 					);
+
+					try {
+						const duplicatePreview = await apiClient.getDuplicateTaskIdsPreview();
+						setDuplicatePlan(duplicatePreview);
+					} catch (error) {
+						console.error("Failed to reload duplicate task ID preview:", error);
+						setDuplicatePlan(null);
+					}
 				} catch (error) {
 					console.error("Failed to reload data:", error);
 				}
@@ -706,6 +728,23 @@ function AppContent() {
 
 	return (
 		<>
+			{duplicatePlan && duplicatePlan.groups.length > 0 && (
+				<div className="fixed top-0 left-0 right-0 z-40 bg-yellow-50 dark:bg-yellow-900/40 border-b border-yellow-200 dark:border-yellow-700 px-4 py-2">
+					<div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+						<p className="text-sm text-yellow-800 dark:text-yellow-200 truncate">
+							{t.duplicateRepair.warning(duplicatePlan.groups.length)}
+						</p>
+						<button
+							type="button"
+							onClick={() => setShowDuplicateRepairModal(true)}
+							className="shrink-0 px-3 py-1 rounded-md text-sm font-medium bg-yellow-100 dark:bg-yellow-800 text-yellow-900 dark:text-yellow-100 hover:bg-yellow-200 dark:hover:bg-yellow-700"
+						>
+							{t.duplicateRepair.review}
+						</button>
+					</div>
+				</div>
+			)}
+
 			<Routes location={mainLocation}>
 				<Route path="/" element={<Layout {...layoutProps} />}>
 					<Route index element={<BoardPage {...boardPageProps} />} />
@@ -805,6 +844,12 @@ function AppContent() {
 				isDraftMode={isDraftMode}
 				definitionOfDoneDefaults={config?.definitionOfDone ?? []}
 				availableLabels={collectAvailableLabels(tasks, availableLabels)}
+			/>
+
+			<DuplicateTaskRepairModal
+				isOpen={showDuplicateRepairModal}
+				onClose={() => setShowDuplicateRepairModal(false)}
+				onRepaired={refreshData}
 			/>
 
 			{/* Task Creation Confirmation Toast */}

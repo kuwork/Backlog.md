@@ -428,6 +428,36 @@ export const en = {
 		failedToExecute: "Failed to execute cleanup",
 	},
 
+	duplicateRepair: {
+		title: "Duplicate Task IDs",
+		warning: (count: number) =>
+			count === 1 ? "1 duplicate task ID group was found." : `${count} duplicate task ID groups were found.`,
+		review: "Review",
+		loadingPreview: "Loading preview...",
+		noDuplicates: "No duplicate task IDs found.",
+		group: (index: number, id: string) => `Group #${index}: ${id}`,
+		plannedRepairs: "Planned repairs",
+		referencesToReview: "References requiring manual review",
+		blockedReasons: "Blocked reasons",
+		cannotRepair: "This repair cannot be applied automatically.",
+		repair: "Repair",
+		repairing: "Repairing...",
+		commit: "Commit",
+		committing: "Committing...",
+		rollback: "Rollback",
+		rollingBack: "Rolling back...",
+		repairSuccess: (count: number) => `Repaired ${count} duplicate file(s).`,
+		commitSuccess: (count: number) => `Committed repair. Removed ${count} backup(s).`,
+		rollbackSuccess: (restored: number, removed: number) =>
+			`Rolled back repair. Restored ${restored} file(s), removed ${removed} backup(s).`,
+		failedToLoadPreview: "Failed to load preview",
+		failedToRepair: "Failed to repair",
+		failedToCommit: "Failed to commit",
+		failedToRollback: "Failed to roll back",
+		manualReferenceHint:
+			"Backups are retained. Review and update the references above, then commit the repair to discard backups. Use rollback to undo before committing.",
+	},
+
 	statistics: {
 		loadingMessages: [
 			"Building statistics...",

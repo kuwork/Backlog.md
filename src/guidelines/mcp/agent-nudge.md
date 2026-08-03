@@ -13,6 +13,7 @@ This project uses Backlog.md MCP for all task and project management activities.
 - **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
 - **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
 - **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
+- **Duplicate or ambiguous task IDs** (e.g., `task-1` and `task-01`) should be handled with `backlog doctor` via a terminal tool. Do not rename files or edit frontmatter IDs manually. Apply `--fix` only after reviewing the preview, then use `--commit` to finalize or `--rollback` to undo before committing.
 
 These guides cover:
 - Decision framework for when to create tasks

@@ -429,6 +429,34 @@ export const zhCN: TranslationDict = {
 		failedToExecute: "清理执行失败",
 	},
 
+	duplicateRepair: {
+		title: "重复任务 ID",
+		warning: (count: number) => (count === 1 ? "发现 1 组重复任务 ID。" : `发现 ${count} 组重复任务 ID。`),
+		review: "查看",
+		loadingPreview: "加载预览中...",
+		noDuplicates: "未发现重复任务 ID。",
+		group: (index: number, id: string) => `第 ${index} 组：${id}`,
+		plannedRepairs: "计划修复",
+		referencesToReview: "需要手动检查的引用",
+		blockedReasons: "阻塞原因",
+		cannotRepair: "无法自动应用此修复。",
+		repair: "修复",
+		repairing: "修复中...",
+		commit: "提交",
+		committing: "提交中...",
+		rollback: "回滚",
+		rollingBack: "回滚中...",
+		repairSuccess: (count: number) => `已修复 ${count} 个重复文件。`,
+		commitSuccess: (count: number) => `已提交修复，移除 ${count} 个备份。`,
+		rollbackSuccess: (restored: number, removed: number) =>
+			`已回滚修复。恢复 ${restored} 个文件，移除 ${removed} 个备份。`,
+		failedToLoadPreview: "预览加载失败",
+		failedToRepair: "修复失败",
+		failedToCommit: "提交失败",
+		failedToRollback: "回滚失败",
+		manualReferenceHint: "备份已保留。请检查并更新上方引用，然后提交修复以丢弃备份。如需撤销，请在提交前使用回滚。",
+	},
+
 	statistics: {
 		loadingMessages: [
 			"构建统计中...",

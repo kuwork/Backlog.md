@@ -115,6 +115,36 @@ If new work appears during implementation that wasn't in the original acceptance
 - When completing a single subtask (without explicit instruction to continue), present progress and ask: "Subtask X is complete. Should I proceed with subtask Y, or would you like to review first?"
 - Each subtask should be fully completed (all acceptance criteria met, tests passing) before moving to the next
 
+### Duplicate Task ID Recovery
+
+If task IDs are ambiguous or duplicated (for example `task-1` and `task-01` coexist, or a merge produced two files with the same numeric ID), do not rename files or edit frontmatter IDs directly. Use the CLI repair workflow through a terminal tool:
+
+1. Run a preview diagnosis:
+   ```bash
+   backlog doctor
+   ```
+2. Review the planned file renames, frontmatter updates, and the list of references that require manual review.
+3. Apply only when the preview is safe and unambiguous:
+   ```bash
+   backlog doctor --fix
+   # or, after explicit verification:
+   backlog doctor --fix --yes
+   ```
+4. After the repair runs, manually review and update the reported references in tasks, docs, decisions, or code. Follow these principles while fixing references:
+   - **Human-first**: read the reported path, line, and context before changing anything. The list is for human review; an agent may assist but must not make ambiguous decisions.
+   - **Fail-closed**: if a reference is ambiguous, leave it unchanged and report it to the user for confirmation. Do not guess.
+   - **No guessing references**: only replace an old ID with the new canonical ID when you are certain the reference points to the repaired task.
+   - **Content preservation**: only change the reference ID itself; do not rewrite surrounding text or formatting.
+   - **No cross-branch mutation**: only edit files in the current working directory. Report cross-branch references instead of editing them.
+   - **Rollback-safe**: backups are retained until `--commit`; if you make a mistake, run `--rollback` before `--commit`.
+5. Finalize or undo once references are handled:
+   ```bash
+   backlog doctor --commit   # finalize the repair and discard retained backups
+   backlog doctor --rollback # undo the repair before commit
+   ```
+
+The repair preserves all task content and only changes the filename and frontmatter `id`. It is atomic, deterministic, and rollback-safe.
+
 ### Finalizing the Task
 
 When implementation is finished, follow the **Task Finalization Guide** (`backlog://workflow/task-finalization`) to finalize your work. This ensures acceptance criteria are verified, implementation is documented, and the task is properly closed.

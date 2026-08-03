@@ -429,6 +429,34 @@ export const zhTW: TranslationDict = {
 		failedToExecute: "清理執行失敗",
 	},
 
+	duplicateRepair: {
+		title: "重複任務 ID",
+		warning: (count: number) => (count === 1 ? "發現 1 組重複任務 ID。" : `發現 ${count} 組重複任務 ID。`),
+		review: "查看",
+		loadingPreview: "載入預覽中...",
+		noDuplicates: "未發現重複任務 ID。",
+		group: (index: number, id: string) => `第 ${index} 組：${id}`,
+		plannedRepairs: "計劃修復",
+		referencesToReview: "需要手動檢查的引用",
+		blockedReasons: "阻塞原因",
+		cannotRepair: "無法自動套用此修復。",
+		repair: "修復",
+		repairing: "修復中...",
+		commit: "提交",
+		committing: "提交中...",
+		rollback: "回滾",
+		rollingBack: "回滾中...",
+		repairSuccess: (count: number) => `已修復 ${count} 個重複檔案。`,
+		commitSuccess: (count: number) => `已提交修復，移除 ${count} 個備份。`,
+		rollbackSuccess: (restored: number, removed: number) =>
+			`已回滾修復。恢復 ${restored} 個檔案，移除 ${removed} 個備份。`,
+		failedToLoadPreview: "預覽載入失敗",
+		failedToRepair: "修復失敗",
+		failedToCommit: "提交失敗",
+		failedToRollback: "回滾失敗",
+		manualReferenceHint: "備份已保留。請檢查並更新上方引用，然後提交修復以丟棄備份。如需復原，請在提交前使用回滾。",
+	},
+
 	statistics: {
 		loadingMessages: [
 			"構建統計中...",

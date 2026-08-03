@@ -409,6 +409,87 @@ implementation.
 - Append Implementation Notes during implementation using `--append-notes` as progress is made.
 - Add Final Summary only after completing the work: `backlog task edit <id> --final-summary "..."` (replace) or append using `--append-final-summary`.
 
+### 5.7 Duplicate Task ID Recovery (`backlog doctor`)
+
+When a task ID is ambiguous or duplicate — for example `task-1` and `task-01` coexist, or a merge produced two files with the same numeric ID — do **not** guess which file to edit and do **not** rename files or edit frontmatter IDs manually. Use the `backlog doctor` command instead.
+
+#### Diagnose
+
+```bash
+# Preview-only: lists collision groups, planned renames, and references for review
+backlog doctor
+```
+
+The preview shows:
+- Each duplicate ID group with exact file paths
+- Which file keeps the canonical ID and which files receive new IDs
+- The deterministic rename and frontmatter update plan
+- A list of references in other files that may need manual review
+
+#### Apply the repair
+
+Only apply the repair after reviewing the preview. If the plan is safe and unambiguous:
+
+```bash
+# Interactive confirmation
+backlog doctor --fix
+
+# Non-interactive, only when you have verified the preview
+backlog doctor --fix --yes
+```
+
+#### What the repair does and does not do
+
+The repair:
+- Renames the duplicate task files to new, unused IDs
+- Updates the renamed file's frontmatter `id` field atomically
+- Preserves all task content, AC/DoD, notes, and comments
+- Reports references for manual review
+
+The repair does **not**:
+- Update references in other files automatically
+- Modify files on other branches
+- Guess which reference is meant when an ID is ambiguous
+- Run if any collision group is blocked (missing parent, subtask mismatch, target path exists, etc.)
+
+#### Fix references manually
+
+After `backlog doctor --fix`, review every reference reported in the plan. The reference list is designed for humans to read first; an agent can assist, but must not make ambiguous decisions. Follow these principles while updating references:
+
+- **Human-first**: the reference list is for a human to understand. Read the reported path, line, and context before changing anything. Do not rely on automated search-and-replace across the whole project.
+- **Fail-closed**: if a reference is ambiguous — for example the text says "see task-1" but it is unclear whether it means the canonical file or one of the renamed files — leave it unchanged and report it to the user. Do not guess.
+- **No guessing references**: only replace an old ID with the new canonical ID when you are certain the reference points to the repaired task. When in doubt, leave it for human review.
+- **Content preservation**: only change the reference ID itself; do not rewrite surrounding sentences, alter formatting, or add extra content. Preserve AC/DoD, notes, comments, and history.
+- **No cross-branch mutation**: only edit files in the current working directory. Do not modify files on other git branches. If a reference lives in a cross-branch file, report it instead of editing it.
+- **Rollback-safe**: because backups are retained until `--commit`, you can still run `backlog doctor --rollback` if you make a mistake while fixing references. Do not run `--commit` until you are confident the references are resolved.
+
+Edit the containing files through normal project editing tools (e.g., `backlog doc update`, `backlog task edit`, or direct file edits for code and documentation). Replace old IDs with the new canonical IDs only where you are certain the reference points to the repaired task. Leave ambiguous references unchanged and report them to the user.
+
+The `--fix` output reminds you which commands are available next. Do not ignore those reminders.
+
+#### Finalize or undo the repair
+
+Backups are retained after `--fix` so you can recover if something goes wrong while you are manually updating references. Use these commands after review:
+
+```bash
+# After all reported references are handled, discard retained backups and finalize the repair
+backlog doctor --commit
+
+# If you need to undo the repair before commit, restore the original files
+backlog doctor --rollback
+```
+
+Only run `--commit` when you are confident the repair is correct and references are resolved. Once `--commit` removes the backups, `--rollback` is no longer available for that repair.
+
+#### Core principles
+
+- **Fail-closed**: ambiguous ID operations stop and ask for `backlog doctor` instead of choosing one file.
+- **Deterministic**: the same collision state always produces the same repair plan.
+- **Content-preserving**: only the filename and frontmatter `id` change; task body stays intact.
+- **Atomic**: filename rename and frontmatter update happen together.
+- **No guessing**: references are reported, not silently rewritten.
+- **Rollback-safe**: if the repair fails, backups and staged files are reconciled without overwriting external changes.
+
 ## Phase discipline: What goes where
 
 - Creation: Title, Description, Acceptance Criteria, labels/priority/assignee.

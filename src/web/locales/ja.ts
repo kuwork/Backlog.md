@@ -432,6 +432,38 @@ export const ja: TranslationDict = {
 		failedToExecute: "クリーンアップの実行に失敗しました",
 	},
 
+	duplicateRepair: {
+		title: "重複タスク ID",
+		warning: (count: number) =>
+			count === 1
+				? "重複タスク ID グループが 1 つ見つかりました。"
+				: `${count} つの重複タスク ID グループが見つかりました。`,
+		review: "確認",
+		loadingPreview: "プレビューを読み込み中...",
+		noDuplicates: "重複タスク ID は見つかりませんでした。",
+		group: (index: number, id: string) => `グループ #${index}: ${id}`,
+		plannedRepairs: "計画された修復",
+		referencesToReview: "手動確認が必要な参照",
+		blockedReasons: "ブロック理由",
+		cannotRepair: "この修復は自動的に適用できません。",
+		repair: "修復",
+		repairing: "修復中...",
+		commit: "確定",
+		committing: "確定中...",
+		rollback: "ロールバック",
+		rollingBack: "ロールバック中...",
+		repairSuccess: (count: number) => `${count} 件の重複ファイルを修復しました。`,
+		commitSuccess: (count: number) => `修復を確定し、${count} 件のバックアップを削除しました。`,
+		rollbackSuccess: (restored: number, removed: number) =>
+			`修復をロールバックしました。${restored} 件のファイルを復元し、${removed} 件のバックアップを削除しました。`,
+		failedToLoadPreview: "プレビューの読み込みに失敗しました",
+		failedToRepair: "修復に失敗しました",
+		failedToCommit: "確定に失敗しました",
+		failedToRollback: "ロールバックに失敗しました",
+		manualReferenceHint:
+			"バックアップは保持されています。上記の参照を確認・更新してから修復を確定し、バックアップを破棄してください。確定前に元に戻す場合はロールバックを使用してください。",
+	},
+
 	statistics: {
 		loadingMessages: [
 			"統計を構築中...",

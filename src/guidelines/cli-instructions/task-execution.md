@@ -141,6 +141,36 @@ Use CLI commands for Backlog changes:
 
 Do not edit Backlog markdown files directly. The CLI preserves metadata, IDs, filenames, relationships, and structured sections.
 
+### Duplicate Task ID Recovery
+
+If you encounter ambiguous or duplicate task IDs (e.g., `task-1` and `task-01` both exist, or two files share the same numeric ID after a merge), do not edit files directly. Use the CLI repair workflow:
+
+1. Preview the diagnosis:
+   ```bash
+   backlog doctor
+   ```
+2. Review the planned renames, frontmatter updates, and reference-review list.
+3. Apply only when the preview is unambiguous:
+   ```bash
+   backlog doctor --fix
+   # or non-interactive after verification
+   backlog doctor --fix --yes
+   ```
+4. After repair, manually review and update the reported references in tasks, docs, decisions, or code. Follow these principles while fixing references:
+   - **Human-first**: read the reported path, line, and context before changing anything. The list is for human review; an agent may assist but must not make ambiguous decisions.
+   - **Fail-closed**: if a reference is ambiguous, leave it unchanged and report it to the user. Do not guess.
+   - **No guessing references**: only replace an old ID with the new canonical ID when you are certain the reference points to the repaired task.
+   - **Content preservation**: only change the reference ID itself; do not rewrite surrounding text or formatting.
+   - **No cross-branch mutation**: only edit files in the current working directory. Report cross-branch references instead of editing them.
+   - **Rollback-safe**: backups are retained until `--commit`; if you make a mistake, run `--rollback` before `--commit`.
+5. Finalize or undo once references are handled:
+   ```bash
+   backlog doctor --commit   # finalize the repair and discard retained backups
+   backlog doctor --rollback # undo the repair before commit
+   ```
+
+The repair preserves task content and only updates the filename and frontmatter `id`. It is atomic, deterministic, and rollback-safe.
+
 ### Finishing
 
 When implementation is complete, continue with:

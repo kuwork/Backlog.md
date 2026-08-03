@@ -5,6 +5,12 @@ import getPort, { portNumbers } from "get-port";
 import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { convertDocxToMarkdown } from "../core/docx-converter.ts";
+import {
+	applyDuplicateTaskIdRepair,
+	commitDuplicateTaskIdRepair,
+	previewDuplicateTaskIdRepair,
+	rollbackDuplicateTaskIdRepair,
+} from "../core/duplicate-task-repair.ts";
 import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
@@ -540,6 +546,18 @@ export class BacklogServer {
 					},
 					"/api/tasks/cleanup/execute": {
 						POST: async (req: Request) => await this.handleCleanupExecute(req),
+					},
+					"/api/tasks/duplicate-ids": {
+						GET: async () => await this.handleDuplicateIdsPreview(),
+					},
+					"/api/tasks/duplicate-ids/repair": {
+						POST: async () => await this.handleDuplicateIdsRepair(),
+					},
+					"/api/tasks/duplicate-ids/commit": {
+						POST: async () => await this.handleDuplicateIdsCommit(),
+					},
+					"/api/tasks/duplicate-ids/rollback": {
+						POST: async () => await this.handleDuplicateIdsRollback(),
 					},
 					"/api/version": {
 						GET: async () => await this.handleGetVersion(),
@@ -2055,6 +2073,70 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error executing cleanup:", error);
 			return Response.json({ error: "Failed to execute cleanup" }, { status: 500 });
+		}
+	}
+
+	private async handleDuplicateIdsPreview(): Promise<Response> {
+		try {
+			const plan = await previewDuplicateTaskIdRepair(this.core);
+			return Response.json({
+				groups: plan.groups,
+				changes: plan.changes,
+				references: plan.references,
+				referenceScanComplete: plan.referenceScanComplete,
+				blockedReasons: plan.blockedReasons,
+				repairable: plan.repairable,
+			});
+		} catch (error) {
+			console.error("Error getting duplicate ID preview:", error);
+			const message = error instanceof Error ? error.message : "Failed to get duplicate ID preview";
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	private async handleDuplicateIdsRepair(): Promise<Response> {
+		try {
+			const plan = await previewDuplicateTaskIdRepair(this.core);
+			if (!plan.repairable) {
+				return Response.json(
+					{ error: "Duplicate task IDs cannot be repaired automatically.", blockedReasons: plan.blockedReasons },
+					{ status: 409 },
+				);
+			}
+			const result = await applyDuplicateTaskIdRepair(this.core, plan);
+			this.broadcastTasksUpdated();
+			return Response.json({
+				repairedFiles: result.repairedFiles,
+				changes: result.changes,
+				references: result.references,
+			});
+		} catch (error) {
+			console.error("Error repairing duplicate task IDs:", error);
+			const message = error instanceof Error ? error.message : "Failed to repair duplicate task IDs";
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	private async handleDuplicateIdsCommit(): Promise<Response> {
+		try {
+			const { removedBackups } = await commitDuplicateTaskIdRepair(this.core);
+			return Response.json({ removedBackups });
+		} catch (error) {
+			console.error("Error committing duplicate ID repair:", error);
+			const message = error instanceof Error ? error.message : "Failed to commit duplicate ID repair";
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	private async handleDuplicateIdsRollback(): Promise<Response> {
+		try {
+			const { restored, removed } = await rollbackDuplicateTaskIdRepair(this.core);
+			this.broadcastTasksUpdated();
+			return Response.json({ restored, removed });
+		} catch (error) {
+			console.error("Error rolling back duplicate ID repair:", error);
+			const message = error instanceof Error ? error.message : "Failed to roll back duplicate ID repair";
+			return Response.json({ error: message }, { status: 500 });
 		}
 	}
 

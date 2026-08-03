@@ -4653,6 +4653,112 @@ addHelpSchema(program.command("cleanup"), {
 		}
 	});
 
+// Doctor command for duplicate task ID diagnosis and repair
+addHelpSchema(program.command("doctor"), {
+	reads: "Active and completed task files plus Backlog Markdown references",
+	required: [],
+	optional: [
+		{ name: "--fix", type: "Boolean", description: "Apply the displayed duplicate task ID repair after confirmation" },
+		{ name: "--yes", type: "Boolean", description: "Skip interactive confirmation when combined with --fix" },
+		{ name: "--commit", type: "Boolean", description: "Finalize a repair by discarding retained backups" },
+		{ name: "--rollback", type: "Boolean", description: "Undo a recent repair by restoring retained backups" },
+	],
+	writes:
+		"With --fix, atomically renames duplicate task files and updates only their frontmatter IDs; --commit removes retained backups; --rollback restores original files",
+	output: "Duplicate-ID diagnosis, deterministic repair preview, and lifecycle reminders",
+	examples: [
+		"backlog doctor",
+		"backlog doctor --fix",
+		"backlog doctor --fix --yes",
+		"backlog doctor --commit",
+		"backlog doctor --rollback",
+	],
+})
+	.description("diagnose and safely repair duplicate task IDs")
+	.option("--fix", "apply the displayed duplicate task ID repair")
+	.option("--yes", "skip confirmation when applying the repair")
+	.option("--commit", "discard retained backups after references are resolved")
+	.option("--rollback", "restore original files from retained backups")
+	.action(async (options) => {
+		try {
+			const cwd = await requireProjectRoot();
+			const core = new Core(cwd);
+			const config = await core.filesystem.loadConfig();
+			if (!config) {
+				console.error("No backlog project found. Initialize one first with: backlog init");
+				process.exit(1);
+			}
+			core.gitOps.setConfig(config);
+
+			const {
+				previewDuplicateTaskIdRepair,
+				applyDuplicateTaskIdRepair,
+				commitDuplicateTaskIdRepair,
+				rollbackDuplicateTaskIdRepair,
+				printDuplicateRepairPlan,
+			} = await import("./core/duplicate-task-repair.ts");
+
+			if (options.commit) {
+				const { removedBackups } = await commitDuplicateTaskIdRepair(core);
+				console.log(`Committed repair. Removed ${removedBackups.length} retained backup(s).`);
+				return;
+			}
+
+			if (options.rollback) {
+				const { restored, removed } = await rollbackDuplicateTaskIdRepair(core);
+				console.log(`Rolled back repair. Restored ${restored.length} file(s), removed ${removed.length} backup(s).`);
+				return;
+			}
+
+			const plan = await previewDuplicateTaskIdRepair(core);
+
+			if (plan.groups.length === 0) {
+				console.log("No duplicate task IDs found.");
+				return;
+			}
+
+			printDuplicateRepairPlan(plan);
+
+			if (!plan.repairable) {
+				console.log("\nResolve the blocked reasons above, then run 'backlog doctor' again.");
+				process.exitCode = 1;
+				return;
+			}
+
+			if (!options.fix) {
+				console.log("\nRun 'backlog doctor --fix' to apply this repair after reviewing the preview.");
+				return;
+			}
+
+			const confirmed =
+				options.yes ||
+				(await clack.confirm({
+					message: `Apply repair for ${plan.changes.length} duplicate file(s)?`,
+					initialValue: false,
+				}));
+
+			if (!confirmed) {
+				console.log("Repair cancelled.");
+				return;
+			}
+
+			const result = await applyDuplicateTaskIdRepair(core, plan);
+			console.log(`\nRepaired ${result.repairedFiles} duplicate file(s).`);
+			if (result.references.length > 0) {
+				console.log("\nReferences requiring manual review:");
+				for (const reference of result.references) {
+					console.log(`  ${reference.path}:${reference.line}  ${reference.text}`);
+					console.log(`    ids: ${reference.ids.join(", ")}`);
+				}
+			}
+			console.log("\nBackups are retained. Run 'backlog doctor --commit' after reviewing/fixing references,");
+			console.log("or 'backlog doctor --rollback' to undo the repair before committing.");
+		} catch (err) {
+			console.error("Failed to run doctor", err);
+			process.exitCode = 1;
+		}
+	});
+
 // Browser command for web UI
 program
 	.command("browser")

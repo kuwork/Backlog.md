@@ -319,6 +319,78 @@ export class ApiClient {
 		});
 	}
 
+	async getDuplicateTaskIdsPreview(): Promise<{
+		groups: Array<{ id: string; tasks: Task[] }>;
+		changes: Array<{
+			sourcePath: string;
+			targetPath: string;
+			oldId: string;
+			newId: string;
+			title: string;
+			location: "active" | "completed";
+		}>;
+		references: Array<{ path: string; line: number; text: string; ids: string[] }>;
+		referenceScanComplete: boolean;
+		blockedReasons: string[];
+		repairable: boolean;
+	}> {
+		return this.fetchJson<{
+			groups: Array<{ id: string; tasks: Task[] }>;
+			changes: Array<{
+				sourcePath: string;
+				targetPath: string;
+				oldId: string;
+				newId: string;
+				title: string;
+				location: "active" | "completed";
+			}>;
+			references: Array<{ path: string; line: number; text: string; ids: string[] }>;
+			referenceScanComplete: boolean;
+			blockedReasons: string[];
+			repairable: boolean;
+		}>(`${API_BASE}/tasks/duplicate-ids`);
+	}
+
+	async repairDuplicateTaskIds(): Promise<{
+		repairedFiles: number;
+		changes: Array<{
+			sourcePath: string;
+			targetPath: string;
+			oldId: string;
+			newId: string;
+			title: string;
+			location: "active" | "completed";
+		}>;
+		references: Array<{ path: string; line: number; text: string; ids: string[] }>;
+	}> {
+		return this.fetchJson<{
+			repairedFiles: number;
+			changes: Array<{
+				sourcePath: string;
+				targetPath: string;
+				oldId: string;
+				newId: string;
+				title: string;
+				location: "active" | "completed";
+			}>;
+			references: Array<{ path: string; line: number; text: string; ids: string[] }>;
+		}>(`${API_BASE}/tasks/duplicate-ids/repair`, {
+			method: "POST",
+		});
+	}
+
+	async commitDuplicateTaskIdsRepair(): Promise<{ removedBackups: string[] }> {
+		return this.fetchJson<{ removedBackups: string[] }>(`${API_BASE}/tasks/duplicate-ids/commit`, {
+			method: "POST",
+		});
+	}
+
+	async rollbackDuplicateTaskIdsRepair(): Promise<{ restored: string[]; removed: string[] }> {
+		return this.fetchJson<{ restored: string[]; removed: string[] }>(`${API_BASE}/tasks/duplicate-ids/rollback`, {
+			method: "POST",
+		});
+	}
+
 	async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
 		return this.updateTask(id, { status });
 	}
