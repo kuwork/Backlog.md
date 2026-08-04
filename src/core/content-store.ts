@@ -45,6 +45,15 @@ export class ContentStore {
 	private cachedDecisions: Decision[] = [];
 	private cachedWikis: WikiPage[] = [];
 
+	private readonly taskVersions = new Map<string, number>();
+	private readonly documentVersions = new Map<string, number>();
+	private readonly decisionVersions = new Map<string, number>();
+	private readonly wikiVersions = new Map<string, number>();
+
+	private nextTaskVersion = 1;
+	private nextDocumentVersion = 1;
+	private nextDecisionVersion = 1;
+
 	private readonly listeners = new Set<ContentStoreListener>();
 	private readonly watchers: WatchHandle[] = [];
 	private restoreFilesystemPatch?: () => void;
@@ -128,7 +137,9 @@ export class ContentStore {
 		if (!this.initialized) {
 			return;
 		}
-		this.tasks.set(task.id, task);
+		const normalizedTask = { ...task, id: normalizeTaskId(task.id) };
+		this.incrementTaskVersion(normalizedTask.id);
+		this.tasks.set(normalizedTask.id, normalizedTask);
 		this.cachedTasks = sortByTaskId(Array.from(this.tasks.values()));
 		this.notify("tasks");
 	}
@@ -373,7 +384,9 @@ export class ContentStore {
 				const exists = await Bun.file(fullPath).exists();
 
 				if (!exists) {
-					if (this.tasks.delete(normalizedTaskId)) {
+					if (this.tasks.has(normalizedTaskId)) {
+						this.incrementTaskVersion(normalizedTaskId);
+						this.tasks.delete(normalizedTaskId);
 						this.cachedTasks = sortByTaskId(Array.from(this.tasks.values()));
 						this.notify("tasks");
 					}
@@ -413,6 +426,7 @@ export class ContentStore {
 					return;
 				}
 
+				this.incrementTaskVersion(task.id);
 				this.tasks.set(task.id, task);
 				this.cachedTasks = sortByTaskId(Array.from(this.tasks.values()));
 				this.notify("tasks");
@@ -446,7 +460,9 @@ export class ContentStore {
 				const exists = await Bun.file(fullPath).exists();
 
 				if (!exists) {
-					if (this.decisions.delete(idPart)) {
+					if (this.decisions.has(idPart)) {
+						this.incrementDecisionVersion(idPart);
+						this.decisions.delete(idPart);
 						this.cachedDecisions = sortByTaskId(Array.from(this.decisions.values()));
 						this.notify("decisions");
 					}
@@ -485,6 +501,7 @@ export class ContentStore {
 					await this.refreshDecisionsFromDisk(idPart, previous);
 					return;
 				}
+				this.incrementDecisionVersion(decision.id);
 				this.decisions.set(decision.id, decision);
 				this.cachedDecisions = sortByTaskId(Array.from(this.decisions.values()));
 				this.notify("decisions");
@@ -524,7 +541,9 @@ export class ContentStore {
 			const exists = await Bun.file(absolutePath).exists();
 
 			if (!exists) {
-				if (this.documents.delete(idPart)) {
+				if (this.documents.has(idPart)) {
+					this.incrementDocumentVersion(idPart);
+					this.documents.delete(idPart);
 					this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
 					this.notify("documents");
 				}
@@ -565,6 +584,7 @@ export class ContentStore {
 				return;
 			}
 
+			this.incrementDocumentVersion(document.id);
 			this.documents.set(document.id, document);
 			this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
 			this.notify("documents");
@@ -700,7 +720,7 @@ export class ContentStore {
 		if (!this.initialized) {
 			return;
 		}
-		await this.refreshDocumentsFromDisk(documentId, this.documents.get(documentId));
+		await this.updateDocumentFromDisk(documentId);
 	}
 
 	private hasTaskChanged(previous: Task, next: Task): boolean {
@@ -716,6 +736,7 @@ export class ContentStore {
 	}
 
 	private async refreshTasksFromDisk(expectedId?: string, previous?: Task): Promise<void> {
+		const capturedVersions = this.captureVersions(this.taskVersions, this.tasks);
 		const tasks = await this.retryRead(
 			async () => this.loadTasksWithLoader(),
 			(expected) => {
@@ -735,11 +756,13 @@ export class ContentStore {
 		if (!tasks) {
 			return;
 		}
-		this.replaceTasks(tasks);
-		this.notify("tasks");
+		if (this.mergeTasks(tasks, capturedVersions)) {
+			this.notify("tasks");
+		}
 	}
 
 	private async refreshDocumentsFromDisk(expectedId?: string, previous?: Document): Promise<void> {
+		const capturedVersions = this.captureVersions(this.documentVersions, this.documents);
 		const documents = await this.retryRead(
 			async () => this.filesystem.listDocuments(),
 			(expected) => {
@@ -759,11 +782,13 @@ export class ContentStore {
 		if (!documents) {
 			return;
 		}
-		this.replaceDocuments(documents);
-		this.notify("documents");
+		if (this.mergeDocuments(documents, capturedVersions)) {
+			this.notify("documents");
+		}
 	}
 
 	private async refreshDecisionsFromDisk(expectedId?: string, previous?: Decision): Promise<void> {
+		const capturedVersions = this.captureVersions(this.decisionVersions, this.decisions);
 		const decisions = await this.retryRead(
 			async () => this.filesystem.listDecisions(),
 			(expected) => {
@@ -783,11 +808,13 @@ export class ContentStore {
 		if (!decisions) {
 			return;
 		}
-		this.replaceDecisions(decisions);
-		this.notify("decisions");
+		if (this.mergeDecisions(decisions, capturedVersions)) {
+			this.notify("decisions");
+		}
 	}
 
 	private async refreshWikisFromDisk(): Promise<void> {
+		const capturedVersions = this.captureVersions(this.wikiVersions, this.wikis);
 		const wikis = await this.retryRead(
 			async () => this.filesystem.listWikiPages(),
 			() => true,
@@ -795,8 +822,9 @@ export class ContentStore {
 		if (!wikis) {
 			return;
 		}
-		this.replaceWikis(wikis);
-		this.notify("wikis");
+		if (this.mergeWikis(wikis, capturedVersions)) {
+			this.notify("wikis");
+		}
 	}
 
 	private async handleDecisionWrite(decisionId: string): Promise<void> {
@@ -816,9 +844,26 @@ export class ContentStore {
 		if (!task) {
 			return;
 		}
-		this.tasks.set(task.id, task);
+		const normalizedTask = { ...task, id: normalizeTaskId(task.id) };
+		this.incrementTaskVersion(normalizedTask.id);
+		this.tasks.set(normalizedTask.id, normalizedTask);
 		this.cachedTasks = sortByTaskId(Array.from(this.tasks.values()));
 		this.notify("tasks");
+	}
+
+	private async updateDocumentFromDisk(documentId: string): Promise<void> {
+		const previous = this.documents.get(documentId);
+		const document = await this.retryRead(
+			async () => this.filesystem.loadDocument(documentId),
+			(result) => result !== null && (!previous || this.hasDocumentChanged(previous, result)),
+		);
+		if (!document) {
+			return;
+		}
+		this.incrementDocumentVersion(document.id);
+		this.documents.set(document.id, document);
+		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
+		this.notify("documents");
 	}
 
 	private async updateDecisionFromDisk(decisionId: string): Promise<void> {
@@ -830,6 +875,7 @@ export class ContentStore {
 		if (!decision) {
 			return;
 		}
+		this.incrementDecisionVersion(decision.id);
 		this.decisions.set(decision.id, decision);
 		this.cachedDecisions = sortByTaskId(Array.from(this.decisions.values()));
 		this.notify("decisions");
@@ -958,6 +1004,225 @@ export class ContentStore {
 			});
 	}
 
+	private captureVersions<T>(versions: Map<string, number>, items: Map<string, T>): Map<string, number> {
+		const captured = new Map<string, number>();
+		for (const id of items.keys()) {
+			captured.set(id, versions.get(id) ?? 0);
+		}
+		return captured;
+	}
+
+	private incrementTaskVersion(taskId: string): void {
+		this.taskVersions.set(normalizeTaskId(taskId), this.nextTaskVersion++);
+	}
+
+	private incrementDocumentVersion(documentId: string): void {
+		this.documentVersions.set(documentId, this.nextDocumentVersion++);
+	}
+
+	private incrementDecisionVersion(decisionId: string): void {
+		this.decisionVersions.set(decisionId, this.nextDecisionVersion++);
+	}
+
+	private mergeTasks(loaded: Task[], capturedVersions: Map<string, number>): boolean {
+		let changed = false;
+		const nextTasks = new Map<string, Task>();
+
+		for (const task of loaded) {
+			const id = normalizeTaskId(task.id);
+			const existing = this.tasks.get(id);
+			const capturedVersion = capturedVersions.get(id);
+			const currentVersion = this.taskVersions.get(id) ?? 0;
+
+			if (!existing) {
+				// New item from disk: add it.
+				nextTasks.set(id, task);
+				changed = true;
+				continue;
+			}
+
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				// Item existed at refresh start and was not modified in-memory: accept disk version.
+				if (this.hasTaskChanged(existing, task)) {
+					changed = true;
+				}
+				nextTasks.set(id, task);
+			} else {
+				// Item was modified during refresh: keep in-memory version.
+				nextTasks.set(id, existing);
+			}
+		}
+
+		// Remove items that existed at refresh start, were not modified, and are now missing from disk.
+		for (const [id, existing] of this.tasks) {
+			if (nextTasks.has(id)) continue;
+			const capturedVersion = capturedVersions.get(id);
+			const currentVersion = this.taskVersions.get(id) ?? 0;
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				changed = true;
+				continue;
+			}
+			nextTasks.set(id, existing);
+		}
+
+		if (!changed) {
+			return false;
+		}
+
+		this.tasks.clear();
+		for (const [id, task] of nextTasks) {
+			this.tasks.set(id, task);
+		}
+		this.cachedTasks = sortByTaskId(Array.from(this.tasks.values()));
+		return true;
+	}
+
+	private mergeDocuments(loaded: Document[], capturedVersions: Map<string, number>): boolean {
+		let changed = false;
+		const nextDocuments = new Map<string, Document>();
+
+		for (const document of loaded) {
+			const id = document.id;
+			const existing = this.documents.get(id);
+			const capturedVersion = capturedVersions.get(id);
+			const currentVersion = this.documentVersions.get(id) ?? 0;
+
+			if (!existing) {
+				nextDocuments.set(id, document);
+				changed = true;
+				continue;
+			}
+
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				if (this.hasDocumentChanged(existing, document)) {
+					changed = true;
+				}
+				nextDocuments.set(id, document);
+			} else {
+				nextDocuments.set(id, existing);
+			}
+		}
+
+		for (const [id, existing] of this.documents) {
+			if (nextDocuments.has(id)) continue;
+			const capturedVersion = capturedVersions.get(id);
+			const currentVersion = this.documentVersions.get(id) ?? 0;
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				changed = true;
+				continue;
+			}
+			nextDocuments.set(id, existing);
+		}
+
+		if (!changed) {
+			return false;
+		}
+
+		this.documents.clear();
+		for (const [id, document] of nextDocuments) {
+			this.documents.set(id, document);
+		}
+		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
+		return true;
+	}
+
+	private mergeDecisions(loaded: Decision[], capturedVersions: Map<string, number>): boolean {
+		let changed = false;
+		const nextDecisions = new Map<string, Decision>();
+
+		for (const decision of loaded) {
+			const id = decision.id;
+			const existing = this.decisions.get(id);
+			const capturedVersion = capturedVersions.get(id);
+			const currentVersion = this.decisionVersions.get(id) ?? 0;
+
+			if (!existing) {
+				nextDecisions.set(id, decision);
+				changed = true;
+				continue;
+			}
+
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				if (this.hasDecisionChanged(existing, decision)) {
+					changed = true;
+				}
+				nextDecisions.set(id, decision);
+			} else {
+				nextDecisions.set(id, existing);
+			}
+		}
+
+		for (const [id, existing] of this.decisions) {
+			if (nextDecisions.has(id)) continue;
+			const capturedVersion = capturedVersions.get(id);
+			const currentVersion = this.decisionVersions.get(id) ?? 0;
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				changed = true;
+				continue;
+			}
+			nextDecisions.set(id, existing);
+		}
+
+		if (!changed) {
+			return false;
+		}
+
+		this.decisions.clear();
+		for (const [id, decision] of nextDecisions) {
+			this.decisions.set(id, decision);
+		}
+		this.cachedDecisions = sortByTaskId(Array.from(this.decisions.values()));
+		return true;
+	}
+
+	private mergeWikis(loaded: WikiPage[], capturedVersions: Map<string, number>): boolean {
+		let changed = false;
+		const nextWikis = new Map<string, WikiPage>();
+
+		for (const wiki of loaded) {
+			const path = wiki.path;
+			const existing = this.wikis.get(path);
+			const capturedVersion = capturedVersions.get(path);
+			const currentVersion = this.wikiVersions.get(path) ?? 0;
+
+			if (!existing) {
+				nextWikis.set(path, wiki);
+				changed = true;
+				continue;
+			}
+
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				if (JSON.stringify(existing) !== JSON.stringify(wiki)) {
+					changed = true;
+				}
+				nextWikis.set(path, wiki);
+			} else {
+				nextWikis.set(path, existing);
+			}
+		}
+
+		for (const [path, existing] of this.wikis) {
+			if (nextWikis.has(path)) continue;
+			const capturedVersion = capturedVersions.get(path);
+			const currentVersion = this.wikiVersions.get(path) ?? 0;
+			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
+				changed = true;
+				continue;
+			}
+			nextWikis.set(path, existing);
+		}
+
+		if (!changed) {
+			return false;
+		}
+
+		this.wikis.clear();
+		for (const [path, wiki] of nextWikis) {
+			this.wikis.set(path, wiki);
+		}
+		this.cachedWikis = Array.from(this.wikis.values()).sort((a, b) => a.path.localeCompare(b.path));
+		return true;
+	}
 	private async loadTasksWithLoader(): Promise<Task[]> {
 		if (this.taskLoader) {
 			return await this.taskLoader();

@@ -168,7 +168,164 @@ describe("ContentStore", () => {
 		const decisions = store.getDecisions();
 		expect(decisions.find((decision) => decision.id === "decision-1")).toBeUndefined();
 	});
+
+	it("does not overwrite a newer upsert with a stale task refresh", async () => {
+		const deferred = createDeferred<Task[]>();
+		let loaderCalls = 0;
+		store.dispose();
+		store = new ContentStore(filesystem, async () => {
+			loaderCalls += 1;
+			if (loaderCalls === 1) {
+				return filesystem.listTasks();
+			}
+			return await deferred.promise;
+		});
+
+		await filesystem.saveTask(sampleTask);
+		await store.ensureInitialized();
+		expect(store.getTasks()[0]?.title).toBe("Sample Task");
+
+		const refreshPromise = (store as unknown as { refreshTasksFromDisk: () => Promise<void> }).refreshTasksFromDisk();
+		await waitUntil(() => loaderCalls >= 2);
+
+		store.upsertTask({ ...sampleTask, title: "Updated by upsert" });
+		deferred.resolve([sampleTask]);
+
+		await refreshPromise;
+
+		const tasks = store.getTasks();
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0]?.title).toBe("Updated by upsert");
+	});
+
+	it("does not overwrite a newer save with a stale document refresh", async () => {
+		const deferred = createDeferred<Document[]>();
+		let listCalls = 0;
+		const originalListDocuments = filesystem.listDocuments.bind(filesystem);
+		filesystem.listDocuments = async () => {
+			listCalls += 1;
+			if (listCalls === 1) {
+				return originalListDocuments();
+			}
+			return await deferred.promise;
+		};
+
+		let lastSavedDocument = sampleDocument;
+		filesystem.loadDocument = async () => {
+			return lastSavedDocument;
+		};
+
+		store.dispose();
+		store = new ContentStore(filesystem);
+
+		await filesystem.saveDocument(sampleDocument);
+		await store.ensureInitialized();
+		expect(store.getDocuments()[0]?.title).toBe("Architecture Guide");
+
+		const refreshPromise = (
+			store as unknown as { refreshDocumentsFromDisk: () => Promise<void> }
+		).refreshDocumentsFromDisk();
+		await waitUntil(() => listCalls >= 2);
+
+		lastSavedDocument = { ...sampleDocument, title: "Updated by save" };
+		await filesystem.saveDocument(lastSavedDocument);
+		deferred.resolve([sampleDocument]);
+
+		await refreshPromise;
+
+		const documents = store.getDocuments();
+		expect(documents).toHaveLength(1);
+		expect(documents[0]?.title).toBe("Updated by save");
+	});
+
+	it("preserves concurrent updates to unrelated tasks during a stale refresh", async () => {
+		const deferred = createDeferred<Task[]>();
+		let loaderCalls = 0;
+		store.dispose();
+		store = new ContentStore(filesystem, async () => {
+			loaderCalls += 1;
+			if (loaderCalls === 1) {
+				return filesystem.listTasks();
+			}
+			return await deferred.promise;
+		});
+
+		const task2: Task = { ...sampleTask, id: "task-2", title: "Task 2" };
+		await filesystem.saveTask(sampleTask);
+		await filesystem.saveTask(task2);
+		await store.ensureInitialized();
+
+		const refreshPromise = (store as unknown as { refreshTasksFromDisk: () => Promise<void> }).refreshTasksFromDisk();
+		await waitUntil(() => loaderCalls >= 2);
+
+		store.upsertTask({ ...sampleTask, title: "Updated TASK-1" });
+		store.upsertTask({ ...task2, title: "Updated TASK-2" });
+		deferred.resolve([sampleTask, task2]);
+
+		await refreshPromise;
+
+		const tasks = store.getTasks();
+		expect(tasks.find((t) => t.id === "TASK-1")?.title).toBe("Updated TASK-1");
+		expect(tasks.find((t) => t.id === "TASK-2")?.title).toBe("Updated TASK-2");
+	});
+
+	it("preserves an ABA value cycle during a stale refresh", async () => {
+		const deferred = createDeferred<Task[]>();
+		let loaderCalls = 0;
+		store.dispose();
+		store = new ContentStore(filesystem, async () => {
+			loaderCalls += 1;
+			if (loaderCalls === 1) {
+				return filesystem.listTasks();
+			}
+			return await deferred.promise;
+		});
+
+		await filesystem.saveTask(sampleTask);
+		await store.ensureInitialized();
+
+		const refreshPromise = (store as unknown as { refreshTasksFromDisk: () => Promise<void> }).refreshTasksFromDisk();
+		await waitUntil(() => loaderCalls >= 2);
+
+		// In-memory value goes A -> B -> A (same final value as disk, but newer generation).
+		store.upsertTask({ ...sampleTask, title: "Intermediate" });
+		store.upsertTask({ ...sampleTask, title: "Sample Task" });
+		deferred.resolve([sampleTask]);
+
+		await refreshPromise;
+
+		const tasks = store.getTasks();
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0]?.title).toBe("Sample Task");
+		// The in-memory version should still be newer; a subsequent write should not be overwritten by the same stale refresh.
+		store.upsertTask({ ...sampleTask, title: "Final" });
+		expect(store.getTasks()[0]?.title).toBe("Final");
+	});
 });
+
+function createDeferred<T>(): {
+	promise: Promise<T>;
+	resolve: (value: T) => void;
+	reject: (error: Error) => void;
+} {
+	let resolve: (value: T) => void = () => {};
+	let reject: (error: Error) => void = () => {};
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
+}
+
+async function waitUntil(predicate: () => boolean, timeout = 1000): Promise<void> {
+	const start = Date.now();
+	while (!predicate()) {
+		if (Date.now() - start > timeout) {
+			throw new Error("waitUntil timeout");
+		}
+		await sleep(10);
+	}
+}
 
 function waitForEventWithTimeout(
 	store: ContentStore,
