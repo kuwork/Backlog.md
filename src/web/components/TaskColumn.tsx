@@ -2,6 +2,7 @@ import React from 'react';
 import { useI18n } from '../hooks/useI18n';
 import { type Task } from '../../types';
 import { compareTaskIds, groupSubtasksUnderParents, sortByPriority } from '../../utils/task-sorting';
+import { parseStoredUtcDate } from '../../utils/date-utc.ts';
 import type { ReorderTaskPayload } from '../lib/api';
 import TaskCard from './TaskCard';
 
@@ -44,7 +45,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [dropPosition, setDropPosition] = React.useState<{ index: number; position: 'before' | 'after' } | null>(null);
   const [showMenu, setShowMenu] = React.useState(false);
-  const [columnSort, setColumnSort] = React.useState<{ field: "id" | "title" | "priority"; direction: "asc" | "desc" } | null>(null);
+  const [columnSort, setColumnSort] = React.useState<{ field: "id" | "title" | "priority" | "createdDate"; direction: "asc" | "desc" } | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const columnActionsId = React.useId();
   const canReorder = Boolean(onTaskReorder) && tasks.every(task => !task.branch);
@@ -95,6 +96,18 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
           result = rankA - rankB;
           break;
         }
+        case "createdDate": {
+          const dateA = parseStoredUtcDate(a.createdDate);
+          const dateB = parseStoredUtcDate(b.createdDate);
+          if (dateA && dateB) {
+            result = dateA.getTime() - dateB.getTime();
+          } else if (dateA) {
+            result = -1;
+          } else if (dateB) {
+            result = 1;
+          }
+          break;
+        }
       }
       if (result !== 0) {
         return columnSort.direction === "asc" ? result : -result;
@@ -103,7 +116,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     });
   };
 
-  const handleLocalSort = (field: "id" | "title" | "priority", direction: "asc" | "desc") => {
+  const handleLocalSort = (field: "id" | "title" | "priority" | "createdDate", direction: "asc" | "desc") => {
     setColumnSort(current => {
       if (current?.field === field && current?.direction === direction) {
         return null;
@@ -142,6 +155,8 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     { label: t.milestones.tableHeaders.title, field: "title" as const, direction: "desc" as const },
     { label: t.milestones.tableHeaders.priority, field: "priority" as const, direction: "asc" as const },
     { label: t.milestones.tableHeaders.priority, field: "priority" as const, direction: "desc" as const },
+    { label: t.taskList.columns.created, field: "createdDate" as const, direction: "asc" as const },
+    { label: t.taskList.columns.created, field: "createdDate" as const, direction: "desc" as const },
   ];
 
   const getStatusBadgeClass = (status: string) => {

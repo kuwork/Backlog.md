@@ -151,7 +151,7 @@ export const zhCN: TranslationDict = {
 			status: "状态",
 			priority: "优先级",
 			milestone: "里程碑",
-			created: "创建于",
+			created: "创建时间",
 		},
 		allPriorities: "全部优先级",
 		allStatuses: "全部状态",

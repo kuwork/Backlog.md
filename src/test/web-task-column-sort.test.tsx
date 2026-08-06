@@ -128,6 +128,104 @@ describe("TaskColumn priority sorting", () => {
 	});
 });
 
+const getTaskOrderFromDom = (container: HTMLElement): string[] => {
+	const cards = Array.from(container.querySelectorAll(".space-y-3 > div.relative"));
+	return cards.map((card) => {
+		const match = card.textContent?.match(/TASK-\d+/);
+		return match?.[0] ?? "";
+	}).filter(Boolean);
+};
+
+describe("TaskColumn creation-date sorting", () => {
+	it("sorts tasks by created date ascending locally", async () => {
+		const container = renderTaskColumn(
+			[
+				createTask({ id: "TASK-1", title: "Third", createdDate: "2026-01-03" }),
+				createTask({ id: "TASK-2", title: "First", createdDate: "2026-01-01" }),
+				createTask({ id: "TASK-3", title: "Second", createdDate: "2026-01-02" }),
+			],
+			() => {},
+		);
+
+		expect(getTaskOrderFromDom(container)).toEqual(["TASK-1", "TASK-2", "TASK-3"]);
+
+		await openActionsMenu(container);
+		const sortButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("↑Created"),
+		);
+		expect(sortButton).toBeTruthy();
+		await clickElement(sortButton as Element);
+
+		expect(getTaskOrderFromDom(container)).toEqual(["TASK-2", "TASK-3", "TASK-1"]);
+	});
+
+	it("sorts tasks by created date descending locally", async () => {
+		const container = renderTaskColumn(
+			[
+				createTask({ id: "TASK-1", title: "First", createdDate: "2026-01-01" }),
+				createTask({ id: "TASK-2", title: "Third", createdDate: "2026-01-03" }),
+				createTask({ id: "TASK-3", title: "Second", createdDate: "2026-01-02" }),
+			],
+			() => {},
+		);
+
+		await openActionsMenu(container);
+		const sortButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("↓Created"),
+		);
+		expect(sortButton).toBeTruthy();
+		await clickElement(sortButton as Element);
+
+		expect(getTaskOrderFromDom(container)).toEqual(["TASK-2", "TASK-3", "TASK-1"]);
+	});
+
+	it("keeps tasks without createdDate at the end when sorting ascending", async () => {
+		const container = renderTaskColumn(
+			[
+				createTask({ id: "TASK-3", title: "No date 2", createdDate: "" }),
+				createTask({ id: "TASK-1", title: "Has date", createdDate: "2026-01-02" }),
+				createTask({ id: "TASK-2", title: "No date 1", createdDate: "" }),
+			],
+			() => {},
+		);
+
+		await openActionsMenu(container);
+		const sortButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("↑Created"),
+		);
+		expect(sortButton).toBeTruthy();
+		await clickElement(sortButton as Element);
+
+		expect(getTaskOrderFromDom(container)).toEqual(["TASK-1", "TASK-2", "TASK-3"]);
+	});
+
+	it("clears the active sort when the same created-date option is clicked again", async () => {
+		const container = renderTaskColumn(
+			[
+				createTask({ id: "TASK-1", title: "Third", createdDate: "2026-01-03" }),
+				createTask({ id: "TASK-2", title: "First", createdDate: "2026-01-01" }),
+			],
+			() => {},
+		);
+
+		await openActionsMenu(container);
+		const sortButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("↑Created"),
+		);
+		expect(sortButton).toBeTruthy();
+		await clickElement(sortButton as Element);
+		expect(getTaskOrderFromDom(container)).toEqual(["TASK-2", "TASK-1"]);
+
+		await openActionsMenu(container);
+		const sortButtonAgain = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("↑Created"),
+		);
+		expect(sortButtonAgain).toBeTruthy();
+		await clickElement(sortButtonAgain as Element);
+		expect(getTaskOrderFromDom(container)).toEqual(["TASK-1", "TASK-2"]);
+	});
+});
+
 describe("TaskColumn cleanup affordance", () => {
 	it("renders cleanup when supplied for a non-Done terminal column", async () => {
 		let cleanupCalls = 0;

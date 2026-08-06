@@ -151,7 +151,7 @@ export const zhTW: TranslationDict = {
 			status: "狀態",
 			priority: "優先級",
 			milestone: "里程碑",
-			created: "建立於",
+			created: "建立時間",
 		},
 		allPriorities: "全部優先級",
 		allStatuses: "全部狀態",
