@@ -4,9 +4,9 @@ import Fuse from "fuse.js";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
-import { storedUtcToDateTimeLocal, dateTimeLocalToStoredUtc, formatStoredUtcDateForDisplay } from "../utils/date-display";
+import { storedUtcToDateTimeLocal, dateTimeLocalToStoredUtc, formatStoredUtcDateForDisplay, parseStoredUtcDate } from "../utils/date-display";
 import { type Milestone, type MilestoneBucket, type Task } from "../../types";
-import { compareTaskIds, groupSubtasksUnderParents } from "../../utils/task-sorting";
+import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import Modal from "./Modal";
 
@@ -17,7 +17,7 @@ interface MilestoneSearchEntry {
 
 type RemoveTaskHandling = "clear" | "reassign";
 
-type BucketSortColumn = "id" | "title" | "status" | "priority";
+type BucketSortColumn = "id" | "title" | "status" | "priority" | "created";
 type BucketSortDirection = "asc" | "desc";
 
 interface BucketSortConfig {
@@ -517,10 +517,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		setBucketSorts((previous) => {
 			const current = previous[bucketKey];
 			if (current?.column === column) {
-				return {
-					...previous,
-					[bucketKey]: { column, direction: current.direction === "asc" ? "desc" : "asc" },
-				};
+				if (current.direction === "asc") {
+					return { ...previous, [bucketKey]: { column, direction: "desc" } };
+				}
+				// Third click clears the sort for this bucket
+				const next = { ...previous };
+				delete next[bucketKey];
+				return next;
 			}
 			return { ...previous, [bucketKey]: { column, direction: "asc" } };
 		});
@@ -543,7 +546,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 	};
 
 	const renderBucketTableHeader = (bucketKey: string) => (
-		<div className="grid grid-cols-[1.5rem_6rem_1fr_6rem_5rem] gap-3 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+		<div className="grid grid-cols-[1.5rem_5rem_1fr_5rem_5rem_5rem] gap-3 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
 			<div /> {/* Drag handle spacer */}
 			<button
 				type="button"
@@ -573,15 +576,25 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			>
 				{t.milestones.tableHeaders.priority} {renderSortIcon(bucketKey, "priority")}
 			</button>
+			<button
+				type="button"
+				onClick={() => handleBucketSortChange(bucketKey, "created")}
+				className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100 justify-center"
+			>
+				{t.milestones.tableHeaders.created} {renderSortIcon(bucketKey, "created")}
+			</button>
 		</div>
 	);
 
 	const getSortedTasks = (bucketTasks: Task[], bucketKey: string): Task[] => {
 		const config = bucketSorts[bucketKey];
-		if (!config) return bucketTasks;
 
 		const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
-		const withDirection = (value: number) => (config.direction === "asc" ? value : -value);
+		const withDirection = (value: number) => (config?.direction === "asc" ? value : -value);
+
+		if (!config) {
+			return sortByOrdinal(bucketTasks);
+		}
 
 		if (config.column === "id") {
 			const sorted = bucketTasks.slice().sort((a, b) => withDirection(compareTaskIdsAscending(a, b)));
@@ -603,6 +616,20 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					const rankA = BUCKET_PRIORITY_RANK[(a.priority ?? "").toLowerCase()] ?? 0;
 					const rankB = BUCKET_PRIORITY_RANK[(b.priority ?? "").toLowerCase()] ?? 0;
 					result = withDirection(rankA - rankB);
+					break;
+				}
+				case "created": {
+					const createdA = parseStoredUtcDate(a.createdDate)?.getTime();
+					const createdB = parseStoredUtcDate(b.createdDate)?.getTime();
+					if (createdA === undefined && createdB === undefined) {
+						result = 0;
+					} else if (createdA === undefined) {
+						result = 1;
+					} else if (createdB === undefined) {
+						result = -1;
+					} else {
+						result = withDirection(createdA - createdB);
+					}
 					break;
 				}
 			}

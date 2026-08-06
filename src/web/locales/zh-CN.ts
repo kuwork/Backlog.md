@@ -309,6 +309,7 @@ export const zhCN: TranslationDict = {
 			title: "标题",
 			status: "状态",
 			priority: "优先级",
+			created: "创建时间",
 		},
 	},
 

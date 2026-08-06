@@ -82,6 +82,7 @@ const setupDom = () => {
 const renderPage = (
 	tasks: Task[] = baseTasks,
 	options: {
+		milestoneEntities?: Milestone[];
 		onRefreshData?: () => Promise<void>;
 	} = {},
 ): HTMLElement => {
@@ -96,7 +97,7 @@ const renderPage = (
 					<MilestonesPage
 						tasks={tasks}
 						statuses={["To Do", "In Progress", "Done"]}
-						milestoneEntities={milestoneEntities}
+						milestoneEntities={options.milestoneEntities ?? milestoneEntities}
 						archivedMilestones={[]}
 						onEditTask={() => {}}
 						onRefreshData={options.onRefreshData}
@@ -347,5 +348,42 @@ describe("Web milestones page search", () => {
 			button.textContent?.includes("Archive"),
 		);
 		expect(archiveButtons.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("renders a Created column header in milestone task tables", () => {
+		const container = renderPage();
+		const createdHeaders = Array.from(container.querySelectorAll("button")).filter((button) =>
+			button.textContent?.includes("Created"),
+		);
+		expect(createdHeaders.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("sorts tasks by Created date when clicking the column header and returns to default ordinal on third click", () => {
+		const tasks = [
+			createTask({ id: "task-101", title: "Old task", milestone: "m-1", ordinal: 2, createdDate: "2026-01-03" }),
+			createTask({ id: "task-102", title: "New task", milestone: "m-1", ordinal: 1, createdDate: "2026-01-01" }),
+		];
+		const container = renderPage(tasks, { milestoneEntities: [milestoneEntities[0]!] });
+
+		const createdHeader = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("Created"),
+		);
+		expect(createdHeader).toBeTruthy();
+
+		const getRowTitles = () =>
+			Array.from(container.querySelectorAll("span.text-sm.truncate")).map((element) => element.textContent?.trim());
+
+		// Default ordinal order (ordinal 1 before ordinal 2)
+		expect(getRowTitles()).toEqual(["New task", "Old task"]);
+
+		clickElement(createdHeader as HTMLButtonElement);
+		expect(getRowTitles()).toEqual(["New task", "Old task"]);
+
+		clickElement(createdHeader as HTMLButtonElement);
+		expect(getRowTitles()).toEqual(["Old task", "New task"]);
+
+		// Third click clears the column sort and restores default ordinal order
+		clickElement(createdHeader as HTMLButtonElement);
+		expect(getRowTitles()).toEqual(["New task", "Old task"]);
 	});
 });

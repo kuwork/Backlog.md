@@ -309,6 +309,7 @@ export const zhTW: TranslationDict = {
 			title: "標題",
 			status: "狀態",
 			priority: "優先級",
+			created: "建立時間",
 		},
 	},
 

@@ -307,6 +307,7 @@ export const en = {
 			title: "Title",
 			status: "Status",
 			priority: "Priority",
+			created: "Created",
 		},
 	},
 

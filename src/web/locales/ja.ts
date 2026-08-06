@@ -311,6 +311,7 @@ export const ja: TranslationDict = {
 			title: "タイトル",
 			status: "ステータス",
 			priority: "優先度",
+			created: "作成日",
 		},
 	},
 
