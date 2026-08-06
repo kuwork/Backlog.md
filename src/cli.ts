@@ -2099,7 +2099,11 @@ addHelpSchema(taskCmd.command("list"), {
 		},
 		{ name: "search", type: "String", description: "Search task title, description, notes, comments, and metadata" },
 		{ name: "limit", type: "Positive integer", description: "Maximum tasks to display after sorting" },
-		{ name: "sort", type: choiceType(["priority", "id"]), description: "Task ordering before applying limit" },
+		{
+			name: "sort",
+			type: choiceType(["priority", "id", "ordinal"]),
+			description: "Task ordering before applying limit",
+		},
 	],
 	output: "Interactive task list or plain text with --plain",
 	examples: [
@@ -2121,7 +2125,7 @@ addHelpSchema(taskCmd.command("list"), {
 	)
 	.option("--search <query>", "search task title, description, notes, comments, and metadata")
 	.option("--limit <number>", "limit tasks displayed after sorting")
-	.option("--sort <field>", "sort tasks by field (priority, id)")
+	.option("--sort <field>", "sort tasks by field (priority, id, ordinal)")
 	.option("--plain", "use plain text output instead of interactive UI")
 	.action(async (options) => {
 		const cwd = await requireProjectRoot();
@@ -2172,10 +2176,10 @@ addHelpSchema(taskCmd.command("list"), {
 		}
 
 		if (options.sort) {
-			const validSortFields = ["priority", "id"];
+			const validSortFields = ["priority", "id", "ordinal"];
 			const sortField = options.sort.toLowerCase();
 			if (!validSortFields.includes(sortField)) {
-				console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id`);
+				console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
 				process.exitCode = 1;
 				cleanup();
 				return;
@@ -2205,17 +2209,17 @@ addHelpSchema(taskCmd.command("list"), {
 
 			let sortedTasks = tasks;
 			if (options.sort) {
-				const validSortFields = ["priority", "id"];
+				const validSortFields = ["priority", "id", "ordinal"];
 				const sortField = options.sort.toLowerCase();
 				if (!validSortFields.includes(sortField)) {
-					console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id`);
+					console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
 					process.exitCode = 1;
 					cleanup();
 					return;
 				}
 				sortedTasks = sortTasks(tasks, sortField);
 			} else {
-				sortedTasks = sortTasks(tasks, "priority");
+				sortedTasks = sortTasks(tasks, "ordinal");
 			}
 
 			let filtered = sortedTasks;
@@ -2373,14 +2377,14 @@ addHelpSchema(taskCmd.command("list"), {
 
 				let sortedTasks = tasks;
 				if (options.sort) {
-					const validSortFields = ["priority", "id"];
+					const validSortFields = ["priority", "id", "ordinal"];
 					const sortField = options.sort.toLowerCase();
 					if (!validSortFields.includes(sortField)) {
-						throw new Error(`Invalid sort field: ${options.sort}. Valid values are: priority, id`);
+						throw new Error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
 					}
 					sortedTasks = sortTasks(tasks, sortField);
 				} else {
-					sortedTasks = sortTasks(tasks, "priority");
+					sortedTasks = sortTasks(tasks, "ordinal");
 				}
 
 				let filtered = sortedTasks;

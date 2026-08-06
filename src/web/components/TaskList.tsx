@@ -15,7 +15,7 @@ import CleanupModal from "./CleanupModal";
 import LabelFilterDropdown from "./LabelFilterDropdown";
 import { SuccessToast } from "./SuccessToast";
 import { useI18n } from "../hooks/useI18n";
-import { compareTaskIds, groupSubtasksUnderParents } from "../../utils/task-sorting";
+import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 
 interface TaskListProps {
 	onEditTask: (task: Task) => void;
@@ -31,6 +31,8 @@ interface TaskListProps {
 
 type TaskSortColumn = "id" | "title" | "status" | "priority" | "milestone" | "created";
 type SortDirection = "asc" | "desc";
+
+const DEFAULT_SORT_DIRECTION: SortDirection = "asc";
 
 const PRIORITY_RANK: Record<string, number> = {
 	high: 3,
@@ -91,12 +93,12 @@ const TaskList: React.FC<TaskListProps> = ({
 		return labels.map((label) => label.trim()).filter((label) => label.length > 0);
 	}, []);
 	const [labelFilter, setLabelFilter] = useState<string[]>(initialLabelParams);
-	const [displayTasks, setDisplayTasks] = useState<Task[]>(() => sortTasksByIdDescending(tasks));
+	const [displayTasks, setDisplayTasks] = useState<Task[]>(() => sortByOrdinal(tasks));
 	const [error, setError] = useState<string | null>(null);
 	const [showCleanupModal, setShowCleanupModal] = useState(false);
 	const [cleanupSuccessMessage, setCleanupSuccessMessage] = useState<string | null>(null);
-	const [sortColumn, setSortColumn] = useState<TaskSortColumn>("id");
-	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+	const [sortColumn, setSortColumn] = useState<TaskSortColumn | null>(null);
+	const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION);
 	const tableHeaderScrollRef = useRef<HTMLDivElement | null>(null);
 	const tableBodyScrollRef = useRef<HTMLDivElement | null>(null);
 	const isSyncingTableScrollRef = useRef(false);
@@ -234,7 +236,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		return normalized;
 	};
 
-	const sortedBaseTasks = useMemo(() => sortTasksByIdDescending(tasks), [tasks]);
+	const sortedBaseTasks = useMemo(() => sortByOrdinal(tasks), [tasks]);
 	const mergedAvailableLabels = useMemo(
 		() => collectAvailableLabels(tasks, availableLabels),
 		[tasks, availableLabels],
@@ -323,7 +325,7 @@ const TaskList: React.FC<TaskListProps> = ({
 				}
 				const taskResults = results.filter((result): result is TaskSearchResult => result.type === "task");
 				const filtered = filterByMilestone(taskResults.map((result) => result.task));
-				setDisplayTasks(sortTasksByIdDescending(filtered));
+				setDisplayTasks(sortByOrdinal(filtered));
 			} catch (err) {
 				console.error("Failed to apply task filters:", err);
 				if (!cancelled) {
@@ -448,12 +450,17 @@ const TaskList: React.FC<TaskListProps> = ({
 
 	const handleSortChange = (column: TaskSortColumn) => {
 		if (sortColumn === column) {
-			setSortDirection((previous) => (previous === "asc" ? "desc" : "asc"));
+			if (sortDirection === "asc") {
+				setSortDirection("desc");
+			} else {
+				setSortColumn(null);
+				setSortDirection(DEFAULT_SORT_DIRECTION);
+			}
 			return;
 		}
 
 		setSortColumn(column);
-		setSortDirection(column === "id" || column === "created" ? "desc" : "asc");
+		setSortDirection(DEFAULT_SORT_DIRECTION);
 	};
 
 	const getSortAriaValue = (column: TaskSortColumn): "none" | "ascending" | "descending" => {
@@ -507,8 +514,15 @@ const TaskList: React.FC<TaskListProps> = ({
 		const compareText = (a: string, b: string) => collator.compare(a, b);
 		const withDirection = (value: number) => (sortDirection === "asc" ? value : -value);
 
+		if (sortColumn === null) {
+			return sortByOrdinal(displayTasks);
+		}
+
 		if (sortColumn === "id") {
-			const sorted = [...displayTasks].sort((a, b) => withDirection(compareTaskIdsAscending(a, b)));
+			const sorted =
+				sortDirection === "asc"
+					? [...displayTasks].sort((a, b) => compareTaskIdsAscending(a, b))
+					: sortTasksByIdDescending(displayTasks);
 			return groupSubtasksUnderParents(sorted, compareTaskIdsAscending, undefined, sortDirection);
 		}
 

@@ -72,11 +72,24 @@ describe("CLI Priority Filtering", () => {
 		// Should exit successfully - detailed sorting verification would require known test data
 	});
 
+	test("task list --sort ordinal is accepted and exits successfully", async () => {
+		const result = await $`bun run cli task list --sort ordinal --plain`.quiet();
+		expect(result.exitCode).toBe(0);
+	});
+
+	test("task list defaults to ordinal sort and does not use priority special output", async () => {
+		const result = await $`bun run cli task list --plain`.quiet();
+		expect(result.exitCode).toBe(0);
+
+		const output = result.stdout.toString();
+		expect(output).not.toContain("Tasks (sorted by priority):");
+	});
+
 	test("task list --sort invalid shows error", async () => {
 		const result = await $`bun run cli task list --sort invalid --plain`.nothrow().quiet();
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr.toString()).toContain("Invalid sort field: invalid");
-		expect(result.stderr.toString()).toContain("Valid values are: priority, id");
+		expect(result.stderr.toString()).toContain("Valid values are: priority, id, ordinal");
 	});
 
 	test("task list combines priority filter with status filter", async () => {
@@ -117,9 +130,11 @@ describe("CLI Priority Filtering", () => {
 	});
 
 	test("case insensitive priority filtering", async () => {
-		const upperResult = await $`bun run cli task list --priority HIGH --plain`.quiet();
-		const lowerResult = await $`bun run cli task list --priority high --plain`.quiet();
-		const mixedResult = await $`bun run cli task list --priority High --plain`.quiet();
+		const [upperResult, lowerResult, mixedResult] = await Promise.all([
+			$`bun run cli task list --priority HIGH --plain`.quiet(),
+			$`bun run cli task list --priority high --plain`.quiet(),
+			$`bun run cli task list --priority High --plain`.quiet(),
+		]);
 
 		expect(upperResult.exitCode).toBe(0);
 		expect(lowerResult.exitCode).toBe(0);
