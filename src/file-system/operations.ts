@@ -404,8 +404,21 @@ export class FileSystem {
 		}
 
 		if (filter?.status) {
-			const statusLower = filter.status.toLowerCase();
-			tasks = tasks.filter((t) => t.status.toLowerCase() === statusLower);
+			const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+			const allowedStatuses = new Set(statuses.map((status) => status.trim().toLowerCase()).filter(Boolean));
+			if (allowedStatuses.size > 0) {
+				tasks = tasks.filter((t) => allowedStatuses.has(t.status.toLowerCase()));
+			}
+		}
+
+		if (filter?.statusExcluded) {
+			const excludedStatuses = Array.isArray(filter.statusExcluded) ? filter.statusExcluded : [filter.statusExcluded];
+			const excluded = new Set(
+				excludedStatuses.map((status) => status.trim().toLowerCase()).filter((status) => status.length > 0),
+			);
+			if (excluded.size > 0) {
+				tasks = tasks.filter((t) => !excluded.has(t.status.toLowerCase()));
+			}
 		}
 
 		if (filter?.assignee) {

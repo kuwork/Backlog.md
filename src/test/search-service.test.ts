@@ -143,6 +143,62 @@ describe("SearchService", () => {
 		expect(combinedFiltered.map((result) => result.task.id)).toStrictEqual(["TASK-3"]);
 	});
 
+	it("supports multi-status selection and status exclusion", async () => {
+		const todoTask: Task = {
+			...baseTask,
+			id: "task-2",
+			title: "Todo task",
+			status: "To Do",
+			rawContent: "## Description\nTodo",
+		};
+
+		const doneTask: Task = {
+			...baseTask,
+			id: "task-3",
+			title: "Done task",
+			status: "Done",
+			rawContent: "## Description\nDone",
+		};
+
+		await filesystem.saveTask(baseTask); // In Progress
+		await filesystem.saveTask(todoTask);
+		await filesystem.saveTask(doneTask);
+
+		await search.ensureInitialized();
+
+		const multiSelected = search
+			.search({
+				types: ["task"],
+				filters: { status: ["To Do", "In Progress"] },
+			})
+			.filter(isTaskResult);
+		expect(multiSelected.map((result) => result.task.id).sort()).toStrictEqual(["TASK-1", "TASK-2"]);
+
+		const excluded = search
+			.search({
+				types: ["task"],
+				filters: { statusExcluded: "Done" },
+			})
+			.filter(isTaskResult);
+		expect(excluded.map((result) => result.task.id).sort()).toStrictEqual(["TASK-1", "TASK-2"]);
+
+		const excludedMulti = search
+			.search({
+				types: ["task"],
+				filters: { statusExcluded: ["Done", "To Do"] },
+			})
+			.filter(isTaskResult);
+		expect(excludedMulti.map((result) => result.task.id)).toStrictEqual(["TASK-1"]);
+
+		const combined = search
+			.search({
+				types: ["task"],
+				filters: { status: ["To Do", "Done"], statusExcluded: "Done" },
+			})
+			.filter(isTaskResult);
+		expect(combined.map((result) => result.task.id)).toStrictEqual(["TASK-2"]);
+	});
+
 	it("filters tasks by labels (requiring all selected labels)", async () => {
 		const uiTask: Task = {
 			...baseTask,

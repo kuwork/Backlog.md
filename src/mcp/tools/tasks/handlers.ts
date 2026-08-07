@@ -49,7 +49,8 @@ export type TaskCreateArgs = {
 };
 
 export type TaskListArgs = {
-	status?: string;
+	status?: string | string[];
+	statusExcluded?: string | string[];
 	assignee?: string;
 	milestone?: string;
 	labels?: string[];
@@ -59,7 +60,8 @@ export type TaskListArgs = {
 
 export type TaskSearchArgs = {
 	query?: string;
-	status?: string;
+	status?: string | string[];
+	statusExcluded?: string | string[];
 	priority?: SearchPriorityFilter;
 	modifiedFiles?: string[];
 	limit?: number;
@@ -81,7 +83,10 @@ export class TaskHandlers {
 		return config?.statuses ?? [...DEFAULT_STATUSES];
 	}
 
-	private isDraftStatus(status?: string | null): boolean {
+	private isDraftStatus(status?: string | string[] | null): boolean {
+		if (Array.isArray(status)) {
+			return status.length === 1 && (status[0] ?? "").trim().toLowerCase() === "draft";
+		}
 		return (status ?? "").trim().toLowerCase() === "draft";
 	}
 
@@ -223,7 +228,10 @@ export class TaskHandlers {
 
 		const filters: TaskListFilter = {};
 		if (args.status) {
-			filters.status = args.status;
+			filters.status = Array.isArray(args.status) ? args.status : args.status;
+		}
+		if (args.statusExcluded) {
+			filters.statusExcluded = Array.isArray(args.statusExcluded) ? args.statusExcluded : args.statusExcluded;
 		}
 		if (args.assignee) {
 			filters.assignee = args.assignee;
@@ -363,9 +371,15 @@ export class TaskHandlers {
 
 		const tasks = await this.core.loadTasks(undefined, undefined, { includeCompleted: true });
 		const searchIndex = createTaskSearchIndex(tasks);
+		const excludeStatuses = Array.isArray(args.statusExcluded)
+			? args.statusExcluded
+			: args.statusExcluded
+				? [args.statusExcluded]
+				: [];
 		let taskMatches = searchIndex.search({
 			query,
 			status: args.status,
+			statusExcluded: excludeStatuses,
 			priority: args.priority,
 			modifiedFiles,
 		});

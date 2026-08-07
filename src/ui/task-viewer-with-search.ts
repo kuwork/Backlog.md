@@ -168,6 +168,7 @@ export async function viewTaskEnhanced(
 		filterDescription?: string;
 		searchQuery?: string;
 		statusFilter?: string;
+		statusExcludedFilter?: string[];
 		priorityFilter?: string;
 		milestoneFilter?: string;
 		labelFilter?: string[];
@@ -181,6 +182,7 @@ export async function viewTaskEnhanced(
 		onFilterChange?: (filters: {
 			searchQuery: string;
 			statusFilter: string;
+			statusExcludedFilter: string[];
 			priorityFilter: string;
 			labelFilter: string[];
 			labelMatch?: LabelMatchMode;
@@ -253,6 +255,7 @@ export async function viewTaskEnhanced(
 
 	// Priority is already lowercase
 	let priorityFilter = options.priorityFilter || "";
+	const statusExcludedFilter = [...(options.statusExcludedFilter ?? [])];
 	let labelFilter: string[] = [];
 	let milestoneFilter = options.milestoneFilter || "";
 	let labelMatch: LabelMatchMode = options.labelMatch ?? "any";
@@ -267,6 +270,7 @@ export async function viewTaskEnhanced(
 	const filtersActive = Boolean(
 		searchQuery ||
 			statusFilter ||
+			statusExcludedFilter.length > 0 ||
 			priorityFilter ||
 			labelFilter.length > 0 ||
 			milestoneFilter ||
@@ -584,6 +588,7 @@ export async function viewTaskEnhanced(
 			options.onFilterChange({
 				searchQuery,
 				statusFilter,
+				statusExcludedFilter,
 				priorityFilter,
 				labelFilter,
 				labelMatch,
@@ -595,7 +600,12 @@ export async function viewTaskEnhanced(
 	// Function to apply filters and refresh the task list
 	function applyFilters() {
 		const hasActiveFilters = Boolean(
-			searchQuery.trim() || statusFilter || priorityFilter || labelFilter.length > 0 || milestoneFilter,
+			searchQuery.trim() ||
+				statusFilter ||
+				statusExcludedFilter.length > 0 ||
+				priorityFilter ||
+				labelFilter.length > 0 ||
+				milestoneFilter,
 		);
 		let nextFilteredTasks: Task[];
 		if (!hasActiveFilters) {
@@ -606,6 +616,7 @@ export async function viewTaskEnhanced(
 				{
 					query: searchQuery,
 					status: statusFilter || undefined,
+					statusExcluded: statusExcludedFilter,
 					priority: priorityFilter as "high" | "medium" | "low" | undefined,
 					labels: labelFilter,
 					labelMatch,
@@ -619,6 +630,7 @@ export async function viewTaskEnhanced(
 				query: searchQuery,
 				filters: {
 					status: statusFilter || undefined,
+					statusExcluded: statusExcludedFilter,
 					priority: priorityFilter as "high" | "medium" | "low" | undefined,
 					labels: labelFilter.length > 0 ? labelFilter : undefined,
 				},
@@ -664,6 +676,9 @@ export async function viewTaskEnhanced(
 			}
 			if (statusFilter) {
 				activeFilters.push(`Status: {cyan-fg}${statusFilter}{/}`);
+			}
+			if (statusExcludedFilter.length > 0) {
+				activeFilters.push(`Exclude status: {cyan-fg}${statusExcludedFilter.join(", ")}{/}`);
 			}
 			if (priorityFilter) {
 				activeFilters.push(`Priority: {cyan-fg}${priorityFilter}{/}`);

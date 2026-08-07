@@ -838,7 +838,8 @@ export class BacklogServer {
 	// Task handlers
 	private async handleListTasks(req: Request): Promise<Response> {
 		const url = new URL(req.url);
-		const status = url.searchParams.get("status") || undefined;
+		const statusParams = url.searchParams.getAll("status");
+		const statusExcludedParams = url.searchParams.getAll("statusExcluded");
 		const assignee = url.searchParams.get("assignee") || undefined;
 		const parent = url.searchParams.get("parent") || undefined;
 		const priorityParam = url.searchParams.get("priority") || undefined;
@@ -849,6 +850,13 @@ export class BacklogServer {
 			labelParams.push(...labelsCsv.split(","));
 		}
 		const labels = labelParams.map((label) => label.trim()).filter((label) => label.length > 0);
+		const status = statusParams.length === 1 ? statusParams[0] : statusParams.length > 1 ? statusParams : undefined;
+		const statusExcluded =
+			statusExcludedParams.length === 1
+				? statusExcludedParams[0]
+				: statusExcludedParams.length > 1
+					? statusExcludedParams
+					: undefined;
 
 		let priority: "high" | "medium" | "low" | undefined;
 		if (priorityParam) {
@@ -883,7 +891,14 @@ export class BacklogServer {
 
 		// Use Core.queryTasks which handles all filtering and cross-branch logic
 		const tasks = await this.core.queryTasks({
-			filters: { status, assignee, priority, parentTaskId, labels: labels.length > 0 ? labels : undefined },
+			filters: {
+				status,
+				statusExcluded,
+				assignee,
+				priority,
+				parentTaskId,
+				labels: labels.length > 0 ? labels : undefined,
+			},
 			includeCrossBranch: crossBranch,
 		});
 
@@ -898,6 +913,7 @@ export class BacklogServer {
 			const limitParam = url.searchParams.get("limit");
 			const typeParams = [...url.searchParams.getAll("type"), ...url.searchParams.getAll("types")];
 			const statusParams = url.searchParams.getAll("status");
+			const statusExcludedParams = url.searchParams.getAll("statusExcluded");
 			const priorityParamsRaw = url.searchParams.getAll("priority");
 			const assigneeParamsRaw = [...url.searchParams.getAll("assignee"), ...url.searchParams.getAll("assignees")];
 			const labelParamsRaw = [...url.searchParams.getAll("label"), ...url.searchParams.getAll("labels")];
@@ -943,6 +959,7 @@ export class BacklogServer {
 
 			const filters: {
 				status?: string | string[];
+				statusExcluded?: string | string[];
 				priority?: SearchPriorityFilter | SearchPriorityFilter[];
 				assignee?: string | string[];
 				labels?: string | string[];
@@ -953,6 +970,12 @@ export class BacklogServer {
 				filters.status = statusParams[0];
 			} else if (statusParams.length > 1) {
 				filters.status = statusParams;
+			}
+
+			if (statusExcludedParams.length === 1) {
+				filters.statusExcluded = statusExcludedParams[0];
+			} else if (statusExcludedParams.length > 1) {
+				filters.statusExcluded = statusExcludedParams;
 			}
 
 			if (priorityParamsRaw.length > 0) {

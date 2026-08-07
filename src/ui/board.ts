@@ -188,6 +188,7 @@ export async function renderBoardTui(
 		subscribeUpdates?: (update: (nextTasks: Task[], nextStatuses: string[]) => void) => void;
 		filters?: {
 			searchQuery: string;
+			statusExcludedFilter?: string[];
 			priorityFilter: string;
 			labelFilter: string[];
 			labelMatch?: LabelMatchMode;
@@ -198,6 +199,7 @@ export async function renderBoardTui(
 		availableMilestones?: string[];
 		onFilterChange?: (filters: {
 			searchQuery: string;
+			statusExcludedFilter: string[];
 			priorityFilter: string;
 			labelFilter: string[];
 			labelMatch?: LabelMatchMode;
@@ -251,6 +253,7 @@ export async function renderBoardTui(
 		let programmaticColumnSelection = false;
 		const sharedFilters = {
 			searchQuery: options?.filters?.searchQuery ?? "",
+			statusExcludedFilter: [...(options?.filters?.statusExcludedFilter ?? [])],
 			priorityFilter: options?.filters?.priorityFilter ?? "",
 			labelFilter: [...(options?.filters?.labelFilter ?? [])],
 			labelMatch: options?.filters?.labelMatch ?? "any",
@@ -300,6 +303,7 @@ export async function renderBoardTui(
 		const hasActiveSharedFilters = () =>
 			Boolean(
 				sharedFilters.searchQuery.trim() ||
+					sharedFilters.statusExcludedFilter.length > 0 ||
 					sharedFilters.priorityFilter ||
 					sharedFilters.labelFilter.length > 0 ||
 					sharedFilters.milestoneFilter ||
@@ -308,6 +312,7 @@ export async function renderBoardTui(
 		const emitFilterChange = () => {
 			options?.onFilterChange?.({
 				searchQuery: sharedFilters.searchQuery,
+				statusExcludedFilter: [...sharedFilters.statusExcludedFilter],
 				priorityFilter: sharedFilters.priorityFilter,
 				labelFilter: [...sharedFilters.labelFilter],
 				labelMatch: sharedFilters.labelMatch,
@@ -325,6 +330,7 @@ export async function renderBoardTui(
 					currentTasks,
 					{
 						query: sharedFilters.searchQuery,
+						statusExcluded: sharedFilters.statusExcludedFilter,
 						priority: sharedFilters.priorityFilter as "high" | "medium" | "low" | undefined,
 						labels: sharedFilters.labelFilter,
 						labelMatch: sharedFilters.labelMatch,
@@ -1249,7 +1255,14 @@ export async function renderBoardTui(
 
 		screen.key(["m", "M", "S-m"], async () => {
 			if (popupOpen || filterPopupOpen || modalOpen || currentFocus === "filters") return;
-			if (hasActiveSharedFilters()) {
+			const hasMoveBlockingFilters = Boolean(
+				sharedFilters.searchQuery.trim() ||
+					sharedFilters.priorityFilter ||
+					sharedFilters.labelFilter.length > 0 ||
+					sharedFilters.milestoneFilter ||
+					sharedFilters.limit !== undefined,
+			);
+			if (hasMoveBlockingFilters) {
 				showTransientFooter(" {yellow-fg}Clear filters before moving tasks.{/}");
 				return;
 			}

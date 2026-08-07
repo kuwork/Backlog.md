@@ -575,6 +575,14 @@ backlog search "login" --type task --plain
 backlog search "api" --status "In Progress" --plain
 backlog search "bug" --priority high --plain
 
+# Multiple statuses (positive multi-select, repeat or comma-separate)
+backlog search "api" --status "To Do" --status "In Progress" --plain
+backlog search "api" --status "To Do,In Progress" --plain
+
+# Exclude one or more statuses; combinable with positive filters
+backlog search "api" --exclude-status "Done" --plain
+backlog search "api" --status "To Do,In Progress" --exclude-status "Blocked" --plain
+
 # Find tasks that modified a project file path
 backlog search --modified-file src/server/api.ts --plain
 ```
@@ -945,8 +953,12 @@ backlog board --milestones
 | List tasks         | `backlog task list --plain`                  |
 | Search tasks       | `backlog search "topic" --plain`              |
 | Search with filter | `backlog search "api" --status "To Do" --plain` |
+| Search with status multi-select | `backlog search "api" --status "To Do,In Progress" --plain` |
+| Search excluding statuses | `backlog search "api" --exclude-status "Done,Blocked" --plain` |
 | Search by modified file | `backlog search --modified-file src/api.ts --plain` |
 | Filter by status   | `backlog task list -s "In Progress" --plain` |
+| Filter by multiple statuses | `backlog task list --status "To Do,In Progress" --plain` |
+| Exclude statuses   | `backlog task list --exclude-status "Done" --plain` |
 | Filter by assignee | `backlog task list -a @sara --plain`         |
 | Archive task       | `backlog task archive 42`                    |
 | Demote to draft    | `backlog task demote 42`                     |

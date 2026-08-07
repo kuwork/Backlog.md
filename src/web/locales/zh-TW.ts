@@ -690,6 +690,14 @@ export const zhTW: TranslationDict = {
 		clearFilter: "清除標籤篩選",
 	},
 
+	statusFilter: {
+		statuses: "狀態",
+		noStatuses: "無狀態",
+		allStatuses: "全部狀態",
+		excludeStatuses: "狀態排除",
+		clearFilter: "清除狀態篩選",
+	},
+
 	acceptanceCriteria: {
 		label: "驗收標準",
 		placeholder: "新檢查項",

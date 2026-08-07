@@ -4,8 +4,18 @@ export const taskListSchema: JsonSchema = {
 	type: "object",
 	properties: {
 		status: {
-			type: "string",
-			maxLength: 100,
+			description: "Filter by task status; single value or array for multi-select",
+			oneOf: [
+				{ type: "string", maxLength: 100 },
+				{ type: "array", items: { type: "string", maxLength: 100 } },
+			],
+		},
+		statusExcluded: {
+			description: "Exclude tasks with one or more statuses",
+			oneOf: [
+				{ type: "string", maxLength: 100 },
+				{ type: "array", items: { type: "string", maxLength: 100 } },
+			],
 		},
 		assignee: {
 			type: "string",
@@ -41,8 +51,18 @@ export const taskSearchSchema: JsonSchema = {
 			maxLength: 200,
 		},
 		status: {
-			type: "string",
-			maxLength: 100,
+			description: "Filter by task status; single value or array for multi-select",
+			oneOf: [
+				{ type: "string", maxLength: 100 },
+				{ type: "array", items: { type: "string", maxLength: 100 } },
+			],
+		},
+		statusExcluded: {
+			description: "Exclude tasks with one or more statuses",
+			oneOf: [
+				{ type: "string", maxLength: 100 },
+				{ type: "array", items: { type: "string", maxLength: 100 } },
+			],
 		},
 		priority: {
 			type: "string",

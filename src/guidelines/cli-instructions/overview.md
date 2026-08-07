@@ -136,6 +136,14 @@ backlog search "login" --type task --plain
 backlog search "api" --status "In Progress" --plain
 backlog search "bug" --priority high --plain
 
+# Multiple statuses (positive multi-select, repeat or comma-separate)
+backlog search "api" --status "To Do" --status "In Progress" --plain
+backlog search "api" --status "To Do,In Progress" --plain
+
+# Exclude one or more statuses; combinable with positive filters
+backlog search "api" --exclude-status "Done" --plain
+backlog search "api" --status "To Do,In Progress" --exclude-status "Blocked" --plain
+
 # Find tasks that modified a project file path
 backlog search --modified-file src/server/api.ts --plain
 ```

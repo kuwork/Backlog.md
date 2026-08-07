@@ -133,6 +133,8 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 - `task_list` — list tasks with filters: `status`, `assignee`, `milestone`, `labels`, `search`, `limit`
 - `search` (global) — searches tasks, docs, and decisions; supports `--type task`, `--status`, `--priority`, `--modified-file`
 
+`status` accepts a single string or an array for multi-select (e.g., `"status": ["To Do", "In Progress"]`); `statusExcluded` accepts a string or array to exclude one or more statuses (e.g., `"statusExcluded": ["Done", "Blocked"]`), combinable with `status`.
+
 **Key points:**
 - Fuzzy matching finds related terms (e.g., "auth" matches "authentication")
 - `modifiedFiles` filters by case-insensitive substring against project-root-relative paths

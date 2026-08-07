@@ -137,6 +137,9 @@ Use CLI commands for Backlog changes:
 - Read: `backlog task view {{TASK_ID:123}} --plain`
 - Search: `backlog search "query" --plain`
 - List with task filters: `backlog task list --status "<active status>" --assignee @your-name --labels backend --search "auth" --limit 20 --plain`
+- List with multi-status selection: `backlog task list --status "To Do,In Progress" --plain`
+- List excluding statuses: `backlog task list --exclude-status "Done,Blocked" --plain`
+- Combine multi-select with exclusion: `backlog task list --status "To Do,In Progress" --exclude-status "Blocked" --plain`
 - Update: `backlog task edit {{TASK_ID:123}} ...`
 - Create docs: `backlog doc create "Title"`
 - Update docs: `backlog doc update doc-1 --content "Markdown"`

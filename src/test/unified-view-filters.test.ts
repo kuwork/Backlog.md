@@ -44,6 +44,7 @@ describe("unified view filter state", () => {
 		const updated: UnifiedViewFilters = {
 			searchQuery: "api",
 			statusFilter: "To Do",
+			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: ["infra"],
 			milestoneFilter: "Sprint 7",
@@ -67,6 +68,7 @@ describe("unified view filter state", () => {
 		const updated: UnifiedViewFilters = {
 			searchQuery: "api auth",
 			statusFilter: "",
+			statusExcludedFilter: [],
 			priorityFilter: "high",
 			labelFilter: ["frontend", "bug"],
 			milestoneFilter: "",
@@ -86,6 +88,7 @@ describe("unified view filter state", () => {
 		const updated: UnifiedViewFilters = {
 			searchQuery: "auth",
 			statusFilter: "",
+			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: ["frontend", "bug"],
 			milestoneFilter: "",
@@ -104,6 +107,7 @@ describe("unified view filter state", () => {
 		const updated: UnifiedViewFilters = {
 			searchQuery: "",
 			statusFilter: "",
+			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: ["frontend", "bug"],
 			labelMatch: "any",
@@ -243,6 +247,7 @@ describe("unified view filter state", () => {
 
 		const results = filterTasksForKanban(tasks, {
 			searchQuery: "",
+			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: [],
 			milestoneFilter: "",
@@ -296,6 +301,7 @@ describe("unified view filter state", () => {
 
 		const sharedFilters = {
 			searchQuery: "",
+			statusExcludedFilter: [],
 			priorityFilter: "high",
 			labelFilter: ["ui"],
 			milestoneFilter: "Sprint 1",
@@ -366,6 +372,7 @@ describe("unified view filter state", () => {
 
 		const sharedFilters = {
 			searchQuery: "",
+			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: [],
 			milestoneFilter: NO_MILESTONE_FILTER_VALUE,
@@ -378,5 +385,79 @@ describe("unified view filter state", () => {
 		expect(kanbanResults).toEqual(["task-1", "task-2"]);
 		expect(listResults).toEqual(["task-1", "task-2"]);
 		expect(literalMilestoneResults).toEqual(["task-4"]);
+	});
+
+	it("initializes statusExcludedFilter from options", () => {
+		const filters = createUnifiedViewFilters({
+			searchQuery: "api",
+			status: "To Do",
+			statusExcluded: ["Done", "Blocked"],
+			priority: "",
+			labels: [],
+		});
+		expect(filters.statusFilter).toBe("To Do");
+		expect(filters.statusExcludedFilter).toEqual(["Done", "Blocked"]);
+	});
+
+	it("preserves statusExcludedFilter when merging unrelated filter updates", () => {
+		const initial = createUnifiedViewFilters({
+			statusExcluded: ["Done"],
+		});
+
+		const updated: UnifiedViewFilters = {
+			searchQuery: "api",
+			statusFilter: "To Do",
+			statusExcludedFilter: ["Done", "Blocked"],
+			priorityFilter: "",
+			labelFilter: [],
+			milestoneFilter: "",
+		};
+
+		const merged = mergeUnifiedViewFilters(initial, updated);
+		expect(merged.statusExcludedFilter).toEqual(["Done", "Blocked"]);
+		expect(merged.statusExcludedFilter).not.toBe(updated.statusExcludedFilter);
+	});
+
+	it("carries statusExcludedFilter into kanban shared filters", () => {
+		const unified = createUnifiedViewFilters({
+			statusExcluded: ["Done"],
+			priority: "high",
+		});
+		const shared = createKanbanSharedFilters(unified);
+		expect(shared.statusExcludedFilter).toEqual(["Done"]);
+		expect("statusFilter" in shared).toBe(false);
+	});
+
+	it("applies statusExcludedFilter when filtering tasks for kanban", () => {
+		const tasks: Task[] = [
+			{
+				id: "task-1",
+				title: "Todo task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-01-01",
+				labels: [],
+				dependencies: [],
+			},
+			{
+				id: "task-2",
+				title: "Done task",
+				status: "Done",
+				assignee: [],
+				createdDate: "2026-01-01",
+				labels: [],
+				dependencies: [],
+			},
+		];
+
+		const results = filterTasksForKanban(tasks, {
+			searchQuery: "",
+			statusExcludedFilter: ["Done"],
+			priorityFilter: "",
+			labelFilter: [],
+			milestoneFilter: "",
+		}).map((task) => task.id);
+
+		expect(results).toEqual(["task-1"]);
 	});
 });

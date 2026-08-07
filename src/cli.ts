@@ -70,7 +70,7 @@ import { createMilestoneFilterValueResolver, resolveClosestMilestoneFilterValue 
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
 import { hasAnyPrefix } from "./utils/prefix-config.ts";
 import { type RuntimeCwdResolution, resolveRuntimeCwd } from "./utils/runtime-cwd.ts";
-import { formatValidStatuses, getCanonicalStatus, getValidStatuses } from "./utils/status.ts";
+import { formatValidStatuses, getCanonicalStatus, getCanonicalStatuses, getValidStatuses } from "./utils/status.ts";
 import {
 	normalizeDependencies,
 	parseDelimitedStringList,
@@ -256,6 +256,21 @@ function taskMatchesAllLabels(task: Task, labels: string[]): boolean {
 	}
 	const taskLabels = new Set(labelsToLower(task.labels ?? []));
 	return requiredLabels.every((label) => taskLabels.has(label));
+}
+
+/**
+ * Canonicalize and validate a list of status CLI inputs against configured statuses.
+ * Returns the canonical values, or null (after printing the error) when any input is invalid.
+ */
+async function normalizeCliStatusList(core: Core, values: string[], optionName: string): Promise<string[] | null> {
+	const { values: canonicalStatuses, invalid, validStatuses } = await getCanonicalStatuses(values, core);
+	if (invalid.length > 0) {
+		console.error(
+			`Invalid ${optionName}: ${invalid.join(", ")}. Valid statuses are: ${formatValidStatuses(validStatuses)}`,
+		);
+		return null;
+	}
+	return canonicalStatuses;
 }
 
 function formatToolResultText(result: CallToolResult): string {
@@ -1791,7 +1806,16 @@ addHelpSchema(program.command("search [query]"), {
 			type: choiceType(["task", "document", "decision", "wiki"], { multiple: true }),
 			description: "Result types",
 		},
-		{ name: "status", type: statusType, description: "Filter task results by status; case-insensitive" },
+		{
+			name: "status",
+			type: statusType,
+			description: "Filter task results by status; case-insensitive; repeat or comma-separate for multiple",
+		},
+		{
+			name: "exclude-status",
+			type: statusType,
+			description: "Exclude task results with one or more statuses; repeat or comma-separate values",
+		},
 		{ name: "priority", type: choiceType(["high", "medium", "low"]), description: "Filter task results by priority" },
 		{
 			name: "modified-file",
@@ -1805,7 +1829,16 @@ addHelpSchema(program.command("search [query]"), {
 })
 	.description("search tasks, documents, decisions, and wiki using the shared index")
 	.option("--type <type>", "limit results to type (task, document, decision, wiki)", createMultiValueAccumulator())
-	.option("--status <status>", "filter task results by status")
+	.option(
+		"--status <status>",
+		"filter task results by status (repeatable or comma-separated)",
+		createMultiValueAccumulator(),
+	)
+	.option(
+		"--exclude-status <status>",
+		"exclude task results by status (repeatable or comma-separated)",
+		createMultiValueAccumulator(),
+	)
 	.option("--priority <priority>", "filter task results by priority (high, medium, low)")
 	.option(
 		"--modified-file <path>",
@@ -1841,9 +1874,40 @@ addHelpSchema(program.command("search [query]"), {
 				? ["task"]
 				: allowedTypes;
 
-		const filters: { status?: string; priority?: SearchPriorityFilter; modifiedFiles?: string[] } = {};
-		if (options.status) {
-			filters.status = options.status;
+		const rawStatuses = parseDelimitedStringList(options.status) ?? [];
+		const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
+		let canonicalStatuses: string[] = [];
+		if (rawStatuses.length > 0) {
+			const result = await normalizeCliStatusList(core, rawStatuses, "--status");
+			if (result === null) {
+				process.exitCode = 1;
+				cleanup();
+				return;
+			}
+			canonicalStatuses = result;
+		}
+		let canonicalExcludeStatuses: string[] = [];
+		if (rawExcludeStatuses.length > 0) {
+			const result = await normalizeCliStatusList(core, rawExcludeStatuses, "--exclude-status");
+			if (result === null) {
+				process.exitCode = 1;
+				cleanup();
+				return;
+			}
+			canonicalExcludeStatuses = result;
+		}
+
+		const filters: {
+			status?: string | string[];
+			statusExcluded?: string | string[];
+			priority?: SearchPriorityFilter;
+			modifiedFiles?: string[];
+		} = {};
+		if (canonicalStatuses.length > 0) {
+			filters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
+		}
+		if (canonicalExcludeStatuses.length > 0) {
+			filters.statusExcluded = canonicalExcludeStatuses;
 		}
 		if (options.priority) {
 			const priorityLower = String(options.priority).toLowerCase();
@@ -1909,7 +1973,12 @@ addHelpSchema(program.command("search [query]"), {
 		// Use the first search result as the selected task, or first available task if no results
 		const firstTask = searchResultTasks[0] || interactiveTasks[0];
 		const priorityFilter = filters.priority ? filters.priority : undefined;
-		const statusFilter = filters.status;
+		const statusFilter = Array.isArray(filters.status) ? (filters.status[0] ?? "") : filters.status;
+		const statusExcludedFilter = Array.isArray(filters.statusExcluded)
+			? filters.statusExcluded
+			: filters.statusExcluded
+				? [filters.statusExcluded]
+				: undefined;
 		const { runUnifiedView } = await import("./ui/unified-view.ts");
 
 		await runUnifiedView({
@@ -1921,11 +1990,13 @@ addHelpSchema(program.command("search [query]"), {
 				title: query ? `Search: ${query}` : "Search",
 				filterDescription: buildSearchFilterDescription({
 					status: statusFilter,
+					statusExcluded: statusExcludedFilter,
 					priority: priorityFilter,
 					query: query ?? "",
 					modifiedFiles: modifiedFileFilters ?? [],
 				}),
 				status: statusFilter,
+				statusExcluded: statusExcludedFilter,
 				priority: priorityFilter,
 				searchQuery: query ?? "", // Pre-populate search with the query
 			},
@@ -1935,6 +2006,7 @@ addHelpSchema(program.command("search [query]"), {
 
 function buildSearchFilterDescription(filters: {
 	status?: string;
+	statusExcluded?: string | string[];
 	priority?: SearchPriorityFilter;
 	query?: string;
 	modifiedFiles?: string[];
@@ -1945,6 +2017,12 @@ function buildSearchFilterDescription(filters: {
 	}
 	if (filters.status) {
 		parts.push(`Status: ${filters.status}`);
+	}
+	if (filters.statusExcluded) {
+		const excluded = Array.isArray(filters.statusExcluded) ? filters.statusExcluded : [filters.statusExcluded];
+		if (excluded.length > 0) {
+			parts.push(`Exclude status: ${excluded.join(", ")}`);
+		}
 	}
 	if (filters.priority) {
 		parts.push(`Priority: ${filters.priority}`);
@@ -2087,7 +2165,16 @@ addHelpSchema(taskCmd.command("list"), {
 	reads: "Local editable tasks from the configured backlog directory",
 	required: [],
 	optional: [
-		{ name: "status", type: statusType, description: "Filter by task status; case-insensitive" },
+		{
+			name: "status",
+			type: statusType,
+			description: "Filter by task status; case-insensitive; repeat or comma-separate for multiple",
+		},
+		{
+			name: "exclude-status",
+			type: statusType,
+			description: "Exclude tasks with one or more statuses; repeat or comma-separate values",
+		},
 		{ name: "assignee", type: "Assignee", description: "Filter by @name" },
 		{ name: "milestone", type: "Milestone ID or title", description: "Closest case-insensitive match" },
 		{ name: "parent", type: "Task ID", description: "Show subtasks of a parent task" },
@@ -2113,7 +2200,16 @@ addHelpSchema(taskCmd.command("list"), {
 	],
 })
 	.description("list tasks grouped by status")
-	.option("-s, --status <status>", "filter tasks by status (case-insensitive)")
+	.option(
+		"-s, --status <status>",
+		"filter tasks by status (case-insensitive; repeatable or comma-separated)",
+		createMultiValueAccumulator(),
+	)
+	.option(
+		"--exclude-status <status>",
+		"exclude tasks by status (repeatable or comma-separated)",
+		createMultiValueAccumulator(),
+	)
 	.option("-a, --assignee <assignee>", "filter tasks by assignee")
 	.option("-m, --milestone <milestone>", "filter tasks by milestone (closest match, case-insensitive)")
 	.option("-p, --parent <taskId>", "filter tasks by parent task ID")
@@ -2157,6 +2253,34 @@ addHelpSchema(taskCmd.command("list"), {
 		}
 
 		const labelFilters = parseDelimitedStringList(options.labels) ?? [];
+		const rawStatuses = parseDelimitedStringList(options.status) ?? [];
+		const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
+		let canonicalStatuses: string[] = [];
+		if (rawStatuses.length > 0) {
+			const result = await normalizeCliStatusList(core, rawStatuses, "--status");
+			if (result === null) {
+				process.exitCode = 1;
+				cleanup();
+				return;
+			}
+			canonicalStatuses = result;
+		}
+		let canonicalExcludeStatuses: string[] = [];
+		if (rawExcludeStatuses.length > 0) {
+			const result = await normalizeCliStatusList(core, rawExcludeStatuses, "--exclude-status");
+			if (result === null) {
+				process.exitCode = 1;
+				cleanup();
+				return;
+			}
+			canonicalExcludeStatuses = result;
+		}
+		if (canonicalStatuses.length > 0) {
+			baseFilters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
+		}
+		if (canonicalExcludeStatuses.length > 0) {
+			baseFilters.statusExcluded = canonicalExcludeStatuses;
+		}
 		const searchQuery = typeof options.search === "string" ? options.search.trim() : "";
 		let taskLimit: number | undefined;
 		if (options.limit !== undefined) {
@@ -2291,7 +2415,12 @@ addHelpSchema(taskCmd.command("list"), {
 		let filterDescription = "";
 		let title = "Tasks";
 		const activeFilters: string[] = [];
-		if (options.status) activeFilters.push(`Status: ${options.status}`);
+		if (canonicalStatuses.length > 0) {
+			activeFilters.push(`Status: ${canonicalStatuses.join(", ")}`);
+		}
+		if (canonicalExcludeStatuses.length > 0) {
+			activeFilters.push(`Exclude status: ${canonicalExcludeStatuses.join(", ")}`);
+		}
 		if (options.assignee) activeFilters.push(`Assignee: ${options.assignee}`);
 		if (options.parent) {
 			activeFilters.push(`Parent: ${normalizeTaskId(String(options.parent))}`);
@@ -2309,6 +2438,7 @@ addHelpSchema(taskCmd.command("list"), {
 		}
 		const initialUnifiedFilter: {
 			status?: string;
+			statusExcluded?: string[];
 			assignee?: string;
 			milestone?: string;
 			priority?: string;
@@ -2321,7 +2451,8 @@ addHelpSchema(taskCmd.command("list"), {
 			parentTaskId?: string;
 			limit?: number;
 		} = {
-			status: options.status,
+			status: canonicalStatuses.length === 1 ? canonicalStatuses[0] : undefined,
+			statusExcluded: canonicalExcludeStatuses,
 			assignee: options.assignee,
 			milestone: options.milestone,
 			priority: options.priority,
@@ -2344,6 +2475,12 @@ addHelpSchema(taskCmd.command("list"), {
 		}
 		if (parentId) {
 			interactiveLoaderFilters.parentTaskId = parentId;
+		}
+		if (canonicalStatuses.length > 0) {
+			interactiveLoaderFilters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
+		}
+		if (canonicalExcludeStatuses.length > 0) {
+			interactiveLoaderFilters.statusExcluded = canonicalExcludeStatuses;
 		}
 		await runUnifiedView({
 			core,

@@ -183,6 +183,7 @@ export class ApiClient {
 			query?: string;
 			types?: SearchResultType[];
 			status?: string | string[];
+			statusExcluded?: string | string[];
 			priority?: SearchPriorityFilter | SearchPriorityFilter[];
 			assignee?: string | string[];
 			labels?: string[];
@@ -203,6 +204,12 @@ export class ApiClient {
 			const statuses = Array.isArray(options.status) ? options.status : [options.status];
 			for (const status of statuses) {
 				params.append("status", status);
+			}
+		}
+		if (options.statusExcluded) {
+			const statuses = Array.isArray(options.statusExcluded) ? options.statusExcluded : [options.statusExcluded];
+			for (const status of statuses) {
+				params.append("statusExcluded", status);
 			}
 		}
 		if (options.priority) {

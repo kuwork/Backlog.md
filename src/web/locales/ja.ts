@@ -700,6 +700,14 @@ export const ja: TranslationDict = {
 		clearFilter: "ラベルフィルターをクリア",
 	},
 
+	statusFilter: {
+		statuses: "ステータス",
+		noStatuses: "ステータスなし",
+		allStatuses: "すべてのステータス",
+		excludeStatuses: "ステータス除外",
+		clearFilter: "ステータスフィルターをクリア",
+	},
+
 	acceptanceCriteria: {
 		label: "受入基準",
 		placeholder: "新しい基準",

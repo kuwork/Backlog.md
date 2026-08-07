@@ -222,7 +222,7 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 
 1. 使用 `backlog draft promote DRAFT-N` 将上游 draft 升级为当前任务；升级后原 draft 文件会被删除。
 2. 如果当前 fork 已存在同名/同主题的本地任务，**不要覆盖/修改它**，而是把上游 draft 升级为独立的新迁移任务。
-3. 升级后，**不要**在新任务中保留任何上游 `Implementation Notes` 或 `Final Summary` 内容；这些章节必须清空。
+3. 升级后，**不要**在新任务中保留任何上游 `Implementation Notes` 或 `Final Summary` 内容；这些章节必须清空。同时，将原上游任务中已勾选的 `Definition of Done` 项全部取消勾选，因为新任务尚未开始执行。
 4. 升级完成后，回到分类文档（如 `doc-4`）更新「原始/迁移任务」列，见「更新分类文档」小节。
 
 ### 新任务字段规则
@@ -235,6 +235,7 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 | **Implementation Plan** | 参考上游实现经验重新撰写，用当前 fork 的文件路径和步骤表达；**不得**出现上游任务编号或「Upstream lesson」等标签。 |
 | **Implementation Notes** | **必须为空**。 |
 | **Final Summary** | **必须为空**。 |
+| **Definition of Done** | 升级为新任务后，原上游任务中已勾选的 DoD 项必须全部取消勾选；项目默认 DoD 会自动应用。 |
 | **References** | 只引用当前 fork 内的相关文件（如主要实现文件），**禁止**引用上游 draft、分类文档或迁移分析报告。 |
 | **Documentation** | 如必须填写，使用通用项目文档（如 `README.md`），**禁止**引用 `doc-4`/`doc-5` 这类迁移分析文档。 |
 | **Modified files** | 根据 `git show --stat <commit>` 映射到当前 fork 的对应路径；若当前 fork 结构不同，按实际文件列出。 |

@@ -705,6 +705,14 @@ export const en = {
 		clearFilter: "Clear label filter",
 	},
 
+	statusFilter: {
+		statuses: "Status",
+		noStatuses: "No statuses",
+		allStatuses: "All statuses",
+		excludeStatuses: "StatusExcluded",
+		clearFilter: "Clear status filter",
+	},
+
 	acceptanceCriteria: {
 		label: "Acceptance Criteria",
 		placeholder: "New criterion",

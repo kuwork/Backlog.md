@@ -6,6 +6,7 @@ export interface JsonSchema {
 	properties?: Record<string, JsonSchema>;
 	required?: string[];
 	items?: JsonSchema;
+	oneOf?: JsonSchema[];
 	enum?: string[];
 	enumCaseInsensitive?: boolean;
 	enumNormalizeWhitespace?: boolean;
@@ -91,6 +92,20 @@ function validateField(
 
 	if (value === undefined || value === null) {
 		return { isValid: true, errors: [], sanitizedValue: value };
+	}
+
+	// oneOf: value must match at least one alternative schema; use the first matching sanitized value
+	if (schema.oneOf && schema.oneOf.length > 0) {
+		let firstError = "";
+		for (const alternative of schema.oneOf) {
+			const alternativeResult = validateField(fieldName, value, alternative);
+			if (alternativeResult.isValid) {
+				return alternativeResult;
+			}
+			firstError ||= alternativeResult.errors.join("; ");
+		}
+		errors.push(`Field '${fieldName}' does not match any allowed schema${firstError ? ` (${firstError})` : ""}`);
+		return { isValid: false, errors, sanitizedValue: undefined };
 	}
 
 	// If no type is specified, accept any type

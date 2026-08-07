@@ -99,23 +99,6 @@ const clickElement = async (element: Element) => {
 	});
 };
 
-const getSelectByFirstOption = (container: HTMLElement, firstOptionText: string): HTMLSelectElement => {
-	const select = Array.from(container.querySelectorAll("select")).find(
-		(element) => element.options[0]?.textContent === firstOptionText,
-	);
-	expect(select).toBeTruthy();
-	return select as HTMLSelectElement;
-};
-
-const setSelectValue = async (select: HTMLSelectElement, value: string) => {
-	await act(async () => {
-		const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
-		valueSetter?.call(select, value);
-		select.dispatchEvent(new window.Event("change", { bubbles: true }));
-		await Promise.resolve();
-	});
-};
-
 const waitFor = async (predicate: () => boolean) => {
 	for (let attempt = 0; attempt < 10; attempt += 1) {
 		if (predicate()) {
@@ -254,7 +237,18 @@ describe("TaskList labels filter menu", () => {
 			tasks: [closedTask],
 			availableStatuses: ["To Do", "Review", "Closed"],
 		});
-		await setSelectValue(getSelectByFirstOption(container, "All statuses"), "Closed");
+
+		// Open the Status filter dropdown and select "Closed"
+		const statusButton = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent?.includes("Status"),
+		);
+		expect(statusButton).toBeTruthy();
+		await clickElement(statusButton as Element);
+		const closedOption = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent?.trim() === "Closed",
+		);
+		expect(closedOption).toBeTruthy();
+		await clickElement(closedOption as Element);
 		await waitFor(() => fetchCalls.length === 1 && (container.textContent ?? "").includes("Clean Up"));
 
 		expect(container.textContent).toContain("Clean Up");
@@ -280,9 +274,63 @@ describe("TaskList labels filter menu", () => {
 			tasks: [reviewTask],
 			availableStatuses: ["To Do", "Review", "Closed"],
 		});
-		await setSelectValue(getSelectByFirstOption(container, "All statuses"), "Review");
+
+		// Open the Status filter dropdown and select "Review"
+		const statusButton = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent?.includes("Status"),
+		);
+		expect(statusButton).toBeTruthy();
+		await clickElement(statusButton as Element);
+		const reviewOption = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent?.trim() === "Review",
+		);
+		expect(reviewOption).toBeTruthy();
+		await clickElement(reviewOption as Element);
 		await waitFor(() => fetchCalls.length === 1 && (container.textContent ?? "").includes("Review task"));
 
 		expect(container.textContent).not.toContain("Clean Up");
+	});
+
+	it("shows the single selected status name instead of a duplicate count from URL params", async () => {
+		globalThis.fetch = (async (_input: RequestInfo | URL) => ({
+			ok: true,
+			status: 200,
+			statusText: "OK",
+			json: async () => [],
+		}) as Response) as typeof fetch;
+
+		// URL with a single status param must not be parsed into two entries
+		const container = renderTaskList(["/?status=Closed"], {
+			tasks: [],
+			availableStatuses: ["To Do", "Review", "Closed"],
+		});
+
+		const statusButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("Status"),
+		);
+		expect(statusButton).toBeTruthy();
+		expect(statusButton?.textContent).toContain("Closed");
+		expect(statusButton?.textContent).not.toContain("2 selected");
+	});
+
+	it("shows the single excluded status name instead of a duplicate count from URL params", async () => {
+		globalThis.fetch = (async (_input: RequestInfo | URL) => ({
+			ok: true,
+			status: 200,
+			statusText: "OK",
+			json: async () => [],
+		}) as Response) as typeof fetch;
+
+		const container = renderTaskList(["/?statusExcluded=Closed"], {
+			tasks: [],
+			availableStatuses: ["To Do", "Review", "Closed"],
+		});
+
+		const excludeButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("StatusExcluded"),
+		);
+		expect(excludeButton).toBeTruthy();
+		expect(excludeButton?.textContent).toContain("Closed");
+		expect(excludeButton?.textContent).not.toContain("2 selected");
 	});
 });

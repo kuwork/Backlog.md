@@ -183,7 +183,8 @@ export interface TaskUpdateInput {
 }
 
 export interface TaskListFilter {
-	status?: string;
+	status?: string | string[];
+	statusExcluded?: string | string[];
 	assignee?: string;
 	priority?: "high" | "medium" | "low";
 	milestone?: string;
@@ -263,6 +264,7 @@ export interface SearchMatch {
 
 export interface SearchFilters {
 	status?: string | string[];
+	statusExcluded?: string | string[];
 	priority?: SearchPriorityFilter | SearchPriorityFilter[];
 	assignee?: string | string[];
 	labels?: string | string[];

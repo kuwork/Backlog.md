@@ -13,6 +13,8 @@ import { collectArchivedMilestoneKeys, getMilestoneLabel, milestoneKey } from ".
 import { formatStoredUtcDateForCompactDisplay, parseStoredUtcDate } from "../utils/date-display";
 import CleanupModal from "./CleanupModal";
 import LabelFilterDropdown from "./LabelFilterDropdown";
+import StatusExcludeDropdown from "./StatusExcludeDropdown";
+import StatusFilterDropdown from "./StatusFilterDropdown";
 import { SuccessToast } from "./SuccessToast";
 import { useI18n } from "../hooks/useI18n";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
@@ -75,7 +77,22 @@ const TaskList: React.FC<TaskListProps> = ({
 }) => {
 	const { t } = useI18n();
 	const [searchParams, setSearchParams] = useSearchParams();
-	const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "");
+	const initialStatusParams = useMemo(() => {
+		return searchParams
+			.getAll("status")
+			.flatMap((status) => status.split(","))
+			.map((status) => status.trim())
+			.filter((status) => status.length > 0);
+	}, []);
+	const initialStatusExcludedParams = useMemo(() => {
+		return searchParams
+			.getAll("statusExcluded")
+			.flatMap((status) => status.split(","))
+			.map((status) => status.trim())
+			.filter((status) => status.length > 0);
+	}, []);
+	const [statusFilter, setStatusFilter] = useState<string[]>(initialStatusParams);
+	const [statusExcludedFilter, setStatusExcludedFilter] = useState<string[]>(initialStatusExcludedParams);
 	const PRIORITY_OPTIONS: Array<{ label: string; value: "" | SearchPriorityFilter }> = [
 		{ label: t.taskList.allPriorities, value: "" },
 		{ label: t.common.high, value: "high" },
@@ -102,7 +119,7 @@ const TaskList: React.FC<TaskListProps> = ({
 	const tableHeaderScrollRef = useRef<HTMLDivElement | null>(null);
 	const tableBodyScrollRef = useRef<HTMLDivElement | null>(null);
 	const isSyncingTableScrollRef = useRef(false);
-	const isFilteringTerminalStatus = isTerminalStatus(statusFilter, availableStatuses);
+	const isFilteringTerminalStatus = statusFilter.length > 0 && statusFilter.every((status) => isTerminalStatus(status, availableStatuses));
 	const milestoneAliasToCanonical = useMemo(() => {
 		const aliasMap = new Map<string, string>();
 		const collectIdAliasKeys = (value: string): string[] => {
@@ -246,12 +263,21 @@ const TaskList: React.FC<TaskListProps> = ({
 		return uniqueMilestones;
 	}, [availableMilestones]);
 	const hasActiveFilters = Boolean(
-		statusFilter || priorityFilter || labelFilter.length > 0 || milestoneFilter,
+		statusFilter.length > 0 || statusExcludedFilter.length > 0 || priorityFilter || labelFilter.length > 0 || milestoneFilter,
 	);
 	const totalTasks = sortedBaseTasks.length;
 
 	useEffect(() => {
-		const paramStatus = searchParams.get("status") ?? "";
+		const normalizedStatuses = searchParams
+			.getAll("status")
+			.flatMap((status) => status.split(","))
+			.map((status) => status.trim())
+			.filter((status) => status.length > 0);
+		const normalizedExcludeStatuses = searchParams
+			.getAll("statusExcluded")
+			.flatMap((status) => status.split(","))
+			.map((status) => status.trim())
+			.filter((status) => status.length > 0);
 		const paramPriority = (searchParams.get("priority") as SearchPriorityFilter | null) ?? "";
 		const paramMilestone = searchParams.get("milestone") ?? "";
 		const paramLabels = [...searchParams.getAll("label"), ...searchParams.getAll("labels")];
@@ -261,8 +287,11 @@ const TaskList: React.FC<TaskListProps> = ({
 		}
 		const normalizedLabels = paramLabels.map((label) => label.trim()).filter((label) => label.length > 0);
 
-		if (paramStatus !== statusFilter) {
-			setStatusFilter(paramStatus);
+		if (normalizedStatuses.join("|") !== statusFilter.join("|")) {
+			setStatusFilter(normalizedStatuses);
+		}
+		if (normalizedExcludeStatuses.join("|") !== statusExcludedFilter.join("|")) {
+			setStatusExcludedFilter(normalizedExcludeStatuses);
 		}
 		if (paramPriority !== priorityFilter) {
 			setPriorityFilter(paramPriority);
@@ -298,7 +327,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		};
 
 		const shouldUseApi =
-			Boolean(statusFilter) || Boolean(priorityFilter) || labelFilter.length > 0;
+			statusFilter.length > 0 || statusExcludedFilter.length > 0 || Boolean(priorityFilter) || labelFilter.length > 0;
 
 		if (!hasActiveFilters) {
 			return;
@@ -316,7 +345,8 @@ const TaskList: React.FC<TaskListProps> = ({
 			try {
 				const results = await apiClient.search({
 					types: ["task"],
-					status: statusFilter || undefined,
+					status: statusFilter.length > 0 ? statusFilter : undefined,
+					statusExcluded: statusExcludedFilter.length > 0 ? statusExcludedFilter : undefined,
 					priority: (priorityFilter || undefined) as SearchPriorityFilter | undefined,
 					labels: labelFilter.length > 0 ? labelFilter : undefined,
 				});
@@ -344,6 +374,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		hasActiveFilters,
 		priorityFilter,
 		statusFilter,
+		statusExcludedFilter,
 		labelFilter,
 		tasks,
 		milestoneFilter,
@@ -353,14 +384,18 @@ const TaskList: React.FC<TaskListProps> = ({
 	]);
 
 	const syncUrl = (
-		nextStatus: string,
+		nextStatuses: string[],
+		nextExcludeStatuses: string[],
 		nextPriority: "" | SearchPriorityFilter,
 		nextLabels: string[],
 		nextMilestone: string,
 	) => {
 		const params = new URLSearchParams();
-		if (nextStatus) {
-			params.set("status", nextStatus);
+		for (const status of nextStatuses) {
+			params.append("status", status);
+		}
+		for (const status of nextExcludeStatuses) {
+			params.append("statusExcluded", status);
 		}
 		if (nextPriority) {
 			params.set("priority", nextPriority);
@@ -376,33 +411,39 @@ const TaskList: React.FC<TaskListProps> = ({
 		setSearchParams(params, { replace: true });
 	};
 
-	const handleStatusChange = (value: string) => {
-		setStatusFilter(value);
-		syncUrl(value, priorityFilter, labelFilter, milestoneFilter);
+	const handleStatusChange = (statuses: string[]) => {
+		setStatusFilter(statuses);
+		syncUrl(statuses, statusExcludedFilter, priorityFilter, labelFilter, milestoneFilter);
+	};
+
+	const handleExcludeStatusChange = (statuses: string[]) => {
+		setStatusExcludedFilter(statuses);
+		syncUrl(statusFilter, statuses, priorityFilter, labelFilter, milestoneFilter);
 	};
 
 	const handlePriorityChange = (value: "" | SearchPriorityFilter) => {
 		setPriorityFilter(value);
-		syncUrl(statusFilter, value, labelFilter, milestoneFilter);
+		syncUrl(statusFilter, statusExcludedFilter, value, labelFilter, milestoneFilter);
 	};
 
 	const handleLabelChange = (next: string[]) => {
 		const normalized = next.map((label) => label.trim()).filter((label) => label.length > 0);
 		setLabelFilter(normalized);
-		syncUrl(statusFilter, priorityFilter, normalized, milestoneFilter);
+		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, normalized, milestoneFilter);
 	};
 
 	const handleMilestoneChange = (value: string) => {
 		setMilestoneFilter(value);
-		syncUrl(statusFilter, priorityFilter, labelFilter, value);
+		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, labelFilter, value);
 	};
 
 	const handleClearFilters = () => {
-		setStatusFilter("");
+		setStatusFilter([]);
+		setStatusExcludedFilter([]);
 		setPriorityFilter("");
 		setLabelFilter([]);
 		setMilestoneFilter("");
-		syncUrl("", "", [], "");
+		syncUrl([], [], "", [], "");
 		setDisplayTasks(sortedBaseTasks);
 		setError(null);
 	};
@@ -612,18 +653,19 @@ const TaskList: React.FC<TaskListProps> = ({
 
 				<div className="flex flex-wrap items-center gap-3 justify-between">
 					<div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-						<select
-							value={statusFilter}
-							onChange={(event) => handleStatusChange(event.target.value)}
-							className="min-w-[140px] h-10 py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200"
-						>
-							<option value="">{t.taskList.allStatuses}</option>
-							{availableStatuses.map((status) => (
-								<option key={status} value={status}>
-									{status}
-								</option>
-							))}
-						</select>
+						<StatusFilterDropdown
+							availableStatuses={availableStatuses}
+							selectedStatuses={statusFilter}
+							onChange={handleStatusChange}
+							menuId="task-list-status-filter-menu"
+						/>
+
+						<StatusExcludeDropdown
+							availableStatuses={availableStatuses}
+							excludedStatuses={statusExcludedFilter}
+							onChange={handleExcludeStatusChange}
+							menuId="task-list-status-exclude-menu"
+						/>
 
 						<select
 							value={priorityFilter}

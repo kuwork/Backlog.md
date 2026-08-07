@@ -690,6 +690,14 @@ export const zhCN: TranslationDict = {
 		clearFilter: "清除标签筛选",
 	},
 
+	statusFilter: {
+		statuses: "状态",
+		noStatuses: "无状态",
+		allStatuses: "全部状态",
+		excludeStatuses: "状态排除",
+		clearFilter: "清除状态筛选",
+	},
+
 	acceptanceCriteria: {
 		label: "验收标准",
 		placeholder: "新检查项",
