@@ -80,6 +80,29 @@ Keep me exactly.
 		expect(content).not.toContain("## Acceptance Criteria");
 	});
 
+	it("edits by full prefixed ID in a default task-prefix project", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Prefixed ID edit test",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-07-04",
+				labels: [],
+				dependencies: [],
+			},
+			false,
+		);
+
+		const result = await $`bun ${cliPath} task edit task-1 --label prefixed`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-1");
+		expect(task).not.toBeNull();
+		expect(task?.labels).toContain("prefixed");
+	});
+
 	it("should preserve all sections when updating description", async () => {
 		// Create a task with all sections
 		const core = new Core(TEST_DIR);
@@ -300,5 +323,56 @@ Keep me exactly.
 		expect(after).not.toContain("Actual Start:");
 		expect(after).toContain("Planned Start:");
 		expect(after).toContain("Actual End:");
+	});
+});
+
+describe("Task edit with custom task prefix", () => {
+	const cliPath = join(process.cwd(), "src", "cli.ts");
+	let customPrefixDir: string;
+
+	beforeEach(async () => {
+		customPrefixDir = createUniqueTestDir("test-custom-prefix-edit");
+		await rm(customPrefixDir, { recursive: true, force: true }).catch(() => {});
+		await mkdir(customPrefixDir, { recursive: true });
+
+		await $`git init`.cwd(customPrefixDir).quiet();
+		await $`git config user.name "Test User"`.cwd(customPrefixDir).quiet();
+		await $`git config user.email test@example.com`.cwd(customPrefixDir).quiet();
+
+		await $`bun ${cliPath} init "Custom Prefix Test" --task-prefix back --defaults --integration-mode none`
+			.cwd(customPrefixDir)
+			.quiet();
+	});
+
+	afterEach(async () => {
+		try {
+			await safeCleanup(customPrefixDir);
+		} catch {
+			// Ignore cleanup errors
+		}
+	});
+
+	it("edits a task by bare numeric ID when project uses a custom prefix", async () => {
+		await $`bun ${cliPath} task create "Custom prefix task" --priority medium`.cwd(customPrefixDir).quiet();
+
+		const result = await $`bun ${cliPath} task edit 1 --priority low`.cwd(customPrefixDir).quiet();
+		expect(result.exitCode).toBe(0);
+
+		const core = new Core(customPrefixDir);
+		const task = await core.filesystem.loadTask("back-1");
+		expect(task).not.toBeNull();
+		expect(task?.priority).toBe("low");
+	});
+
+	it("edits a task by prefixed ID when project uses a custom prefix", async () => {
+		await $`bun ${cliPath} task create "Custom prefix task" --priority medium`.cwd(customPrefixDir).quiet();
+
+		const result = await $`bun ${cliPath} task edit back-1 --priority high`.cwd(customPrefixDir).quiet();
+		expect(result.exitCode).toBe(0);
+
+		const core = new Core(customPrefixDir);
+		const task = await core.filesystem.loadTask("back-1");
+		expect(task).not.toBeNull();
+		expect(task?.priority).toBe("high");
 	});
 });

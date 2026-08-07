@@ -2566,7 +2566,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const core = new Core(cwd);
 
 		if (shouldUseWizard) {
-			let selectedTaskId = taskId ? normalizeTaskId(taskId) : undefined;
+			let selectedTaskId = taskId;
 			if (!selectedTaskId) {
 				const localTasks = await core.queryTasks({ includeCrossBranch: false });
 				const taskOptions = localTasks.map((candidate) => ({
@@ -2608,8 +2608,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			return;
 		}
 
-		const canonicalId = normalizeTaskId(taskId ?? "");
-		const existingTask = await core.loadTaskById(canonicalId);
+		const existingTask = await core.loadTaskById(taskId ?? "");
 
 		if (!existingTask) {
 			console.error(`Task ${taskId} not found.`);
@@ -2700,7 +2699,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 				uncheckDod = dodUnchecks;
 			}
 		} catch (error) {
-			console.error(formatTaskEditError(error, canonicalId));
+			console.error(formatTaskEditError(error, existingTask.id));
 			process.exitCode = 1;
 			return;
 		}
@@ -2873,9 +2872,9 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		let updatedTask: Task;
 		try {
 			const updateInput = buildTaskUpdateInput(editArgs);
-			updatedTask = await core.editTask(canonicalId, updateInput);
+			updatedTask = await core.editTask(existingTask.id, updateInput);
 		} catch (error) {
-			console.error(formatTaskEditError(error, canonicalId));
+			console.error(formatTaskEditError(error, existingTask.id));
 			process.exitCode = 1;
 			return;
 		}
