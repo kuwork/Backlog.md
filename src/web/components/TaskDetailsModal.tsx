@@ -1295,12 +1295,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
               <ul className="space-y-2">
                 {(criteria || []).map((c) => (
                   <li key={c.index} className="flex items-start gap-2 rounded-md px-2 py-1">
-                    <input
-                      type="checkbox"
-                      checked={c.checked}
-                      onChange={(e) => void handleToggleCriterion(c.index, e.target.checked)}
-                      className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
+                    <div className="flex items-start gap-1">
+                      <input
+                        type="checkbox"
+                        checked={c.checked}
+                        onChange={(e) => void handleToggleCriterion(c.index, e.target.checked)}
+                        className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="mt-0.5 font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        {`#${c.index}`}
+                      </span>
+                    </div>
                     <div className="text-sm text-gray-800 dark:text-gray-100">{c.text}</div>
                   </li>
                 ))}
