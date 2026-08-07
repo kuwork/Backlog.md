@@ -106,6 +106,8 @@ backlog task create "Add project search" \
   --ac "Tests cover task, document, and decision results"
 ```
 
+> **Do not use bash `$'...'` quoting for multi-line values.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
+
 ### Task Dates
 
 Tasks support optional `dueDate`, `plannedStart`, `plannedEnd`, `actualStart`, and `actualEnd` fields. Set them at creation:

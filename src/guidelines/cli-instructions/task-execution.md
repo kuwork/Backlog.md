@@ -18,6 +18,8 @@ Before writing code for non-trivial work:
 7. Record the approved plan:
    - `backlog task edit {{TASK_ID:123}} --plan "1. Analyze current implementation\n2. Design minimal API change\n3. Implement and add tests\n4. Run checks and verify"`
 
+> **Do not use bash `$'...'` quoting for multi-line values.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
+
 Keep the Backlog task as the plan of record. If the approach changes, update the plan through `backlog task edit` before continuing.
 
 ### Execution Workflow

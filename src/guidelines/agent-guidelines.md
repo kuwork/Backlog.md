@@ -714,9 +714,11 @@ The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, `-
 
 **4. Shell-specific shorthand (interactive shells only — some AI agent sandboxes reject these):**
 
-- Bash/Zsh (ANSI‑C quoting):
+- Bash/Zsh (ANSI‑C quoting) — **avoid this form:**
 
   ```bash
+  # DON'T DO THIS: bash converts \n to real newlines before the argument reaches
+  # the CLI, which splits the command across lines and leaves only the first line saved.
   backlog task edit 42 --notes $'Line1\nLine2'
   ```
 
@@ -733,6 +735,8 @@ The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, `-
   ```
 
 Prefer forms **1** and **2** when running under Claude Code, Codex, or any agent harness that screens commands through a tree‑sitter AST walker — those harnesses reject ANSI‑C strings, command substitutions, and heredoc forms (see issue [#595](https://github.com/MrLesk/Backlog.md/issues/595)).
+
+**Never use bash `$'...'` quoting for `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, or `--append-final-summary`.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
 
 To store a literal backslash-n sequence (`\n`) inside a `--desc` / `--description` or `--append-description` value, double the backslashes according to your shell rules. For `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, and `--append-final-summary`, `\n` is already stored literally.
 
