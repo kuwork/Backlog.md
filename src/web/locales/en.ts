@@ -378,6 +378,9 @@ export const en = {
 			"When enabled, the server scans the next 100 ports if the default port is occupied. If all are occupied, startup fails with a clear error.",
 		autoOpenBrowser: "Auto Open Browser",
 		autoOpenBrowserDesc: "Automatically open browser when starting web UI",
+		hideEmptyColumns: "Hide Empty Columns",
+		hideEmptyColumnsDesc:
+			"Hide board columns whose status has no tasks. Columns reappear while dragging a task so they remain valid drop targets.",
 		advancedSettings: "Advanced Settings",
 		taskResolution: "Task Resolution Strategy",
 		mostRecent: "Most Recent",

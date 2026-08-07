@@ -379,6 +379,8 @@ export const zhTW: TranslationDict = {
 		autoPortDesc: "啟用後，若預設埠被佔用，伺服器自動掃描接下來的 100 個埠。全部佔用時啟動失敗並提示錯誤。",
 		autoOpenBrowser: "自動打開瀏覽器",
 		autoOpenBrowserDesc: "啟動 Web UI 時自動打開瀏覽器",
+		hideEmptyColumns: "隱藏空狀態欄",
+		hideEmptyColumnsDesc: "隱藏沒有任何任務的狀態欄。拖曳任務時欄位會暫時顯示，以保留有效的放置目標。",
 		advancedSettings: "高級設定",
 		taskResolution: "任務解析策略",
 		mostRecent: "最新",

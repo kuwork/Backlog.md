@@ -708,6 +708,7 @@ function AppContent() {
 		isLoading,
 		labelColors,
 		onLabelColorsChange: handleLabelColorsChange,
+		hideEmptyColumns: config?.hideEmptyColumns ?? false,
 	};
 
 	const mainLocation = state?.backgroundLocation || location;

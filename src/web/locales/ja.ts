@@ -382,6 +382,9 @@ export const ja: TranslationDict = {
 			"有効にすると、デフォルトポートが占有されている場合、サーバーは次の100個のポートを自動的にスキャンします。すべてが占有されている場合、起動は失敗し、エラーが報告されます。",
 		autoOpenBrowser: "ブラウザを自動で開く",
 		autoOpenBrowserDesc: "Web UI 起動時にブラウザを自動で開く",
+		hideEmptyColumns: "空の列を非表示",
+		hideEmptyColumnsDesc:
+			"タスクのないステータス列を非表示にします。ドラッグ中はドロップ先を維持するため列が一時的に表示されます。",
 		advancedSettings: "高度な設定",
 		taskResolution: "タスク解決戦略",
 		mostRecent: "最新",

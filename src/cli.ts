@@ -98,6 +98,7 @@ const CONFIG_GET_KEYS = [
 	"maxColumnWidth",
 	"defaultPort",
 	"autoOpenBrowser",
+	"hideEmptyColumns",
 	"remoteOperations",
 	"autoCommit",
 	"filesystemOnly",
@@ -114,6 +115,7 @@ const CONFIG_SET_KEYS = [
 	"dateFormat",
 	"maxColumnWidth",
 	"autoOpenBrowser",
+	"hideEmptyColumns",
 	"defaultPort",
 	"remoteOperations",
 	"autoCommit",
@@ -4309,7 +4311,7 @@ sequenceCmd
 	});
 
 const CONFIG_AVAILABLE_KEYS =
-	"Available keys: defaultEditor, projectName, defaultStatus, statuses, labels, milestones, definitionOfDone, dateFormat, maxColumnWidth, defaultPort, autoOpenBrowser, remoteOperations, autoCommit, filesystemOnly, bypassGitHooks, zeroPaddedIds, checkActiveBranches, activeBranchDays";
+	"Available keys: defaultEditor, projectName, defaultStatus, statuses, labels, milestones, definitionOfDone, dateFormat, maxColumnWidth, defaultPort, autoOpenBrowser, hideEmptyColumns, remoteOperations, autoCommit, filesystemOnly, bypassGitHooks, zeroPaddedIds, checkActiveBranches, activeBranchDays";
 
 addHelpSchema(configCmd.command("get <key>"), {
 	reads: "Project Backlog.md configuration",
@@ -4371,6 +4373,9 @@ addHelpSchema(configCmd.command("get <key>"), {
 					break;
 				case "autoOpenBrowser":
 					console.log(config.autoOpenBrowser?.toString() || "");
+					break;
+				case "hideEmptyColumns":
+					console.log(config.hideEmptyColumns?.toString() || "false");
 					break;
 				case "remoteOperations":
 					console.log(config.remoteOperations?.toString() || "");
@@ -4466,6 +4471,18 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 						config.autoOpenBrowser = false;
 					} else {
 						console.error("autoOpenBrowser must be true or false");
+						process.exit(1);
+					}
+					break;
+				}
+				case "hideEmptyColumns": {
+					const boolValue = value.toLowerCase();
+					if (boolValue === "true" || boolValue === "1" || boolValue === "yes") {
+						config.hideEmptyColumns = true;
+					} else if (boolValue === "false" || boolValue === "0" || boolValue === "no") {
+						config.hideEmptyColumns = false;
+					} else {
+						console.error("hideEmptyColumns must be true or false");
 						process.exit(1);
 					}
 					break;
@@ -4637,6 +4654,7 @@ addHelpSchema(configCmd.command("list"), {
 			console.log(`  dateFormat: ${config.dateFormat}`);
 			console.log(`  maxColumnWidth: ${config.maxColumnWidth || "(not set)"}`);
 			console.log(`  autoOpenBrowser: ${config.autoOpenBrowser ?? "(not set)"}`);
+			console.log(`  hideEmptyColumns: ${config.hideEmptyColumns ?? "(not set)"}`);
 			console.log(`  defaultPort: ${config.defaultPort ?? "(not set)"}`);
 			console.log(`  remoteOperations: ${config.remoteOperations ?? "(not set)"}`);
 			console.log(`  autoCommit: ${config.autoCommit ?? "(not set)"}`);

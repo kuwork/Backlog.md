@@ -379,6 +379,8 @@ export const zhCN: TranslationDict = {
 		autoPortDesc: "启用后，若默认端口被占用，服务器自动扫描接下来的 100 个端口。全部占用时启动失败并提示错误。",
 		autoOpenBrowser: "自动打开浏览器",
 		autoOpenBrowserDesc: "启动 Web UI 时自动打开浏览器",
+		hideEmptyColumns: "隐藏空状态列",
+		hideEmptyColumnsDesc: "隐藏没有任何任务的状态列。拖动任务时列会暂时显示，以保留有效的放置目标。",
 		advancedSettings: "高级设置",
 		taskResolution: "任务解析策略",
 		mostRecent: "最新",

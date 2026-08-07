@@ -1447,6 +1447,9 @@ export class FileSystem {
 				case "auto_open_browser":
 					config.autoOpenBrowser = value.toLowerCase() === "true";
 					break;
+				case "hide_empty_columns":
+					config.hideEmptyColumns = value.toLowerCase() === "true";
+					break;
 				case "auto_port":
 					config.autoPort = value.toLowerCase() === "true";
 					break;
@@ -1533,6 +1536,7 @@ export class FileSystem {
 			defaultEditor: config.defaultEditor,
 			autoOpenBrowser: config.autoOpenBrowser,
 			autoPort: config.autoPort,
+			hideEmptyColumns: config.hideEmptyColumns,
 			defaultPort: config.defaultPort,
 			remoteOperations: config.remoteOperations,
 			autoCommit: config.autoCommit,
@@ -1565,6 +1569,7 @@ export class FileSystem {
 			...(config.maxColumnWidth ? [`max_column_width: ${config.maxColumnWidth}`] : []),
 			...(config.defaultEditor ? [`default_editor: "${config.defaultEditor}"`] : []),
 			...(typeof config.autoOpenBrowser === "boolean" ? [`auto_open_browser: ${config.autoOpenBrowser}`] : []),
+			...(typeof config.hideEmptyColumns === "boolean" ? [`hide_empty_columns: ${config.hideEmptyColumns}`] : []),
 			...(typeof config.autoPort === "boolean" ? [`auto_port: ${config.autoPort}`] : []),
 			...(config.defaultPort ? [`default_port: ${config.defaultPort}`] : []),
 			...(typeof config.remoteOperations === "boolean" ? [`remote_operations: ${config.remoteOperations}`] : []),

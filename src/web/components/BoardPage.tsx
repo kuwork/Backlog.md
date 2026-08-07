@@ -15,6 +15,7 @@ interface BoardPageProps {
 	milestoneEntities: Milestone[];
 	archivedMilestones: Milestone[];
 	isLoading: boolean;
+	hideEmptyColumns?: boolean;
 	labelColors?: Record<string, string>;
 	onLabelColorsChange?: (colors: Record<string, string>) => void;
 }
@@ -30,6 +31,7 @@ export default function BoardPage({
 	milestoneEntities,
 	archivedMilestones,
 	isLoading,
+	hideEmptyColumns,
 	labelColors,
 	onLabelColorsChange,
 }: BoardPageProps) {
@@ -143,6 +145,7 @@ export default function BoardPage({
 				filterLabels={filterLabels}
 				filterPriority={filterPriority}
 				onFiltersChange={handleFiltersChange}
+				hideEmptyColumns={hideEmptyColumns}
 				labelColors={labelColors}
 				onLabelColorsChange={onLabelColorsChange}
 			/>
