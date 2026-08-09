@@ -359,6 +359,38 @@ definition_of_done:
 
 ---
 
+## 🔧 故障排除
+
+### Apple Silicon (macOS)
+
+在 M 系列 Mac 上，当 Node、Bun 或 Homebrew 以 Rosetta（x64 模拟）方式运行，却安装了 Intel 版而非 arm64 版二进制时，`backlog` 可能报 `illegal hardware instruction` 或 `Binary package not installed for darwin-...`。启动器会运行实际已安装的任一 darwin 变体（arm64 或 x64），但最可靠的修复方式是安装原生架构版本。
+
+先检查各工具报告的架构：
+
+```bash
+uname -m                            # arm64 = Apple Silicon 硬件；x86_64 = Intel 或 Rosetta shell
+node -p process.arch                # 你的 Node/Bun 运行时架构
+sysctl -in sysctl.proc_translated   # 1 = 当前 shell 运行于 Rosetta 之下
+which brew                          # /opt/homebrew = arm64 brew，/usr/local = Intel brew
+```
+
+若架构不一致，用原生架构重新安装：
+
+```bash
+# Homebrew：确保 `which brew` 输出 /opt/homebrew，然后（上游）
+brew reinstall backlog-md
+
+# npm
+arch -arm64 npm i -g @kuwork/backlog.md
+
+# Bun
+arch -arm64 bun add -g @kuwork/backlog.md
+```
+
+如果刻意在 Rosetta 下运行 x64 Node 也可以：`backlog` 会回退到实际已安装的任一 `backlog.md-darwin-*` 包。
+
+---
+
 ## 🌐 社区工具
 
 - **[vscode-backlog-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-backlog-md)** - VS Code 扩展，包含事项面板、看板视图和编辑功能。([ysamlan/vscode-backlog-md](https://github.com/ysamlan/vscode-backlog-md))
