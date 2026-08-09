@@ -186,6 +186,7 @@ export interface TaskListFilter {
 	status?: string | string[];
 	statusExcluded?: string | string[];
 	assignee?: string;
+	unassigned?: boolean;
 	priority?: "high" | "medium" | "low";
 	milestone?: string;
 	parentTaskId?: string;

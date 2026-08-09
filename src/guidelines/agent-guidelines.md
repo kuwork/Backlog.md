@@ -960,6 +960,7 @@ backlog board --milestones
 | Filter by multiple statuses | `backlog task list --status "To Do,In Progress" --plain` |
 | Exclude statuses   | `backlog task list --exclude-status "Done" --plain` |
 | Filter by assignee | `backlog task list -a @sara --plain`         |
+| Filter unassigned  | `backlog task list --unassigned --plain`     |
 | Archive task       | `backlog task archive 42`                    |
 | Demote to draft    | `backlog task demote 42`                     |
 | Install wiki skill | `backlog wiki install claude`                |

@@ -21,6 +21,10 @@ export const taskListSchema: JsonSchema = {
 			type: "string",
 			maxLength: 100,
 		},
+		unassigned: {
+			type: "boolean",
+			description: "When true, only return tasks with no assignee. Cannot be combined with assignee.",
+		},
 		milestone: {
 			type: "string",
 			maxLength: 100,

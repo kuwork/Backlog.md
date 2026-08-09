@@ -7,6 +7,7 @@ This guide provides detailed instructions for creating well-structured tasks. Yo
 **IMPORTANT - Always use filters when searching:**
 - Use `task_search` with query parameter (e.g., query="desktop app")
 - Use `task_list` with status filter to exclude completed work (e.g., status="To Do" or status="In Progress")
+- Use `unassigned: true` on `task_list` to find tasks with no assignee (cannot be combined with `assignee`)
 - Multi-select statuses with an array (e.g., status=["To Do", "In Progress"]) or exclude statuses (e.g., statusExcluded=["Done", "Blocked"]); combine both to narrow the result set
 - Never list all tasks including "Done" status without explicit user request
 - Never search without a query or limit - this can overwhelm the context window

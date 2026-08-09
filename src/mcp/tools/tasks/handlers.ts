@@ -52,6 +52,7 @@ export type TaskListArgs = {
 	status?: string | string[];
 	statusExcluded?: string | string[];
 	assignee?: string;
+	unassigned?: boolean;
 	milestone?: string;
 	labels?: string[];
 	search?: string;
@@ -159,6 +160,9 @@ export class TaskHandlers {
 	}
 
 	async listTasks(args: TaskListArgs = {}): Promise<CallToolResult> {
+		if (args.assignee && args.unassigned) {
+			throw new BacklogToolError("unassigned cannot be combined with assignee.", "VALIDATION_ERROR");
+		}
 		if (this.isDraftStatus(args.status)) {
 			let drafts = await this.core.filesystem.listDrafts();
 			if (args.search) {
@@ -168,6 +172,9 @@ export class TaskHandlers {
 
 			if (args.assignee) {
 				drafts = drafts.filter((draft) => (draft.assignee ?? []).includes(args.assignee ?? ""));
+			}
+			if (args.unassigned) {
+				drafts = drafts.filter((draft) => !(draft.assignee ?? []).some((value) => value.trim().length > 0));
 			}
 			if (args.milestone) {
 				const [activeMilestones, archivedMilestones] = await Promise.all([
@@ -235,6 +242,9 @@ export class TaskHandlers {
 		}
 		if (args.assignee) {
 			filters.assignee = args.assignee;
+		}
+		if (args.unassigned) {
+			filters.unassigned = true;
 		}
 		if (args.milestone) {
 			filters.milestone = args.milestone;

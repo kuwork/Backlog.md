@@ -16,7 +16,7 @@ Recommended CLI commands:
 - `backlog task list --exclude-status "Done" --plain` (exclude one or more statuses)
 - `backlog task list --status "To Do,In Progress" --exclude-status "Blocked" --plain` (combine multi-select with exclusion)
 
-Avoid broad unfiltered listing when the project may have many tasks. Use `--status`, `--assignee`, `--parent`, `--priority`, `--labels`, `--search`, `--exclude-status`, or `--limit` where applicable.
+Avoid broad unfiltered listing when the project may have many tasks. Use `--status`, `--assignee`, `--unassigned`, `--parent`, `--priority`, `--labels`, `--search`, `--exclude-status`, or `--limit` where applicable.
 
 Use `backlog task view {{TASK_ID:123}} --plain` to read full context for likely matches.
 
