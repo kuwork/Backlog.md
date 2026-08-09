@@ -15,7 +15,11 @@ Always use Backlog.md CLI commands to create and update documents so IDs, frontm
 | Append content to a document | `backlog doc update doc-1 --append-content "Additional section"` |
 | Update metadata or move a doc | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
 | List all documents | `backlog doc list --plain` |
-| View a document | `backlog doc view doc-1` |
+| View a document | `backlog doc view doc-1` / `backlog doc view doc-1 --plain` |
+
+### Viewing Documents
+
+`backlog doc view <docId>` opens an interactive scrollable viewer by default. Pass `--plain` to print the raw document content to stdout instead (useful for agents, scripts, pipes, and CI). When stdout is not a TTY, plain output is emitted automatically, so scripts never get trapped in the interactive viewer.
 
 ### Document Types
 

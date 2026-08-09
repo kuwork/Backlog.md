@@ -851,8 +851,9 @@ backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook 
 # List all docs (searched globally across subdirectories)
 backlog doc list
 
-# View a specific doc
+# View a specific doc (--plain prints raw content without the interactive viewer)
 backlog doc view doc-1
+backlog doc view doc-1 --plain
 ```
 
 #### MCP / API Usage
