@@ -10,6 +10,15 @@ import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx"
 
 const originalFetch = globalThis.fetch;
 const originalWindowGlobal = (globalThis as { window?: typeof window }).window;
+const originalDocumentGlobal = (globalThis as { document?: Document }).document;
+const originalNavigatorGlobal = (globalThis as { navigator?: Navigator }).navigator;
+
+afterEach(() => {
+	(globalThis as { window?: typeof window }).window = originalWindowGlobal;
+	(globalThis as { document?: Document }).document = originalDocumentGlobal;
+	(globalThis as { navigator?: Navigator }).navigator = originalNavigatorGlobal;
+	globalThis.fetch = originalFetch;
+});
 
 function setupInteractiveDom() {
 	const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
@@ -79,6 +88,77 @@ describe("MermaidMarkdown", () => {
 
 		expect(html).toContain('href="ftp://example.com/file"');
 		expect(html).toContain('href="mailto:foo@example.com"');
+	});
+
+	it("keeps hash-only markdown links on the current route when a base href is present", () => {
+		const dom = new JSDOM("<!doctype html><html><head><base href='/'></head><body></body></html>", {
+			url: "http://localhost/tasks/BACK-536?view=detail",
+		});
+		globalThis.window = dom.window as unknown as Window & typeof globalThis;
+		globalThis.document = dom.window.document as unknown as Document;
+		globalThis.navigator = dom.window.navigator as unknown as Navigator;
+
+		const source = "# First Heading\n\n[First](#first-heading) [Second](#second-heading)\n\n## Second Heading";
+		const html = render(source);
+		const renderedDocument = new JSDOM(html).window.document;
+		const links = Array.from(renderedDocument.querySelectorAll("p a")).map((link) => link.getAttribute("href"));
+
+		expect(renderedDocument.querySelector("#first-heading")).toBeTruthy();
+		expect(renderedDocument.querySelector("#second-heading")).toBeTruthy();
+		expect(links).toEqual([
+			"/tasks/BACK-536?view=detail#first-heading",
+			"/tasks/BACK-536?view=detail#second-heading",
+		]);
+	});
+
+	describe("heading github-slugger IDs with prefix metadata", () => {
+		it("uses github-slugger slugs for numeric prefixed headings", () => {
+			const source = "# 1.1 Section Title\n\n## 1.2 Subsection";
+			const html = render(source);
+
+			expect(html).toContain('id="11-section-title"');
+			expect(html).toContain('data-heading-prefix="1.1"');
+			expect(html).toContain('data-heading-prefix="1.2"');
+			expect(html).toContain('href="#11-section-title"');
+			expect(html).toContain('href="#12-subsection"');
+		});
+
+		it("uses github-slugger slugs for alphanumeric prefixed headings", () => {
+			const source = "# A1: Section Title\n\n## A2. Subsection";
+			const html = render(source);
+
+			expect(html).toContain('id="a1-section-title"');
+			expect(html).toContain('data-heading-prefix="A1"');
+			expect(html).toContain('data-heading-prefix="A2"');
+			expect(html).toContain('href="#a1-section-title"');
+			expect(html).toContain('href="#a2-subsection"');
+		});
+
+		it("supports dot and enumeration comma separators", () => {
+			const source = "# 1.1. Section Title\n\n# 1.2、 Section Title";
+			const html = render(source);
+
+			expect(html).toContain('id="11-section-title"');
+			expect(html).toContain('data-heading-prefix="1.1"');
+			expect(html).toContain('id="12-section-title"');
+			expect(html).toContain('data-heading-prefix="1.2"');
+		});
+
+		it("falls back to auto-generated slug for headings without a prefix", () => {
+			const source = "# Summary";
+			const html = render(source);
+
+			expect(html).toContain('id="summary"');
+			expect(html).toContain('href="#summary"');
+		});
+
+		it("deduplicates repeated headings", () => {
+			const source = "# 1.1 Task\n\n# 1.1 Task";
+			const html = render(source);
+
+			expect(html).toContain('id="11-task"');
+			expect(html).toContain('id="11-task-1"');
+		});
 	});
 
 	it("encodes spaces in local file link destinations so markdown parses them", () => {
@@ -399,6 +479,132 @@ describe("MermaidMarkdown", () => {
 
 			expect(clickedPath).not.toBeNull();
 			expect(clickedPath ?? "").toContain("backlog/docs/doc-001 - Configuring");
+		});
+
+		it("does not treat hash-only links as file links", async () => {
+			let clickedPath: string | null = null;
+			const source = "# Heading\n\n[Jump to heading](#heading)";
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<MermaidMarkdown
+								source={source}
+								onFileClick={(path) => {
+									clickedPath = path;
+								}}
+							/>
+						</ImageLightboxProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			const link = container?.querySelector("a");
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute("href")).toBe("/documentation/4/test#heading");
+			expect(link?.getAttribute("title")).toBeNull();
+
+			const MouseEventCtor = (dom?.window as unknown as { MouseEvent: typeof MouseEvent })?.MouseEvent;
+			await act(async () => {
+				link?.dispatchEvent(new MouseEventCtor("click", { bubbles: true, cancelable: true }));
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			});
+
+			expect(clickedPath).toBeNull();
+		});
+	});
+
+	describe("hash link click resolution", () => {
+		let root: Root | null = null;
+		let container: HTMLElement | null = null;
+		let dom: ReturnType<typeof setupInteractiveDom> | null = null;
+
+		beforeEach(() => {
+			dom = setupInteractiveDom();
+			container = document.getElementById("root");
+			expect(container).toBeTruthy();
+			root = createRoot(container as HTMLElement);
+		});
+
+		afterEach(() => {
+			act(() => {
+				root?.unmount();
+			});
+			cleanupInteractiveDom();
+		});
+
+		it("resolves a prefix hash anchor to the github-slugger heading", async () => {
+			const source = "## A1: Section Title\n\n[Jump to A1](#A1)";
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<MermaidMarkdown source={source} />
+						</ImageLightboxProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			const heading = container?.querySelector("h2");
+			expect(heading).not.toBeNull();
+			expect(heading?.getAttribute("id")).toBe("a1-section-title");
+			expect(heading?.getAttribute("data-heading-prefix")).toBe("A1");
+
+			const link = container?.querySelector("p a");
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute("href")).toBe("/documentation/4/test#A1");
+
+			const MouseEventCtor = (dom?.window as unknown as { MouseEvent: typeof MouseEvent })?.MouseEvent;
+			await act(async () => {
+				link?.dispatchEvent(new MouseEventCtor("click", { bubbles: true, cancelable: true }));
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			});
+
+			expect(window.location.hash).toBe("#A1");
+		});
+
+		it("resolves an angle-bracket full-title hash anchor to the github-slugger heading", async () => {
+			const source = "## A1: Section Title (details)\n\n[Jump to A1](<#A1: Section Title (details)>)";
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<MermaidMarkdown source={source} />
+						</ImageLightboxProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			const heading = container?.querySelector("h2");
+			expect(heading).not.toBeNull();
+			expect(heading?.getAttribute("id")).toBe("a1-section-title-details");
+
+			const link = container?.querySelector("p a");
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute("href")).toContain("#A1:%20Section%20Title%20");
+
+			const MouseEventCtor = (dom?.window as unknown as { MouseEvent: typeof MouseEvent })?.MouseEvent;
+			await act(async () => {
+				link?.dispatchEvent(new MouseEventCtor("click", { bubbles: true, cancelable: true }));
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			});
+
+			expect(window.location.hash).toContain("#A1:%20Section%20Title%20");
 		});
 	});
 });

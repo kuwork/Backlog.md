@@ -10,6 +10,7 @@ import {SuccessToast} from './SuccessToast';
 import { useTheme } from '../contexts/ThemeContext';
 import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { useI18n } from '../hooks/useI18n';
+import { normalizeMarkdownHashLinks } from '../../markdown/hash-links';
 
 // Custom MDEditor wrapper for proper height handling
 const MarkdownEditor = memo(function MarkdownEditor({
@@ -266,6 +267,10 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
                 saveContent = replaceTempImageUrls(saveContent, mapping);
                 setContent(saveContent);
             }
+
+            // Normalize in-document hash links so TOC entries written with
+            // human-readable heading text receive the rendered github-slugger anchor.
+            saveContent = normalizeMarkdownHashLinks(saveContent);
 
             if (isNewDocument) {
                 // Create new document

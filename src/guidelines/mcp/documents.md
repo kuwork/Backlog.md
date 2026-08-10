@@ -70,6 +70,65 @@ MCP arguments are passed as JSON values, so `\n` characters are real newlines in
 }
 ```
 
+### Links in Documents
+
+Documents can contain two kinds of links: in-document heading links (table of contents) and links to other backlog items (tasks, docs, decisions, drafts, wiki pages).
+
+#### In-document heading links
+
+Use hash-only links (`[text](#heading)`) to jump to headings within the same document. The renderer resolves them against the current document context.
+
+Supported anchor formats:
+
+1. **Prefix anchor** (simplest, recommended for section-prefixed headings):
+   ```markdown
+   - [A1: Section Title](#A1)
+   ## A1: Section Title
+   ```
+
+2. **Angle-bracket full-title anchor** (use when the heading text contains spaces or special characters):
+   ```markdown
+   - [A1: Section Title](<#A1: Section Title>)
+   ## A1: Section Title
+   ```
+   Standard markdown does not allow spaces in plain link URLs, so the angle brackets are required for full titles.
+
+3. **Github-slugger slug** (what the Web UI stores after saving):
+   ```markdown
+   - [A1: Section Title](#a1-section-title)
+   ## A1: Section Title
+   ```
+
+Editing behavior:
+- **Direct file editing**: keep the human-readable prefix or angle-bracket form. The renderer resolves both.
+- **Web UI editing**: when a document is saved through the Web UI, human-readable hash anchors are automatically rewritten to the github-slugger slug form so the saved source is standard markdown while the heading text stays unchanged.
+
+#### Local backlog links
+
+Local paths to other backlog surfaces are automatically rendered as short aliases and open the target modal or page. This keeps documents readable even when referencing tasks, decisions, drafts, or wiki pages. The title slug is optional and ignored when generating the alias; use the ID-only path form for simplicity.
+
+Supported patterns:
+
+| Path pattern | Default alias | Opens |
+|-------------|------------|-------|
+| `/task/:id` (with optional `/:title`) | `TASK#:id` | Task modal |
+| `/draft/:id` (with optional `/:title`) | `DRAFT#:id` | Draft modal |
+| `/documentation/:id` (with optional `/:title`) | `DOC#:id` | Document modal |
+| `/decisions/:id` (with optional `/:title`) | `Decisions#:id` | Decision modal |
+| `/wiki/:path` | `WIKI#:path` | Wiki page |
+
+When the link text is empty, the renderer fills in the default alias. If you provide a custom label, that label is shown instead.
+
+Recommended examples (ID-only):
+```markdown
+- See [TASK#506](/task/506) for background.
+- Read [DOC#001](/documentation/001) first.
+- Check [Decisions#042](/decisions/042) for the related decision.
+- Alias left empty: see [](/task/506) for the default alias.
+```
+
+When rendered, the links above display as `TASK#506`, `DOC#001`, `Decisions#042`, and `TASK#506` respectively, while remaining clickable. Only same-origin paths are transformed; external URLs are left unchanged.
+
 ### Key Rules
 
 - Document paths are relative to `backlog/docs/`; absolute paths and `..` traversal are rejected.

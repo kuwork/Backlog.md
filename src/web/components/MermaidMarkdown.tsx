@@ -1,5 +1,8 @@
+import Slugger from "github-slugger";
 import MDEditor from "@uiw/react-md-editor";
 import React, { useEffect, useRef } from "react";
+import type { Element, Root } from "hast";
+import { visit } from "unist-util-visit";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
@@ -19,6 +22,77 @@ interface Props {
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\u0000-\u0020]*>/;
 const EMAIL_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+>/;
+const HEADING_PREFIX_ID_REGEX = /^([A-Za-z]*\d+(?:\.[A-Za-z]*\d+)*)(?=\s*[:：.、]|\s+|$)/;
+
+function getTextContent(node: Element): string {
+	let text = "";
+	for (const child of node.children) {
+		if (child.type === "text") {
+			text += child.value;
+		} else if (child.type === "element") {
+			text += getTextContent(child);
+		}
+	}
+	return text;
+}
+
+function findHeadingByHashTarget(target: string): HTMLElement | null {
+	// Decode percent-encoded anchors, e.g. <#A1: Section Title> renders as #A1:%20Section%20Title.
+	let decodedTarget: string;
+	try {
+		decodedTarget = decodeURIComponent(target);
+	} catch {
+		decodedTarget = target;
+	}
+
+	// Exact ID match covers github-slugger slugs and prefix ids.
+	const byId = document.getElementById(decodedTarget);
+	if (byId && /^h[1-6]$/i.test(byId.tagName)) return byId;
+
+	// Fallback: human-friendly anchors using the original heading prefix or title.
+	const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+	for (const heading of headings) {
+		const element = heading as HTMLElement;
+		if (element.getAttribute("data-heading-prefix") === decodedTarget) return element;
+		if (element.getAttribute("data-heading-text") === decodedTarget) return element;
+	}
+
+	// If the anchor starts with a section prefix (e.g. "A1:"), treat it as a heading-text
+	// prefix so that full-heading-title anchors written with angle brackets still resolve.
+	if (HEADING_PREFIX_ID_REGEX.test(decodedTarget)) {
+		let bestMatch: HTMLElement | null = null;
+		let bestMatchLength = 0;
+		for (const heading of headings) {
+			const element = heading as HTMLElement;
+			const text = element.getAttribute("data-heading-text");
+			if (text && text.startsWith(decodedTarget) && text.length > bestMatchLength) {
+				bestMatch = element;
+				bestMatchLength = text.length;
+			}
+		}
+		if (bestMatch) return bestMatch;
+	}
+
+	return null;
+}
+
+function rehypeHeadingMetadata() {
+	const slugger = new Slugger();
+	return (tree: Root) => {
+		visit(tree, "element", (node: Element) => {
+			if (!/^h[1-6]$/.test(node.tagName)) return;
+			const text = getTextContent(node);
+			const prefixMatch = HEADING_PREFIX_ID_REGEX.exec(text);
+			const prefix = prefixMatch?.[1] ?? null;
+			const slug = slugger.slug(text);
+			node.properties = { ...node.properties, id: slug, "data-heading-prefix": prefix, "data-heading-text": text };
+			const anchor = node.children[0];
+			if (anchor && anchor.type === "element" && anchor.tagName === "a" && anchor.properties?.ariaHidden === "true") {
+				anchor.properties = { ...anchor.properties, href: `#${slug}` };
+			}
+		});
+	};
+}
 
 function sanitizeMarkdownSource(source: string): string {
 	const protectedRanges: { start: number; end: number }[] = [];
@@ -281,6 +355,31 @@ export default function MermaidMarkdown({
 
 			const localLink = href ? parseLocalUrl(href) : null;
 
+			if (href && href.startsWith("#")) {
+				const resolvedHref =
+					typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}${href}` : href;
+
+				const handleHashClick = (e: React.MouseEvent) => {
+					e.preventDefault();
+					const targetId = href.slice(1);
+					const target = findHeadingByHashTarget(targetId);
+					if (target) {
+						if (typeof target.scrollIntoView === "function") {
+							target.scrollIntoView({ behavior: "smooth" });
+						}
+						window.history.pushState(null, "", resolvedHref);
+					} else {
+						window.location.href = resolvedHref;
+					}
+				};
+
+				return (
+					<a href={resolvedHref} onClick={handleHashClick} className={combinedClassName} style={parsedStyle} id={id}>
+						{children}
+					</a>
+				);
+			}
+
 			if (localLink) {
 				const isWikilink = dataWikilink === "true";
 				// For wikilinks, always use the explicit alias text. For short local
@@ -456,7 +555,11 @@ export default function MermaidMarkdown({
 
 	return (
 		<div ref={ref} className="wmde-markdown">
-			<MDEditor.Markdown source={safeSource} components={{ a: LinkComponent, img: LightboxImage, video: VideoPlayer, audio: AudioPlayer }} />
+			<MDEditor.Markdown
+				source={safeSource}
+				components={{ a: LinkComponent, img: LightboxImage, video: VideoPlayer, audio: AudioPlayer }}
+				rehypePlugins={[rehypeHeadingMetadata]}
+			/>
 		</div>
 	);
 }

@@ -9,6 +9,7 @@ import { SuccessToast } from './SuccessToast';
 import { useTheme } from '../contexts/ThemeContext';
 import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { useI18n } from '../hooks/useI18n';
+import { normalizeMarkdownHashLinks } from '../../markdown/hash-links';
 
 // Utility function for ID transformations
 const stripIdPrefix = (id: string): string => {
@@ -201,7 +202,8 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			} else {
 				// Update existing decision
 				if (!id) return;
-				await apiClient.updateDecision(addDecisionPrefix(id), content);
+				const normalizedContent = normalizeMarkdownHashLinks(content);
+				await apiClient.updateDecision(addDecisionPrefix(id), normalizedContent);
 				// Refresh data from parent
 				await onRefreshData();
 				// Show success toast
