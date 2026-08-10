@@ -399,6 +399,65 @@ backlog task create "<任务标题>" \
 
 ---
 
+## 第六步：执行迁移任务（当用户要求开始执行已创建的迁移任务时）
+
+迁移任务创建后，用户可能直接要求 AI 开始执行。执行阶段与「创建迁移任务」阶段目标不同：前者要基于当前 fork 代码完成 AC，而不是再次分析上游。请遵循以下指引：
+
+### 1. 先完成 AC #1（查看上游变更）
+
+迁移任务的 AC 第一条通常要求查看上游 commit（如 `git log --oneline <start>..<end> --grep BACK-XXX` 和 `git show <commit>`）。执行时先运行这些命令，确认上游具体改动了哪些文件、哪些函数。
+
+- 如果当前 fork 还能直接访问上游分支或 tag，使用 `git show <commit>` 查看完整 diff。
+- 如果当前 fork 没有上游 tag，可要求用户提供 commit hash，或从分类文档/分析报告中获取。
+
+### 2. 对比当前代码库与上游状态，识别「漂移」
+
+在实现前，用 `git diff <upstream-commit> -- <相关文件>` 或 `git show <commit> -- <相关文件>` 查看差异，重点确认：
+
+- 上游任务涉及的字段、模块、函数在当前 fork 是否仍然存在。
+- 当前 fork 是否已重构、移除或替换上游实现（例如 `types`/`priorities` 配置项已被废弃，状态机模型已改变等）。
+- 如果上游 commit 与当前代码差异巨大，不能直接 cherry-pick，需要基于当前代码结构重写。
+
+### 3. 根据当前 fork 状态调整 AC 和描述，不要强行恢复已废弃字段
+
+如果上游任务涉及的功能在当前 fork 已不存在或已演进，执行时应：
+
+- **不强行加回**已废弃的字段、模块或接口。
+- 用 `backlog task edit BACK-XXX --acceptance-criteria ...` 调整 AC，只保留当前 fork 实际能验证的范围。
+- 同步更新 Description 和 Implementation Plan，删除已不适用部分。
+- 向用户说明调整原因（例如「当前代码库已移除 configurable priorities/types，所以 AC 范围限定到实际存在的 statuses/labels」）。
+
+### 4. References 只记录当前 fork 的实现文件
+
+执行阶段产生的 References 应指向当前 fork 被修改的文件（如 `src/file-system/operations.ts`），**禁止**将 `git show <commit>` 这类上游命令写入 References 字段。上游 commit 信息属于实现参考，应放在 Implementation Notes 或作为执行时的上下文，而非任务元数据。
+
+### 5. 实现参考而非照搬
+
+- 参考上游 commit 的算法和边界处理，但用当前 fork 的文件路径、类型定义和 CLI 结构实现。
+- 保持最小改动：只修复或新增必要逻辑，不要顺手恢复上游已被移除的关联功能。
+- 保持与周围代码风格一致（Biome 格式、命名、错误处理等）。
+
+### 6. 测试与验证策略
+
+1. 先跑 `bunx tsc --noEmit` 和 `bunx biome check <修改文件>`。
+2. 优先运行与迁移相关的测试文件（如 `bun test src/test/config-commands.test.ts`）。
+3. 如果全量测试失败，逐条判断失败是否与本次改动相关：
+   - 与网络（`git fetch`）、TUI 超时、环境相关的失败，通常是既有 flaky test，不阻塞迁移任务。
+   - 与修改模块直接相关的失败必须修复。
+4. 通过测试后，用 `backlog task edit BACK-XXX --check-ac N` 标记对应 AC 完成，并填写 Implementation Notes / Final Summary。
+
+### 7. 任务完成后最终检查清单
+
+迁移任务执行完毕并标记为 Done 前，确认任务文件中没有残留以下内容：
+
+- [ ] 上游任务编号（如 `BACK-540`）不在 Description、Plan、Notes、Final Summary 中。
+- [ ] 上游范围/版本号（如 `v1.47.1..v1.48.0`）不在任务文件正文中。
+- [ ] 上游 draft 链接、分类文档链接（如 `doc-4`/`doc-5`）不在 References / Documentation 中。
+- [ ] References 只包含当前 fork 内被修改的实现文件。
+- [ ] Implementation Notes / Final Summary 已填写，且基于当前 fork 实际执行结果撰写。
+
+---
+
 ## 交互规范
 
 ### 完整工作节奏

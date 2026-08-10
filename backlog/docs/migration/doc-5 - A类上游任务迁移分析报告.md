@@ -2,8 +2,8 @@
 id: doc-5
 title: A类上游任务迁移分析报告（v1.47.1 .. v1.48.0）
 type: guide
-created_date: 2026-07-28 00:07
-updated_date: 2026-07-28 09:58
+created_date: '2026-07-28 00:07'
+updated_date: '2026-08-09'
 ---
 # A类上游任务迁移分析报告（v1.47.1 .. v1.48.0）
 
@@ -22,8 +22,8 @@ updated_date: 2026-07-28 09:58
 | **与当前定制代码的交集风险** | 中。当前 fork 已在 `backlog/tasks/back-355*` 中规划但状态为 To Do；`type` 字段是新增字段，与现有日期字段、甘特图、统计页面等演进能力无直接冲突，但需确保 Web UI 路由/统计页面/甘特图不互相覆盖。 |
 | **适合迁移的内容** | 全部适合迁移。Core 类型与持久化、CLI/MCP 创建编辑、配置 `types`、TUI/Web 展示与过滤均可参考上游完成当前 fork 的 back-355 规划。 |
 | **需要排除/调整的内容** | 必须采用上游最终设计：缺失 `type` 键保持 **untyped**（不默认注入 `task`），写入时按配置类型集验证；不要回退为“默认 type = task”。 |
-| **迁移优先级** | A类（必须合入）——当前 fork 已规划但尚未实现，上游实现完整。 |
-| **迁移建议** | 参考重写。以当前 fork 的 `backlog/tasks/back-355` 为父任务，按上游 6 个子任务拆分并在当前代码基中复用/重写对应实现。 |
+| **迁移优先级** | ~~A类（必须合入）~~ —— **已放弃（用户决策 2026-08-09）** |
+| **迁移建议** | **跳过（用户决策 2026-08-09）**。原建议参考重写，以当前 fork 的 `backlog/tasks/back-355` 为父任务按上游 6 个子任务实现；但用户评估后判定单选的 `type` 字段看似锦上添花，实则会边缘化现有 `label` 分类的使用（`type` 与 `label` 语义重叠，分散用户对 label 的分类依赖），当前 fork 已用 label 承担分类职责，决定放弃。`backlog/tasks/back-355*` 的规划保留为 To Do 状态不再推进。 |
 
 ---
 
@@ -45,13 +45,13 @@ updated_date: 2026-07-28 09:58
 
 | 分析维度 | 内容 |
 |----------|------|
-| **任务核心目的** | 使验收标准（AC）和 Definition of Done（DoD）的 CLI 编辑语义确定性化：重复 `--acceptance-criteria` 整体替换清单，`--ac` 保持累加，新增 `--clear-ac` 原子清除，并拒绝歧义组合。 |
-| **变更内容摘要** | 共享 checklist 解析/序列化器、CLI 编辑语义、帮助文案、大量回归测试（含逗号、CRLF、边界空白等）。 |
-| **与当前定制代码的交集风险** | 低。当前 fork 刚增强 `task edit`（BACK-530 `--append-description`），但 AC/DoD 编辑语义可独立增强。 |
-| **适合迁移的内容** | 确定性 AC/DoD 编辑语义、共享 checklist resolver、错误提示文案。 |
-| **需要排除/调整的内容** | 需与当前 `--append-description` 等新增标志保持互斥/组合规则一致；确保不破坏现有 task edit builder。 |
-| **迁移优先级** | A类（必须合入）——CLI 编辑语义应与当前 fork 对齐。 |
-| **迁移建议** | 参考重写。直接复用上游共享 checklist resolver，但适配当前 `task edit` 命令结构。 |
+| **任务核心目的** | 使验收标准（AC）和 Definition of Done（DoD）的 CLI 编辑与 Markdown 序列化确定性化，同时保持 `--ac` 与 `--acceptance-criteria` 作为累加别名（不采用上游的 `--acceptance-criteria` 整体替换语义），新增 `--clear-ac` 原子清除，并拒绝与增量操作混用。 |
+| **变更内容摘要** | 共享 checklist 解析/序列化器、CLI `--clear-ac` 编辑语义、MCP `acceptanceCriteriaClear` 字段、帮助文案与指南说明、大量回归测试（含逗号、CRLF、边界空白等）。 |
+| **与当前定制代码的交集风险** | 低。当前 fork 刚增强 `task edit`（BACK-530 `--append-description`），但 AC/DoD 编辑语义可独立增强；MCP schema 已存在 `acceptanceCriteriaSet/Add/Remove/Check/Uncheck`，只需新增 clear 字段。 |
+| **适合迁移的内容** | 共享 checklist resolver 的确定性序列化能力（章节顺序、空白、CRLF、自定义内容保留）、`--clear-ac` 原子清除、MCP `acceptanceCriteriaClear`、错误提示文案。 |
+| **需要排除/调整的内容** | **不照搬**上游将 `--acceptance-criteria` 改为整体替换的设计；当前 fork 保持 `--ac` 与 `--acceptance-criteria` 语义一致（均为累加）。如需整体替换，指南中明确说明：先 `--clear-ac` 再 `--ac` 重新添加，或直接用文本编辑器修改任务 Markdown。`task create` 行为保持不变。 |
+| **迁移优先级** | A类（必须合入）——CLI/MCP 编辑语义确定性化，同时保持当前 fork 的别名一致性。 |
+| **迁移建议** | 参考重写。复用上游共享 checklist resolver 的序列化与错误检测能力，但 CLI 端只引入 `--clear-ac`，不引入 `--acceptance-criteria` 替换语义；同步更新 MCP schema、handler 与 agent/CLI/MCP 指南。 |
 
 ---
 
@@ -142,8 +142,9 @@ updated_date: 2026-07-28 09:58
 ## 总结
 
 - **直接复用**即可完成的条目：A4、A7、A8、A9。
-- **需参考重写**的条目：A1、A2、A3、A5、A10。
-- **A1 工作量大但价值高**：上游已拆分为 6 个子任务，建议以当前 fork 的 `backlog/tasks/back-355` 为父任务，按子任务拆分执行。
-- **A2 与 A5 是当前 fork 数据完整性与一致性短板**，优先级仅次于 A1。
+- **需参考重写**的条目：A2、A3、A5、A10。
+- **A1（BACK-355 任务类型字段）已放弃（用户决策 2026-08-09）**：用户评估后判定单选的 `type` 字段看似锦上添花，实则会边缘化现有 `label` 分类的使用，当前 fork 已用 label 承担分类职责，决定不迁移。`backlog/tasks/back-355*` 规划保留为 To Do 状态不再推进。
+- **A2 与 A5 是当前 fork 数据完整性与一致性短板**，为 A 类迁移的最高优先级。
+- **A3 设计已与上游偏离**：当前 fork 选择保持 `--ac`/`--acceptance-criteria` 别名一致性，仅引入 `--clear-ac` 与 MCP `acceptanceCriteriaClear`，具体实现见迁移任务 `BACK-537`。
 
 如需继续生成 **B类** 分析报告或输出 **A类具体迁移任务创建命令**，请告诉我。
