@@ -67,9 +67,8 @@
           buildPhase = ''
             runHook preBuild
 
-            # Build the CLI tool with embedded version
-            # Note: CSS is pre-compiled and committed to git, no need to build here
-            bun build --compile --minify --define "__EMBEDDED_VERSION__=${version}" --outfile=dist/backlog src/cli.ts
+            # Build the CLI tool with the browser UI bundled from source.
+            BACKLOG_BUILD_VERSION="${version}" BACKLOG_BUILD_OUTFILE=dist/backlog bun scripts/build.ts
 
             runHook postBuild
           '';
