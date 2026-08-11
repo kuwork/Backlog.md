@@ -36,7 +36,7 @@ export const LLM_WIKI_FOR_BACKLOG_SKILL: Record<string, string> = {
 
 - **Canonical 源**：`.codex/skills/llm-wiki-for-backlog/`（包含 `SKILL.md`、`references/`、`scripts/`）
 - **嵌入产物**：`src/skills/embedded/llm-wiki-for-backlog.ts`（auto-generated，禁止手动编辑）
-- **构建流水线**：`package.json` 的 build script 在 `bun build --compile` 之前运行嵌入脚本
+- **构建流水线（BACK-553 现代化）**：`scripts/build.ts` 使用 `Bun.build` + `bun-plugin-tailwind` 编译独立二进制，构建前嵌入 skill 并在编译时嵌入 React 应用、Tailwind CSS、JS 与静态资源。支持 `BACKLOG_BUILD_OUTFILE`/`BACKLOG_BUILD_VERSION`/`BACKLOG_BUILD_TARGET`/`BACKLOG_BUILD_EXECUTABLE_PATH` 环境变量。`bun build`/`bun run cli`/CI 均统一调用该脚本（[[sources/back-553-modernize-browser-bundling|BACK-553]]）。
 
 ## 与 Agent Skills 目录的关系
 
@@ -52,3 +52,7 @@ export const LLM_WIKI_FOR_BACKLOG_SKILL: Record<string, string> = {
 修改 skill 内容时，应编辑 `.codex/skills/llm-wiki-for-backlog/` 下的文件，然后重新运行嵌入脚本生成 TypeScript 模块。不要直接修改 `src/skills/embedded/llm-wiki-for-backlog.ts`。
 
 **近期更新（BACK-525）**：同步了 wikilink 别名、属性块与媒体 wikilink 的文档说明，并修复了 `scripts/embed-wiki-skill.ts` 中 `$` 转义问题。
+
+## Related Sources
+- [[sources/back-553-modernize-browser-bundling]] — BACK-553 构建现代化
+- [[sources/wiki-install-task]] — BACK-474 Wiki install
