@@ -110,6 +110,22 @@ actual_end: "2026-05-15 18:30"
 
 所有任务操作必须通过 Backlog.md CLI 或 MCP 工具完成。直接编辑 markdown 会破坏元数据同步、Git 跟踪和任务关系。
 
+## 重复任务 ID 检测与修复
+
+尽管创建时做了跨分支 ID 校验，git 合并、零填充等价（task-1 与 task-01）、外部/手动编辑仍可能产生重复任务 ID。重复 ID 会让任务在视图、搜索和编辑中静默坍缩。
+
+`backlog doctor` 是人类优先、CLI 权威的修复工具（[[sources/back-538-duplicate-task-id-recovery|BACK-538]]）：
+- 输出冲突组、确切文件路径、计划的重命名及需人工审查的引用
+- `--commit`（丢弃 .bak 备份并最终化）与 `--rollback`（恢复 .bak 备份），均需人工确认
+- 原则：fail-closed、确定性、内容保留（只改文件名与 frontmatter id）、原子性、不猜测引用、可回滚
+
+## AC/DoD 清单编辑
+
+`structured-sections.ts` 用 tokenizer + 区间解析器替代 regex 哨兵匹配，对歧义结构 fail-closed，使 AC/DoD 编辑与序列化确定性化（[[sources/back-537-deterministic-checklist-serialization|BACK-537]]）：
+- `--ac`/`--acceptance-criteria` 在 task edit 保持叠加别名
+- `--clear-ac` 通过 `acceptanceCriteriaSet=[]` 原子清空，且拒绝与其它 AC 变更选项组合
+- 推荐 clear-then-add 工作流
+
 ## Related Concepts
 
 - [[concepts/date-fields]] — 日期字段详细语义
@@ -123,3 +139,8 @@ actual_end: "2026-05-15 18:30"
 - [[sources/actual-dates-auto-create-task]] — BACK-498 创建时自动填充
 - [[sources/subtask-grouping-fix]] — BACK-496 子任务归组修复
 - [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-537-deterministic-checklist-serialization]] — BACK-537 清单确定性解析
+- [[sources/back-538-duplicate-task-id-recovery]] — BACK-538 重复 ID 恢复
+- [[sources/back-534-preserve-updated-date-ordinal-reorder]] — BACK-534 ordinal 保留时间戳
+- [[sources/back-530-append-description]] — BACK-530 追加描述
+- [[sources/back-532-cli-draft-workflow-guides]] — BACK-532 草稿工作流指南
