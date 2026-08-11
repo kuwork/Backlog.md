@@ -20,6 +20,7 @@ Backlog.md 通过 `backlog instructions` 命令向人类和 AI 代理暴露本�
 | `backlog instructions task-execution` | 任务执行指南：规划、字段编辑、进度记录、范围控制 |
 | `backlog instructions task-finalization` | 任务完结指南：验证、总结、收尾 |
 | `backlog instructions milestones` | 里程碑管理指南 |
+| `backlog instructions drafts` | 草稿工作流指南：草稿 vs 任务取舍、`draft create` 与 `task create --draft` 差异、promote/demote 后 ID 变化与继续编辑（BACK-532） |
 | `backlog instructions init-required` | 未初始化目录的回退指南 |
 
 裸 `backlog` 命令默认输出纯文本地帮助入口，指向 `backlog instructions` 与具体命令帮助（[[sources/back-521.6|BACK-521.6]]）。
@@ -58,6 +59,7 @@ Backlog.md 通过 `backlog instructions` 命令向人类和 AI 代理暴露本�
 - 使用短循环工作：实现片段 → 运行测试/检查 → 追加 notes → 检查 AC → 添加评论。
 - 发现超出当前 AC 的工作时，停止并询问用户是扩展当前任务还是创建后续任务。
 - 任务字段编辑速查集中在 `task-execution` 指南中（标题、状态、负责人、标签、日期、AC/DoD、plan/notes/comment/final-summary 等）。
+- **避免 bash ANSI-C 引号**：不要用 `$'...'` 包装多行 CLI 字段（`--plan`、`--notes`、`--comment`、`--final-summary`、`--append-notes`、`--append-final-summary`），否则 shell 会把 `\n` 提前解析为真实换行，CLI 只取到第一行。改用 CLI 在普通双引号内的转义处理（[[sources/back-547-avoid-bash-ansi-c-quoting|BACK-547]]）。
 
 ## 任务资源（图片）
 

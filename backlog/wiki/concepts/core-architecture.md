@@ -52,6 +52,21 @@ Backlog.md 的核心由四个协作类构成：`Core`、`FileSystem`、`ContentS
   - 支持手动递归监视器降级（针对不支持递归 watch 的平台）
 - **事件模型**：`ready | tasks | documents | decisions`，附带版本号防止重复处理
 
+#### 过期刷新守卫（BACK-540）
+
+ContentStore 引入**逐项发布版本守卫 + 条件合并**解决竞态：
+- 直接写入（`upsertTask`/`updateTaskFromDisk`/`updateDocumentFromDisk`/`updateDecisionFromDisk`）及 watcher 驱动的更新/删除递增对应逐项版本（`taskVersions`/`documentVersions`/`decisionVersions`/`wikiVersions`）
+- 完整刷新路径（`refresh*FromDisk`）在读取前捕获版本，加载后经 `merge*` 合并——若项在加载期间被变更则丢弃过期快照
+- `?? 0` 处理未初始化版本，确保 init 后首次刷新仍合并真实外部变更；同步按 root/epoch 检查发布
+
+#### ordinal-only 重排保留 updated_date（BACK-534）
+
+`Core.updateTask` 通过 `hasUpdatedDateRelevantChanges` 比较持久化内容，仅当内容/元数据变化时打 `updated_date` 时间戳；仅序号变更时恢复原值，消除无意义 diff 噪音。看板重排与批量更新改走集中式逻辑。
+
+#### 块状 YAML 列表解析（BACK-533）
+
+`parseConfig` 先经 gray-matter YAML 通道解析 statuses/labels（块状序列），保留内联括号行解析作为旧版非 YAML 配置兜底。
+
 ### 4. SearchService（`src/core/search-service.ts`）
 
 - **职责**：基于 Fuse.js 的全文模糊搜索
@@ -102,3 +117,8 @@ Backlog.md 的核心由四个协作类构成：`Core`、`FileSystem`、`ContentS
 - `prefixes.task`：任务 ID 前缀自定义
 - `mcp.http`：MCP HTTP 传输配置（认证、CORS）
 - `defaultPort`、`autoOpenBrowser`：Web UI 默认设置
+
+## Related Sources
+- [[sources/back-533-config-block-yaml-lists]] — BACK-533 块状 YAML 列表
+- [[sources/back-534-preserve-updated-date-ordinal-reorder]] — BACK-534 ordinal 保留时间戳
+- [[sources/back-540-content-store-stale-refresh-guard]] — BACK-540 过期刷新守卫

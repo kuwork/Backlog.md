@@ -77,6 +77,13 @@ task_edit: { id: "BACK-7", milestone: "Release 2.0" }
 - 优先使用 CLI 或 MCP API 而非临时文件写入，以保证 frontmatter 和元数据有效。
 - 里程碑支持 `actualStart` 与 `actualEnd` 字段（datetime UTC），与任务日期字段行为一致（参见 [[concepts/date-fields]]）。
 
+## Web 里程碑卡片任务表
+
+Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-milestone-cards-created-column|BACK-543]]）：
+- 默认按序号（ordinal）排序，新增 Created 列（显示 createdDate）
+- 表头三击循环：升序 → 降序 → 清除并恢复默认序号排序
+- 里程碑卡片本身顺序保持不变
+
 ## Related Concepts
 
 - [[concepts/date-fields]] — 日期字段语义与格式
@@ -89,3 +96,4 @@ task_edit: { id: "BACK-7", milestone: "Release 2.0" }
 - [[sources/back-521.7]] — BACK-521.7 Milestone CLI parity with MCP operations
 - [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actualStart/actualEnd 支持
+- [[sources/back-543-milestone-cards-created-column]] — BACK-543 里程碑 Created 列

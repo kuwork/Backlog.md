@@ -484,3 +484,86 @@ Chronological, append-only record of all wiki operations.
 **更新导航**: `index.md`（Sources 80 条，Concepts 26 条，Decisions 24 条，Execution 13 条）、`overview.md`
 
 **mini-lint**: 新页面 wikilink 交叉引用均已验证存在，无孤立页面。
+
+## [2026-08-10 22:56:48] batch-ingest | 增量摄取 BACK-529~553 及迁移文档 doc-4/5/6
+
+**检测基线**: 2026-07-14 11:20:27（上次 batch-ingest，BACK-528）
+**Git 变更文件**: 25 个新 backlog 任务 + 3 个迁移文档（当前 wiki-tmp 分支可见）
+
+**新 source 页面**: 28 个
+- `sources/back-529-doc-update-multiline-append` — BACK-529 doc update 多行与追加
+- `sources/back-530-append-description` — BACK-530 task edit 追加描述
+- `sources/back-531-local-link-line-range` — BACK-531 短链接行区间后缀
+- `sources/back-532-cli-draft-workflow-guides` — BACK-532 草稿工作流指南
+- `sources/back-533-config-block-yaml-lists` — BACK-533 config 块状 YAML 列表
+- `sources/back-534-preserve-updated-date-ordinal-reorder` — BACK-534 ordinal 保留时间戳
+- `sources/back-535-preserve-unsaved-web-drafts` — BACK-535 跨刷新保留草稿
+- `sources/back-536-in-document-hash-links` — BACK-536 文档锚点链接
+- `sources/back-537-deterministic-checklist-serialization` — BACK-537 清单确定性解析
+- `sources/back-538-duplicate-task-id-recovery` — BACK-538 重复 ID 恢复
+- `sources/back-539-linux-runner-win32-arm64-build` — BACK-539 Linux runner win32-arm64
+- `sources/back-540-content-store-stale-refresh-guard` — BACK-540 过期刷新守卫
+- `sources/back-541-board-column-created-sort` — BACK-541 看板创建日期排序
+- `sources/back-542-ordinal-task-list-sort` — BACK-542 序号排序
+- `sources/back-543-milestone-cards-created-column` — BACK-543 里程碑 Created 列
+- `sources/back-544-ac-numbers-browser-detail` — BACK-544 AC 编号显示
+- `sources/back-545-cli-task-edit-numeric-id` — BACK-545 数字 ID 查找
+- `sources/back-546-label-filters-alphabetical` — BACK-546 标签字母排序
+- `sources/back-547-avoid-bash-ansi-c-quoting` — BACK-547 避免 ANSI-C 引号
+- `sources/back-548-status-exclude-filtering` — BACK-548 状态排除过滤
+- `sources/back-549-hide-empty-board-columns` — BACK-549 隐藏空状态列
+- `sources/back-550-apple-silicon-binary-resolution` — BACK-550 Apple Silicon 二进制解析
+- `sources/back-551-unassigned-task-filtering` — BACK-551 未指派过滤
+- `sources/back-552-doc-view-plain` — BACK-552 doc view plain
+- `sources/back-553-modernize-browser-bundling` — BACK-553 浏览器 UI 打包现代化
+- `sources/doc-4-upstream-migration-classification` — doc-4 迁移差异分类
+- `sources/doc-5-a-class-migration-analysis` — doc-5 A 类迁移分析
+- `sources/doc-6-b-class-migration-analysis` — doc-6 B 类迁移分析
+
+**更新 concept 页面**: 9 个
+- `concepts/cli-entry` — 多行追加、过滤、doctor、config、doc view plain
+- `concepts/web-ui-features` — 排序增强、状态过滤、AC 编号、行区间、锚点、草稿保留
+- `concepts/markdown-pipeline` — 确定性清单解析、文档锚点链接
+- `concepts/core-architecture` — ContentStore 版本守卫、块状 YAML、ordinal 时间戳
+- `concepts/search-sequences` — 多状态/排除/未指派过滤
+- `concepts/task-lifecycle` — doctor、清单编辑、重复 ID
+- `concepts/milestones` — Web 卡片 Created 列
+- `concepts/cli-instructions` — drafts 指南、ANSI-C 警告
+- `concepts/mcp-server` — appendContent/descriptionAppend/statusExcluded/unassigned/acceptanceCriteriaClear
+- `concepts/embedded-skills` — BACK-553 构建现代化
+
+**新 decision 页面**: 4 个
+- `decisions/doctor-human-first-fail-closed-repair` — 重复 ID 修复不猜测
+- `decisions/tokenizer-over-regex-sentinel` — tokenizer 替代 regex
+- `decisions/content-store-version-guard` — 版本守卫
+- `decisions/ignore-ordinal-for-updated-date` — ordinal 忽略时间戳
+
+**新 execution 页面**: 1 个
+- `execution/content-store-version-guard-pattern` — 版本守卫刷新合并模式
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 提取 ContentStore 版本守卫模式
+- [x] `wiki/decisions/` — 提取 4 个微决策
+- [ ] `wiki/reasoning/` — 无复杂规划需记录
+- [ ] `wiki/patterns/` — 无 3+ 相似任务
+- [ ] `wiki/retrospectives/` — 非周期性回顾时机
+
+**更新导航**: `index.md`（Sources 108 条，Decisions 28 条，Execution 14 条）、`overview.md`
+
+**mini-lint**: 新页面 wikilink 交叉引用均在下面验证，无孤立页面。
+
+## [2026-08-10 23:05:00] usermanual-update | 更新用户手册，覆盖 BACK-529~553 功能
+
+**更新页面**: 10 个
+- `30-文档与决策/00-文档管理` — doc update 多行内容与 `--append-content` 追加
+- `40-Web界面/01-看板视图` — 按创建日期排序、隐藏空状态列、AC 编号显示
+- `40-Web界面/02-任务列表` — 状态排除下拉、标签字母排序、默认序号排序与三击循环、AC 编号、未保存编辑保留
+- `40-Web界面/03-里程碑管理` — Created 列、默认序号排序、三击循环
+- `40-Web界面/04-文档与决策` — 文档内锚点跳转与行区间后缀
+- `40-Web界面/05-设置与主题` — 隐藏空状态列开关
+- `10-任务管理/00-任务生命周期` — doctor 重复 ID 修复、序号变更不影响 updated_date
+- `10-任务管理/01-创建与编辑任务` — `--append-description`、`--clear-ac`、避免 ANSI-C 引号、多状态/排除/未指派过滤
+- `10-任务管理/04-搜索与序列` — `--exclude-status`、`--unassigned` 搜索过滤
+- `60-配置与运维/00-配置管理` — hide_empty_columns、块状 YAML 列表解析、列表键编辑指引
+
+**新增用户手册页面**: 0 个
