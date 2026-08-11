@@ -69,3 +69,17 @@ MCP Server 和 CLI 共享同一个 `Core` 和 `FileSystem`：
 - MCP 修改任务 → 文件系统写入 → ContentStore 文件监视器检测到变更 → 内存缓存更新
 - Web UI 同时打开时，通过 WebSocket 收到更新推送
 - 三者最终都操作同一套 Markdown 文件，天然同步
+
+## 新增工具能力（v1.48.0）
+
+- **document_update**：新增 `appendContent` 字段，追加内容块以空行分隔（[[sources/back-529-doc-update-multiline-append|BACK-529]]）
+- **task_edit**：新增 `descriptionAppend`（[[sources/back-530-append-description|BACK-530]]）与 `acceptanceCriteriaClear`（原子清空 AC，[[sources/back-537-deterministic-checklist-serialization|BACK-537]]）
+- **task_list / task_search**：`status` 支持字符串或数组（多状态）并新增 `statusExcluded`；新增 `unassigned` 布尔（与 assignee 组合时以 VALIDATION_ERROR 拒绝）；validators 增加 oneOf 支持（[[sources/back-548-status-exclude-filtering|BACK-548]]、[[sources/back-551-unassigned-task-filtering|BACK-551]]）
+- **workflow 资源**：注册 `backlog://workflow/drafts` 草稿指南（[[sources/back-532-cli-draft-workflow-guides|BACK-532]]）
+
+## Related Sources
+- [[sources/back-529-doc-update-multiline-append]] — document_update appendContent
+- [[sources/back-530-append-description]] — task_edit descriptionAppend
+- [[sources/back-537-deterministic-checklist-serialization]] — acceptanceCriteriaClear
+- [[sources/back-548-status-exclude-filtering]] — statusExcluded
+- [[sources/back-551-unassigned-task-filtering]] — unassigned

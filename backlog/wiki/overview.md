@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-07-14 11:20
+updated_date: '2026-08-09 00:00'
 ---
 
 # Knowledge Base Overview
@@ -58,6 +58,27 @@ updated_date: 2026-07-14 11:20
 - **甘特图拖拽修复**：拖拽操作改为直接操作 `scrollLeft`/`scrollTop` 而非修改 `viewStart`/`viewEnd`，避免日期尺度和任务位置被意外改变（BACK-516）
 - **i18n 字符串碎片化修复**：里程碑展开/折叠按钮从运行时拼接（`hideTasks + tasks`）改为完整短语键，消除日语/中文等非英语语种的语法断裂（BACK-517）
 - **TUI 主题自适应**：所有高亮/选择样式从硬编码 ANSI 颜色（`fg: white`, `bg: black`, `bg: blue`）切换为 `inverse + bold`，兼容任意终端主题包括单色配色（BACK-518）
+- **CLI 多行与追加**：`doc update --content` 应用 `processCliEscapes`；新增 `--append-content`（doc）与 `--append-description`（task edit）追加选项，MCP 对应 `appendContent`/`descriptionAppend`（BACK-529 / BACK-530）
+- **CLI 草稿工作流指南**：CLI 与 MCP 各新增 drafts 指南，说明草稿 vs 任务取舍、promote/demote 后 ID 变化（BACK-532）
+- **多行输入避免 ANSI-C 引号**：指南显式警告不要用 `$'...'` 包装多行 CLI 字段（BACK-547）
+- **config 块状 YAML 列表**：`parseConfig` 支持块状 YAML 序列解析 statuses/labels，`config get/set` 共享统一键列表（BACK-533）
+- **ordinal 重排保留 updated_date**：仅序号变更不刷新 `updated_date`，消除 diff 噪音（BACK-534）
+- **清单编辑确定性化**：AC/DoD 解析用 tokenizer+区间解析器替代 regex，新增 `--clear-ac` 原子清空（BACK-537）
+- **重复任务 ID 恢复**：`backlog doctor` 人类优先、CLI 权威，预览+确认+可回滚（--commit/--rollback）（BACK-538）
+- **ContentStore 竞态修复**：逐项版本守卫+条件合并防止过期刷新覆盖新状态（BACK-540）
+- **状态/未指派过滤**：CLI/Web/MCP/TUI 支持多状态选择与 `--exclude-status`；CLI/MCP 支持 `--unassigned` 未指派过滤（BACK-548 / BACK-551）
+- **排序增强**：看板列菜单新增创建日期排序；所有任务列表默认按序号排序（表头三击循环）；里程碑卡片新增 Created 列（BACK-541 / BACK-542 / BACK-543）
+- **Web 细节增强**：任务详情显示 AC 编号、短链接行区间后缀、文档内锚点链接修复、跨刷新保留未保存草稿、标签过滤器字母排序、看板隐藏空状态列（BACK-531 / BACK-535 / BACK-536 / BACK-544 / BACK-546 / BACK-549）
+- **数字 ID 查找修复**：非默认前缀下 `task edit` 裸数字 ID 正确解析（BACK-545）
+- **doc view plain**：支持 `--plain` 非交互输出与自动 plain（BACK-552）
+- **Apple Silicon 二进制解析**：Rosetta/架构不匹配下正确解析平台包（BACK-550）
+- **win32-arm64 构建**：在 Linux runner 交叉编译 win32-arm64 发布二进制，矩阵加 fail-fast:false（BACK-539）
+- **浏览器 UI 打包现代化**：用 `Bun.build` + `bun-plugin-tailwind` 取代两步 build:css+compile 流程（BACK-553）
+
+### 上游迁移（v1.47.1 .. v1.48.0）
+- **doc-4 差异分类**：上游 39 项变更按 A（必须合入）/B（评估合入）/C（跳过）分类，映射到 fork 迁移任务（BACK-538/537/533/540/534/535/536/550/548/541/542/551/552/549/553/543/544/546）
+- **doc-5 A 类分析**：逐项给出迁移建议；A1 类型字段用户决策放弃
+- **doc-6 B 类分析**：B1 路由、B9 dateFormat、B2 自定义优先级决策跳过；B8 draft 链接勘误
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -93,11 +114,11 @@ updated_date: 2026-07-14 11:20
 
 ## 统计
 
-- Sources ingested: 80
+- Sources ingested: 108
 - Concepts extracted: 26
 - Entities catalogued: 2
-- Execution notes: 13
-- Decisions recorded: 24
+- Execution notes: 14
+- Decisions recorded: 28
 - Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24
