@@ -1,8 +1,8 @@
 ---
 title: Web UI 功能
 labels: [concept]
-created_date: 2026-05-10 00:00
-updated_date: 2026-07-14 07:14
+created_date: '2026-05-10 00:00'
+updated_date: '2026-08-09 00:00'
 ---
 
 # Web UI 功能
@@ -29,6 +29,8 @@ updated_date: 2026-07-14 07:14
 - **拖拽时保持列排序稳定**：拖拽开始不再清除本地排序，避免任务在光标下跳动（BACK-504）
 - **跨列精确放置**：`draggedTaskId` 提升到 Board 级别，跨列拖拽支持插入到目标列任意位置（BACK-504）
 - **跨分支任务列排序菜单**：列含跨分支任务时仍显示本地排序菜单（ID/标题/优先级），仅隐藏会修改 ordinal 的「Apply Priority Order」按钮（BACK-512）
+- **创建日期排序**：列菜单新增按创建日期排序（升/降），复用 `parseStoredUtcDate` 比较，缺失/无效日期排末尾、ID 决胜（BACK-541）
+- **隐藏空状态列**：`hideEmptyColumns` 配置（默认 false）开启后，无任务的状态列隐藏；拖拽中保持全部状态可见以作有效放置目标（BACK-549）
 
 ### 所有任务（All Tasks）
 - 表格布局
@@ -36,6 +38,9 @@ updated_date: 2026-07-14 07:14
 - 多状态筛选支持
 - **搜索框与类型下拉**：输入框左侧图标按钮弹出下拉菜单（All / Tasks / Documents / Decisions / Wiki）
 - **子任务归组**：按 ID 排序时子任务归组到父任务下方（BACK-496）
+- **状态包含/排除下拉**：两个独立多选下拉 StatusFilterDropdown（包含）与 StatusExcludedDropdown（排除），状态参数持久化到 URL 查询参数；修复单状态 URL 重复解析 bug（BACK-548）
+- **默认序号排序**：默认按 ordinal 排序（不新增 Ordinal 列）；表头三击循环：首次升序、二次降序、三次清除并恢复默认序号排序（BACK-542）
+- **标签过滤字母排序**：`collectAvailableLabels` 去重并按不区分大小写字典序排序（保留首次 casing），NFC/NFD 等价确定性（BACK-546）
 
 ### 里程碑（Milestones）
 - 里程碑列表与详情
@@ -45,6 +50,7 @@ updated_date: 2026-07-14 07:14
 - 里程碑搜索（子串包含匹配 + Fuse.js fallback）
 - **里程碑日期编辑**：`dueDate`、`plannedStart`、`plannedEnd` 三个 date 输入框；新增 `actualStart` / `actualEnd` datetime-local 输入框（BACK-493）
 - **子任务归组**：按 ID 排序时子任务归组到父任务下方（BACK-496）
+- **Created 列与序号排序**：卡片内任务表默认序号排序、新增 Created 列，表头三击循环（升→降→清除/序号），与 All Tasks 对齐；卡片本身顺序不变（BACK-543）
 
 ### 文档与决策
 - **文档文件夹树**：递归渲染 `backlog/docs/` 目录结构，文件夹可展开/折叠，显示文件数量徽标
@@ -99,6 +105,10 @@ updated_date: 2026-07-14 07:14
 - **依赖项钻取导航**：Dependencies 区域的依赖任务标签可点击，直接打开该任务详情；标题栏左侧显示返回按钮可回到父任务（BACK-505）
 - **稳定任务模态框 URL**：`/task/:id` 路由支持从任意视图打开任务详情，底层页面保持可见；支持前缀无关匹配（`506` → `BACK-506`）；裸 `/task/:id` 自动重定向到 `/task/:id/:title`（BACK-509）
 - **本地 URL 短别名**：Markdown 中同源 URL 渲染为 `DOC#:id`、`Decisions#:id`、`TASK#:id`、`WIKI#:path` 别名，提升可读性（BACK-511）
+- **短链接行区间**：短本地链接支持 `:N-M`/`:N` 行区间后缀，通过 preview:// 打开 FilePreviewModal 并按行区间展示内容（BACK-531）
+- **AC 编号显示**：任务详情模态框验收标准项显示 `#${index}` 编号（仅详情预览，看板/列表卡片不变）（BACK-544）
+- **未保存编辑保留**：模态框打开期间任务文件后台变化时，仅更新未触碰字段，保留用户脏编辑（BACK-535）
+- **文档内锚点链接**：`#heading` 链接在当前文档上下文内跳转，标题 ID 用 github-slugger 生成（BACK-536）
 
 ## 技术特性
 
@@ -171,3 +181,13 @@ updated_date: 2026-07-14 07:14
 - [[sources/back-512-kanban-column-sort-menu-cross-branch]] — BACK-512 看板列跨分支排序菜单修复
 - [[sources/back-526-create-task-references-and-backlog-autocomplete]] — BACK-526 创建任务引用与 .backlog 自动补全
 - [[sources/back-528-web-task-detail-date-clear-persisting]] — BACK-528 Web 日期清除持久化
+- [[sources/back-531-local-link-line-range]] — BACK-531 短链接行区间
+- [[sources/back-535-preserve-unsaved-web-drafts]] — BACK-535 跨刷新保留草稿
+- [[sources/back-536-in-document-hash-links]] — BACK-536 文档锚点链接
+- [[sources/back-541-board-column-created-sort]] — BACK-541 看板列创建日期排序
+- [[sources/back-542-ordinal-task-list-sort]] — BACK-542 序号排序
+- [[sources/back-543-milestone-cards-created-column]] — BACK-543 里程碑 Created 列
+- [[sources/back-544-ac-numbers-browser-detail]] — BACK-544 AC 编号显示
+- [[sources/back-546-label-filters-alphabetical]] — BACK-546 标签字母排序
+- [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除过滤
+- [[sources/back-549-hide-empty-board-columns]] — BACK-549 隐藏空状态列
