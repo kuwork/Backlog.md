@@ -41,6 +41,20 @@ parseTask() / parseDocument() / parseDecision() / parseMilestone()
 - **最终总结**：自由文本
 - **Definition of Done（DoD）**：全局和任务级别的检查清单
 
+### 确定性清单解析（BACK-537）
+
+`structured-sections.ts` 已将 regex 哨兵匹配替换为 **tokenizer + 区间解析器**：
+- tokenize 所有已知哨兵、屏蔽外来族区间、配对 AC/DoD 标记
+- 对歧义结构 **fail-closed**（不猜测，避免静默损坏）
+- `--ac`/`--acceptance-criteria` 在 task edit 保持叠加别名；`--clear-ac` 通过 `acceptanceCriteriaSet=[]` 原子清空
+- 使 AC/DoD 编辑与序列化确定性化
+
+### 文档内锚点链接（BACK-536）
+
+- `MermaidMarkdown` LinkComponent 拦截 `#heading` href，在当前文档上下文内平滑滚动 + `history.pushState`
+- 标题 ID 由 `rehypeHeadingMetadata` 插件生成 github-slugger ID，人类可读锚点（`#A1`、`<#A1: Section Title>`）仍可解析
+- `normalizeMarkdownHashLinks`（remark/unified）在文档/决策保存时把人类可读 TOC 锚点改写为 github-slugger slug
+
 ## 序列化流水线
 
 ```
@@ -77,3 +91,7 @@ FileSystem.saveTask() — 写入磁盘
 ## 跨分支兼容性
 
 由于所有数据都是纯 Markdown，跨分支合并时不会产生二进制冲突。Git 可以正常 diff 和 merge 任务文件。这也是跨分支任务感知功能的基础——直接通过 `git show` 读取其他分支上的 Markdown 内容即可。
+
+## Related Sources
+- [[sources/back-537-deterministic-checklist-serialization]] — BACK-537 清单确定性解析
+- [[sources/back-536-in-document-hash-links]] — BACK-536 文档锚点链接
