@@ -3,10 +3,11 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-08-09 00:00'
 ---
-# Wiki Content Catalog
 
+
+# Wiki Content Catalog
 
 Read this file FIRST on any wiki operation.
 
@@ -94,6 +95,34 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-521.6]] | BACK-521.6 Root command local instruction hub | source, cli, agent-guidance |
 | [[sources/back-521.7]] | BACK-521.7 Milestone CLI parity with MCP operations | source, cli, milestones, mcp |
 | [[sources/back-521.14]] | BACK-521.14 更新 CLI/MCP 指令指南缺失的代理指导 | source, docs, agent-guidance, cli, mcp |
+| [[sources/back-529-doc-update-multiline-append]] | BACK-529 doc update 多行与追加支持 | source, cli, mcp, doc |
+| [[sources/back-530-append-description]] | BACK-530 task edit 新增 --append-description | source, cli, mcp |
+| [[sources/back-531-local-link-line-range]] | BACK-531 短本地链接支持行区间后缀 | source, web-ui, markdown |
+| [[sources/back-532-cli-draft-workflow-guides]] | BACK-532 在指令指南中记录 CLI 草稿工作流 | source, cli, mcp, docs, agent-guidance |
+| [[sources/back-533-config-block-yaml-lists]] | BACK-533 解析 config 块状 YAML 列表 | source, config, cli |
+| [[sources/back-534-preserve-updated-date-ordinal-reorder]] | BACK-534 仅序号变更保留 updated_date | source, core, dates |
+| [[sources/back-535-preserve-unsaved-web-drafts]] | BACK-535 跨文件刷新保留 Web 未保存草稿 | source, web-ui, drafts, bug |
+| [[sources/back-536-in-document-hash-links]] | BACK-536 修复文档内 markdown 锚点链接 | source, web-ui, markdown, bug |
+| [[sources/back-537-deterministic-checklist-serialization]] | BACK-537 清单编辑与序列化确定性化 | source, core, markdown, cli, mcp |
+| [[sources/back-538-duplicate-task-id-recovery]] | BACK-538 重复任务 ID 恢复工作流 | source, core, cli, data-consistency, bug |
+| [[sources/back-539-linux-runner-win32-arm64-build]] | BACK-539 Linux runner 构建 win32-arm64 二进制 | source, ci, release, build |
+| [[sources/back-540-content-store-stale-refresh-guard]] | BACK-540 防止过期 ContentStore 刷新覆盖新状态 | source, core, concurrency, bug |
+| [[sources/back-541-board-column-created-sort]] | BACK-541 看板列菜单新增创建日期排序 | source, web-ui, sorting |
+| [[sources/back-542-ordinal-task-list-sort]] | BACK-542 任务列表视图默认序号排序 | source, web-ui, cli, sorting |
+| [[sources/back-543-milestone-cards-created-column]] | BACK-543 里程碑卡片任务表 Created 列 | source, web-ui, milestones, sorting |
+| [[sources/back-544-ac-numbers-browser-detail]] | BACK-544 浏览器任务详情显示 AC 编号 | source, web-ui |
+| [[sources/back-545-cli-task-edit-numeric-id]] | BACK-545 自定义前缀下 CLI task edit 数字 ID 查找 | source, cli, bug |
+| [[sources/back-546-label-filters-alphabetical]] | BACK-546 浏览器标签过滤器按字母排序 | source, web-ui, sorting, ux |
+| [[sources/back-547-avoid-bash-ansi-c-quoting]] | BACK-547 多行 CLI 输入避免 bash ANSI-C 引号 | source, cli, docs, agent-guidance |
+| [[sources/back-548-status-exclude-filtering]] | BACK-548 状态排除与多状态过滤 | source, cli, mcp, web-ui, tui, filtering |
+| [[sources/back-549-hide-empty-board-columns]] | BACK-549 看板无任务时隐藏空状态列 | source, web-ui, config |
+| [[sources/back-550-apple-silicon-binary-resolution]] | BACK-550 Apple Silicon 二进制解析改进 | source, cli, launcher, bug |
+| [[sources/back-551-unassigned-task-filtering]] | BACK-551 CLI 与 MCP 支持未指派任务过滤 | source, cli, mcp, filtering |
+| [[sources/back-552-doc-view-plain]] | BACK-552 doc view 增加 plain 支持 | source, cli, doc |
+| [[sources/back-553-modernize-browser-bundling]] | BACK-553 用 Bun 与 Tailwind 现代化浏览器 UI 打包 | source, build, web-ui |
+| [[sources/doc-4-upstream-migration-classification]] | doc-4 上游 v1.47.1→v1.48.0 迁移差异分类 | source, doc, migration |
+| [[sources/doc-5-a-class-migration-analysis]] | doc-5 A 类上游任务迁移分析报告 | source, doc, migration |
+| [[sources/doc-6-b-class-migration-analysis]] | doc-6 B 类上游任务迁移分析报告 | source, doc, migration |
 
 ## Execution Notes
 
@@ -112,6 +141,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/mcp-client-setup-pattern]] | MCP 客户端设置共享 Helper 模式 | 统一 Claude/Codex/Gemini/Kiro 的 MCP 注册与错误处理 |
 | [[execution/wikilink-media-rendering-pattern]] | Wikilink 媒体渲染模式 | 解析、路径解析、尺寸控制与组件注册的标准步骤 |
 | [[execution/instruction-guide-backport-pattern]] | agent-guidelines 运营指导回传到 CLI/MCP 指令表面 | 差距审计、内容拆分、两边同步、注册新指南、测试与构建的标准步骤 |
+| [[execution/content-store-version-guard-pattern]] | ContentStore 版本守卫刷新合并模式 | 防止异步刷新晚于写入完成而覆盖新状态的标准步骤 |
 
 ## Decisions
 
@@ -141,6 +171,10 @@ Read this file FIRST on any wiki operation.
 | [[decisions/empty-string-over-undefined-for-date-clear]] | Web 日期清除使用空字符串而非 undefined | BACK-528 选择让客户端发送空字符串避免 JSON 丢弃 undefined |
 | [[decisions/cli-instructions-default-over-mcp]] | CLI instructions 作为默认 AI 集成路径 | BACK-521.2 选择 CLI instructions 为默认，MCP 作为可选 |
 | [[decisions/short-cli-nudge-over-long-guide]] | 使用短 CLI nudge 替代长 agent instruction 指南 | BACK-521.2 选择短 nudge + 动态 `backlog instructions` |
+| [[decisions/doctor-human-first-fail-closed-repair]] | 重复 ID 修复采用人类优先、CLI 权威、不猜测 | BACK-538 选择 doctor 预览+确认+可回滚而非全自动修复 |
+| [[decisions/tokenizer-over-regex-sentinel]] | AC/DoD 解析用 tokenizer 替代 regex 哨兵 | BACK-537 选择确定性解析与 fail-closed |
+| [[decisions/content-store-version-guard]] | ContentStore 用逐项版本守卫防止过期刷新 | BACK-540 选择版本守卫+条件合并而非全局锁 |
+| [[decisions/ignore-ordinal-for-updated-date]] | ordinal 变更忽略 updated_date 差异 | BACK-534 选择集中式时间戳逻辑消除 diff 噪音 |
 
 ## Concepts
 
@@ -214,7 +248,7 @@ _No comparisons created yet._
 | [[usermanual/00-快速开始/01-安装与初始化]] | 安装与初始化 | 多种安装方式、项目初始化、配置管理 |
 | [[usermanual/00-快速开始/02-AI集成设置]] | AI 集成设置 | MCP 协议配置、CLI 指令文件、推荐工作流 |
 | [[usermanual/10-任务管理/00-任务生命周期]] | 任务生命周期 | 状态流转、任务文件结构、核心字段 |
-| [[usermanual/10-任务管理/01-创建与编辑任务]] | 创建与编辑任务 | task create/edit/show/list 命令详解 |
+| [[usermanual/10-任务管理/01-创建与编辑任务]] | 创建与编辑任务 | task create/edit 命令详解 |
 | [[usermanual/10-任务管理/02-草稿管理]] | 草稿管理 | 草稿创建、提升、降级、独立 ID 空间 |
 | [[usermanual/10-任务管理/03-子任务与依赖]] | 子任务与依赖 | 子任务创建、依赖设置、序列影响 |
 | [[usermanual/10-任务管理/04-搜索与序列]] | 搜索与序列 | search 命令、序列概念与规划意义 |
