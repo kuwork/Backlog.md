@@ -26,14 +26,6 @@ if "!REPO!"=="" (
 
 echo Building GitHub Release binaries for v%VERSION%...
 
-REM Build CSS first (required for compiled binary)
-echo Building CSS...
-call bun run build:css
-if errorlevel 1 (
-	echo CSS build failed
-	exit /b 1
-)
-
 REM Resolve Bun version for cross-compile runtime cache
 for /f "delims=" %%i in ('bun --version') do set "BUN_VERSION=%%i"
 set "BUN_COMPILE_CACHE=%LOCALAPPDATA%\bun-compile-cache"
@@ -161,7 +153,7 @@ echo Building %TARGET%...
 
 REM Workaround for Bun cross-compile runtime extraction failure on Windows
 REM (https://github.com/oven-sh/bun/issues/25346). Pre-download and cache
-REM the target platform's Bun runtime, then point --compile-executable-path
+REM the target platform's Bun runtime, then point compile.executablePath
 REM at it so Bun does not need to extract the embedded runtime itself.
 call :ensure_runtime %TARGET%
 if errorlevel 1 (
@@ -170,7 +162,11 @@ if errorlevel 1 (
 	goto :eof
 )
 
-bun build src/cli.ts --compile --minify --target=%TARGET% --define __EMBEDDED_VERSION__=\"%VERSION%\" --compile-executable-path="%RUNTIME_PATH%" --outfile="%OUTPATH%"
+set "BACKLOG_BUILD_VERSION=%VERSION%"
+set "BACKLOG_BUILD_TARGET=%TARGET%"
+set "BACKLOG_BUILD_OUTFILE=%OUTPATH%"
+set "BACKLOG_BUILD_EXECUTABLE_PATH=%RUNTIME_PATH%"
+bun scripts/build.ts
 if errorlevel 1 (
 	echo    Failed: %TARGET%
 	set "FAILED=%FAILED% %TARGET%"
