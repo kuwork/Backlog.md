@@ -3,7 +3,7 @@ id: doc-4
 title: Upstream v1.47.1 to v1.48.0 Migration Diff Classification
 type: guide
 created_date: '2026-07-28 06:04'
-updated_date: '2026-08-09 16:10'
+updated_date: '2026-08-10'
 ---
 # 上游变更差异分类（v1.47.1 .. v1.48.0）
 
@@ -76,7 +76,7 @@ updated_date: '2026-08-09 16:10'
 
 | # | 标题 | 描述摘要 | 理由 | 是否分析 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|----------|----------|
-| C1 | **BACK-520 移除 sequences 功能** | 从核心、CLI、MCP、TUI、Web 中彻底移除 sequences 任务序列功能。 | 当前 fork 仍保留 `src/core/sequences.ts` 及相关功能；若跟随上游移除，会删除当前 fork 仍在使用的模块，与排除清单「保持当前分支已支持能力」原则冲突 | 否 | [DRAFT#47](/draft/47) | 不适用 |
+| C1 | **BACK-520 移除 sequences 功能** | 从核心、CLI、MCP、TUI、Web 中彻底移除 sequences 任务序列功能。 | 当前 fork 仍保留 `src/core/sequences.ts` 及相关功能；若跟随上游移除，会删除当前 fork 仍在使用的模块，与排除清单「保持当前分支已支持能力」原则冲突 | 是 | [DRAFT#47](/draft/47) | 保留（[BACK-554](/task/554)）：sequences 为从 `dependencies` 派生的执行分层视图（同一序列任务可并行），不新增数据。上游 owner 判定其为废弃方向整体删除，但保留依赖字段。当前 fork 确认保留该能力，并补齐 `src/guidelines/cli-instructions/overview.md` 的 Sequences Quick Reference，使 agents 经 `backlog instructions` 可发现 `backlog sequence list`（此前指令面停留在上游删除后的状态，功能与指令文档不一致）。不纳入 v1.48.0 迁移 |
 | C2 | **BACK-519 README 重构成 landing page** | 将 README 重构成以 review-surface 价值主张为中心的 landing page，并引入 Backlog.md manifesto。 | 品牌/文档方向性改动，与当前 fork 的文档策略无关 | 否 | [DRAFT#46](/draft/46) | 不适用 |
 | C3 | **BACK-535 测试可靠性项目** | 大规模重构测试：用真实 CLI 表面测试替代模拟、确定性 teardown、可观察同步、拆分测试套件等。 | 上游内部工程改进，不一定匹配当前 fork 的测试基线 | 否 | [DRAFT#61](/draft/61) (父), [DRAFT#62](/draft/62)..[DRAFT#74](/draft/74) (子任务) | 不适用 |
 | C4 | **BACK-524 CI 加速与 Windows 超时修复** | 优化 GitHub Actions 测试工作流，修复 Windows 超时问题。 | 上游 CI 特定配置，与当前 fork 无关 | 否 | [DRAFT#50](/draft/50) | 不适用 |

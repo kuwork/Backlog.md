@@ -155,6 +155,22 @@ backlog search --modified-file src/server/api.ts --plain
 - Also searches documents and decisions unless filtered with `--type task`
 - Always use `--plain` flag for AI-readable output
 
+## Sequences Quick Reference
+
+`backlog sequence list` groups active tasks into parallel execution sequences derived from their `dependencies`. It does not change any task data - it only visualizes the dependency graph as ordered layers.
+
+```bash
+# List execution sequences as plain text (AI-readable)
+backlog sequence list --plain
+```
+
+**Key points:**
+- Sequences are computed from task `dependencies`; `backlog sequence list` never modifies task data
+- Tasks in the same sequence have no dependencies on each other and can run in parallel
+- A task's sequence is determined by its dependencies: sequence 1 has no deps, later sequences depend on earlier ones
+- `Unsequenced` tasks have no dependencies, no dependents, and no ordinal - they are listed separately
+- Use `backlog task list` (not sequences) when you need a flat list filtered by status, assignee, or labels
+
 ## Other Useful Commands
 
 ```bash
