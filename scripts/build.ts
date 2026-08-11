@@ -10,6 +10,7 @@ const packageJson = (await Bun.file("package.json").json()) as PackageJson;
 const outfile = process.env.BACKLOG_BUILD_OUTFILE ?? "dist/backlog";
 const version = process.env.BACKLOG_BUILD_VERSION ?? packageJson.version;
 const target = process.env.BACKLOG_BUILD_TARGET;
+const executablePath = process.env.BACKLOG_BUILD_EXECUTABLE_PATH;
 const outputDirectory = dirname(outfile);
 
 if (outputDirectory !== ".") {
@@ -28,6 +29,7 @@ const result = await Bun.build({
 	compile: {
 		outfile,
 		...(target ? { target: target as Bun.Build.CompileTarget } : {}),
+		...(executablePath ? { executablePath } : {}),
 	},
 	throw: false,
 });
