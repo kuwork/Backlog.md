@@ -24,7 +24,18 @@ backlog search "关键词"
 backlog search "api" --status "In Progress"
 backlog search "bug" --priority high
 backlog search "feature" --plain
+backlog search "api" --status "In Progress" --status "Done"   # 多状态
+backlog search "api" --exclude-status "Done"                  # 状态排除
+backlog search "api" --unassigned                             # 未指派过滤
 ```
+
+### 任务过滤模型
+
+`TaskListFilter` 在 `applyTaskFilters` 中统一实现，被 CLI/TUI/Web/MCP/搜索各路径共享：
+
+- **多状态**：`status` 扩展为 `string | string[]`（`--status` 重复/逗号分隔）
+- **状态排除**：`statusExcluded`，以 Set 做排除匹配（`--exclude-status`）
+- **未指派过滤**：`unassigned`，任务无任何非空 assignee 条目即视为未指派（`--unassigned`，与 `--assignee` 互斥）（BACK-548 / BACK-551）
 
 ### TUI 搜索
 
@@ -79,3 +90,7 @@ Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchSe
 - `backlog sequence list` — 列出所有序列
 - TUI 序列视图（只读 + 移动任务并更新依赖）
 - Web UI 序列页面（拖拽重新排序）
+
+## Related Sources
+- [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除与多状态过滤
+- [[sources/back-551-unassigned-task-filtering]] — BACK-551 未指派过滤

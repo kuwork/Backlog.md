@@ -2,7 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-08-09 00:00'
 ---
 
 # CLI 入口与命令体系
@@ -106,10 +106,38 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 
 `--description` / `--desc`、`--plan`、`--notes`、`--final-summary` 值支持跨平台一致的换行输入：
 
+- **追加选项**：`task edit` 支持 `--append-description`/`--append-desc`，将文本追加到现有描述末尾（复用 `appendBlock`），与 `--append-notes`、`--append-final-summary` 对齐（[[sources/back-530-append-description|BACK-530]]）
+- **doc update 多行与追加**：`doc update --content` 应用 `processCliEscapes`；新增可重复的 `--append-content`，追加块以空行分隔，MCP `document_update` 对应 `appendContent`（[[sources/back-529-doc-update-multiline-append|BACK-529]]）
+- **避免 bash ANSI-C 引号**：指南明确警告不要用 `$'...'` 包装多行值，改用 CLI 在普通双引号内的转义处理（[[sources/back-547-avoid-bash-ansi-c-quoting|BACK-547]]）
+
 - Windows 上先模拟 bash 双引号转义层（`\\` → `\`），再统一应用 C-style 转义（`\n` → 换行，`\\` → 字面反斜杠）
 - 非 Windows 直接应用 C-style 转义
 - 覆盖 `task create/edit`、`draft create`、`milestone create/edit` 五个入口（[[sources/back-508-cli-description-escapes|BACK-508]]）
 - `--plan`、`--notes`、`--final-summary` 在 `task create/edit` 中同样应用 `processCliEscapes`，实现多行计划、备注与总结（[[sources/back-527-cli-escape-sequences-for-plan-notes-summary|BACK-527]]）
+
+## 任务列表过滤
+
+`backlog task list` 支持多维过滤：
+
+- **多状态与排除**：`--status` 支持重复/逗号分隔多值（case-insensitive），新增 `--exclude-status`；均经 `normalizeCliStatusList` 校验（无效输入 exitCode 1）（[[sources/back-548-status-exclude-filtering|BACK-548]]）
+- **未指派过滤**：`--unassigned` 单独列出没有 assignee 的任务，与 `--assignee` 互斥（冲突时报错 exit 1）（[[sources/back-551-unassigned-task-filtering|BACK-551]]）
+- **默认序号排序**：task list 默认按 ordinal 排序，保留 `--sort ordinal`（[[sources/back-542-ordinal-task-list-sort|BACK-542]]）
+- **数字 ID 查找**：非默认前缀下，`task edit` 移除 `normalizeTaskId` 预归一化，直接让核心层探测配置前缀（依赖 BACK-364）（[[sources/back-545-cli-task-edit-numeric-id|BACK-545]]）
+
+## doc view plain 输出
+
+`backlog doc view` 支持 `--plain` 直接输出原始文档内容到 stdout；stdout 非 TTY 时自动 plain（[[sources/back-552-doc-view-plain|BACK-552]]）。
+
+## doctor 命令
+
+`backlog doctor` 是人类优先、CLI 权威的重复任务 ID 检测与修复工具：
+- 列出冲突组、确切文件路径、计划的重命名及需人工审查的引用
+- `--commit` 丢弃 .bak 备份并最终化；`--rollback` 恢复 .bak 备份
+- 原则：fail-closed、确定性、内容保留、原子性、不猜测引用、可回滚（[[sources/back-538-duplicate-task-id-recovery|BACK-538]]）
+
+## config 命令
+
+`config get/set/list` 通过共享的 `CONFIG_AVAILABLE_KEYS` 常量显示一致的可用键列表；列表键（statuses/labels）指引改为 `config get` + 编辑 config.yml，而非不存在的 `list-<key>` 命令（[[sources/back-533-config-block-yaml-lists|BACK-533]]）。
 
 ## overview 命令
 
@@ -147,3 +175,13 @@ backlog overview --plain # 纯文本输出
 - [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
 - [[sources/back-508-cli-description-escapes]] — BACK-508 CLI description 转义修复
 - [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]] — BACK-527 plan/notes/finalSummary 转义支持
+- [[sources/back-529-doc-update-multiline-append]] — BACK-529 doc update 多行与追加
+- [[sources/back-530-append-description]] — BACK-530 task edit 追加描述
+- [[sources/back-533-config-block-yaml-lists]] — BACK-533 config 块状 YAML 列表
+- [[sources/back-538-duplicate-task-id-recovery]] — BACK-538 doctor 重复 ID 修复
+- [[sources/back-542-ordinal-task-list-sort]] — BACK-542 序号排序
+- [[sources/back-545-cli-task-edit-numeric-id]] — BACK-545 数字 ID 查找
+- [[sources/back-547-avoid-bash-ansi-c-quoting]] — BACK-547 避免 ANSI-C 引号
+- [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除过滤
+- [[sources/back-551-unassigned-task-filtering]] — BACK-551 未指派过滤
+- [[sources/back-552-doc-view-plain]] — BACK-552 doc view plain
