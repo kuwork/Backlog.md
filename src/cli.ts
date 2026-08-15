@@ -376,6 +376,7 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.comment !== undefined ||
 			options.commentAuthor !== undefined ||
 			options.finalSummary !== undefined ||
+			options.appendPlan !== undefined ||
 			options.appendNotes !== undefined ||
 			options.appendFinalSummary !== undefined ||
 			options.clearDueDate ||
@@ -2588,6 +2589,11 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		{ name: "descriptionAppend", type: "Array of Markdown", description: "Append blocks to the existing description" },
 		{ name: "status", type: statusType, description: "Project task status; case-insensitive" },
 		{ name: "plan", type: "Markdown", description: "Replacement implementation plan" },
+		{
+			name: "append-plan",
+			type: "Markdown",
+			description: "Append after --plan replacement; repeatable",
+		},
 		{ name: "notes", type: "Markdown", description: "Replacement implementation notes" },
 		{ name: "comment", type: "Markdown", description: "Append a discussion comment" },
 		{ name: "final-summary", type: "Markdown", description: "Completion summary" },
@@ -2674,6 +2680,11 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 	)
 	.option("--comment-author <author>", "author to record for appended comments")
 	.option("--final-summary <text>", "set final summary (replaces existing)")
+	.option(
+		"--append-plan <text>",
+		"append after --plan replacement (can be used multiple times)",
+		createMultiValueAccumulator(),
+	)
 	.option(
 		"--append-notes <text>",
 		"append to implementation notes (can be used multiple times)",
@@ -2893,6 +2904,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const normalizedDocumentation = parseDelimitedStringList(options.doc);
 		const normalizedModifiedFiles = parseDelimitedStringList(options.modifiedFile);
 
+		const planAppendValues = toStringArray(options.appendPlan);
 		const notesAppendValues = toStringArray(options.appendNotes);
 		const commentsAppendValues = toStringArray(options.comment);
 		const finalSummaryAppendValues = toStringArray(options.appendFinalSummary);
@@ -2950,6 +2962,9 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		}
 		if (typeof options.notes === "string") {
 			editArgs.notesSet = processCliEscapes(String(options.notes));
+		}
+		if (planAppendValues.length > 0) {
+			editArgs.planAppend = planAppendValues;
 		}
 		if (notesAppendValues.length > 0) {
 			editArgs.notesAppend = notesAppendValues;

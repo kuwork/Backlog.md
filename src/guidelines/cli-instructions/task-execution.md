@@ -20,7 +20,12 @@ Before writing code for non-trivial work:
 
 > **Do not use bash `$'...'` quoting for multi-line values.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
 
-Keep the Backlog task as the plan of record. If the approach changes, update the plan through `backlog task edit` before continuing.
+Keep the Backlog task as the plan of record. If the approach changes, replace it with `--plan` or extend it with one
+or more repeatable `--append-plan` values. When both options are provided, `--plan` replaces the existing plan first,
+then each `--append-plan` value is appended in CLI order:
+
+- `backlog task edit {{TASK_ID:123}} --append-plan "5. Verify the revised approach"`
+- `backlog task edit {{TASK_ID:123}} --plan "1. Revised approach" --append-plan "2. Verify it"`
 
 ### Execution Workflow
 
@@ -66,7 +71,8 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Uncheck DoD #2          | `backlog task edit {{TASK_ID:123}} --uncheck-dod 2`      |
 | Remove AC #3            | `backlog task edit {{TASK_ID:123}} --remove-ac 3`        |
 | Remove DoD #3           | `backlog task edit {{TASK_ID:123}} --remove-dod 3`       |
-| Add Plan                | `backlog task edit {{TASK_ID:123}} --plan "1. Step one\n2. Step two"` |
+| Add Plan (replace)      | `backlog task edit {{TASK_ID:123}} --plan "1. Step one\n2. Step two"` |
+| Append Plan             | `backlog task edit {{TASK_ID:123}} --append-plan "5. Verify the approach"` |
 | Add Notes (replace)     | `backlog task edit {{TASK_ID:123}} --notes "What I did"` |
 | Append Notes            | `backlog task edit {{TASK_ID:123}} --append-notes "Another note"` |
 | Add Comment             | `backlog task edit {{TASK_ID:123}} --comment "Review question" --comment-author @agent` |
