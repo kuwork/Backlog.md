@@ -435,8 +435,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
   // Intercept Escape to cancel edit (not close modal) when in edit mode
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e)) return;
-
       if (mode === "edit" && (e.key === "Escape")) {
         e.preventDefault();
         e.stopPropagation();
@@ -447,22 +445,26 @@ export const TaskDetailsModal: React.FC<Props> = ({
         e.stopPropagation();
         void handleSave();
       }
-      if (mode === "preview" && (e.key.toLowerCase() === "e") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // Preview shortcuts must not intercept typing in editable fields,
+      // while edit-mode Escape and Cmd/Ctrl+S above keep working there.
+      if (mode !== "preview" || isTypingTarget(e)) return;
+
+      if (e.key.toLowerCase() === "e" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
         setMode("edit");
       }
-      if (mode === "preview" && isDoneStatus && (e.key.toLowerCase() === "c") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (isDoneStatus && (e.key.toLowerCase() === "c") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
         void handleComplete();
       }
-      if (mode === "preview" && !isDoneStatus && !isDraftTask && (e.key.toLowerCase() === "d") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (!isDoneStatus && !isDraftTask && (e.key.toLowerCase() === "d") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
         void handleDemote();
       }
-      if (mode === "preview" && isDraftTask && (e.key.toLowerCase() === "p") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (isDraftTask && (e.key.toLowerCase() === "p") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
         void handlePromote();
