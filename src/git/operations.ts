@@ -60,25 +60,12 @@ export class GitOperations {
 	}
 
 	async addFiles(filePaths: string[]): Promise<void> {
-		if (filePaths.length === 0 || !(await this.isRepository())) {
-			return;
-		}
-		// Convert absolute paths to relative paths from project root to avoid Windows encoding issues
-		const relativePaths = filePaths.map((filePath) => relative(this.projectRoot, filePath).replace(/\\/g, "/"));
-		await this.execGit(["add", ...relativePaths]);
+		for (const filePath of filePaths) await this.addFile(filePath);
 	}
 
-	async commitTaskChange(taskId: string, message: string, filePath?: string): Promise<void> {
+	async commitTaskChange(taskId: string, message: string, filePath: string): Promise<void> {
 		const commitMessage = `${taskId} - ${message}`;
-		const args = ["commit", "-m", commitMessage];
-		if (this.config?.bypassGitHooks) {
-			args.push("--no-verify");
-		}
-		const repoRoot = filePath ? (await this.getPathContext(filePath))?.repoRoot : undefined;
-		if (!(await this.isRepository(repoRoot ?? this.projectRoot))) {
-			return;
-		}
-		await this.execGit(args, { cwd: repoRoot });
+		await this.commitFiles(commitMessage, [filePath]);
 	}
 
 	async commitChanges(message: string, repoRoot?: string | null): Promise<void> {
@@ -97,9 +84,26 @@ export class GitOperations {
 		if (uniqueFilePaths.length === 0) {
 			return;
 		}
+		let requestedRepoRoot = repoRoot;
+		if (requestedRepoRoot == null) {
+			const pathsByRepo = new Map<string, string[]>();
+			for (const filePath of uniqueFilePaths) {
+				const pathRepoRoot = (await this.getPathContext(filePath))?.repoRoot ?? this.projectRoot;
+				const repoPaths = pathsByRepo.get(pathRepoRoot) ?? [];
+				repoPaths.push(filePath);
+				pathsByRepo.set(pathRepoRoot, repoPaths);
+			}
+			if (pathsByRepo.size > 1) {
+				for (const [pathRepoRoot, repoPaths] of pathsByRepo) {
+					await this.commitFiles(message, repoPaths, pathRepoRoot);
+				}
+				return;
+			}
+			requestedRepoRoot = pathsByRepo.keys().next().value;
+		}
 
 		const resolvedRepoRoot =
-			repoRoot ?? (await this.getPathContext(uniqueFilePaths[0] ?? ""))?.repoRoot ?? this.projectRoot;
+			requestedRepoRoot ?? (await this.getPathContext(uniqueFilePaths[0] ?? ""))?.repoRoot ?? this.projectRoot;
 		if (!(await this.isRepository(resolvedRepoRoot))) {
 			return;
 		}
@@ -113,14 +117,22 @@ export class GitOperations {
 			return;
 		}
 
+		// Only commit paths that are actually staged. The diff --name-only -z output
+		// lists every staged path (adds and deletions) without core.quotepath escaping,
+		// so pathspecs stay valid for non-ASCII names and moved-from paths. --no-renames
+		// keeps a moved file's old path in the list instead of collapsing it into a rename.
 		const { stdout: stagedForPaths } = await this.execGit(
-			["diff", "--name-only", "--cached", "--", ...uniqueRelativePaths],
+			["diff", "--name-only", "-z", "--cached", "--no-renames", "--", ...uniqueRelativePaths],
 			{
 				cwd: resolvedRepoRoot,
 				readOnly: true,
 			},
 		);
-		if (!stagedForPaths.trim()) {
+		const stagedPaths = stagedForPaths
+			.split("\0")
+			.map((path) => path.trim())
+			.filter((path) => path.length > 0);
+		if (stagedPaths.length === 0) {
 			return;
 		}
 
@@ -128,16 +140,10 @@ export class GitOperations {
 		if (this.config?.bypassGitHooks) {
 			args.push("--no-verify");
 		}
-		args.push("--", ...uniqueRelativePaths);
+		// Commit with --only so only the paths staged under this call are committed,
+		// leaving unrelated user-staged work untouched.
+		args.push("--only", "--", ...stagedPaths);
 		await this.execGit(args, { cwd: resolvedRepoRoot });
-	}
-
-	async resetIndex(repoRoot?: string | null): Promise<void> {
-		if (!(await this.isRepository(repoRoot ?? this.projectRoot))) {
-			return;
-		}
-		// Reset the staging area without affecting working directory
-		await this.execGit(["reset", "HEAD"], { cwd: repoRoot ?? undefined });
 	}
 
 	async resetPaths(filePaths: string[], repoRoot?: string | null): Promise<void> {
@@ -162,25 +168,6 @@ export class GitOperations {
 		}
 
 		await this.execGit(["reset", "HEAD", "--", ...uniqueRelativePaths], { cwd: resolvedRepoRoot });
-	}
-
-	async commitStagedChanges(message: string, repoRoot?: string | null): Promise<void> {
-		if (!(await this.isRepository(repoRoot ?? this.projectRoot))) {
-			return;
-		}
-		// Check if there are any staged changes before committing
-		const { stdout: status } = await this.execGit(["status", "--porcelain"], { cwd: repoRoot ?? undefined });
-		const hasStagedChanges = status.split("\n").some((line) => line.match(/^[AMDRC]/));
-
-		if (!hasStagedChanges) {
-			throw new Error("No staged changes to commit");
-		}
-
-		const args = ["commit", "-m", message];
-		if (this.config?.bypassGitHooks) {
-			args.push("--no-verify");
-		}
-		await this.execGit(args, { cwd: repoRoot ?? undefined });
 	}
 
 	async retryGitOperation<T>(operation: () => Promise<T>, operationName: string, maxRetries = 3): Promise<T> {
@@ -323,14 +310,11 @@ export class GitOperations {
 
 		// Retry git operations to handle transient failures
 		await this.retryGitOperation(async () => {
-			// Reset index to ensure only the specific file is staged
-			await this.resetIndex(repoRoot);
-
 			// Stage only the specific task file
 			await this.execGit(["add", pathForAdd], { cwd: repoRoot });
 
 			// Commit only the staged file
-			await this.commitStagedChanges(actionMessages[action], repoRoot);
+			await this.commitFiles(actionMessages[action], [filePath], repoRoot);
 		}, `commit task file ${filePath}`);
 	}
 
@@ -360,10 +344,17 @@ export class GitOperations {
 		// Stage the deletion of the old file and addition of the new file
 		// Git will automatically detect this as a rename if the content is similar enough
 		try {
-			// First try to stage the removal of the old file (if it still exists)
-			await this.execGit(["add", "--all", relativeFrom ?? fromPath], { cwd: repoRoot });
+			// Remove the old file from the index. The source is typically already
+			// gone from the working tree (moved), so git rm --cached is the reliable
+			// way to stage the deletion; git add --all on a missing path is a no-op.
+			await this.execGit(["rm", "--cached", "--quiet", "--", relativeFrom ?? fromPath], { cwd: repoRoot });
 		} catch {
-			// If the old file doesn't exist, that's okay - it was already moved
+			// If the old file is not tracked, fall back to staging any removal.
+			try {
+				await this.execGit(["add", "--all", relativeFrom ?? fromPath], { cwd: repoRoot });
+			} catch {
+				// If the old file doesn't exist, that's okay - it was already moved
+			}
 		}
 
 		// Always stage the new file location

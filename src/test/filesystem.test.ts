@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, readdir, rename, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { BacklogConfig, Decision, Document, Task } from "../types/index.ts";
@@ -376,7 +376,9 @@ Invalid content`,
 			await filesystem.saveDraft(sampleDraft);
 
 			const archived = await filesystem.archiveDraft("draft-1");
-			expect(archived).toBe(true);
+			expect(archived).not.toBeNull();
+			expect(archived?.sourcePath.includes(`drafts${sep}`)).toBe(true);
+			expect(archived?.targetPath.includes(`archive${sep}drafts${sep}`)).toBe(true);
 
 			const draft = await filesystem.loadDraft("draft-1");
 			expect(draft).toBeNull();

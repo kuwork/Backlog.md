@@ -551,7 +551,7 @@ export class FileSystem {
 		}
 	}
 
-	async archiveDraft(draftId: string): Promise<boolean> {
+	async archiveDraft(draftId: string): Promise<{ sourcePath: string; targetPath: string } | null> {
 		try {
 			const draftsDir = await this.getDraftsDir();
 			const archiveDraftsDir = await this.getArchiveDraftsDir();
@@ -564,7 +564,7 @@ export class FileSystem {
 			const filenameId = idForFilename(normalizedId);
 			const draftFile = files.find((f) => f.startsWith(`${filenameId} -`) || f.startsWith(`${filenameId}-`));
 
-			if (!draftFile) return false;
+			if (!draftFile) return null;
 
 			const sourcePath = join(draftsDir, draftFile);
 			const targetPath = join(archiveDraftsDir, draftFile);
@@ -575,13 +575,13 @@ export class FileSystem {
 
 			await unlink(sourcePath);
 
-			return true;
+			return { sourcePath, targetPath };
 		} catch {
-			return false;
+			return null;
 		}
 	}
 
-	async promoteDraft(draftId: string): Promise<Task | false> {
+	async promoteDraft(draftId: string, onMoved?: (fromPath: string, toPath: string) => void): Promise<Task | false> {
 		try {
 			return await this.withCreateLock(async () => {
 				// Load the draft
@@ -614,7 +614,8 @@ export class FileSystem {
 					filePath: undefined, // Will be set by saveTask
 				};
 
-				await this.saveTask(promotedTask);
+				const savedPath = await this.saveTask(promotedTask);
+				onMoved?.(draft.filePath, savedPath);
 
 				// Delete old draft file
 				await unlink(draft.filePath);
@@ -631,7 +632,7 @@ export class FileSystem {
 		}
 	}
 
-	async demoteTask(taskId: string): Promise<string | null> {
+	async demoteTask(taskId: string, onMoved?: (fromPath: string, toPath: string) => void): Promise<string | null> {
 		try {
 			return await this.withCreateLock(async () => {
 				// Load the task
@@ -654,7 +655,8 @@ export class FileSystem {
 					filePath: undefined, // Will be set by saveDraft
 				};
 
-				await this.saveDraft(demotedDraft);
+				const savedPath = await this.saveDraft(demotedDraft);
+				onMoved?.(task.filePath, savedPath);
 
 				// Delete old task file
 				await unlink(task.filePath);
@@ -743,7 +745,7 @@ export class FileSystem {
 	}
 
 	// Decision log operations
-	async saveDecision(decision: Decision): Promise<void> {
+	async saveDecision(decision: Decision): Promise<{ filepath: string; removedFilepaths: string[] }> {
 		// Normalize ID - remove "decision-" prefix if present
 		const normalizedId = decision.id.replace(/^decision-/, "");
 		const filename = `decision-${normalizedId} - ${this.sanitizeFilename(decision.title)}.md`;
@@ -751,6 +753,7 @@ export class FileSystem {
 		const filepath = join(decisionsDir, filename);
 		const content = serializeDecision(decision);
 
+		const removedFilepaths: string[] = [];
 		const matches = await Array.fromAsync(
 			new Bun.Glob("decision-*.md").scan({ cwd: decisionsDir, followSymlinks: true }),
 		);
@@ -758,7 +761,9 @@ export class FileSystem {
 			if (match === filename) continue;
 			if (!match.startsWith(`decision-${normalizedId} -`)) continue;
 			try {
-				await unlink(join(decisionsDir, match));
+				const matchPath = join(decisionsDir, match);
+				await unlink(matchPath);
+				removedFilepaths.push(matchPath);
 			} catch {
 				// Ignore cleanup errors
 			}
@@ -766,6 +771,8 @@ export class FileSystem {
 
 		await this.ensureDirectoryExists(dirname(filepath));
 		await Bun.write(filepath, content);
+
+		return { filepath, removedFilepaths };
 	}
 
 	async loadDecision(decisionId: string): Promise<Decision | null> {
@@ -790,7 +797,7 @@ export class FileSystem {
 	}
 
 	// Document operations
-	async saveDocument(document: Document, subPath = ""): Promise<string> {
+	async saveDocument(document: Document, subPath = ""): Promise<{ relativePath: string; removedFilepaths: string[] }> {
 		const docsDir = await this.getDocsDir();
 		const canonicalId = normalizeDocumentId(document.id);
 		document.id = canonicalId;
@@ -818,11 +825,13 @@ export class FileSystem {
 			sourceRelativePath = normalizeDocumentRelativePath(matchesForId[0] ?? "");
 		}
 
+		const removedFilepaths: string[] = [];
 		if (sourceRelativePath && sourceRelativePath !== relativePath) {
 			const sourcePath = join(docsDir, ...sourceRelativePath.split("/"));
 			try {
 				await this.ensureDirectoryExists(dirname(filepath));
 				await rename(sourcePath, filepath);
+				removedFilepaths.push(sourcePath);
 			} catch (error) {
 				const code = (error as NodeJS.ErrnoException | undefined)?.code;
 				if (code !== "ENOENT") {
@@ -838,6 +847,7 @@ export class FileSystem {
 			}
 			try {
 				await unlink(matchPath);
+				removedFilepaths.push(matchPath);
 			} catch {
 				// Ignore cleanup errors - file may have been removed already
 			}
@@ -846,7 +856,7 @@ export class FileSystem {
 		await Bun.write(filepath, content);
 
 		document.path = relativePath;
-		return relativePath;
+		return { relativePath, removedFilepaths };
 	}
 
 	async listDecisions(): Promise<Decision[]> {

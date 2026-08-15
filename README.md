@@ -346,6 +346,19 @@ Backlog.md 的配置按以下层次叠加（优先级从高到低）：
 
 每当您重新访问 `backlog init` 或重新运行 `backlog config` 时，向导都会用您当前的值预填充提示，以便您只调整已更改的内容。
 
+### autoCommit 自动提交
+
+开启后（`backlog config set autoCommit true` 或配置文件 `autoCommit: true`），以下操作会**每次写入自动产生一个 Git 提交**：任务创建/编辑/批量更新、任务归档/完成、Draft 提升/降级/归档、决策与文档的创建**和更新**、里程碑归档/重命名、以及 `backlog init` 写入的 AI 指令文件。
+
+**注意事项：**
+
+- **提交只包含本次操作触碰的文件**（新文件 + 被替换/移动的旧路径），不会整目录暂存，也不会卷入或清空您预先暂存（staged）的其他改动，未跟踪（untracked）文件保持原样。
+- **必须初始化 Git** 才能使用；`backlog init --no-git` 的纯文件系统项目强制禁用自动提交。
+- **提交失败不丢数据**：文件已写入磁盘，只是未提交，可用 `git status` 查看并手动补提交。里程碑归档/重命名失败时会自动回滚文件移动。
+- **`bypassGitHooks`**：默认会触发仓库 pre-commit 钩子，可能因 lint/格式化失败而阻塞提交；需要跳过时设置 `backlog config set bypassGitHooks true`。
+- **提交信息**：任务按操作区分（`Create task` / `Update task` / `Archive task`）；决策与文档区分创建与更新（`Add decision` / `Update decision`、`Add document` / `Update document`）；里程碑与 Draft 使用 `backlog:` 前缀。
+- **推荐**：单人/自动化工作流开启自动提交可获得「一操作一提交」的干净历史；多人协作或需要精细控制历史时可保持关闭（默认），手动 `git add`/`git commit`——两种方式互不污染。
+
 ### 完成定义默认值
 
 使用 `backlog config`（或在 `backlog init` 高级设置期间）、在 Web UI 中（设置 → 完成定义默认值），或直接编辑项目配置文件来设置项目范围的 DoD 项：

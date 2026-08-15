@@ -346,6 +346,19 @@ For filesystem-only projects, run `backlog init --no-git`. Backlog.md will not r
 
 Whenever you revisit `backlog init` or rerun `backlog config`, the wizard pre-populates prompts with your current values so you can adjust only what changed.
 
+### autoCommit notes
+
+When enabled (`backlog config set autoCommit true` or `autoCommit: true` in the config file), the following operations each produce **one Git commit per write**: task create/edit/bulk update, task archive/complete, draft promote/demote/archive, decision and document create **and update**, milestone archive/rename, and the AI instruction files written by `backlog init`.
+
+**Notes:**
+
+- **Each commit contains only the files that operation touched** (the new file plus replaced/moved old paths). It never stages the whole backlog directory, never sweeps in or clears your other staged changes, and leaves untracked files untouched.
+- **Git must be initialized.** Filesystem-only projects created with `backlog init --no-git` force autoCommit off.
+- **A failed commit does not lose data**: the file is already written to disk, just not committed — check `git status` and commit manually. Milestone archive/rename roll back the file move on failure.
+- **`bypassGitHooks`**: auto-commits trigger repository pre-commit hooks by default, which can block on lint/format failures; set `backlog config set bypassGitHooks true` to skip them.
+- **Commit messages**: tasks distinguish the operation (`Create task` / `Update task` / `Archive task`); decisions and documents distinguish creation from updates (`Add decision` / `Update decision`, `Add document` / `Update document`); milestones and drafts use the `backlog:` prefix.
+- **Recommendation**: enable auto-commit for solo/automated workflows to get one commit per operation; keep it off (the default) for collaborative or fine-grained history control and commit manually — the two modes never interfere.
+
 ### Definition of Done defaults
 
 Set project-wide DoD items with `backlog config` (or during `backlog init` advanced setup), in the Web UI (Settings → Definition of Done Defaults), or by editing the project config file directly:
