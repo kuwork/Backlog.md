@@ -7,7 +7,7 @@ import {
 	generateMilestoneGroupedBoard,
 } from "../board.ts";
 import { Core } from "../core/backlog.ts";
-import type { Milestone, Task } from "../types/index.ts";
+import type { Milestone, Task, TaskCreateInput } from "../types/index.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
 import { areLabelSelectionsEqual, collectAvailableLabels } from "../utils/label-filter.ts";
 import {
@@ -21,6 +21,7 @@ import { openConfirmPopup } from "./components/confirm-popup.ts";
 import { createFilterHeader, type FilterHeader, type FilterState } from "./components/filter-header.ts";
 import { openMultiSelectFilterPopup, openSingleSelectFilterPopup } from "./components/filter-popup.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
+import { openTaskComposer, type TaskComposerOptions } from "./components/task-composer.ts";
 import { formatFooterContent } from "./footer-content.ts";
 import { getStatusIcon } from "./status-icon.ts";
 import {
@@ -148,7 +149,34 @@ function formatColumnLabel(status: string, count: number): string {
 }
 
 const DEFAULT_FOOTER_CONTENT =
-	" {cyan-fg}[Tab]{/} View | {cyan-fg}[/]{/} Search | {cyan-fg}[P/F/I]{/} Filter | {cyan-fg}[←→/↑↓]{/} Nav | {cyan-fg}[Enter]{/} Details | {cyan-fg}[E/M/C/A]{/} Edit/Move/Comp/Arch | {cyan-fg}[Y]{/} Yank | {cyan-fg}[?]{/} Help | {cyan-fg}[q]{/} Quit";
+	" {cyan-fg}[Tab]{/} View | {cyan-fg}[N]{/} New | {cyan-fg}[/]{/} Search | {cyan-fg}[P/F/I]{/} Filter | {cyan-fg}[←→/↑↓]{/} Nav | {cyan-fg}[Enter]{/} Details | {cyan-fg}[E/M/C/A]{/} Edit/Move/Comp/Arch | {cyan-fg}[Y]{/} Yank | {cyan-fg}[?]{/} Help | {cyan-fg}[q]{/} Quit";
+
+export function upsertBoardTask(tasks: readonly Task[], task: Task): Task[] {
+	const existingIndex = tasks.findIndex((candidate) => candidate.id === task.id);
+	if (existingIndex === -1) return [...tasks, task];
+	const next = [...tasks];
+	next[existingIndex] = task;
+	return next;
+}
+
+export function getCreatedTaskBoardOutcome(
+	task: Task,
+	visible: boolean,
+): { focusTaskId?: string; message: string; tone: "green" | "yellow" } {
+	if (task.status.trim().toLowerCase() === "draft") {
+		return {
+			message: `Created ${task.id} as a draft. Drafts are not shown on the task board.`,
+			tone: "yellow",
+		};
+	}
+	if (!visible) {
+		return {
+			message: `Created ${task.id}, but it is hidden by the current board filters.`,
+			tone: "yellow",
+		};
+	}
+	return { focusTaskId: task.id, message: `Created ${task.id}.`, tone: "green" };
+}
 
 export function shouldRebuildColumns(current: ColumnData[], next: ColumnData[]): boolean {
 	if (current.length !== next.length) {
@@ -212,6 +240,9 @@ export async function renderBoardTui(
 		}) => void;
 		milestoneMode?: boolean;
 		milestoneEntities?: Milestone[];
+		createTask?: (input: TaskCreateInput) => Promise<Task>;
+		taskComposer?: (options: TaskComposerOptions) => Promise<Task | null>;
+		priorities?: readonly string[];
 	},
 ): Promise<void> {
 	if (!process.stdout.isTTY) {
@@ -253,6 +284,9 @@ export async function renderBoardTui(
 		let currentFocus: "board" | "filters" = "board";
 		let filterPopupOpen = false;
 		let modalOpen = false;
+		let taskCreationOpen = false;
+		let taskCreationPendingUpdate = false;
+		let configuredWorkflowStatuses = [...currentStatuses];
 		let pendingSearchWrap: "to-first" | "to-last" | null = null;
 		let programmaticColumnSelection = false;
 		const sharedFilters = {
@@ -805,11 +839,11 @@ export async function renderBoardTui(
 			}, durationMs);
 		};
 
-		const renderView = () => {
+		const renderView = (preferredTaskId?: string) => {
 			const projectedData = getProjectedColumns(getFilteredTasks(), moveOp);
 
 			// If we are moving, we want to select the moving task
-			const selectedId = moveOp ? moveOp.taskId : getSelectedTaskId();
+			const selectedId = preferredTaskId ?? (moveOp ? moveOp.taskId : getSelectedTaskId());
 
 			if (projectedData.length === 0) {
 				const fallbackStatus = currentStatuses[0] ?? "No Status";
@@ -836,10 +870,20 @@ export async function renderBoardTui(
 		}
 
 		const updateBoard = (nextTasks: Task[], nextStatuses: string[]) => {
+			// While the task composer is open, defer board refreshes so the
+			// composer's own rendering is not clobbered; the refresh is applied
+			// once the composer closes.
+			if (taskCreationOpen) {
+				taskCreationPendingUpdate = true;
+				return;
+			}
 			// Update source of truth
 			currentTasks = nextTasks;
 			// Only update statuses if they changed (rare in TUI)
-			if (nextStatuses.length > 0) currentStatuses = nextStatuses;
+			if (nextStatuses.length > 0) {
+				currentStatuses = nextStatuses;
+				configuredWorkflowStatuses = [...nextStatuses];
+			}
 			configuredLabels = collectAvailableLabels(currentTasks, options?.availableLabels ?? []);
 			availableMilestones = Array.from(
 				new Set([
@@ -874,6 +918,55 @@ export async function renderBoardTui(
 			// Otherwise, the task will be added to this column
 			return columnData.tasks.length;
 		};
+
+		screen.key(["n", "N", "S-n"], async () => {
+			if (popupOpen || filterPopupOpen || modalOpen || moveOp || currentFocus === "filters") return;
+			taskCreationOpen = true;
+			let task: Task | null = null;
+			let creationError: unknown;
+			let hadPendingUpdate = false;
+			try {
+				task = await runWithModalGuard(() =>
+					(options?.taskComposer ?? openTaskComposer)({
+						screen,
+						statuses: configuredWorkflowStatuses,
+						priorities: options?.priorities,
+						persist: async (input) => {
+							if (options?.createTask) return options.createTask(input);
+							const core = new Core(process.cwd(), { enableWatchers: true });
+							const config = await core.fs.loadConfig();
+							return (await core.createTaskFromInput(input, config?.autoCommit ?? false)).task;
+						},
+					}),
+				);
+			} catch (error) {
+				creationError = error;
+			} finally {
+				taskCreationOpen = false;
+				hadPendingUpdate = taskCreationPendingUpdate;
+				taskCreationPendingUpdate = false;
+			}
+
+			if (creationError) {
+				const message = creationError instanceof Error ? creationError.message : "Unknown error";
+				showTransientFooter(` {red-fg}Error opening task composer: ${message}{/}`, 3000);
+				if (hadPendingUpdate) renderView();
+				else screen.render();
+				return;
+			}
+			if (!task) {
+				if (hadPendingUpdate) renderView();
+				else focusColumn(currentCol);
+				return;
+			}
+
+			const draft = task.status.trim().toLowerCase() === "draft";
+			if (!draft) currentTasks = upsertBoardTask(currentTasks, task);
+			const visible = !draft && getFilteredTasks().some((candidate) => candidate.id === task.id);
+			const outcome = getCreatedTaskBoardOutcome(task, visible);
+			showTransientFooter(` {${outcome.tone}-fg}${outcome.message}{/}`, 6000);
+			renderView(outcome.focusTaskId);
+		});
 
 		screen.key(["/", "C-f"], () => {
 			if (popupOpen || filterPopupOpen || modalOpen || moveOp) return;
