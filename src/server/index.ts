@@ -1,3 +1,4 @@
+import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import { $ } from "bun";
@@ -193,6 +194,19 @@ export function markHtmlBundleNoStore(bundle: Bun.HTMLBundle): Bun.HTMLBundle {
 }
 
 const spaIndexHtml = markHtmlBundleNoStore(indexHtml);
+const BROWSER_HOST = "127.0.0.1";
+
+function getLanIpv4Addresses(): string[] {
+	const addresses: string[] = [];
+	for (const entries of Object.values(networkInterfaces())) {
+		for (const entry of entries ?? []) {
+			if (entry.family === "IPv4" && !entry.internal) {
+				addresses.push(entry.address);
+			}
+		}
+	}
+	return addresses;
+}
 
 export class BacklogServer {
 	private core: Core;
@@ -342,7 +356,7 @@ export class BacklogServer {
 		}
 	}
 
-	async start(port?: number, openBrowser = true): Promise<void> {
+	async start(port?: number, openBrowser = true, host = BROWSER_HOST): Promise<void> {
 		// Prevent duplicate starts (e.g., accidental re-entry)
 		if (this.server) {
 			console.log("Server already running");
@@ -406,6 +420,7 @@ export class BacklogServer {
 			void this.cleanupTempAssets();
 			const serveOptions = {
 				port: bindPort,
+				hostname: host,
 				development: process.env.NODE_ENV === "development",
 				routes: {
 					"/": spaIndexHtml,
@@ -636,11 +651,33 @@ export class BacklogServer {
 			};
 			this.server = Bun.serve(serveOptions as unknown as Parameters<typeof Bun.serve>[0]);
 
-			const url = `http://localhost:${bindPort}`;
+			const isLoopbackHost = host === "127.0.0.1" || host === "localhost" || host === "::1";
+			const wildcardHost = host === "0.0.0.0" || host === "::";
+			const lanIps = wildcardHost ? getLanIpv4Addresses() : [];
+			// Loopback binding opens the localhost URL. A wildcard binding opens the
+			// first concrete LAN address, since 0.0.0.0 itself is not reachable.
+			const url = isLoopbackHost
+				? `http://localhost:${bindPort}`
+				: `http://${wildcardHost ? (lanIps[0] ?? "127.0.0.1") : host}:${bindPort}`;
 			console.log(`🚀 Backlog.md browser interface running at ${url}`);
 			console.log(`📊 Project: ${this.projectName}`);
 			const stopKey = process.platform === "darwin" ? "Cmd+C" : "Ctrl+C";
 			console.log(`⏹️  Press ${stopKey} to stop the server`);
+
+			if (isLoopbackHost) {
+				console.log(
+					`💡 Server is bound to ${host} (loopback only). To allow LAN access, restart with: backlog browser --host 0.0.0.0`,
+				);
+			} else {
+				if (wildcardHost) {
+					for (const lanIp of lanIps) {
+						console.log(`🌐 LAN access: http://${lanIp}:${bindPort}`);
+					}
+				}
+				console.log(
+					`⚠️  Server is bound to ${host}. The browser API is unauthenticated; exposing it on a LAN is not recommended.`,
+				);
+			}
 
 			if (shouldOpenBrowser) {
 				console.log("🌐 Opening browser...");

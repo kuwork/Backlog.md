@@ -4960,8 +4960,11 @@ addHelpSchema(program.command("doctor"), {
 // Browser command for web UI
 program
 	.command("browser")
-	.description("open browser interface for task management (press Ctrl+C or Cmd+C to stop)")
+	.description(
+		"open browser interface for task management (localhost, loopback-only by default; use --host to allow LAN access) (press Ctrl+C or Cmd+C to stop)",
+	)
 	.option("-p, --port <port>", "port to run server on")
+	.option("--host <host>", "host interface to bind (default 127.0.0.1; use 0.0.0.0 to allow LAN access)")
 	.option("--no-open", "don't automatically open browser")
 	.action(async (options) => {
 		try {
@@ -4980,7 +4983,7 @@ program
 				process.exit(1);
 			}
 
-			await server.start(port, options.open !== false);
+			await server.start(port, options.open !== false, options.host);
 
 			// Graceful shutdown on common termination signals (register once)
 			let shuttingDown = false;

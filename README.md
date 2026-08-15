@@ -167,10 +167,10 @@ backlog browser
 
 ## <img src="./.github/web-interface-256.png" alt="Web 界面" width="28" height="28" align="center"> Web 界面
 
-启动现代、响应式的 Web 界面，用于可视化任务管理：
+启动现代、响应式的 Web 界面，用于可视化任务管理（默认仅绑定本机回环地址 `127.0.0.1`；如需局域网访问，使用 `--host 0.0.0.0`，注意 API 未认证、请谨慎在不可信网络暴露）：
 
 ```bash
-# 启动 Web 服务器（自动打开浏览器）
+# 启动 Web 服务器（自动打开浏览器，仅本机可访问）
 backlog browser
 
 # 自定义端口
@@ -178,6 +178,9 @@ backlog browser --port 8080
 
 # 不自动打开浏览器
 backlog browser --no-open
+
+# 开放局域网访问（危险：API 未认证）
+backlog browser --host 0.0.0.0
 ```
 
 **功能特性：**

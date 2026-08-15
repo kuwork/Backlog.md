@@ -167,10 +167,10 @@ You can switch between AI-assisted and manual workflows at any time — both ope
 
 ## <img src="./.github/web-interface-256.png" alt="Web Interface" width="28" height="28" align="center"> Web Interface
 
-Launch a modern, responsive web interface for visual task management:
+Launch a modern, responsive web interface for visual task management (bound to the loopback address `127.0.0.1` by default; for LAN access use `--host 0.0.0.0`, noting the API is unauthenticated and exposing it on untrusted networks is not recommended):
 
 ```bash
-# Start the web server (opens browser automatically)
+# Start the web server (opens browser automatically, local machine only)
 backlog browser
 
 # Custom port
@@ -178,6 +178,9 @@ backlog browser --port 8080
 
 # Don't open browser automatically
 backlog browser --no-open
+
+# Allow LAN access (danger: unauthenticated API)
+backlog browser --host 0.0.0.0
 ```
 
 **Features:**
