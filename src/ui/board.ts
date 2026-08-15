@@ -10,7 +10,11 @@ import { Core } from "../core/backlog.ts";
 import type { Milestone, Task } from "../types/index.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
 import { areLabelSelectionsEqual, collectAvailableLabels } from "../utils/label-filter.ts";
-import { NO_MILESTONE_FILTER_LABEL, NO_MILESTONE_FILTER_VALUE } from "../utils/milestone-filter.ts";
+import {
+	createMilestoneFilterValueResolver,
+	NO_MILESTONE_FILTER_LABEL,
+	NO_MILESTONE_FILTER_VALUE,
+} from "../utils/milestone-filter.ts";
 import { applySharedTaskFilters, createTaskSearchIndex, type LabelMatchMode } from "../utils/task-search.ts";
 import { compareTaskIds } from "../utils/task-sorting.ts";
 import { openConfirmPopup } from "./components/confirm-popup.ts";
@@ -270,25 +274,7 @@ export async function renderBoardTui(
 		};
 		let configuredLabels = collectAvailableLabels(initialTasks, options?.availableLabels ?? []);
 		let availableMilestones = [...(options?.availableMilestones ?? [])];
-		const milestoneLabelByKey = new Map<string, string>();
-		for (const milestone of options?.milestoneEntities ?? []) {
-			const normalizedId = milestone.id.trim();
-			const normalizedTitle = milestone.title.trim();
-			if (!normalizedId || !normalizedTitle) continue;
-			milestoneLabelByKey.set(normalizedId.toLowerCase(), normalizedTitle);
-			const idMatch = normalizedId.match(/^m-(\d+)$/i);
-			if (idMatch?.[1]) {
-				const numericAlias = String(Number.parseInt(idMatch[1], 10));
-				milestoneLabelByKey.set(`m-${numericAlias}`, normalizedTitle);
-				milestoneLabelByKey.set(numericAlias, normalizedTitle);
-			}
-			milestoneLabelByKey.set(normalizedTitle.toLowerCase(), normalizedTitle);
-		}
-		const resolveMilestoneLabel = (milestone: string) => {
-			const normalized = milestone.trim();
-			if (!normalized) return milestone;
-			return milestoneLabelByKey.get(normalized.toLowerCase()) ?? milestone;
-		};
+		const resolveMilestoneLabel = createMilestoneFilterValueResolver(options?.milestoneEntities ?? []);
 		availableMilestones = Array.from(
 			new Set([
 				...availableMilestones,

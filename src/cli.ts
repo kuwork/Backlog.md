@@ -66,7 +66,6 @@ import {
 	type McpClientSetupKey,
 	runMcpClientSetupCommand,
 } from "./utils/mcp-client-setup.ts";
-import { createMilestoneFilterValueResolver, resolveClosestMilestoneFilterValue } from "./utils/milestone-filter.ts";
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
 import { hasAnyPrefix } from "./utils/prefix-config.ts";
 import { type RuntimeCwdResolution, resolveRuntimeCwd } from "./utils/runtime-cwd.ts";
@@ -2541,24 +2540,6 @@ addHelpSchema(taskCmd.command("list"), {
 				let filtered = sortedTasks;
 				if (parentId) {
 					filtered = filtered.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId));
-				}
-
-				if (options.milestone && filtered.length > 0) {
-					const [activeMilestones, archivedMilestones] = await Promise.all([
-						core.filesystem.listMilestones(),
-						core.filesystem.listArchivedMilestones(),
-					]);
-					const resolveMilestoneFilterValue = createMilestoneFilterValueResolver([
-						...activeMilestones,
-						...archivedMilestones,
-					]);
-					const resolvedMilestone = resolveClosestMilestoneFilterValue(
-						options.milestone,
-						filtered.map((task) => resolveMilestoneFilterValue(task.milestone ?? "")),
-					);
-					if (resolvedMilestone) {
-						initialUnifiedFilter.milestone = resolvedMilestone;
-					}
 				}
 
 				return {

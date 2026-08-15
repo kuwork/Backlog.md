@@ -252,8 +252,11 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 		}
 		const initialConfig = await options.core.filesystem.loadConfig();
 		let configuredLabels = initialConfig?.labels ?? [];
-		let milestoneEntities = await options.core.filesystem.listMilestones();
-		let milestoneFilterModel = buildTaskViewerMilestoneFilterModel(milestoneEntities);
+		let [milestoneEntities, archivedMilestones] = await Promise.all([
+			options.core.filesystem.listMilestones(),
+			options.core.filesystem.listArchivedMilestones(),
+		]);
+		let milestoneFilterModel = buildTaskViewerMilestoneFilterModel(milestoneEntities, archivedMilestones);
 		let currentFilters = createUnifiedViewFilters(options.filter);
 		const initialState: ViewState = {
 			type: options.initialView,
@@ -413,7 +416,8 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 			const layout = "horizontal" as const;
 			const maxColumnWidth = config?.maxColumnWidth || 20;
 			milestoneEntities = await options.core.filesystem.listMilestones();
-			milestoneFilterModel = buildTaskViewerMilestoneFilterModel(milestoneEntities);
+			archivedMilestones = await options.core.filesystem.listArchivedMilestones();
+			milestoneFilterModel = buildTaskViewerMilestoneFilterModel(milestoneEntities, archivedMilestones);
 			const kanbanTasks = getRenderableTasks();
 			const statuses = kanbanStatuses;
 

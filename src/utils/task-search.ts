@@ -6,7 +6,11 @@
 import Fuse from "fuse.js";
 import type { Task } from "../types/index.ts";
 import { labelsToLower } from "./label-filter.ts";
-import { NO_MILESTONE_FILTER_VALUE } from "./milestone-filter.ts";
+import {
+	createMilestoneFilterMatcher,
+	type MilestoneFilterValueResolver,
+	NO_MILESTONE_FILTER_VALUE,
+} from "./milestone-filter.ts";
 import { matchesModifiedFileFilters, normalizeModifiedFileFilters } from "./modified-files.ts";
 
 export type LabelMatchMode = "any" | "all";
@@ -221,6 +225,7 @@ function applyMilestoneFilter(
 	tasks: Task[],
 	milestone: string,
 	resolveMilestoneLabel?: (milestone: string) => string,
+	milestoneCandidates: Task[] = tasks,
 ): Task[] {
 	const normalizedMilestone = milestone.trim().toLowerCase();
 	if (!normalizedMilestone) {
@@ -228,6 +233,16 @@ function applyMilestoneFilter(
 	}
 	if (normalizedMilestone === NO_MILESTONE_FILTER_VALUE) {
 		return tasks.filter((task) => !task.milestone?.trim());
+	}
+
+	if (resolveMilestoneLabel && "resolveExactId" in resolveMilestoneLabel) {
+		const milestoneValues = milestoneCandidates.map((task) => task.milestone ?? "");
+		const matchesMilestone = createMilestoneFilterMatcher(
+			milestone,
+			milestoneValues,
+			resolveMilestoneLabel as MilestoneFilterValueResolver,
+		);
+		return tasks.filter((task) => (task.milestone ? matchesMilestone(task.milestone) : false));
 	}
 
 	return tasks.filter((task) => {
@@ -263,7 +278,7 @@ export function applyTaskFilters(tasks: Task[], options: TaskFilterOptions, inde
 		: [...tasks];
 
 	if (options.milestone) {
-		results = applyMilestoneFilter(results, options.milestone, options.resolveMilestoneLabel);
+		results = applyMilestoneFilter(results, options.milestone, options.resolveMilestoneLabel, tasks);
 	}
 
 	return results;
