@@ -78,6 +78,30 @@ export function getPlatformTimeout(baseTimeout = 5000): number {
 }
 
 /**
+ * Rejects if an operation does not settle in time and always clears its timer
+ * when the operation resolves or rejects first.
+ */
+export function withTimeout<T>(operation: Promise<T>, label: string, timeoutMs: number): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(() => {
+			clearTimeout(timer);
+			reject(new Error(`Timed out waiting for ${label}`));
+		}, timeoutMs);
+
+		operation.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
+/**
  * Gets the exit code from a spawnSync result, handling Windows quirks
  * On Windows, result.status can be undefined even for successful processes
  */

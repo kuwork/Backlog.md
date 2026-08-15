@@ -88,7 +88,7 @@ function extractTaskBody(value: string, prefix: string = DEFAULT_TASK_PREFIX): s
  * extractTaskIdFromFilename("task-123 - Title.md") // => "task-123"
  * extractTaskIdFromFilename("JIRA-456 - Title.md", "JIRA") // => "JIRA-456"
  */
-function extractTaskIdFromFilename(filename: string, prefix: string = DEFAULT_TASK_PREFIX): string | null {
+export function extractTaskIdFromFilename(filename: string, prefix: string = DEFAULT_TASK_PREFIX): string | null {
 	const regex = buildFilenameIdRegex(prefix);
 	const match = filename.match(regex);
 	if (!match?.[1]) return null;
