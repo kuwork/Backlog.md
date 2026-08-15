@@ -17,6 +17,7 @@ import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constant
 import { initializeProject } from "./core/init.ts";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
+import { documentListJson, printJson, searchJson, taskListJson, taskViewJson } from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
 import {
 	type AgentInstructionFile,
@@ -68,6 +69,7 @@ import {
 } from "./utils/mcp-client-setup.ts";
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
 import { hasAnyPrefix } from "./utils/prefix-config.ts";
+import { type ReadOutputMode, resolveReadOutputMode } from "./utils/read-output-mode.ts";
 import { type RuntimeCwdResolution, resolveRuntimeCwd } from "./utils/runtime-cwd.ts";
 import { formatValidStatuses, getCanonicalStatus, getCanonicalStatuses, getValidStatuses } from "./utils/status.ts";
 import {
@@ -493,6 +495,16 @@ const plainFlagInArgv = process.argv.includes("--plain");
 
 function isPlainRequested(options?: { plain?: boolean }): boolean {
 	return Boolean(options?.plain || plainFlagInArgv);
+}
+
+function getReadOutputMode(options: { json?: boolean; plain?: boolean }): ReadOutputMode | null {
+	try {
+		return resolveReadOutputMode(options, hasInteractiveTTY);
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exitCode = 1;
+		return null;
+	}
 }
 
 // Temporarily isolate BUN_OPTIONS during CLI parsing to prevent conflicts
@@ -1602,6 +1614,20 @@ export async function generateNextDecisionId(core: Core): Promise<string> {
 
 const taskCmd = program.command("task").aliases(["tasks"]);
 
+function getTaskReadOutputMode(options: { json?: boolean; plain?: boolean }): ReadOutputMode | null {
+	const taskOptions = taskCmd.opts<{ json?: boolean; plain?: boolean }>();
+	return getReadOutputMode({
+		json: Boolean(options.json || taskOptions.json),
+		plain: Boolean(options.plain || taskOptions.plain),
+	});
+}
+
+taskCmd.hook("preSubcommand", (command, subcommand) => {
+	if (command.opts().json && !["list", "view"].includes(subcommand.name())) {
+		command.error("error: unknown option '--json'", { code: "commander.unknownOption", exitCode: 1 });
+	}
+});
+
 addHelpSchema(taskCmd.command("create [title]"), {
 	required: [{ name: "title", type: "String", description: "Task title; prompted when omitted in interactive mode" }],
 	optional: [
@@ -1841,7 +1867,10 @@ addHelpSchema(program.command("search [query]"), {
 	)
 	.option("--limit <number>", "limit total results returned")
 	.option("--plain", "print plain text output instead of interactive UI")
+	.option("--json", "print versioned machine-readable JSON output")
 	.action(async (query: string | undefined, options) => {
+		const outputMode = getReadOutputMode(options);
+		if (!outputMode) return;
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const searchService = await core.getSearchService();
@@ -1935,8 +1964,13 @@ addHelpSchema(program.command("search [query]"), {
 			filters,
 		});
 
-		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
-		if (usePlainOutput) {
+		if (outputMode === "json") {
+			printJson(searchJson(searchResults, cwd, core.filesystem.docsDir));
+			cleanup();
+			return;
+		}
+
+		if (outputMode === "plain") {
 			printSearchResults(searchResults);
 			cleanup();
 			return;
@@ -2223,7 +2257,10 @@ addHelpSchema(taskCmd.command("list"), {
 	.option("--limit <number>", "limit tasks displayed after sorting")
 	.option("--sort <field>", "sort tasks by field (priority, id, ordinal)")
 	.option("--plain", "use plain text output instead of interactive UI")
+	.option("--json", "print versioned machine-readable JSON output")
 	.action(async (options) => {
+		const outputMode = getTaskReadOutputMode(options);
+		if (!outputMode) return;
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const cleanup = () => {
@@ -2319,7 +2356,7 @@ addHelpSchema(taskCmd.command("list"), {
 			}
 		}
 
-		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
+		const usePlainOutput = outputMode !== "interactive";
 		if (usePlainOutput) {
 			const tasks = await core.queryTasks({
 				query: searchQuery || undefined,
@@ -2375,6 +2412,12 @@ addHelpSchema(taskCmd.command("list"), {
 			}
 
 			const displayTasks = taskLimit !== undefined ? filtered.slice(0, taskLimit) : filtered;
+
+			if (outputMode === "json") {
+				printJson(taskListJson(displayTasks));
+				cleanup();
+				return;
+			}
 
 			if (options.sort && options.sort.toLowerCase() === "priority") {
 				console.log("Tasks (sorted by priority):");
@@ -3039,19 +3082,26 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 addHelpSchema(taskCmd.command("view <taskId>"), {
 	reads: "Task metadata, description, plan, notes, comments, final summary, AC, and DoD",
 	required: [{ name: "taskId", type: "Task ID", description: "Task to display" }],
-	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
-	output: "Interactive task detail view or plain text with --plain",
-	examples: ["backlog task view {{TASK_ID:1}} --plain"],
+	optional: [
+		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
+		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
+	],
+	output: "Interactive task detail view, plain text with --plain, or versioned JSON with --json",
+	examples: ["backlog task view {{TASK_ID:1}} --plain", "backlog task view {{TASK_ID:1}} --json"],
 })
 	.description("display task details")
 	.option("--plain", "use plain text output instead of interactive UI")
+	.option("--json", "print versioned machine-readable JSON output")
 	.action(async (taskId: string, options) => {
+		const outputMode = getTaskReadOutputMode(options);
+		if (!outputMode) return;
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const localTasks = await core.fs.listTasks();
 		const task = await core.getTaskWithSubtasks(taskId, localTasks);
 		if (!task) {
 			console.error(`Task ${taskId} not found.`);
+			process.exitCode = 1;
 			return;
 		}
 
@@ -3060,8 +3110,12 @@ addHelpSchema(taskCmd.command("view <taskId>"), {
 			: [...localTasks, task];
 
 		// Plain text output for non-interactive environments
-		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
-		if (usePlainOutput) {
+		if (outputMode === "json") {
+			printJson(taskViewJson(task, cwd));
+			return;
+		}
+
+		if (outputMode === "plain") {
 			console.log(formatTaskPlainText(task));
 			return;
 		}
@@ -3197,7 +3251,10 @@ taskCmd
 taskCmd
 	.argument("[taskId]")
 	.option("--plain", "use plain text output")
-	.action(async (taskId: string | undefined, options: { plain?: boolean }) => {
+	.option("--json", "print versioned machine-readable JSON output")
+	.action(async (taskId: string | undefined, options: { json?: boolean; plain?: boolean }) => {
+		const outputMode = getReadOutputMode(options);
+		if (!outputMode) return;
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 
@@ -3219,6 +3276,7 @@ taskCmd
 		const task = await core.getTaskWithSubtasks(taskId, localTasks);
 		if (!task) {
 			console.error(`Task ${taskId} not found.`);
+			process.exitCode = 1;
 			return;
 		}
 
@@ -3227,8 +3285,12 @@ taskCmd
 			: [...localTasks, task];
 
 		// Plain text output for non-interactive environments
-		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
-		if (usePlainOutput) {
+		if (outputMode === "json") {
+			printJson(taskViewJson(task, cwd));
+			return;
+		}
+
+		if (outputMode === "plain") {
 			console.log(formatTaskPlainText(task));
 			return;
 		}
@@ -3946,23 +4008,34 @@ addHelpSchema(docCmd.command("update <docId>"), {
 addHelpSchema(docCmd.command("list"), {
 	reads: "Documents under the configured docs directory",
 	required: [],
-	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
-	output: "Document list with IDs, titles, types, paths, and tags",
-	examples: ["backlog doc list --plain"],
+	optional: [
+		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
+		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
+	],
+	output: "Document list with IDs, titles, types, paths, and tags (or versioned JSON with --json)",
+	examples: ["backlog doc list --plain", "backlog doc list --json"],
 })
 	.option("--plain", "use plain text output instead of interactive UI")
+	.option("--json", "print versioned machine-readable JSON output")
 	.action(async (options) => {
+		const outputMode = getReadOutputMode(options);
+		if (!outputMode) return;
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const docs = await core.filesystem.listDocuments();
+
+		if (outputMode === "json") {
+			printJson(documentListJson(docs, cwd, core.filesystem.docsDir));
+			return;
+		}
+
 		if (docs.length === 0) {
 			console.log("No docs found.");
 			return;
 		}
 
 		// Plain text output for non-interactive environments
-		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
-		if (usePlainOutput) {
+		if (outputMode === "plain") {
 			for (const d of docs) {
 				console.log(`${d.id} - ${d.title}`);
 			}
