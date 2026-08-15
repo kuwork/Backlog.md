@@ -233,6 +233,7 @@ Manage task dependencies to create execution sequences and prevent circular rela
 | Web interface | `backlog browser` (launches web UI on localhost, loopback-only at 127.0.0.1, port 6420) |
 | Web custom port | `backlog browser --port 8080 --no-open` |
 | Web LAN access | `backlog browser --host 0.0.0.0` (unauthenticated API, use with caution) |
+| Web custom browser | `BROWSER=/path/to/browser backlog browser` (opens the UI with a specific executable; the URL is passed as a separate argument) |
 
 To keep the Web UI running in the background with auto-start on boot, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
 

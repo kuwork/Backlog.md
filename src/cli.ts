@@ -4,7 +4,6 @@ import { basename, join } from "node:path";
 import { stdin as input } from "node:process";
 import { createInterface } from "node:readline/promises";
 import * as clack from "@clack/prompts";
-import { $ } from "bun";
 import { Command } from "commander";
 import { runAdvancedConfigWizard } from "./commands/advanced-config-wizard.ts";
 import { type CompletionInstallResult, installCompletion, registerCompletionCommand } from "./commands/completion.ts";
@@ -56,6 +55,7 @@ import { viewTaskEnhanced } from "./ui/task-viewer-with-search.ts";
 import { scrollableViewer } from "./ui/tui.ts";
 import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-selection.ts";
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
+import { launchBrowser } from "./utils/browser-launch.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { labelsToLower } from "./utils/label-filter.ts";
@@ -176,16 +176,8 @@ const DOCUMENT_SEARCH_QUERY_MAX_LENGTH = 200;
 const DOCUMENT_SEARCH_LIMIT_MAX = 100;
 
 async function openUrlInBrowser(url: string): Promise<void> {
-	let cmd: string[];
-	if (process.platform === "darwin") {
-		cmd = ["open", url];
-	} else if (process.platform === "win32") {
-		cmd = ["cmd", "/c", "start", "", url];
-	} else {
-		cmd = ["xdg-open", url];
-	}
 	try {
-		await $`${cmd}`.quiet();
+		await launchBrowser(url);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		console.warn(`  ⚠️  Unable to open browser automatically (${message}). Please visit ${url}`);

@@ -1,7 +1,6 @@
 import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
-import { $ } from "bun";
 import getPort, { portNumbers } from "get-port";
 import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
@@ -27,6 +26,7 @@ import {
 	type TaskUpdateInput,
 	type WikiPage,
 } from "../types/index.ts";
+import { launchBrowser } from "../utils/browser-launch.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { getVersion } from "../utils/version.ts";
@@ -761,22 +761,7 @@ export class BacklogServer {
 
 	private async openBrowser(url: string): Promise<void> {
 		try {
-			const platform = process.platform;
-			let cmd: string[];
-
-			switch (platform) {
-				case "darwin": // macOS
-					cmd = ["open", url];
-					break;
-				case "win32": // Windows
-					cmd = ["cmd", "/c", "start", "", url];
-					break;
-				default: // Linux and others
-					cmd = ["xdg-open", url];
-					break;
-			}
-
-			await $`${cmd}`.quiet();
+			await launchBrowser(url);
 		} catch (error) {
 			console.warn("⚠️  Failed to open browser automatically:", error);
 			console.log("💡 Please open your browser manually and navigate to the URL above");

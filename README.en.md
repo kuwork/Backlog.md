@@ -181,6 +181,9 @@ backlog browser --no-open
 
 # Allow LAN access (danger: unauthenticated API)
 backlog browser --host 0.0.0.0
+
+# Open with a specific browser via the BROWSER environment variable (common in devcontainers)
+BROWSER="/path/to/browser" backlog browser
 ```
 
 **Features:**

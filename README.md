@@ -181,6 +181,9 @@ backlog browser --no-open
 
 # 开放局域网访问（危险：API 未认证）
 backlog browser --host 0.0.0.0
+
+# 使用指定浏览器打开（BROWSER 环境变量；devcontainer 场景常用）
+BROWSER="/path/to/browser" backlog browser
 ```
 
 **功能特性：**
