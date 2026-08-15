@@ -83,7 +83,7 @@ git show <上游分支>:backlog/TASK-xxx.md
 ### 用户提供的上游任务信息来源
 
 1. **提交列表**：`git log --oneline <起始>..<终止>` 的输出
-2. **任务文件内容**：通过 `git show <上游分支>:backlog/TASK-xxx.md` 获取的 Markdown 文件完整文本
+2. **任务文件内容**：通过 `git show <上游分支>:backlog/tasks/back-XXX*.md` 获取的 Markdown 文件完整文本
 3. **任务-提交映射**：从 commit message 中提取的任务编号（如 `BACK-123: ...`）
 4. **Release Notes**（可选）：范围内所有 release 的变更清单。若范围跨越多个 release（例如 `1.47.1..1.49.0`），需获取 `1.48.0`、`1.48.1`、`1.49.0` 等所有中间 release 的 notes。AI 自动获取流程：
    1. 通过 `git remote -v` 推断上游 GitHub 仓库（如 `upstream` remote 的 URL）。
@@ -91,6 +91,15 @@ git show <上游分支>:backlog/TASK-xxx.md
    3. 使用 `gh release list --repo owner/repo` 列出 release。
    4. 对范围内每个 tag 调用 `gh release view <tag> --repo owner/repo` 获取 notes。
    5. 获取后向用户展示摘要，由用户确认是否使用。
+
+### ⚠️ 任务识别必须基于「任务标题/任务文件」，而非仅凭 commit message 中的 ID
+
+**上游 commit message 前缀编号不可靠**（实测：BACK-562 与 BACK-564 的早期 commit 均误标为 `BACK-555` 前缀）。识别/归类上游任务时，必须以**任务文件（`backlog/tasks/back-XXX - <title>.md`）的标题与内容**为准，commit 前缀仅作提示线索。判定步骤：
+
+1. **建立任务清单**：枚举范围内的任务文件（`git ls-tree -r --name-only <tag> -- backlog/tasks/`），以**文件名/标题**建立任务实体（如 `back-555 - Add-a-context-independent-handoff-check...`），而非从 commit message 提取编号。
+2. **标题-代码归属验证**：某 commit 声称实现任务 X，须验证：`git merge-base --is-ancestor <commit> <任务X的主线merge commit>` 为真，且 `git show --stat <commit>` 的文件内容与任务 X 的标题/描述相符。编号相同 ≠ 同一任务，编号不同 ≠ 不同任务。
+3. **误标处理**：发现 commit 前缀与标题不符时，在分类文档备注中显式记录「前缀编号混乱」事实（列出误标 commit → 实际归属任务），提示后续迁移 `git log --grep BACK-XXX` 会误命中。
+4. **Release Notes 同理**：notes 中的任务编号也可能与实际合入范围不符（如 notes 列出某任务但其代码更早合入）——以代码足迹（tree diff）为准。
 
 ### 任务文件解析重点
 
@@ -103,9 +112,10 @@ git show <上游分支>:backlog/TASK-xxx.md
 
 ### Git Log 解析重点
 
-- 关联的 commit hash 和 message
+- 关联的 commit hash 和 message（**前缀编号仅作线索**，归属以任务文件标题为准，见上方「⚠️ 任务识别」）
 - 修改的文件列表（通过 `git show --stat <commit>`）
-- 确认任务与代码变更的对应关系
+- 确认任务与代码变更的对应关系（`merge-base --is-ancestor` 验证 commit 属于哪个任务主线）
+- 标题/编号不匹配时，记录误标 commit → 实际归属，供分类文档备注引用
 
 ### 原始任务文件导入规范
 
@@ -138,6 +148,13 @@ git show <上游分支>:backlog/TASK-xxx.md
 - [ ] 分类文档中所有原始任务链接均为 `/draft/N` 且目标文件存在。
 - [ ] 分类文档中无 `DOC#`、无 `/documentation/` 链接残留。
 - [ ] draft 升级为当前 fork 任务后，分类文档「原始/迁移任务」列已同步改为迁移任务链接（`[BACK-XXX](/task/XXX)`），且不再引用原 draft。
+
+**批量导入执行要点（多条目时）：**
+
+- 用脚本批量转换（`git show <tag>:backlog/tasks/back-XXX.md` → 写入 `draft-N - <slug>.md`），一次性完成 frontmatter 转换与文件写入，避免逐条手工编辑。
+- 批量导入后用 `bun src/cli.ts draft list --plain` 验证全部新 draft 被 CLI 识别（大小写：新导入的 id 显示为大写 `DRAFT-N`）。
+- 分析报告文档用 `bun src/cli.ts doc list --plain` 验证可识别。
+- 分类文档所有链接目标（draft 文件、doc 章节行号）逐个确认存在，禁止纯文本占位（「待分析」「见 §X」）——Web UI 无法预览此类内容。
 
 ---
 
@@ -196,6 +213,15 @@ git show <上游分支>:backlog/TASK-xxx.md
 ## 第五步：生成迁移任务（输出可执行命令）
 
 只有 **A类（必须合入）** 和经用户确认的 **B类（评估合入）** 任务进入本步骤。**C类（跳过）** 任务不生成迁移指令。
+
+### 深度分析执行方式（多条目时并行）
+
+当需要分析 10+ 条目时，按**领域分组并行派发** subagent（每个 subagent 负责一个领域簇，如 CLI/Core、TUI、Web、Server、Infra/CI），每个 subagent 逐条输出 7 维度分析报告。执行要点：
+
+- 每个 subagent 自包含：上游 merge commit hash（用 `git show --stat <commit>` 核对）、fork 现状要点（排除清单 + 预勘察事实）、输出格式要求（7 维度章节标题）。
+- **上游 commit message 前缀编号可能混乱**：同一功能 PR 的早期 commit 可能误标其他任务前缀（实测：BACK-562 的早期 commit 标为 `BACK-555`，BACK-564 的早期 commit 也标为 `BACK-555`）。判定任务归属必须验证 `merge-base --is-ancestor <疑似commit> <主线merge commit>`，并核对 `git show --stat` 的文件内容；不能仅凭 `--grep BACK-XXX` 归类。发现误标时在分类文档备注中显式记录，提示后续迁移勿被误导。
+- **优先级重分类是深度分析的正常产物**：初筛 B 类条目经 diff 核实可能升 A（下游管线已就绪、纯增量）或降 C（上游未实现、机制 fork 不存在、仅数据维护）。最终分类以深度分析为准，并在分类文档显式标注重分类。
+- 分析证据必须 file:line 级：上游 merge commit 行号 + fork 工作树行号对照，避免泛泛而谈。
 
 在用户确认迁移后，你需基于分析结果，生成在当前代码库中创建新任务的 `backlog task create` 命令，并给出实施计划草案。
 
@@ -296,14 +322,33 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 - **分析报告**：分析完成后，使用 short local link 的**行号范围后缀**指向具体分析文档的对应章节。语法参考 `BACK-531`（Support line-range suffix on short local links）：
   - 格式：`[doc-5 A1](/doc/5:16-27)`，其中 `16-27` 是目标文档章节所在的行号范围。
   - 尚未分析时填 `待分析`。
-  - 范围边界应覆盖从章节标题（如 `## A1`）到下一个章节分隔符 `---` 之前的行，确保点击后预览定位到完整章节。
+  - **范围边界算法（必须精确，否则预览会带入下一个任务的第一行）**：
+    1. 起始 = 章节标题行号（`## XXX-N`）。
+    2. 终止 = 下一章节标题行号 - 1，然后**向前回退**直到遇到有效内容行（排除空行与 `---` 分隔行）。
+    3. 即范围末端必须是内容行，绝不包含 `---` 或下一章节标题；章节间空隙只允许 `---` 与空行。
+    4. 生成后必须脚本校验：每个范围起始是 `^## ` 标题行、末端非空行/`---`、末端到下一标题间仅含 `---`/空行（防范围溢出或重叠）。
 - **是否分析**：A/B 类中需要进一步单任务分析的填 `是` 或 `可选`；C 类填 `否`。
+
+**按领域分组组织（推荐，供大范围分类使用）：**
+
+当范围内条目较多（如 20+）时，将分类文档按**领域分组**组织，而非单一 A/B/C 大表，便于按实施批次排期与查看：
+
+- 每个领域一个小节（如 `## 一、CLI / Core`、`## 二、TUI`、`## 三、Web`、`## 四、Server`、`## 五、Infra / CI / 测试`、`## 六、Nix / 打包`），领域划分可随 fork 实际模块增减。
+- 领域内条目按最终优先级排序（A→B→C），编号沿用初筛编号（A1、B1–B28、C1–C2）便于追溯。
+- 领域表格列建议：`| # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 优先级 | 迁移建议 | 原始/迁移任务 | 分析报告 |`（9 列，含「优先级」「迁移建议」两列，方便直接当迁移候选清单用）。
+- 深度分析产生的**最终重分类**（如 B 升 A、B 降 C）必须显式标注：在分类说明处加「⚠️ 深度分析已执行」提示并说明重分类摘要，避免读者被初筛分类误导。
+
+**表格格式硬性要求：**
+
+- **表头列数 = 分隔行列数 = 数据行列数**。每张表新增/删除列时，分隔行（`|---|`）必须同步增删，否则 Backlog.md Web UI 表格渲染异常（本项目实际踩坑：新增列后分隔行多出一个 `---` 导致整表失效）。
+- 生成表格后必须用脚本校验：逐行统计 `|` 分隔的列数（`awk -F'|' '{print NF-2}'`），确认所有行（含表头/分隔行）列数一致。
+- 不要混用 HTML 锚点 `<a id="...">` 或 Markdown 标题锚点；行号范围后缀即可精确定位。
 
 **链接规范：**
 
 - 分类文档引用原始任务：统一使用 `[DRAFT#N](/draft/N)`。
 - 分类文档引用分析报告：统一使用 `[doc-X 标签](/doc/X:start-end)`。
-- 分类文档中不要混用 HTML 锚点 `<a id="...">` 或 Markdown 标题锚点；行号范围后缀即可精确定位，且能被 Backlog.md Web UI 的 preview modal 正确解析。
+- 分析报告链接必须**实际可解析**：目标文档（doc-X）与目标 draft（draft-N）必须真实存在；链接填完后用 `bun src/cli.ts doc list --plain`（确认 doc 可识别）与 `bun src/cli.ts draft list --plain`（确认 draft 可识别）验证，并逐个确认目标文件存在，不能只填「待分析/见 §X」这类纯文本占位（Web UI 无法预览）。
 
 ### 前置确认输出
 
@@ -337,6 +382,16 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 | **迁移优先级** | [A类 / B类 / C类] - [判定理由] |
 | **迁移建议** | [①直接复用 / ②参考重写 / ③忽略] |
 ```
+
+### 分析报告文档组织规范（多条目时必用）
+
+当需要为多个条目输出分析报告（如 A 类 + 全部 B 类，20+ 项）时，不要只在对话里逐条输出，应把完整分析**写入独立分析报告文档**（如 `backlog/docs/migration/doc-8 - 上游任务迁移分析报告（v1.48.0-..-v1.49.3-按领域）.md`），让分类文档通过行号链接引用、Web UI 可预览：
+
+- **文档结构**：与分类文档相同的**领域分组**（CLI/Core、TUI、Web、Server、Infra/CI、Nix + 附 MISC），每个任务一个小节（如 `## CLI-1：BACK-545 为只读命令添加稳定 JSON 输出（draft-82）`），章节之间用 `---` 分隔。
+- **每节内容**：按 7 维度展开（任务核心目的 / 变更内容摘要 / 与当前定制代码的交集风险 / 适合迁移的内容 / 需要排除/调整的内容 / 迁移优先级 / 迁移建议），逐条给出 file:line 级证据（上游 merge commit 行号 + fork 工作树行号对照）。
+- **frontmatter**：`id: doc-X`、`type: guide`、`title`、`created_date`、`updated_date`，与分类文档同目录（`backlog/docs/migration/`）。
+- **链接来源**：分类文档「分析报告」列的 `[doc-8 标签](/documentation/8:start-end)` 行号范围从本文档章节标题到下一个 `---` 前的行（用 `grep -nE '^## '` 获取各章节起始行号）。
+- **C 类条目**也应在分析报告中占一小节（标注「draft 不导入，C 类」），保持 29 项全覆盖、分类文档每行都有可点击的分析报告链接。
 
 ### 阶段迁移输出：迁移任务生成指令
 
@@ -386,6 +441,26 @@ backlog task create "<任务标题>" \
 - [审查点2]
 ```
 
+### 迁移批次规划（交叉依赖与建议迁移顺序）
+
+当迁移条目较多（10+）时，必须分析条目间的**交叉依赖**并给出**建议迁移顺序**（写入分类文档的「交叉依赖与建议迁移顺序」小节，按波次分批）：
+
+- **依赖分析维度**：
+  - 代码依赖：某条目的实现是否建立在另一条目之上（如 TUI composer 依赖 watcher 的刷新管线、ContentStore 语料快照依赖身份索引、临时 index CAS 管线依赖其前置任务）。
+  - 数据/类型依赖：JSON 契约是否依赖某字段（如 `task.type` 键依赖 task type 字段是否迁移）。
+  - 测试基建共享：多条目共享同一测试工具函数改动（如 CI 分片、BROWSER 支持、测试等待删除共用 test-utils），应打包为同一批次。
+  - 文件重叠：多条目触碰同一文件（如 `src/cli.ts` 多处 action、`src/core/backlog.ts` 多处 stageBacklogDirectory），避免并行实施互相踩踏。
+- **波次划分原则**：
+  - **第一波**：独立、零依赖、A 类（每项可单独落地验证）。
+  - **后续波次**：按依赖链推进（先底层管线，后上层 UI/命令），并标注「与 X 合并实施」「依赖 X 先落地」。
+  - **独立大阶段**：改动面大、依赖前置工具（如身份索引依赖 `task-id.ts` 前置移植）的条目单独立项，明确前置条件。
+  - **可选自研**：上游未实现、fork 前置条件好的条目标为「fork 自主演进」，不阻塞同步队列。
+- **输出格式**：在分类文档给出逐波次清单（每波列出编号 + 一句话理由），如「第一波（独立、零依赖、A 类）：B8 → B15 → B14 → A1 → B16 → B6 → B5」。
+
+### 迁移任务创建指令汇总
+
+为多个条目生成 `backlog task create` 指令时，应整理为**单一汇总文档**（如 `local://migration-instructions-<范围>.md`），每条含：创建命令（AC#1 为查看上游 git 变更）+ 实施计划草案（`/plan`）+ 需排除/调整的适配点。命令统一用当前 fork 的 CLI 入口（如 `bun src/cli.ts task create ...`），标签约定若与 skill 默认（`migration`/`upstream`）冲突，在文档开头显式标注争议并给出默认选择，由用户确认后执行。
+
 ### 升级 draft 后的补充动作
 
 ```markdown
@@ -402,6 +477,27 @@ backlog task create "<任务标题>" \
 ## 第六步：执行迁移任务（当用户要求开始执行已创建的迁移任务时）
 
 迁移任务创建后，用户可能直接要求 AI 开始执行。执行阶段与「创建迁移任务」阶段目标不同：前者要基于当前 fork 代码完成 AC，而不是再次分析上游。请遵循以下指引：
+
+### 0. 由草稿升级而来的任务：先升级、再按 backlog 使用方法执行（用户要求执行时）
+
+若迁移任务是由上游 draft **升级而来**（即任务源是 `backlog/drafts/` 下的 `DRAFT-N`，尚未 promote 为正式任务），用户要求继续执行时，**先完成升级，全程使用 backlog CLI，禁止直接编辑任务 Markdown 文件**：
+
+1. **先了解用法**：运行 `backlog instructions`（overview / documents / task-execution）确认 `draft promote`、`task edit`、`task view` 的当前用法（命令选项以 instructions 输出为准，不凭本 skill 示例）。
+2. **promote 升级**：按 instructions 中的 `draft promote` 用法把 `DRAFT-N` 升级为正式任务。升级后原 draft 文件会被删除，生成新的正式任务（`backlog/tasks/back-XXX - <title>.md`）。
+   - 若当前 fork 已存在同名/同主题本地任务，**不要覆盖/修改它**，把 draft 升级为独立的新迁移任务。
+3. **核对升级结果**：用 `task view` 确认任务已创建、ID 正确、状态为 `To Do`；确认原 draft 已删除（`draft list` 中不再有 DRAFT-N）。
+4. **清空继承内容**：升级后任务可能带上游的 `Implementation Notes`/`Final Summary` 与已勾选 DoD——用 `task edit` 对应选项清空/取消勾选（具体选项查 `backlog instructions` 或 `task edit --help`）。
+5. **后续执行**：进入下方「0.5 执行总则」，按 backlog 使用方法完成 AC/状态/备注的流转。
+6. **同步更新分类文档**：升级后回到分类文档（如 `doc-7`），把「原始/迁移任务」列的 `[DRAFT#N](/draft/N)` 替换为 `[BACK-XXX](/task/XXX)`，并更新 `updated_date`（见「更新分类文档」小节）。
+
+### 0.5 执行总则：先通过 `backlog instructions` 了解用法，再按 backlog CLI 执行（无论任务是否由草稿升级而来）
+
+**升级完成后用户要求执行任务时，同样必须全程按 backlog 使用方法操作**。任务文件（`backlog/tasks/back-XXX*.md`）是 CLI 的写入结果，任何元数据更新都必须通过 backlog 的 CLI 命令完成，**NEVER 直接编辑任务 Markdown**。执行要求：
+
+1. **先了解 CLI 用法（强制前置）**：动手前运行 `backlog instructions`（或 `bun src/cli.ts instructions`，按项目入口）查看 overview 与相关文档（documents / task-execution 等），了解当前 fork 的 `task`、`draft`、`doc` 命令用法与参数。**不要凭记忆或本 skill 的示例直接敲命令**——命令选项随 fork 版本演进，以 `backlog instructions` 输出为准。
+2. **全程走 CLI**：任务状态、AC 增删/勾选、Notes、Final Summary、References、Documentation、Plan、Description、Priority 等所有元数据更新，一律通过 `backlog task edit <ID> ...` 完成；draft 升级用 `backlog draft promote <DRAFT-N>`；验证用 `backlog task view <ID> --plain`。
+3. **NEVER 直接编辑任务 Markdown**：直接编辑会绕过 CLI 的 frontmatter 序列化、AC/DoD 结构化章节管理、autoCommit 范围控制，可能破坏任务文件格式与 Git 提交粒度。
+4. **执行过程中如遇不确定的选项**：再次查询 `backlog instructions` 或对应命令 `--help`，确认后再执行。
 
 ### 1. 先完成 AC #1（查看上游变更）
 
@@ -423,8 +519,8 @@ backlog task create "<任务标题>" \
 如果上游任务涉及的功能在当前 fork 已不存在或已演进，执行时应：
 
 - **不强行加回**已废弃的字段、模块或接口。
-- 用 `backlog task edit BACK-XXX --acceptance-criteria ...` 调整 AC，只保留当前 fork 实际能验证的范围。
-- 同步更新 Description 和 Implementation Plan，删除已不适用部分。
+- 用 `backlog task edit BACK-XXX`（选项以 `backlog instructions` / `task edit --help` 为准）调整 AC，只保留当前 fork 实际能验证的范围。
+- 同步更新 Description 和 Implementation Plan（同样经 `task edit` 对应选项），删除已不适用部分。
 - 向用户说明调整原因（例如「当前代码库已移除 configurable priorities/types，所以 AC 范围限定到实际存在的 statuses/labels」）。
 
 ### 4. References 只记录当前 fork 的实现文件
@@ -444,7 +540,7 @@ backlog task create "<任务标题>" \
 3. 如果全量测试失败，逐条判断失败是否与本次改动相关：
    - 与网络（`git fetch`）、TUI 超时、环境相关的失败，通常是既有 flaky test，不阻塞迁移任务。
    - 与修改模块直接相关的失败必须修复。
-4. 通过测试后，用 `backlog task edit BACK-XXX --check-ac N` 标记对应 AC 完成，并填写 Implementation Notes / Final Summary。
+4. 通过测试后，用 `backlog task edit BACK-XXX` 的对应选项（标记 AC 完成、填写 Implementation Notes / Final Summary；选项以 `backlog instructions` 或 `task edit --help` 为准）逐项登记，并用 `task view` 验证写入结果。
 
 ### 7. 任务完成后最终检查清单
 
@@ -455,6 +551,8 @@ backlog task create "<任务标题>" \
 - [ ] 上游 draft 链接、分类文档链接（如 `doc-4`/`doc-5`）不在 References / Documentation 中。
 - [ ] References 只包含当前 fork 内被修改的实现文件。
 - [ ] Implementation Notes / Final Summary 已填写，且基于当前 fork 实际执行结果撰写。
+- [ ] （由草稿升级而来的任务）升级已通过 `backlog draft promote` 完成、原 draft 已删除、任务状态与元数据全程经 backlog CLI 流转，未直接编辑任务 Markdown。
+- [ ] （由草稿升级而来的任务）分类文档「原始/迁移任务」列已从 `[DRAFT#N](/draft/N)` 更新为 `[BACK-XXX](/task/XXX)`，`updated_date` 已刷新。
 
 ---
 
