@@ -4,6 +4,7 @@ import { GenericList } from "../ui/components/generic-list.ts";
 import { createScreen } from "../ui/tui.ts";
 
 type RenderedList = ListInterface & {
+	emit: (event: string, ch?: string, key?: { name: string }) => boolean;
 	ritems: string[];
 };
 
@@ -47,6 +48,42 @@ describe("GenericList selection rendering", () => {
 			expect(listBox.ritems[1]).toBe("TASK-2");
 			expect(list.getSelectedIndex()).toBe(1);
 			expect(highlighted.at(-1)).toBe(1);
+
+			list.destroy();
+		});
+	});
+
+	it("moves the selection with pageup/pagedown/home/end keys", () => {
+		withTtyScreen((screen) => {
+			const highlighted: number[] = [];
+			const list = new GenericList({
+				parent: screen,
+				items: Array.from({ length: 20 }, (_, i) => ({ id: `TASK-${i + 1}` })),
+				itemRenderer: (item) => item.id,
+				onHighlight: (_item, index) => {
+					highlighted.push(index);
+				},
+				showHelp: false,
+			});
+
+			const listBox = list.getListBox() as RenderedList;
+			expect(list.getSelectedIndex()).toBe(0);
+
+			// pagedown moves by roughly one page (height-derived)
+			listBox.emit("key pagedown", "", { name: "pagedown" });
+			expect(list.getSelectedIndex()).toBeGreaterThan(0);
+
+			// home jumps to the first item
+			listBox.emit("key home", "", { name: "home" });
+			expect(list.getSelectedIndex()).toBe(0);
+
+			// end jumps to the last item
+			listBox.emit("key end", "", { name: "end" });
+			expect(list.getSelectedIndex()).toBe(19);
+
+			// pageup moves back up
+			listBox.emit("key pageup", "", { name: "pageup" });
+			expect(list.getSelectedIndex()).toBeLessThan(19);
 
 			list.destroy();
 		});

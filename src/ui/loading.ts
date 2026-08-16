@@ -85,7 +85,7 @@ function createLoadingScreenBase(config: LoadingScreenConfig): {
 			type: "line",
 		},
 		style: {
-			border: { fg: "cyan" },
+			border: { fg: "default" },
 		},
 		label: " Loading ",
 		padding: {

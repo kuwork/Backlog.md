@@ -34,6 +34,8 @@ export interface GenericListOptions<T extends GenericListItem> {
 	top?: string | number;
 	left?: string | number;
 	border?: boolean;
+	/** Show a scrollbar indicator when the list overflows (default true). */
+	scrollbar?: boolean;
 	keys?: {
 		up?: string[];
 		down?: string[];
@@ -148,7 +150,7 @@ export class GenericList<T extends GenericListItem> implements GenericListContro
 
 		// Default styling
 		const defaultStyle = {
-			border: { fg: "blue" },
+			border: { fg: "default" },
 			selected: { inverse: true, bold: true },
 			item: {},
 			focus: { border: { fg: "yellow" } },
@@ -312,6 +314,29 @@ export class GenericList<T extends GenericListItem> implements GenericListContro
 
 		this.listBox.key(["up", "k"], moveUp);
 		this.listBox.key(["down", "j"], moveDown);
+
+		const moveTo = (nextIndex: number) => {
+			const total = this.filteredItems.length;
+			if (total === 0) return;
+			const clamped = Math.max(0, Math.min(total - 1, nextIndex));
+			this.setHighlightedIndex(clamped, { render: true });
+		};
+
+		const pageAmount = () => {
+			const height = typeof this.listBox.height === "number" ? this.listBox.height : 0;
+			return height > 0 ? Math.max(1, height - 3) : 5;
+		};
+
+		this.listBox.key(["pageup", "C-u"], () => {
+			const sel = typeof this.selectedIndex === "number" ? this.selectedIndex : 0;
+			moveTo(sel - pageAmount());
+		});
+		this.listBox.key(["pagedown", "C-d"], () => {
+			const sel = typeof this.selectedIndex === "number" ? this.selectedIndex : 0;
+			moveTo(sel + pageAmount());
+		});
+		this.listBox.key(["home"], () => moveTo(0));
+		this.listBox.key(["end"], () => moveTo(this.filteredItems.length - 1));
 
 		this.listBox.on("select item", (_item: unknown, displayIndex: unknown) => {
 			if (this.updatingListSelection) return;
