@@ -606,7 +606,7 @@ export const zhCN: TranslationDict = {
 			geminiMdDesc: "Google Gemini Code Assist CLI",
 			copilot: "Copilot 指令",
 			agentsMd: "AGENTS.md",
-			agentsMdDesc: "AI 助手通用代理指令",
+			agentsMdDesc: "通用代理指令；Cursor、Codex、Zed、Warp、Aider、RooCode 等",
 			copilotDesc: "GitHub Copilot 指令",
 		},
 		projectNameDescription: "输入项目名称。它将显示在 UI 中并用于标识。",

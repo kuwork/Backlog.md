@@ -615,7 +615,7 @@ export const ja: TranslationDict = {
 			geminiMdDesc: "Google Gemini Code Assist CLI",
 			copilot: "Copilot 指示",
 			agentsMd: "AGENTS.md",
-			agentsMdDesc: "AI アシスタント用の汎用エージェント指示",
+			agentsMdDesc: "汎用エージェント指示；Cursor、Codex、Zed、Warp、Aider、RooCode など",
 			copilotDesc: "GitHub Copilot 指示",
 		},
 		projectNameDescription: "プロジェクト名を入力してください。これは UI に表示され、識別に使用されます。",

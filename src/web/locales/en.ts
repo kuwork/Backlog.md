@@ -619,7 +619,7 @@ export const en = {
 			geminiMdDesc: "Google Gemini Code Assist CLI",
 			copilot: "Copilot Instructions",
 			agentsMd: "AGENTS.md",
-			agentsMdDesc: "General agent instructions for AI assistants",
+			agentsMdDesc: "General agent instructions; Cursor, Codex, Zed, Warp, Aider, RooCode, etc.",
 			copilotDesc: "GitHub Copilot instructions",
 		},
 		projectNameDescription:
