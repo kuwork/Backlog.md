@@ -15,3 +15,4 @@ bypass_git_hooks: false
 check_active_branches: true
 active_branch_days: 10
 task_prefix: "back"
+locale: "zh-CN"

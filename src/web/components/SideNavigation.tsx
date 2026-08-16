@@ -16,12 +16,12 @@ import {
 } from '../../types';
 import ErrorBoundary from './ErrorBoundary';
 import Modal from './Modal';
-import { SidebarSkeleton } from './LoadingSpinner';
 import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { getWebVersion } from '../utils/version';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../hooks/useI18n';
 import { parseSearchCommandQuery } from '../utils/search-command-query';
+import { translateLoadingMessage } from '../../utils/loading-messages';
 
 // Utility functions for ID transformations
 const stripIdPrefix = (id: string): string => {
@@ -37,6 +37,39 @@ const hasTaskSearchFilters = (parsedQuery: ReturnType<typeof parseSearchCommandQ
 			(parsedQuery.labels && parsedQuery.labels.length > 0) ||
 			(parsedQuery.modifiedFiles && parsedQuery.modifiedFiles.length > 0),
 	);
+};
+
+const LoadingPhase = ({ message, className }: { message?: string | null; className: string }) => (
+	<p className={className} role="status">
+		{message ?? (
+			<span
+				className="inline-block h-3 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-700"
+				aria-label="Loading content"
+			/>
+		)}
+	</p>
+);
+
+const NavigationCount = ({
+	count,
+	isLoading,
+	error,
+	label,
+}: {
+	count: number;
+	isLoading: boolean;
+	error?: Error | null;
+	label: string;
+}) => {
+	if (isLoading) {
+		return (
+			<span
+				className="inline-block h-3 w-5 animate-pulse rounded bg-gray-300 align-middle dark:bg-gray-700"
+				aria-label={`Loading ${label} count`}
+			/>
+		);
+	}
+	return error ? <span aria-label={`${label} count unavailable`}>—</span> : count;
 };
 
 // Icon components for better semantics and performance
@@ -588,6 +621,7 @@ interface SideNavigationProps {
 	decisions: Decision[];
 	wikiTree: WikiTreeNode[];
 	isLoading: boolean;
+	loadingMessage?: string | null;
 	error?: Error | null;
 	onRetry?: () => void;
 	onRefreshData: () => Promise<void>;
@@ -600,11 +634,12 @@ const SideNavigation = memo(function SideNavigation({
 	decisions,
 	wikiTree,
 	isLoading,
+	loadingMessage,
 	error,
 	onRetry,
 	onRefreshData,
 }: SideNavigationProps) {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		const saved = localStorage.getItem('sideNavCollapsed');
 		return saved ? JSON.parse(saved) : false;
@@ -1197,12 +1232,21 @@ const SideNavigation = memo(function SideNavigation({
 
 
 			<nav className="flex-1 overflow-y-auto">
-				{/* Loading Indicator - only show when expanded since collapsed nav is static */}
-				{isLoading && !isCollapsed && (
-					<SidebarSkeleton isCollapsed={false} />
-				)}
-
 				{/* Error State */}
+				{error && isCollapsed && onRetry && (
+					<div className="px-2 py-3" role="alert">
+						<button
+							type="button"
+							onClick={onRetry}
+							className="flex w-full items-center justify-center rounded-md bg-red-50 p-3 font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+							aria-label={`${t.nav.failedToLoadNav}. ${t.common.retry}`}
+							title={`${t.nav.failedToLoadNav}. ${t.common.retry}`}
+						>
+							<span aria-hidden="true">!</span>
+							<span className="sr-only">{t.common.retry}</span>
+						</button>
+					</div>
+				)}
 				{error && !isLoading && !isCollapsed && (
 					<div className="px-4 py-4">
 						<div className="text-center p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -1219,18 +1263,23 @@ const SideNavigation = memo(function SideNavigation({
 					</div>
 				)}
 				
-				{/* Tasks Section - Hidden in collapsed state and when loading */}
-				{!isCollapsed && !isLoading && (
+				{/* Tasks Section - Hidden in collapsed state */}
+				{!isCollapsed && (
 					<div className="px-4 py-4">
 						<div className="flex items-center space-x-3 text-gray-700 dark:text-gray-300">
 							<span className="text-gray-500 dark:text-gray-400"><Icons.Tasks /></span>
-							<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.nav.tasks} ({tasks.length})</span>
+							<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+								{t.nav.tasks} (<NavigationCount count={tasks.length} isLoading={isLoading} error={error} label="task" />)
+							</span>
 						</div>
+						{isLoading && (
+							<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="mt-2 text-xs text-gray-500 dark:text-gray-400" />
+						)}
 					</div>
 				)}
 
-				{/* Navigation items only show when expanded and not loading */}
-				{!isCollapsed && !isLoading && (
+				{/* Navigation items only show when expanded */}
+				{!isCollapsed && (
 					<div className="px-4 space-y-1">
 						{/* Board Navigation */}
 						<NavLink
@@ -1324,7 +1373,7 @@ const SideNavigation = memo(function SideNavigation({
 					</div>
 				)}
 
-				{!isCollapsed && !isLoading && (
+				{!isCollapsed && (
 					<>
 						{/* Divider between Tasks and Documents */}
 						<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700"></div>
@@ -1341,7 +1390,9 @@ const SideNavigation = memo(function SideNavigation({
 											{isDocsCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
 									</button>
 									<span className="text-gray-500 dark:text-gray-400"><Icons.Document /></span>
-									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.nav.documents} ({docs.length})</span>
+									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+										{t.nav.documents} (<NavigationCount count={docs.length} isLoading={isLoading} error={error} label="document" />)
+									</span>
 								</div>
 								<DocActionDropdown
 									parentPath=""
@@ -1354,7 +1405,11 @@ const SideNavigation = memo(function SideNavigation({
 							{/* Document Tree */}
 							{!isDocsCollapsed && (
 								<div className="space-y-1">
-									{docsTree.length === 0 ? (
+									{isLoading ? (
+										<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
+									) : error ? (
+										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.documentsUnavailable}</p>
+									) : docsTree.length === 0 ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDocuments}</p>
 									) : (
 										docsTree.map((node) => (
@@ -1379,7 +1434,9 @@ const SideNavigation = memo(function SideNavigation({
 											{isDecisionsCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
 									</button>
 									<span className="text-gray-500 dark:text-gray-400"><Icons.Decision /></span>
-									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.nav.decisions} ({decisions.length})</span>
+									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+										{t.nav.decisions} (<NavigationCount count={decisions.length} isLoading={isLoading} error={error} label="decision" />)
+									</span>
 								</div>
 								{/* Temporarily hidden - decisions editing not ready */}
 								{/*{false && (*/}
@@ -1399,7 +1456,11 @@ const SideNavigation = memo(function SideNavigation({
 							{/* Decision List */}
 							{!isDecisionsCollapsed && (
 								<div className="space-y-1">
-									{filteredDecisions.length === 0 ? (
+									{isLoading ? (
+										<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
+									) : error ? (
+										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.decisionsUnavailable}</p>
+									) : filteredDecisions.length === 0 ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDecisions}</p>
 									) : (
 										filteredDecisions.map((decision) => (

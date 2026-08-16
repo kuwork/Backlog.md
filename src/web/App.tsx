@@ -14,6 +14,7 @@ import type {
 	WikiTreeNode,
 } from "../types";
 import { collectAvailableLabels } from "../utils/label-filter";
+import { parseBrowserLoadingState } from "../utils/browser-loading-state";
 import { stripAnyPrefix } from "../utils/prefix-config";
 import BoardPage from "./components/BoardPage";
 import DecisionDetail from "./components/DecisionDetail";
@@ -227,6 +228,8 @@ function AppContent() {
 	const [wikiTree, setWikiTree] = useState<WikiTreeNode[]>([]);
 	const [docsTree, setDocsTree] = useState<DocsTreeNode[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+	const [loadError, setLoadError] = useState<Error | null>(null);
 	const [duplicatePlan, setDuplicatePlan] = useState<DuplicateRepairPlan | null>(null);
 	const [showDuplicateRepairModal, setShowDuplicateRepairModal] = useState(false);
 
@@ -640,6 +643,20 @@ function AppContent() {
 			} else if (event.data === "config-updated") {
 				// Reload statuses when config changes
 				loadAllData();
+			} else {
+				const loadingState = parseBrowserLoadingState(event.data);
+			if (loadingState?.type === "loading") {
+				setIsLoading(true);
+				setLoadError(null);
+				setLoadingMessage(loadingState.message);
+			} else if (loadingState?.type === "loaded") {
+				setIsLoading(false);
+				setLoadingMessage(null);
+			} else if (loadingState?.type === "error") {
+				setIsLoading(false);
+				setLoadingMessage(null);
+				setLoadError(new Error(loadingState.message));
+			}
 			}
 		};
 		return () => ws.close();
@@ -692,6 +709,8 @@ function AppContent() {
 		wikiTree,
 		docsTree,
 		isLoading,
+		loadingMessage,
+		loadError,
 		onRefreshData: refreshData,
 	};
 
@@ -706,6 +725,8 @@ function AppContent() {
 		milestoneEntities,
 		archivedMilestones,
 		isLoading,
+		loadingMessage,
+		loadError,
 		labelColors,
 		onLabelColorsChange: handleLabelColorsChange,
 		hideEmptyColumns: config?.hideEmptyColumns ?? false,

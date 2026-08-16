@@ -14,6 +14,8 @@ interface LayoutProps {
 	wikiTree: WikiTreeNode[];
 	docsTree: DocsTreeNode[];
 	isLoading: boolean;
+	loadingMessage?: string | null;
+	loadError?: Error | null;
 	onRefreshData: () => Promise<void>;
 }
 
@@ -26,7 +28,9 @@ export default function Layout({
 	decisions, 
 	wikiTree,
 	docsTree,
-	isLoading, 
+	isLoading,
+	loadingMessage,
+	loadError,
 	onRefreshData 
 }: LayoutProps) {
 	return (
@@ -39,6 +43,9 @@ export default function Layout({
 				wikiTree={wikiTree}
 				docsTree={docsTree}
 				isLoading={isLoading}
+				loadingMessage={loadingMessage}
+				error={loadError}
+				onRetry={onRefreshData}
 				onRefreshData={onRefreshData}
 			/>
 			<div className="flex-1 flex flex-col min-h-0 min-w-0">

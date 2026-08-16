@@ -27,6 +27,7 @@ import {
 	type WikiPage,
 } from "../types/index.ts";
 import { launchBrowser } from "../utils/browser-launch.ts";
+import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { getVersion } from "../utils/version.ts";
@@ -215,6 +216,8 @@ export class BacklogServer {
 	private sockets = new Set<ServerWebSocket<unknown>>();
 	private contentStore: ContentStore | null = null;
 	private searchService: SearchService | null = null;
+	private servicesReadyPromise: Promise<void> | null = null;
+	private browserLoadingState: BrowserLoadingState = { type: "loading", message: null };
 	private unsubscribeContentStore?: () => void;
 	private storeReadyBroadcasted = false;
 	private configWatcher: { stop: () => void } | null = null;
@@ -236,7 +239,27 @@ export class BacklogServer {
 	}
 
 	private async ensureServicesReady(): Promise<void> {
-		const store = await this.core.getContentStore();
+		if (!this.servicesReadyPromise) {
+			this.publishBrowserLoadingState({ type: "loading", message: null });
+			const readyPromise = this.initializeServices()
+				.then(() => this.publishBrowserLoadingState({ type: "loaded" }))
+				.catch((error) => {
+					if (this.servicesReadyPromise === readyPromise) this.servicesReadyPromise = null;
+					this.publishBrowserLoadingState({
+						type: "error",
+						message: error instanceof Error ? error.message : String(error),
+					});
+					throw error;
+				});
+			this.servicesReadyPromise = readyPromise;
+		}
+		await this.servicesReadyPromise;
+	}
+
+	private async initializeServices(): Promise<void> {
+		const store = await this.core.getContentStore((message) => {
+			this.publishBrowserLoadingState({ type: "loading", message });
+		});
 		this.contentStore = store;
 
 		if (!this.unsubscribeContentStore) {
@@ -259,6 +282,16 @@ export class BacklogServer {
 
 		const search = await this.core.getSearchService();
 		this.searchService = search;
+	}
+
+	private publishBrowserLoadingState(state: BrowserLoadingState) {
+		this.browserLoadingState = state;
+		const message = JSON.stringify(state);
+		for (const ws of this.sockets) {
+			try {
+				ws.send(message);
+			} catch {}
+		}
 	}
 
 	private async getContentStoreInstance(): Promise<ContentStore> {
@@ -416,7 +449,6 @@ export class BacklogServer {
 		}
 
 		try {
-			await this.ensureServicesReady();
 			void this.cleanupTempAssets();
 			const serveOptions = {
 				port: bindPort,
@@ -639,6 +671,16 @@ export class BacklogServer {
 				websocket: {
 					open: (ws: ServerWebSocket) => {
 						this.sockets.add(ws);
+						// Delay the initial state send so the upgrade handshake completes;
+						// an immediate send can be dropped before the client attaches.
+						setImmediate(() => {
+							try {
+								ws.send(JSON.stringify(this.browserLoadingState));
+							} catch {}
+						});
+						if (this.browserLoadingState.type === "loading") {
+							void this.ensureServicesReady().catch(() => {});
+						}
 					},
 					message(ws: ServerWebSocket) {
 						ws.send("pong");
@@ -732,6 +774,8 @@ export class BacklogServer {
 		this.core.disposeContentStore();
 		this.searchService = null;
 		this.contentStore = null;
+		this.servicesReadyPromise = null;
+		this.browserLoadingState = { type: "loading", message: null };
 		this.storeReadyBroadcasted = false;
 
 		// Proactively close WebSocket connections

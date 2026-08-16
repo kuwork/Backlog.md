@@ -269,12 +269,12 @@ export class Core {
 		return Math.max(...ordinals) + DEFAULT_ORDINAL_STEP;
 	}
 
-	async getContentStore(): Promise<ContentStore> {
+	async getContentStore(progressCallback?: (message: string) => void): Promise<ContentStore> {
 		if (!this.contentStore) {
 			// Use loadTasks as the task loader to include cross-branch tasks
-			this.contentStore = new ContentStore(this.fs, () => this.loadTasks(), this.enableWatchers);
+			this.contentStore = new ContentStore(this.fs, (callback) => this.loadTasks(callback), this.enableWatchers);
 		}
-		await this.contentStore.ensureInitialized();
+		await this.contentStore.ensureInitialized(progressCallback);
 		return this.contentStore;
 	}
 

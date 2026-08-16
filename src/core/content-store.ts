@@ -71,7 +71,7 @@ export class ContentStore {
 
 	constructor(
 		private readonly filesystem: FileSystem,
-		private readonly taskLoader?: () => Promise<Task[]>,
+		private readonly taskLoader?: (progressCallback?: (message: string) => void) => Promise<Task[]>,
 		private readonly enableWatchers = false,
 	) {
 		this.patchFilesystem();
@@ -91,13 +91,13 @@ export class ContentStore {
 		};
 	}
 
-	async ensureInitialized(): Promise<ContentSnapshot> {
+	async ensureInitialized(progressCallback?: (message: string) => void): Promise<ContentSnapshot> {
 		if (this.initialized) {
 			return this.getSnapshot();
 		}
 
 		if (!this.initializing) {
-			this.initializing = this.loadInitialData().catch((error) => {
+			this.initializing = this.loadInitialData(progressCallback).catch((error) => {
 				this.initializing = null;
 				throw error;
 			});
@@ -235,13 +235,13 @@ export class ContentStore {
 		this.emit({ type: "ready", snapshot, version: this.version });
 	}
 
-	private async loadInitialData(): Promise<void> {
+	private async loadInitialData(progressCallback?: (message: string) => void): Promise<void> {
 		await this.filesystem.ensureBacklogStructure();
 
 		// Use custom task loader if provided (e.g., loadTasks for cross-branch support)
 		// Otherwise fall back to filesystem-only loading
 		const [tasks, documents, decisions, wikis] = await Promise.all([
-			this.loadTasksWithLoader(),
+			this.loadTasksWithLoader(progressCallback),
 			this.filesystem.listDocuments(),
 			this.filesystem.listDecisions(),
 			this.filesystem.listWikiPages(),
@@ -1238,9 +1238,9 @@ export class ContentStore {
 		this.cachedWikis = Array.from(this.wikis.values()).sort((a, b) => a.path.localeCompare(b.path));
 		return true;
 	}
-	private async loadTasksWithLoader(): Promise<Task[]> {
+	private async loadTasksWithLoader(progressCallback?: (message: string) => void): Promise<Task[]> {
 		if (this.taskLoader) {
-			return await this.taskLoader();
+			return await this.taskLoader(progressCallback);
 		}
 		return await this.filesystem.listTasks();
 	}
