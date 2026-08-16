@@ -171,6 +171,7 @@ export function filterTasksForKanban(
 			labelMatch: filters.labelMatch ?? "any",
 			milestone: filters.milestoneFilter || undefined,
 			resolveMilestoneLabel,
+			scoreThreshold: 0.45,
 		},
 		searchIndex,
 	);

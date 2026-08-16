@@ -23,6 +23,9 @@ export interface TaskSearchOptions {
 	labels?: string[];
 	labelMatch?: LabelMatchMode;
 	modifiedFiles?: string[];
+	/** Drop fuzzy results with a Fuse score above this value (0 = perfect, 1 = worst).
+	 * Undefined keeps every match, matching the web UI's score <= 0.45 filter when set. */
+	scoreThreshold?: number;
 }
 
 export interface SharedTaskFilterOptions {
@@ -34,6 +37,7 @@ export interface SharedTaskFilterOptions {
 	modifiedFiles?: string[];
 	milestone?: string;
 	resolveMilestoneLabel?: (milestone: string) => string;
+	scoreThreshold?: number;
 }
 
 export interface TaskFilterOptions extends SharedTaskFilterOptions {
@@ -169,7 +173,12 @@ export function createTaskSearchIndex(tasks: Task[]): TaskSearchIndex {
 
 			// If we have a query, use Fuse for fuzzy search
 			if (options.query?.trim()) {
-				const fuseResults = fuse.search(options.query.trim());
+				const query = options.query.trim();
+				const scoreThreshold = options.scoreThreshold;
+				let fuseResults = fuse.search(query);
+				if (scoreThreshold !== undefined) {
+					fuseResults = fuseResults.filter((result) => result.score === undefined || result.score <= scoreThreshold);
+				}
 				results = fuseResults.map((r) => r.item);
 			} else {
 				// No query - start with all tasks
@@ -274,6 +283,7 @@ export function applyTaskFilters(tasks: Task[], options: TaskFilterOptions, inde
 				labels: options.labels,
 				labelMatch: options.labelMatch,
 				modifiedFiles: options.modifiedFiles,
+				scoreThreshold: options.scoreThreshold,
 			})
 		: [...tasks];
 
@@ -300,6 +310,7 @@ export function applySharedTaskFilters(
 			modifiedFiles: options.modifiedFiles,
 			milestone: options.milestone,
 			resolveMilestoneLabel: options.resolveMilestoneLabel,
+			scoreThreshold: options.scoreThreshold,
 		},
 		index,
 	);

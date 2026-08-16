@@ -616,6 +616,7 @@ export async function viewTaskEnhanced(
 					labelMatch,
 					milestone: milestoneFilter || undefined,
 					resolveMilestoneLabel,
+					scoreThreshold: 0.45,
 				},
 				taskSearchIndex,
 			);
@@ -630,7 +631,10 @@ export async function viewTaskEnhanced(
 				},
 				types: ["task"],
 			});
-			nextFilteredTasks = searchResults.filter((r): r is TaskSearchResult => r.type === "task").map((r) => r.task);
+			nextFilteredTasks = searchResults
+				.filter((r): r is TaskSearchResult => r.type === "task")
+				.filter((r) => r.score === null || r.score === undefined || r.score <= 0.45)
+				.map((r) => r.task);
 			if (milestoneFilter) {
 				nextFilteredTasks = nextFilteredTasks.filter((task) => {
 					if (milestoneFilter === NO_MILESTONE_FILTER_VALUE) {

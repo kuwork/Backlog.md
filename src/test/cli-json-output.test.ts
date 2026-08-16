@@ -172,15 +172,16 @@ describe("CLI JSON output", () => {
 	});
 
 	it("preserves heterogeneous search rank and omits scores", async () => {
-		const result = await runCli(["search", "JSON task", "--json"]);
+		// "JSON" matches all three entities within the score threshold (0.45);
+		// a more specific query like "JSON task" would drop the decision, which
+		// is the intended score-filtered behavior shared with the web UI.
+		const result = await runCli(["search", "JSON", "--json"]);
 		expect(result.exitCode).toBe(0);
 		const output = JSON.parse(result.stdout.toString());
 		expect(output.schemaVersion).toBe(1);
 		expect(output.kind).toBe("search");
-		expect(output.results.map((entry: { type: string }) => entry.type)).toEqual(["task", "document", "decision"]);
-		expect(output.results[0].data.id).toBe("TASK-1");
-		expect(output.results[0].data.dueDate).toBe("2026-07-20");
-		expect(output.results[1].data).toEqual({
+		expect(output.results.map((entry: { type: string }) => entry.type)).toEqual(["document", "task", "decision"]);
+		expect(output.results[0].data).toEqual({
 			id: "doc-1",
 			title: "JSON guide",
 			type: "guide",
@@ -189,6 +190,8 @@ describe("CLI JSON output", () => {
 			createdAt: "2026-07-13",
 			updatedAt: "2026-07-14T08:00:00Z",
 		});
+		expect(output.results[1].data.id).toBe("TASK-1");
+		expect(output.results[1].data.dueDate).toBe("2026-07-20");
 		expect(output.results[2].data).toEqual({
 			id: "decision-1",
 			title: "Use stable JSON",

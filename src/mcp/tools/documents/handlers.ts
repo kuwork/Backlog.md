@@ -166,7 +166,9 @@ export class DocumentHandlers {
 			types: ["document"],
 		});
 
-		const documents = results.filter((result): result is DocumentSearchResult => result.type === "document");
+		const documents = results
+			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45)
+			.filter((result): result is DocumentSearchResult => result.type === "document");
 		if (documents.length === 0) {
 			return {
 				content: [

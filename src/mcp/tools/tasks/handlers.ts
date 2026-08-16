@@ -163,7 +163,7 @@ export class TaskHandlers {
 			let drafts = await this.core.filesystem.listDrafts();
 			if (args.search) {
 				const draftSearch = createTaskSearchIndex(drafts);
-				drafts = draftSearch.search({ query: args.search, status: "Draft" });
+				drafts = draftSearch.search({ query: args.search, status: "Draft", scoreThreshold: 0.45 });
 			}
 
 			if (args.assignee) {
@@ -343,6 +343,7 @@ export class TaskHandlers {
 				status: "Draft",
 				priority: args.priority,
 				modifiedFiles,
+				scoreThreshold: 0.45,
 			});
 			if (typeof args.limit === "number" && args.limit >= 0) {
 				draftMatches = draftMatches.slice(0, args.limit);
@@ -387,6 +388,7 @@ export class TaskHandlers {
 			statusExcluded: excludeStatuses,
 			priority: args.priority,
 			modifiedFiles,
+			scoreThreshold: 0.45,
 		});
 		if (typeof args.limit === "number" && args.limit >= 0) {
 			taskMatches = taskMatches.slice(0, args.limit);

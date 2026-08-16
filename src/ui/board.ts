@@ -356,6 +356,7 @@ export async function renderBoardTui(
 						labelMatch: sharedFilters.labelMatch,
 						milestone: sharedFilters.milestoneFilter || undefined,
 						resolveMilestoneLabel,
+						scoreThreshold: 0.45,
 					},
 					searchIndex,
 				);

@@ -1957,12 +1957,14 @@ addHelpSchema(program.command("search [query]"), {
 			limit = parsed;
 		}
 
-		const searchResults = searchService.search({
-			query: query ?? "",
-			limit,
-			types,
-			filters,
-		});
+		const searchResults = searchService
+			.search({
+				query: query ?? "",
+				limit,
+				types,
+				filters,
+			})
+			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45);
 
 		if (outputMode === "json") {
 			printJson(searchJson(searchResults, cwd, core.filesystem.docsDir));
