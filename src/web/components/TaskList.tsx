@@ -12,6 +12,7 @@ import { isTerminalStatus } from "../../utils/terminal-status.ts";
 import { collectArchivedMilestoneKeys, getMilestoneLabel, milestoneKey } from "../utils/milestones";
 import { formatStoredUtcDateForCompactDisplay, parseStoredUtcDate } from "../utils/date-display";
 import CleanupModal from "./CleanupModal";
+import AcceptanceCriteriaProgress from "./AcceptanceCriteriaProgress";
 import LabelFilterDropdown from "./LabelFilterDropdown";
 import StatusExcludeDropdown from "./StatusExcludeDropdown";
 import StatusFilterDropdown from "./StatusFilterDropdown";
@@ -823,6 +824,7 @@ const TaskList: React.FC<TaskListProps> = ({
 															{task.branch}
 														</span>
 													)}
+													<AcceptanceCriteriaProgress task={task} cells={10} />
 												</div>
 											</td>
 											<td className="px-3 py-2.5">

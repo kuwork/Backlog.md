@@ -2,6 +2,7 @@ import React from 'react';
 import { useI18n } from '../hooks/useI18n';
 import { type Task } from '../../types';
 import { getLabelColorClasses } from '../utils/labelColors';
+import AcceptanceCriteriaProgress from './AcceptanceCriteriaProgress';
 
 interface TaskCardProps {
   task: Task;
@@ -272,6 +273,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
         }`}>
           {task.title}
         </h4>
+
+        <AcceptanceCriteriaProgress task={task} cells={10} className="mt-1" />
 
         {/* Labels - width-aware overflow */}
         {task.labels.length > 0 && (

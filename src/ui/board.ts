@@ -17,6 +17,7 @@ import {
 } from "../utils/milestone-filter.ts";
 import { applySharedTaskFilters, createTaskSearchIndex, type LabelMatchMode } from "../utils/task-search.ts";
 import { compareTaskIds } from "../utils/task-sorting.ts";
+import { formatAcceptanceCriteriaProgress } from "./acceptance-criteria-progress.ts";
 import { openConfirmPopup } from "./components/confirm-popup.ts";
 import { createFilterHeader, type FilterHeader, type FilterState } from "./components/filter-header.ts";
 import { openMultiSelectFilterPopup, openSingleSelectFilterPopup } from "./components/filter-popup.ts";
@@ -117,16 +118,18 @@ function prepareBoardColumns(tasks: Task[], statuses: string[]): ColumnData[] {
 	});
 }
 
-export function formatTaskListItem(task: Task, isMoving = false): string {
+export function formatTaskListItem(task: Task, isMoving = false, availableWidth = Number.POSITIVE_INFINITY): string {
 	const assignee = task.assignee?.[0]
 		? ` {cyan-fg}${task.assignee[0].startsWith("@") ? task.assignee[0] : `@${task.assignee[0]}`}{/}`
 		: "";
 	const labels = task.labels?.length ? ` {yellow-fg}[${task.labels.join(", ")}]{/}` : "";
 	const isCrossBranch = Boolean((task as Task & { branch?: string }).branch);
 	const branch = isCrossBranch ? ` {green-fg}(${(task as Task & { branch?: string }).branch}){/}` : "";
+	const progress = formatAcceptanceCriteriaProgress(task, availableWidth);
+	const progressPrefix = progress ? `${progress} ` : "";
 
 	// Cross-branch tasks are dimmed to indicate read-only status
-	const content = `{bold}${task.id}{/bold} - ${task.title}${assignee}${labels}${branch}`;
+	const content = `${progressPrefix}{bold}${task.id}{/bold} - ${task.title}${assignee}${labels}${branch}`;
 	if (isMoving) {
 		return `{magenta-fg}► ${content}{/}`;
 	}
@@ -136,8 +139,12 @@ export function formatTaskListItem(task: Task, isMoving = false): string {
 	return content;
 }
 
-function buildRenderedTaskListItems(tasks: Task[], movingTaskId?: string): { rich: string[]; plain: string[] } {
-	const rich = tasks.map((task) => formatTaskListItem(task, movingTaskId === task.id));
+function buildRenderedTaskListItems(
+	tasks: Task[],
+	movingTaskId?: string,
+	availableWidth = Number.POSITIVE_INFINITY,
+): { rich: string[]; plain: string[] } {
+	const rich = tasks.map((task) => formatTaskListItem(task, movingTaskId === task.id, availableWidth));
 	return {
 		rich,
 		plain: rich.map((item) => stripBlessedFgTags(item)),
@@ -448,8 +455,10 @@ export async function renderBoardTui(
 			syncColumnSelectionDisplay(column, active);
 		};
 
-		const getFormattedItems = (tasks: Task[]) => {
-			return buildRenderedTaskListItems(tasks, moveOp?.taskId);
+		const getFormattedItems = (tasks: Task[], columnCount = 1) => {
+			const terminalWidth = getTerminalWidth();
+			const availableWidth = Math.max(1, Math.floor(terminalWidth / Math.max(1, columnCount)) - 4);
+			return buildRenderedTaskListItems(tasks, moveOp?.taskId, availableWidth);
 		};
 
 		const createColumnViews = (data: ColumnData[]) => {
@@ -483,7 +492,7 @@ export async function renderBoardTui(
 					style: { selected: {} },
 				});
 
-				const renderedItems = getFormattedItems(columnData.tasks);
+				const renderedItems = getFormattedItems(columnData.tasks, data.length);
 				taskList.setItems(renderedItems.rich);
 				columns.push({
 					status: columnData.status,
@@ -607,7 +616,7 @@ export async function renderBoardTui(
 				if (!column) return;
 				column.status = columnData.status;
 				column.tasks = columnData.tasks;
-				const renderedItems = getFormattedItems(columnData.tasks);
+				const renderedItems = getFormattedItems(columnData.tasks, data.length);
 				column.richItems = renderedItems.rich;
 				column.plainItems = renderedItems.plain;
 				column.highlightedIndex = undefined;

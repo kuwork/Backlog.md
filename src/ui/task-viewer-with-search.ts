@@ -22,6 +22,7 @@ import {
 import { hasAnyPrefix } from "../utils/prefix-config.ts";
 import { applyTaskFilters, createTaskSearchIndex, type LabelMatchMode } from "../utils/task-search.ts";
 import { attachSubtaskSummaries } from "../utils/task-subtasks.ts";
+import { formatAcceptanceCriteriaProgress } from "./acceptance-criteria-progress.ts";
 import { formatChecklistItem } from "./checklist.ts";
 import { transformCodePaths } from "./code-path.ts";
 import { openConfirmPopup } from "./components/confirm-popup.ts";
@@ -1473,6 +1474,11 @@ function generateDetailContent(
 	}
 
 	bodyContent.push(formatHeading("Acceptance Criteria", 2));
+	const progressLine = formatAcceptanceCriteriaProgress(task);
+	if (progressLine) {
+		bodyContent.push(progressLine);
+		bodyContent.push("");
+	}
 	const checklistItems = buildAcceptanceCriteriaItems(task);
 	if (checklistItems.length > 0) {
 		const formattedCriteria = checklistItems.map((item) =>
