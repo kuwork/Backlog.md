@@ -256,9 +256,9 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 | 字段 | 规则 |
 |------|------|
 | **Title** | 尽量与上游任务标题保持一致，便于识别。 |
-| **Description** | 用当前 fork 的语言描述问题/需求，**不得**出现「Upstream task BACK-XXX」或上游范围等字样。 |
+| **Description** | 用当前 fork 的语言描述问题/需求，**不得**出现「Upstream task BACK-XXX」或上游范围等字样。多行书写须遵循下方「多行正文的 Markdown 换行规范」。 |
 | **Acceptance Criteria** | 第一条 AC **必须是**查看上游变更的 git 命令，用于在实施前确认上游改动范围与具体提交；例如：`Review upstream changes using git log --oneline v1.47.1..v1.48.0 --grep BACK-XXX and git show <commit> as implementation reference.` 从第二条开始，才按当前 fork 需求撰写具体验收标准。 |
-| **Implementation Plan** | 参考上游实现经验重新撰写，用当前 fork 的文件路径和步骤表达；**不得**出现上游任务编号或「Upstream lesson」等标签。 |
+| **Implementation Plan** | 参考上游实现经验重新撰写，用当前 fork 的文件路径和步骤表达；**不得**出现上游任务编号或「Upstream lesson」等标签。多行书写须遵循下方「多行正文的 Markdown 换行规范」。 |
 | **Implementation Notes** | **必须为空**。 |
 | **Final Summary** | **必须为空**。 |
 | **Definition of Done** | 升级为新任务后，原上游任务中已勾选的 DoD 项必须全部取消勾选；项目默认 DoD 会自动应用。 |
@@ -267,6 +267,32 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 | **Modified files** | 根据 `git show --stat <commit>` 映射到当前 fork 的对应路径；若当前 fork 结构不同，按实际文件列出。 |
 | **Labels** | 至少加上 `migration`；可再加 `upstream` 作为元数据标签。 |
 | **Priority / Status** | 与上游分类保持一致（A类通常为 high/medium，B类按用户确认），状态设为 `To Do`。 |
+
+### 多行正文的 Markdown 换行规范（所有任务正文字段通用）
+
+适用于任务所有多行 Markdown 正文字段：**Description、Implementation Plan、Implementation Notes、Final Summary**（以及分类文档/分析报告等 `backlog docs` 正文）。
+
+**根因**：Backlog.md Web UI 用 Markdown 渲染这些字段（如 `MermaidMarkdown` 组件）。Markdown 中**单个换行符（LF）不会渲染成换行**——只有空行（双换行）才分段；且 `1.1 xxx` 这类编号**不是** Markdown 列表语法，整段会被合并成一行。实测教训：`--plan` 写入「`Phase 1 ...:` 后直接跟 `1.1 ...`」在 Web UI 中被合并成一行。
+
+**正确写法**（推荐 Markdown 列表/标题语法，天然逐行渲染，不依赖双换行）：
+
+```markdown
+### Phase 1 - TaskIdentityIndex core (AC #2, #5)
+
+- 1.1 Add src/core/task-identity-index.ts ...
+- 1.2 Deterministic winner ...
+```
+
+- 大标题用 `###`（后跟空行），条目用 `- ` 无序列表或 `1.` 有序列表——列表项之间无需空行也逐行渲染；段落间用空行分隔。
+- **禁止**用 `1.1 xxx` 这类「非 Markdown 编号」表达条目（会被合并成一行）；也**禁止**依赖单 LF 换行。
+- 结构化的编号（阶段 `### Phase N` + 列表 `- N.N`）与纯段落（每段之间空行）可混用。
+
+**写入与校验**：
+
+- CLI 的 `processCliEscapes` 会把 `--notes`/`--plan`/`--description` 的字面 `\n` 转成换行；但 `--ac`/`--acceptance-criteria` **不转换**——AC 必须每条一个独立 `--ac` 参数，禁止 `\n` 拼接（否则产生巨型单条 AC）。
+- 写入后必须校验：`grep -c '\\n' <任务文件>` 应为 0（无字面反斜杠-n 转义残留）；有残留时先清掉。
+- 结构校验：`1.1` 式编号若有，必须已加 `- `/`1.` 前缀；Web UI 或渲染器（如 `MermaidMarkdown`）中确认段落分行，而非依赖单 LF。
+- 直接编辑任务 Markdown 不受影响；走 CLI 写入时按上述规则构造多行参数。
 
 ---
 
@@ -541,6 +567,7 @@ backlog task create "<任务标题>" \
    - 与网络（`git fetch`）、TUI 超时、环境相关的失败，通常是既有 flaky test，不阻塞迁移任务。
    - 与修改模块直接相关的失败必须修复。
 4. 通过测试后，用 `backlog task edit BACK-XXX` 的对应选项（标记 AC 完成、填写 Implementation Notes / Final Summary；选项以 `backlog instructions` 或 `task edit --help` 为准）逐项登记，并用 `task view` 验证写入结果。
+   - 写入 Notes / Final Summary 等多行正文时，遵循「第五步（续）」中的**多行正文的 Markdown 换行规范**（Markdown 列表/标题语法，写入后 `grep -c '\\n'` 校验无转义残留），确保 Web UI 渲染分行。
 
 ### 7. 任务完成后最终检查清单
 
@@ -551,6 +578,7 @@ backlog task create "<任务标题>" \
 - [ ] 上游 draft 链接、分类文档链接（如 `doc-4`/`doc-5`）不在 References / Documentation 中。
 - [ ] References 只包含当前 fork 内被修改的实现文件。
 - [ ] Implementation Notes / Final Summary 已填写，且基于当前 fork 实际执行结果撰写。
+- [ ] Description / Plan / Notes / Final Summary 多行正文已按「多行正文的 Markdown 换行规范」书写（`grep -c '\\n'` 为 0，无字面转义残留；无 `1.1` 式非 Markdown 编号裸行）。
 - [ ] （由草稿升级而来的任务）升级已通过 `backlog draft promote` 完成、原 draft 已删除、任务状态与元数据全程经 backlog CLI 流转，未直接编辑任务 Markdown。
 - [ ] （由草稿升级而来的任务）分类文档「原始/迁移任务」列已从 `[DRAFT#N](/draft/N)` 更新为 `[BACK-XXX](/task/XXX)`，`updated_date` 已刷新。
 

@@ -3,7 +3,7 @@ id: doc-8
 title: v1.48.0 至 v1.49.3 上游任务迁移分析报告（按领域）
 type: guide
 created_date: '2026-08-11 23:30'
-updated_date: '2026-08-11 23:30'
+updated_date: '2026-08-15'
 ---
 # 上游任务迁移分析报告（v1.48.0 .. v1.49.3，按领域）
 
@@ -44,6 +44,8 @@ updated_date: '2026-08-11 23:30'
 **适合迁移的内容**：`read-output-mode.ts` 整体；`json-output.ts` 契约骨架（nullable/toProjectRelativePath/normalizePublicDate/printJson 可逐字复制）；cli.ts 的 `getReadOutputMode()` 分支模式；测试思路。
 
 **需要排除/调整的内容**：删 `hasDuplicateIds` 分支（fork 无该函数）；删 `task.type` 键（fork Task 无 type）；补 wiki 搜索分支（fork SearchResult 联合含 wiki）；增补 fork 日期键（dueDate/plannedStart/plannedEnd/actualStart/actualEnd）。
+
+> **决策（2026-08-15）**：上游 `printDuplicateIntegrityWarning`（BACK-516 产物，2026-07-10 引入）是 search / task list / board export 的前置检查——每次命令执行全量扫描本地任务文件，发现重复即 stderr 警告 + exit code 1。fork 已通过 BACK-538 迁移检测核心 `findLocalDuplicateTaskIds`，但**决定不移植只读命令前置检查**：fork 用 `backlog doctor`（诊断/修复）与 Web `/api/tasks/duplicate-ids` 端点主动检查即可，避免每次 list/search 多一次磁盘全量扫描。B1 迁移时 `--json` 输出不接重复 ID fail-closed。
 
 **迁移优先级：A**。agent/自动化价值高、改动纯增量、冲突点明确且少。
 
@@ -365,9 +367,9 @@ updated_date: '2026-08-11 23:30'
 
 **需要排除/调整的内容**：若走共享语料路线必须同步引入看板层 `source !== "completed"` 过滤（对照 B12 filterKanbanTasks）；保持「completed ≠ 终态状态」语义；不引入 archive 记录。
 
-**迁移优先级：B**（可选增强；fork 自研成本可控）。
+**迁移优先级：C**（⚠️ 2026-08-17 重分类：上游任务 To Do、无实现代码，同 B22/B23/B24/B28 上游未实现条目；fork 如需该能力可自研）。
 
-**迁移建议：③忽略（上游未实现；fork 可②参考重写自研）**。
+**迁移建议：③忽略（上游未实现；fork 可②参考重写自研，前置条件已具备）**。
 
 ---
 
