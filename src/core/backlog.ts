@@ -443,6 +443,15 @@ export class Core {
 	}
 
 	async getTask(taskId: string): Promise<Task | null> {
+		// Filesystem-level fail-closed: the same canonical ID at distinct task
+		// file paths is ambiguous regardless of store merging.
+		const config = await this.fs.loadConfig();
+		const taskPrefix = config?.prefixes?.task ?? "task";
+		const collisionPaths = await this.fs.findTaskFilePaths(taskId, taskPrefix);
+		if (collisionPaths.length > 1) {
+			throw new AmbiguousTaskIdError(collisionPaths);
+		}
+
 		const store = await this.getContentStore();
 		const tasks = store.getTasks();
 		const matches = tasks.filter((task) => taskIdsEqual(taskId, task.id));

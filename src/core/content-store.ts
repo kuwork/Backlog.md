@@ -15,6 +15,13 @@ interface ContentSnapshot {
 	wikis: WikiPage[];
 }
 
+export interface TaskCorpusSnapshot {
+	activeTasks: Task[];
+	completedTasks: Task[];
+}
+
+export type TaskResolution = { task?: Task; candidates?: string[] };
+
 type ContentStoreEventType = "ready" | "tasks" | "documents" | "decisions" | "wikis";
 
 export type ContentStoreEvent =
@@ -143,6 +150,46 @@ export class ContentStore {
 		}
 
 		return tasks.slice();
+	}
+
+	/**
+	 * Lightweight corpus snapshot separating active (working-copy) tasks from
+	 * completed ones. Does NOT port the upstream publication-owner machinery;
+	 * the fork's watcher drives broadcasts directly.
+	 */
+	async getTaskCorpusSnapshot(): Promise<TaskCorpusSnapshot> {
+		await this.ensureInitialized();
+		const completedTasks = await this.filesystem.listCompletedTasks();
+		return { activeTasks: this.cachedTasks.slice(), completedTasks };
+	}
+
+	/**
+	 * Resolve a task ID against the corpus with the same fail-closed rule as
+	 * Core: distinct live paths with the same canonical ID are ambiguous.
+	 * Returns the ambiguity candidates instead of throwing so this store stays
+	 * free of the Core error type (no import cycle).
+	 */
+	async resolveTaskForRead(taskId: string): Promise<TaskResolution> {
+		return await this.resolveInSnapshot(taskId, true);
+	}
+
+	/**
+	 * Mutation-safe resolution: only the active working-copy corpus is
+	 * considered, mirroring Core's resolveForMutation semantics.
+	 */
+	async resolveTaskForMutation(taskId: string): Promise<TaskResolution> {
+		return await this.resolveInSnapshot(taskId, false);
+	}
+
+	private async resolveInSnapshot(taskId: string, includeCompleted: boolean): Promise<TaskResolution> {
+		const snapshot = await this.getTaskCorpusSnapshot();
+		const corpus = includeCompleted ? [...snapshot.activeTasks, ...snapshot.completedTasks] : snapshot.activeTasks;
+		const matches = corpus.filter((task) => taskIdsEqual(taskId, task.id));
+		const distinctPaths = new Set(matches.map((task) => task.filePath ?? task.title));
+		if (matches.length > 1 && distinctPaths.size > 1) {
+			return { candidates: [...distinctPaths] };
+		}
+		return { task: matches[0] };
 	}
 
 	upsertTask(task: Task): void {

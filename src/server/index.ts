@@ -101,13 +101,6 @@ function isDocumentValidationError(error: Error): boolean {
 }
 
 /**
- * Strip any prefix from an ID (e.g., "task-123" -> "123", "JIRA-456" -> "456")
- */
-function stripPrefix(id: string): string {
-	return id.replace(PREFIX_PATTERN, "");
-}
-
-/**
  * Ensure an ID has a prefix. If it already has one, return as-is.
  * Otherwise, add the default "task-" prefix.
  */
@@ -116,42 +109,6 @@ function ensurePrefix(id: string): string {
 		return id;
 	}
 	return `${DEFAULT_PREFIX}${id}`;
-}
-
-function parseTaskIdSegments(value: string): number[] | null {
-	const withoutPrefix = stripPrefix(value);
-	if (!/^[0-9]+(?:\.[0-9]+)*$/.test(withoutPrefix)) {
-		return null;
-	}
-	return withoutPrefix.split(".").map((segment) => Number.parseInt(segment, 10));
-}
-
-function findTaskByLooseId(tasks: Task[], inputId: string): Task | undefined {
-	// First try exact match (case-insensitive)
-	const lowerInputId = inputId.toLowerCase();
-	const exact = tasks.find((task) => task.id.toLowerCase() === lowerInputId);
-	if (exact) {
-		return exact;
-	}
-
-	// Try matching by numeric segments only
-	const inputSegments = parseTaskIdSegments(inputId);
-	if (!inputSegments) {
-		return undefined;
-	}
-
-	return tasks.find((task) => {
-		const candidateSegments = parseTaskIdSegments(task.id);
-		if (!candidateSegments || candidateSegments.length !== inputSegments.length) {
-			return false;
-		}
-		for (let index = 0; index < candidateSegments.length; index += 1) {
-			if (candidateSegments[index] !== inputSegments[index]) {
-				return false;
-			}
-		}
-		return true;
-	});
 }
 
 function parseOptionalBoolean(value: unknown): boolean | undefined {
@@ -220,6 +177,7 @@ export class BacklogServer {
 	private browserLoadingState: BrowserLoadingState = { type: "loading", message: null };
 	private unsubscribeContentStore?: () => void;
 	private storeReadyBroadcasted = false;
+	private taskBroadcastTimer?: ReturnType<typeof setTimeout>;
 	private configWatcher: { stop: () => void } | null = null;
 	// Statistics cache
 	private cachedStatisticsResponse: string | null = null;
@@ -315,11 +273,15 @@ export class BacklogServer {
 	}
 
 	private broadcastTasksUpdated() {
-		for (const ws of this.sockets) {
-			try {
-				ws.send("tasks-updated");
-			} catch {}
-		}
+		clearTimeout(this.taskBroadcastTimer);
+		this.taskBroadcastTimer = setTimeout(() => {
+			this.taskBroadcastTimer = undefined;
+			for (const ws of this.sockets) {
+				try {
+					ws.send("tasks-updated");
+				} catch {}
+			}
+		}, 75);
 	}
 
 	private broadcastConfigUpdated() {
@@ -758,6 +720,9 @@ export class BacklogServer {
 		if (this._stopping) return;
 		this._stopping = true;
 
+		if (this.taskBroadcastTimer) clearTimeout(this.taskBroadcastTimer);
+		this.taskBroadcastTimer = undefined;
+
 		// Stop filesystem watcher first to reduce churn
 		try {
 			this.unsubscribeContentStore?.();
@@ -924,16 +889,15 @@ export class BacklogServer {
 		// Resolve parent task ID if provided
 		let parentTaskId: string | undefined;
 		if (parent) {
-			const store = await this.getContentStoreInstance();
-			const allTasks = store.getTasks();
-			let parentTask = findTaskByLooseId(allTasks, parent);
-			if (!parentTask) {
-				const fallbackId = ensurePrefix(parent);
-				const fallback = await this.core.filesystem.loadTask(fallbackId);
-				if (fallback) {
-					store.upsertTask(fallback);
-					parentTask = fallback;
+			let parentTask: Task | null;
+			try {
+				parentTask = await this.core.getTask(parent);
+				if (!parentTask) parentTask = await this.core.getTask(ensurePrefix(parent));
+			} catch (error) {
+				if (error instanceof AmbiguousTaskIdError) {
+					return Response.json({ error: error.message }, { status: 409 });
 				}
+				throw error;
 			}
 			if (!parentTask) {
 				const normalizedParent = ensurePrefix(parent);
@@ -1160,7 +1124,15 @@ export class BacklogServer {
 
 	private async handleUpdateTask(req: Request, taskId: string): Promise<Response> {
 		const updates = await req.json();
-		const existingTask = await this.core.filesystem.loadTask(taskId);
+		let existingTask: Task | null;
+		try {
+			existingTask = await this.core.getTask(taskId);
+		} catch (error) {
+			if (error instanceof AmbiguousTaskIdError) {
+				return Response.json({ error: error.message }, { status: 409 });
+			}
+			throw error;
+		}
 		if (!existingTask) {
 			return Response.json({ error: "Task not found" }, { status: 404 });
 		}
@@ -2040,7 +2012,7 @@ export class BacklogServer {
 				);
 			}
 
-			const { updatedTask } = await this.core.reorderTask({
+			const { updatedTask, changedTasks } = await this.core.reorderTask({
 				taskId,
 				targetStatus,
 				orderedTaskIds,
@@ -2048,7 +2020,7 @@ export class BacklogServer {
 				commitMessage: `Reorder tasks in ${targetStatus}`,
 			});
 
-			return Response.json({ success: true, task: updatedTask });
+			return Response.json({ success: true, task: updatedTask, changedTasks });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to reorder task";
 			// Cross-branch and validation errors are client errors (400), not server errors (500)

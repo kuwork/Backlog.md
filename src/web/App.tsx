@@ -699,6 +699,15 @@ function AppContent() {
 		}
 	};
 
+	const applyReorderedTasks = useCallback((updatedTasks: Task[], requestTask: Task) => {
+		setTasks((current) => {
+			const currentRequest = current.find((task) => task.id === requestTask.id);
+			if (currentRequest !== requestTask) return current;
+			const updatesById = new Map(updatedTasks.map((task) => [task.id, task]));
+			return current.map((task) => updatesById.get(task.id) ?? task);
+		});
+	}, []);
+
 	const layoutProps = {
 		projectName,
 		showSuccessToast,
@@ -719,6 +728,7 @@ function AppContent() {
 		onNewTask: handleNewTask,
 		tasks,
 		onRefreshData: refreshData,
+		onTasksUpdated: applyReorderedTasks,
 		statuses,
 		milestones,
 		availableLabels: collectAvailableLabels(tasks, availableLabels),

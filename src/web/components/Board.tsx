@@ -18,6 +18,7 @@ interface BoardProps {
   highlightTaskId?: string | null;
   tasks: Task[];
   onRefreshData?: () => Promise<void>;
+  onTasksUpdated?: (tasks: Task[], requestTask: Task) => void;
   statuses: string[];
   isLoading: boolean;
   loadingMessage?: string | null;
@@ -50,6 +51,7 @@ const Board: React.FC<BoardProps> = ({
   highlightTaskId,
   tasks,
   onRefreshData,
+  onTasksUpdated,
   statuses,
   isLoading,
   loadingMessage,
@@ -291,9 +293,11 @@ const Board: React.FC<BoardProps> = ({
 
   const handleTaskReorder = async (payload: ReorderTaskPayload) => {
     try {
-      await apiClient.reorderTask(payload);
-      // Refresh data to reflect the changes
-      if (onRefreshData) {
+      const requestTask = tasks.find((task) => task.id === payload.taskId);
+      const result = await apiClient.reorderTask(payload);
+      if (requestTask && onTasksUpdated) {
+        onTasksUpdated(result.changedTasks ?? [result.task], requestTask);
+      } else if (onRefreshData) {
         await onRefreshData();
       }
       setUpdateError(null);

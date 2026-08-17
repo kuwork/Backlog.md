@@ -9,6 +9,7 @@ interface BoardPageProps {
 	onNewTask: () => void;
 	tasks: Task[];
 	onRefreshData?: () => Promise<void>;
+	onTasksUpdated?: (tasks: Task[], requestTask: Task) => void;
 	statuses: string[];
 	milestones: string[];
 	availableLabels: string[];
@@ -27,6 +28,7 @@ export default function BoardPage({
 	onNewTask,
 	tasks,
 	onRefreshData,
+	onTasksUpdated,
 	statuses,
 	milestones,
 	availableLabels,
@@ -136,6 +138,7 @@ export default function BoardPage({
 				highlightTaskId={highlightTaskId}
 				tasks={tasks}
 				onRefreshData={onRefreshData}
+				onTasksUpdated={onTasksUpdated}
 				statuses={statuses}
 				milestones={milestones}
 				milestoneEntities={milestoneEntities}

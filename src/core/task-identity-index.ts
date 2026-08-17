@@ -154,14 +154,16 @@ function liveRecords(identity: TaskIdentity): TaskIdentityRecord[] {
  */
 export class TaskIdentityIndex {
 	private readonly groups = new Map<string, TaskIdentityGroup>();
+	private readonly records: TaskIdentityRecord[];
 
 	constructor(
 		records: TaskIdentityRecord[],
-		context: TaskIdentityPathContext,
+		private readonly context: TaskIdentityPathContext,
 		private readonly statuses: string[],
 		private readonly resolutionStrategy: "most_recent" | "most_progressed",
 	) {
-		for (const record of records) {
+		this.records = records.slice();
+		for (const record of this.records) {
 			const canonicalId = canonicalTaskId(record.id);
 			const path = normalizeRecordPath(record, context);
 			const group = this.groups.get(canonicalId) ?? { id: canonicalId, identities: new Map() };
@@ -170,6 +172,44 @@ export class TaskIdentityIndex {
 			group.identities.set(path, identity);
 			this.groups.set(canonicalId, group);
 		}
+	}
+
+	withWorkingCopyCorpus(activeTasks: Task[], completedTasks: Task[]): TaskIdentityIndex {
+		const records = this.records.filter((record) => !record.workingCopy);
+		for (const task of activeTasks) {
+			records.push({
+				id: task.id,
+				type: "task",
+				branch: "local",
+				path: task.filePath ?? task.id,
+				lastModified: task.lastModified ?? (task.updatedDate ? new Date(task.updatedDate) : new Date(0)),
+				task: { ...task, source: "local" },
+				workingCopy: true,
+			});
+		}
+		for (const task of completedTasks) {
+			records.push({
+				id: task.id,
+				type: "completed",
+				branch: "local",
+				path: task.filePath ?? task.id,
+				lastModified: task.lastModified ?? (task.updatedDate ? new Date(task.updatedDate) : new Date(0)),
+				task: { ...task, source: "completed" },
+				workingCopy: true,
+			});
+		}
+		return new TaskIdentityIndex(records, this.context, this.statuses, this.resolutionStrategy);
+	}
+
+	withRecord(record: TaskIdentityRecord): TaskIdentityIndex {
+		return new TaskIdentityIndex([...this.records, record], this.context, this.statuses, this.resolutionStrategy);
+	}
+
+	getFingerprint(): string {
+		return this.records
+			.map((record) => `${recordKey(record)}\0${record.type}\0${record.workingCopy ? "1" : "0"}`)
+			.sort((left, right) => left.localeCompare(right))
+			.join("\n");
 	}
 
 	private getGroup(taskId: string): TaskIdentityGroup | undefined {

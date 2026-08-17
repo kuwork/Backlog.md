@@ -43,6 +43,8 @@ interface CreateLockOptions {
 	staleMs?: number;
 }
 
+const DEFAULT_TASK_PREFIX = "task";
+
 const DEFAULT_CREATE_LOCK_TIMEOUT_MS = 30_000;
 const DEFAULT_CREATE_LOCK_RETRY_DELAY_MS = 100;
 const DEFAULT_CREATE_LOCK_STALE_MS = 10_000;
@@ -366,6 +368,27 @@ export class FileSystem {
 			return { ...task, filePath: filepath };
 		} catch (_error) {
 			return null;
+		}
+	}
+
+	/**
+	 * List every task file path whose filename matches the given task ID
+	 * (exact normalized prefix or loose numeric match). Filename-level only -
+	 * no file contents are read. Used to detect same-ID collisions at distinct
+	 * paths (fail-closed identity resolution).
+	 */
+	async findTaskFilePaths(taskId: string, prefix = DEFAULT_TASK_PREFIX): Promise<string[]> {
+		try {
+			const tasksDir = await this.getTasksDir();
+			const effectivePrefix = extractAnyPrefix(taskId) ?? prefix;
+			const globPattern = buildGlobPattern(effectivePrefix);
+			const files = await Array.fromAsync(new Bun.Glob(globPattern).scan({ cwd: tasksDir, followSymlinks: true }));
+			const normalizedId = normalizeId(taskId, effectivePrefix);
+			const filenameId = idForFilename(normalizedId);
+			const matches = files.filter((f) => f.startsWith(`${filenameId} -`) || f.startsWith(`${filenameId}-`));
+			return matches.map((f) => join(tasksDir, f));
+		} catch {
+			return [];
 		}
 	}
 
