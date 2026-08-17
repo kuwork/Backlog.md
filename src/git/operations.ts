@@ -44,6 +44,13 @@ export class GitOperations {
 		return await isGitRepository(cwd);
 	}
 
+	/**
+	 * Resolve the git repository root for the project (null when not a repository).
+	 */
+	async getRepositoryRoot(startDir: string = this.projectRoot): Promise<string | null> {
+		return await this.resolveRepoRoot(startDir);
+	}
+
 	async addFile(filePath: string): Promise<void> {
 		const context = await this.getPathContext(filePath);
 		if (context) {

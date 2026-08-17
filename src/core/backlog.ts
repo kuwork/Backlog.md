@@ -63,6 +63,7 @@ import { migrateDraftPrefixes, needsDraftPrefixMigration } from "./prefix-migrat
 import { calculateNewOrdinal, DEFAULT_ORDINAL_STEP, resolveOrdinalConflicts } from "./reorder.ts";
 import { SearchService } from "./search-service.ts";
 import { computeSequences, planMoveToSequence, planMoveToUnsequenced } from "./sequences.ts";
+import { TaskIdentityIndex, type TaskIdentityRecord } from "./task-identity-index.ts";
 import {
 	type BranchTaskStateEntry,
 	findTaskInLocalBranches,
@@ -70,7 +71,6 @@ import {
 	getTaskLoadingMessage,
 	loadLocalBranchTasks,
 	loadRemoteTasks,
-	resolveTaskConflict,
 } from "./task-loader.ts";
 
 interface BlessedScreen {
@@ -109,6 +109,18 @@ export interface TuiTaskEditResult {
 	changed: boolean;
 	task?: Task;
 	reason?: TuiTaskEditFailureReason;
+}
+
+/**
+ * Thrown when the same canonical task ID resolves to live identities at
+ * distinct paths. Callers (e.g. the browser server) should surface this as a
+ * 409 instead of guessing which record to use.
+ */
+export class AmbiguousTaskIdError extends Error {
+	constructor(public readonly candidates: string[]) {
+		super(`Task ID is ambiguous; candidates: ${candidates.join(", ")}`);
+		this.name = "AmbiguousTaskIdError";
+	}
 }
 
 function buildUpdatedDateComparableTask(task: Task): Record<string, unknown> {
@@ -151,47 +163,6 @@ function hasUpdatedDateRelevantChanges(originalTask: Task | null, nextTask: Task
 	);
 }
 
-function buildLatestStateMap(
-	stateEntries: BranchTaskStateEntry[] = [],
-	localTasks: Array<Task & { lastModified?: Date; updatedDate?: string }> = [],
-): Map<string, BranchTaskStateEntry> {
-	const latest = new Map<string, BranchTaskStateEntry>();
-	const update = (entry: BranchTaskStateEntry) => {
-		const existing = latest.get(entry.id);
-		if (!existing || entry.lastModified > existing.lastModified) {
-			latest.set(entry.id, entry);
-		}
-	};
-
-	for (const entry of stateEntries) {
-		update(entry);
-	}
-
-	for (const task of localTasks) {
-		if (!task.id) continue;
-		const lastModified =
-			task.lastModified ?? (task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0));
-
-		update({
-			id: task.id,
-			type: "task",
-			branch: "local",
-			path: "",
-			lastModified,
-		});
-	}
-
-	return latest;
-}
-
-function filterTasksByStateSnapshots(tasks: Task[], latestState: Map<string, BranchTaskStateEntry>): Task[] {
-	return tasks.filter((task) => {
-		const latest = latestState.get(task.id);
-		if (!latest) return true;
-		return latest.type === "task";
-	});
-}
-
 function normalizeDocumentTypeInput(type: unknown): DocumentType | undefined {
 	if (type === undefined) {
 		return undefined;
@@ -200,20 +171,6 @@ function normalizeDocumentTypeInput(type: unknown): DocumentType | undefined {
 		return type as DocumentType;
 	}
 	throw new Error(`Document type must be one of: ${DOCUMENT_TYPE_VALUES.join(", ")}.`);
-}
-
-/**
- * Extract IDs from state map where latest state is "task" or "completed" (not "archived" or "draft")
- * Used for ID generation to determine which IDs are in use.
- */
-function getActiveAndCompletedIdsFromStateMap(latestState: Map<string, BranchTaskStateEntry>): string[] {
-	const ids: string[] = [];
-	for (const [id, entry] of latestState) {
-		if (entry.type === "task" || entry.type === "completed") {
-			ids.push(id);
-		}
-	}
-	return ids;
 }
 
 function formatAvailableIndexHint(items: AcceptanceCriterion[], emptyMessage: string): string {
@@ -488,7 +445,15 @@ export class Core {
 	async getTask(taskId: string): Promise<Task | null> {
 		const store = await this.getContentStore();
 		const tasks = store.getTasks();
-		const match = tasks.find((task) => taskIdsEqual(taskId, task.id));
+		const matches = tasks.filter((task) => taskIdsEqual(taskId, task.id));
+
+		// Same canonical ID at distinct live paths fails closed instead of guessing.
+		const distinctPaths = new Set(matches.map((task) => task.filePath ?? task.title));
+		if (matches.length > 1 && distinctPaths.size > 1) {
+			throw new AmbiguousTaskIdError([...distinctPaths]);
+		}
+
+		const match = matches[0];
 		if (match) {
 			return match;
 		}
@@ -919,33 +884,31 @@ export class Core {
 		const localTasks = await this.listTasksWithMetadata();
 		const localCompletedTasks = await this.fs.listCompletedTasks();
 
-		// Build initial state entries from local tasks
-		const stateEntries: BranchTaskStateEntry[] = [];
-
-		// Add local active tasks to state
+		// Build initial identity records from local tasks (working copy authoritative)
+		const records: TaskIdentityRecord[] = [];
 		for (const task of localTasks) {
 			if (!task.id) continue;
-			const lastModified =
-				task.lastModified ?? (task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0));
-			stateEntries.push({
+			records.push({
 				id: task.id,
 				type: "task",
 				branch: "local",
-				path: "",
-				lastModified,
+				path: task.filePath ?? "",
+				lastModified:
+					task.lastModified ?? (task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0)),
+				task: { ...task, source: "local" },
+				workingCopy: true,
 			});
 		}
-
-		// Add local completed tasks to state
 		for (const task of localCompletedTasks) {
 			if (!task.id) continue;
-			const lastModified = task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0);
-			stateEntries.push({
+			records.push({
 				id: task.id,
 				type: "completed",
 				branch: "local",
-				path: "",
-				lastModified,
+				path: task.filePath ?? "",
+				lastModified: task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0),
+				task: { ...task, source: "completed" },
+				workingCopy: true,
 			});
 		}
 
@@ -961,12 +924,20 @@ export class Core {
 			]);
 
 			// Add branch state entries
-			stateEntries.push(...branchStateEntries);
+			records.push(...branchStateEntries);
 		}
 
-		// Build the latest state map and extract active + completed IDs
-		const latestState = buildLatestStateMap(stateEntries, []);
-		return getActiveAndCompletedIdsFromStateMap(latestState);
+		const identityIndex = new TaskIdentityIndex(
+			records,
+			{
+				repositoryRoot: await this.git.getRepositoryRoot(),
+				projectRoot: this.fs.rootDir,
+				backlogDirectory: await this.getBacklogDirectoryName(),
+			},
+			(config?.statuses || DEFAULT_STATUSES) as string[],
+			config?.taskResolutionStrategy || "most_progressed",
+		);
+		return identityIndex.getOccupiedIds();
 	}
 
 	/**
@@ -2970,62 +2941,64 @@ export class Core {
 
 		// Load remote tasks and local branch tasks in parallel
 		// Skip entirely when cross-branch scanning is disabled
-		let remoteTasks: Task[] = [];
-		let localBranchTasks: Task[] = [];
 		let branchStateEntries: BranchTaskStateEntry[] | undefined;
 
 		if (config?.checkActiveBranches !== false) {
 			const backlogDir = await this.getBacklogDirectoryName();
 			branchStateEntries = [];
-			[remoteTasks, localBranchTasks] = await Promise.all([
+			await Promise.all([
 				loadRemoteTasks(this.git, config, progressCallback, localTasks, branchStateEntries, false, backlogDir),
 				loadLocalBranchTasks(this.git, config, progressCallback, localTasks, branchStateEntries, false, backlogDir),
 			]);
 		}
 		progressCallback?.("Loaded tasks");
 
-		// Create map with local tasks
-		const tasksById = new Map<string, Task>(localTasks.map((t) => [t.id, { ...t, source: "local" }]));
-
-		// Add completed tasks to the map
-		for (const completedTask of completedTasks) {
-			if (!tasksById.has(completedTask.id)) {
-				tasksById.set(completedTask.id, { ...completedTask, source: "completed" });
-			}
-		}
-
-		// Merge tasks from other local branches
+		// Build the shared task identity index: local working copy, completed, and branch states
 		progressCallback?.("Merging tasks...");
-		for (const branchTask of localBranchTasks) {
-			const existing = tasksById.get(branchTask.id);
-			if (!existing) {
-				tasksById.set(branchTask.id, branchTask);
-			} else {
-				const resolved = resolveTaskConflict(existing, branchTask, statuses, resolutionStrategy);
-				tasksById.set(branchTask.id, resolved);
-			}
+		const records: TaskIdentityRecord[] = [];
+		for (const task of localTasks) {
+			records.push({
+				id: task.id,
+				type: "task",
+				branch: "local",
+				path: task.filePath ?? "",
+				lastModified:
+					task.lastModified ?? (task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0)),
+				task: { ...task, source: "local" },
+				workingCopy: true,
+			});
 		}
-
-		// Merge remote tasks with local tasks
-		for (const remoteTask of remoteTasks) {
-			const existing = tasksById.get(remoteTask.id);
-			if (!existing) {
-				tasksById.set(remoteTask.id, remoteTask);
-			} else {
-				const resolved = resolveTaskConflict(existing, remoteTask, statuses, resolutionStrategy);
-				tasksById.set(remoteTask.id, resolved);
-			}
+		for (const task of completedTasks) {
+			records.push({
+				id: task.id,
+				type: "completed",
+				branch: "local",
+				path: task.filePath ?? "",
+				lastModified: task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0),
+				task: { ...task, source: "completed" },
+				workingCopy: true,
+			});
 		}
+		records.push(...(branchStateEntries ?? []));
 
-		// Get all tasks as array
-		const tasks = Array.from(tasksById.values());
+		const identityIndex = new TaskIdentityIndex(
+			records,
+			{
+				repositoryRoot: await this.git.getRepositoryRoot(),
+				projectRoot: this.fs.rootDir,
+				backlogDirectory: await this.getBacklogDirectoryName(),
+			},
+			statuses as string[],
+			resolutionStrategy,
+		);
+
 		let activeTasks: Task[];
 
 		if (config?.checkActiveBranches === false) {
-			activeTasks = tasks;
+			activeTasks = identityIndex.getTasks(false);
 		} else {
 			progressCallback?.("Applying latest task states from branch scans...");
-			activeTasks = filterTasksByStateSnapshots(tasks, buildLatestStateMap(branchStateEntries || [], localTasks));
+			activeTasks = identityIndex.getTasks(false);
 		}
 
 		// Load drafts
@@ -3067,15 +3040,13 @@ export class Core {
 
 		// Load tasks from remote branches and other local branches in parallel
 		// Skip entirely when cross-branch scanning is disabled
-		let remoteTasks: Task[] = [];
-		let localBranchTasks: Task[] = [];
 		let branchStateEntries: BranchTaskStateEntry[] | undefined;
 
 		if (config?.checkActiveBranches !== false) {
 			progressCallback?.(getTaskLoadingMessage(config));
 			branchStateEntries = [];
 			const backlogDir = await this.getBacklogDirectoryName();
-			[remoteTasks, localBranchTasks] = await Promise.all([
+			await Promise.all([
 				loadRemoteTasks(
 					this.git,
 					config,
@@ -3102,105 +3073,57 @@ export class Core {
 			throw new Error("Loading cancelled");
 		}
 
-		// Create map with local tasks (current branch filesystem)
-		const tasksById = new Map<string, Task>(localTasks.map((t) => [t.id, { ...t, source: "local" }]));
-
-		// Add local completed tasks when requested
+		// Build the shared task identity index: local working copy + completed + branch states
+		const records: TaskIdentityRecord[] = [];
+		for (const task of localTasks) {
+			records.push({
+				id: task.id,
+				type: "task",
+				branch: "local",
+				path: task.filePath ?? "",
+				lastModified:
+					task.lastModified ?? (task.updatedDate ? new Date(getStoredUtcTimestamp(task.updatedDate)) : new Date(0)),
+				task: { ...task, source: "local" },
+				workingCopy: true,
+			});
+		}
 		if (includeCompleted) {
 			for (const completedTask of completedTasks) {
-				tasksById.set(completedTask.id, { ...completedTask, source: "completed" });
-			}
-		}
-
-		// Merge tasks from other local branches
-		for (const branchTask of localBranchTasks) {
-			if (abortSignal?.aborted) {
-				throw new Error("Loading cancelled");
-			}
-
-			const existing = tasksById.get(branchTask.id);
-			if (!existing) {
-				tasksById.set(branchTask.id, branchTask);
-			} else {
-				const resolved = resolveTaskConflict(existing, branchTask, statuses, resolutionStrategy);
-				tasksById.set(branchTask.id, resolved);
-			}
-		}
-
-		// Merge remote tasks with local tasks
-		for (const remoteTask of remoteTasks) {
-			// Check for cancellation during merge
-			if (abortSignal?.aborted) {
-				throw new Error("Loading cancelled");
-			}
-
-			const existing = tasksById.get(remoteTask.id);
-			if (!existing) {
-				tasksById.set(remoteTask.id, remoteTask);
-			} else {
-				const resolved = resolveTaskConflict(existing, remoteTask, statuses, resolutionStrategy);
-				tasksById.set(remoteTask.id, resolved);
-			}
-		}
-
-		// Check for cancellation before cross-branch checking
-		if (abortSignal?.aborted) {
-			throw new Error("Loading cancelled");
-		}
-
-		// Get the latest directory location of each task across all branches
-		const tasks = Array.from(tasksById.values());
-
-		if (abortSignal?.aborted) {
-			throw new Error("Loading cancelled");
-		}
-
-		let filteredTasks: Task[];
-
-		if (config?.checkActiveBranches === false) {
-			filteredTasks = tasks;
-		} else {
-			progressCallback?.("Applying latest task states from branch scans...");
-			if (!includeCompleted) {
-				filteredTasks = filterTasksByStateSnapshots(tasks, buildLatestStateMap(branchStateEntries || [], localTasks));
-			} else {
-				const stateEntries = branchStateEntries || [];
-				for (const completedTask of completedTasks) {
-					if (!completedTask.id) continue;
-					const lastModified = completedTask.updatedDate
+				records.push({
+					id: completedTask.id,
+					type: "completed",
+					branch: "local",
+					path: completedTask.filePath ?? "",
+					lastModified: completedTask.updatedDate
 						? new Date(getStoredUtcTimestamp(completedTask.updatedDate))
-						: new Date(0);
-					stateEntries.push({
-						id: completedTask.id,
-						type: "completed",
-						branch: "local",
-						path: "",
-						lastModified,
-					});
-				}
-
-				const latestState = buildLatestStateMap(stateEntries, localTasks);
-				const completedIds = new Set<string>();
-				for (const [id, entry] of latestState) {
-					if (entry.type === "completed") {
-						completedIds.add(id);
-					}
-				}
-
-				filteredTasks = tasks
-					.filter((task) => {
-						const latest = latestState.get(task.id);
-						if (!latest) return true;
-						return latest.type === "task" || latest.type === "completed";
-					})
-					.map((task) => {
-						if (!completedIds.has(task.id)) {
-							return task;
-						}
-						return { ...task, source: "completed" };
-					});
+						: new Date(0),
+					task: { ...completedTask, source: "completed" },
+					workingCopy: true,
+				});
 			}
 		}
+		records.push(...(branchStateEntries ?? []));
+
+		if (abortSignal?.aborted) {
+			throw new Error("Loading cancelled");
+		}
+
+		if (config?.checkActiveBranches !== false) {
+			progressCallback?.("Applying latest task states from branch scans...");
+		}
+
+		const identityIndex = new TaskIdentityIndex(
+			records,
+			{
+				repositoryRoot: await this.git.getRepositoryRoot(),
+				projectRoot: this.fs.rootDir,
+				backlogDirectory: await this.getBacklogDirectoryName(),
+			},
+			statuses,
+			resolutionStrategy,
+		);
+
+		const filteredTasks = identityIndex.getTasks(includeCompleted);
 
 		return filteredTasks;
 	}

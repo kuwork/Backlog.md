@@ -40,6 +40,28 @@ export function normalizeTaskId(taskId: string, prefix: string = DEFAULT_TASK_PR
 	return normalizeId(taskId, effectivePrefix);
 }
 
+function canonicalDecimalSegment(segment: string): string {
+	const withoutLeadingZeroes = segment.replace(/^0+/, "");
+	return withoutLeadingZeroes || "0";
+}
+
+/**
+ * Return the stable identity used to group task IDs: uppercase prefix plus a
+ * zero-padding-insensitive dotted-decimal body ("task-0042" and "TASK-42" both
+ * canonicalize to "TASK-42"). Unlike normalizeTaskId, this strips leading
+ * zeroes so IDs that differ only in padding group as one identity.
+ */
+export function canonicalTaskId(taskId: string, prefix: string = DEFAULT_TASK_PREFIX): string {
+	const trimmed = taskId.trim();
+	const inferredPrefix = extractAnyPrefix(trimmed);
+	const effectivePrefix = inferredPrefix ?? prefix;
+	const body = extractTaskBody(trimmed, effectivePrefix);
+	if (body) {
+		return `${effectivePrefix.toUpperCase()}-${body.split(".").map(canonicalDecimalSegment).join(".")}`;
+	}
+	return normalizeTaskId(trimmed, effectivePrefix).toUpperCase();
+}
+
 export function normalizeTaskIdentity(task: Task): Task {
 	const normalizedId = normalizeTaskId(task.id);
 	const normalizedParent = task.parentTaskId ? normalizeTaskId(task.parentTaskId) : undefined;

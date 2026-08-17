@@ -2,7 +2,7 @@ import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import getPort, { portNumbers } from "get-port";
-import { Core } from "../core/backlog.ts";
+import { AmbiguousTaskIdError, Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { convertDocxToMarkdown } from "../core/docx-converter.ts";
 import {
@@ -1141,17 +1141,18 @@ export class BacklogServer {
 	}
 
 	private async handleGetTask(taskId: string): Promise<Response> {
-		const store = await this.getContentStoreInstance();
-
-		const localTask = await this.core.filesystem.loadTask(taskId);
-		if (localTask) {
-			store.upsertTask(localTask);
-			return Response.json(localTask);
-		}
-
-		const task = findTaskByLooseId(store.getTasks(), taskId);
-		if (task) {
-			return Response.json(task);
+		try {
+			const task = await this.core.getTask(taskId);
+			if (task) {
+				const store = await this.getContentStoreInstance();
+				store.upsertTask(task);
+				return Response.json(task);
+			}
+		} catch (error) {
+			if (error instanceof AmbiguousTaskIdError) {
+				return Response.json({ error: "Task ID is ambiguous", candidates: error.candidates }, { status: 409 });
+			}
+			throw error;
 		}
 
 		return Response.json({ error: "Task not found" }, { status: 404 });

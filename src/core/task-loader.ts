@@ -26,6 +26,7 @@ export interface BranchTaskStateEntry {
 	lastModified: Date;
 	branch: string;
 	path: string;
+	task?: Task;
 }
 
 const STATE_DIRECTORIES: Array<{ path: string; type: TaskDirectoryType }> = [
@@ -179,10 +180,14 @@ export async function buildRemoteTaskIndex(
  * Hydrate tasks by fetching their content
  * Only call this for the "winner" tasks that we actually need
  */
-async function hydrateTasks(
-	git: GitOperations,
-	winners: Array<{ id: string; ref: string; path: string }>,
-): Promise<Task[]> {
+interface HydrationWinner {
+	id: string;
+	ref: string;
+	path: string;
+	stateEntry?: BranchTaskStateEntry;
+}
+
+async function hydrateTasks(git: GitOperations, winners: HydrationWinner[]): Promise<Task[]> {
 	const CONCURRENCY = 8;
 	const result: Task[] = [];
 	let i = 0;
@@ -203,6 +208,9 @@ async function hydrateTasks(
 					task.source = "remote";
 					// Extract branch name from ref (e.g., "origin/main" -> "main")
 					task.branch = w.ref.replace("origin/", "");
+					if (w.stateEntry) {
+						w.stateEntry.task = task;
+					}
 					result.push(task);
 				}
 			} catch (error) {
@@ -310,12 +318,22 @@ export async function buildLocalBranchTaskIndex(
  * Choose which remote tasks need to be hydrated based on strategy
  * Returns only the tasks that are newer or more progressed than local versions
  */
+function stateEntryFor(
+	stateCollector: BranchTaskStateEntry[] | undefined,
+	id: string,
+	branch: string,
+	path: string,
+): BranchTaskStateEntry | undefined {
+	return stateCollector?.find((entry) => entry.id === id && entry.branch === branch && entry.path === path);
+}
+
 function chooseWinners(
 	localById: Map<string, Task>,
 	remoteIndex: Map<string, RemoteIndexEntry[]>,
 	strategy: "most_recent" | "most_progressed" = "most_progressed",
-): Array<{ id: string; ref: string; path: string }> {
-	const winners: Array<{ id: string; ref: string; path: string }> = [];
+	stateCollector?: BranchTaskStateEntry[],
+): HydrationWinner[] {
+	const winners: HydrationWinner[] = [];
 
 	for (const [id, entries] of remoteIndex) {
 		const local = localById.get(id);
@@ -323,7 +341,12 @@ function chooseWinners(
 		if (!local) {
 			// No local version - take the newest remote
 			const best = entries.reduce((a, b) => (a.lastModified >= b.lastModified ? a : b));
-			winners.push({ id, ref: `origin/${best.branch}`, path: best.path });
+			winners.push({
+				id,
+				ref: `origin/${best.branch}`,
+				path: best.path,
+				stateEntry: stateEntryFor(stateCollector, id, best.branch, best.path),
+			});
 			continue;
 		}
 
@@ -337,6 +360,7 @@ function chooseWinners(
 					id,
 					ref: `origin/${newestRemote.branch}`,
 					path: newestRemote.path,
+					stateEntry: stateEntryFor(stateCollector, id, newestRemote.branch, newestRemote.path),
 				});
 			}
 			continue;
@@ -354,6 +378,7 @@ function chooseWinners(
 				id,
 				ref: `origin/${newestRemote.branch}`,
 				path: newestRemote.path,
+				stateEntry: stateEntryFor(stateCollector, id, newestRemote.branch, newestRemote.path),
 			});
 		}
 	}
@@ -523,21 +548,26 @@ export async function loadRemoteTasks(
 		onProgress?.(`Found ${remoteIndex.size} unique tasks across remote branches`);
 
 		// If we have local tasks, use them to determine which remote tasks to hydrate
-		let winners: Array<{ id: string; ref: string; path: string }>;
+		let winners: HydrationWinner[];
 
 		if (localTasks && localTasks.length > 0) {
 			const localById = new Map(localTasks.map((t) => [normalizeTaskId(t.id), t]));
 			const strategy = userConfig?.taskResolutionStrategy || "most_progressed";
 
 			// Only hydrate remote tasks that are newer or missing locally
-			winners = chooseWinners(localById, remoteIndex, strategy);
+			winners = chooseWinners(localById, remoteIndex, strategy, stateCollector);
 			onProgress?.(`Hydrating ${winners.length} remote candidates...`);
 		} else {
 			// No local tasks, need to hydrate all remote tasks (take newest of each)
 			winners = [];
 			for (const [id, entries] of remoteIndex) {
 				const best = entries.reduce((a, b) => (a.lastModified >= b.lastModified ? a : b));
-				winners.push({ id, ref: `origin/${best.branch}`, path: best.path });
+				winners.push({
+					id,
+					ref: `origin/${best.branch}`,
+					path: best.path,
+					stateEntry: stateEntryFor(stateCollector, id, best.branch, best.path),
+				});
 			}
 			onProgress?.(`Hydrating ${winners.length} remote tasks...`);
 		}
@@ -654,7 +684,7 @@ export async function loadLocalBranchTasks(
 		onProgress?.(`Found ${localBranchIndex.size} unique tasks in other local branches`);
 
 		// Determine which tasks to hydrate
-		let winners: Array<{ id: string; ref: string; path: string }>;
+		let winners: HydrationWinner[];
 
 		if (localTasks && localTasks.length > 0) {
 			const localById = new Map(localTasks.map((t) => [normalizeTaskId(t.id), t]));
@@ -668,7 +698,12 @@ export async function loadLocalBranchTasks(
 				if (!local) {
 					// Task doesn't exist locally - take the newest from other branches
 					const best = entries.reduce((a, b) => (a.lastModified >= b.lastModified ? a : b));
-					winners.push({ id, ref: best.branch, path: best.path });
+					winners.push({
+						id,
+						ref: best.branch,
+						path: best.path,
+						stateEntry: stateEntryFor(stateCollector, id, best.branch, best.path),
+					});
 					continue;
 				}
 
@@ -678,7 +713,12 @@ export async function loadLocalBranchTasks(
 					const newestOther = entries.reduce((a, b) => (a.lastModified >= b.lastModified ? a : b));
 
 					if (newestOther.lastModified.getTime() > localTs) {
-						winners.push({ id, ref: newestOther.branch, path: newestOther.path });
+						winners.push({
+							id,
+							ref: newestOther.branch,
+							path: newestOther.path,
+							stateEntry: stateEntryFor(stateCollector, id, newestOther.branch, newestOther.path),
+						});
 					}
 				} else {
 					// For most_progressed, we need to hydrate to check status
@@ -687,7 +727,12 @@ export async function loadLocalBranchTasks(
 
 					if (maybeNewer) {
 						const newestOther = entries.reduce((a, b) => (a.lastModified >= b.lastModified ? a : b));
-						winners.push({ id, ref: newestOther.branch, path: newestOther.path });
+						winners.push({
+							id,
+							ref: newestOther.branch,
+							path: newestOther.path,
+							stateEntry: stateEntryFor(stateCollector, id, newestOther.branch, newestOther.path),
+						});
 					}
 				}
 			}
@@ -696,7 +741,12 @@ export async function loadLocalBranchTasks(
 			winners = [];
 			for (const [id, entries] of localBranchIndex) {
 				const best = entries.reduce((a, b) => (a.lastModified >= b.lastModified ? a : b));
-				winners.push({ id, ref: best.branch, path: best.path });
+				winners.push({
+					id,
+					ref: best.branch,
+					path: best.path,
+					stateEntry: stateEntryFor(stateCollector, id, best.branch, best.path),
+				});
 			}
 		}
 
