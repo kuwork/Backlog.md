@@ -1,83 +1,51 @@
 ---
 title: CLI-INSTRUCTIONS.md 命令参考
+created_date: '2026-05-06 00:00'
+updated_date: '2026-08-17 23:00'
 labels: [source]
 source_path: CLI-INSTRUCTIONS.md
-created_date: 2026-05-06 00:00
 ---
-
 
 # CLI-INSTRUCTIONS.md 摘要
 
 完整的 Backlog.md CLI 命令参考文档，涵盖项目设置、任务管理、搜索、看板、文档、决策、Web 界面等所有用户-facing 命令。
 
-## 项目设置
+## 新增与更新的命令/选项
 
-- `backlog init [project-name]` — 初始化项目（交互式向导）
-- `backlog init --no-git` — 无 Git 的纯文件系统项目
-- `backlog config` — 高级配置向导（DoD 默认值、编辑器、端口等）
+- `backlog task edit --append-plan <text>` — 追加实现计划，可重复
+- `backlog task edit --append-notes/--append-final-summary` — 追加备注/总结
+- `backlog task list/view/search --json` — 稳定 JSON 输出（schemaVersion 1）
+- `backlog doc list --json` — JSON 文档列表
+- `backlog browser --host <host>` — 显式绑定主机（默认 `127.0.0.1`）
+- `BROWSER=/path/to/browser backlog browser` — 使用指定浏览器打开 Web UI
+- `backlog instructions overview` — 现在包含 Sequences Quick Reference
 
-## 任务管理（Task）
+## 任务管理
 
-创建：`backlog task create "标题" [-d 描述] [-a 负责人] [-s 状态] [-l 标签] [--priority high|medium|low] [--ac 验收标准] [--plan 计划] [--notes 备注] [--dep 依赖] [--ref 引用] [--doc 文档] [--dod DoD项] [--no-dod-defaults]`
+创建/编辑/查看/归档/删除任务，支持描述、负责人、状态、标签、优先级、AC、DoD、计划、备注、评论、最终总结、依赖、引用、文档链接、日期字段。
 
-子任务：`backlog task create -p 14 "子任务标题"`
+## 多行输入
 
-列表：`backlog task list [-s 状态] [-a 负责人] [-p 父任务]`
+- `--desc` / `--description`：CLI 解释 `\n` 为换行
+- `--plan`、`--notes`、`--comment`、`--final-summary` 及 `--append-*` 变体：在普通双引号内使用真实换行或 `\n`
+- 避免 `$'...'` 包装（bash ANSI-C 引号），因为 tree-sitter/agent sandbox 可能不支持
 
-查看：`backlog task <id>`（交互式 TUI，按 E 编辑） / `backlog task <id> --plain`（纯文本，适合 AI）
+## 搜索与过滤
 
-编辑：`backlog task edit <id> [所有创建时的选项] [--remove-ac 序号] [--check-ac 序号] [--uncheck-ac 序号] [--append-notes] [--final-summary] [--append-final-summary] [--clear-final-summary]`
-
-归档：`backlog task archive <id>`
-
-降级为草稿：`backlog task demote <id>`
-
-## 草稿（Draft）
-
-- `backlog task create "标题" --draft`
-- `backlog draft create "标题"`
-- `backlog draft promote <id>`
-
-## 看板（Board）
-
-- `backlog board` — 交互式 TUI 看板
-- `backlog board export [文件]` — 导出为 Markdown 表格
-- `backlog board export --readme` — 导出到 README.md
-- `backlog board export --export-version "v1.0.0"`
-
-## 搜索（Search）
-
-- `backlog search "关键词"` — 模糊搜索任务/文档/决策
-- `backlog search "关键词" --status "In Progress" --priority high`
-- `backlog search "关键词" --plain`
-
-## 统计与概览
-
-- `backlog overview` — 交互式 TUI 统计面板（状态分布、优先级、完成率、近期活动）
+- `backlog search "关键词" --status/--exclude-status/--unassigned --plain`
+- 状态支持多选和排除；`--unassigned` 过滤无负责人任务
+- Fuse.js 搜索在 TUI/CLI/MCP/Web 统一使用 0.45 分数阈值
 
 ## Web 界面
 
-- `backlog browser` — 启动 Web UI（默认端口 6420，自动打开浏览器）
-- `backlog browser --port 8080 --no-open`
+- `backlog browser` 默认仅本机回环；`--host 0.0.0.0` 开放 LAN（未认证 API，谨慎使用）
+- `BROWSER` 环境变量用于 devcontainer/自定义浏览器
 
-## 文档（Doc）
+## 其他区域
 
-- `backlog doc create "标题" [-p 子路径]`
-- `backlog doc update <id> --content "内容" [--title] [-t type] [--tags] [-p path]`
-- `backlog doc list`
-- `backlog doc view <id>`
+- 里程碑管理、草稿工作流、看板导出、统计概览、Shell 补全、配置管理、维护清理等保持不变并随相关任务增强。
 
-## 决策（Decision）
+## Related Sources
 
-- `backlog decision create "标题" [-s proposed|accepted|rejected|deprecated|superseded]`
-- `backlog decision list`
-
-## 维护
-
-- `backlog cleanup` — 将旧的 Done 任务移动到 completed 文件夹
-- `backlog agents --update-instructions` — 更新 AI 代理指令文件
-
-## Shell 补全
-
-- `backlog completion install` — 自动检测并安装当前 shell 的补全脚本
-- 支持 bash、zsh、fish、PowerShell
+- [[sources/readme-md]] — 中文产品概述
+- [[sources/readme-en-md]] — 英文产品概述
