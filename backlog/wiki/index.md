@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-08-09 00:00'
+updated_date: '2026-08-17 22:06'
 ---
 
 
@@ -79,7 +79,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-514-auto-port]] | BACK-514 浏览器 Web UI 自动端口选择 | source, feature, web-ui, server, port, enhancement |
 | [[sources/back-515-milestone-update-fix]] | BACK-515 Web API 里程碑更新返回修复 | source, bug, web-api, milestones |
 | [[sources/back-516-gantt-drag-fix]] | BACK-516 甘特图拖拽改为滚动而非修改视图范围 | source, bug, web-ui, gantt |
-| [[sources/back-517-i18n-fragmentation-fix]] | BACK-517 里程碑展开/折叠按钮 i18n 字符串碎片化修复 | source, bug, web-ui, milestones, i18n |
+| [[sources/back-517-i18n-fragmentation-fix]] | BACK-517 修复里程碑展开/折叠按钮 i18n 字符串拼接反模式 | source, bug, web-ui, milestones, i18n |
 | [[sources/back-518-tui-theme-adaptive]] | BACK-518 TUI 主题自适应渲染：移除硬编码颜色 | source, ui, board, ux |
 | [[sources/back-520-fix-codex-mcp-connection-failure]] | BACK-520 修复 Codex MCP 连接失败 | source, mcp, codex, bug |
 | [[sources/back-522-resolve-mcp-project-root-from-client-workspace-roots]] | BACK-522 从客户端 workspace roots 解析 MCP project root | source, mcp, bug, roots, workspace |
@@ -123,6 +123,27 @@ Read this file FIRST on any wiki operation.
 | [[sources/doc-4-upstream-migration-classification]] | doc-4 上游 v1.47.1→v1.48.0 迁移差异分类 | source, doc, migration |
 | [[sources/doc-5-a-class-migration-analysis]] | doc-5 A 类上游任务迁移分析报告 | source, doc, migration |
 | [[sources/doc-6-b-class-migration-analysis]] | doc-6 B 类上游任务迁移分析报告 | source, doc, migration |
+| [[sources/back-410-cursor-agents-md-cleanup]] | BACK-410 Cursor AGENTS.md init cleanup | source, cli, init, agents, cursor |
+| [[sources/back-554-document-sequences-command-in-cli-instructions]] | BACK-554 CLI instructions 中补充 sequences 命令 | source, documentation, cli, sequences |
+| [[sources/back-555-tui-live-refresh-atomic-writes]] | BACK-555 TUI live refresh 对原子写入稳健 | source, tui, file-watcher, concurrency |
+| [[sources/back-556-task-edit-append-plan]] | BACK-556 task edit 新增 --append-plan | source, cli, task-editing |
+| [[sources/back-557-browser-shortcuts-inline-fields]] | BACK-557 防止浏览器快捷键拦截内联字段 | source, web-ui, keyboard, bug |
+| [[sources/back-558-browser-server-loopback-only]] | BACK-558 浏览器服务器仅绑定回环 | source, server, security |
+| [[sources/back-559-browser-launch-honor-browser-env]] | BACK-559 启动浏览器 honor BROWSER 环境变量 | source, cli, server, browser |
+| [[sources/back-560-milestone-id-filtering]] | BACK-560 里程碑 ID 查询解析过滤 | source, milestones, filtering |
+| [[sources/back-561-autocommit-exact-files]] | BACK-561 autoCommit 精确到触碰文件 | source, git, auto-commit, core |
+| [[sources/back-562-stable-json-output]] | BACK-562 只读命令稳定 JSON 输出 | source, cli, json, api-contract |
+| [[sources/back-563-tui-intent-first-composer]] | BACK-563 TUI N 键任务 composer | source, tui, task-creation |
+| [[sources/back-564-search-score-threshold]] | BACK-564 搜索分数阈值跨表面对齐 | source, search, fuse, tui, cli, mcp |
+| [[sources/back-565-tui-theme-adaptive-scroll]] | BACK-565 TUI 主题自适应、滚动、Tab 切换 | source, tui, theme, accessibility |
+| [[sources/back-566-browser-async-loading]] | BACK-566 浏览器异步 idle-stable 加载指示 | source, web-ui, server, performance |
+| [[sources/back-567-cross-branch-task-identity]] | BACK-567 同路径跨分支任务版本统一身份 | source, core, identity, git |
+| [[sources/back-568-core-browser-task-boundary]] | BACK-568 Core 作为浏览器任务唯一边界 | source, server, web-ui, core |
+| [[sources/back-569-acceptance-criteria-progress-ui]] | BACK-569 TUI/Web 任务摘要 AC 进度 | source, tui, web-ui, acceptance-criteria |
+| [[sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification]] | doc-7 上游 v1.48.0→v1.49.3 迁移差异分类 | source, doc, migration, upstream |
+| [[sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain]] | doc-8 上游 v1.48.0→v1.49.3 按领域迁移分析 | source, doc, migration, upstream |
+| [[sources/draft-89-windows-ci-under-three-minutes]] | draft-89 Windows CI 压到三分钟以下 | source, draft, ci, testing |
+| [[sources/readme-en-md]] | README.en.md 英文产品概述 | source |
 
 ## Execution Notes
 
@@ -142,6 +163,9 @@ Read this file FIRST on any wiki operation.
 | [[execution/wikilink-media-rendering-pattern]] | Wikilink 媒体渲染模式 | 解析、路径解析、尺寸控制与组件注册的标准步骤 |
 | [[execution/instruction-guide-backport-pattern]] | agent-guidelines 运营指导回传到 CLI/MCP 指令表面 | 差距审计、内容拆分、两边同步、注册新指南、测试与构建的标准步骤 |
 | [[execution/content-store-version-guard-pattern]] | ContentStore 版本守卫刷新合并模式 | 防止异步刷新晚于写入完成而覆盖新状态的标准步骤 |
+| [[execution/browser-launch-utils-pattern]] | 浏览器启动命令统一模式 | BROWSER 环境变量安全处理 + 平台 fallback 统一调用点 |
+| [[execution/task-identity-index-pattern]] | TaskIdentityIndex 替换 ID-keyed 合并模式 | canonical ID + 逻辑路径身份键 + 确定性胜出 + 歧义 fail-closed |
+| [[execution/search-score-threshold-pattern]] | 统一搜索分数阈值模式 | 所有搜索入口共用 Web 0.45 Fuse 阈值，过滤数字误匹配 |
 
 ## Decisions
 
@@ -175,6 +199,12 @@ Read this file FIRST on any wiki operation.
 | [[decisions/tokenizer-over-regex-sentinel]] | AC/DoD 解析用 tokenizer 替代 regex 哨兵 | BACK-537 选择确定性解析与 fail-closed |
 | [[decisions/content-store-version-guard]] | ContentStore 用逐项版本守卫防止过期刷新 | BACK-540 选择版本守卫+条件合并而非全局锁 |
 | [[decisions/ignore-ordinal-for-updated-date]] | ordinal 变更忽略 updated_date 差异 | BACK-534 选择集中式时间戳逻辑消除 diff 噪音 |
+| [[decisions/json-output-no-duplicate-integrity-warning]] | JSON 输出不接重复 ID 前置检查 | BACK-562 选择保留 doctor/Web 主动检查，避免每次 read 全量扫描 |
+| [[decisions/tui-composer-no-type-no-cas]] | TUI composer 不迁移 type 字段与 git CAS 管线 | BACK-563 采用成熟 composer 但适配 fork 模型 |
+| [[decisions/search-score-threshold-over-substring]] | 搜索统一使用 0.45 Fuse 分数阈值 | BACK-564 对齐所有搜索表面 |
+| [[decisions/browser-loopback-with-host-opt-in]] | 浏览器服务器默认回环 + --host 显式开放 LAN | BACK-558 安全默认 |
+| [[decisions/autocommit-exact-files-no-cas]] | autoCommit 精确文件提交但不移植临时索引 CAS 管线 | BACK-561 使用 git commit --only |
+| [[decisions/keep-sequences-upstream-removed]] | 保留 sequences 功能并补充 CLI 文档 | BACK-554 保留 fork 已有能力 |
 
 ## Concepts
 
@@ -193,7 +223,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/paste-as-markdown]] | 粘贴为 Markdown | 富文本自动转换为 Markdown，支持图片上传 |
 | [[concepts/asset-management]] | 资源管理与临时文件提升 | AssetManager、临时目录、安全下载、promote 机制 |
 | [[concepts/file-preview]] | 本地文件预览 | 代码/Markdown 文件预览、语法高亮、行号、行范围 |
-| [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、HTML 提取、图片保存、统一 Markdown 流水线 |
+| [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、Markdown 转换、图片保存、统一 Markdown 流水线 |
 | [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
 | [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
 | [[concepts/wikilink]] | Wikilink | wiki 页面间交叉引用语法 `[[path/to/page]]`，支持别名、属性块、媒体嵌入 |
@@ -206,6 +236,11 @@ Read this file FIRST on any wiki operation.
 | [[concepts/tui-theme-adaptive]] | TUI 主题自适应渲染 | 逆视频高亮、移除硬编码 ANSI 颜色、跨主题兼容 |
 | [[concepts/cli-instructions]] | CLI 指令表面 | `backlog instructions` 提供的本地工作流指南与 CLI 优先代理集成 |
 | [[concepts/milestones]] | 里程碑管理 | 里程碑创建、分配、归档，CLI 与 MCP 操作语义 |
+| [[concepts/json-output]] | 稳定 JSON 输出 | 只读命令 --json 版本化契约、stdout-only、错误写 stderr |
+| [[concepts/task-identity]] | 共享任务身份 | canonical ID + 逻辑路径统一跨分支/完成/归档记录身份 |
+| [[concepts/browser-loading]] | 浏览器加载状态 | bind-first 服务器、WebSocket 三态、骨架屏/错误重试 |
+| [[concepts/upstream-migration]] | 上游迁移策略 | fork 对上游 A/B/C 分类与按领域迁移分析方法 |
+| [[concepts/ci-platform-contracts]] | CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
 
 ## Entities
 
