@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-08-09 00:00'
+updated_date: '2026-08-17 23:00'
 ---
 
 # Knowledge Base Overview
@@ -74,11 +74,30 @@ updated_date: '2026-08-09 00:00'
 - **Apple Silicon 二进制解析**：Rosetta/架构不匹配下正确解析平台包（BACK-550）
 - **win32-arm64 构建**：在 Linux runner 交叉编译 win32-arm64 发布二进制，矩阵加 fail-fast:false（BACK-539）
 - **浏览器 UI 打包现代化**：用 `Bun.build` + `bun-plugin-tailwind` 取代两步 build:css+compile 流程（BACK-553）
+- **浏览器服务器仅回环默认**：`backlog browser` 绑定 `127.0.0.1`，`--host 0.0.0.0` 显式开放 LAN（BACK-558）
+- **`BROWSER` 环境变量启动**：devcontainer 等场景可用 `BROWSER=/path/to/browser backlog browser`（BACK-559）
+- **稳定 JSON 输出**：只读命令 `task list/view/search`、`doc list` 支持 `--json`（schemaVersion 1，stdout-only）（BACK-562）
+- **`task edit --append-plan`**：可重复追加实现计划（BACK-556）
+- **里程碑 ID 过滤解析**：CLI/交互列表/MCP 统一按数字/规范 ID/标题过滤（BACK-560）
+- **精确 autoCommit**：仅提交本次操作触碰的文件，保留用户 staged/untracked 工作（BACK-561）
+- **TUI N 键任务 composer**：看板直接创建任务，空看板也可打开（BACK-563）
+- **TUI 主题自适应与滚动**：PageUp/PageDown/Home/End、滚动条、稳定 Tab 视图切换（BACK-565）
+- **浏览器异步加载指示**：bind-first 服务器、WebSocket loading 三态、真实骨架屏/错误重试（BACK-566）
+- **共享任务身份**：canonical ID + 逻辑路径统一跨分支版本，歧义 fail-closed 409（BACK-567）
+- **Core 浏览器边界**：server/web handler 统一走 Core，reorder 原子应用 changedTasks，广播 75ms 防抖（BACK-568）
+- **验收标准进度条**：TUI/Web 任务摘要显示 `[██████░░░░] 4/7` 式进度（BACK-569）
+- **Cursor AGENTS.md 清理**：移除 `.cursorrules` 特判与 `CURSOR_GUIDELINES`，Cursor 统一映射到 `AGENTS.md`（BACK-410）
+- **sequences 保留与 CLI 文档补齐**：上游已移除 sequences，fork 保留并补充 `backlog instructions overview` Quick Reference（BACK-554）
+- **CI 平台契约**：Windows CI 从 ~16m 压到 ~2m，Ubuntu 全量 + Windows/macOS 平台契约子集（draft-89）
 
 ### 上游迁移（v1.47.1 .. v1.48.0）
-- **doc-4 差异分类**：上游 39 项变更按 A（必须合入）/B（评估合入）/C（跳过）分类，映射到 fork 迁移任务（BACK-538/537/533/540/534/535/536/550/548/541/542/551/552/549/553/543/544/546）
+- **doc-4 差异分类**：上游 39 项变更按 A/B/C 分类，映射到 fork 迁移任务（BACK-538/537/533/540/534/535/536/550/548/541/542/551/552/549/553/543/544/546）
 - **doc-5 A 类分析**：逐项给出迁移建议；A1 类型字段用户决策放弃
 - **doc-6 B 类分析**：B1 路由、B9 dateFormat、B2 自定义优先级决策跳过；B8 draft 链接勘误
+
+### 上游迁移（v1.48.0 .. v1.49.3）
+- **doc-7 差异分类**：按 CLI/Core、TUI、Web、Server、Infra、Nix 领域分组，最终 13 A / 5 B / 10 C，映射到 BACK-562/567/561/560/556/558/559/555/563/565/557/566/569 与 draft-89
+- **doc-8 领域分析**：逐项给出上游任务核心目的、变更文件、与 fork 定制冲突风险、可复用部分、需排除部分、迁移建议（①直接复用 / ②参考重写 / ③忽略）
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -114,11 +133,11 @@ updated_date: '2026-08-09 00:00'
 
 ## 统计
 
-- Sources ingested: 108
-- Concepts extracted: 26
+- Sources ingested: 129
+- Concepts extracted: 31
 - Entities catalogued: 2
-- Execution notes: 14
-- Decisions recorded: 28
+- Execution notes: 17
+- Decisions recorded: 35
 - Patterns: 5
 - Reasoning traces: 2
 - User manual pages: 24

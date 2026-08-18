@@ -23,6 +23,8 @@ Backlog.md 通过 `backlog instructions` 命令向人类和 AI 代理暴露本�
 | `backlog instructions drafts` | 草稿工作流指南：草稿 vs 任务取舍、`draft create` 与 `task create --draft` 差异、promote/demote 后 ID 变化与继续编辑（BACK-532） |
 | `backlog instructions init-required` | 未初始化目录的回退指南 |
 
+序列命令也已通过 `backlog instructions overview` 的 Sequences Quick Reference 暴露给 AI 代理，说明 `backlog sequence list --plain` 与从依赖派生的并行序列（[[sources/back-554-document-sequences-command-in-cli-instructions|BACK-554]]）。
+
 裸 `backlog` 命令默认输出纯文本地帮助入口，指向 `backlog instructions` 与具体命令帮助（[[sources/back-521.6|BACK-521.6]]）。
 
 ## 核心原则
@@ -127,3 +129,8 @@ MCP 客户端通过 `get_backlog_instructions` 工具或 `backlog://workflow/...
 - [[sources/back-521.2]] — Short agent nudge and init default migration
 - [[sources/back-521.6]] — Root command local instruction hub
 - [[sources/back-521.14]] — Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-410-cursor-agents-md-cleanup]] — Cursor AGENTS.md init cleanup
+- [[sources/back-554-document-sequences-command-in-cli-instructions]] — Sequences Quick Reference
+- [[sources/back-556-task-edit-append-plan]] — task edit --append-plan
+- [[sources/back-558-browser-server-loopback-only]] — browser loopback binding
+- [[sources/back-559-browser-launch-honor-browser-env]] — BROWSER launch
