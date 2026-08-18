@@ -567,3 +567,102 @@ Chronological, append-only record of all wiki operations.
 - `60-配置与运维/00-配置管理` — hide_empty_columns、块状 YAML 列表解析、列表键编辑指引
 
 **新增用户手册页面**: 0 个
+
+
+## [2026-08-17 23:00:00] batch-ingest | 增量摄取 BACK-410/554~569、doc-7/8、draft-89 及顶层文档
+
+**检测基线**: 2026-08-10 22:56:48（上次 batch-ingest，BACK-529~553 及 doc-4/5/6）
+
+**Git 变更文件**: 17 个新任务（BACK-410、BACK-554~569）+ 2 个迁移文档（doc-7、doc-8）+ 1 个草稿（draft-89）+ 3 个顶层 markdown 文件更新（README.md、README.en.md、CLI-INSTRUCTIONS.md）
+
+**新 source 页面**: 21 个
+- `sources/back-410-cursor-agents-md-cleanup` — BACK-410 Cursor AGENTS.md init cleanup
+- `sources/back-554-document-sequences-command-in-cli-instructions` — BACK-554 CLI instructions 中补充 sequences 命令
+- `sources/back-555-tui-live-refresh-atomic-writes` — BACK-555 TUI live refresh 对原子写入稳健
+- `sources/back-556-task-edit-append-plan` — BACK-556 task edit 新增 --append-plan
+- `sources/back-557-browser-shortcuts-inline-fields` — BACK-557 防止浏览器快捷键拦截内联字段
+- `sources/back-558-browser-server-loopback-only` — BACK-558 浏览器服务器仅绑定回环
+- `sources/back-559-browser-launch-honor-browser-env` — BACK-559 启动浏览器 honor BROWSER 环境变量
+- `sources/back-560-milestone-id-filtering` — BACK-560 里程碑 ID 查询解析过滤
+- `sources/back-561-autocommit-exact-files` — BACK-561 autoCommit 精确到触碰文件
+- `sources/back-562-stable-json-output` — BACK-562 只读命令稳定 JSON 输出
+- `sources/back-563-tui-intent-first-composer` — BACK-563 TUI N 键任务 composer
+- `sources/back-564-search-score-threshold` — BACK-564 搜索分数阈值跨表面对齐
+- `sources/back-565-tui-theme-adaptive-scroll` — BACK-565 TUI 主题自适应、滚动、Tab 切换
+- `sources/back-566-browser-async-loading` — BACK-566 浏览器异步 idle-stable 加载指示
+- `sources/back-567-cross-branch-task-identity` — BACK-567 同路径跨分支任务版本统一身份
+- `sources/back-568-core-browser-task-boundary` — BACK-568 Core 作为浏览器任务唯一边界
+- `sources/back-569-acceptance-criteria-progress-ui` — BACK-569 TUI/Web 任务摘要 AC 进度
+- `sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification` — doc-7 上游 v1.48.0→v1.49.3 迁移差异分类
+- `sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain` — doc-8 上游 v1.48.0→v1.49.3 按领域迁移分析
+- `sources/draft-89-windows-ci-under-three-minutes` — draft-89 Windows CI 压到三分钟以下
+- `sources/readme-en-md` — README.en.md 英文产品概述
+
+**更新 source 页面**: 3 个
+- `sources/readme-md` — 更新产品概述
+- `sources/cli-instructions-md` — 更新 CLI 命令参考
+- `sources/doc-4-upstream-migration-classification` — 更新上游迁移分类
+
+**更新 concept 页面**: 8 个
+- `concepts/web-server` — bind-first 服务器、WebSocket loading 三态、浏览器异步加载
+- `concepts/cli-entry` --json、sequences 文档
+- `concepts/cli-tui` — TUI composer、主题自适应滚动
+- `concepts/web-ui-features` — 浏览器加载状态、内联字段快捷键、AC 进度
+- `concepts/core-architecture` — TaskIdentityIndex、Core 浏览器边界、autoCommit 精确文件
+- `concepts/milestones` — 里程碑 ID 过滤
+- `concepts/search-sequences` — 0.45 Fuse 分数阈值
+- `concepts/cli-instructions` — sequences Quick Reference
+
+**新 concept 页面**: 5 个
+- `concepts/json-output` — 稳定 JSON 输出契约
+- `concepts/task-identity` — canonical ID + 逻辑路径统一跨分支身份
+- `concepts/browser-loading` — 浏览器加载状态
+- `concepts/upstream-migration` — 上游迁移策略
+- `concepts/ci-platform-contracts` — CI 平台契约测试策略
+
+**更新 entity 页面**: 2 个
+- `entities/backlog-cli` — 新增浏览器/JSON/TUI 功能
+- `entities/ai-agents` — 更新 Cursor AGENTS.md 清理
+
+**新 decision 页面**: 6 个
+- `decisions/json-output-no-duplicate-integrity-warning` — JSON 输出不接重复 ID 前置检查
+- `decisions/tui-composer-no-type-no-cas` — TUI composer 不迁移 type 字段与 git CAS 管线
+- `decisions/search-score-threshold-over-substring` — 搜索统一使用 0.45 Fuse 分数阈值
+- `decisions/browser-loopback-with-host-opt-in` — 浏览器服务器默认回环 + --host 显式开放 LAN
+- `decisions/autocommit-exact-files-no-cas` — autoCommit 精确文件提交但不移植临时索引 CAS 管线
+- `decisions/keep-sequences-upstream-removed` — 保留 sequences 功能并补充 CLI 文档
+
+**新 execution 页面**: 3 个
+- `execution/browser-launch-utils-pattern` — 浏览器启动命令统一模式
+- `execution/task-identity-index-pattern` — TaskIdentityIndex 替换 ID-keyed 合并模式
+- `execution/search-score-threshold-pattern` — 统一搜索分数阈值模式
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 提取浏览器启动、任务身份索引、搜索阈值模式
+- [x] `wiki/decisions/` — 提取 6 个微决策
+- [ ] `wiki/reasoning/` — 无复杂规划需记录
+- [ ] `wiki/patterns/` — 无 3+ 相似任务
+- [ ] `wiki/retrospectives/` — 非周期性回顾时机
+
+**更新导航**: `index.md`（Sources 129 条，Concepts 31 条，Decisions 35 条，Execution 17 条）、`overview.md`
+
+**mini-lint**: 全 wiki wikilink 扫描无 dangling link；调整 2 处旧 wikilink 概念/源页面中的 `[[demo]]` 示例目标为真实页面 `[[concepts/wikilink|...]]`。
+
+
+## [2026-08-17 22:06:00] usermanual-update | 更新用户手册，覆盖 BACK-410/554~569 功能
+
+**更新页面**: 11 个
+- `00-快速开始/02-AI集成设置` — Cursor AGENTS.md 清理说明
+- `10-任务管理/01-创建与编辑任务` — `--append-plan`、稳定 `--json` 输出
+- `10-任务管理/04-搜索与序列` — `backlog instructions overview` 序列速查、0.45 搜索分数阈值
+- `20-看板与可视化/00-TUI看板` — `N` 键 composer、主题自适应滚动、原子写入 live refresh、AC 进度
+- `30-文档与决策/02-里程碑管理` — 里程碑 ID 过滤任务列表
+- `40-Web界面/00-启动与访问` — 默认回环 + `--host`、BROWSER 环境变量
+- `40-Web界面/01-看板视图` — 内联字段快捷键保护、异步加载、AC 进度
+- `50-AI集成/01-支持的AI工具` — 补充 Cursor 的 MCP 与 AGENTS.md 双路径
+- `50-AI集成/02-代理指令文件` — Cursor 统一使用 AGENTS.md
+- `60-配置与运维/00-配置管理` — autoCommit 精确到触碰文件
+
+**新增用户手册页面**: 0 个
+
+**更新导航**: `index.md`（User Manual 章节日期刷新）
