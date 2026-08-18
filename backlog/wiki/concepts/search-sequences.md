@@ -45,6 +45,16 @@ backlog search "api" --unassigned                             # 未指派过滤
 
 支持命令过滤（command filters）和模糊匹配。
 
+### 搜索分数阈值统一（BACK-564）
+
+所有搜索入口统一使用 Web UI 的 0.45 Fuse.js 分数阈值：
+- `src/ui/board.ts` `getFilteredTasks` 和 `src/ui/unified-view.ts` `filterTasksForKanban`
+- `src/ui/task-viewer-with-search.ts` 的内存分支与 SearchService 分支
+- `src/cli.ts` search 命令过滤 SearchService 结果
+- MCP task/document search handlers 传递 `scoreThreshold: 0.45` 或等效过滤
+
+这消除了短数字查询（如 `63`）误匹配无关任务 ID（如 `BACK-410`）的问题，同时保持文本查询的 Fuse 语义一致。
+
 ### Wiki 搜索（BACK-481）
 
 Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchService`，与 tasks/documents/decisions 共用同一套缓存失效机制。
@@ -90,6 +100,7 @@ Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchSe
 - `backlog sequence list` — 列出所有序列
 - TUI 序列视图（只读 + 移动任务并更新依赖）
 - Web UI 序列页面（拖拽重新排序）
+- `backlog instructions overview` 现在包含 Sequences Quick Reference，说明 `backlog sequence list --plain` 和从依赖派生并行层（[[sources/back-554-document-sequences-command-in-cli-instructions|BACK-554]]）
 
 ## Related Sources
 - [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除与多状态过滤

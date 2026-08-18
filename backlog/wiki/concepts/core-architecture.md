@@ -118,6 +118,34 @@ ContentStore 引入**逐项发布版本守卫 + 条件合并**解决竞态：
 - `mcp.http`：MCP HTTP 传输配置（认证、CORS）
 - `defaultPort`、`autoOpenBrowser`：Web UI 默认设置
 
+## 共享任务身份（BACK-567）
+
+`src/core/task-identity-index.ts` 引入统一的任务身份模型：
+- 身份键 = `canonicalTaskId + normalizeRecordPath`（仓库相对逻辑路径）
+- 同一 ID 在同一逻辑路径的本地/分支/已完成/归档记录视为同一身份的多个版本
+- 确定性胜出顺序：工作副本 > most_recent > most_progressed
+- 不同 live 路径产生 `AmbiguousTaskIdError`，在服务器返回 409 并附候选列表
+- 任何 live 变体占用 ID；全部归档后 ID 可复用
+- 修复了等时间戳下扫描顺序可能释放 live ID 的竞态
+
+`src/core/backlog.ts` 用 `TaskIdentityIndex` 替代了 `buildLatestStateMap`/`filterTasksByStateSnapshots` 和 ID-keyed Map；保留了 `cross-branch-tasks.ts` 的 recentBranchesOnly 语义驱动 TUI 看板。
+
+## 精确文件 autoCommit（BACK-561）
+
+autoCommit 不再整目录暂存或清空共享 index：
+- FileSystem 返回被替换/移动/归档的旧路径
+- Git 层 `commitFiles` 按仓库拆分路径集，使用 `git commit --only` 仅提交 staged 路径
+- `stageFileMove` 用 `git rm --cached` 暂存旧路径删除
+- Core 每次写入通过 `commitWrittenFile` 或 `commitFiles` 精确提交触碰文件
+- 用户其他 staged/unstaged/untracked 工作得以保留
+
+## 轻量语料快照（BACK-568）
+
+`ContentStore` 在 `TaskIdentityIndex` 之上缓存 `activeTasks`/`completedTasks` 并提供：
+- `resolveTaskForRead` / `resolveTaskForMutation` 桥接到 Core
+- 浏览器 handler 通过 Core 单一边界读写，不再重复读文件系统
+- 未移植上游的 publication-owner / batchTaskUpdates / transitionTask 机制
+
 ## Related Sources
 - [[sources/back-533-config-block-yaml-lists]] — BACK-533 块状 YAML 列表
 - [[sources/back-534-preserve-updated-date-ordinal-reorder]] — BACK-534 ordinal 保留时间戳

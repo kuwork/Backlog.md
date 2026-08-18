@@ -2,7 +2,7 @@
 title: Wikilink
 labels: [concept]
 created_date: '2026-06-06 01:00'
-updated_date: '2026-06-27 21:00'
+updated_date: '2026-08-17 23:00'
 ---
 
 # Wikilink
@@ -19,7 +19,7 @@ Backlog.md wiki 使用 `[[path/to/page]]` 语法作为页面间交叉引用的�
 
 `[[target|alias]]` 支持丰富的别名内容：
 
-- 行内代码：`` [[demo|```code```]] ``
+- 行内代码：`` [[concepts/wikilink|```code```]] ``
 - Markdown 格式：粗体、斜体、删除线
 - 任意行内 HTML：`<span style="color: red;">...</span>`
 
