@@ -87,6 +87,26 @@ updated_date: '2026-08-09 00:00'
 - **语言切换**：英语 / 日语 / 简体中文 / 繁体中文
 - **Locale 切换防覆盖**：`App.tsx` 仅在首次加载时从服务器同步 locale，避免后台数据刷新覆盖用户手动选择（BACK-503）
 
+## 浏览器加载与状态（BACK-566 / BACK-568）
+
+- 服务器先绑定再初始化 Core 语料，浏览器 shell 立即可用
+- WebSocket 推送 `browserLoadingState`（loading/loaded/error），Board 显示真实骨架屏/加载阶段/可重试错误面板
+- SideNavigation 保持挂载，仅任务计数显示加载状态
+- Reorder 返回 `changedTasks` 并原子合并到本地状态，避免全量刷新
+- `tasks-updated` 广播在服务器层 75ms 防抖
+
+## 任务摘要验收标准进度（BACK-569）
+
+- `AcceptanceCriteriaProgress.tsx` 在 TaskCard 标题下方和 TaskList 标题列显示分段进度条 + checked/total 分数
+- 仅 In Progress 且含 AC 的任务显示；无 AC 不暗示 0% 完成
+- 全勾选仍保留 In Progress 状态；5/10 格布局响应式切换
+
+## 任务详情键盘守卫（BACK-557）
+
+- 预览态快捷键 `e`/`E`/`c`/`d`/`p` 在 `input`/`textarea`/`select`/`contenteditable` 内不拦截
+- 编辑态 `Escape` 和 `Cmd/Ctrl+S` 在可编辑目标内仍可用
+- 通过 `closest()` 检测 contenteditable 子元素
+
 ## 任务编辑
 
 - 富文本 Markdown 编辑器（MDEditor）
