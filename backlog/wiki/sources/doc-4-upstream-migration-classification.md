@@ -1,8 +1,8 @@
 ---
 title: doc-4 上游 v1.47.1→v1.48.0 迁移差异分类
-labels: [source, doc, migration]
 created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+updated_date: '2026-08-17 23:00'
+labels: [source, doc, migration]
 source_path: backlog/docs/migration/doc-4 - Upstream-v1.47.1-to-v1.48.0-Migration-Diff-Classification.md
 ---
 
@@ -52,12 +52,20 @@ source_path: backlog/docs/migration/doc-4 - Upstream-v1.47.1-to-v1.48.0-Migratio
 
 移除 sequences、README landing、测试可靠性、CI 加速、agent 指南、npx 文档、反引号转义、issue-first PR、UTC 日期显示、自定义优先级、dateFormat、深度链接、类型字段等——均因"fork 已含该能力、与定制冲突或方向无关"而跳过。
 
+> 注：C1（sequences 移除）在 fork 中保留，并补充了 CLI instructions 中的 Sequences Quick Reference（[[sources/back-554-document-sequences-command-in-cli-instructions|BACK-554]]）。
+
 ## Related Concepts
+
 - [[concepts/core-architecture]] — fork 定制结构
 - [[concepts/mcp-server]] — fork MCP 演进
+- [[concepts/upstream-migration]] — 上游迁移策略
 
 ## Related Sources
+
 - [[sources/doc-5-a-class-migration-analysis]] — A 类深析
 - [[sources/doc-6-b-class-migration-analysis]] — B 类深析
+- [[sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification]] — 下一版本迁移分类
+- [[sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain]] — 下一版本领域分析
+- [[sources/back-554-document-sequences-command-in-cli-instructions]] — sequences 保留与 CLI 文档
 - [[sources/back-538-duplicate-task-id-recovery]] — A2
 - [[sources/back-553-modernize-browser-bundling]] — B10
