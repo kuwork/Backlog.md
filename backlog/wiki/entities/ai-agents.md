@@ -40,6 +40,14 @@ Backlog.md 支持多种 AI 编码助手通过 MCP 或 CLI 指令集成。
 
 这些文件中的 Backlog 块是幂等的：切换集成模式时会替换 Backlog 块，同时保留用户自己的其他内容。
 
+### Cursor 行为（BACK-410）
+
+Cursor 作为 init 选项映射到共享的 `AGENTS.md` 目标：
+- 不再创建 `.cursorrules` 等 Backlog 拥有的 Cursor 规则文件
+- `CURSOR_GUIDELINES` 导出已移除
+- CLI 与 Web init 的描述文案已同步说明 Cursor 写入/使用 `AGENTS.md`
+- 保留用户已有的 `.cursor/rules` 内容
+
 ## MCP 与 CLI instructions 的区别
 
 - **CLI instructions（默认推荐）**：AI 通过阅读 `backlog instructions` 输出与命令帮助了解如何使用 `backlog` 命令，然后自行执行 shell 命令。适合广泛的 Agent 环境，无需 MCP 支持。
@@ -62,3 +70,4 @@ Backlog.md 支持多种 AI 编码助手通过 MCP 或 CLI 指令集成。
 - [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
 - [[sources/back-521.2]] — BACK-521.2 Short agent nudge and init default migration
 - [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-410-cursor-agents-md-cleanup]] — Cursor AGENTS.md cleanup

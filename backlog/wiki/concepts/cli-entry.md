@@ -148,6 +148,28 @@ backlog overview --plain # 纯文本输出
 
 输出维度：总任务数、完成百分比、草稿数、按状态/优先级分布、最近活动、项目健康度（临期/逾期/停滞/阻塞）。
 
+## 稳定 JSON 输出（BACK-562）
+
+`task list`、`task view`、任务简写、`search`、`doc list` 支持 `--json`：
+- 统一信封 `{ schemaVersion: 1, kind }`
+- JSON 只写 stdout，错误写 stderr；与 `--plain` 冲突时报错并返回非零
+- 契约包含 fork 日期字段（dueDate/plannedStart/plannedEnd/actualStart/actualEnd），不含 `task.type`，wiki 搜索结果序列化
+- 非读取类 `task` 子命令拒绝 `--json`
+
+## 追加式编辑选项
+
+- `task edit --append-plan <text>`（可重复）追加到 Implementation Plan，先 `--plan` 替换再追加，空行分隔（[[sources/back-556-task-edit-append-plan|BACK-556]]）
+- `--append-notes`、`--append-final-summary` 已存在的追加备注/最终总结（[[sources/back-530-append-description|BACK-530]]）
+
+## Web 服务器命令增强
+
+- `backlog browser --host <host>` 显式绑定主机（默认 `127.0.0.1`），`--host 0.0.0.0` 开放 LAN（[[sources/back-558-browser-server-loopback-only|BACK-558]]）
+- `BROWSER=/path/to/browser backlog browser` 使用自定义浏览器打开（[[sources/back-559-browser-launch-honor-browser-env|BACK-559]]）
+
+## 序列命令可见性（BACK-554）
+
+`backlog instructions overview` 现在包含 Sequences Quick Reference，说明 `backlog sequence list --plain` 和依赖派生的并行序列概念，保持 fork 的 sequences 能力与指令文档一致。
+
 ## Wiki Install 命令
 
 `backlog wiki install <agent>` 将内置 `llm-wiki-for-backlog` skill 安装到指定 Agent：

@@ -8,7 +8,7 @@ labels:
   - wikilink
 source_path: backlog/tasks/back-523 - Wiki-wikilinks-alias-support-with-Markdown-HTML-labels-and-markdown-it-attrs.md
 created_date: '2026-06-27 21:00'
-updated_date: '2026-06-27 21:00'
+updated_date: '2026-08-17 23:00'
 ---
 
 # BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持
@@ -23,7 +23,7 @@ updated_date: '2026-06-27 21:00'
 
 `[[target|alias]]` 中的 `alias` 支持 Markdown 行内格式：
 
-- 行内代码：`` [[demo|```code```]] ``
+- 行内代码：`` [[concepts/wikilink|```code```]] ``
 - 粗体 / 斜体 / 删除线
 - 任意行内 HTML，例如 `<span style="color: red;">...</span>`
 
