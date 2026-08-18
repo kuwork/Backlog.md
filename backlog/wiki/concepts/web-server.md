@@ -72,3 +72,36 @@ RESTful API 按资源组织：
 - `locales/`：翻译字典（`en.ts` `ja.ts` `zh-CN.ts` `zh-TW.ts`），编译时嵌入二进制
 - `contexts/I18nContext.tsx` + `hooks/useI18n.ts`：零依赖国际化层
 - 通过 Bun 的 import attributes（`with { type: "file" }`）内联 favicon
+
+## 浏览器服务器安全与启动
+
+### 仅绑定回环地址（BACK-558）
+
+`BacklogServer.start()` 默认绑定 `127.0.0.1`，用户界面仍显示/打开 `http://localhost:PORT`。`backlog browser --host <host>` 可显式绑定其他接口（如 `--host 0.0.0.0`）。通配绑定时打印具体 LAN IPv4 地址并提示 API 未认证。
+
+### 浏览器启动命令（BACK-559）
+
+`src/utils/browser-launch.ts` 统一处理浏览器打开：
+- 非空 `BROWSER` 环境变量被视为单个可执行路径（去除包裹引号，不 split，不 shell-evaluate），URL 作为独立参数传入
+- 否则按平台回退：`open`（macOS）、`cmd /c start`（Windows）、`xdg-open`（Linux）
+
+## 异步加载与实时同步
+
+### bind-first 启动与真实加载指示（BACK-566）
+
+- `start()` 先绑定 Bun 服务器，后台通过 `servicesReadyPromise` 一次性初始化 Core 语料；所有 handler 等待同一 promise，避免重复全量扫描
+- WebSocket 推送 `browserLoadingState`（loading/loaded/error），保留最新阶段并发送给迟到连接
+- Board/SideNavigation/Layout 显示真实骨架屏/加载阶段/可重试错误面板
+- 加载阶段文案通过 `loadingPhases` 本地化，未知消息回退英文
+
+### 广播防抖与 reorder 原子应用（BACK-568）
+
+- `tasks-updated` WebSocket 广播 75ms 防抖，批量更新只发布一次
+- Reorder 返回 `changedTasks`，前端通过 `applyReorderedTasks` 原子合并而非全量刷新
+
+## Related Sources
+
+- [[sources/back-558-browser-server-loopback-only]] — 回环绑定
+- [[sources/back-559-browser-launch-honor-browser-env]] — BROWSER 环境变量
+- [[sources/back-566-browser-async-loading]] — 异步加载指示
+- [[sources/back-568-core-browser-task-boundary]] — Core 浏览器边界
