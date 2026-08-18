@@ -84,6 +84,15 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 - 表头三击循环：升序 → 降序 → 清除并恢复默认序号排序
 - 里程碑卡片本身顺序保持不变
 
+## 里程碑 ID 过滤解析（BACK-560）
+
+任务列表的里程碑过滤现在统一解析：
+- 数字 ID（`0`）、规范 ID（`m-0`）、大小写变体
+- 标题精确/部分/模糊匹配，保留标点符号语义
+- CLI `task list`、交互式任务列表、MCP `task_list` 的 active 与 Draft 路径行为一致
+
+实现核心为 `src/utils/milestone-filter.ts` 的 `MilestoneFilterValueResolver` + `createMilestoneFilterMatcher`，被 Core 查询、task-search、交互式看板/列表和 MCP Draft 过滤复用。
+
 ## Related Concepts
 
 - [[concepts/date-fields]] — 日期字段语义与格式
