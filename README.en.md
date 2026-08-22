@@ -69,7 +69,21 @@ Brainstorm → doc → AI planning → tasks → pair execution → wiki
 
 ### How to Use
 
-The Wiki is fully maintained by the LLM—no manual file creation needed. Trigger it in conversation with these keywords:
+The Wiki is fully maintained by the LLM—no manual file creation needed.
+
+#### Install the Wiki Skill
+
+Backlog.md ships the Wiki workflow as an `llm-wiki-for-backlog` skill. Install it for the current AI assistant so it recognizes the Wiki triggers:
+
+```bash
+backlog wiki install claude   # Claude Code / Claude Desktop
+backlog wiki install codex    # OpenAI Codex CLI
+backlog wiki install agents   # Generic agents directory
+```
+
+Use `--dry-run` to preview and `--force` to overwrite an existing installation.
+
+Trigger it in conversation with these keywords:
 
 | Trigger | Action |
 |---------|--------|

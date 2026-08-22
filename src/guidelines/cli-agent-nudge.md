@@ -18,6 +18,16 @@ Use the detailed guides when needed:
 
 Use `backlog <command> --help` before running unfamiliar commands. Help shows options, fields, and examples.
 
+### Wiki Skill Installation
+
+Backlog.md includes an LLM-managed wiki under `backlog/wiki/`. To enable wiki operations for the current agent, install the bundled `llm-wiki-for-backlog` skill:
+
+- `backlog wiki install claude` — Claude Code / Claude Desktop
+- `backlog wiki install codex` — OpenAI Codex CLI
+- `backlog wiki install agents` — Generic agents directory
+
+Use `--dry-run` to preview the operation and `--force` to overwrite an existing installation. After installing, refer to the skill guide for ingestion, query, lint, and flowback workflows.
+
 Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use the `backlog` CLI so metadata, relationships, and history stay consistent.
 
 - If you encounter duplicate or ambiguous task IDs (e.g., `task-1` and `task-01`), run `backlog doctor` first. Do not rename files or edit frontmatter IDs manually. Apply `backlog doctor --fix` only after reviewing the preview, then use `backlog doctor --commit` to finalize or `backlog doctor --rollback` to undo before committing.

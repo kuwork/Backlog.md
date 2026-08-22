@@ -73,6 +73,8 @@ describe("CLI root entry (bare run)", () => {
 		expect(out).toContain("Local instructions:");
 		expect(out).toContain("backlog instructions");
 		expect(out).toContain("backlog instructions overview");
+		expect(out).toContain("LLM Wiki:");
+		expect(out).toContain("backlog wiki install <agent>");
 		expect(out).toContain("backlog <command> --help");
 		expect(out).toContain("Docs: https://backlog.md");
 		expect(out).not.toContain("\u001B[");
@@ -100,6 +102,8 @@ describe("CLI root entry (bare run)", () => {
 		expect(out).toContain("Open the Web UI Kanban board");
 		expect(out).toContain("Local instructions:");
 		expect(out).toContain("backlog instructions task-execution");
+		expect(out).toContain("LLM Wiki:");
+		expect(out).toContain("backlog wiki install <agent>");
 		expect(out).not.toContain("backlog init");
 		expect(out).toContain("Docs: https://backlog.md");
 		expect(out).not.toContain("\u001B[");

@@ -69,7 +69,21 @@ Backlog.md 内置由 LLM 自动维护的 **Wiki 知识库**，让人类与 AI �
 
 ### 如何使用
 
-Wiki 由 LLM 全自动维护，无需手动创建文件。在对话中触发以下关键词，AI 即会接管：
+Wiki 由 LLM 全自动维护，无需手动创建文件。
+
+#### 安装 Wiki Skill
+
+Backlog.md 将 Wiki 工作流打包成 `llm-wiki-for-backlog` skill。要让当前 AI 助手识别并使用 Wiki 触发词，先安装 skill：
+
+```bash
+backlog wiki install claude   # Claude Code / Claude Desktop
+backlog wiki install codex    # OpenAI Codex CLI
+backlog wiki install agents   # 通用 Agents 目录
+```
+
+使用 `--dry-run` 预览安装步骤，`--force` 覆盖已存在的安装。
+
+在对话中触发以下关键词，AI 即会接管：
 
 | 触发词 | 作用 |
 |--------|------|

@@ -64,6 +64,10 @@ export function formatRootEntry({ version, initialized, color = false }: RootEnt
 	}
 	lines.push("");
 
+	lines.push(sectionTitle("LLM Wiki:", color));
+	lines.push(commandLine("backlog wiki install <agent>", "Install the LLM wiki skill for your agent"));
+	lines.push("");
+
 	lines.push(sectionTitle("Command help:", color));
 	lines.push(commandLine("backlog <command> --help", "Show options, fields, and examples"));
 	lines.push("");
