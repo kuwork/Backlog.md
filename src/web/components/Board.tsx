@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../hooks/useI18n';
 import { type Milestone, type Task } from '../../types';
 import { apiClient, type ReorderTaskPayload } from '../lib/api';
@@ -81,6 +81,9 @@ const Board: React.FC<BoardProps> = ({
   const [dragSourceStatus, setDragSourceStatus] = useState<string | null>(null);
   const [dragSourceLane, setDragSourceLane] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  // Set one task after dragstart, never inside it: see handleColumnDragStart.
+  const [hiddenColumnsRevealed, setHiddenColumnsRevealed] = useState(false);
+  const revealHiddenColumnsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [cleanupSuccessMessage, setCleanupSuccessMessage] = useState<string | null>(null);
   const [collapsedLanes, setCollapsedLanes] = useState<Record<string, boolean>>({});
@@ -368,16 +371,46 @@ const Board: React.FC<BoardProps> = ({
 
   // When hideEmptyColumns is on, filter out status columns with no tasks across all visible lanes.
   // While a task is being dragged we keep every column visible so empty statuses remain drop targets.
-  const isDragging = dragSourceStatus !== null;
   const visibleStatuses = useMemo(() => {
-    if (!hideEmptyColumns || isDragging) return statuses;
+    if (!hideEmptyColumns || hiddenColumnsRevealed) return statuses;
     return statuses.filter(status => {
       for (const statusMap of displayTasksByLane.values()) {
         if ((statusMap.get(status) ?? []).length > 0) return true;
       }
       return false;
     });
-  }, [hideEmptyColumns, isDragging, statuses, displayTasksByLane]);
+  }, [hideEmptyColumns, hiddenColumnsRevealed, statuses, displayTasksByLane]);
+
+  const cancelHiddenColumnsReveal = () => {
+    if (revealHiddenColumnsTimer.current !== null) clearTimeout(revealHiddenColumnsTimer.current);
+    revealHiddenColumnsTimer.current = null;
+  };
+
+  const handleColumnDragStart = ({ status, laneId, taskId }: { status: string; laneId?: string | null; taskId: string }) => {
+    setDragSourceStatus(status);
+    setDragSourceLane(laneId ?? null);
+    setDraggedTaskId(taskId);
+    if (!hideEmptyColumns) return;
+    // Adding the hidden columns changes the board layout, and Chromium aborts a native drag whose
+    // dragstart handler does that: the card never becomes draggable. React commits this state
+    // update synchronously inside the event, so the reveal has to wait for the next task, by which
+    // time the browser has committed the drag.
+    cancelHiddenColumnsReveal();
+    revealHiddenColumnsTimer.current = setTimeout(() => {
+      revealHiddenColumnsTimer.current = null;
+      setHiddenColumnsRevealed(true);
+    }, 0);
+  };
+
+  const handleColumnDragEnd = () => {
+    cancelHiddenColumnsReveal();
+    setDragSourceStatus(null);
+    setDragSourceLane(null);
+    setDraggedTaskId(null);
+    setHiddenColumnsRevealed(false);
+  };
+
+  useEffect(() => cancelHiddenColumnsReveal, []);
 
   const getTasksForLane = (laneKey: string, status: string): Task[] => {
     const statusMap = displayTasksByLane.get(laneKey);
@@ -654,16 +687,8 @@ const Board: React.FC<BoardProps> = ({
                             draggedTaskId={draggedTaskId}
                             laneId={lane.key}
                             targetMilestone={lane.milestone ?? null}
-                            onDragStart={({ status: draggedStatus, laneId, taskId }) => {
-                              setDragSourceStatus(draggedStatus);
-                              setDragSourceLane(laneId ?? null);
-                              setDraggedTaskId(taskId);
-                            }}
-                            onDragEnd={() => {
-                              setDragSourceStatus(null);
-                              setDragSourceLane(null);
-                              setDraggedTaskId(null);
-                            }}
+                            onDragStart={handleColumnDragStart}
+                            onDragEnd={handleColumnDragEnd}
                             onCleanup={status === terminalStatus ? () => setShowCleanupModal(true) : undefined}
                             terminalStatus={terminalStatus}
                             labelColors={labelColors}
@@ -692,16 +717,8 @@ const Board: React.FC<BoardProps> = ({
                   dragSourceLane={dragSourceLane}
                   draggedTaskId={draggedTaskId}
                   laneId={DEFAULT_LANE_KEY}
-                  onDragStart={({ status: draggedStatus, laneId, taskId }) => {
-                    setDragSourceStatus(draggedStatus);
-                    setDragSourceLane(laneId ?? null);
-                    setDraggedTaskId(taskId);
-                  }}
-                  onDragEnd={() => {
-                    setDragSourceStatus(null);
-                    setDragSourceLane(null);
-                    setDraggedTaskId(null);
-                  }}
+                  onDragStart={handleColumnDragStart}
+                  onDragEnd={handleColumnDragEnd}
                   onCleanup={status === terminalStatus ? () => setShowCleanupModal(true) : undefined}
                   terminalStatus={terminalStatus}
                   labelColors={labelColors}
