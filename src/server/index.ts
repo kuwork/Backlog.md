@@ -14,7 +14,7 @@ import {
 import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
-import { isCreateLockError } from "../file-system/operations.ts";
+import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import {
@@ -1266,7 +1266,8 @@ export class BacklogServer {
 			return Response.json(updatedTask);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to update task";
-			return Response.json({ error: message }, { status: 400 });
+			const conflict = error instanceof AmbiguousTaskIdError || isTaskLockError(error);
+			return Response.json({ error: message }, { status: conflict ? 409 : 400 });
 		}
 	}
 
