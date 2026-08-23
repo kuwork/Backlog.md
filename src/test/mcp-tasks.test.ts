@@ -1047,4 +1047,74 @@ describe("MCP task tools (MVP)", () => {
 			expect(addText).not.toContain("Old");
 		});
 	});
+
+	describe("clearable dependency list semantics", () => {
+		it("rejects dependencies array containing empty string elements", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: { title: "Base" },
+				},
+			});
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Dependent",
+						dependencies: ["task-1"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-2",
+						dependencies: [""],
+					},
+				},
+			});
+
+			expect(result.isError).toBe(true);
+			expect(getText(result.content)).toContain("Empty value at index 1");
+
+			const task = await mcpServer.getTask("task-2");
+			expect(task?.dependencies).toEqual(["TASK-1"]);
+		});
+
+		it("treats explicit empty dependencies array as clear", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: { title: "Base" },
+				},
+			});
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Dependent",
+						dependencies: ["task-1"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-2",
+						dependencies: [],
+					},
+				},
+			});
+
+			const text = getText(result.content);
+			expect(text).not.toContain("Dependencies:");
+
+			const task = await mcpServer.getTask("task-2");
+			expect(task?.dependencies).toEqual([]);
+		});
+	});
 });

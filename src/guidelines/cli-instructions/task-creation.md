@@ -99,6 +99,17 @@ backlog task create "Add settings docs" \
   --ref https://example.com/spec
 ```
 
+Empty values for `--dep`, `--ref`, and `--doc` are rejected during creation. Omit the flag to leave the corresponding list unset, or use `--depends-on task-1` to set dependencies explicitly:
+
+```bash
+# Correct: omit the flag when there are no references
+backlog task create "Standalone task"
+
+# Wrong: empty setter values are rejected
+backlog task create "Bad task" --ref ""
+# Error: Cannot use an empty value with --ref. Omit the flag to leave references unset.
+```
+
 Multi-line descriptions, plans, notes, and final summaries can use `\n` escape sequences inside the quoted string:
 
 ```bash

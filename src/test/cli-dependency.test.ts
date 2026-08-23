@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
 import { createTaskPlatformAware, editTaskPlatformAware, viewTaskPlatformAware } from "./test-helpers.ts";
@@ -225,5 +226,89 @@ describe("CLI Dependency Support", () => {
 		const result3 = await viewTaskPlatformAware({ taskId: "task-2", plain: true }, TEST_DIR);
 		expect(result3.exitCode).toBe(0);
 		expect(result3.stdout).toContain("Dependencies: TASK-1");
+	});
+});
+
+describe("CLI dependency clear flags and empty value handling", () => {
+	let TEST_DIR: string;
+	let core: Core;
+
+	beforeEach(async () => {
+		TEST_DIR = createUniqueTestDir("test-cli-dependency-clear");
+		try {
+			await rm(TEST_DIR, { recursive: true, force: true });
+		} catch {}
+		await mkdir(TEST_DIR, { recursive: true });
+
+		await $`git init -b main`.cwd(TEST_DIR).quiet();
+		await $`git config user.name "Test User"`.cwd(TEST_DIR).quiet();
+		await $`git config user.email test@example.com`.cwd(TEST_DIR).quiet();
+
+		core = new Core(TEST_DIR);
+		await initializeTestProject(core, "test-project");
+	});
+
+	afterEach(async () => {
+		try {
+			await safeCleanup(TEST_DIR);
+		} catch {}
+	});
+
+	test("task edit --clear-deps clears dependencies", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+
+		await $`bun ${cliPath} task create "Base"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent" --dep=task-1`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-2 --clear-deps --plain`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-2");
+		expect(task?.dependencies).toEqual([]);
+	});
+
+	test("task create rejects empty --dep value", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+
+		const result = await $`bun ${cliPath} task create "Bad" --dep=""`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot use an empty value with --depends-on or --dep");
+		expect(result.stderr.toString()).toContain("Omit the flag");
+	});
+
+	test("task edit rejects empty --dep value and suggests --clear-deps", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+
+		await $`bun ${cliPath} task create "Task"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-1 --dep=""`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot use an empty value with --depends-on or --dep");
+		expect(result.stderr.toString()).toContain("Use --clear-deps");
+	});
+
+	test("task edit rejects mixed empty and non-empty --dep values", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+
+		await $`bun ${cliPath} task create "Base"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-2 --dep="" --dep=task-1`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot use an empty value with --depends-on or --dep");
+	});
+
+	test("task edit rejects combining --clear-deps with --dep", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+
+		await $`bun ${cliPath} task create "Base"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task" --dep=task-1`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-2 --clear-deps --dep=task-1`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-deps with --depends-on or --dep");
+
+		const task = await core.filesystem.loadTask("task-2");
+		expect(task?.dependencies).toEqual(["TASK-1"]);
 	});
 });

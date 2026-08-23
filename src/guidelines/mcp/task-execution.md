@@ -75,6 +75,20 @@ Use `task_edit` to modify these fields:
 | Modified Files | `modifiedFiles` |
 | Milestone | `milestone` |
 
+### Clearing List Fields
+
+To clear `dependencies`, `references`, or `documentation`, pass an explicit empty array `[]`. Arrays containing empty string elements are rejected, so `[""]` is not a no-op and will not clear the list:
+
+```json
+// Correct: clears the references list
+{ "id": "task-1", "references": [] }
+
+// Wrong: rejected with an empty-value error
+{ "id": "task-1", "references": [""] }
+```
+
+Use `addReferences` / `removeReferences`, `addDocumentation` / `removeDocumentation`, or `dependencies` with a non-empty array for incremental changes.
+
 ### Date and Time Fields
 
 Date and datetime fields (`dueDate`, `plannedStart`, `plannedEnd`, `actualStart`, `actualEnd`) accept local time through MCP. The value is converted to UTC before it is written to the task frontmatter, and converted back to local time when the task is displayed. Provide local time values (for example, `2026-08-21 23:37`); do not use the UTC value you see in the file as your MCP input.

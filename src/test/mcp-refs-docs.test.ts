@@ -300,4 +300,118 @@ describe("MCP task references and documentation", () => {
 			expect(task?.documentation).toEqual(["doc1.md", "doc2.md"]);
 		});
 	});
+
+	describe("clearable list semantics", () => {
+		it("rejects references array containing empty string elements", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Task with refs",
+						references: ["ref1.ts"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						references: [""],
+					},
+				},
+			});
+
+			expect(result.isError).toBe(true);
+			expect(getText(result.content)).toContain("Empty value at index 1");
+
+			const task = await mcpServer.getTask("task-1");
+			expect(task?.references).toEqual(["ref1.ts"]);
+		});
+
+		it("treats explicit empty references array as clear", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Task with refs",
+						references: ["ref1.ts"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						references: [],
+					},
+				},
+			});
+
+			const text = getText(result.content);
+			expect(text).not.toContain("References:");
+
+			const task = await mcpServer.getTask("task-1");
+			expect(task?.references).toEqual([]);
+		});
+
+		it("rejects documentation array containing empty string elements", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Task with docs",
+						documentation: ["doc1.md"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						documentation: [""],
+					},
+				},
+			});
+
+			expect(result.isError).toBe(true);
+			expect(getText(result.content)).toContain("Empty value at index 1");
+
+			const task = await mcpServer.getTask("task-1");
+			expect(task?.documentation).toEqual(["doc1.md"]);
+		});
+
+		it("treats explicit empty documentation array as clear", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Task with docs",
+						documentation: ["doc1.md"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						documentation: [],
+					},
+				},
+			});
+
+			const text = getText(result.content);
+			expect(text).not.toContain("Documentation:");
+
+			const task = await mcpServer.getTask("task-1");
+			expect(task?.documentation).toEqual([]);
+		});
+	});
 });

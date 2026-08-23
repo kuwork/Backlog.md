@@ -6,10 +6,9 @@ import { Core } from "../index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
+const cliPath = join(process.cwd(), "src", "cli.ts");
 
 describe("CLI --ref and --doc flags", () => {
-	const cliPath = join(process.cwd(), "src", "cli.ts");
-
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("test-cli-refs-docs");
 		try {
@@ -214,6 +213,90 @@ describe("CLI --ref and --doc flags", () => {
 			expect(taskFile).toContain("modified_files:");
 			expect(taskFile).toContain("src/index.ts");
 			expect(taskFile).toContain("src/ui.ts");
+		});
+	});
+
+	describe("task edit --clear-refs and --clear-docs", () => {
+		it("clears references with --clear-refs", async () => {
+			const resultCreate = await $`bun ${cliPath} task create "With refs" --ref https://example.com`
+				.cwd(TEST_DIR)
+				.quiet();
+			expect(resultCreate.exitCode).toBe(0);
+
+			const result = await $`bun ${cliPath} task edit 1 --clear-refs --plain`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.toString();
+			expect(out).not.toContain("References:");
+		});
+
+		it("clears documentation with --clear-docs", async () => {
+			const resultCreate = await $`bun ${cliPath} task create "With docs" --doc docs/spec.md`.cwd(TEST_DIR).quiet();
+			expect(resultCreate.exitCode).toBe(0);
+
+			const result = await $`bun ${cliPath} task edit 1 --clear-docs --plain`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.toString();
+			expect(out).not.toContain("Documentation:");
+		});
+	});
+
+	describe("empty setter value rejection", () => {
+		it("task create rejects empty --ref", async () => {
+			const result = await $`bun ${cliPath} task create "Bad" --ref=""`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --ref");
+			expect(result.stderr.toString()).toContain("Omit the flag");
+		});
+
+		it("task create rejects empty --doc", async () => {
+			const result = await $`bun ${cliPath} task create "Bad" --doc=""`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --doc");
+			expect(result.stderr.toString()).toContain("Omit the flag");
+		});
+
+		it("task edit rejects empty --ref and suggests --clear-refs", async () => {
+			await $`bun ${cliPath} task create "Task"`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --ref=""`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --ref");
+			expect(result.stderr.toString()).toContain("Use --clear-refs");
+		});
+
+		it("task edit rejects empty --doc and suggests --clear-docs", async () => {
+			await $`bun ${cliPath} task create "Task"`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --doc=""`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --doc");
+			expect(result.stderr.toString()).toContain("Use --clear-docs");
+		});
+
+		it("task edit rejects mixed empty and non-empty --ref values", async () => {
+			await $`bun ${cliPath} task create "Task"`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --ref="" --ref=file.ts`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --ref");
+		});
+	});
+
+	describe("clear flag conflict rejection", () => {
+		it("rejects combining --clear-refs with --ref", async () => {
+			await $`bun ${cliPath} task create "Task" --ref https://example.com`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --clear-refs --ref=file.ts`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot combine --clear-refs with --ref");
+		});
+
+		it("rejects combining --clear-docs with --doc", async () => {
+			await $`bun ${cliPath} task create "Task" --doc docs/spec.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --clear-docs --doc=other.md`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot combine --clear-docs with --doc");
 		});
 	});
 });

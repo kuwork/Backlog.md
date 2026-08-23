@@ -83,6 +83,7 @@ import { type RuntimeCwdResolution, resolveRuntimeCwd } from "./utils/runtime-cw
 import { formatValidStatuses, getCanonicalStatus, getCanonicalStatuses, getValidStatuses } from "./utils/status.ts";
 import {
 	normalizeDependencies,
+	parseClearableStringList,
 	parseDelimitedStringList,
 	parsePositiveIndexList,
 	processAcceptanceCriteriaOptions,
@@ -387,12 +388,83 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.clearFinalSummary ||
 			options.dependsOn !== undefined ||
 			options.dep !== undefined ||
+			options.clearDeps ||
 			options.ref !== undefined ||
+			options.clearRefs ||
 			options.doc !== undefined ||
+			options.clearDocs ||
 			options.modifiedFile !== undefined ||
 			options.dueDate !== undefined ||
 			options.plannedStart !== undefined ||
 			options.plannedEnd !== undefined,
+	);
+}
+
+/**
+ * Validate a clearable list option pair such as --ref/--clear-refs.
+ * Returns an error message when the clear flag conflicts with a setter or a setter value is blank.
+ * Omit `clearFlag` on surfaces without a clear flag (task create) so the guidance stays accurate.
+ *
+ * Keep `emptyClears` false in this fork: list setters are append-style, so an empty setter value is
+ * rejected both for task create and task edit. Edit errors point users to the matching --clear-* flag.
+ */
+function validateClearableListInput(input: {
+	rawValues: string[];
+	cleared: boolean;
+	isBlank: (value: string) => boolean;
+	setterFlags: string;
+	clearFlag?: string;
+	subject: string;
+	emptyClears?: boolean;
+}): string | undefined {
+	const settingValues = input.emptyClears ? input.rawValues.filter((value) => !input.isBlank(value)) : input.rawValues;
+	if (input.clearFlag && input.cleared && settingValues.length > 0) {
+		return `Cannot combine ${input.clearFlag} with ${input.setterFlags}. Use ${input.clearFlag} by itself.`;
+	}
+	if (!input.emptyClears && input.rawValues.some(input.isBlank)) {
+		const guidance = input.clearFlag
+			? `Use ${input.clearFlag} to remove all ${input.subject}.`
+			: `Omit the flag to leave ${input.subject} unset.`;
+		return `Cannot use an empty value with ${input.setterFlags}. ${guidance}`;
+	}
+	return undefined;
+}
+
+/**
+ * Validate the dependency, reference, and documentation list flags shared by task create and task edit.
+ * Both surfaces reject empty setter values; task edit also offers --clear-deps/--clear-refs/--clear-docs
+ * for clearing an existing list, so errors point users to those flags.
+ */
+function validateTaskListFlags(options: Record<string, unknown>, supportsClearFlags: boolean): string | undefined {
+	const clearFlag = (flag: string) => (supportsClearFlags ? flag : undefined);
+	return (
+		validateClearableListInput({
+			rawValues: [...toStringArray(options.dependsOn), ...toStringArray(options.dep)],
+			cleared: Boolean(options.clearDeps),
+			isBlank: (value) => normalizeDependencies([value]).length === 0,
+			setterFlags: "--depends-on or --dep",
+			clearFlag: clearFlag("--clear-deps"),
+			subject: "task dependencies",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.ref),
+			cleared: Boolean(options.clearRefs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--ref",
+			clearFlag: clearFlag("--clear-refs"),
+			subject: "references",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.doc),
+			cleared: Boolean(options.clearDocs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--doc",
+			clearFlag: clearFlag("--clear-docs"),
+			subject: "documentation",
+			emptyClears: false,
+		})
 	);
 }
 
@@ -1708,6 +1780,13 @@ addHelpSchema(taskCmd.command("create [title]"), {
 			ordinalValue = parsed;
 		}
 
+		const listFlagError = validateTaskListFlags(options, false);
+		if (listFlagError) {
+			console.error(listFlagError);
+			process.exitCode = 1;
+			return;
+		}
+
 		try {
 			const criteria = processAcceptanceCriteriaOptions(options);
 			const milestone =
@@ -2570,6 +2649,21 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		{ name: "final-summary", type: "Markdown", description: "Completion summary" },
 		{ name: "check-ac", type: "Integer", description: "1-based acceptance criterion index" },
 		{ name: "clear-ac", type: "Boolean", description: "Remove all acceptance criteria" },
+		{
+			name: "clear-deps",
+			type: "Boolean",
+			description: "Remove all task dependencies; cannot combine with --depends-on or --dep",
+		},
+		{
+			name: "clear-refs",
+			type: "Boolean",
+			description: "Remove all references; cannot combine with --ref",
+		},
+		{
+			name: "clear-docs",
+			type: "Boolean",
+			description: "Remove all documentation; cannot combine with --doc",
+		},
 	],
 	writes: "Updates task metadata and structured task sections through Backlog.md",
 	output: "Updated task details; use --plain for text output",
@@ -2679,9 +2773,10 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		createMultiValueAccumulator(),
 	)
 	.option("--clear-final-summary", "remove final summary")
+	.option("--clear-deps", "remove all task dependencies (cannot combine with --depends-on or --dep)")
 	.option(
 		"--depends-on <taskIds>",
-		"set task dependencies (comma-separated or use multiple times)",
+		"set task dependencies (comma-separated or use multiple times); use --clear-deps to remove them",
 		(value, previous) => {
 			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
 			return [...soFar, value];
@@ -2691,10 +2786,15 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
 		return [...soFar, value];
 	})
-	.option("--ref <reference>", "set references (can be used multiple times)", (value, previous) => {
-		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
-		return [...soFar, value];
-	})
+	.option("--clear-refs", "remove all references (cannot combine with --ref)")
+	.option(
+		"--ref <reference>",
+		"set references (can be used multiple times); use --clear-refs to remove them",
+		(value, previous) => {
+			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+			return [...soFar, value];
+		},
+	)
 	.option(
 		"--modified-file <path>",
 		"set modified file paths from project root (can be used multiple times)",
@@ -2703,10 +2803,15 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			return [...soFar, value];
 		},
 	)
-	.option("--doc <documentation>", "set documentation (can be used multiple times)", (value, previous) => {
-		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
-		return [...soFar, value];
-	})
+	.option("--clear-docs", "remove all documentation (cannot combine with --doc)")
+	.option(
+		"--doc <documentation>",
+		"set documentation (can be used multiple times); use --clear-docs to remove it",
+		(value, previous) => {
+			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+			return [...soFar, value];
+		},
+	)
 	.action(async (taskId: string | undefined, options) => {
 		const shouldUseWizard = hasInteractiveTTY && !hasEditFieldFlags(options);
 		if (!shouldUseWizard && !taskId) {
@@ -2818,6 +2923,13 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			milestoneValue = null;
 		}
 
+		const listFlagError = validateTaskListFlags(options, true);
+		if (listFlagError) {
+			console.error(listFlagError);
+			process.exitCode = 1;
+			return;
+		}
+
 		let removeCriteria: number[] | undefined;
 		let checkCriteria: number[] | undefined;
 		let uncheckCriteria: number[] | undefined;
@@ -2880,11 +2992,15 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			.map((value) => String(value).trim())
 			.filter((value) => value.length > 0);
 
-		const combinedDependencies = [...toStringArray(options.dependsOn), ...toStringArray(options.dep)];
-		const dependencyValues = combinedDependencies.length > 0 ? normalizeDependencies(combinedDependencies) : undefined;
+		// These three read as clearable lists: an absent flag keeps the current list. Empty setter values
+		// are rejected above, so only the matching --clear-* flag reaches the [] assignment below.
+		const dependencyValues = parseClearableStringList([
+			...toStringArray(options.dependsOn),
+			...toStringArray(options.dep),
+		]);
 
-		const normalizedReferences = parseDelimitedStringList(options.ref);
-		const normalizedDocumentation = parseDelimitedStringList(options.doc);
+		const normalizedReferences = parseClearableStringList(options.ref);
+		const normalizedDocumentation = parseClearableStringList(options.doc);
 		const normalizedModifiedFiles = parseDelimitedStringList(options.modifiedFile);
 
 		const planAppendValues = toStringArray(options.appendPlan).map((value) => processCliEscapes(String(value)));
@@ -2930,14 +3046,20 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		if (assigneeValues.length > 0) {
 			editArgs.assignee = assigneeValues;
 		}
-		if (dependencyValues && dependencyValues.length > 0) {
+		if (dependencyValues) {
 			editArgs.dependencies = dependencyValues;
+		} else if (options.clearDeps) {
+			editArgs.dependencies = [];
 		}
-		if (normalizedReferences && normalizedReferences.length > 0) {
+		if (normalizedReferences) {
 			editArgs.references = normalizedReferences;
+		} else if (options.clearRefs) {
+			editArgs.references = [];
 		}
-		if (normalizedDocumentation && normalizedDocumentation.length > 0) {
+		if (normalizedDocumentation) {
 			editArgs.documentation = normalizedDocumentation;
+		} else if (options.clearDocs) {
+			editArgs.documentation = [];
 		}
 		if (normalizedModifiedFiles && normalizedModifiedFiles.length > 0) {
 			editArgs.modifiedFiles = normalizedModifiedFiles;

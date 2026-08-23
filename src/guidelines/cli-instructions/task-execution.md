@@ -79,6 +79,30 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Add Final Summary       | `backlog task edit {{TASK_ID:123}} --final-summary "PR-style summary"` |
 | Append Final Summary    | `backlog task edit {{TASK_ID:123}} --append-final-summary "More details"` |
 | Clear Final Summary     | `backlog task edit {{TASK_ID:123}} --clear-final-summary` |
+| Dependencies            | `backlog task edit {{TASK_ID:123}} --dep task-5,task-6` |
+| Clear Dependencies      | `backlog task edit {{TASK_ID:123}} --clear-deps` |
+| References              | `backlog task edit {{TASK_ID:123}} --ref docs/api.md` |
+| Clear References        | `backlog task edit {{TASK_ID:123}} --clear-refs` |
+| Documentation           | `backlog task edit {{TASK_ID:123}} --doc docs/design.md` |
+| Clear Documentation     | `backlog task edit {{TASK_ID:123}} --clear-docs` |
+| Modified Files          | `backlog task edit {{TASK_ID:123}} --modified-file src/api.ts` |
+
+`--modified-file` records project-root-relative paths of files changed by the task. Repeat the flag or use comma-separated values to record multiple files.
+
+### Clearing List Fields
+
+The `--clear-deps`, `--clear-refs`, and `--clear-docs` flags remove every entry from the corresponding list. Use these flags when you want to empty a list; do **not** pass an empty string to the setter flags:
+
+```bash
+# Correct: use the clear flag
+backlog task edit {{TASK_ID:123}} --clear-refs
+
+# Wrong: empty setter values are rejected
+backlog task edit {{TASK_ID:123}} --ref ""
+# Error: Cannot use an empty value with --ref. Use --clear-refs to remove all references.
+```
+
+`task create` also rejects empty values for `--dep`, `--ref`, and `--doc`; omit the flag to leave the list unset.
 
 ### Acceptance Criteria and Definition of Done Operations
 
