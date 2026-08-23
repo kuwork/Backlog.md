@@ -32,7 +32,7 @@ import {
 	normalizeDocumentSubPath,
 } from "../utils/document-path.ts";
 import { openInEditor } from "../utils/editor.ts";
-import { generateNextDocId } from "../utils/id-generators.ts";
+import { generateNextDecisionId, generateNextDocId } from "../utils/id-generators.ts";
 import {
 	createMilestoneFilterMatcher,
 	createMilestoneFilterValueResolver,
@@ -2694,8 +2694,6 @@ export class Core {
 	}
 
 	async createDecisionWithTitle(title: string, autoCommit?: boolean): Promise<Decision> {
-		// Import the generateNextDecisionId function from CLI
-		const { generateNextDecisionId } = await import("../cli.js");
 		const id = await generateNextDecisionId(this);
 
 		const decision: Decision = {
