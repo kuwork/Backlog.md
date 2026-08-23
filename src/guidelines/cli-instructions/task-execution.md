@@ -49,6 +49,7 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Title                   | `backlog task edit {{TASK_ID:123}} -t "New Title"`       |
 | Status                  | `backlog task edit {{TASK_ID:123}} -s "In Progress"`     |
 | Assignee                | `backlog task edit {{TASK_ID:123}} -a @sara`             |
+| Assignees (multiple)    | `backlog task edit {{TASK_ID:123}} -a @sara -a @tam` or `-a "@sara,@tam"` |
 | Clear Assignee          | `backlog task edit {{TASK_ID:123}} --unassign`           |
 | Labels                  | `backlog task edit {{TASK_ID:123}} -l backend,api`       |
 | Due Date                | `backlog task edit {{TASK_ID:123}} --due-date 2026-06-15` |

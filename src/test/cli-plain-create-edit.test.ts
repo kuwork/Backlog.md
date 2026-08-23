@@ -138,6 +138,36 @@ describe("CLI --plain for task create/edit", () => {
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr.toString()).toContain("use --unassign");
 	});
+	it("parses comma-separated assignees on task create", async () => {
+		const result = await $`bun ${cliPath} task create "Comma Assignees" -a "@alice,@bob" --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Assignee: @alice, @bob");
+	});
+
+	it("collects repeated -a flags on task create", async () => {
+		const result = await $`bun ${cliPath} task create "Repeated Assignees" -a @alice -a @bob --plain`
+			.cwd(TEST_DIR)
+			.quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Assignee: @alice, @bob");
+	});
+
+	it("replaces assignees with comma-separated -a on task edit", async () => {
+		await $`bun ${cliPath} task create "Edit Assignees" -a @alice --plain`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit 1 -a "@carol,@dave" --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Assignee: @carol, @dave");
+		expect(result.stdout.toString()).not.toContain("@alice");
+	});
+
+	it("collects repeated -a flags on task edit", async () => {
+		await $`bun ${cliPath} task create "Edit Repeated Assignees" -a @alice --plain`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit 1 -a @carol -a @dave --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Assignee: @carol, @dave");
+	});
 
 	it("prints plain details after task edit --plain", async () => {
 		// Create base task first (without plain)

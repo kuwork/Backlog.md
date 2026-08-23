@@ -1737,7 +1737,11 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		"task description (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 	)
 	.option("--desc <text>", "alias for --description")
-	.option("-a, --assignee <assignee>")
+	.option(
+		"-a, --assignee <assignees>",
+		"assign one or more @names (comma-separated or repeatable)",
+		createMultiValueAccumulator(),
+	)
 	.option("--unassign", "create the task unassigned (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --labels <labels>")
@@ -1883,13 +1887,8 @@ addHelpSchema(taskCmd.command("create [title]"), {
 						? processCliEscapes(String(options.description || options.desc))
 						: undefined,
 				status: createAsDraft ? "Draft" : options.status ? String(options.status) : undefined,
-				assignee: options.unassign ? [] : options.assignee ? [String(options.assignee)] : undefined,
-				labels: options.labels
-					? String(options.labels)
-							.split(",")
-							.map((label: string) => label.trim())
-							.filter(Boolean)
-					: undefined,
+				assignee: options.unassign ? [] : parseDelimitedStringList(options.assignee),
+				labels: parseDelimitedStringList(options.labels),
 				dependencies:
 					options.dependsOn || options.dep ? normalizeDependencies(options.dependsOn || options.dep) : undefined,
 				references: parseDelimitedStringList(options.ref),
@@ -2821,7 +2820,11 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		createMultiValueAccumulator(),
 	)
 	.option("--append-desc <text>", "alias for --append-description", createMultiValueAccumulator())
-	.option("-a, --assignee <assignee>")
+	.option(
+		"-a, --assignee <assignees>",
+		"replace all task assignees with one or more @names (comma-separated or repeatable)",
+		createMultiValueAccumulator(),
+	)
 	.option("--unassign", "clear the assignee (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --label <labels>")
@@ -3672,7 +3675,11 @@ draftCmd
 		"task description (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 	)
 	.option("--desc <text>", "alias for --description")
-	.option("-a, --assignee <assignee>")
+	.option(
+		"-a, --assignee <assignees>",
+		"assign one or more @names (comma-separated or repeatable)",
+		createMultiValueAccumulator(),
+	)
 	.option("--unassign", "create the draft unassigned (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --labels <labels>")
@@ -3699,13 +3706,8 @@ draftCmd
 						? processCliEscapes(String(options.description || options.desc))
 						: undefined,
 				status: "Draft",
-				assignee: options.unassign ? [] : options.assignee ? [String(options.assignee)] : undefined,
-				labels: options.labels
-					? String(options.labels)
-							.split(",")
-							.map((label: string) => label.trim())
-							.filter(Boolean)
-					: undefined,
+				assignee: options.unassign ? [] : parseDelimitedStringList(options.assignee),
+				labels: parseDelimitedStringList(options.labels),
 			});
 			console.log(`Created draft ${task.id}`);
 			console.log(`File: ${filePath}`);
