@@ -105,4 +105,59 @@ describe("BacklogServer config endpoints", () => {
 		const loaded = await fetchJson<BacklogConfig>("/api/config");
 		expect(loaded.defaultAssignee).toBeUndefined();
 	});
+
+	it("round-trips labels through the config endpoint", async () => {
+		const updated = await fetchJson<BacklogConfig>("/api/config", {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				projectName: "Server Config",
+				statuses: ["To Do", "In Progress", "Done"],
+				milestones: [],
+				dateFormat: "YYYY-MM-DD",
+				remoteOperations: false,
+				labels: ["bug", "frontend"],
+			}),
+		});
+
+		expect(updated.labels).toEqual(["bug", "frontend"]);
+
+		const loaded = await fetchJson<BacklogConfig>("/api/config");
+		expect(loaded.labels).toEqual(["bug", "frontend"]);
+	});
+
+	it("clears labels when set to an empty list", async () => {
+		// First set a value
+		await fetchJson<BacklogConfig>("/api/config", {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				projectName: "Server Config",
+				statuses: ["To Do", "In Progress", "Done"],
+				milestones: [],
+				dateFormat: "YYYY-MM-DD",
+				remoteOperations: false,
+				labels: ["bug"],
+			}),
+		});
+
+		// Then set labels to empty to clear them
+		const updated = await fetchJson<BacklogConfig>("/api/config", {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				projectName: "Server Config",
+				statuses: ["To Do", "In Progress", "Done"],
+				milestones: [],
+				dateFormat: "YYYY-MM-DD",
+				remoteOperations: false,
+				labels: [],
+			}),
+		});
+
+		expect(updated.labels).toEqual([]);
+
+		const loaded = await fetchJson<BacklogConfig>("/api/config");
+		expect(loaded.labels).toEqual([]);
+	});
 });

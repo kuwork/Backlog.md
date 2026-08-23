@@ -74,6 +74,10 @@ const Settings: React.FC = () => {
 		return normalized.length > 0 ? normalized : undefined;
 	};
 
+	const normalizeLabels = (items: string[] | undefined): string[] => {
+		return (items ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
+	};
+
 	const validateConfig = (): boolean => {
 		const errors: Record<string, string> = {};
 
@@ -103,6 +107,7 @@ const Settings: React.FC = () => {
 				...config,
 				definitionOfDone: normalizeDefinitionOfDone(config.definitionOfDone),
 				defaultAssignee: normalizeDefaultAssignee(config.defaultAssignee),
+				labels: normalizeLabels(config.labels),
 			};
 			await apiClient.updateConfig(normalizedConfig);
 			setConfig(normalizedConfig);
@@ -297,6 +302,19 @@ const Settings: React.FC = () => {
 								/>
 								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 									{t.settings.defaultAssigneeDesc}
+								</p>
+							</div>
+
+							<div>
+								<ChipInput
+									name="labels"
+									label={t.settings.labels}
+									value={config.labels ?? []}
+									onChange={(value) => handleInputChange('labels', value)}
+									placeholder={t.settings.labelsPlaceholder}
+								/>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+									{t.settings.labelsDesc}
 								</p>
 							</div>
 
