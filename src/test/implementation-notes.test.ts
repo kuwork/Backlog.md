@@ -51,7 +51,7 @@ describe("Implementation Notes CLI", () => {
 
 			// Test 2: create task with multi-line implementation notes
 			const result2 =
-				await $`bun ${[CLI_PATH, "task", "create", "Test Task 2", "--notes", "Step 1: Analysis completed\nStep 2: Implementation in progress"]}`
+				await $`bun ${[CLI_PATH, "task", "create", "Test Task 2", "--notes", "Step 1: Analysis completed\\nStep 2: Implementation in progress"]}`
 					.cwd(TEST_DIR)
 					.quiet()
 					.nothrow();
@@ -65,7 +65,7 @@ describe("Implementation Notes CLI", () => {
 
 			// Test 3: create task with both plan and notes (notes should come after plan)
 			const result3 =
-				await $`bun ${[CLI_PATH, "task", "create", "Test Task 3", "--plan", "1. Design\n2. Build\n3. Test", "--notes", "Following the plan step by step"]}`
+				await $`bun ${[CLI_PATH, "task", "create", "Test Task 3", "--plan", "1. Design\\n2. Build\\n3. Test", "--notes", "Following the plan step by step"]}`
 					.cwd(TEST_DIR)
 					.quiet()
 					.nothrow();

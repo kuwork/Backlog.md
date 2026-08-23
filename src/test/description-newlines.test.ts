@@ -31,16 +31,16 @@ describe("CLI description newline handling", () => {
 		} catch {}
 	});
 
-	it("should preserve literal newlines when creating task", async () => {
-		const desc = "First line\nSecond line\n\nThird paragraph";
+	it("should interpret \\n escape sequences as newlines when creating task", async () => {
+		const desc = "First line\\nSecond line\\n\\nThird paragraph";
 		await $`bun ${[cliPath, "task", "create", "Multi-line", "--desc", desc]}`.cwd(TEST_DIR).quiet();
 
 		const core = new Core(TEST_DIR);
 		const body = await core.getTaskContent("task-1");
-		expect(body).toContain(desc);
+		expect(body).toContain("First line\nSecond line\n\nThird paragraph");
 	});
 
-	it("should preserve literal newlines when editing task", async () => {
+	it("should interpret \\n escape sequences as newlines when editing task", async () => {
 		const core = new Core(TEST_DIR);
 		await core.createTask(
 			{
@@ -56,15 +56,15 @@ describe("CLI description newline handling", () => {
 			false,
 		);
 
-		const desc = "First line\nSecond line\n\nThird paragraph";
+		const desc = "First line\\nSecond line\\n\\nThird paragraph";
 		await $`bun ${[cliPath, "task", "edit", "1", "--desc", desc]}`.cwd(TEST_DIR).quiet();
 
 		const updatedBody = await core.getTaskContent("task-1");
-		expect(updatedBody).toContain(desc);
+		expect(updatedBody).toContain("First line\nSecond line\n\nThird paragraph");
 	});
 
-	it("should interpret \\n sequences as newlines", async () => {
-		const literal = "First line\nSecond line";
+	it("should interpret \\n escape sequences as newlines", async () => {
+		const literal = "First line\\nSecond line";
 		await $`bun ${[cliPath, "task", "create", "Literal", "--desc", literal]}`.cwd(TEST_DIR).quiet();
 
 		const core = new Core(TEST_DIR);
@@ -83,8 +83,8 @@ describe("CLI description newline handling", () => {
 		expect(body).toContain("First line\\nSecond line");
 	});
 
-	it("should handle double newline", async () => {
-		const literal = "First line\n\nSecond line";
+	it("should handle double newline via escape sequences", async () => {
+		const literal = "First line\\n\\nSecond line";
 		await $`bun ${[cliPath, "task", "create", "Literal", "--desc", literal]}`.cwd(TEST_DIR).quiet();
 
 		const core = new Core(TEST_DIR);

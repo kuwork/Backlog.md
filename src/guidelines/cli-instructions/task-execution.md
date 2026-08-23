@@ -18,7 +18,7 @@ Before writing code for non-trivial work:
 7. Record the approved plan:
    - `backlog task edit {{TASK_ID:123}} --plan "1. Analyze current implementation\n2. Design minimal API change\n3. Implement and add tests\n4. Run checks and verify"`
 
-> **Do not use bash `$'...'` quoting for multi-line values.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
+> **Do not use bash `$'...'` quoting for multi-line values, and do not press Enter for a real newline inside the argument.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Instead, write the two characters `\n` literally inside a single-quoted or double-quoted argument; the CLI interprets that sequence as a newline when writing the field.
 
 Keep the Backlog task as the plan of record. If the approach changes, replace it with `--plan` or extend it with one
 or more repeatable `--append-plan` values. When both options are provided, `--plan` replaces the existing plan first,
@@ -123,6 +123,10 @@ backlog task edit {{TASK_ID:123}} --clear-due-date --clear-planned-end --clear-a
 All date fields have matching `--clear-*` flags: `--clear-due-date`, `--clear-planned-start`, `--clear-planned-end`, `--clear-actual-start`, and `--clear-actual-end`.
 
 `actualStart` and `actualEnd` accept `YYYY-MM-DD HH:MM` and are stored in UTC. Use them to record when work really started and finished.
+
+> **Local time input:** When you provide a date or datetime through the CLI, use your local time (for example, `2026-08-21 23:37`). The CLI converts it to UTC before writing it to the task frontmatter, and converts it back to local time when displaying the task. Do not use the UTC value you see in the file as your CLI input.
+>
+> If you are editing the task Markdown file directly as a fallback, write the UTC value that should be stored in the frontmatter.
 
 > **Note:** `actualStart` is automatically set when you move a task to an in-progress status, and `actualEnd` is automatically set when you move it to a terminal status (for example "Done"). You only need to set them manually when you want to override those defaults or record a different time.
 

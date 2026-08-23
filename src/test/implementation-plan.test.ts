@@ -33,7 +33,7 @@ describe("Implementation Plan CLI", () => {
 		it("should handle all task creation scenarios with implementation plans", async () => {
 			// Test 1: create task with implementation plan using --plan
 			const result1 =
-				await $`bun ${[CLI_PATH, "task", "create", "Test Task 1", "--plan", "Step 1: Analyze\nStep 2: Implement"]}`
+				await $`bun ${[CLI_PATH, "task", "create", "Test Task 1", "--plan", "Step 1: Analyze\\nStep 2: Implement"]}`
 					.cwd(TEST_DIR)
 					.quiet()
 					.nothrow();
@@ -48,7 +48,7 @@ describe("Implementation Plan CLI", () => {
 
 			// Test 2: create task with both description and implementation plan
 			const result2 =
-				await $`bun ${[CLI_PATH, "task", "create", "Test Task 2", "-d", "Task description", "--plan", "1. First step\n2. Second step"]}`
+				await $`bun ${[CLI_PATH, "task", "create", "Test Task 2", "-d", "Task description", "--plan", "1. First step\\n2. Second step"]}`
 					.cwd(TEST_DIR)
 					.quiet()
 					.nothrow();
@@ -147,7 +147,7 @@ describe("Implementation Plan CLI", () => {
 
 			// Test 3: update both title and implementation plan
 			const result =
-				await $`bun ${[CLI_PATH, "task", "edit", "1", "--title", "Updated Title", "--plan", "Implementation:\n- Do this\n- Then that"]}`
+				await $`bun ${[CLI_PATH, "task", "edit", "1", "--title", "Updated Title", "--plan", "Implementation:\\n- Do this\\n- Then that"]}`
 					.cwd(TEST_DIR)
 					.quiet()
 					.nothrow();

@@ -377,7 +377,7 @@ describe("Task comments", () => {
 			.nothrow();
 		expect(create.exitCode).toBe(0);
 
-		const edit = await $`bun ${[CLI_PATH, "task", "edit", "1", "--comment", "Invalid\n---\ndelimiter"]}`
+		const edit = await $`bun ${[CLI_PATH, "task", "edit", "1", "--comment", "Invalid\\n---\\ndelimiter"]}`
 			.cwd(TEST_DIR)
 			.quiet()
 			.nothrow();

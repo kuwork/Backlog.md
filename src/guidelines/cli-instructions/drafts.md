@@ -29,7 +29,7 @@ backlog task create "Spike GraphQL resolver" --draft \
 
 `backlog draft create` options:
 
-- `-d, --description <text>` — description (multi-line: include real newlines inside the quoted string)
+- `-d, --description <text>` — description (multi-line: write `\n` literally inside a single-quoted or double-quoted argument)
 - `--desc <text>` — alias for `--description`
 - `-a, --assignee <assignee>` — assignee
 - `-s, --status <status>` — status (defaults to `Draft`)

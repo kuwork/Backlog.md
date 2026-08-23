@@ -111,8 +111,8 @@ describe("Append Implementation Notes via task edit --append-notes", () => {
 			false,
 		);
 
-		// Pass a JS string containing real newlines as an argument
-		const multiline = "Line1\nLine2\n\nPara2";
+		// Pass a JS string containing literal \\n sequences as an argument
+		const multiline = "Line1\\nLine2\\n\\nPara2";
 		const res = await $`bun ${[CLI_PATH, "task", "edit", "3", "--append-notes", multiline]}`
 			.cwd(TEST_DIR)
 			.quiet()

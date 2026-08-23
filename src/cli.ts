@@ -1651,7 +1651,10 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		'backlog task create -p {{TASK_ID:1}} "Add tests"',
 	],
 })
-	.option("-d, --description <text>", "task description (multi-line: include real newlines inside the quoted string)")
+	.option(
+		"-d, --description <text>",
+		"task description (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
 	.option("--desc <text>", "alias for --description")
 	.option("-a, --assignee <assignee>")
 	.option("-s, --status <status>")
@@ -1666,9 +1669,18 @@ addHelpSchema(taskCmd.command("create [title]"), {
 	)
 	.option("--dod <item>", "add Definition of Done item (can be used multiple times)", createMultiValueAccumulator())
 	.option("--no-dod-defaults", "disable Definition of Done defaults")
-	.option("--plan <text>", "add implementation plan")
-	.option("--notes <text>", "add implementation notes")
-	.option("--final-summary <text>", "add final summary")
+	.option(
+		"--plan <text>",
+		"add implementation plan (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
+	.option(
+		"--notes <text>",
+		"add implementation notes (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
+	.option(
+		"--final-summary <text>",
+		"add final summary (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
 	.option("--ordinal <number>", "set task ordinal for custom ordering")
 	.option("-m, --milestone <milestone>", "assign task to milestone by ID or title")
 	.option("--due-date <date>", "task due date (YYYY-MM-DD)")
@@ -2627,7 +2639,10 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 })
 	.description("edit an existing task")
 	.option("-t, --title <title>")
-	.option("-d, --description <text>", "task description (multi-line: include real newlines inside the quoted string)")
+	.option(
+		"-d, --description <text>",
+		"task description (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
 	.option("--desc <text>", "alias for --description")
 	.option(
 		"--append-description <text>",
@@ -2689,28 +2704,37 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		createMultiValueAccumulator(),
 	)
 	.option("--acceptance-criteria <criteria>", "set acceptance criteria (comma-separated or use multiple times)")
-	.option("--plan <text>", "set implementation plan")
-	.option("--notes <text>", "set implementation notes (replaces existing)")
+	.option(
+		"--plan <text>",
+		"set implementation plan (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
+	.option(
+		"--notes <text>",
+		"set implementation notes (replaces existing; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
 	.option(
 		"--comment <text>",
-		"append a task comment; standalone '---' lines are reserved (can be used multiple times)",
+		"append a task comment; standalone '---' lines are reserved (can be used multiple times; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 		createMultiValueAccumulator(),
 	)
 	.option("--comment-author <author>", "author to record for appended comments")
-	.option("--final-summary <text>", "set final summary (replaces existing)")
+	.option(
+		"--final-summary <text>",
+		"set final summary (replaces existing; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
 	.option(
 		"--append-plan <text>",
-		"append after --plan replacement (can be used multiple times)",
+		"append after --plan replacement (can be used multiple times; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 		createMultiValueAccumulator(),
 	)
 	.option(
 		"--append-notes <text>",
-		"append to implementation notes (can be used multiple times)",
+		"append to implementation notes (can be used multiple times; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 		createMultiValueAccumulator(),
 	)
 	.option(
 		"--append-final-summary <text>",
-		"append to final summary (can be used multiple times)",
+		"append to final summary (can be used multiple times; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 		createMultiValueAccumulator(),
 	)
 	.option("--clear-final-summary", "remove final summary")
@@ -2922,10 +2946,12 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const normalizedDocumentation = parseDelimitedStringList(options.doc);
 		const normalizedModifiedFiles = parseDelimitedStringList(options.modifiedFile);
 
-		const planAppendValues = toStringArray(options.appendPlan);
-		const notesAppendValues = toStringArray(options.appendNotes);
-		const commentsAppendValues = toStringArray(options.comment);
-		const finalSummaryAppendValues = toStringArray(options.appendFinalSummary);
+		const planAppendValues = toStringArray(options.appendPlan).map((value) => processCliEscapes(String(value)));
+		const notesAppendValues = toStringArray(options.appendNotes).map((value) => processCliEscapes(String(value)));
+		const commentsAppendValues = toStringArray(options.comment).map((value) => processCliEscapes(String(value)));
+		const finalSummaryAppendValues = toStringArray(options.appendFinalSummary).map((value) =>
+			processCliEscapes(String(value)),
+		);
 
 		const editArgs: TaskEditArgs = {};
 		if (options.title) {
@@ -3372,7 +3398,10 @@ draftCmd
 
 draftCmd
 	.command("create <title>")
-	.option("-d, --description <text>", "task description (multi-line: include real newlines inside the quoted string)")
+	.option(
+		"-d, --description <text>",
+		"task description (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
 	.option("--desc <text>", "alias for --description")
 	.option("-a, --assignee <assignee>")
 	.option("-s, --status <status>")
@@ -3969,11 +3998,11 @@ addHelpSchema(docCmd.command("update <docId>"), {
 	.option("--title <title>", "update document title")
 	.option(
 		"--content <content>",
-		"replace document markdown content (multi-line: include real newlines or \\n escape sequences inside the quoted string)",
+		"replace document markdown content (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 	)
 	.option(
 		"--append-content <text>",
-		"append a block to the document content (can be used multiple times; \\n escape sequences become newlines)",
+		"append a block to the document content (can be used multiple times; write \\n literally inside a single-quoted or double-quoted argument)",
 		createMultiValueAccumulator(),
 	)
 	.option("-p, --path <path>", "move document under a docs-relative path (absolute paths and .. are rejected)")

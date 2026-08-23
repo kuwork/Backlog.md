@@ -135,7 +135,7 @@ describe("Append Implementation Plan via task edit --append-plan", () => {
 			false,
 		);
 
-		const multiline = "Step1\nStep2\n\nPhase2";
+		const multiline = "Step1\\nStep2\\n\\nPhase2";
 		const res = await $`bun ${[CLI_PATH, "task", "edit", "3", "--append-plan", multiline]}`
 			.cwd(TEST_DIR)
 			.quiet()
@@ -171,7 +171,7 @@ describe("Append Implementation Plan via task edit --append-plan", () => {
 			"--append-plan",
 			"  ",
 			"--append-plan",
-			"First\nline",
+			"First\\nline",
 			"--append-plan",
 			"Second",
 		]}`
@@ -261,7 +261,9 @@ describe("Append Implementation Plan via task edit --append-plan", () => {
 		const output = await $`bun ${CLI_PATH} task edit --help`.cwd(TEST_DIR).text();
 		const normalizedOutput = output.replace(/\s+/g, " ");
 		expect(output).toContain("--append-plan <text>");
-		expect(normalizedOutput).toContain("append after --plan replacement (can be used multiple times)");
+		expect(normalizedOutput).toContain(
+			"append after --plan replacement (can be used multiple times; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+		);
 		expect(output).toContain("append-plan: Markdown - Append after --plan replacement; repeatable");
 	});
 });

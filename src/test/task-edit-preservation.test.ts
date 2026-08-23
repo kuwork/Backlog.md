@@ -124,7 +124,7 @@ Keep me exactly.
 		await $`bun ${cliPath} task edit 1 --ac "Criterion 1,Criterion 2"`.cwd(TEST_DIR).quiet();
 
 		// Add implementation plan
-		await $`bun ${cliPath} task edit 1 --plan "Step 1\nStep 2\nStep 3"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task edit 1 --plan "Step 1\\nStep 2\\nStep 3"`.cwd(TEST_DIR).quiet();
 
 		// Add implementation notes
 		await $`bun ${cliPath} task edit 1 --notes "Original implementation notes"`.cwd(TEST_DIR).quiet();
@@ -214,7 +214,7 @@ Keep me exactly.
 		await $`bun ${cliPath} task edit 3 --notes "Original notes"`.cwd(TEST_DIR).quiet();
 
 		// Update implementation plan
-		await $`bun ${cliPath} task edit 3 --plan "Updated plan step 1\nUpdated plan step 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task edit 3 --plan "Updated plan step 1\\nUpdated plan step 2"`.cwd(TEST_DIR).quiet();
 
 		// Verify all sections are preserved
 		const result = await $`bun ${cliPath} task 3 --plain`.cwd(TEST_DIR).text();

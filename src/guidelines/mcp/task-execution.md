@@ -75,6 +75,10 @@ Use `task_edit` to modify these fields:
 | Modified Files | `modifiedFiles` |
 | Milestone | `milestone` |
 
+### Date and Time Fields
+
+Date and datetime fields (`dueDate`, `plannedStart`, `plannedEnd`, `actualStart`, `actualEnd`) accept local time through MCP. The value is converted to UTC before it is written to the task frontmatter, and converted back to local time when the task is displayed. Provide local time values (for example, `2026-08-21 23:37`); do not use the UTC value you see in the file as your MCP input.
+
 ### Acceptance Criteria and Definition of Done Operations
 
 **Acceptance Criteria edit semantics:**

@@ -109,7 +109,7 @@ backlog task create "Add project search" \
   --ac "Tests cover task, document, and decision results"
 ```
 
-> **Do not use bash `$'...'` quoting for multi-line values.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
+> **Do not use bash `$'...'` quoting for multi-line values, and do not press Enter for a real newline inside the argument.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Instead, write the two characters `\n` literally inside a single-quoted or double-quoted argument; the CLI interprets that sequence as a newline when writing the field.
 
 ### Task Dates
 

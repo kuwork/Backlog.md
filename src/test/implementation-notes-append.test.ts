@@ -102,7 +102,7 @@ describe("Implementation Notes - append", () => {
 	});
 
 	it("edit --append-notes works and allows combining with --notes", async () => {
-		const resOk = await $`bun ${[CLI_PATH, "task", "create", "T", "--plan", "1. A\n2. B"]}`.cwd(TEST_DIR).quiet();
+		const resOk = await $`bun ${[CLI_PATH, "task", "create", "T", "--plan", "1. A\\n2. B"]}`.cwd(TEST_DIR).quiet();
 		expect(resOk.exitCode).toBe(0);
 
 		const res1 = await $`bun ${[CLI_PATH, "task", "edit", "1", "--append-notes", "Alpha", "--append-notes", "Beta"]}`

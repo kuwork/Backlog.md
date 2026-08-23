@@ -744,9 +744,9 @@ The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, `-
 
 Prefer forms **1** and **2** when running under Claude Code, Codex, or any agent harness that screens commands through a tree‑sitter AST walker — those harnesses reject ANSI‑C strings, command substitutions, and heredoc forms (see issue [#595](https://github.com/MrLesk/Backlog.md/issues/595)).
 
-**Never use bash `$'...'` quoting for `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, or `--append-final-summary`.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Use regular double quotes and write `\n` literally inside the argument; the CLI interprets those sequences as newlines.
+**Never use bash `$'...'` quoting for `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, or `--append-final-summary`, and do not press Enter for a real newline inside the argument.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Instead, write the two characters `\n` literally inside a single-quoted or double-quoted argument; the CLI interprets that sequence as a newline when writing the field.
 
-To store a literal backslash-n sequence (`\n`) inside a `--desc` / `--description` or `--append-description` value, double the backslashes according to your shell rules. For `--plan`, `--notes`, `--comment`, `--final-summary`, `--append-notes`, and `--append-final-summary`, `\n` is already stored literally.
+To store a literal backslash-n sequence (`\n`) inside any multi-line field value, double the backslashes according to your shell rules so that the CLI receives `\\n` rather than `\n`. The exact number of backslashes you must type depends on your shell; when in doubt, preview the task file after editing to confirm the stored text.
 
 ### Implementation Notes Formatting
 
@@ -762,12 +762,10 @@ To store a literal backslash-n sequence (`\n`) inside a `--desc` / `--descriptio
     --append-notes "- TODO: monitor staging deploy"
   ```
 
-  Or pass real newlines inside the quoted argument:
+  Or write the two characters `\n` literally inside a single-quoted or double-quoted argument:
 
   ```bash
-  backlog task edit 42 --append-notes "- Added new API endpoint
-  - Updated tests
-  - TODO: monitor staging deploy"
+  backlog task edit 42 --append-notes "- Added new API endpoint\n- Updated tests\n- TODO: monitor staging deploy"
   ```
 
 ### Comments Formatting
