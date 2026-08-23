@@ -196,6 +196,10 @@ export function taskListJson(tasks: Task[]) {
 	return { schemaVersion: 1, kind: "task-list" as const, tasks: tasks.map(toTaskSummaryJson) };
 }
 
+export function decisionListJson(decisions: Decision[]) {
+	return { schemaVersion: 1, kind: "decision-list" as const, decisions: decisions.map(toDecisionSummaryJson) };
+}
+
 export function documentListJson(documents: Document[], projectRoot: string, docsDir: string) {
 	return {
 		schemaVersion: 1,

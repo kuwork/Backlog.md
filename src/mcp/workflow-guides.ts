@@ -1,4 +1,5 @@
 import {
+	CLI_DECISIONS_GUIDE,
 	CLI_DOCUMENTS_GUIDE,
 	CLI_DRAFTS_GUIDE,
 	CLI_INIT_REQUIRED_GUIDE,
@@ -9,6 +10,7 @@ import {
 	CLI_WORKFLOW_OVERVIEW,
 } from "../guidelines/cli-instructions/index.ts";
 import {
+	MCP_DECISIONS_GUIDE,
 	MCP_DOCUMENTS_GUIDE,
 	MCP_DRAFTS_GUIDE,
 	MCP_MILESTONES_GUIDE,
@@ -26,6 +28,7 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"task-finalization",
 	"milestones",
 	"documents",
+	"decisions",
 	"drafts",
 ] as const;
 export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
@@ -94,6 +97,14 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 		resourceText: MCP_DOCUMENTS_GUIDE,
 	},
 	{
+		key: "decisions",
+		uri: "backlog://workflow/decisions",
+		name: "Decisions Guide",
+		description: "How to create and list decisions, including output modes and status handling",
+		mimeType: "text/markdown",
+		resourceText: MCP_DECISIONS_GUIDE,
+	},
+	{
 		key: "drafts",
 		uri: "backlog://workflow/drafts",
 		name: "Drafts Guide",
@@ -110,6 +121,7 @@ const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
 	"task-finalization": CLI_TASK_FINALIZATION_GUIDE,
 	milestones: CLI_MILESTONES_GUIDE,
 	documents: CLI_DOCUMENTS_GUIDE,
+	decisions: CLI_DECISIONS_GUIDE,
 	drafts: CLI_DRAFTS_GUIDE,
 };
 

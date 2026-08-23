@@ -201,10 +201,15 @@ describe("CLI JSON output", () => {
 	});
 
 	it("keeps JSON stdout clean and rejects conflicting output modes", async () => {
-		const result = await runCli(["task", "list", "--json", "--plain"]);
-		expect(result.exitCode).not.toBe(0);
-		expect(result.stderr.toString()).toContain("--json cannot be combined with --plain.");
-		expect(result.stdout.toString()).toBe("");
+		for (const args of [
+			["task", "list", "--json", "--plain"],
+			["decision", "list", "--json", "--plain"],
+		]) {
+			const result = await runCli(args);
+			expect(result.exitCode).not.toBe(0);
+			expect(result.stderr.toString()).toContain("--json cannot be combined with --plain.");
+			expect(result.stdout.toString()).toBe("");
+		}
 	});
 
 	it("returns a versioned document-list envelope for doc list", async () => {
@@ -226,6 +231,28 @@ describe("CLI JSON output", () => {
 				updatedAt: "2026-07-14T08:00:00Z",
 			},
 		]);
+	});
+
+	it("returns a compact versioned decision-list envelope", async () => {
+		const result = await runCli(["decision", "list", "--json"]);
+		expect(result.exitCode).toBe(0);
+		expect(result.stderr.toString()).toBe("");
+		expect(result.stdout.toString().endsWith("\n")).toBe(true);
+
+		expect(JSON.parse(result.stdout.toString())).toEqual({
+			schemaVersion: 1,
+			kind: "decision-list",
+			decisions: [
+				{
+					id: "decision-1",
+					title: "Use stable JSON",
+					status: "accepted",
+					date: "2026-07-12",
+				},
+			],
+		});
+		expect(result.stdout.toString()).not.toContain("rawContent");
+		expect(result.stdout.toString()).not.toContain("Publish curated fields");
 	});
 
 	it("rejects --json on non-read task subcommands", async () => {

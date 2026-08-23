@@ -84,6 +84,9 @@ describe("CLI Integration", () => {
 			expect(output).toContain("task-execution");
 			expect(output).toContain("task-finalization");
 			expect(output).toContain("milestones");
+			expect(output).toContain("documents");
+			expect(output).toContain("decisions");
+			expect(output).toContain("drafts");
 			expect(output).toContain("init-required");
 		});
 
@@ -119,6 +122,9 @@ describe("CLI Integration", () => {
 			);
 			expect(overview).toContain(
 				"`backlog instructions milestones`\n  -> Read before managing milestones: how to create, edit, remove, and archive milestones",
+			);
+			expect(overview).toContain(
+				"`backlog instructions decisions`\n  -> Read when creating or listing decisions: create status, list output modes, and key rules",
 			);
 			expect(overview).toContain(
 				"Important: Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use Backlog commands so automatic metadata stays complete.",
@@ -255,7 +261,7 @@ describe("CLI Integration", () => {
 			expect(initHelp).not.toContain("backlog init --integration-mode mcp");
 			expect(initHelp).toContain("Writes:");
 			expect(instructionsHelp).toContain(
-				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, drafts, init-required",
+				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, init-required",
 			);
 			expect(instructionsHelp).toContain("Output:");
 		});

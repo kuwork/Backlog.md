@@ -17,7 +17,14 @@ import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constant
 import { initializeProject } from "./core/init.ts";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
-import { documentListJson, printJson, searchJson, taskListJson, taskViewJson } from "./formatters/json-output.ts";
+import {
+	decisionListJson,
+	documentListJson,
+	printJson,
+	searchJson,
+	taskListJson,
+	taskViewJson,
+} from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
 import {
 	type AgentInstructionFile,
@@ -51,6 +58,7 @@ import {
 } from "./types/index.ts";
 import type { TaskEditArgs } from "./types/task-edit-args.ts";
 import { genericSelectList } from "./ui/components/generic-list.ts";
+import { runDecisionListViewer } from "./ui/decision-list-viewer.ts";
 import { createLoadingScreen } from "./ui/loading.ts";
 import { viewTaskEnhanced } from "./ui/task-viewer-with-search.ts";
 import { scrollableViewer } from "./ui/tui.ts";
@@ -4178,9 +4186,20 @@ addHelpSchema(docCmd.command("view <docId>"), {
 
 const decisionCmd = program.command("decision");
 
-decisionCmd
-	.command("create <title>")
-	.option("-s, --status <status>")
+addHelpSchema(decisionCmd.command("create <title>"), {
+	required: [{ name: "title", type: "String", description: "Decision title" }],
+	optional: [
+		{ name: "status", type: "String", description: "Decision status; free-form, defaults to proposed" },
+		{ name: "plain", type: "Boolean", description: "Use plain text output" },
+	],
+	writes: "Creates a decision markdown file under the configured decisions directory",
+	output: "Created decision ID",
+	examples: ['backlog decision create "Adopt Bun test runner" -s accepted --plain'],
+})
+	.description("create a decision")
+	.option("-s, --status <status>", "set decision status (free-form, defaults to proposed)")
+	// Accepted so agent guidance that always passes --plain works; create output is already plain text.
+	.option("--plain", "use plain text output")
 	.action(async (title: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
@@ -4197,6 +4216,151 @@ decisionCmd
 		};
 		await core.createDecision(decision);
 		console.log(`Created decision ${id}`);
+	});
+
+addHelpSchema(decisionCmd.command("list"), {
+	reads: "Decisions under the configured decisions directory",
+	writes: "None; this is a read-only command",
+	required: [],
+	optional: [
+		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
+		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
+	],
+	output: "Decision list with IDs, titles, and statuses; versioned JSON with --json; interactive viewer in TTY",
+	examples: ["backlog decision list --plain", "backlog decision list --json"],
+})
+	.description("list decisions")
+	.option("--plain", "use plain text output instead of interactive UI")
+	.option("--json", "print versioned machine-readable JSON output")
+	.action(async (options) => {
+		const outputMode = getReadOutputMode(options);
+		if (!outputMode) return;
+		const cwd = await requireProjectRoot();
+		const core = new Core(cwd);
+		const decisions = await core.filesystem.listDecisions();
+
+		if (outputMode === "json") {
+			printJson(decisionListJson(decisions));
+			return;
+		}
+
+		if (decisions.length === 0) {
+			console.log("No decisions found.");
+			return;
+		}
+
+		// Plain text output for non-interactive environments
+		if (outputMode === "plain") {
+			for (const decision of decisions) {
+				const status = decision.status ? ` (${decision.status})` : "";
+				console.log(`${decision.id} - ${decision.title}${status}`);
+			}
+			return;
+		}
+
+		// Interactive UI: two-pane browser (list left, details right).
+		// Falls back to plain text if the terminal size is unavailable.
+		try {
+			await runDecisionListViewer(decisions, core);
+		} catch (error) {
+			const isTerminalSizeError = error instanceof Error && error.name === "TerminalSizeError";
+			if (!isTerminalSizeError) {
+				console.error(error instanceof Error ? error.message : String(error));
+			}
+			for (const decision of decisions) {
+				const status = decision.status ? ` (${decision.status})` : "";
+				console.log(`${decision.id} - ${decision.title}${status}`);
+			}
+		}
+	});
+
+addHelpSchema(decisionCmd.command("view <decisionId>"), {
+	reads: "Decision metadata and markdown body",
+	required: [{ name: "decisionId", type: "Decision ID", description: "Decision to display" }],
+	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
+	output: "Decision frontmatter and markdown content",
+	examples: ["backlog decision view decision-1", "backlog decision view decision-1 --plain"],
+})
+	.description("view a decision")
+	.option("--plain", "use plain text output instead of interactive UI")
+	.action(async (decisionId: string, options) => {
+		const cwd = await requireProjectRoot();
+		const core = new Core(cwd);
+		const decision = await core.filesystem.loadDecision(decisionId);
+		if (!decision?.filePath) {
+			console.error(`Decision ${decisionId} not found.`);
+			return;
+		}
+
+		const content = await Bun.file(decision.filePath).text();
+		if (isPlainRequested(options) || shouldAutoPlain) {
+			console.log(content);
+			return;
+		}
+		await scrollableViewer(content);
+	});
+
+addHelpSchema(decisionCmd.command("update <decisionId>"), {
+	required: [{ name: "decisionId", type: "Decision ID", description: "Decision to update" }],
+	optional: [
+		{ name: "content", type: "Markdown", description: "Replacement decision body" },
+		{
+			name: "append-content",
+			type: "Markdown",
+			description: "Append a block to the decision body (can be used multiple times)",
+		},
+	],
+	writes: "Updates decision structured sections (Context / Decision / Consequences / Alternatives)",
+	output: "Updated decision ID",
+	examples: [
+		'backlog decision update decision-1 --content "## Context\\n\\n..."',
+		'backlog decision update decision-1 --append-content "## Alternatives\\n\\n..."',
+	],
+})
+	.description("update a decision")
+	.option(
+		"--content <content>",
+		"replace decision markdown content (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
+	.option(
+		"--append-content <text>",
+		"append a block to the decision content (can be used multiple times; write \\n literally inside a single-quoted or double-quoted argument)",
+		createMultiValueAccumulator(),
+	)
+	.action(async (decisionId: string, options) => {
+		const cwd = await requireProjectRoot();
+		const core = new Core(cwd);
+		const existingDecision = await core.filesystem.loadDecision(decisionId);
+		if (!existingDecision) {
+			console.error(`Decision ${decisionId} not found.`);
+			process.exitCode = 1;
+			return;
+		}
+
+		const appendContent = toStringArray(options.appendContent)
+			.map((chunk) => processCliEscapes(String(chunk)))
+			.filter((chunk) => chunk.length > 0);
+		const hasContent = typeof options.content === "string";
+		const hasAppend = appendContent.length > 0;
+
+		if (!hasContent && !hasAppend) {
+			console.error("No update options provided. Provide --content or --append-content.");
+			process.exitCode = 1;
+			return;
+		}
+
+		let content: string;
+		if (hasContent) {
+			content = processCliEscapes(options.content);
+			if (hasAppend) {
+				content += `\n\n${appendContent.join("\n\n")}`;
+			}
+		} else {
+			content = [existingDecision.rawContent, ...appendContent].join("\n\n");
+		}
+
+		await core.updateDecisionFromContent(existingDecision.id, content);
+		console.log(`Updated decision ${existingDecision.id}`);
 	});
 
 // Agents command group

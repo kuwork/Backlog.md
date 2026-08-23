@@ -69,6 +69,7 @@ describe("McpServer bootstrap", () => {
 						"task-finalization",
 						"milestones",
 						"documents",
+						"decisions",
 						"drafts",
 					],
 				},
@@ -85,6 +86,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/task-finalization",
 			"backlog://workflow/milestones",
 			"backlog://workflow/documents",
+			"backlog://workflow/decisions",
 			"backlog://workflow/drafts",
 		]);
 
@@ -234,6 +236,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/task-finalization",
 			"backlog://workflow/milestones",
 			"backlog://workflow/documents",
+			"backlog://workflow/decisions",
 			"backlog://workflow/drafts",
 		]);
 		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");
@@ -289,6 +292,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/task-finalization",
 			"backlog://workflow/milestones",
 			"backlog://workflow/documents",
+			"backlog://workflow/decisions",
 			"backlog://workflow/drafts",
 		]);
 		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");

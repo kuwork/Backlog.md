@@ -40,6 +40,34 @@ function normalizeToError(value: unknown): Error {
 let sharedProgram: (ProgramInterface & { destroyed?: boolean }) | null = null;
 const originalProgramDestroy = createProgram.prototype.destroy;
 
+/**
+ * Release the shared blessed program and restore the terminal to normal mode.
+ * Use between two sequential TUI screens (e.g. a selection list followed by a
+ * scrollable viewer) to avoid leaving the terminal in a broken raw-input state
+ * on terminals such as PowerShell where reusing the same program across screens
+ * can hang after the first screen is destroyed.
+ */
+export function releaseSharedProgram(): void {
+	if (sharedProgram && !sharedProgram.destroyed) {
+		try {
+			sharedProgram.disableMouse();
+		} catch {
+			// ignore
+		}
+		try {
+			sharedProgram.showCursor();
+		} catch {
+			// ignore
+		}
+		try {
+			originalProgramDestroy.call(sharedProgram);
+		} catch {
+			// ignore
+		}
+	}
+	sharedProgram = null;
+}
+
 export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterface {
 	// Blessed programs bind process.stdin in raw mode; a fresh program per screen
 	// breaks input on the second screen after the first is destroyed (the Tab view
@@ -182,10 +210,28 @@ export async function scrollableViewer(content: string): Promise<void> {
 		return;
 	}
 
+	// Some terminals (e.g. VS Code's integrated terminal on Windows) report a
+	// broken size or fail to provide it to the blessed program, leaving the
+	// scrollable viewer unusable. Fall back to plain output in that case.
+	const rows = process.stdout.rows || process.stderr.rows || 0;
+	const cols = process.stdout.columns || process.stderr.columns || 0;
+	if (rows < 3 || cols < 3) {
+		console.log(content);
+		return;
+	}
+
 	return new Promise<void>((resolve) => {
 		const screen = createScreen({
 			style: {},
 		});
+
+		// Double-check the size blessed actually got; if it's unusable, bail out.
+		if (screen.height < 3 || screen.width < 3) {
+			screen.destroy();
+			console.log(content);
+			resolve();
+			return;
+		}
 
 		const viewer = box({
 			parent: screen,
@@ -194,22 +240,54 @@ export async function scrollableViewer(content: string): Promise<void> {
 			alwaysScroll: true,
 			keys: true,
 			vi: true,
-			mouse: true,
+			// Mouse tracking can interfere with arrow-key parsing on Windows terminals.
+			mouse: process.platform !== "win32",
 			width: "100%",
 			height: "100%",
 			padding: { left: 1, right: 1 },
 			wrap: true,
 			scrollbar: { ch: " ", inverse: true },
 			style: { scrollbar: { bg: "gray" } },
+		}) as unknown as {
+			scroll?: (offset: number) => void;
+			focus: () => void;
+			key: (keys: string[], fn: () => boolean | undefined) => void;
+		};
+
+		addScrollKeys(viewer as unknown as Parameters<typeof addScrollKeys>[0], screen);
+
+		// Explicit scrolling keys for terminals where blessed's default box keys
+		// (such as PowerShell / VS Code) do not register reliably.
+		viewer.key(["up", "k"], () => {
+			viewer.scroll?.(-1);
+			screen.render();
+			return false;
+		});
+		viewer.key(["down", "j"], () => {
+			viewer.scroll?.(1);
+			screen.render();
+			return false;
 		});
 
-		addScrollKeys(viewer, screen);
-
-		screen.key(["escape", "q", "C-c"], () => {
+		const close = () => {
+			// Leave the alternate buffer and restore the cursor before tearing down
+			// the screen, so the terminal is usable again on Windows/PowerShell.
+			screen.leave();
 			screen.destroy();
+			// Release the shared program to restore normal terminal state;
+			// otherwise raw mode / alternate buffer can persist and hang the shell.
+			releaseSharedProgram();
 			resolve();
-		});
+			return false;
+		};
 
+		screen.key(["escape", "q", "C-c"], close);
+		viewer.key(["escape", "q", "C-c"], close);
+
+		// Ensure the screen enters raw / alternate-buffer mode before focusing the
+		// viewer; some terminals (especially on Windows) do not pick it up from
+		// render alone.
+		screen.enter();
 		viewer.focus();
 		screen.render();
 	});

@@ -39,6 +39,8 @@ Search and read before changing anything:
   -> Read before managing milestones: how to create, edit, remove, and archive milestones
 - `backlog instructions documents`
   -> Read when creating or updating project documents: doc types, paths, multi-line content, and append rules
+- `backlog instructions decisions`
+  -> Read when creating or listing decisions: create status, list output modes, and key rules
 - `backlog instructions drafts`
   -> Read when creating, promoting, demoting, or archiving drafts: full workflow and ID handling
 
