@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../lib/api';
 import { SuccessToast } from './SuccessToast';
+import ChipInput from './ChipInput';
 import { useI18n } from '../hooks/useI18n';
 import { useI18nContext } from '../contexts/I18nContext';
 import { isValidLocale } from '../locales';
@@ -68,6 +69,11 @@ const Settings: React.FC = () => {
 		return normalized.length > 0 ? normalized : undefined;
 	};
 
+	const normalizeDefaultAssignee = (items: string[] | undefined): string[] | undefined => {
+		const normalized = (items ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
+		return normalized.length > 0 ? normalized : undefined;
+	};
+
 	const validateConfig = (): boolean => {
 		const errors: Record<string, string> = {};
 
@@ -96,6 +102,7 @@ const Settings: React.FC = () => {
 			const normalizedConfig = {
 				...config,
 				definitionOfDone: normalizeDefinitionOfDone(config.definitionOfDone),
+				defaultAssignee: normalizeDefaultAssignee(config.defaultAssignee),
 			};
 			await apiClient.updateConfig(normalizedConfig);
 			setConfig(normalizedConfig);
@@ -277,6 +284,19 @@ const Settings: React.FC = () => {
 								</select>
 								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 									{t.settings.defaultStatusDesc}
+								</p>
+							</div>
+
+							<div>
+								<ChipInput
+									name="defaultAssignee"
+									label={t.settings.defaultAssignee}
+									value={config.defaultAssignee ?? []}
+									onChange={(value) => handleInputChange('defaultAssignee', value)}
+									placeholder={t.settings.defaultAssigneePlaceholder}
+								/>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+									{t.settings.defaultAssigneeDesc}
 								</p>
 							</div>
 
