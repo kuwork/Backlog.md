@@ -14,8 +14,14 @@ Always use Backlog.md CLI commands to create and update documents so IDs, frontm
 | Replace document content | `backlog doc update doc-1 --content "Updated markdown"` |
 | Append content to a document | `backlog doc update doc-1 --append-content "Additional section"` |
 | Update metadata or move a doc | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
-| List all documents | `backlog doc list --plain` |
+| List all documents | `backlog doc list` / `backlog doc list --plain` / `backlog doc list --json` |
 | View a document | `backlog doc view doc-1` / `backlog doc view doc-1 --plain` |
+
+### Listing Documents
+
+`backlog doc list` opens an interactive two-pane browser by default. The left pane shows the document list (`Documents (N)`), the right pane shows details for the selected document. Use `←/→` to switch panes, `↑/↓` or `j/k` to navigate the active pane, `Enter` to open the full document viewer from the details pane, and `q` to quit.
+
+Pass `--plain` to print one document per line (`id - title`) for scripts and pipes. Pass `--json` for a versioned machine-readable JSON envelope. When stdout is not a TTY, plain output is emitted automatically.
 
 ### Viewing Documents
 

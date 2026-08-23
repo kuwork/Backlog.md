@@ -128,4 +128,52 @@ describe("CLI Integration", () => {
 			expect(body).toContain("Consider Node.js");
 		});
 	});
+
+	describe("document commands", () => {
+		it("should create a document", async () => {
+			const result = await $`bun ${CLI_PATH} doc create "API Guidelines"`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stderr.toString()).toBe("");
+
+			const stdout = result.stdout.toString();
+			expect(stdout).toContain("Created document doc-1");
+
+			const core = new Core(TEST_DIR);
+			const docs = await core.filesystem.listDocuments();
+			expect(docs).toHaveLength(1);
+			expect(docs[0]?.title).toBe("API Guidelines");
+		});
+
+		it("should list documents with id and title as plain text", async () => {
+			await $`bun ${CLI_PATH} doc create "API Guidelines" -t guide`.cwd(TEST_DIR).quiet();
+			await $`bun ${CLI_PATH} doc create "Runbook" -t other`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${CLI_PATH} doc list --plain`.cwd(TEST_DIR).quiet();
+			expect(result.exitCode).toBe(0);
+			const lines = result.stdout.toString().trim().split("\n");
+			expect(lines).toEqual(["doc-1 - API Guidelines", "doc-2 - Runbook"]);
+		});
+
+		it("should default to text output when stdout is not a TTY", async () => {
+			await $`bun ${CLI_PATH} doc create "API Guidelines"`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${CLI_PATH} doc list`.cwd(TEST_DIR).quiet();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString().trim()).toBe("doc-1 - API Guidelines");
+		});
+
+		it("should report an empty document list in both output modes", async () => {
+			const plain = await $`bun ${CLI_PATH} doc list --plain`.cwd(TEST_DIR).quiet();
+			expect(plain.exitCode).toBe(0);
+			expect(plain.stdout.toString().trim()).toBe("No docs found.");
+
+			const json = await $`bun ${CLI_PATH} doc list --json`.cwd(TEST_DIR).quiet();
+			expect(json.exitCode).toBe(0);
+			expect(JSON.parse(json.stdout.toString())).toEqual({
+				schemaVersion: 1,
+				kind: "document-list",
+				documents: [],
+			});
+		});
+	});
 });

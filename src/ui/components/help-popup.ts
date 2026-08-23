@@ -2,7 +2,7 @@ import type { ScreenInterface } from "neo-neo-bblessed";
 import { box } from "neo-neo-bblessed";
 import { createPopupChrome } from "./filter-popup.ts";
 
-export type HelpPopupContext = "board" | "task-list" | "decision-list";
+export type HelpPopupContext = "board" | "task-list" | "decision-list" | "document-list";
 
 type Shortcut = {
 	key: string;
@@ -56,12 +56,24 @@ const DECISION_LIST_SHORTCUTS: Shortcut[] = [
 	{ key: "q/Esc", desc: "Quit / Close" },
 ];
 
+const DOCUMENT_LIST_SHORTCUTS: Shortcut[] = [
+	{ key: "←→", desc: "Switch between list and details" },
+	{ key: "↑↓", desc: "Navigate documents" },
+	{ key: "j/k", desc: "Navigate documents" },
+	{ key: "PgUp/PgDn", desc: "Scroll detail page" },
+	{ key: "Home/End", desc: "Jump to top/bottom of detail" },
+	{ key: "?", desc: "Show this help menu" },
+	{ key: "q/Esc", desc: "Quit / Close" },
+];
+
 export function getHelpShortcuts(context: HelpPopupContext = "board"): Shortcut[] {
 	switch (context) {
 		case "task-list":
 			return TASK_LIST_SHORTCUTS;
 		case "decision-list":
 			return DECISION_LIST_SHORTCUTS;
+		case "document-list":
+			return DOCUMENT_LIST_SHORTCUTS;
 		default:
 			return BOARD_SHORTCUTS;
 	}

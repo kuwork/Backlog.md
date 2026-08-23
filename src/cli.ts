@@ -57,8 +57,8 @@ import {
 	type TaskSearchResult,
 } from "./types/index.ts";
 import type { TaskEditArgs } from "./types/task-edit-args.ts";
-import { genericSelectList } from "./ui/components/generic-list.ts";
 import { runDecisionListViewer } from "./ui/decision-list-viewer.ts";
+import { runDocumentListViewer } from "./ui/document-list-viewer.ts";
 import { createLoadingScreen } from "./ui/loading.ts";
 import { viewTaskEnhanced } from "./ui/task-viewer-with-search.ts";
 import { scrollableViewer } from "./ui/tui.ts";
@@ -4081,20 +4081,17 @@ addHelpSchema(docCmd.command("list"), {
 			return;
 		}
 
-		// Interactive UI
-		const selected = await genericSelectList("Select a document", docs);
-		if (selected) {
-			// Show document details (recursive search)
-			const files = await Array.fromAsync(
-				new Bun.Glob("**/*.md").scan({ cwd: core.filesystem.docsDir, followSymlinks: true }),
-			);
-			const docFile = files.find(
-				(f) => f.startsWith(`${selected.id} -`) || f.endsWith(`/${selected.id}.md`) || f === `${selected.id}.md`,
-			);
-			if (docFile) {
-				const filePath = join(core.filesystem.docsDir, docFile);
-				const content = await Bun.file(filePath).text();
-				await scrollableViewer(content);
+		// Interactive UI: two-pane browser (list left, details right).
+		// Falls back to plain text if the terminal size is unavailable.
+		try {
+			await runDocumentListViewer(docs, core);
+		} catch (error) {
+			const isTerminalSizeError = error instanceof Error && error.name === "TerminalSizeError";
+			if (!isTerminalSizeError) {
+				console.error(error instanceof Error ? error.message : String(error));
+			}
+			for (const d of docs) {
+				console.log(`${d.id} - ${d.title}`);
 			}
 		}
 	});

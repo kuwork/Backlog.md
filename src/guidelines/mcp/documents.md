@@ -8,7 +8,7 @@ Always use Backlog.md MCP document tools to create and update documents so IDs, 
 
 | Action | Tool |
 |--------|------|
-| List documents | `document_list` |
+| List documents | `document_list` (returns versioned JSON; no interactive UI) |
 | View a document | `document_view` |
 | Search documents | `document_search` |
 | Create a document | `document_create` |
