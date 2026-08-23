@@ -1117,4 +1117,32 @@ describe("MCP task tools (MVP)", () => {
 			expect(task?.dependencies).toEqual([]);
 		});
 	});
+
+	describe("clearable assignee list semantics", () => {
+		it("treats explicit empty assignee array as clear", async () => {
+			await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_create",
+					arguments: {
+						title: "Assigned Task",
+						assignee: ["@alice"],
+					},
+				},
+			});
+
+			const result = await mcpServer.testInterface.callTool({
+				params: {
+					name: "task_edit",
+					arguments: {
+						id: "task-1",
+						assignee: [],
+					},
+				},
+			});
+
+			expect(result.isError).toBeFalsy();
+			const task = await mcpServer.getTask("task-1");
+			expect(task?.assignee).toEqual([]);
+		});
+	});
 });

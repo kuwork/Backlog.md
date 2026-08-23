@@ -74,4 +74,16 @@ describe("Draft creation consistency", () => {
 		const draft = await core.filesystem.loadDraft("draft-1");
 		expect(draft?.assignee).toEqual(["@alice"]);
 	});
+
+	it("lets --unassign create a draft without defaultAssignee", async () => {
+		await $`bun ${CLI_PATH} config set defaultAssignee "@alice"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${CLI_PATH} draft create "Unassigned Draft" --unassign --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Created draft DRAFT-1");
+
+		const core = new Core(TEST_DIR);
+		const draft = await core.filesystem.loadDraft("draft-1");
+		expect(draft?.assignee).toEqual([]);
+	});
 });

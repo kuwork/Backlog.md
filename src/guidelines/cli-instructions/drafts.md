@@ -31,9 +31,12 @@ backlog task create "Spike GraphQL resolver" --draft \
 
 - `-d, --description <text>` — description (multi-line: write `\n` literally inside a single-quoted or double-quoted argument)
 - `--desc <text>` — alias for `--description`
-- `-a, --assignee <assignee>` — assignee
+- `-a, --assignee <assignee>` — assignee (omitting it applies the project's configured `defaultAssignee` when one is set)
+- `-u, --unassign` — create the draft with no assignee, even when a `defaultAssignee` is configured; mutually exclusive with `-a`
 - `-s, --status <status>` — status (defaults to `Draft`)
 - `-l, --labels <labels>` — comma-separated labels
+
+> **Note:** empty values such as `-a ""` are rejected. Use `--unassign` when you want to leave the assignee empty.
 
 #### Listing and viewing drafts
 

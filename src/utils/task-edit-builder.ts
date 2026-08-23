@@ -86,8 +86,8 @@ export function buildTaskUpdateInput(args: TaskEditArgs): TaskUpdateInput {
 		updateInput.removeLabels = removeLabels;
 	}
 
-	const assignee = normalizeStringList(args.assignee);
-	if (assignee) {
+	const assignee = sanitizeClearableStringArray(args.assignee);
+	if (assignee !== undefined) {
 		updateInput.assignee = assignee;
 	}
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
 import type {
 	BacklogConfig,
@@ -723,6 +723,19 @@ function AppContent() {
 		onRefreshData: refreshData,
 	};
 
+	const availableAssignees = useMemo(() => {
+		const seen = new Set<string>();
+		for (const task of tasks) {
+			for (const assignee of task.assignee) {
+				if (assignee.trim()) seen.add(assignee.trim());
+			}
+		}
+		for (const assignee of config?.defaultAssignee ?? []) {
+			if (assignee.trim()) seen.add(assignee.trim());
+		}
+		return Array.from(seen).sort((a, b) => a.localeCompare(b));
+	}, [tasks, config?.defaultAssignee]);
+
 	const boardPageProps = {
 		onEditTask: handleOpenTask,
 		onNewTask: handleNewTask,
@@ -875,6 +888,8 @@ function AppContent() {
 				archivedMilestoneEntities={archivedMilestones}
 				isDraftMode={isDraftMode}
 				definitionOfDoneDefaults={config?.definitionOfDone ?? []}
+				defaultAssignee={config?.defaultAssignee ?? []}
+				availableAssignees={availableAssignees}
 				availableLabels={collectAvailableLabels(tasks, availableLabels)}
 			/>
 

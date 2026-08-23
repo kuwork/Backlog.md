@@ -1716,7 +1716,8 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		{
 			name: "assignee",
 			type: "Assignee list",
-			description: "One or more @names; omitting it applies the project's configured defaultAssignee",
+			description:
+				"One or more @names; omitting it applies the project's configured defaultAssignee; use --unassign to create an unassigned task",
 		},
 		{ name: "labels", type: "Comma-separated strings", description: "Task labels" },
 		{ name: "priority", type: choiceType(["high", "medium", "low"]), description: "Task priority" },
@@ -1737,6 +1738,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 	)
 	.option("--desc <text>", "alias for --description")
 	.option("-a, --assignee <assignee>")
+	.option("--unassign", "create the task unassigned (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --labels <labels>")
 	.option("--priority <priority>", "set task priority (high, medium, low)")
@@ -1859,6 +1861,17 @@ addHelpSchema(taskCmd.command("create [title]"), {
 			return;
 		}
 
+		if (options.unassign && options.assignee !== undefined) {
+			console.error("Cannot use --unassign and -a/--assignee together.");
+			process.exitCode = 1;
+			return;
+		}
+		if (options.assignee !== undefined && String(options.assignee).trim().length === 0) {
+			console.error("error: -a/--assignee cannot be empty; use --unassign to create an unassigned task");
+			process.exitCode = 1;
+			return;
+		}
+
 		try {
 			const criteria = processAcceptanceCriteriaOptions(options);
 			const milestone =
@@ -1870,7 +1883,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 						? processCliEscapes(String(options.description || options.desc))
 						: undefined,
 				status: createAsDraft ? "Draft" : options.status ? String(options.status) : undefined,
-				assignee: options.assignee ? [String(options.assignee)] : undefined,
+				assignee: options.unassign ? [] : options.assignee ? [String(options.assignee)] : undefined,
 				labels: options.labels
 					? String(options.labels)
 							.split(",")
@@ -2699,6 +2712,11 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		{ name: "description", type: "Markdown", description: "Replacement description" },
 		{ name: "descriptionAppend", type: "Array of Markdown", description: "Append blocks to the existing description" },
 		{ name: "status", type: statusType, description: "Project task status; case-insensitive" },
+		{
+			name: "assignee",
+			type: "Assignee list",
+			description: "Replacement assignees; use --unassign to clear the assignee",
+		},
 		{ name: "plan", type: "Markdown", description: "Replacement implementation plan" },
 		{
 			name: "append-plan",
@@ -2804,6 +2822,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 	)
 	.option("--append-desc <text>", "alias for --append-description", createMultiValueAccumulator())
 	.option("-a, --assignee <assignee>")
+	.option("--unassign", "clear the assignee (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --label <labels>")
 	.option("--priority <priority>", "set task priority (high, medium, low)")
@@ -3140,10 +3159,21 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			return;
 		}
 
+		if (options.unassign && options.assignee !== undefined) {
+			console.error("Cannot use --unassign and -a/--assignee together.");
+			process.exitCode = 1;
+			return;
+		}
+		if (options.assignee !== undefined && String(options.assignee).trim().length === 0) {
+			console.error("error: -a/--assignee cannot be empty; use --unassign to clear the assignee");
+			process.exitCode = 1;
+			return;
+		}
+
 		const labelValues = parseDelimitedStringList(options.label) ?? [];
 		const addLabelValues = parseDelimitedStringList(options.addLabel) ?? [];
 		const removeLabelValues = parseDelimitedStringList(options.removeLabel) ?? [];
-		const assigneeValues = parseDelimitedStringList(options.assignee) ?? [];
+		const assigneeValues = options.unassign ? [] : parseClearableStringList(options.assignee);
 		const acceptanceAdditions = processAcceptanceCriteriaOptions(options);
 		const definitionOfDoneAdditions = toStringArray(options.dod)
 			.map((value) => String(value).trim())
@@ -3205,7 +3235,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		if (removeLabelValues.length > 0) {
 			editArgs.removeLabels = removeLabelValues;
 		}
-		if (assigneeValues.length > 0) {
+		if (assigneeValues !== undefined) {
 			editArgs.assignee = assigneeValues;
 		}
 		if (dependencyValues) {
@@ -3643,12 +3673,24 @@ draftCmd
 	)
 	.option("--desc <text>", "alias for --description")
 	.option("-a, --assignee <assignee>")
+	.option("--unassign", "create the draft unassigned (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --labels <labels>")
 	.action(async (title: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		await core.ensureConfigLoaded();
+		if (options.unassign && options.assignee !== undefined) {
+			console.error("Cannot use --unassign and -a/--assignee together.");
+			process.exitCode = 1;
+			return;
+		}
+		if (options.assignee !== undefined && String(options.assignee).trim().length === 0) {
+			console.error("error: -a/--assignee cannot be empty; use --unassign to create an unassigned draft");
+			process.exitCode = 1;
+			return;
+		}
+
 		try {
 			const { task, filePath } = await core.createTaskFromInput({
 				title,
@@ -3657,7 +3699,7 @@ draftCmd
 						? processCliEscapes(String(options.description || options.desc))
 						: undefined,
 				status: "Draft",
-				assignee: options.assignee ? [String(options.assignee)] : undefined,
+				assignee: options.unassign ? [] : options.assignee ? [String(options.assignee)] : undefined,
 				labels: options.labels
 					? String(options.labels)
 							.split(",")

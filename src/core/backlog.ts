@@ -1078,9 +1078,10 @@ export class Core {
 			disableDefaults: input.disableDefinitionOfDoneDefaults,
 		});
 		const resolvedStatus = isDraft ? "Draft" : status || config?.defaultStatus || FALLBACK_STATUS;
-		// An explicit assignee replaces the configured default entirely; the default only fills an empty list.
+		// The default assignee only applies when no assignee field is supplied at all.
+		// An explicit empty array means "intentionally unassigned".
 		const resolvedAssignees =
-			normalizedAssignees.length > 0 ? normalizedAssignees : (normalizeStringList(config?.defaultAssignee) ?? []);
+			input.assignee === undefined ? (normalizeStringList(config?.defaultAssignee) ?? []) : normalizedAssignees;
 
 		const actualStartInput = input.actualStart;
 		const actualEndInput = input.actualEnd;

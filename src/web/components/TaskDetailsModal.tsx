@@ -35,6 +35,8 @@ interface Props {
   milestoneEntities?: Milestone[];
   archivedMilestoneEntities?: Milestone[];
   definitionOfDoneDefaults?: string[];
+  defaultAssignee?: string[];
+  availableAssignees?: string[];
   availableLabels?: string[];
   onDrillDown?: (task: Task) => void; // Navigate into a dependency task
   onBack?: () => void; // Navigate back to parent task
@@ -95,12 +97,14 @@ const buildTaskDetailsFormState = ({
   isDraftMode,
   availableStatuses,
   defaultDefinitionOfDone,
+  defaultAssignee,
 }: {
   task?: Task;
   isCreateMode: boolean;
   isDraftMode?: boolean;
   availableStatuses?: string[];
   defaultDefinitionOfDone: AcceptanceCriterion[];
+  defaultAssignee?: string[];
 }): TaskDetailsFormState => ({
   title: task?.title || "",
   description: task?.description || "",
@@ -111,7 +115,7 @@ const buildTaskDetailsFormState = ({
   criteria: task?.acceptanceCriteriaItems || [],
   definitionOfDone: task?.definitionOfDoneItems || (isCreateMode ? defaultDefinitionOfDone : []),
   status: task?.status || (isDraftMode ? "Draft" : (availableStatuses?.[0] || "To Do")),
-  assignee: task?.assignee || [],
+  assignee: task?.assignee || (isCreateMode ? defaultAssignee : []) || [],
   labels: task?.labels || [],
   priority: task?.priority || "",
   dependencies: task?.dependencies || [],
@@ -150,6 +154,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
   archivedMilestoneEntities,
   isDraftMode,
   definitionOfDoneDefaults,
+  defaultAssignee,
+  availableAssignees,
   availableLabels,
   onDrillDown,
   onBack,
@@ -483,6 +489,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
       isDraftMode,
       availableStatuses,
       defaultDefinitionOfDone,
+      defaultAssignee,
     });
     const previousFormState = formBaselineRef.current;
     const sameOpenModalRefresh =
@@ -783,7 +790,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
         finalSummary: saveFinalSummary,
         acceptanceCriteriaItems: criteria,
         status,
-        assignee,
         labels,
         priority: (priority === "" ? undefined : priority) as "high" | "medium" | "low" | undefined,
         dependencies,
@@ -796,6 +802,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
         actualStart: actualStart.trim(),
         actualEnd: actualEnd.trim(),
       };
+
+      // In create mode, omit assignee when it matches the configured default so the core
+      // applies defaultAssignee (and respects later config changes). Otherwise send the
+      // explicit value, including an empty array for "intentionally unassigned".
+      if (!isCreateMode || !areJsonEqual(assignee, defaultAssignee ?? [])) {
+        taskData.assignee = assignee;
+      }
 
       if (isCreateMode && onSubmit) {
         Object.assign(taskData, buildDefinitionOfDoneCreatePayload());
@@ -1536,6 +1549,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               onChange={(value) => handleInlineMetaUpdate({ assignee: value })}
               placeholder={t.taskDetails.placeholderAssignee}
               disabled={isFromOtherBranch}
+              availableOptions={availableAssignees}
             />
           </div>
 

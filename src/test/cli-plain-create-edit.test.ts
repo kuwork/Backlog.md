@@ -100,6 +100,45 @@ describe("CLI --plain for task create/edit", () => {
 		expect(result.stdout.toString()).not.toContain("@alice");
 	});
 
+	it("lets --unassign create a task without defaultAssignee", async () => {
+		await $`bun ${cliPath} config set defaultAssignee "@alice,@bob"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task create "Unassigned Owner" --unassign --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).not.toContain("Assignee:");
+	});
+
+	it('rejects -a "" on task create and prompts --unassign', async () => {
+		const result = await $`bun ${cliPath} task create "Empty Assignee" -a "" --plain`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("use --unassign");
+	});
+
+	it("rejects combining --unassign and -a on task create", async () => {
+		const result = await $`bun ${cliPath} task create "Conflicting Flags" -a @carol --unassign --plain`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot use --unassign and -a");
+	});
+
+	it("clears assignee with task edit --unassign", async () => {
+		await $`bun ${cliPath} task create "Edit Assignee" -a @alice --plain`.cwd(TEST_DIR).quiet();
+
+		const editResult = await $`bun ${cliPath} task edit 1 --unassign --plain`.cwd(TEST_DIR).quiet();
+		expect(editResult.exitCode).toBe(0);
+		expect(editResult.stdout.toString()).not.toContain("Assignee:");
+	});
+
+	it('rejects -a "" on task edit and prompts --unassign', async () => {
+		await $`bun ${cliPath} task create "Edit Assignee" -a @alice --plain`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit 1 -a "" --plain`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("use --unassign");
+	});
+
 	it("prints plain details after task edit --plain", async () => {
 		// Create base task first (without plain)
 		await $`bun ${cliPath} task create "Edit Me" --desc "First"`.cwd(TEST_DIR).quiet();

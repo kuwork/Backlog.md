@@ -418,6 +418,16 @@ describe("Core", () => {
 			expect(task.assignee).toEqual(["@carol"]);
 		});
 
+		it("should not apply defaultAssignee when assignee is explicitly empty", async () => {
+			const config = await core.filesystem.loadConfig();
+			if (!config) throw new Error("Expected config");
+			config.defaultAssignee = ["@alice", "@bob"];
+			await core.filesystem.saveConfig(config);
+
+			const { task } = await core.createTaskFromInput({ title: "Explicitly Unassigned Task", assignee: [] });
+			expect(task.assignee).toEqual([]);
+		});
+
 		it("should create sub-tasks with proper hierarchical IDs", async () => {
 			await initializeTestProject(core, "Subtask Project", true);
 
