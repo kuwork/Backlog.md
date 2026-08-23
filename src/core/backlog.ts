@@ -1078,6 +1078,9 @@ export class Core {
 			disableDefaults: input.disableDefinitionOfDoneDefaults,
 		});
 		const resolvedStatus = isDraft ? "Draft" : status || config?.defaultStatus || FALLBACK_STATUS;
+		// An explicit assignee replaces the configured default entirely; the default only fills an empty list.
+		const resolvedAssignees =
+			normalizedAssignees.length > 0 ? normalizedAssignees : (normalizeStringList(config?.defaultAssignee) ?? []);
 
 		const actualStartInput = input.actualStart;
 		const actualEndInput = input.actualEnd;
@@ -1089,7 +1092,7 @@ export class Core {
 				id,
 				title: input.title.trim(),
 				status: resolvedStatus,
-				assignee: normalizedAssignees,
+				assignee: resolvedAssignees,
 				labels: normalizedLabels,
 				dependencies: validDependencies,
 				references: normalizedReferences,

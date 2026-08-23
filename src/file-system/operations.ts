@@ -94,6 +94,45 @@ export function taskLockErrorMessage(taskId: string): string {
 	return `Edit failed: ${taskId} is being modified by another process; retry if appropriate.`;
 }
 
+/** Config keys stored as YAML lists. */
+const CONFIG_LIST_KEYS = ["statuses", "labels", "default_assignee"] as const;
+type ConfigListKey = (typeof CONFIG_LIST_KEYS)[number];
+
+/** Parse an inline YAML array line (`["a", "b"]`). Returns nothing for any other shape. */
+function parseInlineConfigList(value: string): string[] | undefined {
+	if (!value.startsWith("[") || !value.endsWith("]")) return undefined;
+	return value
+		.slice(1, -1)
+		.split(",")
+		.map((item) => item.trim().replace(/['"]/g, ""))
+		.filter(Boolean);
+}
+
+/**
+ * Parse a `default_assignee` config line value as YAML, so quoting, escapes, and trailing
+ * comments are handled by the parser instead of by hand. Returns nothing when the value is
+ * not valid YAML or is not a string or list, so callers fail closed rather than guess at
+ * malformed input. Shared with the config parser.
+ */
+function parseAssigneeConfigValue(value: string): string[] | undefined {
+	let parsed: unknown;
+	try {
+		parsed = Bun.YAML.parse(value);
+	} catch {
+		return undefined;
+	}
+	// `default_assignee:` with no value, including the first line of a block sequence.
+	if (parsed === null) return [];
+	if (typeof parsed === "string") {
+		const assignee = parsed.trim();
+		return assignee ? [assignee] : [];
+	}
+	if (Array.isArray(parsed)) {
+		return parsed.map((item) => String(item).trim()).filter((item) => item.length > 0);
+	}
+	return undefined;
+}
+
 export class FileSystem {
 	private resolvedBacklogDir: string;
 	private resolvedBacklogDirName: string;
@@ -101,6 +140,7 @@ export class FileSystem {
 	private configSource: BacklogConfigSource;
 	private readonly projectRoot: string;
 	private cachedConfig: BacklogConfig | null = null;
+	private cachedConfigContent: { path: string; content: string } | null = null;
 
 	constructor(projectRoot: string) {
 		this.projectRoot = projectRoot;
@@ -158,11 +198,38 @@ export class FileSystem {
 
 	invalidateConfigCache(): void {
 		this.cachedConfig = null;
+		this.cachedConfigContent = null;
 		const resolution = resolveBacklogDirectory(this.projectRoot);
 		this.resolvedBacklogDirName = resolution.backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
 		this.resolvedBacklogDir = resolution.backlogPath ?? join(this.projectRoot, DEFAULT_DIRECTORIES.BACKLOG);
 		this.resolvedConfigPath = resolution.configPath ?? join(this.resolvedBacklogDir, DEFAULT_FILES.CONFIG);
 		this.configSource = resolution.configSource ?? "folder";
+	}
+
+	getCachedConfigContent(sourceConfigPath: string): string | null {
+		return this.cachedConfigContent && resolve(this.cachedConfigContent.path) === resolve(sourceConfigPath)
+			? this.cachedConfigContent.content
+			: null;
+	}
+
+	publishConfig(config: BacklogConfig, sourceConfigPath: string, content: string): boolean {
+		const rootConfigPath = join(this.projectRoot, DEFAULT_FILES.ROOT_CONFIG);
+		if (resolve(sourceConfigPath) === resolve(rootConfigPath)) {
+			if (config.backlogDirectory !== undefined && normalizeProjectBacklogDirectory(config.backlogDirectory) === null) {
+				return false;
+			}
+			const resolution = resolveBacklogDirectory(this.projectRoot);
+			if (!resolution.backlogDir || !resolution.backlogPath || resolution.configSource !== "root") {
+				return false;
+			}
+			this.resolvedBacklogDirName = resolution.backlogDir;
+			this.resolvedBacklogDir = resolution.backlogPath;
+			this.resolvedConfigPath = resolution.configPath ?? join(this.resolvedBacklogDir, DEFAULT_FILES.CONFIG);
+			this.configSource = resolution.configSource;
+		}
+		this.cachedConfig = config;
+		this.cachedConfigContent = { path: sourceConfigPath, content };
+		return true;
 	}
 
 	setBacklogDirectory(backlogDir: string): void {
@@ -1490,6 +1557,7 @@ export class FileSystem {
 		const content = this.serializeConfig(normalizedConfig);
 		await Bun.write(configPath, content);
 		this.cachedConfig = normalizedConfig;
+		this.cachedConfigContent = { path: configPath, content };
 	}
 
 	// Utility methods
@@ -1514,7 +1582,7 @@ export class FileSystem {
 		}
 	}
 
-	private parseConfig(content: string): BacklogConfig {
+	parseConfig(content: string): BacklogConfig {
 		const config: Partial<BacklogConfig> = {};
 		const parsedDefinitionOfDone = this.parseDefinitionOfDone(content);
 		const parsedListValues = this.parseConfigListValues(content);
@@ -1535,7 +1603,9 @@ export class FileSystem {
 					config.projectName = value.replace(/['"]/g, "");
 					break;
 				case "default_assignee":
-					config.defaultAssignee = value.replace(/['"]/g, "");
+					// Block sequences come from the whole-document parse; everything else is parsed as
+					// YAML per line. A value YAML rejects leaves the key unset rather than being guessed at.
+					config.defaultAssignee = parsedListValues.default_assignee ?? parseAssigneeConfigValue(value);
 					break;
 				case "default_reporter":
 					config.defaultReporter = value.replace(/['"]/g, "");
@@ -1545,15 +1615,9 @@ export class FileSystem {
 					break;
 				case "statuses":
 				case "labels": {
-					const parsedList = parsedListValues[key];
+					const parsedList = parsedListValues[key] ?? parseInlineConfigList(value);
 					if (parsedList) {
 						config[key] = parsedList;
-					} else if (value.startsWith("[") && value.endsWith("]")) {
-						const arrayContent = value.slice(1, -1);
-						config[key] = arrayContent
-							.split(",")
-							.map((item) => item.trim().replace(/['"]/g, ""))
-							.filter(Boolean);
 					}
 					break;
 				}
@@ -1684,7 +1748,9 @@ export class FileSystem {
 		const normalizedDefinitionOfDone = this.normalizeDefinitionOfDone(config.definitionOfDone);
 		const lines = [
 			`project_name: "${config.projectName}"`,
-			...(config.defaultAssignee ? [`default_assignee: "${config.defaultAssignee}"`] : []),
+			...(config.defaultAssignee?.length
+				? [`default_assignee: [${config.defaultAssignee.map((assignee) => JSON.stringify(assignee)).join(", ")}]`]
+				: []),
 			...(config.defaultReporter ? [`default_reporter: "${config.defaultReporter}"`] : []),
 			...(config.defaultStatus ? [`default_status: "${config.defaultStatus}"`] : []),
 			`statuses: [${config.statuses.map((s) => `"${s}"`).join(", ")}]`,
@@ -1730,11 +1796,11 @@ export class FileSystem {
 	 * key when the document is not valid YAML, so the legacy inline-bracket line
 	 * parse stays the fallback.
 	 */
-	private parseConfigListValues(content: string): Partial<Record<"statuses" | "labels", string[]>> {
-		const result: Partial<Record<"statuses" | "labels", string[]>> = {};
+	private parseConfigListValues(content: string): Partial<Record<ConfigListKey, string[]>> {
+		const result: Partial<Record<ConfigListKey, string[]>> = {};
 		try {
 			const data = matter(`---\n${content.trimEnd()}\n---\n`).data as Record<string, unknown>;
-			for (const key of ["statuses", "labels"] as const) {
+			for (const key of CONFIG_LIST_KEYS) {
 				const value = data[key];
 				if (Array.isArray(value)) {
 					result[key] = value.map((item) => String(item).trim()).filter((item) => item.length > 0);

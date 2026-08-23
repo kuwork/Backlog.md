@@ -83,6 +83,23 @@ describe("CLI --plain for task create/edit", () => {
 		expect(result.stderr.toString()).toContain("Invalid ordinal: Infinity. Must be a non-negative number.");
 	});
 
+	it("applies configured defaultAssignee on CLI task create without -a", async () => {
+		await $`bun ${cliPath} config set defaultAssignee "@alice,@bob"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task create "Default Owner" --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Assignee: @alice, @bob");
+	});
+
+	it("lets explicit -a override configured defaultAssignee on CLI task create", async () => {
+		await $`bun ${cliPath} config set defaultAssignee "@alice,@bob"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task create "Explicit Owner" -a @carol --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Assignee: @carol");
+		expect(result.stdout.toString()).not.toContain("@alice");
+	});
+
 	it("prints plain details after task edit --plain", async () => {
 		// Create base task first (without plain)
 		await $`bun ${cliPath} task create "Edit Me" --desc "First"`.cwd(TEST_DIR).quiet();

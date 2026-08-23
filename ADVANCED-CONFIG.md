@@ -10,6 +10,7 @@ For getting started and the interactive wizard overview, see [README.md](README.
 | Get specific config | `backlog config get defaultEditor` |
 | Set config value | `backlog config set defaultEditor "code --wait"` |
 | Enable auto-commit | `backlog config set autoCommit true` |
+| Set default assignees | `backlog config set defaultAssignee "@alice,@bob"` |
 | Bypass git hooks | `backlog config set bypassGitHooks true` |
 | Enable cross-branch check | `backlog config set checkActiveBranches true` |
 | Set active branch days | `backlog config set activeBranchDays 30` |
@@ -20,7 +21,7 @@ Running `backlog config` with no arguments launches the interactive advanced wiz
 
 | Key               | Purpose            | Default                       |
 |-------------------|--------------------|-------------------------------|
-| `defaultAssignee` | Pre-fill assignee  | `[]`                          |
+| `defaultAssignee` | Assignees for new tasks created without `-a` | `[]`             |
 | `defaultStatus`   | First column       | `To Do`                       |
 | `definition_of_done` | Default DoD checklist items for new tasks | `(not set)` |
 | `statuses`        | Board columns      | `[To Do, In Progress, Done]`  |
@@ -50,5 +51,7 @@ Running `backlog config` with no arguments launches the interactive advanced wiz
 > **Performance**: Cross-branch checking ensures accurate task tracking across all active branches but may impact performance on large repositories. You can disable it by setting `checkActiveBranches: false` for maximum speed, or adjust `activeBranchDays` to control how far back to look for branch activity (lower values = better performance).
 
 > **Status Change Callbacks**: Set `onStatusChange` to run a shell command whenever a task's status changes. Available variables: `$TASK_ID`, `$OLD_STATUS`, `$NEW_STATUS`, `$TASK_TITLE`. Per-task override via `onStatusChange` in task frontmatter. Example: `'if [ "$NEW_STATUS" = "In Progress" ]; then claude "Task $TASK_ID ($TASK_TITLE) has been assigned to you. Please implement it." & fi'`
+
+> **Default Assignee**: `defaultAssignee` is a list, so `backlog config set defaultAssignee "@alice,@bob"` stores both names. Every create surface (CLI `task create` and `draft create`, the creation wizard, TUI, Web, MCP) applies it when no assignee is supplied. An explicit assignee replaces the default entirely instead of merging with it, and setting the value to an empty string clears the default so new tasks start unassigned. When editing `config.yml` by hand, quote the names (`default_assignee: ["@alice"]`) because `@` starts a reserved YAML character; a value YAML cannot read is ignored rather than guessed at.
 
 > **Date/Time Support**: Backlog.md now supports datetime precision for all dates. New items automatically include time (YYYY-MM-DD HH:mm format in UTC), while existing date-only entries remain unchanged for backward compatibility. Use the migration script `bun src/scripts/migrate-dates.ts` to optionally add time to existing items.

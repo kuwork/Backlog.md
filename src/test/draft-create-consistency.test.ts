@@ -62,4 +62,16 @@ describe("Draft creation consistency", () => {
 		expect(output).toContain("Task DRAFT-1 - Plain sample");
 		expect(output).not.toContain("Task TASK-1");
 	});
+
+	it("applies configured defaultAssignee to draft create", async () => {
+		await $`bun ${CLI_PATH} config set defaultAssignee "@alice"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${CLI_PATH} draft create "Draft Owner" --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Created draft DRAFT-1");
+
+		const core = new Core(TEST_DIR);
+		const draft = await core.filesystem.loadDraft("draft-1");
+		expect(draft?.assignee).toEqual(["@alice"]);
+	});
 });

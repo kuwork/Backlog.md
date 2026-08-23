@@ -177,6 +177,55 @@ describe("Config commands", () => {
 		expect(listOutput).toContain("hideEmptyColumns: true");
 	});
 
+	it("round-trips defaultAssignee through config get/set/list", async () => {
+		const defaultGet = await $`bun ${CLI_PATH} config get defaultAssignee`.cwd(TEST_DIR).text();
+		expect(defaultGet.trim()).toBe("");
+
+		await $`bun ${CLI_PATH} config set defaultAssignee "@alice,@bob"`.cwd(TEST_DIR).quiet();
+
+		const afterSet = await $`bun ${CLI_PATH} config get defaultAssignee`.cwd(TEST_DIR).text();
+		expect(afterSet.trim()).toBe("@alice, @bob");
+
+		const listOutput = await $`bun ${CLI_PATH} config list`.cwd(TEST_DIR).text();
+		expect(listOutput).toContain("defaultAssignee: [@alice, @bob]");
+
+		await $`bun ${CLI_PATH} config set defaultAssignee ""`.cwd(TEST_DIR).quiet();
+
+		const afterClear = await $`bun ${CLI_PATH} config get defaultAssignee`.cwd(TEST_DIR).text();
+		expect(afterClear.trim()).toBe("");
+		const listAfterClear = await $`bun ${CLI_PATH} config list`.cwd(TEST_DIR).text();
+		expect(listAfterClear).toContain("defaultAssignee: []");
+	});
+
+	it("parses legacy scalar and block-style default_assignee values", async () => {
+		const configPath = core.filesystem.configFilePath;
+
+		await Bun.write(
+			configPath,
+			'project_name: "P"\ndefault_assignee: "@alex"\nstatuses: ["To Do", "In Progress", "Done"]\nlabels: []\n',
+		);
+		core.filesystem.invalidateConfigCache();
+		const scalar = await core.filesystem.loadConfig();
+		expect(scalar?.defaultAssignee).toEqual(["@alex"]);
+
+		await Bun.write(
+			configPath,
+			'project_name: "P"\ndefault_assignee:\n  - "@alex"\n  - "@bob"\nstatuses: ["To Do", "In Progress", "Done"]\nlabels: []\n',
+		);
+		core.filesystem.invalidateConfigCache();
+		const block = await core.filesystem.loadConfig();
+		expect(block?.defaultAssignee).toEqual(["@alex", "@bob"]);
+	});
+
+	it("leaves defaultAssignee unset for malformed YAML values", async () => {
+		const configPath = core.filesystem.configFilePath;
+
+		await Bun.write(configPath, 'project_name: "P"\ndefault_assignee: ["@alice\nstatuses: ["To Do"]\nlabels: []\n');
+		core.filesystem.invalidateConfigCache();
+		const config = await core.filesystem.loadConfig();
+		expect(config?.defaultAssignee).toBeUndefined();
+	});
+
 	it("surfaces milestones in config get/list from milestone files", async () => {
 		await core.filesystem.createMilestone("Release 1");
 

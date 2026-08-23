@@ -100,6 +100,7 @@ type IntegrationMode = "mcp" | "cli" | "none";
 const CONFIG_GET_KEYS = [
 	"defaultEditor",
 	"projectName",
+	"defaultAssignee",
 	"defaultStatus",
 	"statuses",
 	"labels",
@@ -122,6 +123,7 @@ const CONFIG_GET_KEYS = [
 const CONFIG_SET_KEYS = [
 	"defaultEditor",
 	"projectName",
+	"defaultAssignee",
 	"defaultStatus",
 	"dateFormat",
 	"maxColumnWidth",
@@ -1711,7 +1713,11 @@ addHelpSchema(taskCmd.command("create [title]"), {
 			type: () => statusType({ includeDraft: true }),
 			description: "Project task status; case-insensitive",
 		},
-		{ name: "assignee", type: "Assignee list", description: "One or more @names" },
+		{
+			name: "assignee",
+			type: "Assignee list",
+			description: "One or more @names; omitting it applies the project's configured defaultAssignee",
+		},
 		{ name: "labels", type: "Comma-separated strings", description: "Task labels" },
 		{ name: "priority", type: choiceType(["high", "medium", "low"]), description: "Task priority" },
 		{ name: "acceptanceCriteria", type: "Markdown list item text", description: "Repeat --ac for multiple criteria" },
@@ -4792,7 +4798,7 @@ sequenceCmd
 	});
 
 const CONFIG_AVAILABLE_KEYS =
-	"Available keys: defaultEditor, projectName, defaultStatus, statuses, labels, milestones, definitionOfDone, dateFormat, maxColumnWidth, defaultPort, autoOpenBrowser, hideEmptyColumns, remoteOperations, autoCommit, filesystemOnly, bypassGitHooks, zeroPaddedIds, checkActiveBranches, activeBranchDays";
+	"Available keys: defaultEditor, projectName, defaultAssignee, defaultStatus, statuses, labels, milestones, definitionOfDone, dateFormat, maxColumnWidth, defaultPort, autoOpenBrowser, hideEmptyColumns, remoteOperations, autoCommit, filesystemOnly, bypassGitHooks, zeroPaddedIds, checkActiveBranches, activeBranchDays";
 
 addHelpSchema(configCmd.command("get <key>"), {
 	reads: "Project Backlog.md configuration",
@@ -4824,6 +4830,9 @@ addHelpSchema(configCmd.command("get <key>"), {
 					break;
 				case "projectName":
 					console.log(config.projectName);
+					break;
+				case "defaultAssignee":
+					console.log(config.defaultAssignee?.join(", ") || "");
 					break;
 				case "defaultStatus":
 					console.log(config.defaultStatus || "");
@@ -4897,7 +4906,11 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 	optional: [],
 	writes: "Updates the project Backlog.md configuration file",
 	output: "Confirmation of the updated config value",
-	examples: ['backlog config set defaultEditor "code --wait"', "backlog config set autoCommit true"],
+	examples: [
+		'backlog config set defaultEditor "code --wait"',
+		"backlog config set autoCommit true",
+		'backlog config set defaultAssignee "@alice,@bob"',
+	],
 })
 	.description("set a configuration value")
 	.action(async (key: string, value: string) => {
@@ -4926,6 +4939,10 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 				}
 				case "projectName":
 					config.projectName = value;
+					break;
+				case "defaultAssignee":
+					// An empty value clears the default; comma-separated values set several assignees.
+					config.defaultAssignee = parseDelimitedStringList(value);
 					break;
 				case "defaultStatus":
 					config.defaultStatus = value;
@@ -5123,6 +5140,7 @@ addHelpSchema(configCmd.command("list"), {
 			console.log("Configuration:");
 			console.log(`  projectName: ${config.projectName}`);
 			console.log(`  defaultEditor: ${config.defaultEditor || "(not set)"}`);
+			console.log(`  defaultAssignee: [${(config.defaultAssignee ?? []).join(", ")}]`);
 			console.log(`  defaultStatus: ${config.defaultStatus || "(not set)"}`);
 			console.log(`  statuses: [${config.statuses.join(", ")}]`);
 			console.log(`  labels: [${config.labels.join(", ")}]`);

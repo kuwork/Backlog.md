@@ -398,6 +398,26 @@ describe("Core", () => {
 			expect(loaded?.assignee).toEqual(["@dave"]);
 		});
 
+		it("should apply configured defaultAssignee when no assignee is provided", async () => {
+			const config = await core.filesystem.loadConfig();
+			if (!config) throw new Error("Expected config");
+			config.defaultAssignee = ["@alice", "@bob"];
+			await core.filesystem.saveConfig(config);
+
+			const { task } = await core.createTaskFromInput({ title: "Default Assignee Task" });
+			expect(task.assignee).toEqual(["@alice", "@bob"]);
+		});
+
+		it("should let explicit assignee override configured defaultAssignee", async () => {
+			const config = await core.filesystem.loadConfig();
+			if (!config) throw new Error("Expected config");
+			config.defaultAssignee = ["@alice", "@bob"];
+			await core.filesystem.saveConfig(config);
+
+			const { task } = await core.createTaskFromInput({ title: "Explicit Assignee Task", assignee: ["@carol"] });
+			expect(task.assignee).toEqual(["@carol"]);
+		});
+
 		it("should create sub-tasks with proper hierarchical IDs", async () => {
 			await initializeTestProject(core, "Subtask Project", true);
 

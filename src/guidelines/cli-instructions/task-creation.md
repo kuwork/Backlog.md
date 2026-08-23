@@ -80,6 +80,7 @@ Include:
 - Acceptance criteria that are specific, testable, and independent.
 - References or documentation when they are needed for implementation.
 - Dependencies when work must happen in order.
+- An assignee with `-a` when the task has a known owner; omitting it applies the project's configured `defaultAssignee` when one is set.
 
 **Do NOT include an Implementation Plan when creating a task.** The plan is written later by the agent who executes the task. After the task is created, the executing agent will set it In Progress, assign themselves, draft a plan, share it with the user, and wait for approval before writing code.
 
