@@ -17,13 +17,21 @@ Create tasks for work like bug fixes that need investigation, feature work, API 
 
 Use this overview to decide what to read or run next.
 
-Search and read before changing anything:
+Search and read before changing anything. On the first interaction of a new session, start by loading the live project state so you do not rely on defaults or stale assumptions:
 
+- `backlog config list --plain` — read defaultAssignee, defaultStatus, statuses, labels (project recommended label group, not all labels ever used), milestones, etc.
 - `backlog search "query" --plain`
 - `backlog task list --status "<todo status>" --plain`
 - `backlog task list --status "<active status>" --plain`
 - `backlog task list --search "login" --labels frontend,bug --limit 20 --plain`
 - `backlog task view {{TASK_ID:123}} --plain`
+- `backlog overview --plain` — project health and recent activity
+
+Use the output of these commands when creating tasks, choosing default assignees/statuses, or interpreting user requests. Do not guess project configuration values.
+
+**Pay special attention to statuses:** read the configured `statuses` and `defaultStatus` from `backlog config list --plain`. The default initialization uses `statuses: [To Do, In Progress, Done]` and `defaultStatus: To Do`, but projects can customize these. Do not assume the defaults. When setting or validating a task status, ensure the value is one of the configured `statuses`.
+
+**Validate defaultStatus:** `defaultStatus` must be a member of `statuses`. If it is not, warn the user and ask them to either add it to `statuses` or choose a different `defaultStatus`.
 
 ### Detailed Guides
 
