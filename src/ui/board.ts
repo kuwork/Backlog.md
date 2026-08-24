@@ -31,7 +31,7 @@ import {
 	resolveListBoundaryNavigation,
 	resolveSearchExitTargetIndex,
 } from "./task-viewer-with-search.ts";
-import { createScreen } from "./tui.ts";
+import { createScreen, formatTuiTitle } from "./tui.ts";
 import { stripBlessedFgTags } from "./utils/strip-tags.ts";
 
 export type ColumnData = {
@@ -262,6 +262,7 @@ export async function renderBoardTui(
 		milestoneMode?: boolean;
 		milestoneEntities?: Milestone[];
 		hideEmptyColumns?: boolean;
+		projectName?: string;
 		createTask?: (input: TaskCreateInput) => Promise<Task>;
 		taskComposer?: (options: TaskComposerOptions) => Promise<Task | null>;
 		priorities?: readonly string[];
@@ -274,12 +275,13 @@ export async function renderBoardTui(
 		const visibleStatuses = options?.hideEmptyColumns
 			? filterVisibleColumns(prepareBoardColumns(initialTasks, statuses), true, false).map((column) => column.status)
 			: statuses;
+		const projectName = options?.projectName?.trim() || "Project";
 		if (options?.milestoneMode) {
 			console.log(
-				generateMilestoneGroupedBoard(initialTasks, visibleStatuses, options.milestoneEntities ?? [], "Project"),
+				generateMilestoneGroupedBoard(initialTasks, visibleStatuses, options.milestoneEntities ?? [], projectName),
 			);
 		} else {
-			console.log(generateKanbanBoardWithMetadata(initialTasks, visibleStatuses, "Project"));
+			console.log(generateKanbanBoardWithMetadata(initialTasks, visibleStatuses, projectName));
 		}
 		return;
 	}
@@ -291,7 +293,7 @@ export async function renderBoardTui(
 	}
 
 	await new Promise<void>((resolve) => {
-		const screen = options?.screen ?? createScreen({ title: "Backlog Board" });
+		const screen = options?.screen ?? createScreen({ title: formatTuiTitle("Board", options?.projectName) });
 		const container = box({
 			parent: screen,
 			width: "100%",

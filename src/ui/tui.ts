@@ -68,6 +68,29 @@ export function releaseSharedProgram(): void {
 	sharedProgram = null;
 }
 
+/** Save the icon and window titles onto the terminal's title stack, the pair OSC 0 sets. */
+const PUSH_WINDOW_TITLE = "\x1b[22;0t";
+/** Restore the pair the matching push saved. */
+const POP_WINDOW_TITLE = "\x1b[23;0t";
+/** Clear the title, for terminals that keep no title stack to pop from. */
+const CLEAR_WINDOW_TITLE = "\x1b]0;\x07";
+
+/**
+ * Write one terminal control sequence straight to the output, wrapping it in the tmux DCS
+ * passthrough when inside tmux so the outer terminal receives it rather than tmux itself.
+ *
+ * blessed's own `_twrite` wraps the same way, but for tmux it defers the write until the
+ * output reports bytes written, which Bun never reports, so it falls back to a five second
+ * poll. A teardown sequence queued that way is lost as soon as the process exits, which is
+ * exactly the case this restore exists for, so these are written raw and synchronously.
+ *
+ * One sequence per call: the DCS envelope escapes a single leading ESC, so two sequences
+ * cannot share one envelope.
+ */
+function writeTerminalControl(program: ProgramInterface, sequence: string): void {
+	program.write(program.tmux ? `\x1bPtmux;\x1b${sequence.replaceAll("\x1b\\", "\x07")}\x1b\\` : sequence);
+}
+
 export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterface {
 	// Blessed programs bind process.stdin in raw mode; a fresh program per screen
 	// breaks input on the second screen after the first is destroyed (the Tab view
@@ -78,6 +101,14 @@ export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterf
 	if (!sharedProgram || sharedProgram.destroyed) {
 		sharedProgram = createProgram({ tput: false }) as ProgramInterface & { destroyed?: boolean };
 	}
+
+	// Renaming the terminal window must not outlive the session, so save the titles the
+	// user had before blessed overwrites them and put them back during teardown.
+	const managesWindowTitle = typeof options.title === "string" && options.title.length > 0;
+	if (managesWindowTitle) {
+		writeTerminalControl(sharedProgram, PUSH_WINDOW_TITLE);
+	}
+
 	const screen = blessedScreen({ smartCSR: true, program: sharedProgram, fullUnicode: true, ...options });
 
 	// screen.key registers listeners on the shared program's EventEmitter. A destroyed
@@ -105,7 +136,18 @@ export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterf
 		originalUnkey(keys, listener);
 	};
 	const originalDestroy = screen.destroy.bind(screen);
+	let restoredWindowTitle = false;
 	screen.destroy = () => {
+		// A title-managing screen saves the user's titles on open and must put them back
+		// on teardown. Clear first so terminals without a title stack fall back to their
+		// own default instead of keeping a stale view name, then pop so terminals that
+		// have one restore the exact pair the push saved. blessed emits "destroy" twice
+		// per screen, so one push must not be popped twice.
+		if (managesWindowTitle && !restoredWindowTitle && sharedProgram) {
+			restoredWindowTitle = true;
+			writeTerminalControl(sharedProgram, CLEAR_WINDOW_TITLE);
+			writeTerminalControl(sharedProgram, POP_WINDOW_TITLE);
+		}
 		// The shared program carries every screen's listeners: screen._listenKeys
 		// registers a "keypress" handler and component key bindings register "key *"
 		// handlers, neither of which screen.destroy removes. A destroyed screen's
@@ -201,6 +243,31 @@ export function addScrollKeys(
 		screen.render();
 		return false;
 	});
+}
+/** Remove C0 controls, DEL, and C1 controls so they can never reach the terminal title. */
+function stripControlCharacters(value: string): string {
+	return Array.from(value)
+		.filter((character) => {
+			const code = character.codePointAt(0) ?? 0;
+			return code > 0x1f && code !== 0x7f && !(code >= 0x80 && code <= 0x9f);
+		})
+		.join("");
+}
+
+/**
+ * Terminal/window title for a TUI surface, so parallel terminals can be told apart.
+ * Uses the configured project name when it identifies the project, and falls back to a
+ * generic "Backlog <view>" title for a blank name or the "Untitled Project" placeholder.
+ *
+ * The title is emitted as `ESC ] 0 ; <title> BEL`, so the composed string is stripped of
+ * control characters: both the project name and the view (search queries, task titles)
+ * come from repository files that a clone can control, and an embedded BEL or ESC would
+ * otherwise close the title sequence and inject arbitrary escape codes into the terminal.
+ */
+export function formatTuiTitle(view: string, projectName?: string): string {
+	const name = stripControlCharacters(projectName ?? "").trim();
+	const usableName = name && name.toLowerCase() !== "untitled project" ? name : "";
+	return stripControlCharacters(usableName ? `${usableName} - ${view}` : `Backlog ${view}`);
 }
 
 // Display long content in a scrollable viewer.

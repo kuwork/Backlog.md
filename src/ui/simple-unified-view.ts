@@ -121,6 +121,7 @@ export async function runSimpleUnifiedView(options: SimpleUnifiedViewOptions): P
 			onTabPress: async () => {
 				await switchView();
 			},
+			projectName: config?.projectName,
 		});
 
 		isRunning = false;

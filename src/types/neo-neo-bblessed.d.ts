@@ -4,6 +4,10 @@ declare module "neo-neo-bblessed" {
 		enableMouse(): void;
 		hideCursor(): void;
 		showCursor(): void;
+		/** True when the process is running inside tmux, so writes need DCS passthrough. */
+		tmux: boolean;
+		/** Writes straight to the output stream, unbuffered. */
+		write(text: string): boolean;
 		input: NodeJS.EventEmitter;
 		pause?: () => (() => void) | undefined;
 		flush?: () => void;
