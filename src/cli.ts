@@ -4216,6 +4216,7 @@ addHelpSchema(docCmd.command("create <title>"), {
 			description: "Subdirectory under backlog/docs; absolute paths and .. are rejected",
 		},
 		{ name: "type", type: choiceType(DOCUMENT_TYPE_VALUES), description: "Document type" },
+		{ name: "plain", type: "Boolean", description: "Use plain text output" },
 	],
 	writes: "Creates a document markdown file under the configured docs directory",
 	output: "Created document ID and path",
@@ -4223,6 +4224,8 @@ addHelpSchema(docCmd.command("create <title>"), {
 })
 	.option("-p, --path <path>")
 	.option("-t, --type <type>", `document type (${DOCUMENT_TYPE_VALUES.join(", ")})`)
+	// Accepted so agent guidance that always passes --plain works; create output is already plain text.
+	.option("--plain", "use plain text output")
 	.action(async (title: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);

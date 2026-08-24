@@ -143,6 +143,20 @@ describe("CLI Integration", () => {
 			expect(docs).toHaveLength(1);
 			expect(docs[0]?.title).toBe("API Guidelines");
 		});
+		it("should accept --plain when creating a document", async () => {
+			const result = await $`bun ${CLI_PATH} doc create "Setup Guide" --plain`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stderr.toString()).not.toContain("unknown option");
+
+			const stdout = result.stdout.toString();
+			expect(stdout).toContain("Created document doc-1");
+			expect(stdout).toContain("Path: backlog/docs/doc-1 - Setup-Guide.md");
+
+			const core = new Core(TEST_DIR);
+			const docs = await core.filesystem.listDocuments();
+			expect(docs).toHaveLength(1);
+			expect(docs[0]?.title).toBe("Setup Guide");
+		});
 
 		it("should list documents with id and title as plain text", async () => {
 			await $`bun ${CLI_PATH} doc create "API Guidelines" -t guide`.cwd(TEST_DIR).quiet();

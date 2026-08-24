@@ -651,7 +651,8 @@ backlog search --modified-file src/server/api.ts --plain
 | Set actual start | `backlog task edit 42 --actual-start 2026-06-02 09:30` |
 | Set actual end   | `backlog task edit 42 --actual-end 2026-06-09 17:00` |
 
-> **Note on actual dates**: `actualStart` and `actualEnd` are automatically populated when you change a task's status (to "In Progress" and "Done" respectively). You do not need to set them manually unless the user explicitly requests it.
+>
+> **Local time input:** Pass `--actual-start`/`--actual-end` values in **local time**, taken directly from the machine's clock (e.g. `date "+%Y-%m-%d %H:%M"`); the CLI converts them to UTC for storage. Do not hand-convert timezones or reuse the UTC value that appears in the task file.
 
 ### Acceptance Criteria Management
 

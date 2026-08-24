@@ -153,8 +153,7 @@ All date fields have matching `--clear-*` flags: `--clear-due-date`, `--clear-pl
 
 `actualStart` and `actualEnd` accept `YYYY-MM-DD HH:MM` and are stored in UTC. Use them to record when work really started and finished.
 
-> **Local time input:** When you provide a date or datetime through the CLI, use your local time (for example, `2026-08-21 23:37`). The CLI converts it to UTC before writing it to the task frontmatter, and converts it back to local time when displaying the task. Do not use the UTC value you see in the file as your CLI input.
->
+> **Do not convert timezones by hand.** Read the value straight from the machine's local clock (for example `date "+%Y-%m-%d %H:%M"` on POSIX shells, or the local time shown by the terminal) and pass that string unchanged. Do not derive the local time from the UTC value in the file or from the current UTC time plus an offset — that is where timezone mistakes come from. If you are unsure, use the CLI's own display (`task view`) as the source of truth.
 > If you are editing the task Markdown file directly as a fallback, write the UTC value that should be stored in the frontmatter.
 
 > **Note:** `actualStart` is automatically set when you move a task to an in-progress status, and `actualEnd` is automatically set when you move it to a terminal status (for example "Done"). You only need to set them manually when you want to override those defaults or record a different time.
