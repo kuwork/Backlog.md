@@ -3,7 +3,7 @@
 import { stdout as output } from "node:process";
 import type { BoxInterface, LineInterface, ScreenInterface, ScrollableTextInterface } from "neo-neo-bblessed";
 import { box, line, scrollabletext } from "neo-neo-bblessed";
-import { Core } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/backlog.ts";
 import {
 	buildAcceptanceCriteriaItems,
 	buildDefinitionOfDoneItems,
@@ -180,8 +180,7 @@ export async function viewTaskEnhanced(
 	}
 
 	// Get project root and setup services
-	const cwd = process.cwd();
-	const core = options.core || new Core(cwd, { enableWatchers: true });
+	const core = options.core || (await createRuntimeCore({ enableWatchers: true }));
 
 	// Show loading screen while loading tasks (can be slow with cross-branch loading)
 	let allTasks: Task[];

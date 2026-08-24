@@ -2,7 +2,7 @@
  * Enhanced views with Tab key switching between task views and kanban board
  */
 
-import type { Core } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/backlog.ts";
 import type { Task } from "../types/index.ts";
 import { renderBoardTui } from "./board.ts";
 import { createLoadingScreen } from "./loading.ts";
@@ -172,12 +172,13 @@ async function renderBoardTuiWithSwitching(
 	tasks: Task[],
 	statuses: string[],
 	_options: {
+		core?: Core;
 		viewSwitcher?: ViewSwitcher;
 		onTaskSelect?: (task: Task) => void;
 	},
 ): Promise<void> {
 	// Get config for layout and column width
-	const core = new (await import("../core/backlog.ts")).Core(process.cwd());
+	const core = _options.core ?? (await createRuntimeCore());
 	const config = await core.filesystem.loadConfig();
 	const layout = "horizontal" as const; // Default layout
 	const maxColumnWidth = config?.maxColumnWidth || 20;
@@ -185,6 +186,7 @@ async function renderBoardTuiWithSwitching(
 	// For now, use the original function but we'll need to modify it to support Tab switching
 	// This is a placeholder - we'll need to modify the actual board.ts
 	return renderBoardTui(tasks, statuses, layout, maxColumnWidth, {
+		core,
 		projectName: config?.projectName,
 	});
 }

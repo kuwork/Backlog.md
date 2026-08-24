@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/backlog.ts";
 import type { Task } from "../types/index.ts";
 import {
 	buildFilenameIdRegex,
@@ -168,7 +168,7 @@ function idsMatchLoosely(inputId: string, filename: string, prefix: string = DEF
  * For numeric-only IDs, automatically detects the prefix from existing files.
  */
 export async function getTaskPath(taskId: string, core?: Core | TaskPathContext): Promise<string | null> {
-	const coreInstance = core || new Core(process.cwd());
+	const coreInstance = core || (await createRuntimeCore());
 
 	// Extract prefix from the taskId
 	const detectedPrefix = extractAnyPrefix(taskId);
@@ -358,7 +358,7 @@ export async function getDraftPath(draftId: string, core: Core): Promise<string 
  * For numeric-only IDs, automatically detects the prefix from existing files.
  */
 export async function getTaskFilename(taskId: string, core?: Core | TaskPathContext): Promise<string | null> {
-	const coreInstance = core || new Core(process.cwd());
+	const coreInstance = core || (await createRuntimeCore());
 
 	// Extract prefix from the taskId
 	const detectedPrefix = extractAnyPrefix(taskId);

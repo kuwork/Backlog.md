@@ -32,6 +32,7 @@ import {
 	normalizeDocumentSubPath,
 } from "../utils/document-path.ts";
 import { openInEditor } from "../utils/editor.ts";
+import { findBacklogRoot } from "../utils/find-backlog-root.ts";
 import { generateNextDecisionId, generateNextDocId } from "../utils/id-generators.ts";
 import {
 	createMilestoneFilterMatcher,
@@ -39,6 +40,7 @@ import {
 	type MilestoneFilterValueResolver,
 } from "../utils/milestone-filter.ts";
 import { buildIdRegex, extractAnyPrefix, getPrefixForType, normalizeId } from "../utils/prefix-config.ts";
+import { resolveRuntimeCwd } from "../utils/runtime-cwd.ts";
 import {
 	isInProgressStatus,
 	getCanonicalStatus as resolveCanonicalStatus,
@@ -3161,4 +3163,16 @@ export class Core {
 
 		return filteredTasks;
 	}
+}
+
+/**
+ * Builds a Core bound to the project every interface resolves the same way: the runtime working
+ * directory (`--cwd`/`BACKLOG_CWD`, else `process.cwd()`), then walked up to the project root just
+ * like the CLI commands do. When no project is found the resolved directory is used as-is, so
+ * callers keep degrading to their own fallbacks instead of failing.
+ * Prefer passing an existing Core; use this only where no instance is available.
+ */
+export async function createRuntimeCore(options?: { enableWatchers?: boolean }): Promise<Core> {
+	const { cwd } = await resolveRuntimeCwd();
+	return new Core((await findBacklogRoot(cwd)) ?? cwd, options);
 }
