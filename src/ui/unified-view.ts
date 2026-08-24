@@ -471,6 +471,7 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 					},
 					milestoneMode: options.milestoneMode,
 					milestoneEntities,
+					hideEmptyColumns: config?.hideEmptyColumns ?? false,
 					createTask: async (input) => createTaskFromBoard(options.core, input, taskUpdateCallbacks.onTaskAdded),
 				}).then(() => {
 					// If user wants to exit, do it immediately

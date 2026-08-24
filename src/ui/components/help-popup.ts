@@ -22,6 +22,7 @@ const BOARD_SHORTCUTS: Shortcut[] = [
 	{ key: "M", desc: "Move task (Status/Order)" },
 	{ key: "C", desc: "Complete task" },
 	{ key: "A", desc: "Archive task" },
+	{ key: "H", desc: "Hide/show empty columns" },
 	{ key: "Y", desc: "Yank (Copy) task ID" },
 	{ key: "?", desc: "Show this help menu" },
 	{ key: "q/Esc", desc: "Quit / Close" },
