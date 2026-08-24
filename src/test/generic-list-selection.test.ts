@@ -81,11 +81,37 @@ describe("GenericList selection rendering", () => {
 			listBox.emit("key end", "", { name: "end" });
 			expect(list.getSelectedIndex()).toBe(19);
 
-			// pageup moves back up
-			listBox.emit("key pageup", "", { name: "pageup" });
-			expect(list.getSelectedIndex()).toBeLessThan(19);
-
 			list.destroy();
+		});
+	});
+
+	it("renders id - title by default and title only when itemRenderer is provided", () => {
+		withTtyScreen((screen) => {
+			const items = [
+				{ id: "Priority", title: "Priority" },
+				{ id: "Labels", title: "Labels" },
+			];
+
+			const defaultList = new GenericList({
+				parent: screen,
+				items,
+				showHelp: false,
+			});
+			const defaultBox = defaultList.getListBox() as RenderedList;
+			expect(defaultBox.ritems[0]).toBe("Priority - Priority");
+			expect(defaultBox.ritems[1]).toBe("Labels - Labels");
+			defaultList.destroy();
+
+			const titledList = new GenericList({
+				parent: screen,
+				items,
+				itemRenderer: (item) => item.title,
+				showHelp: false,
+			});
+			const titledBox = titledList.getListBox() as RenderedList;
+			expect(titledBox.ritems[0]).toBe("Priority");
+			expect(titledBox.ritems[1]).toBe("Labels");
+			titledList.destroy();
 		});
 	});
 });

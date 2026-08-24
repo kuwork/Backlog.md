@@ -209,6 +209,9 @@ export async function openSingleSelectFilterPopup(options: {
 				item: { bg: "default", hover: { inverse: true } },
 			},
 		});
+		// blessed list ignores the selected option; select it explicitly so the
+		// current value is highlighted on open and Enter confirms it, not row 0.
+		picker.select(selectedIndex);
 
 		const finish = (value: string | null) => {
 			if (settled) return;
@@ -301,6 +304,7 @@ export async function openMultiSelectFilterPopup(options: {
 			height: "100%",
 			border: false,
 			showHelp: false,
+			itemRenderer: (item) => item.title,
 			style: {
 				bg: "default",
 				item: { bg: "default" },
