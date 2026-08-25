@@ -79,11 +79,14 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Add Final Summary       | `backlog task edit {{TASK_ID:123}} --final-summary "PR-style summary"` |
 | Append Final Summary    | `backlog task edit {{TASK_ID:123}} --append-final-summary "More details"` |
 | Clear Final Summary     | `backlog task edit {{TASK_ID:123}} --clear-final-summary` |
-| Dependencies            | `backlog task edit {{TASK_ID:123}} --dep task-5,task-6` |
+| Set Dependencies        | `backlog task edit {{TASK_ID:123}} --dep task-5,task-6` |
+| Add Dependencies          | `backlog task edit {{TASK_ID:123}} --add-dep task-7,task-8` |
 | Clear Dependencies      | `backlog task edit {{TASK_ID:123}} --clear-deps` |
-| References              | `backlog task edit {{TASK_ID:123}} --ref docs/api.md` |
+| Set References          | `backlog task edit {{TASK_ID:123}} --ref docs/api.md` |
+| Add References            | `backlog task edit {{TASK_ID:123}} --add-ref docs/extra.md` |
 | Clear References        | `backlog task edit {{TASK_ID:123}} --clear-refs` |
-| Documentation           | `backlog task edit {{TASK_ID:123}} --doc docs/design.md` |
+| Set Documentation       | `backlog task edit {{TASK_ID:123}} --doc docs/design.md` |
+| Add Documentation         | `backlog task edit {{TASK_ID:123}} --add-doc docs/extra.md` |
 | Clear Documentation     | `backlog task edit {{TASK_ID:123}} --clear-docs` |
 | Modified Files          | `backlog task edit {{TASK_ID:123}} --modified-file src/api.ts` |
 
@@ -91,7 +94,7 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 
 ### Clearing List Fields
 
-The `--clear-deps`, `--clear-refs`, and `--clear-docs` flags remove every entry from the corresponding list. Use these flags when you want to empty a list; do **not** pass an empty string to the setter flags:
+The `--clear-deps`, `--clear-refs`, and `--clear-docs` flags remove every entry from the corresponding list. The `--dep`, `--ref`, and `--doc` setter flags replace the entire list, while `--add-dep`, `--add-ref`, and `--add-doc` append to it. Set and add flags are mutually exclusive. Use the clear flags when you want to empty a list; do **not** pass an empty string to the setter flags:
 
 ```bash
 # Correct: use the clear flag

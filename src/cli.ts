@@ -388,10 +388,17 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.clearFinalSummary ||
 			options.dependsOn !== undefined ||
 			options.dep !== undefined ||
+			options.addDependsOn !== undefined ||
+			options.addDep !== undefined ||
+			options.removeDep !== undefined ||
 			options.clearDeps ||
 			options.ref !== undefined ||
+			options.addRef !== undefined ||
+			options.removeRef !== undefined ||
 			options.clearRefs ||
 			options.doc !== undefined ||
+			options.addDoc !== undefined ||
+			options.removeDoc !== undefined ||
 			options.clearDocs ||
 			options.modifiedFile !== undefined ||
 			options.dueDate !== undefined ||
@@ -405,8 +412,8 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
  * Returns an error message when the clear flag conflicts with a setter or a setter value is blank.
  * Omit `clearFlag` on surfaces without a clear flag (task create) so the guidance stays accurate.
  *
- * Keep `emptyClears` false in this fork: list setters are append-style, so an empty setter value is
- * rejected both for task create and task edit. Edit errors point users to the matching --clear-* flag.
+ * Keep `emptyClears` false in this fork: an empty setter value is rejected both for task create and
+ * task edit. Edit errors point users to the matching --clear-* flag.
  */
 function validateClearableListInput(input: {
 	rawValues: string[];
@@ -437,12 +444,43 @@ function validateClearableListInput(input: {
  */
 function validateTaskListFlags(options: Record<string, unknown>, supportsClearFlags: boolean): string | undefined {
 	const clearFlag = (flag: string) => (supportsClearFlags ? flag : undefined);
+	const hasSetter =
+		options.dependsOn !== undefined ||
+		options.dep !== undefined ||
+		options.ref !== undefined ||
+		options.doc !== undefined;
+	const hasAddSetter =
+		options.addDependsOn !== undefined ||
+		options.addDep !== undefined ||
+		options.addRef !== undefined ||
+		options.addDoc !== undefined;
+	if (hasSetter && hasAddSetter) {
+		return "Cannot combine --ref/--doc/--depends-on/--dep with --add-ref/--add-doc/--add-depends-on/--add-dep. Use --ref/--doc/--depends-on/--dep to replace the list or --add-* to append.";
+	}
 	return (
 		validateClearableListInput({
 			rawValues: [...toStringArray(options.dependsOn), ...toStringArray(options.dep)],
 			cleared: Boolean(options.clearDeps),
 			isBlank: (value) => normalizeDependencies([value]).length === 0,
 			setterFlags: "--depends-on or --dep",
+			clearFlag: clearFlag("--clear-deps"),
+			subject: "task dependencies",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: [...toStringArray(options.addDependsOn), ...toStringArray(options.addDep)],
+			cleared: Boolean(options.clearDeps),
+			isBlank: (value) => normalizeDependencies([value]).length === 0,
+			setterFlags: "--add-depends-on or --add-dep",
+			clearFlag: clearFlag("--clear-deps"),
+			subject: "task dependencies",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.removeDep),
+			cleared: Boolean(options.clearDeps),
+			isBlank: (value) => normalizeDependencies([value]).length === 0,
+			setterFlags: "--remove-dep",
 			clearFlag: clearFlag("--clear-deps"),
 			subject: "task dependencies",
 			emptyClears: false,
@@ -457,10 +495,46 @@ function validateTaskListFlags(options: Record<string, unknown>, supportsClearFl
 			emptyClears: false,
 		}) ??
 		validateClearableListInput({
+			rawValues: toStringArray(options.addRef),
+			cleared: Boolean(options.clearRefs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--add-ref",
+			clearFlag: clearFlag("--clear-refs"),
+			subject: "references",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.removeRef),
+			cleared: Boolean(options.clearRefs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--remove-ref",
+			clearFlag: clearFlag("--clear-refs"),
+			subject: "references",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
 			rawValues: toStringArray(options.doc),
 			cleared: Boolean(options.clearDocs),
 			isBlank: (value) => parseDelimitedStringList(value) === undefined,
 			setterFlags: "--doc",
+			clearFlag: clearFlag("--clear-docs"),
+			subject: "documentation",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.addDoc),
+			cleared: Boolean(options.clearDocs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--add-doc",
+			clearFlag: clearFlag("--clear-docs"),
+			subject: "documentation",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.removeDoc),
+			cleared: Boolean(options.clearDocs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--remove-doc",
 			clearFlag: clearFlag("--clear-docs"),
 			subject: "documentation",
 			emptyClears: false,
@@ -684,7 +758,6 @@ if (shouldRunMigration) {
 		const projectRoot = await findBacklogRoot(runtimeCwd.cwd);
 		if (projectRoot) {
 			const core = new Core(projectRoot);
-
 			// Only migrate if config already exists (project is already initialized)
 			const config = await core.filesystem.loadConfig();
 			if (config) {
@@ -810,7 +883,6 @@ addHelpSchema(program.command("init [projectName]"), {
 				}
 
 				const core = new Core(cwd);
-
 				// Check if project is already initialized and load existing config
 				const existingConfig = await core.filesystem.loadConfig();
 				const isReInitialization = !!existingConfig;
@@ -872,7 +944,6 @@ addHelpSchema(program.command("init [projectName]"), {
 					options.taskPrefix ||
 					options.git === false
 				);
-
 				// Get project name
 				let name = projectName;
 				if (!name) {
@@ -1092,7 +1163,6 @@ addHelpSchema(program.command("init [projectName]"), {
 				let agentInstructionsSkipped = false;
 				let mcpClientSetupSummary: string | undefined;
 				const mcpGuideUrl = "https://github.com/MrLesk/Backlog.md#-mcp-integration-model-context-protocol";
-
 				if (
 					!integrationOption &&
 					integrationMode === "mcp" &&
@@ -1140,7 +1210,6 @@ addHelpSchema(program.command("init [projectName]"), {
 								},
 							],
 						});
-
 						if (clack.isCancel(integrationPrompt)) {
 							cancelInitialization();
 							return;
@@ -1206,7 +1275,6 @@ addHelpSchema(program.command("init [projectName]"), {
 									],
 									required: false,
 								});
-
 								if (clack.isCancel(response)) {
 									integrationMode = null;
 									console.log("");
@@ -1247,7 +1315,6 @@ addHelpSchema(program.command("init [projectName]"), {
 								],
 								required: true,
 							});
-
 							if (clack.isCancel(clientResponse)) {
 								integrationMode = null;
 								console.log("");
@@ -1273,7 +1340,6 @@ addHelpSchema(program.command("init [projectName]"), {
 								}
 							};
 							const uniq = (values: string[]) => [...new Set(values)];
-
 							for (const client of selectedClients) {
 								if (isMcpClientSetupKey(client)) {
 									const result = await runMcpClientCommand(client, mcpServerName);
@@ -1393,10 +1459,8 @@ addHelpSchema(program.command("init [projectName]"), {
 					existingConfig,
 					filesystemOnly,
 				});
-
 				const config = initResult.config;
 				const gitIntegrationDisabled = Boolean(config.filesystemOnly);
-
 				// Show configuration summary
 				const supportsColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
 				const colorize = (code: string, value: string): string =>
@@ -1491,7 +1555,6 @@ addHelpSchema(program.command("init [projectName]"), {
 					summaryLines.push(`${label("Advanced settings:")} ${muted("unchanged (run `backlog config` to customize)")}`);
 				}
 				clack.note(summaryLines.join("\n"), "Initialization Summary");
-
 				if (completionInstallResult) {
 					const instructions = completionInstallResult.instructions.trim();
 					clack.note(
@@ -1576,7 +1639,6 @@ export async function generateNextDocId(core: Core): Promise<string> {
 		}
 
 		const branches = await core.gitOps.listAllBranches();
-
 		// Load files from all branches in parallel
 		const branchFilePromises = branches.map(async (branch) => {
 			const files = await core.gitOps.listFilesInTree(branch, `${backlogDir}/docs`);
@@ -1587,7 +1649,6 @@ export async function generateNextDocId(core: Core): Promise<string> {
 				})
 				.filter((id): id is string => id !== null);
 		});
-
 		const branchResults = await Promise.all(branchFilePromises);
 		for (const branchIds of branchResults) {
 			allIds.push(...branchIds);
@@ -1720,6 +1781,11 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		return [...soFar, value];
 	})
 	.option(
+		"--remove-ref <reference>",
+		"remove a reference by value (can be used multiple times); comma-separated values are supported",
+		createMultiValueAccumulator(),
+	)
+	.option(
 		"--modified-file <path>",
 		"add modified file path from project root (can be used multiple times)",
 		(value, previous) => {
@@ -1735,6 +1801,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 			return [...soFar, value];
 		},
 	)
+
 	.action(async (title: string | undefined, options) => {
 		const shouldUseWizard = hasInteractiveTTY && title === undefined && !hasCreateFieldFlags(options);
 		if (!shouldUseWizard && (title === undefined || title.trim().length === 0)) {
@@ -1745,7 +1812,6 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		await core.ensureConfigLoaded();
-
 		if (shouldUseWizard) {
 			const statuses = await getValidStatuses(core);
 			const wizardInput = await runTaskCreateWizard({ statuses });
@@ -1828,7 +1894,6 @@ addHelpSchema(taskCmd.command("create [title]"), {
 				actualEnd:
 					typeof options.actualEnd === "string" ? localDateTimeToStoredUtc(options.actualEnd.trim()) : undefined,
 			});
-
 			if (usePlainOutput) {
 				console.log(formatTaskPlainText(task, { filePathOverride: filePath }));
 				return;
@@ -1997,7 +2062,6 @@ addHelpSchema(program.command("search [query]"), {
 				filters,
 			})
 			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45);
-
 		if (outputMode === "json") {
 			printJson(searchJson(searchResults, cwd, core.filesystem.docsDir));
 			cleanup();
@@ -2012,11 +2076,9 @@ addHelpSchema(program.command("search [query]"), {
 
 		const taskResults = searchResults.filter(isTaskSearchResult);
 		const searchResultTasks = taskResults.map((result) => result.task);
-
 		const allTasks = (await core.queryTasks()).filter(
 			(task) => task.id && task.id.trim() !== "" && hasAnyPrefix(task.id),
 		);
-
 		// If no tasks exist at all, show plain text results
 		if (allTasks.length === 0) {
 			printSearchResults(searchResults);
@@ -2042,7 +2104,6 @@ addHelpSchema(program.command("search [query]"), {
 				? [filters.statusExcluded]
 				: undefined;
 		const { runUnifiedView } = await import("./ui/unified-view.ts");
-
 		await runUnifiedView({
 			core,
 			initialView: "task-list",
@@ -2398,7 +2459,6 @@ addHelpSchema(taskCmd.command("list"), {
 				includeCrossBranch: false,
 			});
 			const config = await core.filesystem.loadConfig();
-
 			if (parentId) {
 				const parentExists = (await core.queryTasks({ includeCrossBranch: false })).some((task) =>
 					taskIdsEqual(parentId, task.id),
@@ -2446,7 +2506,6 @@ addHelpSchema(taskCmd.command("list"), {
 			}
 
 			const displayTasks = taskLimit !== undefined ? filtered.slice(0, taskLimit) : filtered;
-
 			if (outputMode === "json") {
 				printJson(taskListJson(displayTasks));
 				cleanup();
@@ -2518,7 +2577,6 @@ addHelpSchema(taskCmd.command("list"), {
 		if (searchQuery) activeFilters.push(`Search: ${searchQuery}`);
 		if (taskLimit !== undefined) activeFilters.push(`Limit: ${taskLimit}`);
 		if (options.sort) activeFilters.push(`Sort: ${options.sort}`);
-
 		if (activeFilters.length > 0) {
 			filterDescription = activeFilters.join(", ");
 			title = `Tasks (${activeFilters.join(" • ")})`;
@@ -2578,13 +2636,11 @@ addHelpSchema(taskCmd.command("list"), {
 			tasksLoader: async (updateProgress) => {
 				updateProgress("Loading configuration...");
 				const config = await core.filesystem.loadConfig();
-
 				// Use loadTasks with progress callback for consistent loading experience
 				// This populates the ContentStore, so subsequent queryTasks calls are fast
 				await core.loadTasks((msg) => {
 					updateProgress(msg);
 				});
-
 				// Now query with filters - this will use the already-populated ContentStore
 				updateProgress("Applying filters...");
 				const [tasks, allTasksForParentCheck] = await Promise.all([
@@ -2594,7 +2650,6 @@ addHelpSchema(taskCmd.command("list"), {
 					}),
 					parentId ? core.queryTasks() : Promise.resolve(undefined),
 				]);
-
 				if (parentId && allTasksForParentCheck) {
 					const parentExists = allTasksForParentCheck.some((task) => taskIdsEqual(parentId, task.id));
 					if (!parentExists) {
@@ -2650,19 +2705,76 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		{ name: "check-ac", type: "Integer", description: "1-based acceptance criterion index" },
 		{ name: "clear-ac", type: "Boolean", description: "Remove all acceptance criteria" },
 		{
+			name: "depends-on",
+			type: "String",
+			description:
+				"Set task dependencies; repeatable and comma-separated; mutually exclusive with --add-depends-on/--add-dep",
+		},
+		{
+			name: "dep",
+			type: "String",
+			description: "Alias for --depends-on",
+		},
+		{
+			name: "add-depends-on",
+			type: "String",
+			description: "Add task dependencies; repeatable and comma-separated; mutually exclusive with --depends-on/--dep",
+		},
+		{
+			name: "add-dep",
+			type: "String",
+			description: "Alias for --add-depends-on",
+		},
+		{
 			name: "clear-deps",
 			type: "Boolean",
-			description: "Remove all task dependencies; cannot combine with --depends-on or --dep",
+			description:
+				"Remove all task dependencies; cannot combine with --depends-on, --dep, --add-depends-on, --add-dep, or --remove-dep",
+		},
+		{
+			name: "remove-dep",
+			type: "String",
+			description: "Remove task dependencies by value; repeatable and comma-separated",
+		},
+		{
+			name: "ref",
+			type: "String",
+			description: "Set references; repeatable and comma-separated; mutually exclusive with --add-ref",
+		},
+		{
+			name: "add-ref",
+			type: "String",
+			description: "Add references; repeatable and comma-separated; mutually exclusive with --ref",
 		},
 		{
 			name: "clear-refs",
 			type: "Boolean",
-			description: "Remove all references; cannot combine with --ref",
+			description: "Remove all references; cannot combine with --ref, --add-ref, or --remove-ref",
+		},
+		{
+			name: "remove-ref",
+			type: "String",
+			description: "Remove references by value; repeatable and comma-separated",
+		},
+		{
+			name: "doc",
+			type: "String",
+			description: "Set documentation; repeatable and comma-separated; mutually exclusive with --add-doc",
+		},
+		{
+			name: "add-doc",
+			type: "String",
+			description: "Add documentation; repeatable and comma-separated; mutually exclusive with --doc",
 		},
 		{
 			name: "clear-docs",
 			type: "Boolean",
-			description: "Remove all documentation; cannot combine with --doc",
+			description: "Remove all documentation; cannot combine with --doc, --add-doc, or --remove-doc",
+		},
+		{
+			name: "remove-doc",
+			type: "String",
+			description: "Remove documentation by value; repeatable and comma-separated",
 		},
 	],
 	writes: "Updates task metadata and structured task sections through Backlog.md",
@@ -2773,7 +2885,10 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		createMultiValueAccumulator(),
 	)
 	.option("--clear-final-summary", "remove final summary")
-	.option("--clear-deps", "remove all task dependencies (cannot combine with --depends-on or --dep)")
+	.option(
+		"--clear-deps",
+		"remove all task dependencies (cannot combine with --depends-on, --dep, --add-depends-on, --add-dep, or --remove-dep)",
+	)
 	.option(
 		"--depends-on <taskIds>",
 		"set task dependencies (comma-separated or use multiple times); use --clear-deps to remove them",
@@ -2786,7 +2901,24 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
 		return [...soFar, value];
 	})
-	.option("--clear-refs", "remove all references (cannot combine with --ref)")
+	.option(
+		"--add-depends-on <taskIds>",
+		"add task dependencies (comma-separated or use multiple times)",
+		(value, previous) => {
+			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+			return [...soFar, value];
+		},
+	)
+	.option("--add-dep <taskIds>", "add task dependencies (shortcut for --add-depends-on)", (value, previous) => {
+		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+		return [...soFar, value];
+	})
+	.option(
+		"--remove-dep <taskIds>",
+		"remove task dependencies by value (can be used multiple times); comma-separated values are supported",
+		createMultiValueAccumulator(),
+	)
+	.option("--clear-refs", "remove all references (cannot combine with --ref, --add-ref, or --remove-ref)")
 	.option(
 		"--ref <reference>",
 		"set references (can be used multiple times); use --clear-refs to remove them",
@@ -2794,6 +2926,16 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
 			return [...soFar, value];
 		},
+	)
+	.option("--add-ref <reference>", "add references (can be used multiple times)", (value, previous) => {
+		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+		return [...soFar, value];
+	})
+
+	.option(
+		"--remove-ref <reference>",
+		"remove a reference by value (can be used multiple times); comma-separated values are supported",
+		createMultiValueAccumulator(),
 	)
 	.option(
 		"--modified-file <path>",
@@ -2803,7 +2945,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			return [...soFar, value];
 		},
 	)
-	.option("--clear-docs", "remove all documentation (cannot combine with --doc)")
+	.option("--clear-docs", "remove all documentation (cannot combine with --doc, --add-doc, or --remove-doc)")
 	.option(
 		"--doc <documentation>",
 		"set documentation (can be used multiple times); use --clear-docs to remove it",
@@ -2811,6 +2953,17 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
 			return [...soFar, value];
 		},
+	)
+	.option("--add-doc <documentation>", "add documentation (can be used multiple times)", (value, previous) => {
+		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+
+		return [...soFar, value];
+	})
+
+	.option(
+		"--remove-doc <documentation>",
+		"remove documentation by value (can be used multiple times); comma-separated values are supported",
+		createMultiValueAccumulator(),
 	)
 	.action(async (taskId: string | undefined, options) => {
 		const shouldUseWizard = hasInteractiveTTY && !hasEditFieldFlags(options);
@@ -2821,7 +2974,6 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-
 		if (shouldUseWizard) {
 			let selectedTaskId = taskId;
 			if (!selectedTaskId) {
@@ -2866,7 +3018,6 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		}
 
 		const existingTask = await core.loadTaskById(taskId ?? "");
-
 		if (!existingTask) {
 			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;
@@ -2991,25 +3142,30 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		const definitionOfDoneAdditions = toStringArray(options.dod)
 			.map((value) => String(value).trim())
 			.filter((value) => value.length > 0);
-
 		// These three read as clearable lists: an absent flag keeps the current list. Empty setter values
 		// are rejected above, so only the matching --clear-* flag reaches the [] assignment below.
 		const dependencyValues = parseClearableStringList([
 			...toStringArray(options.dependsOn),
 			...toStringArray(options.dep),
 		]);
-
+		const addDependencyValues = parseClearableStringList([
+			...toStringArray(options.addDependsOn),
+			...toStringArray(options.addDep),
+		]);
 		const normalizedReferences = parseClearableStringList(options.ref);
+		const addReferenceValues = parseClearableStringList(options.addRef);
 		const normalizedDocumentation = parseClearableStringList(options.doc);
+		const addDocumentationValues = parseClearableStringList(options.addDoc);
 		const normalizedModifiedFiles = parseDelimitedStringList(options.modifiedFile);
-
+		const removeDependencyValues = normalizeDependencies(toStringArray(options.removeDep));
+		const removeReferenceValues = parseDelimitedStringList(options.removeRef) ?? [];
+		const removeDocumentationValues = parseDelimitedStringList(options.removeDoc) ?? [];
 		const planAppendValues = toStringArray(options.appendPlan).map((value) => processCliEscapes(String(value)));
 		const notesAppendValues = toStringArray(options.appendNotes).map((value) => processCliEscapes(String(value)));
 		const commentsAppendValues = toStringArray(options.comment).map((value) => processCliEscapes(String(value)));
 		const finalSummaryAppendValues = toStringArray(options.appendFinalSummary).map((value) =>
 			processCliEscapes(String(value)),
 		);
-
 		const editArgs: TaskEditArgs = {};
 		if (options.title) {
 			editArgs.title = String(options.title);
@@ -3051,15 +3207,33 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		} else if (options.clearDeps) {
 			editArgs.dependencies = [];
 		}
+		if (addDependencyValues) {
+			editArgs.addDependencies = addDependencyValues;
+		}
+		if (removeDependencyValues.length > 0) {
+			editArgs.removeDependencies = removeDependencyValues;
+		}
 		if (normalizedReferences) {
 			editArgs.references = normalizedReferences;
 		} else if (options.clearRefs) {
 			editArgs.references = [];
 		}
+		if (addReferenceValues) {
+			editArgs.addReferences = addReferenceValues;
+		}
+		if (removeReferenceValues.length > 0) {
+			editArgs.removeReferences = removeReferenceValues;
+		}
 		if (normalizedDocumentation) {
 			editArgs.documentation = normalizedDocumentation;
 		} else if (options.clearDocs) {
 			editArgs.documentation = [];
+		}
+		if (addDocumentationValues) {
+			editArgs.addDocumentation = addDocumentationValues;
+		}
+		if (removeDocumentationValues.length > 0) {
+			editArgs.removeDocumentation = removeDocumentationValues;
 		}
 		if (normalizedModifiedFiles && normalizedModifiedFiles.length > 0) {
 			editArgs.modifiedFiles = normalizedModifiedFiles;
@@ -3282,7 +3456,6 @@ addHelpSchema(taskCmd.command("complete <taskId>"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const task = await core.loadTaskById(taskId);
-
 		if (!task) {
 			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;
@@ -3348,7 +3521,6 @@ taskCmd
 		if (!outputMode) return;
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-
 		// Don't handle commands that should be handled by specific command handlers
 		const reservedCommands = ["create", "list", "edit", "view", "archive", "complete", "demote"];
 		if (taskId && reservedCommands.includes(taskId)) {
@@ -3408,7 +3580,6 @@ draftCmd
 		const core = new Core(cwd);
 		await core.ensureConfigLoaded();
 		const drafts = await core.filesystem.listDrafts();
-
 		if (!drafts || drafts.length === 0) {
 			console.log("No drafts found.");
 			return;
@@ -3444,7 +3615,6 @@ draftCmd
 			// Interactive UI - use unified view with draft support
 			const firstDraft = sortedDrafts[0];
 			if (!firstDraft) return;
-
 			const { runUnifiedView } = await import("./ui/unified-view.ts");
 			await runUnifiedView({
 				core,
@@ -3539,13 +3709,11 @@ draftCmd
 		const core = new Core(cwd);
 		const { getDraftPath } = await import("./utils/task-path.ts");
 		const filePath = await getDraftPath(taskId, core);
-
 		if (!filePath) {
 			console.error(`Draft ${taskId} not found.`);
 			return;
 		}
 		const draft = await core.filesystem.loadDraft(taskId);
-
 		if (!draft) {
 			console.error(`Draft ${taskId} not found.`);
 			return;
@@ -3575,13 +3743,11 @@ draftCmd
 		const core = new Core(cwd);
 		const { getDraftPath } = await import("./utils/task-path.ts");
 		const filePath = await getDraftPath(taskId, core);
-
 		if (!filePath) {
 			console.error(`Draft ${taskId} not found.`);
 			return;
 		}
 		const draft = await core.filesystem.loadDraft(taskId);
-
 		if (!draft) {
 			console.error(`Draft ${taskId} not found.`);
 			return;
@@ -3617,20 +3783,17 @@ addHelpSchema(milestoneCmd.command("list"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		await core.ensureConfigLoaded();
-
 		const [tasks, milestones, archivedMilestones, config] = await Promise.all([
 			core.queryTasks({ includeCrossBranch: false }),
 			core.filesystem.listMilestones(),
 			core.filesystem.listArchivedMilestones(),
 			core.filesystem.loadConfig(),
 		]);
-
 		const statuses = config?.statuses ?? ["To Do", "In Progress", "Done"];
 		const archivedMilestoneIds = collectArchivedMilestoneKeys(archivedMilestones, milestones);
 		const buckets = buildMilestoneBuckets(tasks, milestones, statuses, { archivedMilestoneIds, archivedMilestones });
 		const active = buckets.filter((bucket) => !bucket.isNoMilestone && !bucket.isCompleted);
 		const completed = buckets.filter((bucket) => !bucket.isNoMilestone && bucket.isCompleted);
-
 		const formatBucket = (bucket: (typeof buckets)[number]) => {
 			const id = bucket.milestone ?? bucket.label;
 			const label = bucket.label;
@@ -3950,23 +4113,18 @@ boardCmd
 
 		// Load tasks with progress tracking
 		const loadingScreen = await createLoadingScreen("Loading tasks for export");
-
 		let finalTasks: Task[];
 		try {
 			// Use the shared Core method for loading board tasks
 			finalTasks = await core.loadTasks((msg) => {
 				loadingScreen?.update(msg);
 			});
-
 			loadingScreen?.update(`Total tasks: ${finalTasks.length}`);
-
 			// Close loading screen before export
 			loadingScreen?.close();
-
 			// Get project name from config or use directory name
 			const { basename } = await import("node:path");
 			const projectName = config?.projectName || basename(cwd);
-
 			if (options.readme) {
 				// Use version from option if provided, otherwise use the CLI version
 				const exportVersion = options.exportVersion || version;
@@ -3976,7 +4134,6 @@ boardCmd
 				// Use filename argument or default to Backlog.md
 				const outputFile = filename || "Backlog.md";
 				const outputPath = join(cwd, outputFile as string);
-
 				// Check if file exists and handle overwrite confirmation
 				const fileExists = await Bun.file(outputPath).exists();
 				if (fileExists && !options.force) {
@@ -4082,7 +4239,6 @@ addHelpSchema(docCmd.command("update <docId>"), {
 		const appendContent = toStringArray(options.appendContent)
 			.map((chunk) => processCliEscapes(String(chunk)))
 			.filter((chunk) => chunk.length > 0);
-
 		const document = await core.updateDocumentFromInput({
 			id: docId,
 			title: options.title,
@@ -4092,7 +4248,6 @@ addHelpSchema(docCmd.command("update <docId>"), {
 			path: options.path,
 			...(options.tags !== undefined && { tags: parseDelimitedStringList(options.tags) ?? [] }),
 		});
-
 		console.log(`Updated document ${document.id}`);
 		if (document.path) {
 			console.log(`Path: ${core.filesystem.backlogDirName}/docs/${document.path}`);
@@ -4117,7 +4272,6 @@ addHelpSchema(docCmd.command("list"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const docs = await core.filesystem.listDocuments();
-
 		if (outputMode === "json") {
 			printJson(documentListJson(docs, cwd, core.filesystem.docsDir));
 			return;
@@ -4201,7 +4355,6 @@ addHelpSchema(docCmd.command("search <query>"), {
 				types: ["document"],
 			})
 			.filter(isDocumentSearchResult);
-
 		printDocumentSearchResults(results, normalizedQuery);
 		cleanup();
 	});
@@ -4290,7 +4443,6 @@ addHelpSchema(decisionCmd.command("list"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const decisions = await core.filesystem.listDecisions();
-
 		if (outputMode === "json") {
 			printJson(decisionListJson(decisions));
 			return;
@@ -4446,7 +4598,6 @@ agentsCmd
 		try {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
-
 			// Check if backlog project is initialized
 			const config = await core.filesystem.loadConfig();
 			if (!config) {
@@ -4503,7 +4654,6 @@ const configCmd = addHelpSchema(program.command("config"), {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 			const existingConfig = await core.filesystem.loadConfig();
-
 			if (!existingConfig) {
 				console.error("No backlog project found. Initialize one first with: backlog init");
 				process.exit(1);
@@ -4514,7 +4664,6 @@ const configCmd = addHelpSchema(program.command("config"), {
 				installClaudeAgent: shouldInstallClaude,
 				installShellCompletions: shouldInstallCompletions,
 			} = await configureAdvancedSettings(core);
-
 			let completionResult: CompletionInstallResult | null = null;
 			let completionError: string | null = null;
 			if (shouldInstallCompletions) {
@@ -4618,7 +4767,6 @@ sequenceCmd
 		// Exclude tasks marked as Done from sequences (case-insensitive)
 		const activeTasks = tasks.filter((t) => (t.status || "").toLowerCase() !== "done");
 		const { unsequenced, sequences } = computeSequences(activeTasks);
-
 		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
 		if (usePlainOutput) {
 			if (unsequenced.length > 0) {
@@ -4659,7 +4807,6 @@ addHelpSchema(configCmd.command("get <key>"), {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 			const config = await core.filesystem.loadConfig();
-
 			if (!config) {
 				console.error("No backlog project found. Initialize one first with: backlog init");
 				process.exit(1);
@@ -4758,7 +4905,6 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 			const config = await core.filesystem.loadConfig();
-
 			if (!config) {
 				console.error("No backlog project found. Initialize one first with: backlog init");
 				process.exit(1);
@@ -4969,7 +5115,6 @@ addHelpSchema(configCmd.command("list"), {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 			const config = await core.filesystem.loadConfig();
-
 			if (!config) {
 				console.error("No backlog project found. Initialize one first with: backlog init");
 				process.exit(1);
@@ -5017,7 +5162,6 @@ addHelpSchema(program.command("cleanup"), {
 		try {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
-
 			// Check if backlog project is initialized
 			const config = await core.filesystem.loadConfig();
 			if (!config) {
@@ -5025,7 +5169,6 @@ addHelpSchema(program.command("cleanup"), {
 				process.exit(1);
 			}
 			core.gitOps.setConfig(config);
-
 			const statuses = config.statuses ?? [...DEFAULT_STATUSES];
 			const terminalStatus = getTerminalStatus(statuses);
 			if (!terminalStatus) {
@@ -5035,14 +5178,12 @@ addHelpSchema(program.command("cleanup"), {
 
 			const tasks = await core.queryTasks();
 			const terminalStatusTasks = tasks.filter((task) => isTerminalStatus(task.status, statuses));
-
 			if (terminalStatusTasks.length === 0) {
 				console.log(`No ${terminalStatus} tasks found to clean up.`);
 				return;
 			}
 
 			console.log(`Found ${terminalStatusTasks.length} tasks marked as ${terminalStatus}.`);
-
 			const ageOptions = [
 				{ title: "1 day", value: 1 },
 				{ title: "1 week", value: 7 },
@@ -5058,7 +5199,6 @@ addHelpSchema(program.command("cleanup"), {
 				options: ageOptions.map((option) => ({ label: option.title, value: option.value })),
 			});
 			const selectedAge = clack.isCancel(selectedAgePrompt) ? undefined : selectedAgePrompt;
-
 			if (selectedAge === undefined) {
 				console.log("Cleanup cancelled.");
 				return;
@@ -5066,7 +5206,6 @@ addHelpSchema(program.command("cleanup"), {
 
 			// Get tasks older than selected period
 			const tasksToMove = await core.getTerminalStatusTasksByAge(selectedAge);
-
 			if (tasksToMove.length === 0) {
 				console.log(`No tasks found that are older than ${ageOptions.find((o) => o.value === selectedAge)?.title}.`);
 				return;
@@ -5088,7 +5227,6 @@ addHelpSchema(program.command("cleanup"), {
 				initialValue: false,
 			});
 			const confirmed = clack.isCancel(confirmedPrompt) ? false : confirmedPrompt;
-
 			if (!confirmed) {
 				console.log("Cleanup cancelled.");
 				return;
@@ -5103,7 +5241,6 @@ addHelpSchema(program.command("cleanup"), {
 
 			for (const task of tasksToMove) {
 				const fromPath = task.filePath ?? (await core.getTask(task.id))?.filePath ?? null;
-
 				if (!fromPath) {
 					console.error(`Failed to locate file for task ${task.id}`);
 					continue;
@@ -5111,7 +5248,6 @@ addHelpSchema(program.command("cleanup"), {
 
 				const taskFilename = basename(fromPath);
 				const toPath = join(core.filesystem.completedDir, taskFilename);
-
 				const success = await core.completeTask(task.id);
 				if (success) {
 					successCount++;
@@ -5180,7 +5316,6 @@ addHelpSchema(program.command("doctor"), {
 				process.exit(1);
 			}
 			core.gitOps.setConfig(config);
-
 			const {
 				previewDuplicateTaskIdRepair,
 				applyDuplicateTaskIdRepair,
@@ -5188,7 +5323,6 @@ addHelpSchema(program.command("doctor"), {
 				rollbackDuplicateTaskIdRepair,
 				printDuplicateRepairPlan,
 			} = await import("./core/duplicate-task-repair.ts");
-
 			if (options.commit) {
 				const { removedBackups } = await commitDuplicateTaskIdRepair(core);
 				console.log(`Committed repair. Removed ${removedBackups.length} retained backup(s).`);
@@ -5202,14 +5336,12 @@ addHelpSchema(program.command("doctor"), {
 			}
 
 			const plan = await previewDuplicateTaskIdRepair(core);
-
 			if (plan.groups.length === 0) {
 				console.log("No duplicate task IDs found.");
 				return;
 			}
 
 			printDuplicateRepairPlan(plan);
-
 			if (!plan.repairable) {
 				console.log("\nResolve the blocked reasons above, then run 'backlog doctor' again.");
 				process.exitCode = 1;
@@ -5227,7 +5359,6 @@ addHelpSchema(program.command("doctor"), {
 					message: `Apply repair for ${plan.changes.length} duplicate file(s)?`,
 					initialValue: false,
 				}));
-
 			if (!confirmed) {
 				console.log("Repair cancelled.");
 				return;
@@ -5264,7 +5395,6 @@ program
 			const cwd = await requireProjectRoot();
 			const { BacklogServer } = await import("./server/index.ts");
 			const server = new BacklogServer(cwd);
-
 			// Load config to get default port
 			const core = new Core(cwd);
 			const config = await core.filesystem.loadConfig();
@@ -5277,7 +5407,6 @@ program
 			}
 
 			await server.start(port, options.open !== false, options.host);
-
 			// Graceful shutdown on common termination signals (register once)
 			let shuttingDown = false;
 			const shutdown = async (signal: string) => {
@@ -5312,7 +5441,6 @@ program
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 			const config = await core.filesystem.loadConfig();
-
 			if (!config) {
 				console.error("No backlog project found. Initialize one first with: backlog init");
 				process.exit(1);

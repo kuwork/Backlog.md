@@ -3,7 +3,7 @@ name: task-migration-architect
 description: >-
   分析上游分支或 fork 的变更，支持两种工作模式：① 基于 Release Notes / commit log 对上游更新进行 A/B/C 差异分类；② 针对单个上游 backlog 任务生成当前代码库的迁移任务。
   Trigger: "分析上游新分布的内容", "上游合并分析", "差异分类", "摘樱桃合并"。
-updated_date: '2026-07-28 21:29'
+updated_date: '2026-08-23 08:54'
 ---
 
 # 迁移任务架构师
@@ -192,6 +192,8 @@ git show <上游分支>:backlog/TASK-xxx.md
 
 在判断一个任务是否为 C类 时，必须先阅读 `references/current-branch-migration-exclusions.md`。若任务的任何变更内容与清单中「不应回退的内容」重合，则直接归为 C类，并在理由中引用清单对应条目。
 
+> **特别提醒**：当前 fork 已通过 `BACK-578` 将 `task edit --ref` / `--doc` / `--depends-on` / `--dep` 从「替换整个列表」改为「追加到现有列表」，并新增了 `--remove-ref` / `--remove-doc` / `--remove-dep`。分析涉及这些标志的上游任务时，若上游仍使用替换语义或缺少 remove 标志，必须按追加语义改写，不能回退旧实现。详见排除清单第 5 节。
+
 ---
 
 ## 第四步：分析上游任务（输出分析报告）
@@ -265,7 +267,7 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 | **References** | 只引用当前 fork 内的相关文件（如主要实现文件），**禁止**引用上游 draft、分类文档或迁移分析报告。 |
 | **Documentation** | 如必须填写，使用通用项目文档（如 `README.md`），**禁止**引用 `doc-4`/`doc-5` 这类迁移分析文档。 |
 | **Modified files** | 根据 `git show --stat <commit>` 映射到当前 fork 的对应路径；若当前 fork 结构不同，按实际文件列出。 |
-| **Labels** | 至少加上 `migration`；可再加 `upstream` 作为元数据标签。 |
+| **Labels** | **不要**添加 `migration` 或 `upstream` 合并标签；标签按迁移任务的实际领域设置（尽量使用 `cli` / `tui` / `web-ui` / `server` 这类领域标签），或按用户指定，不加则为空。 |
 | **Priority / Status** | 与上游分类保持一致（A类通常为 high/medium，B类按用户确认），状态设为 `To Do`。 |
 
 ### 多行正文的 Markdown 换行规范（所有任务正文字段通用）
@@ -442,7 +444,7 @@ backlog task create "<任务标题>" \
 - **Final Summary**：**必须为空**（升级后由执行者填写）。
 - **References**：只引用当前 fork 内相关实现文件，**禁止**引用上游 draft、迁移分类文档或迁移分析报告。
 - **Documentation**：如必须填写，使用通用项目文档（如 `README.md`），**禁止**引用迁移分析文档。
-- **Labels**：至少包含 `migration`，可再加 `upstream` 作为元数据标签。
+- **Labels**：**不要**添加 `migration` 或 `upstream` 合并标签；按迁移任务的实际领域设置（尽量使用 `cli` / `tui` / `web-ui` / `server` 这类领域标签），或按用户指定，不加则为空。
 
 ### 实施计划草案（供写入新任务）
 **适配策略**：

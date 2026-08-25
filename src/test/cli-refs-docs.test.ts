@@ -124,8 +124,8 @@ describe("CLI --ref and --doc flags", () => {
 	});
 
 	describe("task edit with --ref flag", () => {
-		it("sets references on existing task", async () => {
-			await $`bun ${cliPath} task create "Feature"`.cwd(TEST_DIR).quiet();
+		it("replaces references on existing task", async () => {
+			await $`bun ${cliPath} task create "Feature" --ref https://example.com`.cwd(TEST_DIR).quiet();
 
 			const result = await $`bun ${cliPath} task edit 1 --ref https://github.com/issue/456 --plain`
 				.cwd(TEST_DIR)
@@ -137,7 +137,7 @@ describe("CLI --ref and --doc flags", () => {
 		});
 
 		it("sets multiple references on existing task", async () => {
-			await $`bun ${cliPath} task create "Feature"`.cwd(TEST_DIR).quiet();
+			await $`bun ${cliPath} task create "Feature" --ref existing.ts`.cwd(TEST_DIR).quiet();
 
 			const result = await $`bun ${cliPath} task edit 1 --ref file1.ts --ref file2.ts --plain`.cwd(TEST_DIR).quiet();
 
@@ -147,9 +147,47 @@ describe("CLI --ref and --doc flags", () => {
 		});
 	});
 
-	describe("task edit with --doc flag", () => {
-		it("sets documentation on existing task", async () => {
+	describe("task edit with --add-ref flag", () => {
+		it("appends a reference to existing task", async () => {
+			await $`bun ${cliPath} task create "Feature" --ref https://example.com`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --add-ref https://github.com/issue/456 --plain`
+				.cwd(TEST_DIR)
+				.quiet();
+
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.toString();
+			expect(out).toContain("References: https://example.com, https://github.com/issue/456");
+		});
+
+		it("appends multiple references to existing task", async () => {
+			await $`bun ${cliPath} task create "Feature" --ref existing.ts`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --add-ref file1.ts --add-ref file2.ts --plain`
+				.cwd(TEST_DIR)
+				.quiet();
+
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.toString();
+			expect(out).toContain("References: existing.ts, file1.ts, file2.ts");
+		});
+
+		it("rejects combining --ref with --add-ref", async () => {
 			await $`bun ${cliPath} task create "Feature"`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --ref file1.ts --add-ref file2.ts --plain`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot combine --ref");
+		});
+	});
+
+	describe("task edit with --doc flag", () => {
+		it("replaces documentation on existing task", async () => {
+			await $`bun ${cliPath} task create "Feature" --doc https://design-docs.example.com`.cwd(TEST_DIR).quiet();
 
 			const result = await $`bun ${cliPath} task edit 1 --doc https://api-docs.example.com --plain`
 				.cwd(TEST_DIR)
@@ -161,13 +199,51 @@ describe("CLI --ref and --doc flags", () => {
 		});
 
 		it("sets multiple documentation entries on existing task", async () => {
-			await $`bun ${cliPath} task create "Feature"`.cwd(TEST_DIR).quiet();
+			await $`bun ${cliPath} task create "Feature" --doc existing.md`.cwd(TEST_DIR).quiet();
 
 			const result = await $`bun ${cliPath} task edit 1 --doc doc1.md --doc doc2.md --plain`.cwd(TEST_DIR).quiet();
 
 			expect(result.exitCode).toBe(0);
 			const out = result.stdout.toString();
 			expect(out).toContain("Documentation: doc1.md, doc2.md");
+		});
+	});
+
+	describe("task edit with --add-doc flag", () => {
+		it("appends documentation to existing task", async () => {
+			await $`bun ${cliPath} task create "Feature" --doc https://design-docs.example.com`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --add-doc https://api-docs.example.com --plain`
+				.cwd(TEST_DIR)
+				.quiet();
+
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.toString();
+			expect(out).toContain("Documentation: https://design-docs.example.com, https://api-docs.example.com");
+		});
+
+		it("appends multiple documentation entries to existing task", async () => {
+			await $`bun ${cliPath} task create "Feature" --doc existing.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --add-doc doc1.md --add-doc doc2.md --plain`
+				.cwd(TEST_DIR)
+				.quiet();
+
+			expect(result.exitCode).toBe(0);
+			const out = result.stdout.toString();
+			expect(out).toContain("Documentation: existing.md, doc1.md, doc2.md");
+		});
+
+		it("rejects combining --doc with --add-doc", async () => {
+			await $`bun ${cliPath} task create "Feature"`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --doc doc1.md --add-doc doc2.md --plain`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot combine --ref/--doc/--depends-on/--dep with --add-ref");
 		});
 	});
 
@@ -297,6 +373,140 @@ describe("CLI --ref and --doc flags", () => {
 			const result = await $`bun ${cliPath} task edit 1 --clear-docs --doc=other.md`.cwd(TEST_DIR).quiet().nothrow();
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr.toString()).toContain("Cannot combine --clear-docs with --doc");
+		});
+	});
+
+	describe("task edit --remove-ref flag", () => {
+		it("removes a single reference and leaves others", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --ref=file1.ts --ref=file2.ts`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --remove-ref=file1.ts --plain`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).toContain("References: file2.ts");
+		});
+
+		it("supports repeated flags and comma-separated values", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --ref=file1.ts --ref=file2.ts --ref=file3.ts`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --remove-ref=file1.ts --remove-ref=file2.ts,file3.ts --plain`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).not.toContain("file1.ts");
+			expect(result.stdout.toString()).not.toContain("file2.ts");
+			expect(result.stdout.toString()).not.toContain("file3.ts");
+
+			const task = await new Core(TEST_DIR).filesystem.loadTask("task-1");
+			expect(task?.references).toEqual([]);
+		});
+
+		it("rejects blank values and leaves the task unchanged", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --ref=file1.ts`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --remove-ref=""`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --remove-ref");
+
+			const task = await new Core(TEST_DIR).filesystem.loadTask("task-1");
+			expect(task?.references).toEqual(["file1.ts"]);
+		});
+
+		it("rejects combining --clear-refs with --remove-ref", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --ref=file1.ts`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --clear-refs --remove-ref=file1.ts`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot combine --clear-refs with --remove-ref");
+		});
+
+		it("allows combining --ref with --remove-ref", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --ref=file1.ts`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --ref=file2.ts --remove-ref=file1.ts --plain`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).toContain("References: file2.ts");
+
+			const task = await new Core(TEST_DIR).filesystem.loadTask("task-1");
+			expect(task?.references).toEqual(["file2.ts"]);
+		});
+	});
+
+	describe("task edit --remove-doc flag", () => {
+		it("removes a single documentation entry and leaves others", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --doc=doc1.md --doc=doc2.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --remove-doc=doc1.md --plain`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).toContain("Documentation: doc2.md");
+		});
+
+		it("supports repeated flags and comma-separated values", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --doc=doc1.md --doc=doc2.md --doc=doc3.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --remove-doc=doc1.md --remove-doc=doc2.md,doc3.md --plain`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).not.toContain("doc1.md");
+			expect(result.stdout.toString()).not.toContain("doc2.md");
+			expect(result.stdout.toString()).not.toContain("doc3.md");
+
+			const task = await new Core(TEST_DIR).filesystem.loadTask("task-1");
+			expect(task?.documentation).toEqual([]);
+		});
+
+		it("rejects blank values and leaves the task unchanged", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --doc=doc1.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --remove-doc=""`.cwd(TEST_DIR).quiet().nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot use an empty value with --remove-doc");
+
+			const task = await new Core(TEST_DIR).filesystem.loadTask("task-1");
+			expect(task?.documentation).toEqual(["doc1.md"]);
+		});
+
+		it("rejects combining --clear-docs with --remove-doc", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --doc=doc1.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --clear-docs --remove-doc=doc1.md`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+			expect(result.exitCode).toBe(1);
+			expect(result.stderr.toString()).toContain("Cannot combine --clear-docs with --remove-doc");
+		});
+
+		it("allows combining --doc with --remove-doc", async () => {
+			const cliPath = join(process.cwd(), "src", "cli.ts");
+			await $`bun ${cliPath} task create "Task" --doc=doc1.md`.cwd(TEST_DIR).quiet();
+
+			const result = await $`bun ${cliPath} task edit 1 --doc=doc2.md --remove-doc=doc1.md --plain`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).toContain("Documentation: doc2.md");
+
+			const task = await new Core(TEST_DIR).filesystem.loadTask("task-1");
+			expect(task?.documentation).toEqual(["doc2.md"]);
 		});
 	});
 });

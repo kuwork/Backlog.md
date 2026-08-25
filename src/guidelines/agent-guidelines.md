@@ -677,10 +677,18 @@ backlog search --modified-file src/server/api.ts --plain
 | Add final summary | `backlog task edit 42 --final-summary "PR-style summary"` |
 | Append final summary | `backlog task edit 42 --append-final-summary "More details"` |
 | Clear final summary | `backlog task edit 42 --clear-final-summary` |
-| Add dependencies | `backlog task edit 42 --dep task-1 --dep task-2`         |
-| Add references   | `backlog task edit 42 --ref src/api.ts --ref https://github.com/issue/123` |
-| Add documentation | `backlog task edit 42 --doc https://design-docs.example.com --doc docs/spec.md` |
+| Set dependencies | `backlog task edit 42 --dep task-1 --dep task-2`         |
+| Add dependencies | `backlog task edit 42 --add-dep task-3 --add-dep task-4` |
+| Remove dependencies | `backlog task edit 42 --remove-dep task-1 --remove-dep task-2` |
+| Set references   | `backlog task edit 42 --ref src/api.ts --ref https://github.com/issue/123` |
+| Add references   | `backlog task edit 42 --add-ref new-ref.md` |
+| Remove references | `backlog task edit 42 --remove-ref old-ref.md` |
+| Set documentation | `backlog task edit 42 --doc https://design-docs.example.com --doc docs/spec.md` |
+| Add documentation | `backlog task edit 42 --add-doc new-doc.md` |
+| Remove documentation | `backlog task edit 42 --remove-doc old-doc.md` |
 | Set modified files | `backlog task edit 42 --modified-file src/api.ts --modified-file src/ui.ts` |
+
+> **Note on list fields in `task edit`**: `--ref`, `--doc`, `--depends-on` / `--dep` **replace** the existing list. Use `--add-ref`, `--add-doc`, `--add-depends-on` / `--add-dep` to **append** to the existing list. Use `--clear-refs`, `--clear-docs`, or `--clear-deps` to remove the whole list, or `--remove-ref`, `--remove-doc`, `--remove-dep` to remove specific values. `--ref`/`--doc`/`--depends-on`/`--dep` are mutually exclusive with their `--add-*` counterparts.
 
 ### Multi‑line Input (Description/Plan/Notes/Comments/Final Summary)
 

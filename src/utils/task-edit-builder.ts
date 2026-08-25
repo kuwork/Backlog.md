@@ -96,6 +96,16 @@ export function buildTaskUpdateInput(args: TaskEditArgs): TaskUpdateInput {
 		updateInput.dependencies = dependencies;
 	}
 
+	const addDependencies = sanitizeStringArray(args.addDependencies);
+	if (addDependencies) {
+		updateInput.addDependencies = addDependencies;
+	}
+
+	const removeDependencies = sanitizeStringArray(args.removeDependencies);
+	if (removeDependencies) {
+		updateInput.removeDependencies = removeDependencies;
+	}
+
 	const references = sanitizeClearableStringArray(args.references);
 	if (references) {
 		updateInput.references = references;

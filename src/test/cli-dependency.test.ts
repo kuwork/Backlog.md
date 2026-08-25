@@ -147,39 +147,45 @@ describe("CLI Dependency Support", () => {
 		expect(task?.dependencies).toEqual(["TASK-1", "TASK-2"]);
 	});
 
-	test("should edit task to update dependencies", async () => {
-		// Create base tasks using platform-aware helper
-		const result1 = await createTaskPlatformAware({ title: "Base Task 1" }, TEST_DIR);
-		expect(result1.exitCode).toBe(0);
-		const result2 = await createTaskPlatformAware({ title: "Base Task 2" }, TEST_DIR);
-		expect(result2.exitCode).toBe(0);
-		const result3 = await createTaskPlatformAware({ title: "Base Task 3" }, TEST_DIR);
-		expect(result3.exitCode).toBe(0);
+	test("should edit task to set dependencies", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
 
-		// Create task with initial dependency
-		const result4 = await createTaskPlatformAware(
-			{
-				title: "Task with Dependency",
-				dependencies: "task-1",
-			},
-			TEST_DIR,
-		);
-		expect(result4.exitCode).toBe(0);
+		await $`bun ${cliPath} task create "Base Task 1"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base Task 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base Task 3"`.cwd(TEST_DIR).quiet();
 
-		// Edit task to change dependencies using platform-aware helper
-		const result5 = await editTaskPlatformAware(
-			{
-				taskId: "task-4",
-				dependencies: "task-2,task-3",
-			},
-			TEST_DIR,
-		);
-		expect(result5.exitCode).toBe(0);
+		await $`bun ${cliPath} task create "Task with Dependency" --dep=task-1`.cwd(TEST_DIR).quiet();
 
-		// Verify dependencies were updated (should replace, not append)
+		const result = await $`bun ${cliPath} task edit task-4 --dep=task-2,task-3 --plain`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Dependencies: TASK-2, TASK-3");
+
+		// Verify dependencies were replaced (not appended)
 		const task = await core.filesystem.loadTask("task-4");
 		expect(task).not.toBeNull();
 		expect(task?.dependencies).toEqual(["TASK-2", "TASK-3"]);
+	});
+
+	test("should edit task to append dependencies", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+
+		await $`bun ${cliPath} task create "Base Task 1"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base Task 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base Task 3"`.cwd(TEST_DIR).quiet();
+
+		await $`bun ${cliPath} task create "Task with Dependency" --dep=task-1`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-4 --add-dep=task-2,task-3 --plain`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Dependencies: TASK-1, TASK-2, TASK-3");
+
+		// Verify dependencies were appended
+		const task = await core.filesystem.loadTask("task-4");
+		expect(task).not.toBeNull();
+		expect(task?.dependencies).toEqual(["TASK-1", "TASK-2", "TASK-3"]);
 	});
 
 	test("should handle dependencies on draft tasks", async () => {
@@ -310,5 +316,121 @@ describe("CLI dependency clear flags and empty value handling", () => {
 
 		const task = await core.filesystem.loadTask("task-2");
 		expect(task?.dependencies).toEqual(["TASK-1"]);
+	});
+});
+
+describe("CLI --remove-dep flag", () => {
+	let TEST_DIR: string;
+	let core: Core;
+
+	beforeEach(async () => {
+		TEST_DIR = createUniqueTestDir("test-cli-remove-dep");
+		try {
+			await rm(TEST_DIR, { recursive: true, force: true });
+		} catch {}
+		await mkdir(TEST_DIR, { recursive: true });
+
+		await $`git init -b main`.cwd(TEST_DIR).quiet();
+		await $`git config user.name "Test User"`.cwd(TEST_DIR).quiet();
+		await $`git config user.email test@example.com`.cwd(TEST_DIR).quiet();
+
+		core = new Core(TEST_DIR);
+		await initializeTestProject(core, "test-project");
+	});
+
+	afterEach(async () => {
+		try {
+			await safeCleanup(TEST_DIR);
+		} catch {}
+	});
+
+	test("removes a single dependency and leaves others", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+		await $`bun ${cliPath} task create "Base 1"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent" --dep=task-1 --dep=task-2`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-3 --remove-dep=task-1 --plain`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-3");
+		expect(task?.dependencies).toEqual(["TASK-2"]);
+	});
+
+	test("supports repeated flags and comma-separated values", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+		await $`bun ${cliPath} task create "Base 1"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base 3"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent" --dep=task-1,task-2,task-3`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-4 --remove-dep=task-1 --remove-dep=task-2,task-3 --plain`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(result.exitCode).toBe(0);
+
+		const task = await core.filesystem.loadTask("task-4");
+		expect(task?.dependencies).toEqual([]);
+	});
+
+	test("rejects blank values", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+		await $`bun ${cliPath} task create "Base"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent" --dep=task-1`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-2 --remove-dep=""`.cwd(TEST_DIR).quiet().nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot use an empty value with --remove-dep");
+
+		const task = await core.filesystem.loadTask("task-2");
+		expect(task?.dependencies).toEqual(["TASK-1"]);
+	});
+
+	test("rejects combining --clear-deps with --remove-dep", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+		await $`bun ${cliPath} task create "Base"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent" --dep=task-1`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-2 --clear-deps --remove-dep=task-1`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --clear-deps with --remove-dep");
+
+		const task = await core.filesystem.loadTask("task-2");
+		expect(task?.dependencies).toEqual(["TASK-1"]);
+	});
+
+	test("allows combining --depends-on or --dep with --remove-dep", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+		await $`bun ${cliPath} task create "Base 1"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent" --dep=task-1`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-3 --dep=task-2 --remove-dep=task-1 --plain`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Dependencies: TASK-2");
+
+		const task = await core.filesystem.loadTask("task-3");
+		expect(task?.dependencies).toEqual(["TASK-2"]);
+	});
+
+	test("rejects combining --dep with --add-dep", async () => {
+		const cliPath = join(process.cwd(), "src", "cli.ts");
+		await $`bun ${cliPath} task create "Base 1"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Base 2"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Dependent"`.cwd(TEST_DIR).quiet();
+
+		const result = await $`bun ${cliPath} task edit task-3 --dep=task-1 --add-dep=task-2 --plain`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(result.exitCode).toBe(1);
+		expect(result.stderr.toString()).toContain("Cannot combine --ref/--doc/--depends-on/--dep with --add-ref");
 	});
 });
