@@ -15,8 +15,8 @@ describe("help popup shortcuts", () => {
 	it("uses task-list shortcuts in the task viewer help menu", () => {
 		const keys = keysFor("task-list");
 
-		expect(keys).toContain("s");
-		expect(keys).toContain("l");
+		expect(keys).toContain("S");
+		expect(keys).toContain("L");
 		expect(keys).not.toContain("F");
 		expect(keys).not.toContain("M");
 	});
@@ -28,5 +28,17 @@ describe("help popup shortcuts", () => {
 		expect(getHelpPopupHeight(16, 10)).toBe(8);
 		// The popup never drops below a minimum usable height.
 		expect(getHelpPopupHeight(1, 30)).toBe(5);
+	});
+
+	it("lists filter rows in the order each view footer advertises them", () => {
+		const boardFilterKeys = getHelpShortcuts("board")
+			.filter((shortcut) => shortcut.desc.startsWith("Filter by"))
+			.map((shortcut) => shortcut.key);
+		const taskListFilterKeys = getHelpShortcuts("task-list")
+			.filter((shortcut) => shortcut.desc.startsWith("Filter by"))
+			.map((shortcut) => shortcut.key);
+
+		expect(boardFilterKeys.join("/")).toBe("P/I/F");
+		expect(taskListFilterKeys.join("/")).toBe("S/P/I/L");
 	});
 });

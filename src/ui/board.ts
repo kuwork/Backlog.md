@@ -24,7 +24,7 @@ import { openMultiSelectFilterPopup, openSingleSelectFilterPopup } from "./compo
 import type { BoundaryNavigationKey } from "./components/generic-list.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
 import { openTaskComposer, type TaskComposerOptions } from "./components/task-composer.ts";
-import { formatFooterContent } from "./footer-content.ts";
+import { BOARD_FOOTER_CONTENT, formatFooterContent } from "./footer-content.ts";
 import { getStatusIcon } from "./status-icon.ts";
 import {
 	createTaskPopup,
@@ -168,9 +168,6 @@ export function filterVisibleColumns(data: ColumnData[], hideEmptyColumns: boole
 	const nonEmpty = data.filter((column) => column.tasks.length > 0);
 	return nonEmpty.length > 0 ? nonEmpty : data;
 }
-
-const DEFAULT_FOOTER_CONTENT =
-	" {cyan-fg}[Tab]{/} View | {cyan-fg}[N]{/} New | {cyan-fg}[/]{/} Search | {cyan-fg}[P/F/I]{/} Filter | {cyan-fg}[←→/↑↓]{/} Nav | {cyan-fg}[Enter]{/} Details | {cyan-fg}[E/M/C/A]{/} Edit/Move/Comp/Arch | {cyan-fg}[Y]{/} Yank | {cyan-fg}[?]{/} Help | {cyan-fg}[q]{/} Quit";
 
 export function upsertBoardTask(tasks: readonly Task[], task: Task): Task[] {
 	const existingIndex = tasks.findIndex((candidate) => candidate.id === task.id);
@@ -865,7 +862,7 @@ export async function renderBoardTui(
 					" {green-fg}MOVE MODE{/} | {cyan-fg}[←→]{/} Change Column | {cyan-fg}[↑↓]{/} Reorder | {cyan-fg}[Enter/M]{/} Confirm | {cyan-fg}[Esc]{/} Cancel",
 				);
 			} else {
-				const base = DEFAULT_FOOTER_CONTENT;
+				const base = BOARD_FOOTER_CONTENT;
 				setFooterContent(hasActiveSharedFilters() ? `${base} | {yellow-fg}Filtered{/}` : base);
 			}
 			syncBoardAreaLayout();

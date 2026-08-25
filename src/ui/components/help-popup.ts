@@ -8,13 +8,15 @@ type Shortcut = {
 	desc: string;
 };
 
+// Letters are uppercase key indicators, matching the footer: `P` means "press the P key",
+// not Shift+P. The bound key is the lowercase letter.
 const BOARD_SHORTCUTS: Shortcut[] = [
 	{ key: "Tab", desc: "Switch View (Kanban/List)" },
 	{ key: "N", desc: "Create task" },
 	{ key: "/", desc: "Search tasks" },
 	{ key: "P", desc: "Filter by Priority" },
-	{ key: "F", desc: "Filter by Labels" },
 	{ key: "I", desc: "Filter by Milestone" },
+	{ key: "F", desc: "Filter by Labels" },
 	{ key: "←→", desc: "Navigate columns" },
 	{ key: "↑↓", desc: "Navigate tasks" },
 	{ key: "Enter", desc: "View task details" },
@@ -31,10 +33,10 @@ const BOARD_SHORTCUTS: Shortcut[] = [
 const TASK_LIST_SHORTCUTS: Shortcut[] = [
 	{ key: "Tab", desc: "Switch View (Kanban/List)" },
 	{ key: "/", desc: "Search tasks" },
-	{ key: "s", desc: "Filter by Status" },
-	{ key: "p", desc: "Filter by Priority" },
-	{ key: "l", desc: "Filter by Labels" },
-	{ key: "i", desc: "Filter by Milestone" },
+	{ key: "S", desc: "Filter by Status" },
+	{ key: "P", desc: "Filter by Priority" },
+	{ key: "I", desc: "Filter by Milestone" },
+	{ key: "L", desc: "Filter by Labels" },
 	{ key: "↑↓", desc: "Navigate tasks" },
 	{ key: "←→", desc: "Switch between list and details" },
 	{ key: "Enter", desc: "Focus task details" },

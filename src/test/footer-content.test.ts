@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { formatFooterContent } from "../ui/footer-content.ts";
+import { BOARD_FOOTER_CONTENT, formatFooterContent, TASK_LIST_FOOTER_CONTENT } from "../ui/footer-content.ts";
 
 describe("formatFooterContent", () => {
 	it("keeps footer on one line when terminal width is sufficient", () => {
@@ -43,5 +43,28 @@ describe("formatFooterContent", () => {
 
 		expect(result.height).toBe(1);
 		expect(result.content).toBe(content);
+	});
+});
+
+describe("view footer contents", () => {
+	it("uses the same uppercase slash-separated key indicator convention in both views", () => {
+		const boardHint = BOARD_FOOTER_CONTENT.match(/\[([A-Za-z/]+)\]\{\/\} Filter/)?.[1] ?? "";
+		const taskListHint = TASK_LIST_FOOTER_CONTENT.match(/\[([A-Za-z/]+)\]\{\/\} Filter/)?.[1] ?? "";
+
+		expect(boardHint).toMatch(/^[A-Z](\/[A-Z])*$/);
+		expect(taskListHint).toMatch(/^[A-Z](\/[A-Z])*$/);
+	});
+
+	it("advertises exactly the live board filter keys in shared filter header order", () => {
+		// Board columns are the statuses and L navigates columns there, so labels binds F.
+		const hint = BOARD_FOOTER_CONTENT.match(/\[([A-Za-z/]+)\]\{\/\} Filter/)?.[1];
+
+		expect(hint).toBe("P/I/F");
+	});
+
+	it("advertises exactly the live task list filter keys in shared filter header order", () => {
+		const hint = TASK_LIST_FOOTER_CONTENT.match(/\[([A-Za-z/]+)\]\{\/\} Filter/)?.[1];
+
+		expect(hint).toBe("S/P/I/L");
 	});
 });
