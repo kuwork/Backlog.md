@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { unlink } from "node:fs/promises";
+import { rm, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { ContentStore, type ContentStoreEvent } from "../core/content-store.ts";
 import { FileSystem } from "../file-system/operations.ts";
+import { serializeDocument } from "../markdown/serializer.ts";
 import type { Decision, Document, Task } from "../types/index.ts";
 import { createUniqueTestDir, getPlatformTimeout, safeCleanup, sleep } from "./test-utils.ts";
 
@@ -300,6 +301,225 @@ describe("ContentStore", () => {
 		// The in-memory version should still be newer; a subsequent write should not be overwritten by the same stale refresh.
 		store.upsertTask({ ...sampleTask, title: "Final" });
 		expect(store.getTasks()[0]?.title).toBe("Final");
+	});
+
+	it("settles a watched document file whose name omits the title suffix", async () => {
+		store.dispose();
+
+		const untitledPath = join(filesystem.docsDir, "doc-1.md");
+		await Bun.write(untitledPath, serializeDocument({ ...sampleDocument, path: undefined }));
+
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+
+		expect(store.getDocuments()).toHaveLength(1);
+		expect(store.getDocuments()[0]?.id).toBe("doc-1");
+		expect(store.getDocuments()[0]?.path).toBe("doc-1.md");
+
+		const waitForUpdate = waitForEventWithTimeout(store, (event) => {
+			return event.type === "documents" && event.documents.some((doc) => doc.type === "specification");
+		});
+		await Bun.write(untitledPath, serializeDocument({ ...sampleDocument, type: "specification", path: undefined }));
+		await waitForUpdate;
+
+		expect(store.getDocuments()[0]?.type).toBe("specification");
+	});
+
+	it("reconciles a padded filename with an unpadded frontmatter id on load and delete", async () => {
+		store.dispose();
+
+		const paddedPath = "doc-0001 - Architecture Guide.md";
+		await Bun.write(join(filesystem.docsDir, paddedPath), serializeDocument({ ...sampleDocument, path: undefined }));
+
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+
+		expect(store.getDocuments()).toHaveLength(1);
+		expect(store.getDocuments()[0]?.id).toBe("doc-1");
+		expect(store.getDocuments()[0]?.path).toBe(paddedPath);
+
+		const waitForDeletion = waitForEventWithTimeout(store, (event) => {
+			return event.type === "documents" && event.documents.length === 0;
+		});
+		await unlink(join(filesystem.docsDir, paddedPath));
+		await waitForDeletion;
+
+		expect(store.getDocuments()).toHaveLength(0);
+	});
+
+	it("drops the replaced entry when a file is renamed and its frontmatter id respelled", async () => {
+		store.dispose();
+
+		const oldPath = "doc-1 - Old.md";
+		const newPath = "doc-2 - New.md";
+
+		await Bun.write(
+			join(filesystem.docsDir, oldPath),
+			serializeDocument({ ...sampleDocument, id: "doc-1", title: "Old", path: undefined }),
+		);
+
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+		expect(store.getDocuments()).toHaveLength(1);
+		expect(store.getDocuments()[0]?.id).toBe("doc-1");
+
+		// Delete first, then create the new file, so the old entry is gone before publish.
+		await unlink(join(filesystem.docsDir, oldPath));
+		await Bun.write(
+			join(filesystem.docsDir, newPath),
+			serializeDocument({ ...sampleDocument, id: "doc-2", title: "New", path: undefined }),
+		);
+
+		await waitUntil(
+			() => store.getDocuments().length === 1 && store.getDocuments()[0]?.id === "doc-2",
+			getPlatformTimeout(),
+		);
+
+		const documents = store.getDocuments();
+		expect(documents[0]?.path).toBe(newPath);
+	});
+
+	it("handles a document moved into and renamed within a subfolder", async () => {
+		store.dispose();
+
+		const oldPath = "doc-1.md";
+		const newPath = "guides/doc-1 - Moved.md";
+
+		await Bun.write(join(filesystem.docsDir, oldPath), serializeDocument({ ...sampleDocument, path: undefined }));
+
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+		expect(store.getDocuments()).toHaveLength(1);
+		expect(store.getDocuments()[0]?.path).toBe(oldPath);
+
+		const waitForUpdate = waitForEventWithTimeout(store, (event) => {
+			return event.type === "documents" && event.documents.some((doc) => doc.path === newPath);
+		});
+
+		const docsNewPath = join(filesystem.docsDir, "guides");
+		await Bun.write(join(docsNewPath, "doc-1 - Moved.md"), serializeDocument({ ...sampleDocument, path: undefined }));
+		await unlink(join(filesystem.docsDir, oldPath));
+		await waitForUpdate;
+
+		const documents = store.getDocuments();
+		expect(documents).toHaveLength(1);
+		expect(documents[0]?.id).toBe("doc-1");
+		expect(documents[0]?.path).toBe(newPath);
+	});
+
+	it("removes documents when a containing folder is deleted", async () => {
+		store.dispose();
+
+		await Bun.write(
+			join(filesystem.docsDir, "guides", "doc-1 - Foldered.md"),
+			serializeDocument({ ...sampleDocument, path: undefined }),
+		);
+
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+		expect(store.getDocuments()).toHaveLength(1);
+		expect(store.getDocuments()[0]?.path).toBe("guides/doc-1 - Foldered.md");
+
+		const waitForRemoval = waitForEventWithTimeout(store, (event) => {
+			return event.type === "documents" && event.documents.length === 0;
+		});
+
+		await rm(join(filesystem.docsDir, "guides"), { recursive: true, force: true });
+		await waitForRemoval;
+
+		expect(store.getDocuments()).toHaveLength(0);
+	});
+
+	it("does not resurrect a dropped equivalent document during a concurrent refresh", async () => {
+		const deferred = createDeferred<Document[]>();
+		let listCalls = 0;
+		const originalListDocuments = filesystem.listDocuments.bind(filesystem);
+		filesystem.listDocuments = async () => {
+			listCalls += 1;
+			if (listCalls === 1) {
+				return originalListDocuments();
+			}
+			return await deferred.promise;
+		};
+
+		const oldPath = "doc-1 - Title.md";
+		const newPath = "doc-0001 - Title.md";
+		await Bun.write(
+			join(filesystem.docsDir, oldPath),
+			serializeDocument({ ...sampleDocument, id: "doc-1", path: undefined }),
+		);
+
+		store.dispose();
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+		expect(store.getDocuments()).toHaveLength(1);
+		expect(store.getDocuments()[0]?.id).toBe("doc-1");
+
+		const refreshPromise = (
+			store as unknown as { refreshDocumentsFromDisk: () => Promise<void> }
+		).refreshDocumentsFromDisk();
+		await waitUntil(() => listCalls >= 2);
+
+		// Delete first, then create the equivalent file, so the store never sees two equivalents at once.
+		await unlink(join(filesystem.docsDir, oldPath));
+		await Bun.write(
+			join(filesystem.docsDir, newPath),
+			serializeDocument({ ...sampleDocument, id: "doc-0001", path: undefined }),
+		);
+
+		// Wait for the watcher to settle: the old entry should be gone and the new one published.
+		await waitUntil(
+			() => store.getDocuments().length === 1 && store.getDocuments()[0]?.id === "doc-0001",
+			getPlatformTimeout(),
+		);
+
+		deferred.resolve([{ ...sampleDocument, id: "doc-1", path: oldPath }]);
+		await refreshPromise;
+
+		const documents = store.getDocuments();
+		expect(documents).toHaveLength(1);
+		expect(documents[0]?.id).toBe("doc-0001");
+		expect(documents[0]?.path).toBe(newPath);
+	});
+
+	it("keeps padding-equivalent siblings apart when a frontmatter id is respelled", async () => {
+		store.dispose();
+
+		const alphaPath = "doc-001 - Alpha guide.md";
+		const betaPath = "doc-01 - Beta guide.md";
+
+		await Bun.write(
+			join(filesystem.docsDir, alphaPath),
+			serializeDocument({ ...sampleDocument, id: "doc-001", title: "Alpha guide", path: undefined }),
+		);
+		await Bun.write(
+			join(filesystem.docsDir, betaPath),
+			serializeDocument({ ...sampleDocument, id: "doc-01", title: "Beta guide", path: undefined }),
+		);
+
+		store = new ContentStore(filesystem, undefined, true);
+		await store.ensureInitialized();
+
+		expect(store.getDocuments()).toHaveLength(2);
+		expect(store.getDocuments().map((doc) => [doc.id, doc.path])).toEqual([
+			["doc-001", alphaPath],
+			["doc-01", betaPath],
+		]);
+
+		const waitForUpdate = waitForEventWithTimeout(store, (event) => {
+			return event.type === "documents" && event.documents.some((doc) => doc.id === "doc-1");
+		});
+		await Bun.write(
+			join(filesystem.docsDir, betaPath),
+			serializeDocument({ ...sampleDocument, id: "doc-1", title: "Beta guide", path: undefined }),
+		);
+		await waitForUpdate;
+
+		expect(store.getDocuments()).toHaveLength(2);
+		expect(store.getDocuments().map((doc) => [doc.id, doc.path])).toEqual([
+			["doc-001", alphaPath],
+			["doc-1", betaPath],
+		]);
 	});
 });
 

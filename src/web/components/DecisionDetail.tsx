@@ -283,7 +283,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 									type="text"
 									value={decisionTitle}
 									onChange={(e) => setDecisionTitle(e.target.value)}
-									className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+									className="text-3xl font-bold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 mb-2 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
 									placeholder={t.decisions.placeholderTitle}
 								/>
 							) : (

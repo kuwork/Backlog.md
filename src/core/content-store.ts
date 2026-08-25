@@ -4,9 +4,29 @@ import { basename, dirname, join, relative, sep } from "node:path";
 import type { FileSystem } from "../file-system/operations.ts";
 import { parseDecision, parseDocument, parseTask } from "../markdown/parser.ts";
 import type { Decision, Document, Task, TaskListFilter, WikiPage } from "../types/index.ts";
+import { documentIdsEqual } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath } from "../utils/document-path.ts";
 import { normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
+
+/**
+ * Document ID carried by a watched filename, for both `doc-1.md` and `doc-1 - Title.md`,
+ * or null when the name carries no addressable document identity.
+ */
+function documentFilenameId(filename: string): string | null {
+	const [candidate] = basename(filename, ".md").split(" - ");
+	if (!candidate?.startsWith("doc-") || candidate.length <= "doc-".length) return null;
+	return candidate;
+}
+
+/** Docs-relative path a watcher event refers to, or null when it cannot be expressed as one. */
+function watchedDocumentPath(docsDir: string, absolutePath: string, relativePath: string | null): string | null {
+	try {
+		return normalizeDocumentRelativePath(relativePath ?? relative(docsDir, absolutePath));
+	} catch {
+		return null;
+	}
+}
 
 interface ContentSnapshot {
 	tasks: Task[];
@@ -37,6 +57,16 @@ interface WatchHandle {
 	stop(): void;
 }
 
+interface DeferredRecheck {
+	attempt: number;
+	budgetRefreshed: boolean;
+	timer: ReturnType<typeof setTimeout> | null;
+	reconcile: () => Promise<boolean>;
+}
+
+const CONTENT_RETRY_ATTEMPTS = 12;
+const CONTENT_RETRY_DELAY_MS = 75;
+
 export class ContentStore {
 	private initialized = false;
 	private initializing: Promise<void> | null = null;
@@ -53,12 +83,18 @@ export class ContentStore {
 	private cachedWikis: WikiPage[] = [];
 
 	private readonly taskVersions = new Map<string, number>();
-	private readonly documentVersions = new Map<string, number>();
 	private readonly decisionVersions = new Map<string, number>();
 	private readonly wikiVersions = new Map<string, number>();
 
+	private readonly contentItemGenerations: Record<"documents", Map<string, number>> = {
+		documents: new Map(),
+	};
+	private readonly contentItemVersions: Record<"documents", Map<string, number>> = {
+		documents: new Map(),
+	};
+	private readonly deletedDocumentGenerations = new Map<string, number>();
+
 	private nextTaskVersion = 1;
-	private nextDocumentVersion = 1;
 	private nextDecisionVersion = 1;
 
 	private readonly listeners = new Set<ContentStoreListener>();
@@ -67,6 +103,8 @@ export class ContentStore {
 	private chainTail: Promise<void> = Promise.resolve();
 	private watchersInitialized = false;
 	private configWatcherActive = false;
+	private disposed = false;
+	private readonly deferredRechecks = new Map<string, DeferredRecheck>();
 
 	private attachWatcherErrorHandler(watcher: FSWatcher, context: string): void {
 		watcher.on("error", (error) => {
@@ -234,6 +272,8 @@ export class ContentStore {
 	}
 
 	dispose(): void {
+		this.disposed = true;
+		this.clearDeferredRechecks();
 		if (this.restoreFilesystemPatch) {
 			this.restoreFilesystemPatch();
 			this.restoreFilesystemPatch = undefined;
@@ -580,74 +620,85 @@ export class ContentStore {
 		return this.createDirectoryWatcher(docsDir, async (eventType, absolutePath, relativePath) => {
 			const base = basename(absolutePath);
 			if (!base.endsWith(".md")) {
-				if (relativePath === null) {
+				if (eventType === "rename" || relativePath === null) {
 					await this.refreshDocumentsFromDisk();
 				}
 				return;
 			}
 
-			if (!base.startsWith("doc-")) {
+			const id = documentFilenameId(base);
+			const eventPath = watchedDocumentPath(docsDir, absolutePath, relativePath);
+			if (!id || !eventPath) {
 				await this.refreshDocumentsFromDisk();
 				return;
 			}
 
-			const [idPart] = base.split(" - ");
-			if (!idPart) {
-				await this.refreshDocumentsFromDisk();
-				return;
-			}
-
-			const exists = await Bun.file(absolutePath).exists();
-
-			if (!exists) {
-				if (this.documents.has(idPart)) {
-					this.incrementDocumentVersion(idPart);
-					this.documents.delete(idPart);
-					this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
-					this.notify("documents");
+			let strandedEquivalent = false;
+			await this.reconcileOrSchedule(`document:${id}`, async () => {
+				if (!(await Bun.file(absolutePath).exists())) {
+					this.removeWatchedDocument(eventPath);
+					return false;
 				}
-				return;
-			}
-
-			if (eventType === "rename" && exists) {
-				await this.refreshDocumentsFromDisk();
-				return;
-			}
-
-			const previous = this.documents.get(idPart);
-			const document = await this.retryRead(
-				async () => {
-					try {
-						const content = await Bun.file(absolutePath).text();
-						const documentPath = normalizeDocumentRelativePath(relativePath ?? relative(docsDir, absolutePath));
-						return { ...parseDocument(content), path: documentPath };
-					} catch {
-						return null;
-					}
-				},
-				(result) => {
-					if (!result) {
-						return false;
-					}
-					if (result.id !== idPart) {
-						return false;
-					}
-					if (!previous) {
-						return true;
-					}
-					return this.hasDocumentChanged(previous, result);
-				},
-			);
-			if (!document) {
-				await this.refreshDocumentsFromDisk(idPart, previous);
-				return;
-			}
-
-			this.incrementDocumentVersion(document.id);
-			this.documents.set(document.id, document);
-			this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
-			this.notify("documents");
+				try {
+					const document = { ...parseDocument(await Bun.file(absolutePath).text()), path: eventPath };
+					if (!documentIdsEqual(document.id, id)) return true;
+					const previous = this.findWatchedDocumentByPath(eventPath);
+					if (previous && !this.hasDocumentChanged(previous, document)) return true;
+					strandedEquivalent = this.publishWatchedDocument(document, eventPath);
+					return false;
+				} catch {
+					return true;
+				}
+			});
+			if (strandedEquivalent) await this.refreshDocumentsFromDisk();
 		});
+	}
+
+	/**
+	 * Documents are keyed by frontmatter ID, so equivalent IDs can be spelled differently and belong to
+	 * different files. A watcher event is about one file, so its store entry is the one holding that path.
+	 */
+	private findWatchedDocumentByPath(path?: string): Document | undefined {
+		if (!path) return undefined;
+		return [...this.documents.values()].find((document) => document.path === path);
+	}
+
+	/** Drops one entry and versions the removal so a concurrent refresh cannot resurrect it. */
+	private dropWatchedDocument(document: Document): boolean {
+		if (!this.documents.delete(document.id)) return false;
+		this.nextContentItemVersion("documents", document.id);
+		this.deletedDocumentGenerations.set(document.id, this.contentItemVersions.documents.get(document.id) ?? 0);
+		return true;
+	}
+
+	private removeWatchedDocument(path: string): void {
+		const existing = this.findWatchedDocumentByPath(path);
+		if (!existing || !this.dropWatchedDocument(existing)) return;
+		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
+		this.notify("documents");
+	}
+
+	/**
+	 * Publishes one watched file. Returns true when the publish landed on a path the store did not
+	 * hold while an equivalent ID still sits at another path: the file may have been renamed and
+	 * respelled at once with only the destination event delivered, and no path identifies what it
+	 * vacated. Only a full refresh can settle that without guessing which entry it was.
+	 */
+	private publishWatchedDocument(document: Document, replacedPath?: string): boolean {
+		// A respelled frontmatter ID rekeys the entry, so drop the one this file used to occupy.
+		const replaced = this.findWatchedDocumentByPath(replacedPath) ?? this.findWatchedDocumentByPath(document.path);
+		if (replaced && replaced.id !== document.id) {
+			this.dropWatchedDocument(replaced);
+		}
+		this.nextContentItemVersion("documents", document.id);
+		this.deletedDocumentGenerations.delete(document.id);
+		this.documents.set(document.id, document);
+		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
+		this.notify("documents");
+		if (replaced) return false;
+		return this.cachedDocuments.some(
+			(candidate) => candidate.path !== document.path && documentIdsEqual(candidate.id, document.id),
+		);
 	}
 
 	private normalizeFilename(value: string | Buffer | null | undefined): string | null {
@@ -752,7 +803,7 @@ export class ContentStore {
 
 		this.filesystem.saveDocument = (async (document: Document, subPath = "") => {
 			const result = await originalSaveDocument.call(this.filesystem, document, subPath);
-			await this.handleDocumentWrite(document.id);
+			await this.handleDocumentWrite(result.relativePath);
 			return result;
 		}) as FileSystem["saveDocument"];
 
@@ -778,11 +829,11 @@ export class ContentStore {
 		await this.updateTaskFromDisk(taskId);
 	}
 
-	private async handleDocumentWrite(documentId: string): Promise<void> {
+	private async handleDocumentWrite(relativePath: string): Promise<void> {
 		if (!this.initialized) {
 			return;
 		}
-		await this.updateDocumentFromDisk(documentId);
+		await this.updateDocumentFromDisk(relativePath);
 	}
 
 	private hasTaskChanged(previous: Task, next: Task): boolean {
@@ -824,14 +875,14 @@ export class ContentStore {
 	}
 
 	private async refreshDocumentsFromDisk(expectedId?: string, previous?: Document): Promise<void> {
-		const capturedVersions = this.captureVersions(this.documentVersions, this.documents);
+		const capturedVersions = this.captureVersions(this.contentItemVersions.documents, this.documents);
 		const documents = await this.retryRead(
 			async () => this.filesystem.listDocuments(),
 			(expected) => {
 				if (!expectedId) {
 					return true;
 				}
-				const match = expected.find((doc) => doc.id === expectedId);
+				const match = expected.find((doc) => documentIdsEqual(doc.id, expectedId));
 				if (!match) {
 					return false;
 				}
@@ -913,16 +964,31 @@ export class ContentStore {
 		this.notify("tasks");
 	}
 
-	private async updateDocumentFromDisk(documentId: string): Promise<void> {
-		const previous = this.documents.get(documentId);
-		const document = await this.retryRead(
-			async () => this.filesystem.loadDocument(documentId),
-			(result) => result !== null && (!previous || this.hasDocumentChanged(previous, result)),
-		);
-		if (!document) {
+	private async updateDocumentFromDisk(relativePath: string): Promise<void> {
+		const generation = this.nextContentItemGeneration("documents", relativePath);
+		const docsDir = this.filesystem.docsDir;
+		const absolutePath = join(docsDir, ...relativePath.split("/"));
+		let content: string;
+		try {
+			content = await Bun.file(absolutePath).text();
+		} catch {
 			return;
 		}
-		this.incrementDocumentVersion(document.id);
+		if (!this.isContentItemGenerationCurrent("documents", relativePath, generation)) {
+			return;
+		}
+		const parsed = parseDocument(content);
+		const document = { ...parsed, path: relativePath };
+		const previous = this.findWatchedDocumentByPath(relativePath);
+		if (previous && !this.hasDocumentChanged(previous, document)) {
+			return;
+		}
+		const replaced = this.findWatchedDocumentByPath(relativePath);
+		if (replaced && replaced.id !== document.id) {
+			this.dropWatchedDocument(replaced);
+		}
+		this.nextContentItemVersion("documents", document.id);
+		this.deletedDocumentGenerations.delete(document.id);
 		this.documents.set(document.id, document);
 		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
 		this.notify("documents");
@@ -1066,6 +1132,67 @@ export class ContentStore {
 			});
 	}
 
+	private async reconcileOrSchedule(key: string, reconcile: () => Promise<boolean>): Promise<void> {
+		if (this.disposed) return;
+		this.cancelDeferredRecheck(key);
+		let shouldRetry = true;
+		try {
+			shouldRetry = await reconcile();
+		} catch {}
+		if (this.disposed) return;
+		if (!shouldRetry) return;
+		this.scheduleDeferredRecheck(key, reconcile);
+	}
+
+	private scheduleDeferredRecheck(key: string, reconcile: () => Promise<boolean>): void {
+		const recheck: DeferredRecheck = {
+			attempt: 1,
+			budgetRefreshed: false,
+			timer: null,
+			reconcile,
+		};
+		this.deferredRechecks.set(key, recheck);
+		this.armDeferredRecheck(key, recheck);
+	}
+
+	private armDeferredRecheck(key: string, recheck: DeferredRecheck): void {
+		if (recheck.attempt >= CONTENT_RETRY_ATTEMPTS || this.disposed) {
+			if (this.deferredRechecks.get(key) === recheck) this.deferredRechecks.delete(key);
+			return;
+		}
+		recheck.timer = setTimeout(() => {
+			recheck.timer = null;
+			void this.enqueue(async () => {
+				if (this.deferredRechecks.get(key) !== recheck || this.disposed) return;
+				let shouldRetry = true;
+				try {
+					shouldRetry = await recheck.reconcile();
+				} catch {}
+				if (this.deferredRechecks.get(key) !== recheck || this.disposed) return;
+				if (!shouldRetry) {
+					this.deferredRechecks.delete(key);
+					return;
+				}
+				recheck.attempt += 1;
+				this.armDeferredRecheck(key, recheck);
+			});
+		}, CONTENT_RETRY_DELAY_MS * recheck.attempt);
+	}
+
+	private cancelDeferredRecheck(key: string): void {
+		const recheck = this.deferredRechecks.get(key);
+		if (!recheck) return;
+		if (recheck.timer) clearTimeout(recheck.timer);
+		this.deferredRechecks.delete(key);
+	}
+
+	private clearDeferredRechecks(): void {
+		for (const recheck of this.deferredRechecks.values()) {
+			if (recheck.timer) clearTimeout(recheck.timer);
+		}
+		this.deferredRechecks.clear();
+	}
+
 	private captureVersions<T>(versions: Map<string, number>, items: Map<string, T>): Map<string, number> {
 		const captured = new Map<string, number>();
 		for (const id of items.keys()) {
@@ -1078,12 +1205,26 @@ export class ContentStore {
 		this.taskVersions.set(normalizeTaskId(taskId), this.nextTaskVersion++);
 	}
 
-	private incrementDocumentVersion(documentId: string): void {
-		this.documentVersions.set(documentId, this.nextDocumentVersion++);
-	}
-
 	private incrementDecisionVersion(decisionId: string): void {
 		this.decisionVersions.set(decisionId, this.nextDecisionVersion++);
+	}
+
+	private nextContentItemGeneration(collection: "documents", key: string): number {
+		const generations = this.contentItemGenerations[collection];
+		const generation = (generations.get(key) ?? 0) + 1;
+		generations.set(key, generation);
+		return generation;
+	}
+
+	private nextContentItemVersion(collection: "documents", key: string): number {
+		const versions = this.contentItemVersions[collection];
+		const version = (versions.get(key) ?? 0) + 1;
+		versions.set(key, version);
+		return version;
+	}
+
+	private isContentItemGenerationCurrent(collection: "documents", key: string, generation: number): boolean {
+		return !this.disposed && generation === this.contentItemGenerations[collection].get(key);
 	}
 
 	private mergeTasks(loaded: Task[], capturedVersions: Map<string, number>): boolean {
@@ -1147,7 +1288,14 @@ export class ContentStore {
 			const id = document.id;
 			const existing = this.documents.get(id);
 			const capturedVersion = capturedVersions.get(id);
-			const currentVersion = this.documentVersions.get(id) ?? 0;
+			const currentVersion = this.contentItemVersions.documents.get(id) ?? 0;
+			const deletedGeneration = this.deletedDocumentGenerations.get(id) ?? 0;
+
+			// If the document was deleted after this refresh started, don't resurrect it from disk.
+			if (capturedVersion !== undefined && deletedGeneration > capturedVersion) {
+				changed = true;
+				continue;
+			}
 
 			if (!existing) {
 				nextDocuments.set(id, document);
@@ -1168,7 +1316,7 @@ export class ContentStore {
 		for (const [id, existing] of this.documents) {
 			if (nextDocuments.has(id)) continue;
 			const capturedVersion = capturedVersions.get(id);
-			const currentVersion = this.documentVersions.get(id) ?? 0;
+			const currentVersion = this.contentItemVersions.documents.get(id) ?? 0;
 			if (capturedVersion !== undefined && capturedVersion === currentVersion) {
 				changed = true;
 				continue;
