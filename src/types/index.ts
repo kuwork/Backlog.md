@@ -203,7 +203,7 @@ export interface Decision {
 	consequences: string;
 	alternatives?: string;
 	readonly rawContent: string; // Raw markdown content without frontmatter
-	filePath?: string;
+	path?: string; // Backlog-relative markdown path, injected when read from disk
 }
 
 export interface Milestone {

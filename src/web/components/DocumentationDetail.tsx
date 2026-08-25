@@ -1,6 +1,7 @@
 import {useState, useEffect, memo, useCallback} from 'react';
 import {useParams, useNavigate, useLocation, useSearchParams} from 'react-router-dom';
-import {apiClient} from '../lib/api';
+import {apiClient, isAmbiguousIdConflict} from '../lib/api';
+import { AmbiguousIdNotice } from './AmbiguousIdNotice';
 import { PasteAwareMDEditor } from './PasteAwareMDEditor';
 import MermaidMarkdown from './MermaidMarkdown';
 import FilePreviewModal from './FilePreviewModal';
@@ -103,7 +104,7 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [, setError] = useState<Error | null>(null);
+    const [error, setError] = useState<Error | null>(null);
     const [saveError, setSaveError] = useState<Error | null>(null);
     const [isNewDocument, setIsNewDocument] = useState(false);
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
@@ -113,18 +114,19 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
     const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 
     useEffect(() => {
-        if (id === 'new') {
-            // Handle new document creation
-            setIsNewDocument(true);
-            setIsEditing(true);
-            setIsLoading(false);
-            setDocTitle('');
-            setOriginalDocTitle('');
-            const pathParam = searchParams.get('path') || '';
-            setDocPath(pathParam);
-            setOriginalDocPath(pathParam);
-            setContent('');
-            setOriginalContent('');
+            if (id === 'new') {
+                // Handle new document creation
+                setIsNewDocument(true);
+                setIsEditing(true);
+                setIsLoading(false);
+                setError(null);
+                setDocument(null);
+                setDocTitle('');
+                setOriginalDocTitle('');
+                const pathParam = searchParams.get('path') || '';
+                setDocPath(pathParam);
+                setOriginalDocPath(pathParam);
+                setContent('');
         } else if (id) {
             setIsNewDocument(false);
             setIsEditing(false); // Ensure we start in preview mode for existing documents
@@ -176,6 +178,12 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
                 // Update document state with full data
                 setDocument(fullDoc);
             } catch (fetchError) {
+                if (isAmbiguousIdConflict(fetchError)) {
+                    // Fail closed: never fall back to the cached entry when identity is ambiguous.
+                    setDocument(null);
+                    setError(fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
+                    return;
+                }
                 // If fetch fails and we don't have the doc in props, show error
                 if (!doc) {
                     setError(new Error(`Document with ID "${prefixedId}" not found`));
@@ -375,6 +383,16 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
             <div className="flex-1 flex items-center justify-center">
                 <div className="text-gray-500">{t.common.loading}</div>
             </div>
+        );
+    }
+
+    if (error && !isEditing) {
+        return (
+            <ErrorBoundary>
+                <div className="flex-1 bg-white dark:bg-gray-900">
+                    <AmbiguousIdNotice message={error.message} />
+                </div>
+            </ErrorBoundary>
         );
     }
 

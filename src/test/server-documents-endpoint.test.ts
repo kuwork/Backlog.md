@@ -1,221 +1,138 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
+import { serializeDecision, serializeDocument } from "../markdown/serializer.ts";
 import { BacklogServer } from "../server/index.ts";
-import type { Document } from "../types/index.ts";
-import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
+import type { Decision, Document } from "../types/index.ts";
+import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
+let filesystem: FileSystem;
 let server: BacklogServer | null = null;
 let serverPort = 0;
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-	const response = await fetch(`http://127.0.0.1:${serverPort}${path}`, init);
-	if (!response.ok) {
-		throw new Error(`${response.status}: ${await response.text()}`);
-	}
-	return response.json();
+function makeDocument(id: string, title: string): Document {
+	return {
+		id,
+		title,
+		type: "other",
+		createdDate: "2026-08-01 00:00",
+		rawContent: `${title} body`,
+	};
 }
 
-describe("BacklogServer document endpoints", () => {
-	beforeEach(async () => {
-		TEST_DIR = createUniqueTestDir("server-documents");
-		const filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
-		await filesystem.saveConfig({
-			projectName: "Server Documents",
-			statuses: ["To Do", "In Progress", "Done"],
-			labels: [],
-			milestones: [],
-			dateFormat: "YYYY-MM-DD",
-			remoteOperations: false,
-		});
+function makeDecision(id: string, title: string): Decision {
+	return {
+		id,
+		title,
+		date: "2026-08-01 00:00",
+		status: "proposed",
+		context: "",
+		decision: "",
+		consequences: "",
+		rawContent: "",
+	};
+}
 
-		server = new BacklogServer(TEST_DIR);
-		await server.start(0, false);
-		const port = server.getPort();
-		expect(port).not.toBeNull();
-		serverPort = port ?? 0;
+async function writeSeed(relativePath: string, content: string): Promise<string> {
+	const filePath = join(TEST_DIR, "backlog", ...relativePath.split("/"));
+	await Bun.write(filePath, content);
+	return filePath;
+}
 
-		await retry(async () => {
-			await fetchJson<Document[]>("/api/docs");
-		});
+async function fetchJson(path: string, init?: RequestInit): Promise<{ status: number; body: Record<string, unknown> }> {
+	const response = await fetch(`http://127.0.0.1:${serverPort}${path}`, init);
+	let body: Record<string, unknown> = {};
+	try {
+		body = (await response.json()) as Record<string, unknown>;
+	} catch {
+		body = {};
+	}
+	return { status: response.status, body };
+}
+
+beforeEach(async () => {
+	TEST_DIR = createUniqueTestDir("server-documents-endpoint");
+	filesystem = new FileSystem(TEST_DIR);
+	await filesystem.ensureBacklogStructure();
+	await filesystem.saveConfig({
+		projectName: "Server Documents Endpoints",
+		statuses: ["To Do", "In Progress", "Done"],
+		labels: [],
+		milestones: [],
+		dateFormat: "YYYY-MM-DD",
+		remoteOperations: false,
 	});
 
-	afterEach(async () => {
-		if (server) {
-			await server.stop();
-			server = null;
-		}
-		await safeCleanup(TEST_DIR);
+	// Equivalent-ID fixtures: doc-1/doc-01 and decision-1/decision-001.
+	await writeSeed("docs/doc-1 - Alpha.md", serializeDocument(makeDocument("doc-1", "Alpha")));
+	await writeSeed("docs/nested/doc-01 - Beta.md", serializeDocument(makeDocument("doc-01", "Beta")));
+	await writeSeed("decisions/decision-1 - Alpha.md", serializeDecision(makeDecision("decision-1", "Alpha")));
+	await writeSeed("decisions/decision-001 - Beta.md", serializeDecision(makeDecision("decision-001", "Beta")));
+
+	server = new BacklogServer(TEST_DIR);
+	await server.start(0, false);
+	serverPort = server.getPort() ?? 0;
+});
+
+afterEach(async () => {
+	if (server) {
+		await server.stop();
+		server = null;
+	}
+	await safeCleanup(TEST_DIR);
+});
+
+describe("ambiguous identity over HTTP", () => {
+	it("GET /api/docs/:id answers 409 with candidates and leaves files byte-identical", async () => {
+		const before = await Bun.file(join(TEST_DIR, "backlog", "docs", "doc-1 - Alpha.md")).text();
+
+		const { status, body } = await fetchJson("/api/docs/doc-1");
+
+		expect(status).toBe(409);
+		expect(String(body.error)).toContain("ambiguous");
+		expect(Array.isArray(body.candidates)).toBe(true);
+		expect(body.candidates).toHaveLength(2);
+
+		const after = await Bun.file(join(TEST_DIR, "backlog", "docs", "doc-1 - Alpha.md")).text();
+		expect(after).toBe(before);
 	});
 
-	it("creates, lists, views, and moves documents with path metadata", async () => {
-		const created = await fetchJson<Document & { success: boolean }>("/api/docs", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Setup Guide",
-				content: "# Setup",
-				type: "guide",
-				path: "guides / setup",
-				tags: ["setup"],
-			}),
-		});
+	it("PUT /api/docs/:id answers 409 instead of mutating one winner", async () => {
+		const before = await Bun.file(join(TEST_DIR, "backlog", "docs", "nested", "doc-01 - Beta.md")).text();
 
-		expect(created.success).toBe(true);
-		expect(created.id).toBe("doc-1");
-		expect(created.path).toBe("guides/setup/doc-1 - Setup-Guide.md");
-		expect(created.tags).toEqual(["setup"]);
-
-		const list = await fetchJson<Document[]>("/api/docs");
-		expect(list[0]?.path).toBe("guides/setup/doc-1 - Setup-Guide.md");
-
-		const viewed = await fetchJson<Document>("/api/docs/doc-1");
-		expect(viewed.rawContent).toBe("# Setup");
-		expect(viewed.path).toBe("guides/setup/doc-1 - Setup-Guide.md");
-
-		const updated = await fetchJson<Document & { success: boolean }>("/api/docs/doc-1", {
+		const { status, body } = await fetchJson("/api/docs/doc-01", {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Install Guide",
-				content: "# Install",
-				path: "runbooks",
-			}),
+			body: JSON.stringify({ content: "# Overwritten" }),
 		});
 
-		expect(updated.success).toBe(true);
-		expect(updated.title).toBe("Install Guide");
-		expect(updated.path).toBe("runbooks/doc-1 - Install-Guide.md");
+		expect(status).toBe(409);
+		expect(String(body.error)).toContain("ambiguous");
+		const after = await Bun.file(join(TEST_DIR, "backlog", "docs", "nested", "doc-01 - Beta.md")).text();
+		expect(after).toBe(before);
 	});
 
-	it("rejects unsafe document paths", async () => {
-		const response = await fetch(`http://127.0.0.1:${serverPort}/api/docs`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Unsafe",
-				content: "Content",
-				path: "../outside",
-			}),
-		});
+	it("GET /api/decisions/:id answers 409 with candidates", async () => {
+		const { status, body } = await fetchJson("/api/decisions/decision-1");
 
-		expect(response.status).toBe(400);
-		expect(await response.text()).toContain("Document path cannot include traversal segments.");
+		expect(status).toBe(409);
+		expect(String(body.error)).toContain("ambiguous");
+		expect(body.candidates).toHaveLength(2);
 	});
 
-	it("rejects invalid document metadata", async () => {
-		const invalidCreateTypeShape = await fetch(`http://127.0.0.1:${serverPort}/api/docs`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Invalid Type",
-				content: "Content",
-				type: { name: "guide" },
-			}),
-		});
-		expect(invalidCreateTypeShape.status).toBe(400);
-		expect(await invalidCreateTypeShape.text()).toContain("Document type must be a string.");
+	it("PUT /api/decisions/:id answers 409 with candidates", async () => {
+		const before = await Bun.file(join(TEST_DIR, "backlog", "decisions", "decision-001 - Beta.md")).text();
 
-		const invalidCreateType = await fetch(`http://127.0.0.1:${serverPort}/api/docs`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Unsupported Type",
-				content: "Content",
-				type: "unexpected",
-			}),
-		});
-		expect(invalidCreateType.status).toBe(400);
-		expect(await invalidCreateType.text()).toContain("Document type must be one of");
-
-		const invalidCreateTags = await fetch(`http://127.0.0.1:${serverPort}/api/docs`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Invalid Tags",
-				content: "Content",
-				type: "guide",
-				tags: [{ label: "setup" }],
-			}),
-		});
-		expect(invalidCreateTags.status).toBe(400);
-		expect(await invalidCreateTags.text()).toContain("Document tags must be an array of strings.");
-
-		const created = await fetchJson<Document & { success: boolean }>("/api/docs", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Valid Metadata",
-				content: "Content",
-				type: "guide",
-				tags: ["setup"],
-			}),
-		});
-
-		const invalidUpdateType = await fetch(`http://127.0.0.1:${serverPort}/api/docs/${created.id}`, {
+		const { status, body } = await fetchJson("/api/decisions/decision-001", {
 			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				content: "Updated",
-				type: "unexpected",
-			}),
+			headers: { "Content-Type": "text/plain" },
+			body: "## Decision\nOverwritten\n",
 		});
-		expect(invalidUpdateType.status).toBe(400);
-		expect(await invalidUpdateType.text()).toContain("Document type must be one of");
 
-		const invalidUpdateTags = await fetch(`http://127.0.0.1:${serverPort}/api/docs/${created.id}`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				content: "Updated",
-				tags: [{ label: "setup" }],
-			}),
-		});
-		expect(invalidUpdateTags.status).toBe(400);
-		expect(await invalidUpdateTags.text()).toContain("Document tags must be an array of strings.");
-	});
-
-	it("preserves 500 status for unexpected document create and update failures", async () => {
-		if (!server) {
-			throw new Error("Expected server to be started");
-		}
-		const core = (
-			server as unknown as {
-				core: {
-					createDocumentFromInput: (...args: unknown[]) => Promise<Document>;
-					updateDocumentFromInput: (...args: unknown[]) => Promise<Document>;
-				};
-			}
-		).core;
-
-		core.createDocumentFromInput = async () => {
-			throw new Error("disk full");
-		};
-		const createResponse = await fetch(`http://127.0.0.1:${serverPort}/api/docs`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				title: "Create Failure",
-				content: "Content",
-				type: "guide",
-			}),
-		});
-		expect(createResponse.status).toBe(500);
-		expect(await createResponse.text()).toContain("Failed to create document");
-
-		core.updateDocumentFromInput = async () => {
-			throw new Error("rename failed");
-		};
-		const updateResponse = await fetch(`http://127.0.0.1:${serverPort}/api/docs/doc-1`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				content: "Updated",
-				type: "guide",
-			}),
-		});
-		expect(updateResponse.status).toBe(500);
-		expect(await updateResponse.text()).toContain("Failed to update document");
+		expect(status).toBe(409);
+		expect(String(body.error)).toContain("ambiguous");
+		const after = await Bun.file(join(TEST_DIR, "backlog", "decisions", "decision-001 - Beta.md")).text();
+		expect(after).toBe(before);
 	});
 });

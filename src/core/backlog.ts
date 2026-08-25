@@ -25,7 +25,7 @@ import {
 } from "../types/index.ts";
 import { normalizeAssignee } from "../utils/assignee.ts";
 import { getStoredUtcTimestamp } from "../utils/date-utc.ts";
-import { documentIdsEqual, normalizeDocumentId } from "../utils/document-id.ts";
+import { findDocumentById, normalizeDocumentId } from "../utils/document-id.ts";
 import {
 	getDocumentSubPathFromRelativePath,
 	normalizeDocumentRelativePath,
@@ -54,7 +54,13 @@ import {
 	stringArraysEqual,
 	validateDependencies,
 } from "../utils/task-builders.ts";
-import { getTaskFilename, getTaskPath, normalizeTaskId, taskIdsEqual } from "../utils/task-path.ts";
+import {
+	AmbiguousTaskIdError,
+	getTaskFilename,
+	getTaskPath,
+	normalizeTaskId,
+	taskIdsEqual,
+} from "../utils/task-path.ts";
 import { attachSubtaskSummaries } from "../utils/task-subtasks.ts";
 import { upsertTaskUpdatedDate } from "../utils/task-updated-date.ts";
 import { isTerminalStatus } from "../utils/terminal-status.ts";
@@ -111,18 +117,6 @@ export interface TuiTaskEditResult {
 	changed: boolean;
 	task?: Task;
 	reason?: TuiTaskEditFailureReason;
-}
-
-/**
- * Thrown when the same canonical task ID resolves to live identities at
- * distinct paths. Callers (e.g. the browser server) should surface this as a
- * 409 instead of guessing which record to use.
- */
-export class AmbiguousTaskIdError extends Error {
-	constructor(public readonly candidates: string[]) {
-		super(`Task ID is ambiguous; candidates: ${candidates.join(", ")}`);
-		this.name = "AmbiguousTaskIdError";
-	}
 }
 
 function buildUpdatedDateComparableTask(task: Task): Record<string, unknown> {
@@ -451,7 +445,7 @@ export class Core {
 		const taskPrefix = config?.prefixes?.task ?? "task";
 		const collisionPaths = await this.fs.findTaskFilePaths(taskId, taskPrefix);
 		if (collisionPaths.length > 1) {
-			throw new AmbiguousTaskIdError(collisionPaths);
+			throw new AmbiguousTaskIdError(taskId, collisionPaths);
 		}
 
 		const store = await this.getContentStore();
@@ -461,7 +455,7 @@ export class Core {
 		// Same canonical ID at distinct live paths fails closed instead of guessing.
 		const distinctPaths = new Set(matches.map((task) => task.filePath ?? task.title));
 		if (matches.length > 1 && distinctPaths.size > 1) {
-			throw new AmbiguousTaskIdError([...distinctPaths]);
+			throw new AmbiguousTaskIdError(taskId, [...distinctPaths]);
 		}
 
 		const match = matches[0];
@@ -529,8 +523,7 @@ export class Core {
 
 	async getDocument(documentId: string): Promise<Document | null> {
 		const documents = await this.fs.listDocuments();
-		const match = documents.find((doc) => documentIdsEqual(documentId, doc.id));
-		return match ?? null;
+		return findDocumentById(documents, documentId);
 	}
 
 	async getDocumentContent(documentId: string): Promise<string | null> {

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { type Core, createRuntimeCore } from "../core/backlog.ts";
 import type { Task } from "../types/index.ts";
+import { AmbiguousIdError } from "./entity-id.ts";
 import {
 	buildFilenameIdRegex,
 	buildGlobPattern,
@@ -38,6 +39,21 @@ export function normalizeTaskId(taskId: string, prefix: string = DEFAULT_TASK_PR
 	const inferredPrefix = extractAnyPrefix(taskId);
 	const effectivePrefix = inferredPrefix && prefix === DEFAULT_TASK_PREFIX ? inferredPrefix : prefix;
 	return normalizeId(taskId, effectivePrefix);
+}
+
+/**
+ * Thrown when the same canonical task ID resolves to live identities at distinct paths.
+ * Callers (e.g. the browser server) should surface this as a 409 instead of guessing which
+ * record to use.
+ */
+export class AmbiguousTaskIdError extends AmbiguousIdError {
+	readonly taskId: string;
+
+	constructor(taskId: string, candidates: string[]) {
+		super("Task", normalizeTaskId(taskId), candidates, "Run 'backlog doctor' to preview a safe repair.");
+		this.name = "AmbiguousTaskIdError";
+		this.taskId = taskId;
+	}
 }
 
 function canonicalDecimalSegment(segment: string): string {

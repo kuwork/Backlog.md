@@ -2,7 +2,7 @@ import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import getPort, { portNumbers } from "get-port";
-import { AmbiguousTaskIdError, Core } from "../core/backlog.ts";
+import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { convertDocxToMarkdown } from "../core/docx-converter.ts";
 import {
@@ -29,7 +29,9 @@ import {
 import { launchBrowser } from "../utils/browser-launch.ts";
 import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
+import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
+import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
@@ -1364,6 +1366,9 @@ export class BacklogServer {
 			}
 			return Response.json(doc);
 		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
 			console.error("Error loading document:", error);
 			return Response.json({ error: "Document not found" }, { status: 404 });
 		}
@@ -1580,6 +1585,9 @@ export class BacklogServer {
 			});
 			return Response.json({ success: true, ...document });
 		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
 			if (error instanceof SyntaxError) {
 				return Response.json({ error: "Invalid request payload" }, { status: 400 });
 			}
@@ -1628,6 +1636,9 @@ export class BacklogServer {
 
 			return Response.json(decision);
 		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
 			console.error("Error loading decision:", error);
 			return Response.json({ error: "Decision not found" }, { status: 404 });
 		}
@@ -1652,6 +1663,9 @@ export class BacklogServer {
 			await this.core.updateDecisionFromContent(decisionId, content);
 			return Response.json({ success: true });
 		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
 			if (error instanceof Error && error.message.includes("not found")) {
 				return Response.json({ error: "Decision not found" }, { status: 404 });
 			}
@@ -2330,7 +2344,7 @@ export class BacklogServer {
 				}
 				case "decision": {
 					const decision = await this.core.filesystem.loadDecision(id);
-					filePath = decision?.filePath ? toProjectRelative(decision.filePath) : undefined;
+					filePath = decision?.path ? `${this.core.filesystem.backlogDirName}/decisions/${decision.path}` : undefined;
 					break;
 				}
 				case "wiki": {
@@ -2351,6 +2365,9 @@ export class BacklogServer {
 			const result = await this.core.filesystem.readProjectFile(`${filePath}${rangeSuffix}`);
 			return Response.json(result);
 		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
 			console.error("Error reading preview:", error);
 			const message = error instanceof Error ? error.message : "Failed to read preview";
 			if (message === "Access denied") {

@@ -15,6 +15,27 @@ import type {
 } from "../../types/index.ts";
 import { encodeWikiPath } from "../utils/urlHelpers.ts";
 
+export function isAmbiguousIdConflict(error: unknown): error is ApiError {
+	return error instanceof ApiError && error.status === 409;
+}
+
+/**
+ * Throws the existing {@link ApiError} built from the response so callers can distinguish
+ * identity conflicts (409 with candidates) from generic failures.
+ */
+async function throwResponseError(response: Response, fallback: string): Promise<never> {
+	let data: unknown;
+	try {
+		data = await response.json();
+	} catch {
+		// Response body was not JSON; fall back to the caller-provided message.
+	}
+	if (typeof data !== "object" || data === null) {
+		data = { error: fallback };
+	}
+	throw ApiError.fromResponse(response, data);
+}
+
 const API_BASE = "/api";
 
 export interface ReorderTaskPayload {
@@ -453,7 +474,7 @@ export class ApiClient {
 	async fetchDocs(): Promise<Document[]> {
 		const response = await fetch(`${API_BASE}/docs`);
 		if (!response.ok) {
-			throw new Error("Failed to fetch documentation");
+			return throwResponseError(response, "Failed to fetch documentation");
 		}
 		return response.json();
 	}
@@ -461,7 +482,7 @@ export class ApiClient {
 	async fetchDoc(filename: string): Promise<Document> {
 		const response = await fetch(`${API_BASE}/docs/${encodeURIComponent(filename)}`);
 		if (!response.ok) {
-			throw new Error("Failed to fetch document");
+			return throwResponseError(response, "Failed to fetch document");
 		}
 		return response.json();
 	}
@@ -469,7 +490,7 @@ export class ApiClient {
 	async fetchDocument(id: string): Promise<Document> {
 		const response = await fetch(`${API_BASE}/doc/${encodeURIComponent(id)}`);
 		if (!response.ok) {
-			throw new Error("Failed to fetch document");
+			return throwResponseError(response, "Failed to fetch document");
 		}
 		return response.json();
 	}
@@ -491,7 +512,7 @@ export class ApiClient {
 			body: JSON.stringify(payload),
 		});
 		if (!response.ok) {
-			throw new Error("Failed to update document");
+			return throwResponseError(response, "Failed to update document");
 		}
 		return response.json();
 	}
@@ -505,7 +526,7 @@ export class ApiClient {
 			body: JSON.stringify({ filename, content, path }),
 		});
 		if (!response.ok) {
-			throw new Error("Failed to create document");
+			return throwResponseError(response, "Failed to create document");
 		}
 		return response.json();
 	}
@@ -513,7 +534,7 @@ export class ApiClient {
 	async fetchDecisions(): Promise<Decision[]> {
 		const response = await fetch(`${API_BASE}/decisions`);
 		if (!response.ok) {
-			throw new Error("Failed to fetch decisions");
+			return throwResponseError(response, "Failed to fetch decisions");
 		}
 		return response.json();
 	}
@@ -521,7 +542,7 @@ export class ApiClient {
 	async fetchDecision(id: string): Promise<Decision> {
 		const response = await fetch(`${API_BASE}/decisions/${encodeURIComponent(id)}`);
 		if (!response.ok) {
-			throw new Error("Failed to fetch decision");
+			return throwResponseError(response, "Failed to fetch decision");
 		}
 		return response.json();
 	}
@@ -529,7 +550,7 @@ export class ApiClient {
 	async fetchDecisionData(id: string): Promise<Decision> {
 		const response = await fetch(`${API_BASE}/decision/${encodeURIComponent(id)}`);
 		if (!response.ok) {
-			throw new Error("Failed to fetch decision");
+			return throwResponseError(response, "Failed to fetch decision");
 		}
 		return response.json();
 	}
@@ -543,7 +564,7 @@ export class ApiClient {
 			body: content,
 		});
 		if (!response.ok) {
-			throw new Error("Failed to update decision");
+			return throwResponseError(response, "Failed to update decision");
 		}
 	}
 
@@ -556,7 +577,7 @@ export class ApiClient {
 			body: JSON.stringify({ title }),
 		});
 		if (!response.ok) {
-			throw new Error("Failed to create decision");
+			return throwResponseError(response, "Failed to create decision");
 		}
 		return response.json();
 	}

@@ -137,7 +137,7 @@ export function parseMarkdown(content: string): ParsedMarkdown {
 		toParse = content.replace(fmRegex, () => `---\n${processed}\n---`);
 	}
 
-	const parsed = matter(toParse);
+	const parsed = matter(toParse, {});
 	return {
 		frontmatter: parsed.data,
 		content: parsed.content.trim(),

@@ -47,7 +47,20 @@ describe("BacklogServer preview endpoint", () => {
 		);
 		await writeFile(
 			join(backlogDir, "decisions", "decision-1 - Preview-Test.md"),
-			["# Decision 1", "Line 2", "Line 3", "Line 4", "Line 5"].join("\n"),
+			[
+				"---",
+				"id: decision-1",
+				"title: Preview Test",
+				"date: 2026-08-01",
+				"status: proposed",
+				"---",
+				"",
+				"# Decision 1",
+				"Line 2",
+				"Line 3",
+				"Line 4",
+				"Line 5",
+			].join("\n"),
 		);
 		await writeFile(
 			join(backlogDir, "wiki", "preview-test.md"),
@@ -96,12 +109,12 @@ describe("BacklogServer preview endpoint", () => {
 
 	it("previews a decision with a line range", async () => {
 		const result = await fetchJson<{ content: string; lineStart?: number; lineEnd?: number }>(
-			"/api/preview?type=decision&id=1&lineStart=1&lineEnd=2",
+			"/api/preview?type=decision&id=1&lineStart=8&lineEnd=9",
 		);
 
 		expect(result.content).toBe(["# Decision 1", "Line 2"].join("\n"));
-		expect(result.lineStart).toBe(1);
-		expect(result.lineEnd).toBe(2);
+		expect(result.lineStart).toBe(8);
+		expect(result.lineEnd).toBe(9);
 	});
 
 	it("previews a wiki page with a line range", async () => {

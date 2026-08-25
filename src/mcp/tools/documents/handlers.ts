@@ -1,4 +1,5 @@
 import type { Document, DocumentSearchResult } from "../../../types/index.ts";
+import { isAmbiguousIdError } from "../../../utils/entity-id.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
@@ -127,6 +128,7 @@ export class DocumentHandlers {
 				summaryLines: ["Document created successfully."],
 			});
 		} catch (error) {
+			if (isAmbiguousIdError(error)) throw error;
 			if (error instanceof Error) {
 				throw new BacklogToolError(`Failed to create document: ${error.message}`, "OPERATION_FAILED");
 			}
@@ -151,6 +153,7 @@ export class DocumentHandlers {
 				summaryLines: ["Document updated successfully."],
 			});
 		} catch (error) {
+			if (isAmbiguousIdError(error)) throw error;
 			if (error instanceof Error) {
 				throw new BacklogToolError(`Failed to update document: ${error.message}`, "OPERATION_FAILED");
 			}

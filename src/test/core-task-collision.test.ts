@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { AmbiguousTaskIdError, Core } from "../core/backlog.ts";
+import { Core } from "../core/backlog.ts";
 import type { Task } from "../types/index.ts";
+import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
 function makeTask(id: string, title: string, status = "To Do"): Task {

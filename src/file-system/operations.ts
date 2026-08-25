@@ -18,7 +18,8 @@ import type {
 } from "../types/index.ts";
 import type { BacklogConfigSource } from "../utils/backlog-directory.ts";
 import { normalizeProjectBacklogDirectory, resolveBacklogDirectory } from "../utils/backlog-directory.ts";
-import { documentIdsEqual, normalizeDocumentId } from "../utils/document-id.ts";
+import { findDecisionById } from "../utils/decision-id.ts";
+import { documentIdsEqual, findDocumentById, normalizeDocumentId } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath, normalizeDocumentSubPath } from "../utils/document-path.ts";
 import {
 	buildGlobPattern,
@@ -131,6 +132,17 @@ function parseAssigneeConfigValue(value: string): string[] | undefined {
 		return parsed.map((item) => String(item).trim()).filter((item) => item.length > 0);
 	}
 	return undefined;
+}
+
+/**
+ * Records that a content directory could not be inspected instead of treating the
+ * unreadable directory as an empty one. A directory that does not exist yet is normal and is
+ * reported as empty; anything else means the contents could not be inspected. The empty string
+ * denotes the content directory itself.
+ */
+function recordUnreadableDirectory(error: unknown, unreadable?: string[]): void {
+	if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") return;
+	unreadable?.push("");
 }
 
 export class FileSystem {
@@ -960,24 +972,8 @@ export class FileSystem {
 	}
 
 	async loadDecision(decisionId: string): Promise<Decision | null> {
-		try {
-			const decisionsDir = await this.getDecisionsDir();
-			const files = await Array.fromAsync(
-				new Bun.Glob("decision-*.md").scan({ cwd: decisionsDir, followSymlinks: true }),
-			);
-
-			// Normalize ID - remove "decision-" prefix if present
-			const normalizedId = decisionId.replace(/^decision-/, "");
-			const decisionFile = files.find((file) => file.startsWith(`decision-${normalizedId} -`));
-
-			if (!decisionFile) return null;
-
-			const filepath = join(decisionsDir, decisionFile);
-			const content = await Bun.file(filepath).text();
-			return { ...parseDecision(content), filePath: filepath };
-		} catch (_error) {
-			return null;
-		}
+		const decisions = await this.listDecisions();
+		return findDecisionById(decisions, decisionId);
 	}
 
 	// Document operations
@@ -1042,8 +1038,7 @@ export class FileSystem {
 		document.path = relativePath;
 		return { relativePath, removedFilepaths };
 	}
-
-	async listDecisions(): Promise<Decision[]> {
+	async listDecisions(unreadable?: string[]): Promise<Decision[]> {
 		try {
 			const decisionsDir = await this.getDecisionsDir();
 			const decisionFiles = await Array.fromAsync(
@@ -1056,16 +1051,22 @@ export class FileSystem {
 					continue;
 				}
 				const filepath = join(decisionsDir, file);
-				const content = await Bun.file(filepath).text();
-				decisions.push(parseDecision(content));
+				try {
+					const content = await Bun.file(filepath).text();
+					decisions.push({ ...parseDecision(content), path: file });
+				} catch {
+					// One malformed file must not hide every other decision from lookups.
+					unreadable?.push(file);
+				}
 			}
 			return sortByTaskId(decisions);
-		} catch {
+		} catch (error) {
+			recordUnreadableDirectory(error, unreadable);
 			return [];
 		}
 	}
 
-	async listDocuments(): Promise<Document[]> {
+	async listDocuments(unreadable?: string[]): Promise<Document[]> {
 		try {
 			const docsDir = await this.getDocsDir();
 			// Recursively include all markdown files under docs, excluding README.md variants
@@ -1077,24 +1078,26 @@ export class FileSystem {
 				const base = relativePath.split("/").pop() || relativePath;
 				if (base.toLowerCase() === "readme.md") continue;
 				const filepath = join(docsDir, ...relativePath.split("/"));
-				const content = await Bun.file(filepath).text();
-				const parsed = parseDocument(content);
-				docs.push({
-					...parsed,
-					path: relativePath,
-				});
+				try {
+					const content = await Bun.file(filepath).text();
+					docs.push({ ...parseDocument(content), path: relativePath });
+				} catch {
+					// One malformed file must not hide every other document from lookups.
+					unreadable?.push(relativePath);
+				}
 			}
 
 			// Stable sort by title for UI/CLI listing
 			return docs.sort((a, b) => a.title.localeCompare(b.title));
-		} catch {
+		} catch (error) {
+			recordUnreadableDirectory(error, unreadable);
 			return [];
 		}
 	}
 
 	async loadDocument(id: string): Promise<Document> {
 		const documents = await this.listDocuments();
-		const document = documents.find((doc) => documentIdsEqual(id, doc.id));
+		const document = findDocumentById(documents, id);
 		if (!document) {
 			throw new Error(`Document not found: ${id}`);
 		}

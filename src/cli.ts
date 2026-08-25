@@ -66,6 +66,7 @@ import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-s
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
+import { isAmbiguousIdError } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
 import { labelsToLower } from "./utils/label-filter.ts";
@@ -4440,7 +4441,12 @@ addHelpSchema(docCmd.command("view <docId>"), {
 				return;
 			}
 			await scrollableViewer(content);
-		} catch {
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				console.error(error.message);
+				process.exitCode = 1;
+				return;
+			}
 			console.error(`Document ${docId} not found.`);
 		}
 	});
@@ -4546,13 +4552,23 @@ addHelpSchema(decisionCmd.command("view <decisionId>"), {
 	.action(async (decisionId: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const decision = await core.filesystem.loadDecision(decisionId);
-		if (!decision?.filePath) {
+		let decision: Decision | null;
+		try {
+			decision = await core.filesystem.loadDecision(decisionId);
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				console.error(error.message);
+				process.exitCode = 1;
+				return;
+			}
+			throw error;
+		}
+		if (!decision?.path) {
 			console.error(`Decision ${decisionId} not found.`);
 			return;
 		}
 
-		const content = await Bun.file(decision.filePath).text();
+		const content = await Bun.file(join(core.filesystem.decisionsDir, decision.path)).text();
 		if (isPlainRequested(options) || shouldAutoPlain) {
 			console.log(content);
 			return;
@@ -4590,7 +4606,17 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 	.action(async (decisionId: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const existingDecision = await core.filesystem.loadDecision(decisionId);
+		let existingDecision: Decision | null;
+		try {
+			existingDecision = await core.filesystem.loadDecision(decisionId);
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				console.error(error.message);
+				process.exitCode = 1;
+				return;
+			}
+			throw error;
+		}
 		if (!existingDecision) {
 			console.error(`Decision ${decisionId} not found.`);
 			process.exitCode = 1;

@@ -1,6 +1,7 @@
 import { useState, useEffect, memo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { apiClient } from '../lib/api';
+import { apiClient, isAmbiguousIdConflict } from '../lib/api';
+import { AmbiguousIdNotice } from './AmbiguousIdNotice';
 import MDEditor from '@uiw/react-md-editor';
 import MermaidMarkdown from './MermaidMarkdown';
 import { type Decision } from '../../types';
@@ -97,6 +98,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
+	const [error, setError] = useState<Error | null>(null);
 	
 	
 	const [isNewDecision, setIsNewDecision] = useState(false);
@@ -108,10 +110,10 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			setIsNewDecision(true);
 			setIsEditing(true);
 			setIsLoading(false);
+			setError(null);
+			setDecision(null);
 			setDecisionTitle('');
 			setOriginalDecisionTitle('');
-			setContent('');
-			setOriginalContent('');
 		} else if (id) {
 			setIsNewDecision(false);
 			setIsEditing(false); // Ensure we start in preview mode for existing decisions
@@ -145,7 +147,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 		
 		try {
 			setIsLoading(true);
-			// Find decision from props
+			setError(null);
 			const prefixedId = addDecisionPrefix(id);
 			const decision = decisions.find(d => d.id === prefixedId);
 			
@@ -160,6 +162,12 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 				// Update decision state with full data
 				setDecision(fullDecision);
 			} catch (fetchError) {
+				if (isAmbiguousIdConflict(fetchError)) {
+					// Fail closed: never fall back to the cached entry when identity is ambiguous.
+					setDecision(null);
+					setError(fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
+					return;
+				}
 				// If fetch fails and we don't have the decision in props, show error
 				if (!decision) {
 					console.error('Failed to load decision:', fetchError);
@@ -214,6 +222,10 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 				navigate(`/decisions/${id}/${sanitizeUrlTitle(decisionTitle)}`);
 			}
 		} catch (error) {
+			if (isAmbiguousIdConflict(error)) {
+				setError(error instanceof Error ? error : new Error(String(error)));
+				return;
+			}
 			console.error('Failed to save decision:', error);
 		} finally {
 			setIsSaving(false);
@@ -270,6 +282,16 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 		);
 	}
 
+
+	if (error && !isEditing) {
+		return (
+			<ErrorBoundary>
+				<div className="flex-1 bg-white dark:bg-gray-900">
+					<AmbiguousIdNotice message={error.message} />
+				</div>
+			</ErrorBoundary>
+		);
+	}
 	return (
 		<ErrorBoundary>
 			<div className="h-full bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">

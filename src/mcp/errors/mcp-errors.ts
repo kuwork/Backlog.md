@@ -1,5 +1,5 @@
+import { isAmbiguousIdError } from "../../utils/entity-id.ts";
 import type { CallToolResult } from "../types.ts";
-
 /**
  * Base MCP error class for all MCP-related errors
  */
@@ -69,6 +69,9 @@ function buildErrorResult(code: string, message: string, details?: unknown): Cal
 }
 
 export function handleBacklogToolError(error: unknown): CallToolResult {
+	if (isAmbiguousIdError(error)) {
+		return buildErrorResult("AMBIGUOUS_ID", error.message, { candidates: error.candidates });
+	}
 	if (error instanceof BacklogToolError) {
 		return buildErrorResult(error.code, error.message, error.details);
 	}

@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { $ } from "bun";
 import { McpServer } from "../mcp/server.ts";
 import { registerDocumentTools } from "../mcp/tools/documents/index.ts";
@@ -306,5 +308,28 @@ describe("MCP document tools", () => {
 		const updateText = getText(updateResult.content);
 		expect(updateText).toContain("Document updated successfully.");
 		expect(updateText).toContain("Initial content\n\nFirst appended block\n\nSecond appended block");
+	});
+
+	it("document_view fails closed with AMBIGUOUS_ID when equivalent IDs collide", async () => {
+		const writeDoc = async (relativePath: string, id: string, title: string) => {
+			const filePath = join(mcpServer.filesystem.docsDir, ...relativePath.split("/"));
+			await mkdir(join(filePath, ".."), { recursive: true });
+			await Bun.write(
+				filePath,
+				`---\nid: ${id}\ntitle: ${title}\ntype: other\ncreated_date: 2026-08-01 00:00\n---\n\n${title} body\n`,
+			);
+		};
+		await writeDoc("doc-1 - Alpha.md", "doc-1", "Alpha");
+		await writeDoc("doc-01 - Beta.md", "doc-01", "Beta");
+
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "document_view", arguments: { id: "doc-1" } },
+		});
+
+		expect(result.isError).toBe(true);
+		const structured = result.structuredContent as { code?: string; details?: { candidates?: string[] } };
+		expect(structured.code).toBe("AMBIGUOUS_ID");
+		expect(structured.details?.candidates).toHaveLength(2);
+		expect(getText(result.content)).toContain("ambiguous");
 	});
 });

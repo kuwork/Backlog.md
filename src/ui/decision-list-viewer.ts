@@ -1,8 +1,10 @@
+import { join } from "node:path";
 import { stdout as output } from "node:process";
 import type { ListInterface, ScrollableTextInterface } from "neo-neo-bblessed";
 import { box, list, scrollabletext } from "neo-neo-bblessed";
 import type { Core } from "../core/backlog.ts";
 import type { Decision } from "../types/index.ts";
+import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
 import { formatFooterContent } from "./footer-content.ts";
 import { createScreen, releaseSharedProgram } from "./tui.ts";
@@ -140,13 +142,19 @@ export async function runDecisionListViewer(decisions: Decision[], core: Core): 
 			if (!decision) return;
 			try {
 				const loaded = await core.filesystem.loadDecision(decision.id);
-				const text = loaded?.filePath ? await Bun.file(loaded.filePath).text() : "Decision not found";
+				const text = loaded?.path
+					? await Bun.file(join(core.filesystem.decisionsDir, loaded.path)).text()
+					: "Decision not found";
 				detail.setContent(text);
 				if (detail.setScroll) {
 					detail.setScroll(0);
 				}
-			} catch {
-				detail.setContent("Unable to load decision.");
+			} catch (error) {
+				if (isAmbiguousIdError(error)) {
+					detail.setContent(error.message);
+				} else {
+					detail.setContent("Unable to load decision.");
+				}
 			}
 			screen.render();
 		};

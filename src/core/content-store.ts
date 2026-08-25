@@ -578,7 +578,7 @@ export class ContentStore {
 					async () => {
 						try {
 							const content = await Bun.file(fullPath).text();
-							return parseDecision(content);
+							return { ...parseDecision(content), path: file };
 						} catch {
 							return null;
 						}
