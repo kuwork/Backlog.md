@@ -25,7 +25,7 @@ import {
 } from "../types/index.ts";
 import { normalizeAssignee } from "../utils/assignee.ts";
 import { getStoredUtcTimestamp } from "../utils/date-utc.ts";
-import { findDocumentById, normalizeDocumentId } from "../utils/document-id.ts";
+import { findDocumentById, findDocumentByReference, normalizeDocumentId } from "../utils/document-id.ts";
 import {
 	getDocumentSubPathFromRelativePath,
 	normalizeDocumentRelativePath,
@@ -528,8 +528,20 @@ export class Core {
 
 	async getDocumentContent(documentId: string): Promise<string | null> {
 		const document = await this.getDocument(documentId);
-		if (!document) return null;
+		return this.readDocumentFile(document);
+	}
 
+	/**
+	 * Doc view lookup accepting a bare ID, a docs-relative path, or a filename title slug.
+	 * Ambiguous references fail closed with an AmbiguousIdError listing candidates.
+	 */
+	async getDocumentContentByReference(reference: string): Promise<string | null> {
+		const documents = await this.fs.listDocuments();
+		return this.readDocumentFile(findDocumentByReference(documents, reference));
+	}
+
+	private async readDocumentFile(document: Document | null): Promise<string | null> {
+		if (!document) return null;
 		const relativePath = normalizeDocumentRelativePath(document.path ?? `${document.id}.md`);
 		const filePath = join(this.fs.docsDir, ...relativePath.split("/"));
 		try {

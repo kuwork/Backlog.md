@@ -9,11 +9,18 @@ export class AmbiguousIdError extends Error {
 	readonly id: string;
 	readonly candidates: string[];
 
-	constructor(entityLabel: string, id: string, candidates: string[], guidance: string) {
+	constructor(
+		entityLabel: string,
+		id: string,
+		candidates: string[],
+		guidance: string,
+		/** Overrides the default "<label> ID <id>" subject phrase for non-ID lookups (paths, slugs). */
+		subject?: string,
+	) {
 		const sortedCandidates = [...candidates].sort((left, right) => left.localeCompare(right));
 		super(
 			[
-				`${entityLabel} ID ${id} is ambiguous; ${sortedCandidates.length} files match:`,
+				`${subject ?? `${entityLabel} ID ${id}`} is ambiguous; ${sortedCandidates.length} files match:`,
 				...sortedCandidates.map((candidate) => `  - ${candidate}`),
 				guidance,
 			].join("\n"),

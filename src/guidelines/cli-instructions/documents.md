@@ -15,7 +15,7 @@ Always use Backlog.md CLI commands to create and update documents so IDs, frontm
 | Append content to a document | `backlog doc update doc-1 --append-content "Additional section"` |
 | Update metadata or move a doc | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
 | List all documents | `backlog doc list` / `backlog doc list --plain` / `backlog doc list --json` |
-| View a document | `backlog doc view doc-1` / `backlog doc view doc-1 --plain` |
+| View a document | `backlog doc view 1` / `backlog doc view doc-1` / `backlog doc view subdir/doc-1` / `backlog doc view Title` / `backlog doc view "doc-1 - Title.md"` / `backlog doc view 1 --plain` |
 
 ### Listing Documents
 
@@ -26,6 +26,14 @@ Pass `--plain` to print one document per line (`id - title`) for scripts and pip
 ### Viewing Documents
 
 `backlog doc view <docId>` opens an interactive scrollable viewer by default. Pass `--plain` to print the raw document content to stdout instead (useful for agents, scripts, pipes, and CI). When stdout is not a TTY, plain output is emitted automatically, so scripts never get trapped in the interactive viewer.
+
+For example `backlog/docs/subdir/doc-1 - Title.md`. The `<docId>` reference may take several forms. The most basic is the bare document ID: `backlog doc view 1` or `backlog doc view doc-1`. The other forms are:
+
+- Code-name short path: `backlog doc view subdir/doc-1`
+- Title: `backlog doc view Title`
+- Full filename (quote when it contains spaces): `backlog doc view "doc-1 - Title.md"`
+
+When several files share the referenced ID, path stem, or title, the command fails closed: it prints all matching candidates instead of picking one, together with ready-to-run `backlog doc view` alternatives for each candidate. Use the code-name short path form to disambiguate documents that legitimately share an ID in different subdirectories.
 
 ### Document Types
 

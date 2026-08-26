@@ -66,6 +66,7 @@ import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-s
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
+import { documentReferenceSuggestions } from "./utils/document-id.ts";
 import { isAmbiguousIdError } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
@@ -4416,13 +4417,31 @@ addHelpSchema(docCmd.command("search <query>"), {
 		cleanup();
 	});
 
+/** Suggests ready-to-run doc view references so an ambiguous ID needs no rename to inspect files. */
+function printDocumentViewHints(candidates: readonly string[]): void {
+	const suggestions = documentReferenceSuggestions(candidates);
+	if (suggestions.length === 0) return;
+	console.error("Hint: view one file directly without renaming:");
+	for (const suggestion of suggestions) {
+		const reference = /\s/.test(suggestion) ? `"${suggestion}"` : suggestion;
+		console.error(`  backlog doc view ${reference}`);
+	}
+}
 // Document view command
 addHelpSchema(docCmd.command("view <docId>"), {
 	reads: "Document metadata and markdown body",
-	required: [{ name: "docId", type: "Document ID", description: "Document to display" }],
+	required: [
+		{ name: "docId", type: "String", description: "Document ID, code-name short path, title, or full filename" },
+	],
 	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
 	output: "Document metadata and markdown content",
-	examples: ["backlog doc view doc-1", "backlog doc view doc-1 --plain"],
+	examples: [
+		"backlog doc view 1",
+		"backlog doc view subdir/doc-1",
+		"backlog doc view Title",
+		'backlog doc view "doc-1 - Title.md"',
+		"backlog doc view 1 --plain",
+	],
 })
 	.description("view a document")
 	.option("--plain", "use plain text output instead of interactive UI")
@@ -4430,7 +4449,7 @@ addHelpSchema(docCmd.command("view <docId>"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		try {
-			const content = await core.getDocumentContent(docId);
+			const content = await core.getDocumentContentByReference(docId);
 			if (content === null) {
 				console.error(`Document ${docId} not found.`);
 				return;
@@ -4444,6 +4463,7 @@ addHelpSchema(docCmd.command("view <docId>"), {
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {
 				console.error(error.message);
+				printDocumentViewHints(error.candidates);
 				process.exitCode = 1;
 				return;
 			}
