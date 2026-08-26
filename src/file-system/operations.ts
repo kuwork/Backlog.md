@@ -1,8 +1,8 @@
 import { mkdir, readdir, rename, stat, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import matter from "gray-matter";
 import lockfile from "proper-lockfile";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
+import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import { parseDecision, parseDocument, parseMarkdown, parseMilestone, parseTask } from "../markdown/parser.ts";
 import { serializeDecision, serializeDocument, serializeMilestone, serializeTask } from "../markdown/serializer.ts";
 import type {
@@ -1802,7 +1802,7 @@ export class FileSystem {
 	private parseConfigListValues(content: string): Partial<Record<ConfigListKey, string[]>> {
 		const result: Partial<Record<ConfigListKey, string[]>> = {};
 		try {
-			const data = matter(`---\n${content.trimEnd()}\n---\n`).data as Record<string, unknown>;
+			const { data } = parseFrontmatter(`---\n${content.trimEnd()}\n---\n`);
 			for (const key of CONFIG_LIST_KEYS) {
 				const value = data[key];
 				if (Array.isArray(value)) {
@@ -1838,7 +1838,7 @@ export class FileSystem {
 
 	private parseDefinitionOfDoneFromYaml(content: string): string[] | undefined {
 		try {
-			const data = matter(`---\n${content.trimEnd()}\n---\n`).data as Record<string, unknown>;
+			const { data } = parseFrontmatter(`---\n${content.trimEnd()}\n---\n`);
 			if (!Object.hasOwn(data, "definition_of_done")) {
 				return undefined;
 			}
@@ -2224,7 +2224,7 @@ export class FileSystem {
 		const updatedDate = new Date().toISOString().slice(0, 16).replace("T", " ");
 		frontmatter.updated_date = updatedDate;
 
-		const fileContent = Object.keys(frontmatter).length > 0 ? matter.stringify(content, frontmatter) : content;
+		const fileContent = Object.keys(frontmatter).length > 0 ? stringifyFrontmatter(content, frontmatter) : content;
 		await Bun.write(filePath, fileContent);
 	}
 
@@ -2253,7 +2253,7 @@ export class FileSystem {
 		if (labels !== undefined && labels.length > 0) {
 			frontmatter.labels = labels;
 		}
-		const fileContent = matter.stringify(defaultContent, frontmatter);
+		const fileContent = stringifyFrontmatter(defaultContent, frontmatter);
 		await Bun.write(filePath, fileContent);
 
 		return normalizedPath;

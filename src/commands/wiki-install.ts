@@ -1,7 +1,7 @@
 import { existsSync, lstatSync } from "node:fs";
 import { mkdir, readlink, rm, symlink, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import { LLM_WIKI_FOR_BACKLOG_SKILL } from "../skills/embedded/llm-wiki-for-backlog.ts";
 
 export type SupportedAgent = "claude" | "codex" | "agents";
@@ -51,7 +51,7 @@ export function resolveAgent(agentAlias: string): SupportedAgent {
 
 function parseSkillMeta(skillContent: string): WikiInstallResult["skillMeta"] {
 	try {
-		const parsed = matter(skillContent);
+		const parsed = parseFrontmatter(skillContent);
 		return {
 			name: parsed.data.name as string | undefined,
 			description: parsed.data.description as string | undefined,

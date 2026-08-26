@@ -1,6 +1,6 @@
-import matter from "gray-matter";
 import type { AcceptanceCriterion, Decision, Document, Milestone, Task } from "../types/index.ts";
 import { normalizeAssignee } from "../utils/assignee.ts";
+import { stringifyFrontmatter } from "./frontmatter.ts";
 import {
 	AcceptanceCriteriaManager,
 	CommentsManager,
@@ -126,7 +126,7 @@ export function serializeTask(task: Task): string {
 		contentBody = updateTaskFinalSummary(contentBody, task.finalSummary);
 	}
 
-	const serialized = matter.stringify(contentBody, frontmatter);
+	const serialized = stringifyFrontmatter(contentBody, frontmatter);
 	// Ensure there's a blank line between frontmatter and content
 	return serialized.replace(/^(---\n(?:.*\n)*?---)\n(?!$)/, "$1\n\n");
 }
@@ -147,7 +147,7 @@ export function serializeDecision(decision: Decision): string {
 		content += `\n\n## Alternatives\n\n${decision.alternatives}`;
 	}
 
-	return matter.stringify(content, frontmatter);
+	return stringifyFrontmatter(content, frontmatter);
 }
 
 export function serializeDocument(document: Document): string {
@@ -160,7 +160,7 @@ export function serializeDocument(document: Document): string {
 		...(document.tags && document.tags.length > 0 && { tags: document.tags }),
 	};
 
-	return matter.stringify(document.rawContent, frontmatter);
+	return stringifyFrontmatter(document.rawContent, frontmatter);
 }
 
 export function serializeMilestone(milestone: Milestone): string {
@@ -175,7 +175,7 @@ export function serializeMilestone(milestone: Milestone): string {
 	};
 
 	const content = milestone.rawContent?.trim() ? milestone.rawContent : `## Description\n\n${milestone.description}`;
-	return matter.stringify(content, frontmatter);
+	return stringifyFrontmatter(content, frontmatter);
 }
 
 export function updateTaskAcceptanceCriteria(content: string, criteria: string[]): string {

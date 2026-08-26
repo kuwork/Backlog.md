@@ -1,5 +1,5 @@
-import matter from "gray-matter";
 import type { AcceptanceCriterion, Decision, Document, Milestone, ParsedMarkdown, Task } from "../types/index.ts";
+import { parseFrontmatter } from "./frontmatter.ts";
 import {
 	AcceptanceCriteriaManager,
 	CommentsManager,
@@ -137,7 +137,7 @@ export function parseMarkdown(content: string): ParsedMarkdown {
 		toParse = content.replace(fmRegex, () => `---\n${processed}\n---`);
 	}
 
-	const parsed = matter(toParse, {});
+	const parsed = parseFrontmatter(toParse);
 	return {
 		frontmatter: parsed.data,
 		content: parsed.content.trim(),
