@@ -1232,10 +1232,18 @@ describe("CLI Integration", () => {
 
 			const result = await $`bun ${CLI_PATH} task list --plain --limit 1`.cwd(TEST_DIR).quiet();
 			const out = result.stdout.toString();
-			expect(out).toContain("Done:");
-			expect(out).toContain("[HIGH] TASK-2 - High Priority Later ID");
-			expect(out).not.toContain("To Do:");
-			expect(out).not.toContain("TASK-1 - Low Priority First ID");
+			// Default ordinal sort leaves both ordinals undefined, so ID order makes TASK-1 the global top 1.
+			expect(out).toContain("To Do:");
+			expect(out).toContain("[LOW] TASK-1 - Low Priority First ID");
+			expect(out).not.toContain("Done:");
+			expect(out).not.toContain("TASK-2 - High Priority Later ID");
+
+			// Explicit priority sort makes the high-priority Done task the global top 1.
+			const priorityResult = await $`bun ${CLI_PATH} task list --plain --sort priority --limit 1`.cwd(TEST_DIR).quiet();
+			const priorityOut = priorityResult.stdout.toString();
+			expect(priorityOut).toContain("Tasks (sorted by priority):");
+			expect(priorityOut).toContain("[HIGH] TASK-2 - High Priority Later ID (Done)");
+			expect(priorityOut).not.toContain("TASK-1 - Low Priority First ID");
 		});
 
 		it("should combine search, labels, and existing task list filters", async () => {
@@ -2117,8 +2125,9 @@ describe("CLI Integration", () => {
 			);
 
 			const updatedContent = "# Updated\n\nRun install steps.";
+			const escapedContent = updatedContent.replace(/\n/g, "\\n");
 			const result =
-				await $`bun ${CLI_PATH} doc update doc-1 --title "Install Runbook" --content ${updatedContent} -t specification --tags ops,runbook -p runbooks`
+				await $`bun ${CLI_PATH} doc update doc-1 --title "Install Runbook" --content ${escapedContent} -t specification --tags ops,runbook -p runbooks`
 					.cwd(TEST_DIR)
 					.quiet();
 			expect(result.exitCode).toBe(0);
