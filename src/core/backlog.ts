@@ -62,6 +62,7 @@ import {
 	normalizeTaskId,
 	taskIdsEqual,
 } from "../utils/task-path.ts";
+import { createTaskSearchIndex } from "../utils/task-search.ts";
 import { attachSubtaskSummaries } from "../utils/task-subtasks.ts";
 import { upsertTaskUpdatedDate } from "../utils/task-updated-date.ts";
 import { isTerminalStatus } from "../utils/terminal-status.ts";
@@ -394,6 +395,12 @@ export class Core {
 			}
 			return filtered;
 		};
+
+		if (!includeCrossBranch) {
+			const localTasks = await this.fs.listTasks();
+			const tasks = trimmedQuery ? createTaskSearchIndex(localTasks).search({ query: trimmedQuery }) : localTasks;
+			return await applyFiltersAndLimit(tasks);
+		}
 
 		if (!trimmedQuery) {
 			const store = await this.getContentStore();
