@@ -233,7 +233,14 @@ export class BacklogServer {
 					return;
 				}
 
-				// Broadcast for tasks/documents/decisions so clients refresh caches/search
+				if (event.type === "config") {
+					this.projectName = event.config.projectName ?? this.projectName;
+					this.broadcastConfigUpdated();
+					this.invalidateStatistics();
+					return;
+				}
+
+				// Broadcast for tasks/documents/decisions/wikis so clients refresh caches/search
 				this.storeReadyBroadcasted = true;
 				this.broadcastTasksUpdated();
 				this.invalidateStatistics();
@@ -1290,7 +1297,16 @@ export class BacklogServer {
 
 			const success = await this.core.completeTask(taskId);
 			if (!success) {
-				return Response.json({ error: "Failed to complete task" }, { status: 500 });
+				return Response.json({ error: "Task not found" }, { status: 404 });
+			}
+
+			// Move the completed task in the ContentStore corpus so warm web/MCP
+			// consumers see the transition immediately without a full re-scan.
+			try {
+				const store = await this.getContentStoreInstance();
+				store.transitionTask(taskId, task);
+			} catch {
+				// Store not initialized; the watcher-driven broadcast covers it.
 			}
 
 			// Notify listeners to refresh
@@ -1298,8 +1314,10 @@ export class BacklogServer {
 			return Response.json({ success: true });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to complete task";
-			console.error("Error completing task:", error);
-			return Response.json({ error: message }, { status: 500 });
+			if (!isAmbiguousIdError(error)) {
+				console.error("Error completing task:", error);
+			}
+			return Response.json({ error: message }, { status: isAmbiguousIdError(error) ? 409 : 500 });
 		}
 	}
 

@@ -2132,9 +2132,17 @@ export class Core {
 
 	async updateTasksBulk(tasks: Task[], commitMessage?: string, autoCommit?: boolean): Promise<void> {
 		const filePaths: string[] = [];
-		for (const task of tasks) {
-			const filePath = await this.updateTask(task, false);
-			if (filePath) filePaths.push(filePath);
+		const store = this.contentStore;
+		const run = async () => {
+			for (const task of tasks) {
+				const filePath = await this.updateTask(task, false);
+				if (filePath) filePaths.push(filePath);
+			}
+		};
+		if (store) {
+			await store.batchTaskUpdates(run);
+		} else {
+			await run();
 		}
 
 		// Commit all changes at once if auto-commit is enabled
