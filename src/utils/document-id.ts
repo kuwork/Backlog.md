@@ -37,6 +37,18 @@ function toLookupKey(value: string): string {
 }
 
 /**
+ * Extract the document ID from a document filename.
+ * Handles both `doc-1.md` and `doc-1 - Title.md` forms.
+ */
+export function documentFilenameId(filename: string): string | null {
+	const withoutExtension = stripMarkdownExtension(filename.trim());
+	if (!withoutExtension) return null;
+	const separatorIndex = withoutExtension.indexOf(" - ");
+	if (separatorIndex < 0) return normalizeDocumentId(withoutExtension);
+	return normalizeDocumentId(withoutExtension.slice(0, separatorIndex));
+}
+
+/**
  * Normalized original-case docs-relative path plus its "<directory>/<filename id>" stem,
  * or null when the path cannot address a file.
  */

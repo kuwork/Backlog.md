@@ -44,7 +44,8 @@ describe("ContentStore corpus snapshot", () => {
 			new FakeFileSystem([task("TASK-9", "Done task")]) as unknown as FileSystem,
 			async () => [task("TASK-1", "Active")],
 		);
-		const snapshot = await store.getTaskCorpusSnapshot();
+		await store.ensureInitialized();
+		const snapshot = store.getTaskCorpusSnapshot();
 		expect(snapshot.activeTasks.map((t) => t.id)).toEqual(["TASK-1"]);
 		expect(snapshot.completedTasks.map((t) => t.id)).toEqual(["TASK-9"]);
 	});
@@ -53,24 +54,26 @@ describe("ContentStore corpus snapshot", () => {
 		const store = new ContentStore(new FakeFileSystem([]) as unknown as FileSystem, async () => [
 			task("TASK-0042", "Padded"),
 		]);
-		const resolved = await store.resolveTaskForRead("task-42");
-		expect(resolved.task?.id).toBe("TASK-0042");
+		await store.ensureInitialized();
+		const resolved = store.resolveTaskForRead("task-42");
+		expect(resolved.status === "found" ? resolved.task?.id : null).toBe("TASK-0042");
 	});
 
 	it("returns not-found without throwing when the ID is absent", async () => {
 		const store = new ContentStore(new FakeFileSystem([]) as unknown as FileSystem, async () => [
 			task("TASK-1", "Active"),
 		]);
-		const resolved = await store.resolveTaskForRead("TASK-99");
-		expect(resolved.task).toBeUndefined();
-		expect(resolved.candidates).toBeUndefined();
+		await store.ensureInitialized();
+		const resolved = store.resolveTaskForRead("TASK-99");
+		expect(resolved.status).toBe("not-found");
 	});
 
 	it("mutation resolution ignores completed variants", async () => {
 		const store = new ContentStore(new FakeFileSystem([task("TASK-1", "Done")]) as unknown as FileSystem, async () => [
 			task("TASK-1", "Active"),
 		]);
-		const resolved = await store.resolveTaskForMutation("TASK-1");
-		expect(resolved.task?.title).toBe("Active");
+		await store.ensureInitialized();
+		const resolved = store.resolveTaskForMutation("TASK-1");
+		expect(resolved.status === "found" ? resolved.task?.title : null).toBe("Active");
 	});
 });

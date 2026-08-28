@@ -2,6 +2,7 @@ import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import getPort, { portNumbers } from "get-port";
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { convertDocxToMarkdown } from "../core/docx-converter.ts";
@@ -176,6 +177,7 @@ export class BacklogServer {
 	private contentStore: ContentStore | null = null;
 	private searchService: SearchService | null = null;
 	private servicesReadyPromise: Promise<void> | null = null;
+	private servicesInitialized = false;
 	private browserLoadingState: BrowserLoadingState = { type: "loading", message: null };
 	private unsubscribeContentStore?: () => void;
 	private storeReadyBroadcasted = false;
@@ -249,6 +251,7 @@ export class BacklogServer {
 
 		const search = await this.core.getSearchService();
 		this.searchService = search;
+		this.servicesInitialized = true;
 	}
 
 	private publishBrowserLoadingState(state: BrowserLoadingState) {
@@ -749,6 +752,7 @@ export class BacklogServer {
 		this.searchService = null;
 		this.contentStore = null;
 		this.servicesReadyPromise = null;
+		this.servicesInitialized = false;
 		this.browserLoadingState = { type: "loading", message: null };
 		this.storeReadyBroadcasted = false;
 
@@ -862,8 +866,8 @@ export class BacklogServer {
 		return new Response("Not Found", { status: 404 });
 	}
 
-	// Task handlers
 	private async handleListTasks(req: Request): Promise<Response> {
+		let refreshCrossBranch = this.servicesInitialized;
 		const url = new URL(req.url);
 		const statusParams = url.searchParams.getAll("status");
 		const statusExcludedParams = url.searchParams.getAll("statusExcluded");
@@ -900,8 +904,11 @@ export class BacklogServer {
 		if (parent) {
 			let parentTask: Task | null;
 			try {
-				parentTask = await this.core.getTask(parent);
-				if (!parentTask) parentTask = await this.core.getTask(ensurePrefix(parent));
+				parentTask = await this.core.getTask(parent, { refreshCrossBranch });
+				refreshCrossBranch = false;
+				if (!parentTask) {
+					parentTask = await this.core.getTask(ensurePrefix(parent), { refreshCrossBranch: false });
+				}
 			} catch (error) {
 				if (error instanceof AmbiguousTaskIdError) {
 					return Response.json({ error: error.message }, { status: 409 });
@@ -926,6 +933,7 @@ export class BacklogServer {
 				labels: labels.length > 0 ? labels : undefined,
 			},
 			includeCrossBranch: crossBranch,
+			refreshCrossBranch,
 		});
 
 		return Response.json(tasks);
@@ -933,7 +941,6 @@ export class BacklogServer {
 
 	private async handleSearch(req: Request): Promise<Response> {
 		try {
-			const searchService = await this.getSearchServiceInstance();
 			const url = new URL(req.url);
 			const query = url.searchParams.get("query") ?? undefined;
 			const limitParam = url.searchParams.get("limit");
@@ -1042,6 +1049,12 @@ export class BacklogServer {
 					filters.modifiedFiles =
 						normalizedModifiedFiles.length === 1 ? normalizedModifiedFiles[0] : normalizedModifiedFiles;
 				}
+			}
+
+			const servicesWereReady = this.servicesInitialized;
+			const searchService = await this.getSearchServiceInstance();
+			if (servicesWereReady && (!types || types.includes("task"))) {
+				await this.core.refreshTasksForTaskRead();
 			}
 
 			const results = searchService.search({ query, limit, types, filters });
@@ -2259,13 +2272,16 @@ export class BacklogServer {
 			}
 
 			// Compute on-demand if no cache exists
+			const servicesWereReady = this.servicesInitialized;
 			const store = await this.getContentStoreInstance();
-			const snapshot = store.getSnapshot();
-			const tasks = snapshot.tasks;
-
-			const config = await this.core.filesystem.loadConfig();
-			const statuses = config?.statuses || ["To Do", "In Progress", "Done"];
+			const currentConfig = await this.core.filesystem.loadConfig();
+			await store.ensureConfigWatcher();
+			if (servicesWereReady) await this.core.refreshTasksForTaskRead();
+			const corpus = store.getTaskCorpusSnapshot();
+			const corpusConfig = corpus.config ?? currentConfig;
+			const tasks = corpus.identityIndex?.getTasks(true) ?? [...corpus.activeTasks, ...corpus.completedTasks];
 			const drafts = await this.core.filesystem.listDrafts();
+			const statuses = (corpusConfig?.statuses || DEFAULT_STATUSES) as string[];
 
 			const statistics = getTaskStatistics(tasks, drafts, statuses);
 

@@ -3,11 +3,16 @@
  * Designed to handle Windows-specific file system quirks and prevent parallel test interference
  */
 
+import { spyOn } from "bun:test";
 import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
-import { join } from "node:path";
+import { EventEmitter } from "node:events";
+import * as nodeFs from "node:fs";
+import { rename, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type { Core } from "../core/backlog.ts";
 import { initializeProject as initializeProjectShared } from "../core/init.ts";
+import { FileSystem } from "../file-system/operations.ts";
+import type { Task } from "../types/index.ts";
 
 /**
  * Creates a unique test directory name to avoid conflicts in parallel execution
@@ -81,7 +86,11 @@ export function getPlatformTimeout(baseTimeout = 5000): number {
  * Rejects if an operation does not settle in time and always clears its timer
  * when the operation resolves or rejects first.
  */
-export function withTimeout<T>(operation: Promise<T>, label: string, timeoutMs: number): Promise<T> {
+export function withTimeout<T>(
+	operation: Promise<T>,
+	label: string,
+	timeoutMs: number = getPlatformTimeout(15000),
+): Promise<T> {
 	return new Promise<T>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			clearTimeout(timer);
@@ -142,4 +151,157 @@ export async function initializeTestProject(
 		const repoRoot = await core.gitOps.stageBacklogDirectory(core.filesystem.backlogDirName);
 		await core.gitOps.commitChanges(`backlog: Initialize backlog project: ${projectName}`, repoRoot);
 	}
+}
+
+/**
+ * Initialize a project in filesystem-only mode: no git operations, so the
+ * loader's cross-branch path stays entirely on the working copy. Mirrors the
+ * upstream helper used by the shared branch-task-loader regressions.
+ */
+export async function initializeFilesystemTestProject(
+	core: Core,
+	projectName: string,
+	backlogDirectory?: string,
+): Promise<void> {
+	const backlogDirectorySource = backlogDirectory
+		? backlogDirectory === "backlog" || backlogDirectory === ".backlog"
+			? (backlogDirectory as "backlog" | ".backlog")
+			: "custom"
+		: undefined;
+	const configLocation = backlogDirectorySource === "custom" ? "root" : "folder";
+	await initializeProjectShared(core, {
+		projectName,
+		backlogDirectory,
+		backlogDirectorySource,
+		configLocation,
+		integrationMode: "none",
+		filesystemOnly: true,
+		advancedConfig: {
+			autoCommit: false,
+		},
+	});
+}
+
+export interface DeferredGate {
+	started: Promise<void>;
+	markStarted: () => void;
+	waitForRelease: Promise<void>;
+	release: () => void;
+}
+
+export function createDeferredGate(): DeferredGate {
+	let markStarted = () => {};
+	let release = () => {};
+	const started = new Promise<void>((resolve) => {
+		markStarted = resolve;
+	});
+	const waitForRelease = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	return { started, markStarted, waitForRelease, release };
+}
+
+export function rootConfig(projectName: string, backlogDirectory: string): string {
+	return [
+		`project_name: "${projectName}"`,
+		`backlog_directory: "${backlogDirectory}"`,
+		'statuses: ["To Do", "Done"]',
+		"labels: []",
+		"date_format: YYYY-MM-DD",
+		"check_active_branches: false",
+		'task_prefix: "TASK"',
+		"",
+	].join("\n");
+}
+
+export function fixtureFilesystem(projectRoot: string, backlogDirectory: string): FileSystem {
+	const fixture = new (FileSystem as new (rootDir: string) => FileSystem)(projectRoot);
+	fixture.setBacklogDirectory(backlogDirectory);
+	return fixture;
+}
+
+export function makeTask(idSuffix: string, title: string): Task {
+	return {
+		id: `TASK-${idSuffix}`,
+		title,
+		status: "To Do",
+		assignee: [],
+		createdDate: "2025-09-19 10:00",
+		labels: [],
+		dependencies: [],
+		rawContent: `## Description\n${title}`,
+	};
+}
+
+export async function writeFixture(filesystem: FileSystem, taskId: string, namespace: string): Promise<void> {
+	await filesystem.ensureBacklogStructure();
+	await Promise.all([
+		filesystem.saveTask(makeTask(taskId, `Task ${namespace}`)),
+		filesystem.saveDocument({
+			id: `doc-${namespace}`,
+			title: `Document ${namespace}`,
+			type: "guide",
+			createdDate: "2025-09-19",
+			rawContent: `# Document ${namespace}`,
+		}),
+		filesystem.saveDecision({
+			id: `decision-${namespace}`,
+			title: `Decision ${namespace}`,
+			date: "2025-09-19",
+			status: "proposed",
+			context: `Context ${namespace}`,
+			decision: `Decision ${namespace}`,
+			consequences: `Consequences ${namespace}`,
+			rawContent: `## Context\nContext ${namespace}\n\n## Decision\nDecision ${namespace}\n\n## Consequences\nConsequences ${namespace}`,
+		}),
+	]);
+}
+
+export async function replaceRootConfig(configPath: string, content: string): Promise<void> {
+	const replacementPath = `${configPath}.replacement`;
+	await Bun.write(replacementPath, content);
+	await rename(replacementPath, configPath);
+}
+
+export async function waitUntil(
+	predicate: () => boolean,
+	label: string,
+	timeout = getPlatformTimeout(15000),
+): Promise<void> {
+	const deadline = Date.now() + timeout;
+	while (Date.now() < deadline) {
+		if (predicate()) return;
+		await sleep(25);
+	}
+	throw new Error(`Timed out waiting for ${label}`);
+}
+
+export type CapturedWatchCallback = (eventType: string, filename: string | Buffer | null) => void;
+
+export function captureWatchCallbacks(callbacks: Map<string, CapturedWatchCallback>) {
+	return spyOn(nodeFs, "watch").mockImplementation(((path: Parameters<typeof nodeFs.watch>[0], ...args: unknown[]) => {
+		const callback = args.findLast((argument) => typeof argument === "function");
+		if (typeof callback !== "function") {
+			throw new Error(`Expected a watcher callback for ${String(path)}`);
+		}
+		callbacks.set(resolve(String(path)), callback as CapturedWatchCallback);
+		const watcher = new EventEmitter() as EventEmitter & { close(): void };
+		watcher.close = () => {};
+		return watcher as unknown as nodeFs.FSWatcher;
+	}) as typeof nodeFs.watch);
+}
+
+export function getCapturedWatcher(callbacks: Map<string, CapturedWatchCallback>, path: string): CapturedWatchCallback {
+	const callback = callbacks.get(resolve(path));
+	if (!callback) {
+		throw new Error(`Expected captured watcher for ${path}`);
+	}
+	return callback;
+}
+
+export async function findDecisionFile(decisionsDir: string, decisionId: string): Promise<string> {
+	for await (const file of new Bun.Glob(`${decisionId}*.md`).scan({ cwd: decisionsDir, followSymlinks: true })) {
+		return file;
+	}
+	throw new Error(`Expected decision file for ${decisionId}`);
 }

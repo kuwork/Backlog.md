@@ -189,30 +189,30 @@ export async function getTaskPath(taskId: string, core?: Core | TaskPathContext)
 	// Extract prefix from the taskId
 	const detectedPrefix = extractAnyPrefix(taskId);
 
-	// If prefix is detected, search only for that prefix
-	if (detectedPrefix) {
-		const globPattern = buildGlobPattern(detectedPrefix);
-		try {
-			const files = await Array.fromAsync(
-				new Bun.Glob(globPattern).scan({ cwd: coreInstance.filesystem.tasksDir, followSymlinks: true }),
-			);
-			const taskFile = findMatchingFile(files, taskId, detectedPrefix);
-			if (taskFile) {
-				return join(coreInstance.filesystem.tasksDir, taskFile);
-			}
-		} catch {
-			// Fall through to return null
-		}
-		return null;
-	}
-
-	// For numeric-only IDs, scan all .md files and find one matching the number
 	try {
 		const allFiles = await Array.fromAsync(
 			new Bun.Glob("*.md").scan({ cwd: coreInstance.filesystem.tasksDir, followSymlinks: true }),
 		);
 
-		// Look for a file matching this numeric ID with any prefix
+		if (detectedPrefix) {
+			// Compare the full ID encoded in each filename against the requested ID.
+			// This handles numeric and non-numeric bodies, case differences, and
+			// cross-prefix aliases while still failing closed on ambiguous matches.
+			const matches = allFiles
+				.filter((file) => {
+					const fileTaskId = extractFullTaskIdFromFilename(file);
+					if (!fileTaskId) return false;
+					return taskIdsEqual(taskId, fileTaskId);
+				})
+				.map((file) => join(coreInstance.filesystem.tasksDir, file))
+				.sort((left, right) => left.localeCompare(right));
+			if (matches.length > 1) {
+				throw new AmbiguousTaskIdError(taskId, matches);
+			}
+			return matches[0] ?? null;
+		}
+
+		// For numeric-only IDs, scan all .md files and find one matching the number
 		// Pattern: <prefix>-<number> - <title>.md (e.g., "back-358 - Title.md")
 		const numericPart = taskId.trim();
 		for (const file of allFiles) {
@@ -248,6 +248,20 @@ function findMatchingFile(files: string[], taskId: string, prefix: string): stri
 	}
 
 	return taskFile;
+}
+
+/**
+ * Extract the full task ID encoded in a filename, ignoring the title suffix.
+ * Handles both numeric and non-numeric bodies (e.g. "task-123 - Title.md" and
+ * "task-custom - Title.md" both extract to their full ID).
+ */
+function extractFullTaskIdFromFilename(filename: string): string | null {
+	const base = filename.replace(/\.md$/i, "");
+	const idPart = base.split(" - ")[0];
+	if (!idPart) return null;
+	const prefix = extractAnyPrefix(idPart);
+	if (!prefix) return null;
+	return normalizeTaskId(idPart, prefix);
 }
 
 /**

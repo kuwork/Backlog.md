@@ -259,12 +259,29 @@ export class TaskIdentityIndex {
 	}
 
 	resolve(taskId: string): TaskIdentityResolution {
+		return this.resolveForMutation(taskId);
+	}
+
+	resolveForRead(taskId: string): TaskIdentityResolution {
 		const group = this.getGroup(taskId);
 		if (!group) return { status: "not-found" };
 		const candidates = this.ambiguousCandidates(group);
 		if (candidates.length > 0) return { status: "ambiguous", candidates };
-		const tasks = this.getTasks(false).filter((task) => taskIdsEqual(task.id, taskId));
+		const tasks = this.getTasks(true).filter((task) => taskIdsEqual(task.id, taskId));
 		return tasks[0] ? { status: "found", task: tasks[0] } : { status: "not-found" };
+	}
+
+	resolveForMutation(taskId: string): TaskIdentityResolution {
+		const group = this.getGroup(taskId);
+		if (!group) return { status: "not-found" };
+		const candidates = this.ambiguousCandidates(group);
+		if (candidates.length > 0) return { status: "ambiguous", candidates };
+		const workingTasks = [...group.identities.values()]
+			.flatMap((identity) => identity.records)
+			.filter((record) => record.workingCopy && record.type === "task" && record.task)
+			.sort((left, right) => recordKey(left).localeCompare(recordKey(right)));
+		const selected = workingTasks[0]?.task;
+		return selected ? { status: "found", task: { ...selected, source: "local" } } : { status: "not-found" };
 	}
 
 	getOccupiedIds(): string[] {

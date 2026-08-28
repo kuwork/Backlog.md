@@ -1,25 +1,31 @@
 import { type FSWatcher, watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
-import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { FileSystem } from "../file-system/operations.ts";
 import { parseDecision, parseDocument, parseTask } from "../markdown/parser.ts";
 import type { BacklogConfig, Decision, Document, Task, TaskListFilter, WikiPage } from "../types/index.ts";
 import { watchConfigFile } from "../utils/config-watcher.ts";
+import { documentFilenameId, documentIdsEqual } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath } from "../utils/document-path.ts";
-import { normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
+import { canonicalTaskId, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
-import type { TaskIdentityIndex } from "./task-identity-index.ts";
+import {
+	normalizeTaskLifecyclePath,
+	type TaskIdentityIndex,
+	type TaskIdentityResolution,
+} from "./task-identity-index.ts";
+import type { BranchTaskStateEntry } from "./task-loader.ts";
 
 export interface TaskCorpusSnapshot {
 	tasks?: Task[];
 	activeTasks: Task[];
 	completedTasks: Task[];
 	identityIndex?: TaskIdentityIndex;
+	branchStateEntries?: BranchTaskStateEntry[];
+	config?: BacklogConfig | null;
 }
 
 type TaskLoaderResult = Task[] | TaskCorpusSnapshot;
-
-export type TaskResolution = { task?: Task; candidates?: string[] };
 
 interface ContentSnapshot {
 	tasks: Task[];
@@ -88,6 +94,8 @@ export class ContentStore {
 	private activeTasks: Task[] = [];
 	private completedTasks: Task[] = [];
 	private taskIdentityIndex?: TaskIdentityIndex;
+	private branchTaskStateEntries: BranchTaskStateEntry[] = [];
+	private taskCorpusConfig: BacklogConfig | null | undefined;
 	private cachedDocuments: Document[] = [];
 	private cachedDecisions: Decision[] = [];
 	private cachedWikis: WikiPage[] = [];
@@ -202,31 +210,62 @@ export class ContentStore {
 			return;
 		}
 		if (!this.localTaskRefreshPromise) {
-			const refresh = (async () => {
+			const epoch = this.rootWatcherEpoch;
+			const refresh = this.enqueueRoot(epoch, async () => {
+				const targetRoot = this.currentRoot();
+				const generation = this.nextContentRefreshGeneration("tasks");
+				const versionsBeforeLoad = new Map(this.contentItemVersions.tasks);
 				const [activeTasks, completedTasks] = await Promise.all([
 					this.filesystem.listTasks(),
 					this.filesystem.listCompletedTasks(),
 				]);
+				if (
+					!this.isRootWatcherCurrent(epoch) ||
+					targetRoot !== this.currentRoot() ||
+					!this.isContentRefreshCurrent("tasks", generation)
+				) {
+					return;
+				}
+				const mergedActiveTasks = this.mergeConcurrentTaskCorpus(
+					activeTasks,
+					this.activeTasks,
+					versionsBeforeLoad,
+					targetRoot,
+				);
+				const mergedCompletedTasks = this.mergeConcurrentTaskCorpus(
+					completedTasks,
+					this.completedTasks,
+					versionsBeforeLoad,
+					targetRoot,
+				);
+				if (this.needsBranchFallbackHydration(mergedActiveTasks, mergedCompletedTasks)) {
+					await this.refreshTasksFromDisk(undefined, epoch);
+					return;
+				}
 				const previousFingerprint = this.taskIdentityIndex?.getFingerprint();
-				this.activeTasks = activeTasks;
-				this.completedTasks = completedTasks;
+				this.activeTasks = mergedActiveTasks;
+				this.completedTasks = mergedCompletedTasks;
 				if (this.taskIdentityIndex) {
-					this.taskIdentityIndex = this.taskIdentityIndex.withWorkingCopyCorpus(activeTasks, completedTasks);
+					this.taskIdentityIndex = this.taskIdentityIndex.withWorkingCopyCorpus(
+						mergedActiveTasks,
+						mergedCompletedTasks,
+					);
 					const tasks = this.taskIdentityIndex.getTasks(false);
 					const changed = this.hasTaskCollectionChanged(tasks);
 					const identityChanged = previousFingerprint !== this.taskIdentityIndex.getFingerprint();
 					this.replaceVisibleTasks(tasks);
 					if (changed || identityChanged) this.publishTaskChange();
 				} else {
-					const changed = this.hasTaskCollectionChanged(activeTasks);
-					this.replaceVisibleTasks(activeTasks);
+					const changed = this.hasTaskCollectionChanged(mergedActiveTasks);
+					this.replaceVisibleTasks(mergedActiveTasks);
 					if (changed) this.publishTaskChange();
 				}
-			})();
-			this.localTaskRefreshPromise = refresh;
-			void refresh.finally(() => {
-				if (this.localTaskRefreshPromise === refresh) this.localTaskRefreshPromise = null;
 			});
+			this.localTaskRefreshPromise = refresh;
+			const clearRefreshPromise = () => {
+				if (this.localTaskRefreshPromise === refresh) this.localTaskRefreshPromise = null;
+			};
+			void refresh.then(clearRefreshPromise, clearRefreshPromise);
 		}
 		await this.localTaskRefreshPromise;
 	}
@@ -273,13 +312,15 @@ export class ContentStore {
 	 * Corpus snapshot separating active (working-copy) tasks from completed
 	 * ones, carrying the publication-owner identity index when one is installed.
 	 */
-	async getTaskCorpusSnapshot(): Promise<TaskCorpusSnapshot> {
-		await this.ensureInitialized();
+	getTaskCorpusSnapshot(): TaskCorpusSnapshot {
+		if (!this.initialized) throw new Error("ContentStore not initialized. Call ensureInitialized() first.");
 		return {
 			tasks: this.cachedTasks.slice(),
 			activeTasks: this.activeTasks.slice(),
 			completedTasks: this.completedTasks.slice(),
 			identityIndex: this.taskIdentityIndex,
+			branchStateEntries: this.branchTaskStateEntries.slice(),
+			config: this.taskCorpusConfig,
 		};
 	}
 
@@ -289,35 +330,33 @@ export class ContentStore {
 	 * Returns the ambiguity candidates instead of throwing so this store stays
 	 * free of the Core error type (no import cycle).
 	 */
-	async resolveTaskForRead(taskId: string): Promise<TaskResolution> {
-		return await this.resolveInSnapshot(taskId, true);
+	resolveTaskForRead(taskId: string): TaskIdentityResolution {
+		return this.resolveInSnapshot(taskId, true);
 	}
 
 	/**
 	 * Mutation-safe resolution: only the active working-copy corpus is
 	 * considered, mirroring Core's resolveForMutation semantics.
 	 */
-	async resolveTaskForMutation(taskId: string): Promise<TaskResolution> {
-		return await this.resolveInSnapshot(taskId, false);
+	resolveTaskForMutation(taskId: string): TaskIdentityResolution {
+		return this.resolveInSnapshot(taskId, false);
 	}
 
-	private async resolveInSnapshot(taskId: string, includeCompleted: boolean): Promise<TaskResolution> {
-		const snapshot = await this.getTaskCorpusSnapshot();
+	private resolveInSnapshot(taskId: string, includeCompleted: boolean): TaskIdentityResolution {
+		const snapshot = this.getTaskCorpusSnapshot();
 		if (snapshot.identityIndex) {
-			const resolution = snapshot.identityIndex.resolve(taskId);
-			if (resolution.status === "ambiguous") return { candidates: resolution.candidates };
-			if (resolution.status === "not-found") return {};
-			const task = resolution.task;
-			if (!includeCompleted && task?.source === "completed") return {};
-			return { task };
+			return includeCompleted
+				? snapshot.identityIndex.resolveForRead(taskId)
+				: snapshot.identityIndex.resolveForMutation(taskId);
 		}
 		const corpus = includeCompleted ? [...snapshot.activeTasks, ...snapshot.completedTasks] : snapshot.activeTasks;
 		const matches = corpus.filter((task) => taskIdsEqual(taskId, task.id));
 		const distinctPaths = new Set(matches.map((task) => task.filePath ?? task.title));
 		if (matches.length > 1 && distinctPaths.size > 1) {
-			return { candidates: [...distinctPaths] };
+			return { status: "ambiguous", candidates: [...distinctPaths] };
 		}
-		return { task: matches[0] };
+		const task = matches[0];
+		return task ? { status: "found", task } : { status: "not-found" };
 	}
 
 	upsertTask(task: Task, owner?: PublicationOwner): void {
@@ -328,28 +367,19 @@ export class ContentStore {
 			? resolve(dirname(dirname(task.filePath)))
 			: owner
 				? resolve(owner.root)
-				: this.currentRoot();
+				: null;
+		if (!publicationRoot || publicationRoot !== this.currentRoot()) {
+			return;
+		}
 		const normalizedTask = { ...task, id: normalizeTaskId(task.id) };
 		const normalizedId = normalizedTask.id;
 
-		if (publicationRoot !== this.currentRoot()) {
-			this.pendingTaskPublications.set(normalizedId, { root: publicationRoot, task: normalizedTask });
-			return;
-		}
-
-		const previous =
-			publicationRoot === this.publishedRoot
-				? this.tasks.get(normalizedId)
-				: this.pendingTaskPublications.get(normalizedId)?.task;
+		const previous = this.tasks.get(normalizedId);
 		if (previous && !this.hasTaskChanged(previous, normalizedTask)) {
 			return;
 		}
 		this.nextContentItemGeneration("tasks", normalizedId);
 		this.nextContentItemVersion("tasks", normalizedId, publicationRoot);
-		if (publicationRoot !== this.publishedRoot) {
-			this.pendingTaskPublications.set(normalizedId, { root: publicationRoot, task: normalizedTask });
-			return;
-		}
 		if (this.taskIdentityIndex) {
 			this.taskIdentityIndex = this.taskIdentityIndex.withWorkingCopyCorpus(
 				[...this.activeTasks.filter((t) => t.filePath !== normalizedTask.filePath), normalizedTask],
@@ -392,11 +422,20 @@ export class ContentStore {
 	transitionTask(taskId: string, completedTask?: Task): void {
 		if (!this.canPublishContent()) return;
 		const normalizedTaskId = normalizeTaskId(taskId);
-		const previousActiveCount = this.activeTasks.length;
-		this.activeTasks = this.activeTasks.filter((task) => !taskIdsEqual(task.id, normalizedTaskId));
-		this.completedTasks = this.completedTasks.filter((task) => !taskIdsEqual(task.id, normalizedTaskId));
-		if (completedTask) this.completedTasks.push({ ...completedTask, source: "completed" });
-		if (previousActiveCount === this.activeTasks.length && !completedTask) return;
+		const activeTasks = this.activeTasks.filter((task) => !taskIdsEqual(task.id, normalizedTaskId));
+		const completedTasks = this.completedTasks.filter((task) => !taskIdsEqual(task.id, normalizedTaskId));
+		if (completedTask) completedTasks.push({ ...completedTask, source: "completed" });
+		if (
+			activeTasks.length === this.activeTasks.length &&
+			completedTasks.length === this.completedTasks.length &&
+			!completedTask
+		) {
+			return;
+		}
+		this.nextContentItemGeneration("tasks", normalizedTaskId);
+		this.nextContentItemVersion("tasks", normalizedTaskId, this.currentRoot());
+		this.activeTasks = activeTasks;
+		this.completedTasks = completedTasks;
 		if (this.taskIdentityIndex) {
 			this.taskIdentityIndex = this.taskIdentityIndex.withWorkingCopyCorpus(this.activeTasks, this.completedTasks);
 			this.replaceVisibleTasks(this.taskIdentityIndex.getTasks(false));
@@ -919,18 +958,41 @@ export class ContentStore {
 		this.notify("tasks");
 	}
 
-	private publishWatchedDocument(document: Document): void {
+	private findWatchedDocumentByPath(path?: string): Document | undefined {
+		if (!path) return undefined;
+		return [...this.documents.values()].find((document) => document.path === path);
+	}
+
+	private dropWatchedDocument(document: Document): boolean {
+		if (!this.documents.delete(document.id)) return false;
+		this.nextContentItemGeneration("documents", document.id);
+		this.nextContentItemVersion("documents", document.id, this.currentRoot());
+		return true;
+	}
+
+	/**
+	 * Publishes one watched file. Returns true when the publish landed on a path the store did not
+	 * hold while an equivalent ID still sits at another path: the file may have been renamed and
+	 * respelled at once with only the destination event delivered, and no path identifies what it
+	 * vacated. Only a full refresh can settle that without guessing which entry it was.
+	 */
+	private publishWatchedDocument(document: Document, replacedPath?: string): boolean {
+		const replaced = this.findWatchedDocumentByPath(replacedPath) ?? this.findWatchedDocumentByPath(document.path);
+		if (replaced && replaced.id !== document.id) this.dropWatchedDocument(replaced);
 		this.nextContentItemGeneration("documents", document.id);
 		this.nextContentItemVersion("documents", document.id, this.currentRoot());
 		this.documents.set(document.id, document);
 		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
 		this.notify("documents");
+		if (replaced) return false;
+		return this.cachedDocuments.some(
+			(candidate) => candidate.path !== document.path && documentIdsEqual(candidate.id, document.id),
+		);
 	}
 
-	private removeWatchedDocument(id: string): void {
-		if (!this.documents.delete(id)) return;
-		this.nextContentItemGeneration("documents", id);
-		this.nextContentItemVersion("documents", id, this.currentRoot());
+	private removeWatchedDocument(path: string): void {
+		const existing = this.findWatchedDocumentByPath(path);
+		if (!existing || !this.dropWatchedDocument(existing)) return;
 		this.cachedDocuments = [...this.documents.values()].sort((a, b) => a.title.localeCompare(b.title));
 		this.notify("documents");
 	}
@@ -1070,7 +1132,7 @@ export class ContentStore {
 						epoch,
 						readEventPath: async () => {
 							if (!(await Bun.file(fullPath).exists())) return null;
-							const decision = parseDecision(await Bun.file(fullPath).text());
+							const decision = { ...parseDecision(await Bun.file(fullPath).text()), path: file };
 							if (decision.id !== id) throw new Error("Decision identity mismatch");
 							return decision;
 						},
@@ -1079,8 +1141,11 @@ export class ContentStore {
 								decisionsDir,
 								"decision-*.md",
 								(path) => basename(path).split(" - ")[0] === id,
-								async (candidatePath) => {
-									const decision = parseDecision(await Bun.file(candidatePath).text());
+								async (candidatePath, candidateRelativePath) => {
+									const decision = {
+										...parseDecision(await Bun.file(candidatePath).text()),
+										path: candidateRelativePath,
+									};
 									if (decision.id !== id) throw new Error("Decision identity mismatch");
 									return decision;
 								},
@@ -1099,7 +1164,7 @@ export class ContentStore {
 						return false;
 					}
 					try {
-						const decision = parseDecision(await Bun.file(fullPath).text());
+						const decision = { ...parseDecision(await Bun.file(fullPath).text()), path: file };
 						if (decision.id !== id) return true;
 						const previous = this.decisions.get(id);
 						if (previous && !this.hasDecisionChanged(previous, decision)) return true;
@@ -1128,13 +1193,16 @@ export class ContentStore {
 				await this.refreshDocumentsFromDisk(undefined, epoch);
 				return;
 			}
-			const [id] = base.split(" - ");
+			const id = documentFilenameId(base);
 			if (!id) {
 				await this.refreshDocumentsFromDisk(undefined, epoch);
 				return;
 			}
 
+			const eventPath = normalizeDocumentRelativePath(relativePath ?? relative(docsDir, absolutePath));
+
 			if (eventType === "rename") {
+				let strandedEquivalent = false;
 				await this.reconcileRenamedItem({
 					key: `document:${id}`,
 					epoch,
@@ -1142,48 +1210,54 @@ export class ContentStore {
 						if (!(await Bun.file(absolutePath).exists())) return null;
 						const document = {
 							...parseDocument(await Bun.file(absolutePath).text()),
-							path: normalizeDocumentRelativePath(relativePath ?? relative(docsDir, absolutePath)),
+							path: eventPath,
 						};
-						if (document.id !== id) throw new Error("Document identity mismatch");
+						if (!documentIdsEqual(document.id, id)) throw new Error("Document identity mismatch");
 						return document;
 					},
 					findIdentity: () =>
 						this.findIdentityCandidate(
 							docsDir,
 							"**/*.md",
-							(path) => basename(path).split(" - ")[0] === id,
+							(path) => {
+								const candidateId = documentFilenameId(path);
+								return candidateId ? documentIdsEqual(candidateId, id) : false;
+							},
 							async (candidatePath, candidateRelativePath) => {
 								const document = {
 									...parseDocument(await Bun.file(candidatePath).text()),
 									path: normalizeDocumentRelativePath(candidateRelativePath),
 								};
-								if (document.id !== id) throw new Error("Document identity mismatch");
+								if (!documentIdsEqual(document.id, id)) throw new Error("Document identity mismatch");
 								return document;
 							},
 						),
-					current: () => this.documents.get(id),
+					current: () => this.findWatchedDocumentByPath(eventPath),
 					hasChanged: (previous, next) => this.hasDocumentChanged(previous, next),
-					publish: (document) => this.publishWatchedDocument(document),
-					remove: () => this.removeWatchedDocument(id),
+					publish: (document) => {
+						strandedEquivalent = this.publishWatchedDocument(document, eventPath);
+					},
+					remove: () => this.removeWatchedDocument(eventPath),
 				});
+				if (strandedEquivalent) await this.refreshDocumentsFromDisk(undefined, epoch);
 				return;
 			}
 
 			await this.reconcileOrSchedule(`document:${id}`, epoch, async () => {
 				if (!(await Bun.file(absolutePath).exists())) {
-					this.removeWatchedDocument(id);
+					this.removeWatchedDocument(eventPath);
 					return false;
 				}
 				try {
 					const document = {
 						...parseDocument(await Bun.file(absolutePath).text()),
-						path: normalizeDocumentRelativePath(relativePath ?? relative(docsDir, absolutePath)),
+						path: eventPath,
 					};
-					if (document.id !== id) return true;
-					const previous = this.documents.get(id);
+					if (!documentIdsEqual(document.id, id)) return true;
+					const previous = this.findWatchedDocumentByPath(eventPath);
 					if (previous && !this.hasDocumentChanged(previous, document)) return true;
-					this.publishWatchedDocument(document);
-					return false;
+					const strandedEquivalent = this.publishWatchedDocument(document, eventPath);
+					return strandedEquivalent;
 				} catch {
 					return true;
 				}
@@ -1285,6 +1359,8 @@ export class ContentStore {
 		this.activeTasks = corpus.activeTasks.slice();
 		this.completedTasks = corpus.completedTasks.slice();
 		this.taskIdentityIndex = corpus.identityIndex;
+		this.branchTaskStateEntries = corpus.branchStateEntries?.slice() ?? [];
+		this.taskCorpusConfig = corpus.config;
 		this.replaceVisibleTasks(visibleTasks);
 	}
 
@@ -1566,8 +1642,14 @@ export class ContentStore {
 				this.contentItemPublicationRoots.tasks,
 				targetRoot,
 			);
+			const visibleChanged = this.hasTaskCollectionChanged(merged);
 			const identityChanged = this.taskIdentityIndex?.getFingerprint() !== corpus.identityIndex?.getFingerprint();
-			if (!this.hasTaskCollectionChanged(merged) && !identityChanged) return false;
+			const corpusChanged =
+				this.hasTaskListChanged(this.activeTasks, corpus.activeTasks) ||
+				this.hasTaskListChanged(this.completedTasks, corpus.completedTasks) ||
+				this.hasBranchTaskStateChanged(corpus.branchStateEntries ?? []) ||
+				JSON.stringify(this.taskCorpusConfig) !== JSON.stringify(corpus.config);
+			if (!visibleChanged && !identityChanged && !corpusChanged) return false;
 			this.installTaskCorpus(corpus, merged);
 			this.notify("tasks");
 			return false;
@@ -1761,17 +1843,80 @@ export class ContentStore {
 	}
 
 	private hasTaskCollectionChanged(nextTasks: Task[]): boolean {
-		const nextCachedTasks = sortByTaskId(nextTasks);
-		if (this.cachedTasks.length !== nextCachedTasks.length) {
-			return true;
-		}
+		return this.hasTaskListChanged(this.cachedTasks, nextTasks);
+	}
 
-		return nextCachedTasks.some((task, index) => {
-			const previous = this.cachedTasks[index];
+	private hasTaskListChanged(currentTasks: Task[], nextTasks: Task[]): boolean {
+		const current = sortByTaskId(currentTasks);
+		const next = sortByTaskId(nextTasks);
+		if (current.length !== next.length) return true;
+		return next.some((task, index) => {
+			const previous = current[index];
 			return !previous || this.hasTaskChanged(previous, task);
 		});
 	}
 
+	private needsBranchFallbackHydration(activeTasks: Task[], completedTasks: Task[]): boolean {
+		if (!this.taskLoader || this.branchTaskStateEntries.length === 0) return false;
+		const identity = (id: string, path: string | undefined): string | null => {
+			if (!path) return null;
+			const projectPath = isAbsolute(path) ? relative(this.filesystem.rootDir, path) : path;
+			return `${canonicalTaskId(id)}\0${normalizeTaskLifecyclePath(
+				projectPath.replaceAll("\\", "/"),
+				this.filesystem.backlogDirName,
+			)}`;
+		};
+		const nextIdentities = new Set(
+			[...activeTasks, ...completedTasks].flatMap((task) => {
+				const value = identity(task.id, task.filePath);
+				return value ? [value] : [];
+			}),
+		);
+		const removedIdentities = new Set(
+			[...this.activeTasks, ...this.completedTasks].flatMap((task) => {
+				const value = identity(task.id, task.filePath);
+				return value && !nextIdentities.has(value) ? [value] : [];
+			}),
+		);
+		if (removedIdentities.size === 0) return false;
+		return this.branchTaskStateEntries.some((entry) => {
+			if (entry.task || (entry.type !== "task" && entry.type !== "completed")) return false;
+			const value = identity(entry.id, entry.path);
+			return value !== null && removedIdentities.has(value);
+		});
+	}
+
+	private hasBranchTaskStateChanged(nextEntries: BranchTaskStateEntry[]): boolean {
+		const serialize = (entries: BranchTaskStateEntry[]) =>
+			entries
+				.map((entry) =>
+					JSON.stringify({
+						...entry,
+						lastModified: entry.lastModified.toISOString(),
+					}),
+				)
+				.sort((left, right) => left.localeCompare(right));
+		return JSON.stringify(serialize(this.branchTaskStateEntries)) !== JSON.stringify(serialize(nextEntries));
+	}
+
+	private mergeConcurrentTaskCorpus(
+		loaded: Task[],
+		current: Task[],
+		versionsBeforeLoad: ReadonlyMap<string, number>,
+		targetRoot: string,
+	): Task[] {
+		const changedIds = new Set<string>();
+		for (const [id, version] of this.contentItemVersions.tasks) {
+			if (version !== versionsBeforeLoad.get(id) && this.contentItemPublicationRoots.tasks.get(id) === targetRoot) {
+				changedIds.add(id);
+			}
+		}
+		if (changedIds.size === 0) return loaded;
+		return [
+			...loaded.filter((task) => !changedIds.has(normalizeTaskId(task.id))),
+			...current.filter((task) => changedIds.has(normalizeTaskId(task.id))),
+		];
+	}
 	private async updateTaskFromDisk(
 		taskId: string,
 		owner: PublicationOwner = { root: this.currentRoot() },

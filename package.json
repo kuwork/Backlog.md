@@ -63,6 +63,7 @@
     "cli": "bun src/cli.ts",
     "mcp": "bun src/cli.ts mcp start",
     "update-nix": "sh scripts/update-nix.sh",
+    "benchmark:task-loading": "bun scripts/benchmark-task-loading.ts",
     "postinstall": "node scripts/postinstall.cjs"
   },
   "lint-staged": {

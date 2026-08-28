@@ -73,7 +73,7 @@ describe("MCP task tools local filtering", () => {
 
 	it("filters cross-branch tasks out of task_search", async () => {
 		const handlers = new TaskHandlers({
-			loadTasks: async () => [localTask, remoteTask],
+			loadWorkingCopyTasks: async () => [localTask, remoteTask],
 			filesystem: {
 				loadConfig: async () => mockConfig,
 			},
@@ -118,7 +118,7 @@ describe("MCP task tools local filtering", () => {
 
 	it("task_search supports multi-status selection and exclusion", async () => {
 		const handlers = new TaskHandlers({
-			loadTasks: async () => [localTask, progressTask, doneTask],
+			loadWorkingCopyTasks: async () => [localTask, progressTask, doneTask],
 			filesystem: {
 				loadConfig: async () => mockConfig,
 			},
