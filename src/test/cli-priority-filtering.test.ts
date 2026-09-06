@@ -1,5 +1,9 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { $ } from "bun";
+
+// CLI subprocess tests need headroom under full-suite parallel load (default
+// per-test timeout is 5000ms, which they can exceed on a busy machine).
+setDefaultTimeout(20000);
 
 // Task IDs use a per-project prefix (e.g. task-123, BACK-456) and may carry a
 // subtask suffix (e.g. BACK-24.02), so tests must not hardcode a prefix.

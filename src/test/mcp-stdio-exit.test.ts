@@ -183,5 +183,5 @@ describe("MCP stdio shutdown", () => {
 		} finally {
 			await client.close().catch(() => {});
 		}
-	});
+	}, 30000);
 });

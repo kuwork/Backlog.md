@@ -112,6 +112,14 @@ describe("MermaidMarkdown", () => {
 	});
 
 	describe("heading github-slugger IDs with prefix metadata", () => {
+		beforeEach(() => {
+			// BACK-536 resolves in-document hash hrefs against window.location
+			// (pathname + search + hash), so pin a known origin instead of
+			// depending on whatever window state earlier tests left behind.
+			const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost/" });
+			globalThis.window = dom.window as unknown as Window & typeof globalThis;
+		});
+
 		it("uses github-slugger slugs for numeric prefixed headings", () => {
 			const source = "# 1.1 Section Title\n\n## 1.2 Subsection";
 			const html = render(source);
@@ -119,8 +127,9 @@ describe("MermaidMarkdown", () => {
 			expect(html).toContain('id="11-section-title"');
 			expect(html).toContain('data-heading-prefix="1.1"');
 			expect(html).toContain('data-heading-prefix="1.2"');
-			expect(html).toContain('href="#11-section-title"');
-			expect(html).toContain('href="#12-subsection"');
+			// BACK-536 prefixes in-document hash hrefs with the current pathname ("/" in tests)
+			expect(html).toContain('href="/#11-section-title"');
+			expect(html).toContain('href="/#12-subsection"');
 		});
 
 		it("uses github-slugger slugs for alphanumeric prefixed headings", () => {
@@ -130,8 +139,8 @@ describe("MermaidMarkdown", () => {
 			expect(html).toContain('id="a1-section-title"');
 			expect(html).toContain('data-heading-prefix="A1"');
 			expect(html).toContain('data-heading-prefix="A2"');
-			expect(html).toContain('href="#a1-section-title"');
-			expect(html).toContain('href="#a2-subsection"');
+			expect(html).toContain('href="/#a1-section-title"');
+			expect(html).toContain('href="/#a2-subsection"');
 		});
 
 		it("supports dot and enumeration comma separators", () => {
@@ -149,7 +158,7 @@ describe("MermaidMarkdown", () => {
 			const html = render(source);
 
 			expect(html).toContain('id="summary"');
-			expect(html).toContain('href="#summary"');
+			expect(html).toContain('href="/#summary"');
 		});
 
 		it("deduplicates repeated headings", () => {
