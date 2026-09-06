@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, setDefaultTimeout } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import type { BacklogConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
+
+// Spawn a real editor subprocess; cold starts can exceed the 5s default under full-suite load.
+setDefaultTimeout(20000);
 
 function createMockScreen(): Parameters<Core["editTaskInTui"]>[1] {
 	return {

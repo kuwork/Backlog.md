@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { rm, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { ContentStore, type ContentStoreEvent } from "../core/content-store.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeDocument } from "../markdown/serializer.ts";
 import type { Decision, Document, Task } from "../types/index.ts";
+import { normalizeTaskId } from "../utils/task-path.ts";
 import { createUniqueTestDir, getPlatformTimeout, safeCleanup, sleep } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -58,6 +59,10 @@ describe("ContentStore", () => {
 			// Ignore cleanup errors
 		}
 	});
+
+	// BACK-602 gates upserts on publication ownership: only tasks filed under
+	// the current backlog root (or an explicit matching owner) are accepted.
+	const publicationOwner = () => ({ root: resolve(filesystem.backlogDir ?? "") });
 
 	it("loads tasks, documents, and decisions during initialization", async () => {
 		await filesystem.saveTask(sampleTask);
@@ -189,7 +194,7 @@ describe("ContentStore", () => {
 		const refreshPromise = (store as unknown as { refreshTasksFromDisk: () => Promise<void> }).refreshTasksFromDisk();
 		await waitUntil(() => loaderCalls >= 2);
 
-		store.upsertTask({ ...sampleTask, title: "Updated by upsert" });
+		store.upsertTask({ ...sampleTask, title: "Updated by upsert" }, publicationOwner());
 		deferred.resolve([sampleTask]);
 
 		await refreshPromise;
@@ -242,11 +247,14 @@ describe("ContentStore", () => {
 	it("preserves concurrent updates to unrelated tasks during a stale refresh", async () => {
 		const deferred = createDeferred<Task[]>();
 		let loaderCalls = 0;
+		// The real loader returns a normalized corpus; mirror that here so the
+		// stale refresh merge sees canonical IDs on both sides.
+		const normalizeIds = (tasks: Task[]): Task[] => tasks.map((task) => ({ ...task, id: normalizeTaskId(task.id) }));
 		store.dispose();
 		store = new ContentStore(filesystem, async () => {
 			loaderCalls += 1;
 			if (loaderCalls === 1) {
-				return filesystem.listTasks();
+				return normalizeIds(await filesystem.listTasks());
 			}
 			return await deferred.promise;
 		});
@@ -255,17 +263,25 @@ describe("ContentStore", () => {
 		await filesystem.saveTask(sampleTask);
 		await filesystem.saveTask(task2);
 		await store.ensureInitialized();
+		// Real tasks carry their file path, which is the store's identity for
+		// in-place updates; reuse the on-disk snapshot so both upserts target
+		// distinct files instead of collapsing onto the filePath-less identity.
+		const diskSnapshot = normalizeIds(await filesystem.listTasks());
+		const diskTask1 = diskSnapshot.find((t) => t.id === "TASK-1");
+		const diskTask2 = diskSnapshot.find((t) => t.id === "TASK-2");
+		if (!diskTask1 || !diskTask2) throw new Error("Expected both tasks on disk");
 
 		const refreshPromise = (store as unknown as { refreshTasksFromDisk: () => Promise<void> }).refreshTasksFromDisk();
 		await waitUntil(() => loaderCalls >= 2);
 
-		store.upsertTask({ ...sampleTask, title: "Updated TASK-1" });
-		store.upsertTask({ ...task2, title: "Updated TASK-2" });
-		deferred.resolve([sampleTask, task2]);
+		store.upsertTask({ ...diskTask1, title: "Updated TASK-1" }, publicationOwner());
+		store.upsertTask({ ...diskTask2, title: "Updated TASK-2" }, publicationOwner());
+		deferred.resolve(diskSnapshot);
 
 		await refreshPromise;
 
 		const tasks = store.getTasks();
+		// The store exposes canonical (prefix-normalized, uppercase) IDs.
 		expect(tasks.find((t) => t.id === "TASK-1")?.title).toBe("Updated TASK-1");
 		expect(tasks.find((t) => t.id === "TASK-2")?.title).toBe("Updated TASK-2");
 	});
@@ -289,8 +305,8 @@ describe("ContentStore", () => {
 		await waitUntil(() => loaderCalls >= 2);
 
 		// In-memory value goes A -> B -> A (same final value as disk, but newer generation).
-		store.upsertTask({ ...sampleTask, title: "Intermediate" });
-		store.upsertTask({ ...sampleTask, title: "Sample Task" });
+		store.upsertTask({ ...sampleTask, title: "Intermediate" }, publicationOwner());
+		store.upsertTask({ ...sampleTask, title: "Sample Task" }, publicationOwner());
 		deferred.resolve([sampleTask]);
 
 		await refreshPromise;
@@ -299,7 +315,7 @@ describe("ContentStore", () => {
 		expect(tasks).toHaveLength(1);
 		expect(tasks[0]?.title).toBe("Sample Task");
 		// The in-memory version should still be newer; a subsequent write should not be overwritten by the same stale refresh.
-		store.upsertTask({ ...sampleTask, title: "Final" });
+		store.upsertTask({ ...sampleTask, title: "Final" }, publicationOwner());
 		expect(store.getTasks()[0]?.title).toBe("Final");
 	});
 

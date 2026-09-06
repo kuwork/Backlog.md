@@ -381,8 +381,11 @@ export class ContentStore {
 		this.nextContentItemGeneration("tasks", normalizedId);
 		this.nextContentItemVersion("tasks", normalizedId, publicationRoot);
 		if (this.taskIdentityIndex) {
+			// Base the working copy on the current visible set (which includes
+			// prior in-memory upserts), not on activeTasks — otherwise a second
+			// upsert rebuilds from stale data and silently drops the first one.
 			this.taskIdentityIndex = this.taskIdentityIndex.withWorkingCopyCorpus(
-				[...this.activeTasks.filter((t) => t.filePath !== normalizedTask.filePath), normalizedTask],
+				[...this.cachedTasks.filter((t) => t.filePath !== normalizedTask.filePath), normalizedTask],
 				this.completedTasks,
 			);
 			this.replaceVisibleTasks(this.taskIdentityIndex.getTasks(false));

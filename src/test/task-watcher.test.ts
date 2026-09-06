@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, setDefaultTimeout, spyOn } from "bun:test";
 import { EventEmitter } from "node:events";
 import * as nodeFs from "node:fs";
 import { mkdir, rename, unlink } from "node:fs/promises";
@@ -16,6 +16,9 @@ import {
 	sleep,
 	withTimeout,
 } from "./test-utils.ts";
+
+// Real filesystem watchers can be slow to deliver events under full-suite load.
+setDefaultTimeout(20000);
 
 type WatchCallback = (eventType: string, filename: string | Buffer | null) => void;
 
