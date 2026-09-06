@@ -92,14 +92,14 @@ describe("Code path utilities", () => {
 	});
 
 	describe("styleCodePath", () => {
-		test("should wrap path in gray styling tags", () => {
+		test("should wrap path in cyan styling tags", () => {
 			const result = styleCodePath("src/cli.ts");
-			expect(result).toBe("{gray-fg}`src/cli.ts`{/gray-fg}");
+			expect(result).toBe("{cyan-fg}`src/cli.ts`{/cyan-fg}");
 		});
 
 		test("should handle paths with special characters", () => {
 			const result = styleCodePath("/path/with-dashes_and.underscores.ts");
-			expect(result).toBe("{gray-fg}`/path/with-dashes_and.underscores.ts`{/gray-fg}");
+			expect(result).toBe("{cyan-fg}`/path/with-dashes_and.underscores.ts`{/cyan-fg}");
 		});
 	});
 
@@ -107,22 +107,22 @@ describe("Code path utilities", () => {
 		test("should style isolated code paths", () => {
 			const text = "Check this file: `src/cli.ts`";
 			const result = transformCodePaths(text);
-			expect(result).toBe("Check this file:\n{gray-fg}`src/cli.ts`{/gray-fg}");
+			expect(result).toBe("Check this file:\n{cyan-fg}`src/cli.ts`{/cyan-fg}");
 		});
 
 		test("should extract and separate multiple paths in prose", () => {
 			const text = "Modify `src/cli.ts` and `src/ui/board.ts` to implement the feature.";
 			const result = transformCodePaths(text);
 			expect(result).toBe(
-				"Modify and to implement the feature.\n{gray-fg}`src/cli.ts`{/gray-fg}\n{gray-fg}`src/ui/board.ts`{/gray-fg}",
+				"Modify and to implement the feature.\n{cyan-fg}`src/cli.ts`{/cyan-fg}\n{cyan-fg}`src/ui/board.ts`{/cyan-fg}",
 			);
 		});
 
 		test("should preserve line breaks", () => {
 			const text = "First line with `file1.ts`\nSecond line with `file2.js`";
 			const result = transformCodePaths(text);
-			expect(result).toContain("First line with\n{gray-fg}`file1.ts`{/gray-fg}");
-			expect(result).toContain("Second line with\n{gray-fg}`file2.js`{/gray-fg}");
+			expect(result).toContain("First line with\n{cyan-fg}`file1.ts`{/cyan-fg}");
+			expect(result).toContain("Second line with\n{cyan-fg}`file2.js`{/cyan-fg}");
 		});
 
 		test("should handle text without code paths", () => {
@@ -142,7 +142,7 @@ describe("Code path utilities", () => {
 		test("should handle only a path on a line", () => {
 			const text = "`src/cli.ts`";
 			const result = transformCodePaths(text);
-			expect(result).toBe("{gray-fg}`src/cli.ts`{/gray-fg}");
+			expect(result).toBe("{cyan-fg}`src/cli.ts`{/cyan-fg}");
 		});
 	});
 
