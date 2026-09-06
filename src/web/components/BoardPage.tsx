@@ -131,7 +131,7 @@ export default function BoardPage({
 	const filterPriority = searchParams.get('priority') ?? '';
 
 	return (
-		<div className="container mx-auto px-4 py-8 transition-colors duration-200">
+		<div className="page-shell transition-colors duration-200">
 			<Board
 				onEditTask={handleEditTask}
 				onNewTask={onNewTask}

@@ -43,6 +43,20 @@ const PRIORITY_RANK: Record<string, number> = {
 	low: 1,
 };
 
+// Column widths in rem, in render order: ID, Title, Status, Priority, Labels, Assignee,
+// Milestone, Created. Each metadata column is sized to the wider of its header label and
+// its cell content; Title is the one flexible column (null) and absorbs whatever the
+// content area has left, so the table fits the viewport instead of overflowing it.
+const TASK_COLUMN_WIDTHS_REM: readonly (number | null)[] = [6, null, 6.5, 6.5, 8, 6.5, 8, 6];
+
+// Below this the table scrolls horizontally inside its own container rather than
+// crushing the columns.
+const TASK_TITLE_MIN_WIDTH_REM = 12;
+const TASK_TABLE_MIN_WIDTH_REM = TASK_COLUMN_WIDTHS_REM.reduce<number>(
+	(total, width) => total + (width ?? TASK_TITLE_MIN_WIDTH_REM),
+	0,
+);
+
 function compareTaskIdsAscending(a: Task, b: Task): number {
 	return compareTaskIds(a.id, b.id);
 }
@@ -540,14 +554,10 @@ const TaskList: React.FC<TaskListProps> = ({
 
 	const renderColumnGroup = () => (
 		<colgroup>
-			<col style={{ width: "8rem" }} />
-			<col style={{ width: "28rem" }} />
-			<col style={{ width: "8rem" }} />
-			<col style={{ width: "7rem" }} />
-			<col style={{ width: "11rem" }} />
-			<col style={{ width: "11rem" }} />
-			<col style={{ width: "11rem" }} />
-			<col style={{ width: "7rem" }} />
+			{TASK_COLUMN_WIDTHS_REM.map((width, index) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: the column order is static
+				<col key={index} style={width === null ? undefined : { width: `${width}rem` }} />
+			))}
 		</colgroup>
 	);
 
@@ -640,7 +650,7 @@ const TaskList: React.FC<TaskListProps> = ({
 	}, [currentCount]);
 
 	return (
-		<div className="container mx-auto px-4 py-8 transition-colors duration-200">
+		<div className="page-shell transition-colors duration-200">
 			<div className="flex flex-col gap-4 mb-6">
 				<div className="flex items-center justify-between gap-3">
 						<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.taskList.title}</h1>
@@ -671,7 +681,7 @@ const TaskList: React.FC<TaskListProps> = ({
 						<select
 							value={priorityFilter}
 							onChange={(event) => handlePriorityChange(event.target.value as "" | SearchPriorityFilter)}
-							className="min-w-[140px] h-10 py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200"
+							className="min-w-[120px] h-10 py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200"
 						>
 							{PRIORITY_OPTIONS.map((option) => (
 								<option key={option.value || "all"} value={option.value}>
@@ -718,17 +728,15 @@ const TaskList: React.FC<TaskListProps> = ({
 							</button>
 						)}
 
-							<div className="relative">
-								<button
-									type="button"
-									onClick={hasActiveFilters ? handleClearFilters : undefined}
-									className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg whitespace-nowrap transition-colors duration-200 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-									style={{ visibility: hasActiveFilters ? "visible" : "hidden" }}
-									aria-hidden={!hasActiveFilters}
-								>
-									{t.board.clearFilters}
-							</button>
-						</div>
+						{hasActiveFilters && (
+							<button
+								type="button"
+								onClick={handleClearFilters}
+								className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg whitespace-nowrap transition-colors duration-200 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+							>
+								{t.board.clearFilters}
+						</button>
+						)}
 
 						<div className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap text-right min-w-[170px]">
 							{t.taskList.showingCount(currentCount, totalTasks)}
@@ -761,7 +769,7 @@ const TaskList: React.FC<TaskListProps> = ({
 				<div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 					<div className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/95 backdrop-blur supports-[backdrop-filter]:bg-gray-50/90 supports-[backdrop-filter]:dark:bg-gray-700/85">
 						<div ref={tableHeaderScrollRef} className="overflow-x-auto" style={{ overflowY: "hidden" }}>
-							<table className="w-full min-w-[1100px] table-fixed border-collapse">
+							<table className="w-full table-fixed border-collapse" style={{ minWidth: `${TASK_TABLE_MIN_WIDTH_REM}rem` }}>
 								{renderColumnGroup()}
 								<thead>
 									<tr className="text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
@@ -779,7 +787,7 @@ const TaskList: React.FC<TaskListProps> = ({
 						</div>
 					</div>
 					<div ref={tableBodyScrollRef} className="overflow-x-auto" style={{ overflowY: "hidden" }}>
-						<table className="w-full min-w-[1100px] table-fixed border-collapse">
+						<table className="w-full table-fixed border-collapse" style={{ minWidth: `${TASK_TABLE_MIN_WIDTH_REM}rem` }}>
 							{renderColumnGroup()}
 							<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 								{sortedDisplayTasks.map((task) => {

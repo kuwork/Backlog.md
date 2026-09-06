@@ -245,7 +245,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 	}
 
 	return (
-		<div className="container mx-auto px-4 py-8 transition-colors duration-200">
+		<div className="page-shell transition-colors duration-200">
 			<div className="flex flex-col gap-4 mb-6">
 				<div className="flex items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.drafts.title}</h1>
