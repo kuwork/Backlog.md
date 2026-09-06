@@ -17,7 +17,7 @@ describe("Heading component", () => {
 
 		test("should return correct style for level 3", () => {
 			const style = getHeadingStyle(3);
-			expect(style.color).toBe("white");
+			expect(style.color).toBe("gray");
 			expect(style.bold).toBe(false);
 		});
 	});
@@ -33,9 +33,9 @@ describe("Heading component", () => {
 			expect(formatted).toBe("{cyan-fg}Section Title{/cyan-fg}");
 		});
 
-		test("should format level 3 heading with white", () => {
+		test("should format level 3 heading with gray", () => {
 			const formatted = formatHeading("Subsection Title", 3);
-			expect(formatted).toBe("{white-fg}Subsection Title{/white-fg}");
+			expect(formatted).toBe("{gray-fg}Subsection Title{/gray-fg}");
 		});
 
 		test("should handle empty text", () => {
