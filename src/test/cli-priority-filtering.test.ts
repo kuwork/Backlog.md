@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { $ } from "bun";
 
+// Task IDs use a per-project prefix (e.g. task-123, BACK-456) and may carry a
+// subtask suffix (e.g. BACK-24.02), so tests must not hardcode a prefix.
+// A plain-output task line looks like:
+//   [HIGH] <PREFIX>-<number>[.<subtask>] - <title>   (priority indicator optional)
+const TASK_LINE_PATTERN = /^\s*(\[HIGH\]|\[MEDIUM\]|\[LOW\])?\s*\S+-\d+(?:\.\d+)?\s+-\s+/m;
+
+const hasTaskLines = (output: string): boolean => TASK_LINE_PATTERN.test(output);
+
+const taskLines = (output: string): string[] => output.split("\n").filter((line) => TASK_LINE_PATTERN.test(line));
+
 describe("CLI Priority Filtering", () => {
 	test("task list --priority high shows only high priority tasks", async () => {
 		const result = await $`bun run cli task list --priority high --plain`.quiet();
@@ -8,7 +18,7 @@ describe("CLI Priority Filtering", () => {
 
 		// Should only show high priority tasks
 		const output = result.stdout.toString();
-		if (output.includes("task-")) {
+		if (hasTaskLines(output)) {
 			// If tasks exist, check they have HIGH priority indicators
 			expect(output).toMatch(/\[HIGH\]/);
 			// Should not contain other priority indicators
@@ -22,7 +32,7 @@ describe("CLI Priority Filtering", () => {
 		expect(result.exitCode).toBe(0);
 
 		const output = result.stdout.toString();
-		if (output.includes("task-")) {
+		if (hasTaskLines(output)) {
 			expect(output).toMatch(/\[MEDIUM\]/);
 			expect(output).not.toMatch(/\[HIGH\]/);
 			expect(output).not.toMatch(/\[LOW\]/);
@@ -34,7 +44,7 @@ describe("CLI Priority Filtering", () => {
 		expect(result.exitCode).toBe(0);
 
 		const output = result.stdout.toString();
-		if (output.includes("task-")) {
+		if (hasTaskLines(output)) {
 			expect(output).toMatch(/\[LOW\]/);
 			expect(output).not.toMatch(/\[HIGH\]/);
 			expect(output).not.toMatch(/\[MEDIUM\]/);
@@ -97,7 +107,7 @@ describe("CLI Priority Filtering", () => {
 		expect(result.exitCode).toBe(0);
 
 		const output = result.stdout.toString();
-		if (output.includes("task-")) {
+		if (hasTaskLines(output)) {
 			// Should only show high priority tasks in "To Do" status
 			expect(output).toMatch(/\[HIGH\]/);
 			expect(output).toMatch(/To Do:/);
@@ -123,9 +133,9 @@ describe("CLI Priority Filtering", () => {
 
 		const output = result.stdout.toString();
 		// If any priority tasks exist, they should have proper indicators
-		if (output.includes("task-")) {
+		if (hasTaskLines(output)) {
 			// Should have proper format with optional priority indicators
-			expect(output).toMatch(/^\s*(\[HIGH\]|\[MEDIUM\]|\[LOW\])?\s*task-\d+\s+-\s+/m);
+			expect(output).toMatch(TASK_LINE_PATTERN);
 		}
 	});
 
@@ -145,16 +155,16 @@ describe("CLI Priority Filtering", () => {
 			lowerResult.stdout.toString(),
 			mixedResult.stdout.toString(),
 		];
-		const listUpper = upperOutput.split("\n").filter((line) => line.includes("task-"));
-		const listLower = lowerOutput.split("\n").filter((line) => line.includes("task-"));
-		const listMixed = mixedOutput.split("\n").filter((line) => line.includes("task-"));
+		const listUpper = taskLines(upperOutput);
+		const listLower = taskLines(lowerOutput);
+		const listMixed = taskLines(mixedOutput);
 		if (listLower.length > 0) {
 			expect(listUpper).toEqual(listLower);
 			expect(listMixed).toEqual(listLower);
 		}
 
 		for (const output of [upperOutput, lowerOutput, mixedOutput]) {
-			if (output.includes("task-")) {
+			if (hasTaskLines(output)) {
 				expect(output).toMatch(/\[HIGH\]/);
 				expect(output).not.toMatch(/\[MEDIUM\]/);
 				expect(output).not.toMatch(/\[LOW\]/);

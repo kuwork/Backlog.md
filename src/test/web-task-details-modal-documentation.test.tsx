@@ -1,9 +1,22 @@
 import { describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
 import { renderToString } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import type { Task } from "../types/index.ts";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext";
 import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
+
+const renderModal = (task: Task) =>
+	renderToString(
+		<MemoryRouter>
+			<I18nProvider initialLocale="en">
+				<ThemeProvider>
+					<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+				</ThemeProvider>
+			</I18nProvider>
+		</MemoryRouter>,
+	);
 
 const setupDom = () => {
 	const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost" });
@@ -42,18 +55,14 @@ describe("Web task popup documentation display", () => {
 			documentation: ["README.md", "https://docs.example.com"],
 		};
 
-		const html = renderToString(
-			<ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider>,
-		);
+		const html = renderModal(task);
 
 		expect(html).toContain("Documentation");
 		expect(html).toContain("README.md");
 		expect(html).toContain("https://docs.example.com");
 	});
 
-	it("hides documentation section when empty", () => {
+	it("shows an empty documentation section when empty", () => {
 		setupDom();
 
 		const task: Task = {
@@ -67,12 +76,11 @@ describe("Web task popup documentation display", () => {
 			documentation: [],
 		};
 
-		const html = renderToString(
-			<ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider>,
-		);
+		const html = renderModal(task);
 
-		expect(html).not.toContain("Documentation");
+		// The documentation section is always rendered (with an add form) and
+		// shows a placeholder when there are no entries.
+		expect(html).toContain("Documentation");
+		expect(html).toContain("No references");
 	});
 });
