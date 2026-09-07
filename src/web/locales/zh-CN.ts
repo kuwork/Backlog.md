@@ -228,7 +228,7 @@ export const zhCN: TranslationDict = {
 		noComments: "暂无评论",
 		placeholderFinalSummary: "输入最终总结",
 		placeholderReferences: "输入引用并按回车",
-		placeholderCommentAuthor: "作者",
+		placeholderCommentAuthor: "评论人",
 		placeholderCommentBody: "添加评论...",
 		addComment: "添加评论",
 		addingComment: "添加中...",

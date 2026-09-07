@@ -228,7 +228,7 @@ export const zhTW: TranslationDict = {
 		noComments: "暫無評論",
 		placeholderFinalSummary: "輸入最終總結",
 		placeholderReferences: "輸入引用並按回車",
-		placeholderCommentAuthor: "作者",
+		placeholderCommentAuthor: "評論人",
 		placeholderCommentBody: "添加評論...",
 		addComment: "添加評論",
 		addingComment: "添加中...",

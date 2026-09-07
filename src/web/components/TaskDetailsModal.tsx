@@ -196,7 +196,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
   });
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentsChanged, setCommentsChanged] = useState(false);
-  const preserveEditModeAfterCommentRefresh = useRef(false);
   const [finalSummary, setFinalSummary] = useState(task?.finalSummary || "");
   const [criteria, setCriteria] = useState<AcceptanceCriterion[]>(task?.acceptanceCriteriaItems || []);
   const defaultDefinitionOfDone = useMemo(
@@ -551,9 +550,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     const sameOpenModalRefresh =
       Boolean(previousFormState) && isOpen && previousIsOpen.current && previousTaskId.current === nextTaskId;
     const shouldPreserveEditMode =
-      !isCreateMode &&
-      sameOpenModalRefresh &&
-      (modeRef.current === "edit" || preserveEditModeAfterCommentRefresh.current);
+      !isCreateMode && sameOpenModalRefresh && modeRef.current === "edit";
 
     if (sameOpenModalRefresh && previousFormState) {
       setTitle((current) => preserveDirtyRefreshValue(current, previousFormState.title, nextFormState.title));
@@ -613,7 +610,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
         preserveDirtyRefreshValue(current, previousFormState.actualEnd, nextFormState.actualEnd),
       );
       setMode(shouldPreserveEditMode ? "edit" : isCreateMode ? "create" : modeRef.current);
-      preserveEditModeAfterCommentRefresh.current = false;
       previousTaskId.current = nextTaskId;
       previousIsOpen.current = isOpen;
       formBaselineRef.current = nextFormState;
@@ -650,7 +646,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
     setActualStart(nextFormState.actualStart);
     setActualEnd(nextFormState.actualEnd);
     setMode(isCreateMode ? "create" : "preview");
-    preserveEditModeAfterCommentRefresh.current = false;
     previousTaskId.current = nextTaskId;
     previousIsOpen.current = isOpen;
     formBaselineRef.current = nextFormState;
@@ -991,7 +986,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
     }
     setCommentSaving(true);
     setError(null);
-    preserveEditModeAfterCommentRefresh.current = true;
     try {
       const updatedTask = await apiClient.updateTask(task.id, {
         commentsAppend: [body],
@@ -1002,7 +996,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
       setCommentBody("");
       setCommentAuthor("");
     } catch (err) {
-      preserveEditModeAfterCommentRefresh.current = false;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setCommentSaving(false);
@@ -1514,14 +1507,14 @@ export const TaskDetailsModal: React.FC<Props> = ({
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noComments}</div>
               )}
-              {mode === "edit" && !isFromOtherBranch && (
+              {!isFromOtherBranch && (
                 <div className="mt-4 space-y-2">
                   <input
                     type="text"
                     value={commentAuthor}
                     onChange={(e) => setCommentAuthor(e.target.value)}
                     placeholder={t.taskDetails.placeholderCommentAuthor}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
                   />
                   <div className="relative">
                     <textarea

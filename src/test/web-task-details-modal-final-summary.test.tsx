@@ -166,10 +166,10 @@ describe("Web task popup Final Summary display", () => {
 		expect(html).toContain("Comments");
 		expect(html).toContain("@reviewer");
 		expect(html).toContain("Rendered comment body");
-		expect(html).not.toContain("Add comment");
+		expect(html).toContain("Add comment");
 	});
 
-	it("renders an empty Comments section as read-only in preview", () => {
+	it("renders an empty Comments section with the comment form in preview", () => {
 		setupDom();
 
 		const task: Task = {
@@ -190,7 +190,7 @@ describe("Web task popup Final Summary display", () => {
 
 		expect(html).toContain("Comments");
 		expect(html).toContain("No comments");
-		expect(html).not.toContain("Add comment");
+		expect(html).toContain("Add comment");
 	});
 
 	it("does not render comment form for cross-branch tasks", () => {
@@ -245,7 +245,7 @@ describe("Web task popup Final Summary display", () => {
 		});
 
 		expect(container?.textContent).toContain("Visible comment");
-		expect(container?.textContent).not.toContain("Add comment");
+		expect(container?.textContent).toContain("Add comment");
 
 		const editButton = Array.from((container as HTMLElement).querySelectorAll("button")).find((button) =>
 			button.textContent?.includes("Edit"),
@@ -344,6 +344,85 @@ describe("Web task popup Final Summary display", () => {
 			expect(container?.textContent).toContain("New comment");
 			expect(container?.textContent).toContain("Add comment");
 			expect(container?.textContent).toContain("Save");
+		} finally {
+			apiClient.updateTask = originalUpdateTask;
+		}
+	});
+
+	it("adds a comment from preview mode without entering edit mode", async () => {
+		setupDom();
+
+		const originalUpdateTask = apiClient.updateTask.bind(apiClient);
+		const task: Task = {
+			id: "TASK-12C",
+			title: "Preview comment add",
+			status: "To Do",
+			assignee: [],
+			createdDate: "2025-01-01",
+			labels: [],
+			dependencies: [],
+			comments: [{ index: 1, createdDate: "2025-01-02 12:00", body: "Visible comment" }],
+		};
+		const updatedTask: Task = {
+			...task,
+			comments: [
+				...(task.comments ?? []),
+				{ index: 2, createdDate: "2025-01-03 12:00", body: "Preview comment" },
+			],
+		};
+		apiClient.updateTask = async (id, updates) => {
+			expect(id).toBe("TASK-12C");
+			expect(updates.commentsAppend).toEqual(["Preview comment"]);
+			return updatedTask;
+		};
+
+		try {
+			const container = document.getElementById("root");
+			expect(container).toBeTruthy();
+			activeRoot = createRoot(container as HTMLElement);
+
+			await act(async () => {
+				activeRoot?.render(
+					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider></I18nProvider></MemoryRouter>,
+				);
+				await Promise.resolve();
+			});
+
+			expect(container?.textContent).toContain("Visible comment");
+			expect(container?.textContent).toContain("Add comment");
+			expect(findButton(container as HTMLElement, "Edit")).toBeTruthy();
+			expect(findButton(container as HTMLElement, "Save")).toBeUndefined();
+
+			const commentTextarea = (container as HTMLElement).querySelector(
+				"textarea[placeholder='Add a comment...']",
+			) as HTMLTextAreaElement | null;
+			expect(commentTextarea).toBeTruthy();
+			await act(async () => {
+				setFormValue(commentTextarea as HTMLTextAreaElement, "Preview comment");
+				await Promise.resolve();
+			});
+
+			const addButton = findButton(container as HTMLElement, "Add comment");
+			expect(addButton).toBeTruthy();
+			await act(async () => {
+				clickElement(addButton as HTMLButtonElement);
+				await Promise.resolve();
+			});
+
+			await act(async () => {
+				activeRoot?.render(
+					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+					</ThemeProvider></I18nProvider></MemoryRouter>,
+				);
+				await Promise.resolve();
+			});
+
+			expect(container?.textContent).toContain("Preview comment");
+			expect(findButton(container as HTMLElement, "Edit")).toBeTruthy();
+			expect(findButton(container as HTMLElement, "Save")).toBeUndefined();
 		} finally {
 			apiClient.updateTask = originalUpdateTask;
 		}
