@@ -74,7 +74,26 @@
 
 ---
 
-## 5. 通用判断原则
+## 5. 任务编辑引用/文档/依赖的 set/add/remove/clear 语义
+
+当前分支已通过 `BACK-578` 将 `task edit` 的 `--ref` / `--doc` / `--depends-on` / `--dep` 定为**替换整个列表**（set 语义），并新增 `--add-ref` / `--add-doc` / `--add-depends-on` / `--add-dep` 用于**追加到现有列表**；`--remove-ref` / `--remove-doc` / `--remove-dep` 用于按值移除单个条目；`--clear-refs` / `--clear-docs` / `--clear-deps` 仍然是显式清空整个列表的唯一方式。set 标志与 add 标志在同一命令中互斥。
+
+**不应回退的内容：**
+- 将 `task edit --ref` / `--doc` / `--depends-on` / `--dep` 改为追加语义，或恢复旧的不区分 set/add 的混合行为
+- 移除 `--add-ref` / `--add-doc` / `--add-depends-on` / `--add-dep` 选项或其对应的模型操作
+- 移除 `--remove-ref` / `--remove-doc` / `--remove-dep` 选项或其对应的模型操作
+- 允许 `--ref` 与 `--add-ref`、 `--doc` 与 `--add-doc`、 `--depends-on`/`--dep` 与 `--add-depends-on`/`--add-dep` 同时出现在同一条命令中
+- 在帮助文本、CLI schema、MCP schema 或 agent 指南中继续将 `--ref` / `--doc` / `--depends-on` / `--dep` 描述为「追加列表」
+- 移除 `TaskEditArgs` 中的 `addDependencies` / `removeDependencies` 字段，或 `buildTaskUpdateInput` 中对 set/add/remove 的共享处理
+
+**替代方向：**
+- 保持 `--ref` / `--doc` / `--depends-on` / `--dep` 的 set 语义，与 `--add-*` / `--remove-*` / `--clear-*` 共同构成完整的增量编辑模型
+- 新增引用/文档/依赖相关 CLI/MCP 行为时，优先复用 `references` / `documentation` / `dependencies` 做 set，复用 `addReferences` / `addDocumentation` / `addDependencies` 做追加，以及对应的 `remove*` 模型操作
+- 在迁移涉及这些标志的上游任务时，先检查上游默认语义：若上游使用替换语义，则保持当前分支的 set 语义；若上游使用追加语义，则映射到当前分支的 `--add-*` 标志
+
+---
+
+## 6. 通用判断原则
 
 当上游任务涉及以下主题时，优先**参考重写**而非**直接复用**：
 
@@ -83,6 +102,7 @@
 3. **Web UI 路由与导航**：新增路由需与现有 `/gantt`、统计页面共存，不能互相覆盖。
 4. **任务状态驱动逻辑**：任何由任务状态变化触发的副作用（如里程碑 actual 字段自动填充）需与现有级联逻辑兼容。
 5. **统计与概览数据流**：新增或修改统计相关接口时，应复用 WebSocket 推送与缓存机制。
+6. **任务编辑列表字段（refs/docs/deps）**：必须保持 set 语义（`--ref`/`--doc`/`--depends-on`/`--dep` 替换整个列表）、add 语义（`--add-*` 追加）、remove 语义（`--remove-*` 按值移除）和 clear 语义（`--clear-*` 清空）并存；set 与 add 标志互斥。若上游任务仍使用替换语义，保持当前分支 set 语义；若上游任务使用追加语义，映射到当前分支的 `--add-*` 标志。
 
 ---
 
@@ -98,5 +118,7 @@
    - 是 → 排除会移除 `/gantt` 或统计页面入口的部分。
 4. 上游是否修改了统计/概览相关代码？
    - 是 → 排除会移除缓存、WebSocket 推送或健康度分类的部分。
+5. 上游是否修改了 `task edit` 的 `--ref` / `--doc` / `--depends-on` / `--dep` 语义，或相关 `--add-*` / `--remove-*` / `--clear-*` 标志？
+   - 是 → 排除任何将 set 语义改为追加、移除 `--add-*` / `--remove-*` 标志、或允许 set/add 标志混用的旧实现。
 
 凡涉及上述领域，在迁移任务的描述和实施计划中都应采用当前分支的演进方向，不应简单恢复上游旧实现。

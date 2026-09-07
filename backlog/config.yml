@@ -1,4 +1,5 @@
 project_name: "Backlog.md"
+default_assignee: ["@kimi"]
 default_status: "To Do"
 statuses: ["To Do", "In Progress", "Done"]
 labels: []
@@ -7,8 +8,10 @@ date_format: yyyy-mm-dd hh:mm
 max_column_width: 20
 default_editor: "rider"
 auto_open_browser: true
+hide_empty_columns: false
+auto_port: true
 default_port: 6420
-remote_operations: true
+remote_operations: false
 auto_commit: false
 filesystem_only: false
 bypass_git_hooks: false
@@ -16,3 +19,4 @@ check_active_branches: true
 active_branch_days: 10
 task_prefix: "back"
 locale: "zh-CN"
+label_colors: {"cli": "green", "docs": "blue", "web-ui": "violet"}

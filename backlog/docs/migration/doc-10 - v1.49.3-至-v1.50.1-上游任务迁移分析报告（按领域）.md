@@ -3,7 +3,7 @@ id: doc-10
 title: v1.49.3 至 v1.50.1 上游任务迁移分析报告（按领域）
 type: guide
 created_date: '2026-08-14'
-updated_date: '2026-08-14'
+updated_date: '2026-09-07 16:27'
 ---
 # 上游任务迁移分析报告（v1.49.3 .. v1.50.1，按领域）
 
@@ -25,7 +25,7 @@ updated_date: '2026-08-14'
 | 迁移优先级 | A（必须合入）/ B（评估合入）/ C（跳过） |
 | 迁移建议 | ①直接复用 / ②参考重写 / ③忽略 |
 
-> **优先级重分类摘要**（相对 doc-9 初筛）：A1/A2 维持 A；**B10/B17 升 A**（SVR-1/SVR-2，fork 同根缺陷实证）；**B9/B12/B13/B18/B25 升 A**（TUI-2/4/5/6/8，真实交互/正确性缺陷）；**B7/B19 升 A**（WEB-2/3，fork 与上游 before 逐行同构）；**B1 升 A**（CLI-2，字段有存储无行为）；**B3/B22/B26 升 A**（CLI-4/11/13，create/edit 数据正确性 bug）；**B16 部分降 C**（BACK-624 超大重构与 fork BACK-568 移植重叠；BACK-623 留 B 取快速路径）；**B24 降 C**（CI-1，fork 无上游根因前提）；**B21 降 C 大部分**（WEB-4，fork 无 defaultAssignee 应用基线，仅 edit 清空小修留 B）。最终 15 A / 11 B / 7 C。
+> **优先级重分类摘要**（相对 doc-9 初筛）：A1/A2 维持 A；**B10/B17 升 A**（SVR-1/SVR-2，fork 同根缺陷实证）；**B9/B12/B13/B18/B25 升 A**（TUI-2/4/5/6/8，真实交互/正确性缺陷）；**B7/B19 升 A**（WEB-2/3，fork 与上游 before 逐行同构）；**B1 升 A**（CLI-2，字段有存储无行为）；**B3/B22/B26 升 A**（CLI-4/11/13，create/edit 数据正确性 bug）；**B16 按方案 1 重排**：BACK-623 已 Done；BACK-559 补全升 A（BACK-601）；BACK-624 整体升 A（BACK-602，依赖 BACK-601），包含 bounded fetch / ref 租约 / MCP search 本地路径；**B24 降 C**（CI-1，fork 无上游根因前提）；**B21 升 A 并已完成**（WEB-4，BACK-579/581 落地 defaultAssignee 后「无基线」前提失效，BACK-584 Done）。最终 17 A / 9 B / 7 C。
 
 ---
 
@@ -95,25 +95,27 @@ updated_date: '2026-08-14'
 
 ---
 
-## CLI-4：BACK-572 清除任务依赖 + BACK-586 清除 references/documentation + BACK-618 空值清除列表标志（draft-92/103/120）
+## CLI-4：BACK-572 清除任务依赖 + BACK-586 清除 references/documentation + BACK-618 空值清除列表标志（已迁移为 [BACK-577](/task/577)）
 
-**任务核心目的**：三个连续演进任务合并：① `task edit --clear-deps` 清除依赖（修 `--dep ""`/`--ref ""` 假成功）；② `--clear-refs`/`--clear-docs` 与共享验证器（去重三份验证）；③ edit 列表 flag 显式空值 = 清除（与 `-a ""` 一致），create 空值仍报错。
+**任务核心目的**：三个连续演进任务合并：① `task edit --clear-deps` 清除依赖（修 `--dep ""`/`--ref ""` 假成功）；② `--clear-refs`/`--clear-docs` 与共享验证器（去重三份验证）；③ 拒绝 edit 列表 flag 空值 setter（create 空值仍报错）。
 
 **变更内容摘要**（merge `a20978d` PR #840 5 文件 + `b33ba6b` PR #862 5 文件 + `c9bbdbd` PR #890）：
 - `a20978d`：`src/cli.ts` 加 `--clear-deps`；`src/utils/task-edit-builder.ts` 空数组清除语义；拒绝空 flag 值与 clear/set 冲突。
 - `b33ba6b`：`src/cli.ts` 加 `--clear-refs`/`--clear-docs`，抽出共享 `validateClearableListInput`（按 occurrence 拒绝空值并指名匹配的 clear flag、clear-vs-setter 冲突拒绝、纳入 interactive-TTY 谓词）；`task-edit-builder.ts` 新增 `sanitizeClearableStringArray`（blank-only 数组 no-op、显式 `[]` 清除），deps/refs/docs 三个字段统一走它。
-- `c9bbdbd`：`validateClearableListInput` 增加 `emptyClears` 入参——edit 三个替换族 `emptyClears: supportsClearFlags`（显式空值先过滤再走冲突检查，产出 `parseClearableStringList` 的 `[]` 清除）；create 与 `--add-ref/--remove-ref` 保持空值报错原文。
-- 最终形态：上游 `src/cli.ts:545-650`（`validateClearableListInput`/`validateTaskListFlags`），`task-edit-builder.ts:19-31`（`sanitizeClearableStringArray`）及 deps/refs/docs 读取。
+- `c9bbdbd`：上游增加 `emptyClears` 入参使 edit 显式空值等价于清除。**当前 fork 选择保持 append 语义**：`validateClearableListInput`/`validateTaskListFlags` 在 edit 模式下同样拒绝空 setter 值，错误提示指向 `--clear-*`；仅 `--clear-*` flag 可清空列表。MCP `task_edit` 中数组含空字符串元素也直接报错，仅显式 `[]` 用于清除。
+- 最终形态：`src/cli.ts` 中 `validateClearableListInput`/`validateTaskListFlags` 与 help 文本；`src/utils/task-edit-builder.ts` 中 `sanitizeClearableStringArray`；`src/utils/task-builders.ts` 中 `parseClearableStringList`。
 
-**与当前定制代码的交集风险**：低 - 无排除清单条目冲突；且 BACK-618 的"显式空字符串 = 清除"与 fork 既定的空字符串清除惯例（排除清单第 2 条）方向一致，属顺向增强。fork 侧差距：edit 命令无任何 `--clear-*` 列表 flags（grep `clear-deps|clear-refs|clear-docs` 零匹配）；`task-edit-builder.ts:80-105` 区域 deps/refs/docs 用的是 `sanitizeStringArray`（无 [] 清除、无空值报错）；fork edit 的 `--ref ""` 被 `parseDelimitedStringList` 吞掉后静默假成功（`src/cli.ts:2939-2941` 区域），与上游修的 bug 同款。
+**与当前定制代码的交集风险**：低 - 无排除清单条目冲突。fork 侧差距：edit 命令无任何 `--clear-*` 列表 flags（grep `clear-deps|clear-refs|clear-docs` 零匹配）；`task-edit-builder.ts` deps/refs/docs 用的是 `sanitizeStringArray`（无 [] 清除、无空值报错）；fork edit 的 `--ref ""` 被 `parseDelimitedStringList` 吞掉后静默假成功，与上游修的 bug 同款。
 
 **适合迁移的内容**：`--clear-deps`/`--clear-refs`/`--clear-docs` flags；共享 `validateClearableListInput`/`validateTaskListFlags`（连同 CLI-5 的 add/remove-ref 互斥与 CLI-11 的 create 验证一次到位）；`sanitizeClearableStringArray` + `parseClearableStringList` 替换 edit 的 refs/docs/deps 读取；TTY 谓词纳入。
 
-**需要排除/调整的内容**：无排除清单条目。注意与 fork 的日期类 `--clear-due-date` 等（`src/cli.ts:2644-2652` 区域）命名风格保持一致（上游用 `--clear-deps` 复数、`--clear-refs`/`--clear-docs` 复数——与 fork 的 `--clear-ac` 单数略异，按上游原文照搬即可）。
+**需要排除/调整的内容**：与上游的差异点——当前 fork 的 `--dep ""`/`--ref ""`/`--doc ""` 在 edit 下**不**等价于 `--clear-*`，而是报错并提示用户用 `--clear-deps`/`--clear-refs`/`--clear-docs`。MCP `task_edit` 中 `references`/`documentation`/`dependencies` 数组含空字符串元素也报错，只有显式 `[]` 清空。这是为了保持当前 fork 列表 setter 的 append 语义一致性。命名风格保持与 fork 的 `--clear-ac` 等一致。
 
 **迁移优先级**：A - 假成功（exit 0 但零变更）与无法清除列表是明确功能缺陷；三个上游任务代码是同一体系连续演进，合并迁移成本最低。
 
-**迁移建议**：①直接复用 - 三个 merge 的最终态（v1.50.1 `cli.ts:545-650` + `task-edit-builder.ts`）整体搬移，fork 的 `task-edit-builder.ts` 与其上游 pre-fix 版本同构，替换面清晰。
+**迁移建议**：②参考重写 - 以三个上游 merge 为参考，复用 `--clear-*` flags、共享验证器与 `sanitizeClearableStringArray` 的 `[]` 清除语义，但将 edit 空值行为改为报错（指向 `--clear-*`），以贴合当前 fork 的列表追加风格。
+
+**迁移结果**：已作为 [BACK-577](/task/577) 完成。通过 `bunx tsc --noEmit`、`bun run check .`、相关测试文件及备用输出路径构建验证。
 
 ---
 
@@ -217,29 +219,34 @@ updated_date: '2026-08-14'
 
 ---
 
-## CLI-10：BACK-623 CLI 命令避免跨分支工作 + BACK-624 跨分支加载增量缓存（draft-124/125）
+## CLI-10：BACK-623 CLI 命令避免跨分支工作 + BACK-624 跨分支加载增量缓存（draft-124/125，623 已迁移为 [BACK-600](/task/600) Done；559 补全由 [BACK-601](/task/601) 实施，BACK-624 由 [BACK-602](/task/602) 实施）
 
-**任务核心目的**（两个任务合并分析）：① BACK-623：常见 CLI 命令（view/edit/list/父解析/依赖校验）改为工作副本本地优先，不初始化跨分支 ContentStore，miss 时带提示 fail-closed（no-op edit 12.2s → 0.4s）；② BACK-624：跨分支加载改为"单一不可变 tip 快照 + commit/blob 共享缓存 + 精确内容解析缓存 + 热工作副本对账"，热读从 ~394 次 git 操作降到 ≤3 次，fetch 合并且 10s 上限、离线优雅降级。这是 v1.50.1 hotfix，重点评估 fork 是否已本地优先。
+**任务核心目的**（两个任务合并分析）：① BACK-623：常见 CLI 命令（view/edit/list/父解析/依赖校验）改为工作副本本地优先，不初始化跨分支 ContentStore，miss 时带提示 fail-closed（no-op edit 12.2s → 0.4s）；② BACK-624：跨分支加载改为"单一不可变 tip 快照 + commit/blob 共享缓存 + 精确内容解析缓存 + 热工作副本对账"，热读从 ~394 次 git 操作降到 ≤3 次，fetch 合并且 10s 上限、离线优雅降级。这是 v1.50.1 hotfix。
 
-**变更内容摘要**（merge `aca8007` PR #898，15 文件 +655/-210；merge `94c10a6` PR #899，31 文件 +5363/-1987）：
-- BACK-623 `src/core/backlog.ts`（+116/-）：`queryTasks` 加 `!includeCrossBranch` 快速路径（直接用 `fs.listTasks()`，不触 ContentStore）；`getTaskWithSubtasks`/`loadTaskById`/`editTask`/`updateTaskFromInput` 增 `TaskReadOptions { includeCrossBranch }`，false 时走新 `loadWorkingCopyTask`（local+completed 任务经 `buildTaskIdentityIndex` fail-closed 解析）；`resolveParentTaskIdForCreate`、`applyTaskUpdateInput` 依赖校验统一到本地 corpus 并带 `LOCAL_TASK_LOOKUP_HINT`；`src/search-service.ts`（-63）裁剪；`src/cli.ts`（+70/-）：view/shorthand/edit/list 全部传 `{ includeCrossBranch: false }` 并把 miss 提示改为 `Task ${id} not found. ${LOCAL_TASK_LOOKUP_HINT}`；`resolveParentFilterId` 改走 `loadTaskById(..., false)`；新增 `src/utils/task-id-search.ts`；`src/server/index.ts`（4 行）web `/tasks` 恢复 store-backed 跨分支路径。
-- BACK-624 `src/core/task-loader.ts`（-881 重写）：`commitIndexCache`/`taskCache` 等按 commit 键控缓存、tip 快照不可变、精确内容解析缓存、快照指纹仅由 store-installing 加载发布、ID 分配强制刷新快照（关重复 ID 窗口）；`src/git/operations.ts`（+231）：repository 级缓存；`src/core/content-store.ts`（+166）：快照增 `branchStateEntries`/`config`，`mergeConcurrentTaskCorpus` 对账；`src/core/backlog.ts`（+819）大改；`src/file-system/operations.ts`（+162）。附带 767 行 benchmark 脚本。
+> ⚠️ **2026-08-27 复核与方案 1 决策**（BACK-600 合入后）：①的快速路径部分已按「保留 fork 30 天窗口 fallback、不采纳 fail-closed 行为变更」迁移为 [BACK-600](/task/600)（Done，6 条 Git 边界回归测试 + 反向验证）。复核发现三个 623 未覆盖、初版分析未登记的残留缺口（见「fork 现状」③④⑤）。同时确认：**上游 BACK-559 → BACK-624 是同一架构演进**，fork 的 BACK-568 是上游 559 的轻量移植，刻意省略了 publication-owner / batchTaskUpdates / transitionTask 体系。要做 624-c 必须先补全 568 的地基，否则 624-c 的快照指纹发布纪律、tip 快照不可变、`forceRemoteRefresh` 等机制无立足点。据此将 BACK-624 调整为**方案 1**：[BACK-601](/task/601) 先补全 559 地基，[BACK-602](/task/602) 移植完整 BACK-624（含 tip snapshots、commit/blob cache、exact-content parse cache、bounded fetch、ref 租约、MCP search 本地路径），不再拆分 a/b/d 为独立任务。
 
-**fork 现状（重点核对）**：
-- **本地优先程度**：fork `loadTaskById`（`src/core/backlog.ts:484-493`）已"本地 fs.loadTask 优先 → miss 后 `checkActiveBranches`/`activeBranchDays`(默认 30 天) 窗口内跨分支 `getLatestTaskStatesForIds` 兜底"——即**本地优先 + 跨分支 fallback**，而非上游的 fail-closed。`getTaskWithSubtasks`（`:474-482`）无 options；`editTask`（`:2087-2088`）无 options 透传。
-- **queryTasks 性能**：fork `queryTasks`（`:378-404`）即使 `includeCrossBranch: false` 也先 `getContentStore()`（`loadTasks` 含 `loadRemoteTasks`/`loadLocalBranchTasks` 跨分支扫描，`:3024-3110`）再 `filterLocalEditableTasks` 过滤——**上游要消除的"无查询也初始化跨分支 store"问题在 fork 原样存在**。
-- **缓存设施**：fork 已有 BACK-568 移植：`content-store.ts:18` `TaskCorpusSnapshot`、`task-loader.ts` 索引-first/hydrate-later（`buildRemoteTaskIndex`/`loadRemoteTasks`）、`task-identity-index.ts`；但 `src/git/operations.ts` 无任何 cache 设施（grep 零匹配）——BACK-624 的 commit/blob/解析缓存是 fork 完全缺失的新层。
-- **行为变更点**：上游让 CLI 对"其他分支任务"完全不可解析（fail-closed + hint）；fork 目前可解析（30 天窗口），这是刻意保留的数据流（预勘察关键决策：`getLatestTaskStatesForIds` 近 30 天窗口不动）。
+**变更内容摘要**（merge `aca8007` PR #898，15 文件 +655/-210；merge `94c10a6` PR #899，31 文件 +5363/-1987；补全 BACK-559 参考 `69b3649` PR #836）：
+- BACK-623 `src/core/backlog.ts`（+116/-）：`queryTasks` 加 `!includeCrossBranch` 快速路径（直接用 `fs.listTasks()`，不触 ContentStore）；`getTaskWithSubtasks`/`loadTaskById`/`editTask`/`updateTaskFromInput` 增 `TaskReadOptions { includeCrossBranch }`，false 时走新 `loadWorkingCopyTask`（local+completed 任务经 `buildTaskIdentityIndex` fail-closed 解析）；`resolveParentTaskIdForCreate`、`applyTaskUpdateInput` 依赖校验统一到本地 corpus 并带 `LOCAL_TASK_LOOKUP_HINT`；`src/search-service.ts`（-63）裁剪；`src/cli.ts`（+70/-）：view/shorthand/edit/list 全部传 `{ includeCrossBranch: false }` 并把 miss 提示改为 `Task ${id} not found. ${LOCAL_TASK_LOOKUP_HINT}`。
+- BACK-559 补全 `src/core/content-store.ts`（+147/-9 参考）：加 publication-owner / contentItemVersions / batchTaskUpdates / transitionTask；`src/core/backlog.ts` duplicate preview snapshot 参数化。这是 fork BACK-568 当初跳过的地基，624-c 依赖它。
+- BACK-624 `src/core/task-loader.ts`（重写）：`commitIndexCache`/`taskCache` 等按 commit 键控缓存、tip 快照不可变、精确内容解析缓存、快照指纹仅由 store-installing 加载发布、ID 分配强制刷新快照（关重复 ID 窗口）；`src/git/operations.ts`（+231）：repository 级缓存与有界合并 fetch；`src/core/content-store.ts`（+166）：快照增 `branchStateEntries`/`config`，`mergeConcurrentTaskCorpus` 对账；`src/core/backlog.ts`（+819）大改；`src/file-system/operations.ts`（+162）。附带 767 行 benchmark 脚本。
 
-**与当前定制代码的交集风险**：中-高 - BACK-624 触及 `core/backlog.ts`（819 行）、`task-loader.ts`（整文件重写）、`content-store.ts`、`git/operations.ts`，与 fork 的 BACK-568 移植（task-loader 索引模式、content-store 快照）大面积重叠但版本不同（fork 是 v1.49.3 期形态），整体合并冲突面极大、行为回归风险高。BACK-623 的行为变更（CLI 不再解析跨分支任务）与 fork 的 30 天窗口数据流直接冲突——需要产品决策。排除清单无直接条目，但"跨分支可解析"可视为 fork 已演进能力（custom 行为），上游改动若整体照搬即回退该能力 → 按排除清单通用原则第 5 条应参考重写。
+**fork 现状（2026-08-27 复核，BACK-600 合入后）**：
+- **①已消除**：`queryTasks` 本地快速路径已落地（`backlog.ts` `!includeCrossBranch` 时直接 `fs.listTasks()` + `createTaskSearchIndex`，跳过 ContentStore/SearchService）；真实仓库冒烟 `task list --plain` 305 任务约 0.85s。
+- **②行为决策不变**：单任务查找仍为本地优先 + 30 天窗口 fallback（`loadTaskById` → `checkActiveBranches`/`activeBranchDays`），刻意不采纳上游 fail-closed。
+- **③残留缺口：MCP task_search 全量扫描后丢弃**：`src/mcp/tools/tasks/handlers.ts:378` 直接 `core.loadTasks(undefined, undefined, { includeCompleted: true })`（fetch + 双分支扫描 + completed 全解析），绕过 BACK-600 快速路径；`:397` 又用 `isLocalEditableTask` 把非本地结果全部丢弃——付 ~394 次 git 操作的成本买来再扔掉的数据。这正是上游 624 把 MCP search 修到 14ms/0 ops 的点，且零行为变更即可修复。
+- **④残留缺口：fetch 无上限、无合并**：`src/git/operations.ts:260` 裸 `execGit(["fetch","--prune","--quiet"])`；已有离线优雅跳过（网络错误吞掉 `:261-269`）与 `remoteOperations`/无远端预检守卫，但远端挂起会无限阻塞 web 冷启动（`server/index.ts:220`）、TUI 冷启动与所有全局命令。上游 624 为每次 load 单次 fetch + 10s 硬上限 + 非交互模式。
+- **⑤残留缺口：暖进程无 ref 驱动刷新（新鲜度而非性能）**：fork ContentStore 刷新只来自文件系统 watcher（`content-store.ts:472/496/524 → refreshTasksFromDisk`），refs 移动永不触发刷新，fetch 只发生在冷启动全量加载——暖 web/MCP/TUI 进程跨分支数据**冻结在启动时刻**。上游两层机制 fork 均未移植：pre-624 即有读时 60s 租约 + `refreshTasksForTaskRead()`（`94c10a6^:backlog.ts:136/386/429/461`，注释原文 "Refresh the existing cross-branch store only when relevant config or refs changed"）；624 再加 tip 快照指纹发布纪律，且其 fix round 自认修复前暖进程同样会冻结陈旧数据（"task creation no longer freezes cross-branch state in warm web/MCP processes"）。该缺口与 fail-closed 决策正交，兼容 fork 30 天窗口模型。
+- **BACK-568 地基缺口**：fork BACK-568 实现了 server/web 表层收敛、reorder 原子化、防抖广播、轻量 `TaskCorpusSnapshot`，但明确 **without porting the upstream publication-owner machinery**。624-c 的 `publishSharedState`、`storeAlreadyReady`、tip snapshot fingerprint 发布纪律、ID 分配 `forceRemoteRefresh` 都依赖这套机制。要做 624-c，必须先把 BACK-559 中省略的 publication-owner / batchTaskUpdates / transitionTask / contentItemVersions 补进 ContentStore。
 
-**适合迁移的内容**：BACK-623 的 `queryTasks` 本地快速路径（`!includeCrossBranch` 时不初始化 ContentStore，直接 `fs.listTasks()`）——**纯性能修复、无行为变更**，可独立采纳；fork `queryTasks:401-404` 改法即上游 hunk。BACK-623 的依赖/父解析本地化（`validateDependencies` 走本地 corpus + hint 文案）——可选，需保留 fork 的跨分支 fallback 语义（仅当 fork 决定维持现状时）。BACK-624 的 fetch 合并/10s 上限与离线降级、repository 级缓存——可拆成后续长期增量，不与整体重构绑定。
+**与当前定制代码的交集风险**：BACK-568 补全 + 624-c 整体合并为**高**——会触及并扩展 BACK-568 已落地的 `content-store.ts`、`task-identity-index.ts`、`backlog.ts`、server/web 边界。但这不是"冲突"，而是"同一架构方向的续作"：上游 559→624 正是如此演进。拆分项 624-a/b/d 均**低**——不依赖 publication-owner、不触动 568 已建立的行为。
 
-**需要排除/调整的内容**：**BACK-623 的 CLI fail-closed**（其他分支任务在 CLI 不可解析 + `LOCAL_TASK_LOOKUP_HINT`）：若 fork 要保留 30 天窗口跨分支解析，则不采纳该行为变更，只采纳快速路径与本地优先读取（fork 已具备）。若 fork 接受上游"CLI 纯本地、跨分支只在 web"的产品决策，则完整迁移——需用户拍板。**BACK-624 整体合并**：与 fork BACK-568 移植重叠冲突，不建议整体合并；排除清单通用原则 5（fork 已演进能力优先）。
+**需要排除/调整的内容**：623 的 CLI fail-closed + `LOCAL_TASK_LOOKUP_HINT` 不采纳（关键决策保留）。补全 568 时不得破坏现有 fail-closed 409 行为、watcher 驱动广播、reorder 原子化。
 
-**迁移优先级**：BACK-623：B - 上游 hotfix 动机是性能（12.2s→0.4s），fork 的 CLI 冷路径同样慢（每次 list 都扫跨分支）；但行为变更需决策，快速路径部分可先行。定 B（含行为决策依赖）。BACK-624：C - 超大重构（+5363/-1987），与 fork 既有 task-loader/content-store 重叠冲突，收益集中在 web/MCP 热路径，fork 冷路径问题由 BACK-623 快速路径先解决大半；整体迁移性价比低。引用排除清单通用判断原则第 5 条。
+**迁移优先级**：BACK-623：已完成（[BACK-600](/task/600)，B→Done）。**BACK-559 补全升 A**（[BACK-601](/task/601)）；**BACK-624 整体升 A**（[BACK-602](/task/602)），依赖 BACK-601。这是上游 559→624 的完整演进，a/b/d 作为 BACK-624 的子补丁在 BACK-602 内统一实施。
 
-**迁移建议**：②参考重写（BACK-623：选择性采纳快速路径+本地优先读取，保留 fork 跨分支 fallback；BACK-624：③忽略整体，后续以增量形式单独评估 commit/blob 缓存）。
+**迁移建议**：方案 1 分阶段实施：
+1. **阶段 A（[BACK-601](/task/601)）**：补全 BACK-568 未搬的 publication-owner / batchTaskUpdates / transitionTask / contentItemVersions，使 ContentStore 拥有发布-订阅语料版本的完整语义。
+2. **阶段 B（[BACK-602](/task/602)，依赖 BACK-601）**：移植完整 BACK-624：tip snapshots、commit/blob cache、exact-content parse cache、store-installing-only fingerprint publication、`forceRemoteRefresh`、bounded/coalesced fetch、60s ref 租约刷新、MCP search Git-free 本地路径，达成 ≤3 Git 操作。
 
 ---
 
@@ -301,7 +308,8 @@ updated_date: '2026-08-14'
 
 **迁移优先级**：A - `-a "@a,@b"` 存字面值是数据错误 bug；defaultEditor 无法清空是功能缺陷（且 fork 的 shipped 默认 `code --wait` 有挂起风险，同上游动机）。
 
-**迁移建议**：①直接复用 - 两处改动都小且自洽；`defaultEditor` 部分可独立先行。
+
+**迁移任务状态（2026-08-23）**：draft-95/draft-93 已 promote 为 **back-585**（Multi-assignee parity）/ **back-586**（Allow clearing defaultEditor），`updated_date` 已刷新。设计要点：assignee 解析参考 `-l/--labels` 的既有实现——三处 `-a` 注册 `createMultiValueAccumulator()` 并走共享 `parseDelimitedStringList`（create/draft 内联手写 label split 一并替换为同一 helper，与 edit 对齐）。因 B21（BACK-584 `--unassign`）已落地，create/draft 的 action 须**保留 `--unassign` 守卫与 `-a ""` 空值拦截**，仅替换 `assignee:` 赋值行，勿整段 apply 上游 diff。back-586 的 defaultEditor 空值短路与 init fallback 链（`||`→`??`）为独立补丁，可优先落地。
 
 ---
 
@@ -352,7 +360,7 @@ updated_date: '2026-08-14'
 
 ---
 
-## TUI-3：BACK-577 TUI 窗口标题含项目名（draft-96）
+## TUI-3：BACK-577 TUI 窗口标题含项目名（draft-96，已迁移为 [BACK-591](/task/591)，与 TUI-6 的标题恢复+piped 项目名合并）
 
 **任务核心目的**：TUI 各视图窗口标题带上项目名（`<项目名> - <视图>`），便于多终端区分；并对标题做控制字符清洗防注入。
 
@@ -412,27 +420,31 @@ updated_date: '2026-08-14'
 
 ---
 
-## TUI-6：BACK-609 CLI/TUI 打磨缺陷（draft-113）
+## TUI-6：BACK-609 CLI/TUI 打磨缺陷（已全部处理完毕：③标题恢复+④piped 项目名 → [BACK-591](/task/591) Done，①doc create --plain → [BACK-592](/task/592) Done，②fork 既有代码已消除；草稿 draft-113 已删除）
 
 **任务核心目的**：修 4 个独立缺陷——`doc create` 缺 `--plain`、`doc list` legacy 文档名解析失效、TUI 退出不还原终端标题（tmux 兼容）、piped board 硬编码 "Project"。
 
-**变更内容摘要**（merge 2f747cd，8 文件 +283/-22）：
+**上游变更内容摘要**（merge 2f747cd，8 文件 +283/-22）：
 1. `src/cli.ts`：`doc create` 注册 `--plain`（接受但输出本就是纯文本，对齐 `decision create --plain` 先例）。
 2. `src/cli.ts`：`doc list` 交互分支弃用文件名匹配（只认顶层），改走 `core.getDocumentContent(selected.id)`（与 `doc view` 同一 reader，覆盖 legacy 纯标题文件名与子目录两种布局）。
-3. `src/ui/tui.ts`：新增 `PUSH_WINDOW_TITLE`（`\x1b[22;0t`）/`POP_WINDOW_TITLE`（`\x1b[23;0t`）/`CLEAR_WINDOW_TITLE`（`\x1b]0;\x07`）+ `writeTerminalControl`（tmux DCS 直通，避开 blessed `_twrite` 在 Bun 下 5 秒轮询丢序列的问题）；`createScreen` 在设标题前 push、`destroy` 事件（once 标志防双发）先 clear 后 pop；`src/types/neo-neo-bblessed.d.ts` 补 `tmux`/`write` 声明。
-4. `src/ui/board.ts`：piped 分支 `const projectName = options?.projectName?.trim() || "Project"`，看板标题用真实项目名（依赖 577 引入的 projectName）。
+3. `src/ui/tui.ts`：新增 `PUSH_WINDOW_TITLE`（`\x1b[22;0t`）/`POP_WINDOW_TITLE`（`\x1b[23;0t`）/`CLEAR_WINDOW_TITLE`（`\x1b]0;\x07`）+ `writeTerminalControl`（tmux DCS 直通）；`createScreen` 设标题前 push、`destroy` 事件（once 防双发）先 clear 后 pop；`src/types/neo-neo-bblessed.d.ts` 补 `tmux`/`write` 声明。
+4. `src/ui/board.ts`：piped 分支用真实项目名（依赖 577 引入的 projectName）。
 
-**与当前定制代码的交集风险**：中 - fork 4 处缺陷全部仍存在：① `cli.ts:3914-3931` `doc create` 无 `--plain` 选项；② `cli.ts:4046-4057` `doc list` 交互分支仍是旧 matcher（`f.startsWith(`${selected.id} -`) || f.endsWith(`/${selected.id}.md`) || f === `${selected.id}.md``），legacy/子目录文档选择后打开无内容（fork 有 `core.getDocumentContent`，`core/backlog.ts:534`）；③ `tui.ts:43-78` `createScreen` 无标题 push/pop——但 **fork 的 createScreen 有 sharedProgram + key/unkey 包装定制**（tui.ts:44-78），上游补丁是在函数头部/尾部加代码，需嵌入 fork 的包装结构，且 fork 无 `neo-neo-bblessed.d.ts` 中 `tmux`/`write` 声明；④ `board.ts:255-259` piped 分支硬编码 `"Project"`（`generateKanbanBoardWithMetadata(initialTasks, statuses, "Project")`），且 fork board options（board.ts:249-253）尚无 `projectName` 字段（需先随 TUI-3 引入）。
+**迁移结果（2026-08-24，全部 Done）**：
 
-**适合迁移的内容**：doc create `--plain`（纯注册）；doc list 改 `getDocumentContent`（2 行替换 + 注释）；tui.ts 标题 push/pop（含 tmux DCS 直通方案与 once 防双 pop）；piped board 项目名。
+| 子缺陷 | 处置 | 归属 |
+|--------|------|------|
+| ① `doc create` 拒 `--plain` | 注册 `--plain`（help schema + option），与 `decision create --plain` 先例一致 | [BACK-592](/task/592) Done |
+| ② `doc list` legacy/子目录打开空 | fork 自研 `runDocumentListViewer` 已用 `core.getDocumentContent`（document-list-viewer.ts:141），与上游修复目标态逐行等价；实测 legacy `API-Guidelines.md` + 子目录 `guides/api` 均正确返回——**无需迁移** | — |
+| ③ TUI 退出不还原终端标题 | `createScreen` 标题栈 push + destroy clear/pop（once 防双发）+ tmux DCS 直通，嵌入 fork sharedProgram 包装 | [BACK-591](/task/591) Done |
+| ④ piped board 硬编码 "Project" | piped 分支用 `options?.projectName?.trim() \|\| "Project"` | [BACK-591](/task/591) Done |
 
-**需要排除/调整的内容**：标题恢复与 TUI-3（formatTuiTitle）强耦合（都改 createScreen/title 语义），须同批迁移；且必须适配 fork 的 sharedProgram 生命周期（fork 通过 `sharedProgram` 跨屏复用，destroy 被包装，上游的 destroy 监听要验证不与 fork 的 unbind 逻辑冲突）。`neo-neo-bblessed.d.ts` 补声明按 fork 现有手写声明风格，勿整文件替换上游版本。
+**适配 fork 的关键点（实施时已处理）**：
+- ③标题管理并入 B11（BACK-591）同批迁移，均改 `createScreen`/title 语义；fork 的 createScreen 有 sharedProgram + key/unkey/destroy 深度定制，push/pop 嵌入该包装结构，destroy 监听不与 fork 的 unbind 逻辑冲突。
+- `neo-neo-bblessed.d.ts` 按 fork 现有手写声明风格补 `tmux`/`write`（未整文件替换）。
+- ②fork 无上游旧内联 matcher 代码可删。
 
-**迁移优先级**：A - 两处 CLI 缺陷（doc create 拒绝 --plain、doc list 打开空内容）是真实回归级 bug；标题还原是 TUI 基础卫生（fork 引入 577 后若不同步，退出会残留标题）。
-
-**迁移建议**：②参考重写 - doc 两处修复①直接复用；tui.ts 标题管理按 fork 的 sharedProgram/unkey 包装手工适配（不能整文件覆盖 tui.ts）；piped 项目名依赖 577 的 projectName 字段，合并迁移。
-
----
+**验证**：BACK-591 12 测试（formatTuiTitle、标题 push/pop 顺序、tmux 转发、piped 项目名）+ BACK-592 CLI 测试（`doc create --plain` exit 0、无 unknown option）；真实 piped 冒烟 `backlog board` 显示 `Project: Backlog.md`；tsc/biome 干净。
 
 ## TUI-7：BACK-620 页脚过滤提示对齐（draft-121）
 
@@ -548,29 +560,35 @@ updated_date: '2026-08-14'
 
 ---
 
-## WEB-4：BACK-614 web create 表单显式 unassign（merge 6ff29d8，PR #886）+ BACK-604 CLI/TUI 显式 unassign（merge 04fa805，PR #880）（draft-109）
+## WEB-4：BACK-614 web create 表单显式 unassign + BACK-604 CLI/TUI 显式 unassign（draft-109，已迁移/完成 → BACK-584）
 
-**任务核心目的**：让"显式未分配"在各表面可表达——确立单一规则：**absent（字段缺席）= 无意见**（create 时 defaultAssignee 生效 / edit 时保留现值），**显式空 `[]` = 明确未分配**。BACK-604 修核心与 CLI/MCP 各表面（`-a ""` 不再坍缩为 absent）；BACK-614 让 web create 表单用 defaultAssignee 预填 chips，清空 chips 即发送显式 `assignee: []`。
+**任务核心目的**：在 BACK-579/581 已经实现 `defaultAssignee` 应用的基础上，补齐"显式未分配"的表达能力。确立规则：**absent（字段缺席）= 无意见**（create 时应用 configured `defaultAssignee`），**显式空 `[]` = 明确未分配**。CLI 用显式 `--unassign` 标志表达"明确未分配"（`-a ""` 报错并提示改用 `--unassign`），web create 用 defaultAssignee 预填 chips、用户清空 chips 即发送 `assignee: []`。
 
-**变更内容摘要**：
-- 04fa805（16 文件 +206/-26）：`src/core/backlog.ts` `createTaskFromInput` 默认值判定从"normalized 列表为空"改为 `input.assignee === undefined`；`src/utils/task-builders.ts` 新 `parseClearableStringList`（absent→`undefined`，显式空→`[]`）；`src/utils/task-edit-builder.ts` `normalizeStringList` → `sanitizeClearableStringArray`，edit 的显式 `[]` 不再被丢弃（修复 MCP `task_edit assignee: []` 无效果）；`src/cli.ts` `task create`/`draft create`/`task edit` 的 `-a` 改用 `parseClearableStringList`；edit 的 `if (assigneeValues.length > 0)` → `if (assigneeValues)`；帮助文案注明 `-a ""` 语义；`src/mcp/utils/schema-generators.ts` assignee description 注明"传空数组 = 未分配/清空"；`src/web/components/TaskDetailsModal.tsx` create 模式空 assignee 省略字段（让 default 生效）；测试 +11 文件。
-- 6ff29d8（4 文件 +372/-16）：`src/web/App.tsx` 传 `<TaskDetailsModal defaultAssignee={config?.defaultAssignee}>`；`TaskDetailsModal.tsx` 新 prop `defaultAssignee?: string[]`；`createModeAssignee = useMemo(() => isCreateMode ? (defaultAssignee ?? []) : [], ...)`；`buildTaskDetailsFormState` 增加 `createModeAssignee` 参数；`hasCreateModeEntries` 的 assignee 判定改 `!areJsonEqual(assignee, createModeAssignee)`（预填默认不算用户改动）；submit 载荷：`isCreateMode && assignee.length === 0 && createModeAssignee.length === 0 ? {} : { assignee }`。
+**变更内容摘要（fork 定制方案，已由 BACK-584 实施完成，2026-08-23）**：
+- `src/core/backlog.ts`：`createTaskFromInput` 中 `resolvedAssignees` 判定从"normalized 列表为空"改为 `input.assignee === undefined` 时应用 defaultAssignee；显式 `input.assignee: []` 落盘为空（backlog.ts:1520 注释「An explicit empty array means "intentionally unassigned"」）。
+- `src/utils/task-edit-builder.ts`：assignee 改用 `sanitizeClearableStringArray`，使显式 `[]` 进入 `updateInput.assignee`（修复 MCP `task_edit assignee: []` 无效）。
+- `src/cli.ts`：`task create`/`draft create`/`task edit` 新增 `--unassign` 选项（cli.ts:1751/2850）；`-a ""` 或仅空白时报错并提示使用 `--unassign`（cli.ts:1880/3193）；`--unassign` 与 `-a` 互斥（cli.ts:1874/3187）。
+- `src/web/App.tsx`：向 `<TaskDetailsModal>` 传入 `defaultAssignee={config?.defaultAssignee}`。
+- `src/web/components/TaskDetailsModal.tsx`：新增 `defaultAssignee?: string[]` prop；create 模式用 defaultAssignee 预填 assignee chips；未改动 assignee 时 submit 不发送字段（absent，让 core 应用 default）；清空 chips 时发送 `assignee: []`（明确未分配，TaskDetailsModal.tsx:878 附近三态提交注释）。
+- 文档同步更新：`ADVANCED-CONFIG.md` 中 Default Assignee 段落补充 `--unassign` 场景；`src/guidelines/cli-instructions/task-creation.md` 说明 create 时 `-a`/omit/`--unassign` 的语义；`src/guidelines/cli-instructions/task-execution.md` 说明 edit 时替换与清空 assignee 的语义；`drafts.md` 同步。
 
-**与当前定制代码的交集风险**：高（fork 语义基线不同——无 defaultAssignee 应用）。
-- fork 全仓 `defaultAssignee` 仅存在于配置面：`src/types/index.ts:331`、`src/file-system/operations.ts:1444/1561/1593`；**core/CLI/web 均无应用逻辑**（`src/core/backlog.ts:1031` `const normalizedAssignees = normalizeStringList(input.assignee) ?? [];` 无 fallback，`fork:1092` `assignee: normalizedAssignees` 直接落盘）。
-- fork web create 载荷**始终**带 `assignee`（`TaskDetailsModal.tsx:786`），空数组即未分配——fork 当前语义已天然等价"显式空 = 未分配"（因为没有默认值可应用）。
-- fork CLI 选项结构不同：`-a` 是单值无 accumulator（`cli.ts:1656` create / `2638` edit / `3377` draft create），`fork:1769/3392` `options.assignee ? [String(options.assignee)] : undefined`——`-a ""` 为 falsy → undefined，与 absent 同义；`fork:2968-2970` edit 的 `if (assigneeValues.length > 0)` 丢弃空数组。
-- fork `task-edit-builder.ts:75-77`：`const assignee = normalizeStringList(args.assignee); if (assignee) { updateInput.assignee = assignee; }`——显式 `[]` 被丢弃 → **MCP `task_edit assignee: []` 与 CLI `task edit -a ""` 均无法清空 assignees**（web PUT 路径 `core/backlog.ts:1373-1376` 可以清空，是唯一可清空表面）。
-- fork web 已加载 config（`App.tsx:212/358`），类型含 `defaultAssignee`，传 prop 在技术上无阻碍。
-- 排除清单：无直接冲突；注意与"空字符串清除"条目的边界——unassign 是数组语义而非字符串空值清除，不冲突。
+**实施状态（2026-09-07 复核）**：迁移任务 [BACK-584](/task/584) 已 Done（AC 6/6），原 2026-08-23 分析列出的 5 项缺口全部关闭；`bunx tsc --noEmit`、`bun run check .`、相关 scoped 测试均通过。TUI 侧经核实无 assignee 编辑面（composer 仅 title/description/status/type/priority，edit 走 $EDITOR），按上游 draft 指示「报告而非新建」处理，不阻塞。分析素材 DRAFT-109 已归档至 `backlog/archive/drafts/`；doc-9 台账已登记 BACK-584。
 
-**适合迁移的内容**：① `task-edit-builder.ts:75-77` 的"显式空不清零丢弃"修复（对应上游 `sanitizeClearableStringArray`）——让 MCP/CLI edit 传 `[]` 真正清空 assignees，这是独立于 defaultAssignee 的真实小修复；② `cli.ts:2968-2970` 的 `if (assigneeValues)` 判断同步修正；③ 若未来 fork 引入 defaultAssignee 应用能力，04fa805 的 core 判定（`undefined` vs `[]`）与 6ff29d8 的 web 预填（`createModeAssignee` + 载荷三态）是配套方案，可整体移植。
+**与当前定制代码的交集风险**：中——改动集中在 assignee 单一字段，影响 create/edit/MCP/web 四个表面，但逻辑一致；需与 BACK-579/581 已落地的 defaultAssignee 行为兼容。
 
-**需要排除/调整的内容**：① 上游核心语义"absent → defaultAssignee 生效"在 fork 无 defaultAssignee 场景下无意义——`createTaskFromInput` 判定改动现在移植会引入死分支，应等 defaultAssignee 应用能力落地时一并做；② `parseClearableStringList` 同理，其价值只在"默认值应用"存在时成立，且 fork CLI 的 `-a` 无 accumulator，移植前需先对齐 CLI 选项结构；③ web 预填（6ff29d8）**不能单独移植**：若 UI 预填了 chips 而 core 不应用 default，会造成"表单显示默认人、保存后无默认人"的错位——必须与 defaultAssignee 应用同批；④ schema-generators 描述文案不适用；⑤ 上游 11 个测试文件与 fork CLI 结构差异大，仅参考断言思路。
+**适合迁移的内容**：
+- 上游 BACK-604 的核心语义（`undefined` vs `[]`）必须采用。
+- 上游 BACK-614 的 web 预填与三态载荷（absent/空数组/非空数组）必须采用。
+- CLI 表面不照搬上游 `-a ""` 语义，改用 fork 设计的 `--unassign` 标志，UX 更清晰。
 
-**迁移优先级**：B（局部）- 当前 fork 无 defaultAssignee 应用，BACK-604/614 的主要动机场景不存在；唯一可独立受益的是 edit 清空 assignee 的小修复（`task-edit-builder.ts:75-77` + `cli.ts:2968-2970`），属于小而真实的能力缺口（现仅 web PUT 可清空）。web 预填与 core 语义改造应随 defaultAssignee 特性整体评估，暂列 C。
+**需要排除/调整的内容**：
+- 上游 `-a ""` 表示 unassign 的设计不采用；fork 用 `--unassign`。
+- 上游 `parseClearableStringList` 在 create 路径的用法需调整：CLI create 不再通过 `-a` 表达空，而是通过 `--unassign`。
+- 文档必须同步更新，否则用户会困惑于 `-a ""` 报错。
 
-**迁移建议**：②参考重写（仅取 edit 显式空清空两处小改动，按 fork 的单值 `-a` 结构重写为 fork 风格的 `parseDelimitedStringList` 变体或等效判断）；③忽略其余部分，直至 fork 引入 defaultAssignee 应用（届时按 04fa805 + 6ff29d8 组合迁移）。
+**迁移优先级**：**A**——BACK-579/581 已 ship defaultAssignee，缺少显式 unassign 会导致"配置了默认值就无法创建真正未分配任务"的数据正确性缺口。
+
+**迁移建议**：②参考重写——**已完成**（[BACK-584](/task/584) Done，2026-08-23）：以 `undefined` vs `[]` 语义改造为核心；CLI 三处（create/draft create/edit）新增 `--unassign` 并拒绝 `-a ""`；web 完成预填与三态 submit；`ADVANCED-CONFIG.md`、`task-creation.md`、`task-execution.md`、`drafts.md` 与 help schema / i18n 文案均已同步。
 
 ---
 
@@ -578,60 +596,88 @@ updated_date: '2026-08-14'
 
 ## SVR-1：BACK-580 文档/决策身份 fail-closed + BACK-602 doctor 与 web 缺口（draft-97/107）
 
-**任务核心目的**：让文档（doc）与决策（decision）的身份解析与任务侧对齐——等价 ID 命中多个文件时 fail-closed（抛歧义错误而非静默按 title 排序取第一个），空字符串 ID 不可解析，doctor 覆盖文档/决策诊断，server/MCP/web 对歧义给出 409 / AMBIGUOUS_ID / 可读提示；并补上目录不可读与 web create 路由残留歧义提示两个 review 缺口。
+> **2026-08-25 复核**：前置依赖 SVR-2（BACK-613 content-store 文档 watcher）已迁移完成，原「SVR-1 须排在 SVR-2 之后」的排序约束解除，B10 可独立排期；原分析引用的 fork 同根缺陷证据（content-store.ts:594/604/833 事件静默丢失）已被 SVR-2 修复、不再成立；fork CLI 已长出完整 doc/decision 命令组（新增集成面）。本节 file:line 全部按当前工作树刷新。
 
-**变更内容摘要**：
-- **merge 900ff97（BACK-580，24 文件）**：
-  - 新增 `src/utils/entity-id.ts`（72 行）：`AmbiguousIdError`、`entityIdKey`（前缀剥离 + 空体返回 null + 数字去零归一）、`normalizeEntityId`、`entityIdsEqual`、`findUniqueEntityById`；`src/utils/task-path.ts` 的 `AmbiguousTaskIdError` 改为继承 `AmbiguousIdError`；
-  - `src/utils/document-id.ts` 重写为基于 entity-id，新增 `findDocumentById`；新增 `src/utils/decision-id.ts`（20 行）；`src/utils/duplicate-detection.ts` 新增 `ContentIdentityIssues`/`detectContentIdentityIssues`/`hasContentIdentityIssues`；
-  - `src/core/backlog.ts`：新增 `diagnoseContentIdentity()`；`getDocument` 改用 `findDocumentById`；
-  - `src/file-system/operations.ts`：`loadDecision` 重写为 `findDecisionById(await this.listDecisions(), decisionId)`（删除 filename-prefix 匹配）；`listDecisions`/`listDocuments` 新增 `unreadable` 收集参数；`loadDocument` 改用 `findDocumentById`；
-  - `src/core/content-store.ts`：decisions watcher 3 处 `parseDecision` 结果注入 `path`；`src/types/index.ts` 的 `Decision` 新增 `path?: string`；
-  - `src/server/index.ts`：4 处 `isAmbiguousIdError` → 409；`handleGetDecision` 改为 `core.filesystem.loadDecision`（绕开 store 的原始 ID key 静默去重）；
-  - `src/cli.ts`：doctor 集成 `diagnoseContentIdentity` + `printContentIdentityReport`，content identity 问题 exit 1 且不进入 `--fix` 自动修复；`doc view` catch 中 `isAmbiguousIdError` → 打印完整歧义消息 exit 1；
-  - `src/mcp/errors/mcp-errors.ts`：`isAmbiguousIdError` → `AMBIGUOUS_ID` + candidates；
-  - `src/markdown/parser.ts`：`matter(toParse, {})` 绕过 gray-matter cache 中毒（与 CLI-12 同根）；
-  - web：`src/web/lib/api.ts` 新增 `toApiError` + `isAmbiguousIdConflict`（status===409）；新增 `AmbiguousIdNotice.tsx`（21 行）；`DocumentationDetail`/`DecisionDetail` 歧义时不再 fallback 到 props 缓存条目；
-  - 测试 6 个：`content-identity.test.ts`（新 220 行）、`server-documents-endpoint.test.ts`（新 127 行，409 + 字节未动证明）、`web-ambiguous-id.test.tsx`（新 122 行）、`cli-doctor.test.ts`（+147）、`markdown.test.ts`（+12）、`mcp-documents.test.ts`（+21）。
-- **merge cf0ca9c（BACK-602，9 文件）**：目录级不可读也报 finding——`operations.ts` 新增 `recordUnreadableDirectory`，`listDecisions`/`listDocuments` 的 catch 改记录，`backlog.ts` `locate` 空路径表示目录本身，`cli.ts` 文案；`DecisionDetail`/`DocumentationDetail` create 路由先 `setError(null)` + `setDocument(null)`（消除 409 后跳转 create 时残留歧义提示）。
+**任务核心目的**：让文档（doc）与决策（decision）的身份解析与任务侧对齐——等价 ID 命中多个文件时 fail-closed（抛歧义错误而非静默取第一个），空字符串 ID 不可解析，doctor 覆盖文档/决策诊断，server/MCP/web/CLI 对歧义给出 409 / AMBIGUOUS_ID / 候选列表；并补上目录不可读与 web create 路由残留歧义提示两个 review 缺口。
+
+**变更内容摘要**（merge commit 复核一致：900ff97 24 文件 +1086/-114；cf0ca9c 9 文件 +267/-21）：
+- **merge 900ff97（BACK-580）**：
+  - 新增 `src/utils/entity-id.ts`（72 行）：`AmbiguousIdError`、`entityIdKey`（前缀剥离 + 空体返回 null + 数字去零归一）、`normalizeEntityId`、`entityIdsEqual`、`findUniqueEntityById`；上游 `task-path.ts` 的 `AmbiguousTaskIdError` 改为继承 `AmbiguousIdError`；
+  - `document-id.ts` 重写为基于 entity-id 并新增 `findDocumentById`；新增 `decision-id.ts`（20 行）；`duplicate-detection.ts` 新增 `ContentIdentityIssues`/`detectContentIdentityIssues`/`hasContentIdentityIssues`；
+  - `core/backlog.ts`：新增 `diagnoseContentIdentity()`；`getDocument` 改用 `findDocumentById`；
+  - `file-system/operations.ts`：`loadDecision` 重写为 `findDecisionById(await this.listDecisions(), decisionId)`（删除 filename-prefix 匹配）；`listDecisions`/`listDocuments` 新增 `unreadable` 收集参数；
+  - `content-store.ts`：decisions watcher 3 处 `parseDecision` 结果注入 `path`；`types/index.ts` 的 `Decision` 新增 `path?: string`；
+  - `server/index.ts`：4 处 `isAmbiguousIdError` → 409；`handleGetDecision` 改为 `core.filesystem.loadDecision`（绕开 store 原始 ID key 静默去重）；
+  - `cli.ts`：doctor 集成 `diagnoseContentIdentity` + `printContentIdentityReport`（exit 1 且不进 `--fix`）；`doc view` catch 分支打印歧义消息 exit 1；
+  - `mcp/errors/mcp-errors.ts`：`isAmbiguousIdError` → `AMBIGUOUS_ID` + candidates；
+  - `markdown/parser.ts`：`matter(toParse, {})` 绕过 gray-matter cache 中毒（与 CLI-12 同根）；
+  - web：`api.ts` 新增 `toApiError`/`isAmbiguousIdConflict`（status===409）；新增 `AmbiguousIdNotice.tsx`（21 行）；`DocumentationDetail`/`DecisionDetail` 歧义时不再 fallback 到 props 缓存条目；
+  - 测试 6 个：`content-identity.test.ts`（220 行）、`server-documents-endpoint.test.ts`（127 行）、`web-ambiguous-id.test.tsx`（122 行）、`cli-doctor.test.ts`（+147）、`markdown.test.ts`（+12）、`mcp-documents.test.ts`（+21）。
+- **merge cf0ca9c（BACK-602）**：目录级不可读也报 finding——`operations.ts` 新增 `recordUnreadableDirectory`；`DecisionDetail`/`DocumentationDetail` create 路由先清 error/document state（消除 409 后跳转 create 的残留歧义提示）。
 
 **与当前定制代码的交集风险**：**高**
-- `src/utils/document-id.ts` 调用方众多（saveDocument 清理、getDocument、content-store 等），迁移后 `documentIdsEqual` 语义不变但需核对全部调用；`src/file-system/operations.ts` 是 fork 深度定制核心：fork `loadDecision`（operations.ts:801-818）仍为 filename-prefix 匹配（`file.startsWith('decision-${normalizedId} -')`，line 812），返回值带 fork 自有的 `filePath`（绝对路径，types/index.ts:206），与上游新增的 `path`（相对路径）字段体系不同；
-- `src/server/index.ts`：fork 已有 BACK-567 移植的 `AmbiguousTaskIdError` 409 处理（server/index.ts:1116-1117、1131-1132、897-898），fork 的 `AmbiguousTaskIdError`（core/backlog.ts:119-124）是独立类、不继承 `AmbiguousIdError`；统一 `isAmbiguousIdError` 判断需决策（见排除②）；
-- web 组件 fork 已演进（i18n、slug 路由、saveError 状态）：fork `DocumentationDetail.tsx:106` 是 `const [, setError]`（setter 被丢弃的死代码，上游对应行已有 error state 渲染）；`DecisionDetail.tsx:96-103` 无 error state（失败仅 console.error），上游 diff 上下文无法直接 apply。
+- **新模块缺失依旧**：`src/utils/entity-id.ts`/`decision-id.ts` 不存在；`duplicate-detection.ts` 仅 `DuplicateGroup`/`detectDuplicateTaskIds`（duplicate-detection.ts:7/28）；`document-id.ts` 仍为旧语义 `documentIdsEqual`（document-id.ts:18，无 entityIdKey 归一）。纯新增部分零调用方冲突。
+- **operations.ts（fork 定制核心）**：`loadDecision`（operations.ts:962-981）仍 filename-prefix 匹配（line 971 ``file.startsWith(`decision-${normalizedId} -`)``）——等价 ID（`decision-0001` vs `decision-001`）或多文件命中时静默取首个 Glob 结果，与上游修前同 bug；返回值带 fork 自有**绝对路径**字段 `filePath`（types/index.ts:196），与上游相对 `path` 体系不同；`listDecisions`（1046-1066）/`listDocuments`（1068-1093）catch 吞错返回 `[]`，无 unreadable 收集。
+- **core**：`getDocument`（backlog.ts:530-534）仍 `documents.find(documentIdsEqual)` 取首中，无 fail-closed；fork `AmbiguousTaskIdError` 为独立类（backlog.ts:121 起，带 candidates），不继承任何基类。
+- **server**：任务侧已有 `AmbiguousTaskIdError`→409 四处（index.ts:897-898、1116-1118、1131-1132、1269-1270）；文档/决策侧缺口不变——`handleGetDoc`（1359-1370）与 `handleGetDecision`（1621-1634）catch 一律转 404，`handleUpdateDoc`（~1587-1596）/`handleUpdateDecision`（1655-1660）靠 message 嗅探 `"not found"`。
+- **CLI 集成面较原分析扩大**：fork 现有完整 `doc`（cli.ts:4214-4448）与 `decision`（4448-4626）命令组。`doc view`（action 约 4429-4445）catch-all 把一切异常吞成 "not found"——迁移后 `getDocumentContent` 经 `findDocumentById` 会抛 AmbiguousIdError，此 catch 必须先分支处理；`decision view`（4548-4552）与 `decision update`（4592-4596）经 prefix-matched `loadDecision`，歧义同样表现为假 "not found"，需改为打印候选列表 exit 1。
+- **web**：`DocumentationDetail.tsx:106` 仍是 `[, setError]` 死代码（无 error 渲染结构）；`DecisionDetail.tsx` 无 error state（失败仅 console.error）且新增 slug 归一导航（useEffect 内 `navigate` 到 `/decisions/:id/:slug`）；客户端 `decisions.find(d => d.id === prefixedId)` 同为静默首中；api.ts 文档/决策相关约 10 处裸 `throw new Error("Failed to ...")`（456/464/472/494/508/516/524/532/546/559）不透传 status。
+- **MCP**：`mcp-errors.ts` 完全没有 AMBIGUOUS_ID 映射（grep 无命中），该缺口为纯新增。
+- **parser.ts:140** 仍 `matter(toParse)`，cache 中毒一行修复仍未落地。
 
-**适合迁移的内容**：新增模块整体复用：`entity-id.ts`、`decision-id.ts`、`duplicate-detection.ts` 的 ContentIdentity 扩展（纯新增，零调用方冲突）；`document-id.ts` 接入 `findDocumentById`/`entityIdKey`；`backlog.ts` `getDocument`（fork 现状 backlog.ts:528-532 为 `documents.find(documentIdsEqual)`，无 fail-closed）改用 `findDocumentById`；doctor 集成：fork doctor（cli.ts:4903-5006）目前只做任务重复 ID 诊断/修复，按上游模式追加 content identity 诊断（exit 1、不进 --fix）；server 409：fork `handleGetDoc`（server/index.ts:1358-1369）、`handleGetDecision`（1620-1627）、`handleUpdateDoc`（1550）、`handleUpdateDecision`（1647）目前 catch 全部转 404/500，需补 `isAmbiguousIdError` → 409 分支；`parser.ts:140` 的 `matter(toParse)` cache 修复（本改动一行可先行）；web `toApiError`/`isAmbiguousIdConflict` + `AmbiguousIdNotice`：fork api.ts:456/464/472/494/516/524/532/546 共 8 处 `throw new Error(...)` 无 server 消息透传；mcp `AMBIGUOUS_ID` 映射。
+**适合迁移的内容**：
+- 纯新增直接复用：`entity-id.ts`、`decision-id.ts`、`duplicate-detection.ts` ContentIdentity 扩展、`AmbiguousIdNotice.tsx`、6 个对抗性测试文件（作为验收基础）；
+- `document-id.ts` 接入 `findDocumentById`/`entityIdKey`（核对 saveDocument 清理、getDocument、content-store 等全部调用方语义不变）；
+- `backlog.ts` `getDocument`（现 530-534）改用 `findDocumentById` fail-closed；
+- doctor（cli.ts:5356-5457，现仅任务重复 ID 诊断/修复）追加 content identity 诊断（exit 1、不进 --fix）；
+- server 4 类 handler 补 `isAmbiguousIdError` → 409 分支（行号见交集风险节）；
+- `parser.ts:140` cache 修复一行，可与 CLI-12 批次先行独立落地；
+- web `toApiError`/`isAmbiguousIdConflict` 接管 api.ts 裸 throw 点；
+- mcp-errors 补 `AMBIGUOUS_ID` + candidates 映射；
+- CLI 三处歧义出口：`doc view` catch 分支、`decision view`、`decision update`。
 
-**需要排除/调整的内容**：① **Decision.path 字段体系**：上游用相对 `path`，fork 用绝对 `filePath`（types/index.ts:206）且 decisions watcher 注入的是 fork 自有结构——`findDecisionById` 的 describe 回调（歧义消息列文件）需用 fork 的 `filePath`/文件名，不照搬 `path ?? title`；② **AmbiguousTaskIdError 继承重构不强制**：fork 任务侧 fail-closed 已落地；若只迁文档/决策侧，可新增 `isAmbiguousIdError` 并让 server 判断改为 `instanceof AmbiguousTaskIdError || isAmbiguousIdError` 双分支；若后续想统一，再让 fork 的 `AmbiguousTaskIdError` 继承 `AmbiguousIdError`；③ **web 组件参考重写**：fork `DocumentationDetail.tsx:106` 的 `[, setError]` 死代码 + 无 error 渲染结构需按 fork 现有模式重写，不直接 apply 上游 diff；create 路径清错误（BACK-602）需在 fork 的 useEffect 结构（`id === 'new'` 分支）内落地；④ doctor 的 `--fix`/`--rollback`/`plan.repairable` 语义保持 fork 现状（只针对任务），content identity 仅诊断（exit 1）。排除清单核对：不触碰里程碑 actual 字段、任务日期 UTC、空字符串清除、甘特图、统计页面、WebSocket 推送 → 无回退风险。
+**需要排除/调整的内容**：
+- ① **Decision.path 字段体系**：上游相对 `path` vs fork 绝对 `filePath`（types/index.ts:196）；`findDecisionById` 的 describe 回调（歧义消息列文件）用 fork 的 `filePath`/文件名；上游对 decisions watcher 注入 path 的做法不照搬——fork server `handleGetDecision` 本就直接走 `filesystem.loadDecision`（index.ts:1624），无需 store 注入即可绕开原始 ID key。
+- ② **AmbiguousTaskIdError 继承重构不强制**：可新增 `isAmbiguousIdError` 让 server 判断改为 `instanceof AmbiguousTaskIdError || isAmbiguousIdError` 双分支；后续需要统一再让 fork 类继承 `AmbiguousIdError`。
+- ③ **web 组件参考重写**：按 fork 现有组件形态重写 error 渲染，不直接 apply 上游 diff；BACK-602 的 create 路径清错误在 fork `id === 'new'` 分支落地；DecisionDetail 的 slug 导航需保证错误态不被导航副作用清除。
+- ④ **doctor 语义保持现状**：`--fix`/`--rollback`/`--commit` 仅针对任务重复 ID；content identity 仅诊断 exit 1。
+- ⑤ **决策 watcher 不动**：SVR-2 只改了文档 watcher；fork decisions watcher 以文件名 idPart 为锚（frontmatter id 与文件名不符即丢弃走全量刷新，content-store.ts:581-597），本项迁移不应触碰。
+- 排除清单核对：不触碰里程碑 actual 字段、任务日期 UTC/空字符串清除、甘特图、统计页面、WebSocket 推送、task edit set/add/remove 语义 → 无回退风险。
 
-**迁移优先级**：**A** - 上游修复两个公开 bug（等价 ID 静默按 title 排序解析、缺 id frontmatter 的文档列出但不可寻址）；fork 文档/决策侧完全缺失该能力（无 entity-id.ts/decision-id.ts）；且 SVR-2 证明 fork 文档 watcher 的等价 ID 处理会放大歧义面；doctor/server 缺口补齐成本低、收益明确、有完整对抗性测试可作验收。
+**迁移优先级**：**A** —— 上游修复两个公开 bug（等价 ID 静默解析、缺 id frontmatter 文档列出但不可寻址）；fork 文档/决策侧能力完全缺失，且 CLI/server/web/MCP 四个消费面如今都已存在（缺口暴露面比原分析时更大）；SVR-2 已消除 store 层放大面并解除排序依赖；新模块纯新增、对抗性测试完整，实施成本低。
 
-**迁移建议**：①直接复用（entity-id.ts / decision-id.ts / duplicate-detection 扩展 / parser cache 修复 / mcp 映射）+ ②参考重写（operations.ts / backlog.ts / server / cli doctor / web 组件需适配 fork 的 filePath 字段、现有 409 结构与组件形态）。
-
+**迁移建议**：①直接复用（entity-id / decision-id / duplicate-detection 扩展 / parser cache 修复 / mcp 映射 / 测试）+ ②参考重写（operations.ts / backlog.ts / server / cli doctor 与 doc·decision 三命令出口 / web 组件适配 filePath、slug 路由与现有 409 结构）。parser 一行修复可与 CLI-12 合并先行。
 ---
 
-## SVR-2：BACK-613 content-store 文档 watcher 重试/重命名（draft-116）
+## SVR-2：BACK-613 content-store 文档 watcher 重试/重命名（draft-116，已迁移/完成）
 
-**任务核心目的**：修复 content-store 文档 watcher 的身份处理——无标题文件名（`doc-1.md`）永不收敛（id 推导带 .md 扩展名导致重检链死循环）、padding 等价文件名（`doc-0001` vs `doc-01`）对账失效，外加 review 发现的 4 个 case：并发刷新复活、等价兄弟误删、过期重检删活文件、重命名+改 ID 同时发生。
+**任务核心目的**：修复 content-store 文档 watcher 的身份处理缺陷——无标题文件名（`doc-1.md`）无法收敛、padding 等价文件名（`doc-0001` vs `doc-01`）对账失效，以及重命名+改 ID、文件夹删除、并发刷新复活等边界场景。
 
-**变更内容摘要**（merge a2c6746，3 文件）：
-- `src/core/content-store.ts`（+106/-38）：新增 `documentFilenameId()`（`basename(name, ".md").split(" - ")[0]` + `documentIdKey` 门控，空体/无前缀返回 null → 兜底全量刷新）与 `watchedDocumentPath()`；watcher 条目改按路径寻址——`findWatchedDocumentByPath`/`dropWatchedDocument`（删除也 version 化，防并发刷新复活）/`publishWatchedDocument` 重写（返回 strandedEquivalent 标志 → 触发全量刷新）；rename 分支 filename-vs-frontmatter 比较全部改用 `documentIdsEqual`，`current`/`remove` 改按 eventPath；
-- `src/test/content-store.test.ts`（+347）：7 个对抗性用例（untitled settle 断言发布且 `deferredRechecks.size === 0`、padded/unpadded rename+删除、frontmatter padding 变更、gated-refresh 复活、padding-equivalent siblings、stale recheck 对 live document、rename-with-respell）。
+**变更内容摘要**（实际落地）：
+- `src/core/content-store.ts`：
+  - 新增 `documentFilenameId()` 与 `watchedDocumentPath()`，从文件名正确推导文档 id 和 docs-relative path；
+  - watcher 条目全部改为按路径寻址：`findWatchedDocumentByPath()` / `dropWatchedDocument()` / `publishWatchedDocument()`（返回 `strandedEquivalent` 标志，必要时触发全量刷新）；
+  - filename-vs-frontmatter 比较统一改用 `documentIdsEqual`，`refreshDocumentsFromDisk()` 的 expectedId 匹配同样改用 `documentIdsEqual`；
+  - 文档 watcher 从 inline `retryRead` 切换为 `deferredRechecks`/`reconcileOrSchedule` 延迟重检链；task/decision/wiki watcher 仍保留 `retryRead`；
+  - `updateDocumentFromDisk()` 改为按保存返回的 `relativePath` 读取文件并注入 `path`，不再通过 `filesystem.loadDocument(id)` 做 entity-id 查找；
+  - 文档版本追踪命名对齐：`contentItemGenerations`/`contentItemVersions` + `nextContentItemGeneration`/`nextContentItemVersion`/`isContentItemGenerationCurrent`，删除标记对应为 `deletedDocumentGenerations`；
+  - 非 `.md` 的 `rename` 事件触发 `refreshDocumentsFromDisk()`，使删除包含文档的文件夹后能正确清空 store 并刷新 web UI。
+- `src/test/content-store.test.ts`：保留并扩展对抗性用例，新增文件夹删除回归测试；当前 `bun test src/test/content-store.test.ts` 16/16 通过。
 
-**与当前定制代码的交集风险**：**高** - 同文件 `src/core/content-store.ts` 是 fork 深度定制核心且架构不同：fork 用 `retryRead`（content-store.ts:1028-1052，单事件内 12 次 × 75ms 递增延迟 + 失败回退 `refreshDocumentsFromDisk`），上游是 `deferredRechecks`/`reconcileOrSchedule` 延迟重检链 → 上游 diff 无法直接 apply，必须按 fork 架构改写。fork 文档 watcher 现状（content-store.ts:588-647）逐项对照上游修复点：
-- **缺陷 1（doc-1.md 永不发布）fork 同根存在**：fork line 594 `const [idPart] = base.split(" - ")`，base 来自 `basename(absolutePath)` 含 ".md" → `doc-1.md` 得 `idPart = "doc-1.md"` ≠ frontmatter `doc-1` → retryRead isValid（line 619-638 区域 `result.id !== idPart`）永远 false → 12 次耗尽 → 带参 `refreshDocumentsFromDisk("doc-1.md", ...)` 的 `doc.id === "doc-1.md"`（line 833 严格相等）也失败 → 事件静默丢失；
-- **缺陷 2（padding 等价对账失效）fork 同根存在**：fork watcher 用原始字符串 key（`documents.has(idPart)` line 604、`documents.get(idPart)`、`documents.set(document.id, ...)` line 646），`doc-0001 - Title.md`（frontmatter doc-1）与 `doc-01 - Title.md`（frontmatter doc-1）条目互相覆盖（后事件胜），删除分支 `has("doc-0001")` 对已按 doc-1 key 存储的条目失效 → 残留；
-- **rename 分支**：fork 对 `rename && exists` 直接全量刷新（line 609-613）→ rename+respell case 天然兜底（上游的 strandedEquivalent 机制 fork 不需要）；
-- **并发刷新复活（上游 case 1）**：fork 有 BACK-568 移植的 `captureVersions`/`mergeDocuments` 版本合并体系，删除分支已有 `incrementDocumentVersion`（line 604）——但 padding 等价时 key 不匹配，version 化形同虚设；
-- `refreshDocumentsFromDisk` 的 expectedId 匹配（fork line 833 `doc.id === expectedId`）是核心差距：上游修复后该路径用 `documentIdsEqual`。
+**与当前定制代码的交集风险**：**高（已收敛）** - `src/core/content-store.ts` 是 fork 深度定制核心，且 watcher 架构与上游不完全相同。实际落地时按 fork 既有 `enqueue` 串行 + `retryRead` 架构进行适配：仅文档 watcher 引入 `deferredRechecks`/`reconcileOrSchedule`，其余 watcher 不动；path-based 查找、身份等价比较、删除版本化等机制均与 fork 的 BACK-568 版本合并体系兼容，未破坏 folder 支持。
 
-**适合迁移的内容**：`documentFilenameId()` 推导逻辑（`basename(name, ".md")` 再去 `split(" - ")`）——修复 fork 缺陷 1 的最小改动；watcher 内 filename-vs-frontmatter 比较改用 `documentIdsEqual`（fork 的 watcher 目前全部 ===/原始 key）；删除路径按 path 寻址（`findWatchedDocumentByPath` 思路）——修复 fork 删除残留；`refreshDocumentsFromDisk` 的 expectedId 匹配改用 `documentIdsEqual`（fork content-store.ts:833）；上游 7 个测试用例可直接作为 fork 移植后的验收标准。
+**适合迁移的内容（已采纳）**：`documentFilenameId()` / `watchedDocumentPath()` 推导逻辑；`documentIdsEqual` 用于 filename-vs-frontmatter 及 refresh 匹配；path-only 的 `findWatchedDocumentByPath` / `removeWatchedDocument` / `publishWatchedDocument`；`strandedEquivalent` 兜底机制；`dropWatchedDocument` + `deletedDocumentGenerations` 防并发刷新复活；`deferredRechecks`/`reconcileOrSchedule` 重检链（按 fork 架构适配后落地）；path-based `updateDocumentFromDisk`；上游 7 个核心测试用例作为验收基础并扩展 folder 删除场景。
 
-**需要排除/调整的内容**：① **不移植 deferredRechecks/reconcileOrSchedule 重检链**：fork `retryRead` + 全量兜底已是等价架构（BACK-568 移植的快照/版本并发合并），引入两套重试机制会造成维护双轨；只把 documentFilenameId/documentIdsEqual/path 寻址修进现有 retryRead 流程；② rename 分支维持 fork 的全量刷新兜底（line 609-613），不照搬上游 `publishWatchedDocument` 的 strandedEquivalent 返回值机制；③ 上游明确 out-of-scope 的 `updateDocumentFromDisk` 原始 key 查找（`documents.get(documentId)`）在 fork 同样存在（fork content-store.ts:919-925），fork 一并保持现状；④ fork 的删除分支 version 化沿用 `incrementDocumentVersion` 命名，不照搬上游 `nextContentItemGeneration`/`nextContentItemVersion`。排除清单核对：不涉及里程碑/日期/空串/甘特/统计/WebSocket；本修复强化 fork 已移植的 watcher 驱动广播（BACK-568 体系）正确性，与之兼容。
+**需要排除/调整的内容（已处理）**：
+- 未直接 apply 上游 diff，因为 fork 有独立的 `enqueue`/`retryRead` 和 BACK-568 版本合并体系；
+- 未引入上游的 publication-owner/`currentRoot` 机制，fork 仍保持现有 watcher 生命周期；
+- 保留并扩展了 fork 的 folder 支持（`createDirectoryWatcher`/`createManualRecursiveWatcher`），补充了文件夹删除的刷新路径；
+- `contentItemGenerations`/`contentItemVersions` 仅对 documents 拆分，tasks/decisions/wikis 保持原有 `taskVersions`/`decisionVersions`/`wikiVersions`，避免不必要涟漪；
+- 排除清单核对：不涉及里程碑/日期/空串/甘特/统计/WebSocket；强化 fork 已落地的 watcher 驱动广播正确性。
 
-**迁移优先级**：**A** - fork 文档 watcher 存在与上游同根的 3 个实际缺陷（doc-1.md 事件静默丢失、padding 等价覆盖/删除残留、refresh 兜底 === 失效），直接影响 fork 已落地的 watcher 驱动广播体验（保存/删除文档后 UI 不更新或残留），且与 SVR-1 的 fail-closed 目标互相强化（等价 ID 在 store 层先于 server 层被处理）；上游 7 用例为现成验收标准。
+**迁移优先级**：**A（已完成）** - fork 文档 watcher 的 3 个实际缺陷均已修复；测试 16/16 通过；tsc 与 biome 检查均无新增错误。
 
-**迁移建议**：②参考重写 - 按 fork retryRead 架构移植修复（documentFilenameId / documentIdsEqual / path 寻址三点），不可直接 apply 上游 diff；测试用例 ①直接复用（改为适配 fork 的 retryRead 语义与命名）。
+**迁移建议**：已完成。按 fork 现有架构参考重写落地，保持 task/decision/wiki watcher 不变，保留 folder 支持，补充 folder 删除刷新路径。
 
 ---
 

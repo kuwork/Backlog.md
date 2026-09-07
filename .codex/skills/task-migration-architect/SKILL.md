@@ -192,7 +192,7 @@ git show <上游分支>:backlog/TASK-xxx.md
 
 在判断一个任务是否为 C类 时，必须先阅读 `references/current-branch-migration-exclusions.md`。若任务的任何变更内容与清单中「不应回退的内容」重合，则直接归为 C类，并在理由中引用清单对应条目。
 
-> **特别提醒**：当前 fork 已通过 `BACK-578` 将 `task edit --ref` / `--doc` / `--depends-on` / `--dep` 从「替换整个列表」改为「追加到现有列表」，并新增了 `--remove-ref` / `--remove-doc` / `--remove-dep`。分析涉及这些标志的上游任务时，若上游仍使用替换语义或缺少 remove 标志，必须按追加语义改写，不能回退旧实现。详见排除清单第 5 节。
+> **特别提醒**：当前 fork 已通过 `BACK-578` 将 `task edit` 的 `--ref` / `--doc` / `--depends-on` / `--dep` 定为「替换整个列表」（set 语义），并新增 `--add-ref` / `--add-doc` / `--add-depends-on` / `--add-dep` 用于「追加到现有列表」，`--remove-ref` / `--remove-doc` / `--remove-dep` 用于按值移除单个条目。分析涉及这些标志的上游任务时，若上游使用替换语义，保持当前分支的 set 语义；若上游使用追加语义，映射到当前分支的 `--add-*` 标志；不能回退旧实现。详见排除清单第 5 节。
 
 ---
 
