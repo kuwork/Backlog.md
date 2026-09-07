@@ -23,6 +23,7 @@ import DraftsList from "./components/DraftsList";
 import GanttView from "./components/GanttView";
 import InitializationScreen from "./components/InitializationScreen";
 import Layout from "./components/Layout";
+import MilestoneDetailsModal from "./components/MilestoneDetailsModal";
 import MilestonesPage from "./components/MilestonesPage";
 import Settings from "./components/Settings";
 import Statistics from "./components/Statistics";
@@ -213,6 +214,9 @@ function AppContent() {
 	const draftRouteMatch = useMatch("/draft/:id");
 	const draftRouteMatchWildcard = useMatch("/draft/:id/*");
 	const draftIdFromUrl = draftRouteMatch?.params?.id ?? draftRouteMatchWildcard?.params?.id;
+
+	const milestoneRouteMatch = useMatch("/milestone/:id");
+	const milestoneIdFromUrl = milestoneRouteMatch?.params?.id ?? null;
 
 	const [showModal, setShowModal] = useState(false);
 	const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -636,6 +640,23 @@ function AppContent() {
 		}
 	}, [navigate, state, taskIdFromUrl, draftIdFromUrl]);
 
+	const milestoneFromUrl = useMemo(() => {
+		if (!milestoneIdFromUrl) return null;
+		const key = milestoneKey(milestoneIdFromUrl);
+		return (
+			[...milestoneEntities, ...archivedMilestones].find(
+				(entity) => milestoneKey(entity.id) === key || milestoneKey(entity.title) === key,
+			) ?? null
+		);
+	}, [milestoneIdFromUrl, milestoneEntities, archivedMilestones]);
+
+	const handleCloseMilestoneModal = useCallback(() => {
+		const backgroundPath = state?.backgroundLocation
+			? `${state.backgroundLocation.pathname}${state.backgroundLocation.search}`
+			: "/milestones";
+		navigate(backgroundPath, { replace: true });
+	}, [navigate, state]);
+
 	const refreshData = useCallback(async () => {
 		await loadAllData();
 	}, [loadAllData]);
@@ -889,7 +910,33 @@ function AppContent() {
 				<Route path="draft/:id/*" element={<Layout {...layoutProps} />}>
 					<Route index element={<BoardPage {...boardPageProps} />} />
 				</Route>
+				<Route path="milestone/:id" element={<Layout {...layoutProps} />}>
+					<Route
+						index
+						element={
+							<MilestonesPage
+								tasks={tasks}
+								statuses={statuses}
+								milestoneEntities={milestoneEntities}
+								archivedMilestones={archivedMilestones}
+								onEditTask={handleOpenTask}
+								onRefreshData={refreshData}
+							/>
+						}
+					/>
+				</Route>
 			</Routes>
+
+			<MilestoneDetailsModal
+				milestoneId={milestoneIdFromUrl}
+				milestone={milestoneFromUrl}
+				tasks={tasks}
+				milestoneEntities={milestoneEntities}
+				isOpen={milestoneIdFromUrl !== null}
+				onClose={handleCloseMilestoneModal}
+				onEditTask={handleOpenTask}
+				onRefreshData={refreshData}
+			/>
 
 			<TaskDetailsModal
 				task={editingTask || undefined}

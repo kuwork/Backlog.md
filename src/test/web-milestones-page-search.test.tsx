@@ -2,11 +2,16 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import type { Milestone, Task } from "../types/index.ts";
 import MilestonesPage from "../web/components/MilestonesPage.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { apiClient } from "../web/lib/api.ts";
+
+const LocationProbe = () => {
+	const location = useLocation();
+	return <div data-testid="location-probe">{location.pathname}</div>;
+};
 
 const createTask = (overrides: Partial<Task>): Task => ({
 	id: "task-1",
@@ -94,6 +99,7 @@ const renderPage = (
 		activeRoot?.render(
 			<I18nProvider>
 				<MemoryRouter>
+					<LocationProbe />
 					<MilestonesPage
 						tasks={tasks}
 						statuses={["To Do", "In Progress", "Done"]}
@@ -126,22 +132,6 @@ const setSearchValue = (container: HTMLElement, value: string) => {
 const clickElement = (element: Element) => {
 	act(() => {
 		element.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-	});
-};
-
-const setInputValue = (input: HTMLInputElement, value: string) => {
-	act(() => {
-		const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-		valueSetter?.call(input, value);
-		input.dispatchEvent(new window.Event("input", { bubbles: true }));
-		input.dispatchEvent(new window.Event("change", { bubbles: true }));
-	});
-};
-
-const submitForm = async (form: HTMLFormElement) => {
-	await act(async () => {
-		form.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
-		await Promise.resolve();
 	});
 };
 
@@ -237,19 +227,17 @@ describe("Web milestones page search", () => {
 		expect(noMatchText).toContain("Unassigned Tasks");
 	});
 
-	it("opens an edit modal from each milestone card", () => {
+	it("opens the milestone detail view from each milestone card", () => {
 		const container = renderPage();
-		const editButtons = Array.from(container.querySelectorAll("button")).filter((button) =>
-			button.textContent?.includes("Edit"),
+		const viewButtons = Array.from(container.querySelectorAll("button")).filter((button) =>
+			button.textContent?.includes("Detail"),
 		);
-		expect(editButtons.length).toBeGreaterThanOrEqual(2);
+		expect(viewButtons.length).toBeGreaterThanOrEqual(2);
 
-		clickElement(editButtons[0] as HTMLButtonElement);
+		clickElement(viewButtons[0] as HTMLButtonElement);
 
-		expect(container.textContent).toContain("Edit Milestone");
-		const input = container.querySelector("#edit-milestone-name") as HTMLInputElement | null;
-		expect(input).toBeTruthy();
-		expect(input?.value).toBe("Release 2");
+		const probe = container.querySelector("[data-testid='location-probe']");
+		expect(probe?.textContent).toBe("/milestone/m-2");
 	});
 
 	it("opens a remove confirmation with clear and reassign choices", () => {
@@ -269,34 +257,6 @@ describe("Web milestones page search", () => {
 		const select = container.querySelector("select") as HTMLSelectElement | null;
 		expect(select).toBeTruthy();
 		expect(Array.from(select?.options ?? []).map((option) => option.value)).toContain("m-1");
-	});
-
-	it("submits milestone edits through the API and refreshes data", async () => {
-		let updateArgs: [string, string] | undefined;
-		let refreshCount = 0;
-		apiClient.updateMilestone = async (id: string, title: string) => {
-			updateArgs = [id, title];
-			return { success: true, milestone: { ...milestoneEntities[1]!, title } };
-		};
-
-		const container = renderPage(baseTasks, {
-			onRefreshData: async () => {
-				refreshCount += 1;
-			},
-		});
-		const editButtons = Array.from(container.querySelectorAll("button")).filter((button) =>
-			button.textContent?.includes("Edit"),
-		);
-		clickElement(editButtons[0] as HTMLButtonElement);
-
-		const input = container.querySelector("#edit-milestone-name") as HTMLInputElement | null;
-		expect(input).toBeTruthy();
-		setInputValue(input as HTMLInputElement, "Release 2.1");
-		await submitForm(input?.closest("form") as HTMLFormElement);
-
-		expect(updateArgs?.[0]).toBe("m-2");
-		expect(updateArgs?.[1]).toBe("Release 2.1");
-		expect(refreshCount).toBe(1);
 	});
 
 	it("submits milestone removal with reassign options through the API", async () => {

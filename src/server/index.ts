@@ -446,6 +446,8 @@ export class BacklogServer {
 					"/task/:id/*": spaIndexHtml,
 					"/draft/:id": spaIndexHtml,
 					"/draft/:id/*": spaIndexHtml,
+					"/milestone/:id": spaIndexHtml,
+					"/milestone/:id/*": spaIndexHtml,
 
 					// API Routes using Bun's native route syntax
 					"/api/tasks": {
@@ -1967,6 +1969,7 @@ export class BacklogServer {
 				dueDate: typeof bodyJson.dueDate === "string" ? bodyJson.dueDate : undefined,
 				plannedStart: typeof bodyJson.plannedStart === "string" ? bodyJson.plannedStart : undefined,
 				plannedEnd: typeof bodyJson.plannedEnd === "string" ? bodyJson.plannedEnd : undefined,
+				description: typeof bodyJson.description === "string" ? bodyJson.description : undefined,
 				actualStart: typeof bodyJson.actualStart === "string" ? bodyJson.actualStart : undefined,
 				actualEnd: typeof bodyJson.actualEnd === "string" ? bodyJson.actualEnd : undefined,
 			});

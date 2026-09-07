@@ -536,6 +536,81 @@ Milestone: m-0
 		expect(duplicateRename.status).toBe(400);
 	});
 
+	it("updates milestone descriptions via the Web API and persists them to markdown", async () => {
+		const createResponse = await fetch(`http://127.0.0.1:${serverPort}/api/milestones`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				title: "Description Source",
+				description: "Initial description token",
+			}),
+		});
+		expect(createResponse.status).toBe(201);
+		const created = (await createResponse.json()) as Milestone;
+		expect(created.description).toBe("Initial description token");
+
+		const updateResponse = await fetch(`http://127.0.0.1:${serverPort}/api/milestones/${created.id}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				title: "Description Source",
+				description: "Updated description token",
+			}),
+		});
+		expect(updateResponse.status).toBe(200);
+		const updated = (await updateResponse.json()) as { milestone?: Milestone | null };
+		expect(updated.milestone?.description).toBe("Updated description token");
+
+		const milestoneFiles = await Array.fromAsync(
+			new Bun.Glob("m-*.md").scan({ cwd: filesystem.milestonesDir, followSymlinks: true }),
+		);
+		const milestoneFile = milestoneFiles.find((file) => file.startsWith(`${created.id} -`));
+		expect(milestoneFile).toBeDefined();
+		const rawContent = await Bun.file(join(filesystem.milestonesDir, milestoneFile as string)).text();
+		expect(rawContent).toContain("## Description");
+		expect(rawContent).toContain("Updated description token");
+		expect(rawContent).not.toContain("Initial description token");
+
+		const fetched = await fetchJson<Milestone>(`/api/milestones/${created.id}`);
+		expect(fetched.description).toBe("Updated description token");
+	});
+
+	it("preserves milestone descriptions when the update omits description", async () => {
+		const createResponse = await fetch(`http://127.0.0.1:${serverPort}/api/milestones`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				title: "Description Keep",
+				description: "Keep me token",
+			}),
+		});
+		expect(createResponse.status).toBe(201);
+		const created = (await createResponse.json()) as Milestone;
+
+		const updateResponse = await fetch(`http://127.0.0.1:${serverPort}/api/milestones/${created.id}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				title: "Description Keep",
+				dueDate: "2025-10-01",
+			}),
+		});
+		expect(updateResponse.status).toBe(200);
+
+		const fetched = await fetchJson<Milestone>(`/api/milestones/${created.id}`);
+		expect(fetched.description).toBe("Keep me token");
+		expect(fetched.dueDate).toBe("2025-10-01");
+
+		const milestoneFiles = await Array.fromAsync(
+			new Bun.Glob("m-*.md").scan({ cwd: filesystem.milestonesDir, followSymlinks: true }),
+		);
+		const milestoneFile = milestoneFiles.find((file) => file.startsWith(`${created.id} -`));
+		expect(milestoneFile).toBeDefined();
+		const rawContent = await Bun.file(join(filesystem.milestonesDir, milestoneFile as string)).text();
+		expect(rawContent).toContain("## Description");
+		expect(rawContent).toContain("Keep me token");
+	});
+
 	it("removes milestones via the Web API and clears or reassigns matching tasks", async () => {
 		const createMilestone = async (title: string): Promise<Milestone> => {
 			const response = await fetch(`http://127.0.0.1:${serverPort}/api/milestones`, {

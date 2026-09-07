@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
-import { storedUtcToDateTimeLocal, dateTimeLocalToStoredUtc, formatStoredUtcDateForDisplay, parseStoredUtcDate } from "../utils/date-display";
+import { formatStoredUtcDateForDisplay, parseStoredUtcDate } from "../utils/date-display";
 import { type Milestone, type MilestoneBucket, type Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import MilestoneTaskRow from "./MilestoneTaskRow";
+import MilestoneAddModal from "./MilestoneAddModal";
 import Modal from "./Modal";
 
 interface MilestoneSearchEntry {
@@ -80,10 +81,10 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 	onRefreshData,
 }) => {
 	const { t } = useI18n();
-	const [newMilestone, setNewMilestone] = useState("");
+	const navigate = useNavigate();
+	const location = useLocation();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
-	const [isSaving, setIsSaving] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [expandedBuckets, setExpandedBuckets] = useState<Record<string, boolean>>({});
 	const [draggedTask, setDraggedTask] = useState<Task | null>(null);
@@ -91,20 +92,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 	const [showAllUnassigned, setShowAllUnassigned] = useState(false);
 	const [showCompleted, setShowCompleted] = useState(false);
 	const [archivingMilestoneKey, setArchivingMilestoneKey] = useState<string | null>(null);
-	const [savingMilestoneKey, setSavingMilestoneKey] = useState<string | null>(null);
 	const [removingMilestoneKey, setRemovingMilestoneKey] = useState<string | null>(null);
-	const [editingBucket, setEditingBucket] = useState<MilestoneBucket | null>(null);
-	const [editMilestoneName, setEditMilestoneName] = useState("");
-	const [newMilestoneDueDate, setNewMilestoneDueDate] = useState("");
-	const [newMilestonePlannedStart, setNewMilestonePlannedStart] = useState("");
-	const [newMilestonePlannedEnd, setNewMilestonePlannedEnd] = useState("");
-	const [newMilestoneActualStart, setNewMilestoneActualStart] = useState("");
-	const [newMilestoneActualEnd, setNewMilestoneActualEnd] = useState("");
-	const [editMilestoneDueDate, setEditMilestoneDueDate] = useState("");
-	const [editMilestonePlannedStart, setEditMilestonePlannedStart] = useState("");
-	const [editMilestonePlannedEnd, setEditMilestonePlannedEnd] = useState("");
-	const [editMilestoneActualStart, setEditMilestoneActualStart] = useState("");
-	const [editMilestoneActualEnd, setEditMilestoneActualEnd] = useState("");
 	const [removingBucket, setRemovingBucket] = useState<MilestoneBucket | null>(null);
 	const [removeTaskHandling, setRemoveTaskHandling] = useState<RemoveTaskHandling>("clear");
 	const [removeReassignTo, setRemoveReassignTo] = useState("");
@@ -262,49 +250,12 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		setDraggedTask(null);
 	}, [draggedTask, onRefreshData]);
 
-	const handleNewMilestoneChange = (value: string) => {
-		setNewMilestone(value);
-		if (error) setError(null);
-		if (success) setSuccess(null);
-	};
-
-	const closeAddModal = () => {
-		setShowAddModal(false);
-		setNewMilestone("");
-		setNewMilestoneDueDate("");
-		setNewMilestonePlannedStart("");
-		setNewMilestonePlannedEnd("");
-		setNewMilestoneActualStart("");
-		setNewMilestoneActualEnd("");
-		setError(null);
-	};
-
-	const handleAddMilestone = async (event?: React.FormEvent<HTMLFormElement>) => {
-		event?.preventDefault();
-		const value = newMilestone.trim();
-		if (!value) {
-			setError(t.milestones.nameRequired);
-			setSuccess(null);
-			return;
+	const handleMilestoneCreated = async (title: string) => {
+		setSuccess(t.milestones.addSuccess(title));
+		if (onRefreshData) {
+			await onRefreshData();
 		}
-
-		setIsSaving(true);
-		setError(null);
-		setSuccess(null);
-		try {
-			await apiClient.createMilestone(value, undefined, newMilestoneDueDate, newMilestonePlannedStart, newMilestonePlannedEnd, newMilestoneActualStart, newMilestoneActualEnd);
-			closeAddModal();
-			setSuccess(t.milestones.addSuccess(value));
-			if (onRefreshData) {
-				await onRefreshData();
-			}
-			setTimeout(() => setSuccess(null), 3000);
-		} catch (err) {
-			console.error("Failed to add milestone:", err);
-			setError(err instanceof Error ? err.message : t.milestones.addError);
-		} finally {
-			setIsSaving(false);
-		}
+		setTimeout(() => setSuccess(null), 3000);
 	};
 
 	const handleArchiveMilestone = useCallback(
@@ -334,88 +285,6 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		},
 		[onRefreshData],
 	);
-
-	const findDuplicateMilestone = (title: string, currentMilestoneId?: string): Milestone | undefined => {
-		const titleKey = milestoneKey(title);
-		if (!titleKey) return undefined;
-		return milestoneEntities.find((milestone) => {
-			if (currentMilestoneId && milestoneKey(milestone.id) === milestoneKey(currentMilestoneId)) {
-				return false;
-			}
-			return milestoneKey(milestone.title) === titleKey || milestoneKey(milestone.id) === titleKey;
-		});
-	};
-
-	const openEditModal = (bucket: MilestoneBucket) => {
-		if (!bucket.milestone) return;
-		setEditingBucket(bucket);
-		setEditMilestoneName(bucket.label || bucket.milestone);
-		const entity = milestoneEntities.find((m) => m.id === bucket.milestone);
-		setEditMilestoneDueDate(entity?.dueDate || "");
-		setEditMilestonePlannedStart(entity?.plannedStart || "");
-		setEditMilestonePlannedEnd(entity?.plannedEnd || "");
-		setEditMilestoneActualStart(entity?.actualStart || "");
-		setEditMilestoneActualEnd(entity?.actualEnd || "");
-		setModalError(null);
-		setError(null);
-		setSuccess(null);
-	};
-
-	const closeEditModal = () => {
-		setEditingBucket(null);
-		setEditMilestoneName("");
-		setEditMilestoneDueDate("");
-		setEditMilestonePlannedStart("");
-		setEditMilestonePlannedEnd("");
-		setEditMilestoneActualStart("");
-		setEditMilestoneActualEnd("");
-		setModalError(null);
-	};
-
-	const handleEditMilestoneNameChange = (value: string) => {
-		setEditMilestoneName(value);
-		if (modalError) setModalError(null);
-		if (error) setError(null);
-		if (success) setSuccess(null);
-	};
-
-	const handleUpdateMilestone = async (event?: React.FormEvent<HTMLFormElement>) => {
-		event?.preventDefault();
-		const bucket = editingBucket;
-		if (!bucket?.milestone) return;
-
-		const value = editMilestoneName.trim();
-		if (!value) {
-			setModalError(t.milestones.nameRequired);
-			return;
-		}
-
-		const duplicate = findDuplicateMilestone(value, bucket.milestone);
-		if (duplicate) {
-			setModalError(t.milestones.duplicateError(duplicate.title));
-			return;
-		}
-
-		const previousLabel = bucket.label || bucket.milestone;
-		setSavingMilestoneKey(bucket.key);
-		setModalError(null);
-		setError(null);
-		setSuccess(null);
-		try {
-			await apiClient.updateMilestone(bucket.milestone, value, editMilestoneDueDate, editMilestonePlannedStart, editMilestonePlannedEnd, editMilestoneActualStart, editMilestoneActualEnd);
-			closeEditModal();
-			setSuccess(t.milestones.renameSuccess(previousLabel, value));
-			if (onRefreshData) {
-				await onRefreshData();
-			}
-			setTimeout(() => setSuccess(null), 3000);
-		} catch (err) {
-			console.error("Failed to update milestone:", err);
-			setModalError(err instanceof Error ? err.message : t.milestones.editError);
-		} finally {
-			setSavingMilestoneKey(null);
-		}
-	};
 
 	const openRemoveModal = (bucket: MilestoneBucket) => {
 		if (!bucket.milestone) return;
@@ -650,7 +519,6 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		const isDropTarget = dropTargetKey === bucket.key;
 		const isDragging = draggedTask !== null;
 		const isArchiving = archivingMilestoneKey === bucket.key;
-		const isSavingMilestone = savingMilestoneKey === bucket.key;
 		const isRemoving = removingMilestoneKey === bucket.key;
 
 		return (
@@ -671,7 +539,21 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					{/* Header row */}
 					<div className="flex items-center justify-between gap-4">
 						<h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-							{bucket.label}
+							{bucket.milestone ? (
+								<button
+									type="button"
+									onClick={() =>
+										navigate(`/milestone/${encodeURIComponent(bucket.milestone ?? "")}`, {
+											state: { backgroundLocation: location },
+										})
+									}
+									className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
+								>
+									{bucket.label}
+								</button>
+							) : (
+								bucket.label
+							)}
 						</h3>
 						{isEmpty ? (
 							<span className="text-sm text-gray-400 dark:text-gray-500">
@@ -760,19 +642,24 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							</Link>
 							<button
 								type="button"
-								onClick={() => openEditModal(bucket)}
-								disabled={isArchiving || isSavingMilestone || isRemoving}
+								onClick={() =>
+									navigate(`/milestone/${encodeURIComponent(bucket.milestone ?? "")}`, {
+										state: { backgroundLocation: location },
+									})
+								}
+								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60"
 							>
 								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
 								</svg>
-								{isSavingMilestone ? t.common.saving : t.common.edit}
+								{t.common.detail}
 							</button>
 							<button
 								type="button"
 								onClick={() => openRemoveModal(bucket)}
-								disabled={isArchiving || isSavingMilestone || isRemoving}
+								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60"
 							>
 								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -783,7 +670,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							<button
 								type="button"
 								onClick={() => handleArchiveMilestone(bucket)}
-								disabled={isArchiving || isSavingMilestone || isRemoving}
+								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-60"
 							>
 								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1081,167 +968,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			)}
 
 			{/* Add modal */}
-			<Modal isOpen={showAddModal} onClose={closeAddModal} title={t.milestones.addTitle} maxWidthClass="max-w-md">
-				<form onSubmit={handleAddMilestone} className="space-y-4">
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.milestones.nameLabel}</label>
-						<input
-							type="text"
-							value={newMilestone}
-							onChange={(e) => handleNewMilestoneChange(e.target.value)}
-							placeholder={t.milestones.namePlaceholder}
-							autoFocus
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-						{error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.dueDate}</label>
-						<input
-							type="date"
-							value={newMilestoneDueDate}
-							onChange={(e) => setNewMilestoneDueDate(e.target.value)}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.plannedStart}</label>
-						<input
-							type="date"
-							value={newMilestonePlannedStart}
-							onChange={(e) => setNewMilestonePlannedStart(e.target.value)}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.plannedEnd}</label>
-						<input
-							type="date"
-							value={newMilestonePlannedEnd}
-							onChange={(e) => setNewMilestonePlannedEnd(e.target.value)}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.actualStart}</label>
-						<input
-							type="datetime-local"
-							value={storedUtcToDateTimeLocal(newMilestoneActualStart)}
-							onChange={(e) => setNewMilestoneActualStart(dateTimeLocalToStoredUtc(e.target.value))}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.actualEnd}</label>
-						<input
-							type="datetime-local"
-							value={storedUtcToDateTimeLocal(newMilestoneActualEnd)}
-							onChange={(e) => setNewMilestoneActualEnd(dateTimeLocalToStoredUtc(e.target.value))}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="flex justify-end gap-2">
-						<button
-							type="button"
-							onClick={closeAddModal}
-							className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-						>
-							{t.common.cancel}
-						</button>
-						<button
-							type="submit"
-							disabled={isSaving || !newMilestone.trim()}
-							className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-60 transition-colors duration-200"
-						>
-							{isSaving ? t.common.saving : t.common.create}
-						</button>
-					</div>
-				</form>
-			</Modal>
-
-			{/* Edit modal */}
-			<Modal isOpen={editingBucket !== null} onClose={closeEditModal} title={t.milestones.editTitle} maxWidthClass="max-w-md">
-				<form onSubmit={handleUpdateMilestone} className="space-y-4">
-					<div className="space-y-2">
-						<label htmlFor="edit-milestone-name" className="text-sm font-medium text-gray-900 dark:text-gray-100">
-							{t.milestones.nameLabel}
-						</label>
-						<input
-							id="edit-milestone-name"
-							type="text"
-							value={editMilestoneName}
-							onInput={(event) => handleEditMilestoneNameChange((event.target as HTMLInputElement).value)}
-							autoFocus
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-						<p className="text-xs text-gray-500 dark:text-gray-400">
-							{t.milestones.renameHint}
-						</p>
-						{modalError && <p className="text-xs text-red-600 dark:text-red-400">{modalError}</p>}
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.dueDate}</label>
-						<input
-							type="date"
-							value={editMilestoneDueDate}
-							onChange={(e) => setEditMilestoneDueDate(e.target.value)}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.plannedStart}</label>
-						<input
-							type="date"
-							value={editMilestonePlannedStart}
-							onChange={(e) => setEditMilestonePlannedStart(e.target.value)}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.plannedEnd}</label>
-						<input
-							type="date"
-							value={editMilestonePlannedEnd}
-							onChange={(e) => setEditMilestonePlannedEnd(e.target.value)}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.actualStart}</label>
-						<input
-							type="datetime-local"
-							value={storedUtcToDateTimeLocal(editMilestoneActualStart)}
-							onChange={(e) => setEditMilestoneActualStart(dateTimeLocalToStoredUtc(e.target.value))}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.actualEnd}</label>
-						<input
-							type="datetime-local"
-							value={storedUtcToDateTimeLocal(editMilestoneActualEnd)}
-							onChange={(e) => setEditMilestoneActualEnd(dateTimeLocalToStoredUtc(e.target.value))}
-							className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]"
-						/>
-					</div>
-					<div className="flex justify-end gap-2">
-						<button
-							type="button"
-							onClick={closeEditModal}
-							className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-						>
-							{t.common.cancel}
-						</button>
-						<button
-							type="submit"
-							disabled={savingMilestoneKey !== null || !editMilestoneName.trim()}
-							className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-60 transition-colors duration-200"
-						>
-							{savingMilestoneKey ? t.common.saving : t.common.save}
-						</button>
-					</div>
-				</form>
-			</Modal>
+			{showAddModal && (
+				<MilestoneAddModal
+					isOpen={showAddModal}
+					onClose={() => setShowAddModal(false)}
+					onCreated={handleMilestoneCreated}
+				/>
+			)}
 
 			{/* Remove modal */}
 			<Modal isOpen={removingBucket !== null} onClose={closeRemoveModal} title={t.milestones.removeTitle} maxWidthClass="max-w-md">

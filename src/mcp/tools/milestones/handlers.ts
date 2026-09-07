@@ -481,8 +481,10 @@ export class MilestoneHandlers {
 		const renamedMilestone = renameResult.milestone;
 		const previousMilestones = new Map<string, string | undefined>();
 		if (shouldUpdateTasks) {
+			let currentTaskId: string | null = null;
 			try {
 				for (const task of matches) {
+					currentTaskId = task.id;
 					previousMilestones.set(task.id, task.milestone);
 					const updatedTask = await this.core.editTask(task.id, { milestone: targetMilestone }, false);
 					const taskFilePath = updatedTask.filePath ?? task.filePath;
@@ -492,7 +494,9 @@ export class MilestoneHandlers {
 					updatedTaskIds.push(task.id);
 				}
 				updatedTaskIds = updatedTaskIds.sort((a, b) => a.localeCompare(b));
-			} catch {
+			} catch (cascadeError) {
+				const failedTask = currentTaskId;
+				const failureReason = cascadeError instanceof Error ? cascadeError.message : String(cascadeError);
 				const rollbackTaskFailures = await this.rollbackTaskMilestones(previousMilestones);
 				const rollbackRenameResult = await this.core.updateMilestone(
 					sourceMilestone.id,
@@ -506,6 +510,9 @@ export class MilestoneHandlers {
 					undefined,
 				);
 				const rollbackDetails: string[] = [];
+				if (failedTask) {
+					rollbackDetails.push(`failed to update task ${failedTask}: ${failureReason}`);
+				}
 				if (!rollbackRenameResult.success) {
 					rollbackDetails.push("failed to rollback milestone file rename");
 				}

@@ -18,6 +18,7 @@ import {
   storedUtcToDateTimeLocal,
 } from "../utils/date-display";
 import { isTypingTarget } from "../utils/keyboard";
+import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { useI18n } from "../hooks/useI18n";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
@@ -817,19 +818,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
       payload.definitionOfDoneUncheck = unchecks;
     }
     return payload;
-  };
-
-  const extractTempImageUrls = (text: string): string[] => {
-    const matches = text.match(/\/assets\/\.temp\/[^)\s\\"']+/g);
-    return matches ? [...new Set(matches)] : [];
-  };
-
-  const replaceTempImageUrls = (text: string, mapping: Record<string, string>): string => {
-    let result = text;
-    for (const [oldUrl, newUrl] of Object.entries(mapping)) {
-      result = result.replaceAll(oldUrl, newUrl);
-    }
-    return result;
   };
 
   const handleSave = async () => {

@@ -637,13 +637,14 @@ export class ApiClient {
 		plannedEnd?: string,
 		actualStart?: string,
 		actualEnd?: string,
+		description?: string,
 	): Promise<{ success: boolean; milestone?: Milestone | null; message?: string }> {
 		const response = await fetch(`${API_BASE}/milestones/${encodeURIComponent(id)}`, {
 			method: "PUT",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ title, dueDate, plannedStart, plannedEnd, actualStart, actualEnd }),
+			body: JSON.stringify({ title, dueDate, plannedStart, plannedEnd, actualStart, actualEnd, description }),
 		});
 		if (!response.ok) {
 			const data = await response.json().catch(() => ({}));
