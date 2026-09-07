@@ -747,12 +747,19 @@ export async function viewTaskEnhanced(
 		noResultsMessage = null;
 		hideListEmptyState();
 
+		// Recreating the list drops blessed focus (the old listBox was the focused element),
+		// which leaves arrow keys dead until the user clicks or tabs. Remember whether the
+		// list had focus so the replacement list can reclaim it.
+		const listHadFocus = currentFocus === "list" && taskList !== null;
 		if (taskList) {
 			taskList.destroy();
 			taskList = null;
 		}
 		const listController = createTaskList();
 		taskList = listController;
+		if (listController && listHadFocus) {
+			listController.focus();
+		}
 		if (listController) {
 			const forceFirst = requireInitialFilterSelection;
 			let desiredIndex = filteredTasks.findIndex((t) => t.id === currentSelectedTask.id);

@@ -137,7 +137,10 @@ export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterf
 	};
 	const originalDestroy = screen.destroy.bind(screen);
 	let restoredWindowTitle = false;
+	let destroyedOnce = false;
 	screen.destroy = () => {
+		const firstDestroy = !destroyedOnce;
+		destroyedOnce = true;
 		// A title-managing screen saves the user's titles on open and must put them back
 		// on teardown. Clear first so terminals without a title stack fall back to their
 		// own default instead of keeping a stale view name, then pop so terminals that
@@ -154,15 +157,19 @@ export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterf
 		// stale handler then fires on the next screen (e.g. the down arrow after
 		// Tab-switching back to the board) and crashes ("Cannot switch a node's
 		// screen"). Drop every program input listener; the next screen re-binds.
-		const programEvents = (sharedProgram as unknown as { _events?: Record<string, unknown> })._events;
-		if (programEvents) {
-			for (const eventName of Object.keys(programEvents)) {
-				if (eventName.startsWith("key ") || eventName === "keypress") {
-					(sharedProgram as unknown as { removeAllListeners(event: string): void }).removeAllListeners(eventName);
+		// blessed can invoke destroy twice per screen; only the first call may strip,
+		// or a late second call would wipe the listeners a live screen just re-bound.
+		if (firstDestroy) {
+			const programEvents = (sharedProgram as unknown as { _events?: Record<string, unknown[]> })._events;
+			if (programEvents) {
+				for (const eventName of Object.keys(programEvents)) {
+					if (eventName.startsWith("key ") || eventName === "keypress") {
+						(sharedProgram as unknown as { removeAllListeners(event: string): void }).removeAllListeners(eventName);
+					}
 				}
 			}
+			boundKeys.clear();
 		}
-		boundKeys.clear();
 		// Skip Program.prototype.destroy so the shared program stays bound to stdin.
 		createProgram.prototype.destroy = () => {};
 		try {
