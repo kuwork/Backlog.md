@@ -1247,7 +1247,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                             handleInlineMetaUpdate({ references: newRefs });
                           }}
                           className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
-                          title={t.taskDetails.removeDocumentation}
+                          title={t.taskDetails.removeReference}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1258,7 +1258,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noReferences}</p>
               )}
               {!isFromOtherBranch && (
                 <form
@@ -1324,7 +1324,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                             handleInlineMetaUpdate({ documentation: newDocs });
                           }}
                           className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
-                          title={t.taskDetails.removeReference}
+                          title={t.taskDetails.removeDocumentation}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1335,7 +1335,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noReferences}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
               )}
               {!isFromOtherBranch && (
                 <form
