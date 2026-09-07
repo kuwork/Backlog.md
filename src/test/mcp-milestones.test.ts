@@ -271,6 +271,90 @@ describe("MCP milestone tools", () => {
 		expect(getText(duplicate.content)).toContain("Milestone alias conflict");
 	});
 
+	it("adds milestones with documentation", async () => {
+		const add = await server.testInterface.callTool({
+			params: {
+				name: "milestone_add",
+				arguments: { name: "Release 1.0", documentation: ["docs/one.md", "docs/two.md"] },
+			},
+		});
+		expect(getText(add.content)).toContain('Created milestone "Release 1.0"');
+
+		const milestones = await server.filesystem.listMilestones();
+		expect(milestones[0]?.documentation).toEqual(["docs/one.md", "docs/two.md"]);
+	});
+
+	it("edits milestone documentation with replace, add, remove, and clear", async () => {
+		await server.testInterface.callTool({
+			params: {
+				name: "milestone_add",
+				arguments: { name: "Release 1.0", documentation: ["docs/one.md", "docs/two.md"] },
+			},
+		});
+
+		const replace = await server.testInterface.callTool({
+			params: {
+				name: "milestone_edit",
+				arguments: { from: "Release 1.0", to: "Release 1.0", documentation: ["docs/new.md"] },
+			},
+		});
+		expect(getText(replace.content)).toContain("Renamed milestone");
+		expect((await server.filesystem.listMilestones())[0]?.documentation).toEqual(["docs/new.md"]);
+
+		const append = await server.testInterface.callTool({
+			params: {
+				name: "milestone_edit",
+				arguments: { from: "Release 1.0", to: "Release 1.0", addDocumentation: ["docs/new.md", "docs/extra.md"] },
+			},
+		});
+		expect(getText(append.content)).toContain("Renamed milestone");
+		expect((await server.filesystem.listMilestones())[0]?.documentation).toEqual(["docs/new.md", "docs/extra.md"]);
+
+		const remove = await server.testInterface.callTool({
+			params: {
+				name: "milestone_edit",
+				arguments: { from: "Release 1.0", to: "Release 1.0", removeDocumentation: ["docs/new.md"] },
+			},
+		});
+		expect(getText(remove.content)).toContain("Renamed milestone");
+		expect((await server.filesystem.listMilestones())[0]?.documentation).toEqual(["docs/extra.md"]);
+
+		const clear = await server.testInterface.callTool({
+			params: {
+				name: "milestone_edit",
+				arguments: { from: "Release 1.0", to: "Release 1.0", documentation: [] },
+			},
+		});
+		expect(getText(clear.content)).toContain("Renamed milestone");
+		expect((await server.filesystem.listMilestones())[0]?.documentation).toBeUndefined();
+	});
+
+	it("treats documentation no-op edits as successful without touching the milestone file", async () => {
+		await server.testInterface.callTool({
+			params: {
+				name: "milestone_add",
+				arguments: { name: "Release 1.0", documentation: ["docs/one.md"] },
+			},
+		});
+
+		const milestoneFiles = await Array.fromAsync(
+			new Bun.Glob("m-*.md").scan({ cwd: server.filesystem.milestonesDir, followSymlinks: true }),
+		);
+		const milestonePath = join(server.filesystem.milestonesDir, milestoneFiles[0] as string);
+		const contentBefore = await Bun.file(milestonePath).text();
+
+		const noOp = await server.testInterface.callTool({
+			params: {
+				name: "milestone_edit",
+				arguments: { from: "Release 1.0", to: "Release 1.0", addDocumentation: ["docs/one.md"] },
+			},
+		});
+		expect(getText(noOp.content)).toContain("No changes made");
+
+		const contentAfter = await Bun.file(milestonePath).text();
+		expect(contentAfter).toBe(contentBefore);
+	});
+
 	it("lists file-based and task-only milestones", async () => {
 		await server.testInterface.callTool({
 			params: { name: "milestone_add", arguments: { name: "Release 1.0" } },
@@ -479,7 +563,7 @@ describe("MCP milestone tools", () => {
 		}) as typeof server.filesystem.updateMilestone;
 
 		try {
-			await expect(server.updateMilestone("Release 1.0", "Release 2.0", true)).rejects.toThrow(
+			await expect(server.updateMilestone("Release 1.0", "Release 2.0", {}, true)).rejects.toThrow(
 				"simulated commit failure",
 			);
 			expect(renameCalls).toBe(2);

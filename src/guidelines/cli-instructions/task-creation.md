@@ -111,6 +111,8 @@ backlog task create "Bad task" --ref ""
 # Error: Cannot use an empty value with --ref. Omit the flag to leave references unset.
 ```
 
+After creation, manage the documentation list with `task edit`: `--doc` replaces the list, `--add-doc` appends unique values, `--remove-doc` removes entries by value, and `--clear-docs` empties it.
+
 Multi-line descriptions, plans, notes, and final summaries can use `\n` escape sequences inside the quoted string:
 
 ```bash

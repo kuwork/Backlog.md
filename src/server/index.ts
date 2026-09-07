@@ -1886,6 +1886,7 @@ export class BacklogServer {
 				plannedEnd?: string;
 				actualStart?: string;
 				actualEnd?: string;
+				documentation?: unknown[];
 			};
 			const title = body.title?.trim();
 
@@ -1930,15 +1931,17 @@ export class BacklogServer {
 				return Response.json({ error: "A milestone with this title or ID already exists" }, { status: 400 });
 			}
 
-			const milestone = await this.core.filesystem.createMilestone(
-				title,
-				body.description,
-				body.dueDate,
-				body.plannedStart,
-				body.plannedEnd,
-				body.actualStart,
-				body.actualEnd,
-			);
+			const milestone = await this.core.filesystem.createMilestone(title, {
+				description: body.description,
+				dueDate: body.dueDate,
+				plannedStart: body.plannedStart,
+				plannedEnd: body.plannedEnd,
+				actualStart: body.actualStart,
+				actualEnd: body.actualEnd,
+				documentation: Array.isArray(body.documentation)
+					? body.documentation.filter((doc): doc is string => typeof doc === "string")
+					: undefined,
+			});
 			return Response.json(milestone, { status: 201 });
 		} catch (error) {
 			console.error("Error creating milestone:", error);
@@ -1972,6 +1975,9 @@ export class BacklogServer {
 				description: typeof bodyJson.description === "string" ? bodyJson.description : undefined,
 				actualStart: typeof bodyJson.actualStart === "string" ? bodyJson.actualStart : undefined,
 				actualEnd: typeof bodyJson.actualEnd === "string" ? bodyJson.actualEnd : undefined,
+				documentation: Array.isArray(bodyJson.documentation)
+					? bodyJson.documentation.filter((doc): doc is string => typeof doc === "string")
+					: undefined,
 			});
 			this.broadcastTasksUpdated();
 			const updatedMilestone = await this.core.filesystem.loadMilestone(sourceMilestone.id);

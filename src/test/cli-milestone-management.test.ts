@@ -171,7 +171,11 @@ describe("CLI milestone management", () => {
 	it("clears milestone date fields when requested", async () => {
 		const core = new Core(TEST_DIR);
 
-		await core.filesystem.createMilestone("Release A", undefined, "2026-06-15", "2026-06-01", "2026-06-10");
+		await core.filesystem.createMilestone("Release A", {
+			dueDate: "2026-06-15",
+			plannedStart: "2026-06-01",
+			plannedEnd: "2026-06-10",
+		});
 
 		const edit =
 			await $`bun ${cliPath} milestone edit "Release A" --clear-due-date --clear-planned-start --clear-planned-end`
@@ -184,6 +188,101 @@ describe("CLI milestone management", () => {
 		expect(milestone?.dueDate).toBeUndefined();
 		expect(milestone?.plannedStart).toBeUndefined();
 		expect(milestone?.plannedEnd).toBeUndefined();
+	});
+
+	it("adds milestones with documentation via repeatable --doc", async () => {
+		const core = new Core(TEST_DIR);
+
+		const add = await $`bun ${cliPath} milestone add "Release A" --doc docs/one.md --doc docs/two.md,docs/three.md`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(add.exitCode).toBe(0);
+		expect(add.stdout.toString()).toContain('Created milestone "Release A" (m-0).');
+
+		const milestones = await core.filesystem.listMilestones();
+		expect(milestones[0]?.documentation).toEqual(["docs/one.md", "docs/two.md", "docs/three.md"]);
+	});
+
+	it("rejects empty --doc values when adding milestones", async () => {
+		const empty = await $`bun ${cliPath} milestone add "Release A" --doc ""`.cwd(TEST_DIR).quiet().nothrow();
+		const emptyOutput = empty.stdout.toString() + empty.stderr.toString();
+		expect(empty.exitCode).toBe(1);
+		expect(emptyOutput).toContain("Cannot use an empty value with --doc.");
+	});
+
+	it("edits milestone documentation with --doc, --add-doc, --remove-doc, and --clear-docs", async () => {
+		const core = new Core(TEST_DIR);
+
+		await $`bun ${cliPath} milestone add "Release A" --doc docs/one.md`.cwd(TEST_DIR).quiet();
+
+		const replace = await $`bun ${cliPath} milestone edit "Release A" --doc docs/new.md --doc docs/other.md`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(replace.exitCode).toBe(0);
+		expect((await core.filesystem.listMilestones())[0]?.documentation).toEqual(["docs/new.md", "docs/other.md"]);
+
+		const append = await $`bun ${cliPath} milestone edit "Release A" --add-doc docs/new.md --add-doc docs/extra.md`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(append.exitCode).toBe(0);
+		expect((await core.filesystem.listMilestones())[0]?.documentation).toEqual([
+			"docs/new.md",
+			"docs/other.md",
+			"docs/extra.md",
+		]);
+
+		const remove = await $`bun ${cliPath} milestone edit "Release A" --remove-doc docs/new.md`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(remove.exitCode).toBe(0);
+		expect((await core.filesystem.listMilestones())[0]?.documentation).toEqual(["docs/other.md", "docs/extra.md"]);
+
+		const clear = await $`bun ${cliPath} milestone edit "Release A" --clear-docs`.cwd(TEST_DIR).quiet().nothrow();
+		expect(clear.exitCode).toBe(0);
+		expect((await core.filesystem.listMilestones())[0]?.documentation).toBeUndefined();
+	});
+
+	it("rejects conflicting and empty documentation flags when editing milestones", async () => {
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+
+		const conflict = await $`bun ${cliPath} milestone edit "Release A" --doc docs/a.md --add-doc docs/b.md`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		const conflictOutput = conflict.stdout.toString() + conflict.stderr.toString();
+		expect(conflict.exitCode).toBe(1);
+		expect(conflictOutput).toContain("Cannot combine --doc with --add-doc.");
+
+		const withClear = await $`bun ${cliPath} milestone edit "Release A" --clear-docs --remove-doc docs/a.md`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		const withClearOutput = withClear.stdout.toString() + withClear.stderr.toString();
+		expect(withClear.exitCode).toBe(1);
+		expect(withClearOutput).toContain("Cannot combine --clear-docs with --remove-doc.");
+
+		const empty = await $`bun ${cliPath} milestone edit "Release A" --doc ""`.cwd(TEST_DIR).quiet().nothrow();
+		const emptyOutput = empty.stdout.toString() + empty.stderr.toString();
+		expect(empty.exitCode).toBe(1);
+		expect(emptyOutput).toContain("Cannot use an empty value with --doc.");
+	});
+
+	it("treats documentation no-op edits as successful without touching the milestone file", async () => {
+		await $`bun ${cliPath} milestone add "Release A" --doc docs/one.md`.cwd(TEST_DIR).quiet();
+
+		const milestoneFile = join(TEST_DIR, "backlog", "milestones", "m-0 - release-a.md");
+		const contentBefore = await Bun.file(milestoneFile).text();
+
+		const noOp = await $`bun ${cliPath} milestone edit "Release A" --add-doc docs/one.md`.cwd(TEST_DIR).quiet();
+		expect(noOp.exitCode).toBe(0);
+		expect(noOp.stdout.toString()).toContain("No changes made");
+
+		const contentAfter = await Bun.file(milestoneFile).text();
+		expect(contentAfter).toBe(contentBefore);
 	});
 
 	it("rejects edit targets that collide with another milestone alias", async () => {

@@ -174,6 +174,7 @@ export function serializeMilestone(milestone: Milestone): string {
 		...(milestone.plannedEnd && { planned_end: milestone.plannedEnd }),
 		...(milestone.actualStart && { actual_start: milestone.actualStart }),
 		...(milestone.actualEnd && { actual_end: milestone.actualEnd }),
+		...(milestone.documentation && milestone.documentation.length > 0 && { documentation: milestone.documentation }),
 	};
 
 	const content = milestone.rawContent?.trim() ? milestone.rawContent : `## Description\n\n${milestone.description}`;

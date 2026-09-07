@@ -218,6 +218,27 @@ export interface Milestone {
 	plannedEnd?: string;
 	actualStart?: string;
 	actualEnd?: string;
+	documentation?: string[];
+}
+
+export interface MilestoneCreateOptions {
+	description?: string;
+	dueDate?: string;
+	plannedStart?: string;
+	plannedEnd?: string;
+	actualStart?: string;
+	actualEnd?: string;
+	documentation?: string[];
+}
+
+export interface MilestoneUpdateOptions {
+	dueDate?: string;
+	plannedStart?: string;
+	plannedEnd?: string;
+	description?: string;
+	actualStart?: string;
+	actualEnd?: string;
+	documentation?: string[];
 }
 
 export const DOCUMENT_TYPE_VALUES = ["readme", "guide", "specification", "other"] as const;

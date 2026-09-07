@@ -248,6 +248,11 @@ export function parseMilestone(content: string): Milestone {
 		plannedEnd: frontmatter.planned_end ? normalizeDate(frontmatter.planned_end) : undefined,
 		actualStart: frontmatter.actual_start ? normalizeDate(frontmatter.actual_start) : undefined,
 		actualEnd: frontmatter.actual_end ? normalizeDate(frontmatter.actual_end) : undefined,
+		documentation: Array.isArray(frontmatter.documentation)
+			? frontmatter.documentation.map(String)
+			: frontmatter.documentation
+				? [String(frontmatter.documentation)]
+				: undefined,
 	};
 }
 

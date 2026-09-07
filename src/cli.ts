@@ -547,6 +547,47 @@ function validateTaskListFlags(options: Record<string, unknown>, supportsClearFl
 	);
 }
 
+/**
+ * Validate the documentation list flags shared by milestone create and milestone edit.
+ * Mirrors the task --doc/--add-doc/--remove-doc rules; milestone edit also offers --clear-docs
+ * for clearing an existing list, so errors point users to that flag.
+ */
+function validateMilestoneDocFlags(options: Record<string, unknown>, supportsClearFlags: boolean): string | undefined {
+	const clearFlag = (flag: string) => (supportsClearFlags ? flag : undefined);
+	if (options.doc !== undefined && options.addDoc !== undefined) {
+		return "Cannot combine --doc with --add-doc. Use --doc to replace the documentation list or --add-doc to append.";
+	}
+	return (
+		validateClearableListInput({
+			rawValues: toStringArray(options.doc),
+			cleared: Boolean(options.clearDocs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--doc",
+			clearFlag: clearFlag("--clear-docs"),
+			subject: "documentation",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.addDoc),
+			cleared: Boolean(options.clearDocs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--add-doc",
+			clearFlag: clearFlag("--clear-docs"),
+			subject: "documentation",
+			emptyClears: false,
+		}) ??
+		validateClearableListInput({
+			rawValues: toStringArray(options.removeDoc),
+			cleared: Boolean(options.clearDocs),
+			isBlank: (value) => parseDelimitedStringList(value) === undefined,
+			setterFlags: "--remove-doc",
+			clearFlag: clearFlag("--clear-docs"),
+			subject: "documentation",
+			emptyClears: false,
+		})
+	);
+}
+
 function processCliEscapes(input: string): string {
 	// On Windows, simulate bash double-quote escape layer first
 	let processed = input;
@@ -3922,6 +3963,26 @@ addHelpSchema(milestoneCmd.command("edit <name>"), {
 			description:
 				"Update local task milestone references when the title changes; default true, disable with --no-update-tasks",
 		},
+		{
+			name: "doc",
+			type: "String",
+			description: "Set documentation; repeatable and comma-separated; mutually exclusive with --add-doc",
+		},
+		{
+			name: "add-doc",
+			type: "String",
+			description: "Add documentation; repeatable and comma-separated; mutually exclusive with --doc",
+		},
+		{
+			name: "clear-docs",
+			type: "Boolean",
+			description: "Remove all documentation; cannot combine with --doc, --add-doc, or --remove-doc",
+		},
+		{
+			name: "remove-doc",
+			type: "String",
+			description: "Remove documentation by value; repeatable and comma-separated",
+		},
 	],
 	writes:
 		"Updates the milestone file and, when the title changes and updateTasks is true, updates matching local task milestone values",
@@ -3942,6 +4003,24 @@ addHelpSchema(milestoneCmd.command("edit <name>"), {
 	.option("--clear-due-date", "clear due date")
 	.option("--clear-planned-start", "clear planned start date")
 	.option("--clear-planned-end", "clear planned end date")
+	.option("--clear-docs", "remove all documentation (cannot combine with --doc, --add-doc, or --remove-doc)")
+	.option(
+		"--doc <documentation>",
+		"set documentation (can be used multiple times); use --clear-docs to remove it",
+		(value, previous) => {
+			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+			return [...soFar, value];
+		},
+	)
+	.option("--add-doc <documentation>", "add documentation (can be used multiple times)", (value, previous) => {
+		const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+		return [...soFar, value];
+	})
+	.option(
+		"--remove-doc <documentation>",
+		"remove documentation by value (can be used multiple times); comma-separated values are supported",
+		createMultiValueAccumulator(),
+	)
 	.option("--no-update-tasks", "do not update local tasks that reference the milestone")
 	.action(
 		async (
@@ -3955,9 +4034,22 @@ addHelpSchema(milestoneCmd.command("edit <name>"), {
 				clearDueDate?: boolean;
 				clearPlannedStart?: boolean;
 				clearPlannedEnd?: boolean;
+				clearDocs?: boolean;
+				doc?: string[];
+				addDoc?: string[];
+				removeDoc?: string[];
 				updateTasks?: boolean;
 			},
 		) => {
+			const docFlagError = validateMilestoneDocFlags(options, true);
+			if (docFlagError) {
+				console.error(docFlagError);
+				process.exitCode = 1;
+				return;
+			}
+			const normalizedDocumentation = parseClearableStringList(options.doc);
+			const addDocumentationValues = parseClearableStringList(options.addDoc);
+			const removeDocumentationValues = parseDelimitedStringList(options.removeDoc) ?? [];
 			await runMilestoneMutation((handlers) =>
 				handlers.editMilestone({
 					from: name,
@@ -3967,6 +4059,9 @@ addHelpSchema(milestoneCmd.command("edit <name>"), {
 					dueDate: options.clearDueDate ? "" : options.dueDate,
 					plannedStart: options.clearPlannedStart ? "" : options.plannedStart,
 					plannedEnd: options.clearPlannedEnd ? "" : options.plannedEnd,
+					documentation: normalizedDocumentation ?? (options.clearDocs ? [] : undefined),
+					addDocumentation: addDocumentationValues,
+					removeDocumentation: removeDocumentationValues.length > 0 ? removeDocumentationValues : undefined,
 				}),
 			);
 		},
@@ -3975,15 +4070,42 @@ addHelpSchema(milestoneCmd.command("edit <name>"), {
 addHelpSchema(milestoneCmd.command("add <name>"), {
 	reads: "Active milestone files for duplicate and alias validation",
 	required: [{ name: "name", type: "String", description: "Milestone name/title, trimmed before storage" }],
-	optional: [{ name: "description", type: "Markdown", description: "Optional milestone description" }],
+	optional: [
+		{ name: "description", type: "Markdown", description: "Optional milestone description" },
+		{
+			name: "doc",
+			type: "String",
+			description: "Add documentation URL or file path; repeatable and comma-separated",
+		},
+	],
 	writes: "Creates a milestone markdown file in the active milestones directory",
 	output: "Created milestone title and ID",
 	examples: ['backlog milestone add "Release 1.0"', 'backlog milestone add "Beta" --description "Beta scope"'],
 })
 	.description("add a milestone file")
 	.option("-d, --description <text>", "milestone description")
-	.action(async (name: string, options: { description?: string }) => {
-		await runMilestoneMutation((handlers) => handlers.addMilestone({ name, description: options.description }));
+	.option(
+		"--doc <documentation>",
+		"add documentation URL or file path (can be used multiple times)",
+		(value, previous) => {
+			const soFar = Array.isArray(previous) ? previous : previous ? [previous] : [];
+			return [...soFar, value];
+		},
+	)
+	.action(async (name: string, options: { description?: string; doc?: string[] }) => {
+		const docFlagError = validateMilestoneDocFlags(options, false);
+		if (docFlagError) {
+			console.error(docFlagError);
+			process.exitCode = 1;
+			return;
+		}
+		await runMilestoneMutation((handlers) =>
+			handlers.addMilestone({
+				name,
+				description: options.description,
+				documentation: parseDelimitedStringList(options.doc),
+			}),
+		);
 	});
 
 addHelpSchema(milestoneCmd.command("remove <name>"), {

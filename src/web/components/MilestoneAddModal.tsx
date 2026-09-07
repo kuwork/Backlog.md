@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
+import { PathAutocomplete } from "./PathAutocomplete";
 import { apiClient } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
@@ -16,6 +17,12 @@ interface Props {
 const inputClass =
 	"w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:[color-scheme:dark]";
 
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+	<h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight transition-colors duration-200">
+		{title}
+	</h3>
+);
+
 const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 	const { t } = useI18n();
 	const { theme } = useTheme();
@@ -26,6 +33,7 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 	const [plannedEnd, setPlannedEnd] = useState("");
 	const [actualStart, setActualStart] = useState("");
 	const [actualEnd, setActualEnd] = useState("");
+	const [documentation, setDocumentation] = useState<string[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -53,6 +61,7 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 				plannedEnd,
 				actualStart,
 				actualEnd,
+				documentation,
 			);
 			await onCreated(value);
 			onClose();
@@ -125,6 +134,68 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 								height={260}
 								data-color-mode={theme}
 							/>
+						</div>
+					</div>
+					<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+						<SectionHeader title={t.taskDetails.section.documentation} />
+						<div className="space-y-3">
+							{documentation.length > 0 ? (
+								<ul className="space-y-2">
+									{documentation.map((doc, idx) => (
+										<li key={idx} className="flex items-center gap-3 group">
+											<span className="flex-1 min-w-0">
+												{doc.startsWith("http://") || doc.startsWith("https://") ? (
+													<a
+														href={doc}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+													>
+														{doc}
+													</a>
+												) : (
+													<span className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all">
+														{doc}
+													</span>
+												)}
+											</span>
+											<button
+												type="button"
+												onClick={() => setDocumentation(documentation.filter((_, i) => i !== idx))}
+												className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+												title={t.taskDetails.removeDocumentation}
+											>
+												<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+												</svg>
+											</button>
+										</li>
+									))}
+								</ul>
+							) : (
+								<p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
+							)}
+							<div className="flex gap-2">
+								<PathAutocomplete
+									name="newDoc"
+									placeholder={t.taskDetails.placeholderRefDoc}
+									className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+								/>
+								<button
+									type="button"
+									onClick={(e) => {
+										const input = (e.currentTarget.parentElement?.querySelector("input[name='newDoc']") as HTMLInputElement | null);
+										const value = input?.value.trim() ?? "";
+										if (value && !documentation.includes(value)) {
+											setDocumentation([...documentation, value]);
+											if (input) input.value = "";
+										}
+									}}
+									className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+								>
+									{t.common.add}
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

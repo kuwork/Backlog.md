@@ -17,6 +17,7 @@ import {
 	EntityType,
 	isLocalEditableTask,
 	type Milestone,
+	type MilestoneUpdateOptions,
 	type SearchFilters,
 	type Sequence,
 	type Task,
@@ -1626,32 +1627,14 @@ export class Core {
 				if (milestone) {
 					const taskMilestoneKey = milestoneKey(taskMilestone);
 					if (isInProgressStatus(newStatus) && !isInProgressStatus(oldStatus) && !milestone.actualStart) {
-						await this.fs.updateMilestone(
-							milestone.id,
-							milestone.title,
-							undefined,
-							undefined,
-							undefined,
-							undefined,
-							now,
-							undefined,
-						);
+						await this.fs.updateMilestone(milestone.id, milestone.title, { actualStart: now });
 					}
 					if (isTerminalStatus(newStatus, statuses) && !isTerminalStatus(oldStatus, statuses) && !milestone.actualEnd) {
 						const allTasks = await this.fs.listTasks();
 						const milestoneTasks = allTasks.filter((t) => milestoneKey(t.milestone) === taskMilestoneKey);
 						const allTerminal = milestoneTasks.every((t) => isTerminalStatus(t.status, statuses));
 						if (allTerminal) {
-							await this.fs.updateMilestone(
-								milestone.id,
-								milestone.title,
-								undefined,
-								undefined,
-								undefined,
-								undefined,
-								undefined,
-								now,
-							);
+							await this.fs.updateMilestone(milestone.id, milestone.title, { actualEnd: now });
 						}
 					}
 				}
@@ -2819,13 +2802,8 @@ export class Core {
 	async updateMilestone(
 		identifier: string,
 		title: string,
+		options: MilestoneUpdateOptions = {},
 		autoCommit?: boolean,
-		dueDate?: string,
-		plannedStart?: string,
-		plannedEnd?: string,
-		description?: string,
-		actualStart?: string,
-		actualEnd?: string,
 	): Promise<{
 		success: boolean;
 		sourcePath?: string;
@@ -2833,16 +2811,7 @@ export class Core {
 		milestone?: Milestone;
 		previousTitle?: string;
 	}> {
-		const result = await this.fs.updateMilestone(
-			identifier,
-			title,
-			dueDate,
-			plannedStart,
-			plannedEnd,
-			description,
-			actualStart,
-			actualEnd,
-		);
+		const result = await this.fs.updateMilestone(identifier, title, options);
 		if (!result.success) {
 			return result;
 		}
@@ -2857,7 +2826,7 @@ export class Core {
 				await this.git.resetPaths(commitPaths, repoRoot);
 				const rollbackTitle = result.previousTitle ?? title;
 				try {
-					await this.fs.updateMilestone(result.milestone?.id ?? identifier, rollbackTitle);
+					await this.fs.updateMilestone(result.milestone?.id ?? identifier, rollbackTitle, {});
 				} catch {
 					// Ignore rollback failure and propagate original commit error.
 				}

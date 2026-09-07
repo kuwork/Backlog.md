@@ -29,6 +29,14 @@ export const milestoneAddSchema: JsonSchema = {
 			type: "string",
 			description: "Actual end date-time (YYYY-MM-DD HH:MM). Pass empty string to clear.",
 		},
+		documentation: {
+			type: "array",
+			items: {
+				type: "string",
+				maxLength: 500,
+			},
+			description: "Documentation URLs or file paths for understanding this milestone",
+		},
 	},
 	required: ["name"],
 	additionalProperties: false,
@@ -79,6 +87,30 @@ export const milestoneEditSchema: JsonSchema = {
 		actualEnd: {
 			type: "string",
 			description: "Actual end date-time (YYYY-MM-DD HH:MM). Pass empty string to clear.",
+		},
+		documentation: {
+			type: "array",
+			items: {
+				type: "string",
+				maxLength: 500,
+			},
+			description: "Set documentation URLs or file paths (replaces existing)",
+		},
+		addDocumentation: {
+			type: "array",
+			items: {
+				type: "string",
+				maxLength: 500,
+			},
+			description: "Add documentation URLs or file paths",
+		},
+		removeDocumentation: {
+			type: "array",
+			items: {
+				type: "string",
+				maxLength: 500,
+			},
+			description: "Remove documentation URLs or file paths",
 		},
 	},
 	required: ["from", "to"],

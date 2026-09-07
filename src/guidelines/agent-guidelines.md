@@ -898,6 +898,12 @@ backlog milestone edit "Release 2.0" --due-date 2026-06-15
 backlog milestone edit "Release 2.0" --planned-start 2026-06-01 --planned-end 2026-06-10
 backlog milestone edit "Release 2.0" --clear-due-date --clear-planned-start --clear-planned-end
 
+# Link documentation to a milestone (repeatable, comma-separated values allowed)
+backlog milestone add "Release 2.0" --doc docs/spec.md --doc https://example.com/spec
+backlog milestone edit "Release 2.0" --add-doc docs/api.md
+backlog milestone edit "Release 2.0" --remove-doc docs/spec.md
+backlog milestone edit "Release 2.0" --clear-docs
+
 # List active milestones (shows completion ratio and created/updated dates)
 backlog milestone list
 
@@ -941,8 +947,8 @@ backlog board --milestones
 
 #### MCP / API Usage
 
-- Use `milestone_add` to create milestones with title and optional description, actualStart, and actualEnd.
-- Use `milestone_edit` to rename a milestone and optionally update its date fields, including actualStart and actualEnd.
+- Use `milestone_add` to create milestones with title and optional description, actualStart, actualEnd, and documentation.
+- Use `milestone_edit` to rename a milestone and optionally update its date fields, description, and documentation (`documentation` replaces, `addDocumentation` appends unique, `removeDocumentation` removes by value, `documentation: []` clears).
 - Use `milestone_archive` to archive a milestone.
 - Use `milestone_list` to list active and archived milestones (output includes created/updated dates for each milestone).
 

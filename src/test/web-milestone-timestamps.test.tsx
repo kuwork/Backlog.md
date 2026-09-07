@@ -8,8 +8,10 @@ import MilestonesPage from "../web/components/MilestonesPage.tsx";
 import MilestoneDetailsModal from "../web/components/MilestoneDetailsModal.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
+import { apiClient } from "../web/lib/api.ts";
 
 let activeRoot: Root | null = null;
+const originalUpdateMilestone = apiClient.updateMilestone.bind(apiClient);
 
 const createMilestone = (overrides: Partial<Milestone>): Milestone => ({
 	id: "m-1",
@@ -116,6 +118,7 @@ afterEach(() => {
 		});
 		activeRoot = null;
 	}
+	apiClient.updateMilestone = originalUpdateMilestone;
 });
 
 describe("Web milestone timestamps", () => {
@@ -179,6 +182,107 @@ describe("Web milestone timestamps", () => {
 			const text = container.textContent ?? "";
 			expect(text).not.toContain("Created");
 			expect(text).not.toContain("Updated");
+		});
+	});
+
+	describe("milestone details modal documentation", () => {
+		it("renders documentation entries in view mode", () => {
+			const milestone = createMilestone({
+				documentation: ["README.md", "https://docs.example.com/spec"],
+			});
+			const container = renderDetailsModal(milestone);
+			const text = container.textContent ?? "";
+			expect(text).toContain("Documentation");
+			expect(text).toContain("README.md");
+			expect(text).toContain("https://docs.example.com/spec");
+		});
+
+		it("shows an empty documentation placeholder when none exist", () => {
+			const container = renderDetailsModal(createMilestone({}));
+			expect(container.textContent).toContain("No documents");
+		});
+
+		it("adds a documentation entry from edit mode through the API", async () => {
+			let updateArgs: Parameters<typeof apiClient.updateMilestone> | undefined;
+			apiClient.updateMilestone = async (...args) => {
+				updateArgs = args;
+				return { success: true };
+			};
+
+			const milestone = createMilestone({ documentation: ["README.md"] });
+			const container = renderDetailsModal(milestone);
+
+			const editButton = Array.from(container.querySelectorAll("button")).find(
+				(button) => button.textContent?.trim() === "Edit",
+			);
+			expect(editButton).toBeTruthy();
+			act(() => {
+				editButton?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+			});
+
+			const input = container.querySelector("input[name='newDoc']") as HTMLInputElement | null;
+			expect(input).toBeTruthy();
+			const form = (input as HTMLInputElement).closest("form") as HTMLFormElement;
+			(input as HTMLInputElement).value = "docs/guide.md";
+			await act(async () => {
+				form.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+				await Promise.resolve();
+			});
+
+			expect(updateArgs).toBeTruthy();
+			expect(updateArgs?.[0]).toBe("m-1");
+			expect(updateArgs?.[8]).toEqual(["README.md", "docs/guide.md"]);
+		});
+
+		it("removes a documentation entry in view mode through the API", async () => {
+			let updateArgs: Parameters<typeof apiClient.updateMilestone> | undefined;
+			apiClient.updateMilestone = async (...args) => {
+				updateArgs = args;
+				return { success: true };
+			};
+
+			const milestone = createMilestone({
+				documentation: ["README.md", "docs/guide.md"],
+			});
+			const container = renderDetailsModal(milestone);
+
+			const docRow = Array.from(container.querySelectorAll("li.group")).find((li) =>
+				li.textContent?.includes("docs/guide.md"),
+			);
+			expect(docRow).toBeTruthy();
+			const removeButton = docRow?.querySelector("button");
+			expect(removeButton).toBeTruthy();
+			await act(async () => {
+				removeButton?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+				await Promise.resolve();
+			});
+
+			expect(updateArgs).toBeTruthy();
+			expect(updateArgs?.[8]).toEqual(["README.md"]);
+		});
+
+		it("adds a documentation entry in view mode through the API", async () => {
+			let updateArgs: Parameters<typeof apiClient.updateMilestone> | undefined;
+			apiClient.updateMilestone = async (...args) => {
+				updateArgs = args;
+				return { success: true };
+			};
+
+			const milestone = createMilestone({ documentation: ["README.md"] });
+			const container = renderDetailsModal(milestone);
+
+			const input = container.querySelector("input[name='newDoc']") as HTMLInputElement | null;
+			expect(input).toBeTruthy();
+			const form = (input as HTMLInputElement).closest("form") as HTMLFormElement;
+			(input as HTMLInputElement).value = "docs/guide.md";
+			await act(async () => {
+				form.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+				await Promise.resolve();
+			});
+
+			expect(updateArgs).toBeTruthy();
+			expect(updateArgs?.[0]).toBe("m-1");
+			expect(updateArgs?.[8]).toEqual(["README.md", "docs/guide.md"]);
 		});
 	});
 });

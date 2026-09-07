@@ -4,6 +4,7 @@ import { type Milestone, type Task } from "../../types";
 import Modal from "./Modal";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import MermaidMarkdown from "./MermaidMarkdown";
+import { PathAutocomplete } from "./PathAutocomplete";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { apiClient } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
@@ -79,6 +80,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [documentation, setDocumentation] = useState<string[]>([]);
 	const [dueDate, setDueDate] = useState("");
 	const [plannedStart, setPlannedStart] = useState("");
 	const [plannedEnd, setPlannedEnd] = useState("");
@@ -116,6 +118,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	useEffect(() => {
 		setName(activeMilestone?.title || "");
 		setDescription(activeMilestone?.description || "");
+		setDocumentation(activeMilestone?.documentation ?? []);
 		setDueDate(activeMilestone?.dueDate || "");
 		setPlannedStart(activeMilestone?.plannedStart || "");
 		setPlannedEnd(activeMilestone?.plannedEnd || "");
@@ -141,6 +144,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		() => ({
 			name: activeMilestone?.title || "",
 			description: activeMilestone?.description || "",
+			documentation: activeMilestone?.documentation ?? [],
 			dueDate: activeMilestone?.dueDate || "",
 			plannedStart: activeMilestone?.plannedStart || "",
 			plannedEnd: activeMilestone?.plannedEnd || "",
@@ -156,6 +160,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		if (isDirty && !window.confirm(t.taskDetails.unsavedChangesPrompt)) return;
 		setName(baseline.name);
 		setDescription(baseline.description);
+		setDocumentation(baseline.documentation);
 		setDueDate(baseline.dueDate);
 		setPlannedStart(baseline.plannedStart);
 		setPlannedEnd(baseline.plannedEnd);
@@ -190,6 +195,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		plannedEnd?: string;
 		actualStart?: string;
 		actualEnd?: string;
+		documentation?: string[];
 	}) => {
 		if (!activeMilestone) return;
 		const nextName = updates.name ?? name;
@@ -208,6 +214,8 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				updates.plannedEnd ?? plannedEnd,
 				updates.actualStart ?? actualStart,
 				updates.actualEnd ?? actualEnd,
+				undefined,
+				updates.documentation ?? documentation,
 			);
 			setFetchedMilestone(null);
 			if (onRefreshData) await onRefreshData();
@@ -244,6 +252,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				actualStart.trim(),
 				actualEnd.trim(),
 				saveDescription,
+				documentation,
 			);
 			setMode("preview");
 			setFetchedMilestone(null);
@@ -356,6 +365,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		activeMilestone,
 		name,
 		description,
+		documentation,
 		dueDate,
 		plannedStart,
 		plannedEnd,
@@ -636,6 +646,79 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										/>
 									</div>
 								)}
+							</div>
+
+							{/* Documentation */}
+							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<SectionHeader title={t.taskDetails.section.documentation} />
+								<div className="space-y-3">
+									{documentation.length > 0 ? (
+										<ul className="space-y-2">
+											{documentation.map((doc, idx) => (
+												<li key={idx} className="flex items-center gap-3 group">
+													<span className="flex-1 min-w-0">
+														{doc.startsWith("http://") || doc.startsWith("https://") ? (
+															<a
+																href={doc}
+																target="_blank"
+																rel="noopener noreferrer"
+																className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+															>
+																{doc}
+															</a>
+														) : (
+															<span className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all">
+																{doc}
+															</span>
+														)}
+													</span>
+													<button
+														type="button"
+														onClick={() => {
+															const newDocs = documentation.filter((_, i) => i !== idx);
+															setDocumentation(newDocs);
+															void saveMeta({ documentation: newDocs });
+														}}
+														className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+														title={t.taskDetails.removeDocumentation}
+													>
+														<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+														</svg>
+													</button>
+												</li>
+											))}
+										</ul>
+									) : (
+										<p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
+									)}
+									<form
+										onSubmit={(e) => {
+												e.preventDefault();
+												const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
+												const value = input.value.trim();
+												if (value && !documentation.includes(value)) {
+													const newDocs = [...documentation, value];
+													setDocumentation(newDocs);
+													void saveMeta({ documentation: newDocs });
+													input.value = "";
+												}
+											}}
+											className="flex gap-2"
+										>
+											<PathAutocomplete
+												name="newDoc"
+												placeholder={t.taskDetails.placeholderRefDoc}
+												className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+											/>
+											<button
+												type="submit"
+												className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+											>
+												{t.common.add}
+											</button>
+										</form>
+								</div>
 							</div>
 						</div>
 

@@ -11,6 +11,8 @@ import type {
 	DocsTreeNode,
 	Document,
 	Milestone,
+	MilestoneCreateOptions,
+	MilestoneUpdateOptions,
 	Task,
 	TaskListFilter,
 	WikiPage,
@@ -1409,15 +1411,7 @@ export class FileSystem {
 		}
 	}
 
-	async createMilestone(
-		title: string,
-		description?: string,
-		dueDate?: string,
-		plannedStart?: string,
-		plannedEnd?: string,
-		actualStart?: string,
-		actualEnd?: string,
-	): Promise<Milestone> {
+	async createMilestone(title: string, options: MilestoneCreateOptions = {}): Promise<Milestone> {
 		return await this.withCreateLock(async () => {
 			const milestonesDir = await this.getMilestonesDir();
 
@@ -1467,14 +1461,15 @@ export class FileSystem {
 			const content = this.serializeMilestoneContent({
 				id,
 				title,
-				description: description || `Milestone: ${title}`,
-				rawContent: `## Description\n\n${description || `Milestone: ${title}`}`,
+				description: options.description || `Milestone: ${title}`,
+				rawContent: `## Description\n\n${options.description || `Milestone: ${title}`}`,
 				createdDate,
-				...(dueDate !== undefined && { dueDate: dueDate.trim() || undefined }),
-				...(plannedStart !== undefined && { plannedStart: plannedStart.trim() || undefined }),
-				...(plannedEnd !== undefined && { plannedEnd: plannedEnd.trim() || undefined }),
-				...(actualStart !== undefined && { actualStart: actualStart.trim() || undefined }),
-				...(actualEnd !== undefined && { actualEnd: actualEnd.trim() || undefined }),
+				...(options.dueDate !== undefined && { dueDate: options.dueDate.trim() || undefined }),
+				...(options.plannedStart !== undefined && { plannedStart: options.plannedStart.trim() || undefined }),
+				...(options.plannedEnd !== undefined && { plannedEnd: options.plannedEnd.trim() || undefined }),
+				...(options.actualStart !== undefined && { actualStart: options.actualStart.trim() || undefined }),
+				...(options.actualEnd !== undefined && { actualEnd: options.actualEnd.trim() || undefined }),
+				...(options.documentation !== undefined && { documentation: options.documentation }),
 			});
 
 			const filepath = join(milestonesDir, filename);
@@ -1487,12 +1482,7 @@ export class FileSystem {
 	async updateMilestone(
 		identifier: string,
 		title: string,
-		dueDate?: string,
-		plannedStart?: string,
-		plannedEnd?: string,
-		description?: string,
-		actualStart?: string,
-		actualEnd?: string,
+		options: MilestoneUpdateOptions = {},
 	): Promise<{
 		success: boolean;
 		sourcePath?: string;
@@ -1527,10 +1517,10 @@ export class FileSystem {
 				milestone.title,
 				normalizedTitle,
 			);
-			if (description !== undefined) {
+			if (options.description !== undefined) {
 				nextRawContent = nextRawContent.replace(
 					/##\s+Description\s*(?:\r?\n)+([\s\S]*?)(?=\n##\s+|$)/i,
-					`## Description\n\n${description}`,
+					`## Description\n\n${options.description}`,
 				);
 			}
 			const nextMilestone: Milestone = {
@@ -1538,11 +1528,12 @@ export class FileSystem {
 				title: normalizedTitle,
 				description: parseMilestone(nextRawContent).description,
 				rawContent: nextRawContent,
-				...(dueDate !== undefined && { dueDate: dueDate.trim() || undefined }),
-				...(plannedStart !== undefined && { plannedStart: plannedStart.trim() || undefined }),
-				...(plannedEnd !== undefined && { plannedEnd: plannedEnd.trim() || undefined }),
-				...(actualStart !== undefined && { actualStart: actualStart.trim() || undefined }),
-				...(actualEnd !== undefined && { actualEnd: actualEnd.trim() || undefined }),
+				...(options.dueDate !== undefined && { dueDate: options.dueDate.trim() || undefined }),
+				...(options.plannedStart !== undefined && { plannedStart: options.plannedStart.trim() || undefined }),
+				...(options.plannedEnd !== undefined && { plannedEnd: options.plannedEnd.trim() || undefined }),
+				...(options.actualStart !== undefined && { actualStart: options.actualStart.trim() || undefined }),
+				...(options.actualEnd !== undefined && { actualEnd: options.actualEnd.trim() || undefined }),
+				...(options.documentation !== undefined && { documentation: options.documentation }),
 			};
 			// Stamp updated_date only on substantive changes (mirrors task BACK-534 logic);
 			// the spread above already carries the original updatedDate through.

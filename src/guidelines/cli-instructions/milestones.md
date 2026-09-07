@@ -20,6 +20,12 @@ backlog milestone edit "Release 2.0" --due-date 2026-06-15
 backlog milestone edit "Release 2.0" --planned-start 2026-06-01 --planned-end 2026-06-10
 backlog milestone edit "Release 2.0" --clear-due-date --clear-planned-start --clear-planned-end
 
+# Link documentation to a milestone (repeatable, comma-separated values allowed)
+backlog milestone add "Release 2.0" --doc docs/spec.md --doc https://example.com/spec
+backlog milestone edit "Release 2.0" --add-doc docs/api.md
+backlog milestone edit "Release 2.0" --remove-doc docs/spec.md
+backlog milestone edit "Release 2.0" --clear-docs
+
 # List active milestones (shows completion ratio and created/updated dates)
 backlog milestone list
 
@@ -66,5 +72,6 @@ backlog board --milestones
 - Milestone files live under `backlog/milestones/`; archived milestones move to `backlog/archive/milestones/`.
 - Milestone IDs follow the `m-N` format and are auto-assigned at creation.
 - Milestone files carry automatic `created_date`/`updated_date` metadata (stamped like task fields); milestone list output shows the created/updated date for each milestone.
+- `documentation` holds documentation URLs or file paths (same semantics as task documentation): `--doc` replaces the list, `--add-doc` appends unique values, `--remove-doc` removes by value, `--clear-docs` empties it.
 - Archiving unbinds tasks but does not delete them; tasks revert to the unassigned pool.
 - Prefer CLI or MCP APIs over ad-hoc file writes so frontmatter and metadata remain valid.

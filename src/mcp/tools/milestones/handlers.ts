@@ -1,6 +1,7 @@
 import { rename as moveFile } from "node:fs/promises";
 import type { Core } from "../../../core/backlog.ts";
 import type { Milestone, Task } from "../../../types/index.ts";
+import { normalizeStringList, stringArraysEqual } from "../../../utils/task-builders.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { CallToolResult } from "../../types.ts";
 import {
@@ -16,6 +17,7 @@ export type MilestoneAddArgs = {
 	description?: string;
 	actualStart?: string;
 	actualEnd?: string;
+	documentation?: string[];
 };
 
 export type MilestoneEditArgs = {
@@ -28,6 +30,9 @@ export type MilestoneEditArgs = {
 	description?: string;
 	actualStart?: string;
 	actualEnd?: string;
+	documentation?: string[];
+	addDocumentation?: string[];
+	removeDocumentation?: string[];
 };
 
 export type MilestoneRemoveArgs = {
@@ -63,6 +68,42 @@ function formatListBlock(title: string, items: string[]): string {
 		return `${title}\n  (none)`;
 	}
 	return `${title}\n${items.map((item) => `  - ${item}`).join("\n")}`;
+}
+
+function resolveMilestoneDocumentation(
+	current: string[] | undefined,
+	input: Pick<MilestoneEditArgs, "documentation" | "addDocumentation" | "removeDocumentation">,
+): { documentation?: string[]; changed: boolean } {
+	let resolved = [...(current ?? [])];
+	let changed = false;
+	if (input.documentation !== undefined) {
+		const sanitized = normalizeStringList(input.documentation) ?? [];
+		if (!stringArraysEqual(sanitized, resolved)) {
+			changed = true;
+		}
+		resolved = sanitized;
+	}
+	const documentationToAdd = normalizeStringList(input.addDocumentation) ?? [];
+	if (documentationToAdd.length > 0) {
+		const docSet = new Set(resolved);
+		for (const doc of documentationToAdd) {
+			if (!docSet.has(doc)) {
+				resolved.push(doc);
+				docSet.add(doc);
+				changed = true;
+			}
+		}
+	}
+	const documentationToRemove = normalizeStringList(input.removeDocumentation) ?? [];
+	if (documentationToRemove.length > 0) {
+		const removalSet = new Set(documentationToRemove);
+		const filtered = resolved.filter((doc) => !removalSet.has(doc));
+		if (!stringArraysEqual(filtered, resolved)) {
+			changed = true;
+		}
+		resolved = filtered;
+	}
+	return { documentation: changed ? resolved : undefined, changed };
 }
 
 function formatMilestoneDates(milestone: Milestone): string {
@@ -380,15 +421,12 @@ export class MilestoneHandlers {
 		}
 
 		// Create milestone file
-		const milestone = await this.core.filesystem.createMilestone(
-			name,
-			args.description,
-			undefined,
-			undefined,
-			undefined,
-			args.actualStart,
-			args.actualEnd,
-		);
+		const milestone = await this.core.filesystem.createMilestone(name, {
+			description: args.description,
+			actualStart: args.actualStart,
+			actualEnd: args.actualEnd,
+			documentation: args.documentation,
+		});
 		const milestonePath = await this.core.filesystem.getMilestoneFilePath(milestone.id);
 		await this.commitMilestoneMutation(`backlog: Add milestone ${milestone.id}`, {
 			taskFilePaths: milestonePath ? [milestonePath] : [],
@@ -427,6 +465,8 @@ export class MilestoneHandlers {
 		const isActualStartChanged =
 			args.actualStart !== undefined && args.actualStart !== (sourceMilestone.actualStart ?? "");
 		const isActualEndChanged = args.actualEnd !== undefined && args.actualEnd !== (sourceMilestone.actualEnd ?? "");
+		const documentationResolution = resolveMilestoneDocumentation(sourceMilestone.documentation, args);
+		const isDocumentationChanged = documentationResolution.changed;
 
 		if (
 			!isTitleChanged &&
@@ -435,7 +475,8 @@ export class MilestoneHandlers {
 			!isPlannedStartChanged &&
 			!isPlannedEndChanged &&
 			!isActualStartChanged &&
-			!isActualEndChanged
+			!isActualEndChanged &&
+			!isDocumentationChanged
 		) {
 			return {
 				content: [
@@ -474,17 +515,15 @@ export class MilestoneHandlers {
 		let updatedTaskIds: string[] = [];
 		const updatedTaskFilePaths = new Set<string>();
 
-		const renameResult = await this.core.updateMilestone(
-			sourceMilestone.id,
-			toName,
-			false,
-			args.dueDate,
-			args.plannedStart,
-			args.plannedEnd,
-			args.description,
-			args.actualStart,
-			args.actualEnd,
-		);
+		const renameResult = await this.core.updateMilestone(sourceMilestone.id, toName, {
+			dueDate: args.dueDate,
+			plannedStart: args.plannedStart,
+			plannedEnd: args.plannedEnd,
+			description: args.description,
+			actualStart: args.actualStart,
+			actualEnd: args.actualEnd,
+			documentation: documentationResolution.documentation,
+		});
 		if (!renameResult.success || !renameResult.milestone) {
 			throw new BacklogToolError(`Failed to rename milestone "${sourceMilestone.title}".`, "INTERNAL_ERROR");
 		}
@@ -512,13 +551,8 @@ export class MilestoneHandlers {
 				const rollbackRenameResult = await this.core.updateMilestone(
 					sourceMilestone.id,
 					sourceMilestone.title,
+					{},
 					false,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
 				);
 				const rollbackDetails: string[] = [];
 				if (failedTask) {
@@ -548,13 +582,8 @@ export class MilestoneHandlers {
 			const rollbackRenameResult = await this.core.updateMilestone(
 				sourceMilestone.id,
 				sourceMilestone.title,
+				{},
 				false,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
 			);
 			const rollbackDetails: string[] = [];
 			if (!rollbackRenameResult.success) {

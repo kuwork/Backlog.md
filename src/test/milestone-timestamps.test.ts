@@ -55,6 +55,42 @@ Text.`;
 		expect(roundTripped.updatedDate).toBe("2026-09-07 18:02");
 	});
 
+	it("round-trips documentation and refreshes updated_date on doc changes", async () => {
+		const content = `---
+id: m-0
+title: "Documented"
+created_date: 2026-09-07 17:01
+documentation:
+  - docs/spec.md
+  - https://example.com/spec
+---
+
+## Description
+
+Text.`;
+		const milestone = parseMilestone(content);
+		expect(milestone.documentation).toEqual(["docs/spec.md", "https://example.com/spec"]);
+
+		const roundTripped = parseMilestone(serializeMilestone(milestone));
+		expect(roundTripped.documentation).toEqual(["docs/spec.md", "https://example.com/spec"]);
+
+		const core = new Core(TEST_DIR);
+		const created = await core.filesystem.createMilestone("Docs Release", {
+			documentation: ["docs/spec.md"],
+		});
+		const reloaded = await core.filesystem.loadMilestone(created.id);
+		expect(reloaded?.documentation).toEqual(["docs/spec.md"]);
+		expect(reloaded?.updatedDate).toBeUndefined();
+
+		const changed = await core.filesystem.updateMilestone(created.id, "Docs Release", {
+			documentation: ["docs/spec.md", "docs/api.md"],
+		});
+		expect(changed.success).toBe(true);
+		const afterChange = await core.filesystem.loadMilestone(created.id);
+		expect(afterChange?.documentation).toEqual(["docs/spec.md", "docs/api.md"]);
+		expect(afterChange?.updatedDate).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+	});
+
 	it("omits timestamp fields when absent", () => {
 		const milestone = parseMilestone(`---
 id: m-0
@@ -87,7 +123,7 @@ Text.`);
 		const created = await core.filesystem.createMilestone("Release 1");
 
 		// Substantive change (due date) stamps updated_date and preserves created_date.
-		const withDue = await core.filesystem.updateMilestone(created.id, "Release 1", "2026-12-31");
+		const withDue = await core.filesystem.updateMilestone(created.id, "Release 1", { dueDate: "2026-12-31" });
 		expect(withDue.success).toBe(true);
 		let reloaded = await core.filesystem.loadMilestone(created.id);
 		expect(reloaded?.dueDate).toBe("2026-12-31");
@@ -99,13 +135,13 @@ Text.`);
 		const path = await milestonePath(created.id);
 		const backdated = (await Bun.file(path).text()).replace(/updated_date: '.*?'/, "updated_date: '2020-01-01 00:00'");
 		await Bun.write(path, backdated);
-		const noop = await core.filesystem.updateMilestone(created.id, "Release 1", "2026-12-31");
+		const noop = await core.filesystem.updateMilestone(created.id, "Release 1", { dueDate: "2026-12-31" });
 		expect(noop.success).toBe(true);
 		reloaded = await core.filesystem.loadMilestone(created.id);
 		expect(reloaded?.updatedDate).toBe("2020-01-01 00:00");
 
 		// Another substantive change (title) refreshes updated_date again.
-		const renamed = await core.filesystem.updateMilestone(created.id, "Release 2", "2026-12-31");
+		const renamed = await core.filesystem.updateMilestone(created.id, "Release 2", { dueDate: "2026-12-31" });
 		expect(renamed.success).toBe(true);
 		reloaded = await core.filesystem.loadMilestone(created.id);
 		expect(reloaded?.title).toBe("Release 2");
@@ -135,7 +171,7 @@ Text.`);
 		expect(reloaded?.updatedDate).toBeUndefined();
 
 		// A substantive change only adds updated_date (created_date is never fabricated).
-		const changed = await core.filesystem.updateMilestone(created.id, "Legacy", "2027-01-01");
+		const changed = await core.filesystem.updateMilestone(created.id, "Legacy", { dueDate: "2027-01-01" });
 		expect(changed.success).toBe(true);
 		reloaded = await core.filesystem.loadMilestone(created.id);
 		expect(reloaded?.dueDate).toBe("2027-01-01");

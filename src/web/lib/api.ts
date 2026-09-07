@@ -614,13 +614,23 @@ export class ApiClient {
 		plannedEnd?: string,
 		actualStart?: string,
 		actualEnd?: string,
+		documentation?: string[],
 	): Promise<Milestone> {
 		const response = await fetch(`${API_BASE}/milestones`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ title, description, dueDate, plannedStart, plannedEnd, actualStart, actualEnd }),
+			body: JSON.stringify({
+				title,
+				description,
+				dueDate,
+				plannedStart,
+				plannedEnd,
+				actualStart,
+				actualEnd,
+				documentation,
+			}),
 		});
 		if (!response.ok) {
 			const data = await response.json().catch(() => ({}));
@@ -638,13 +648,23 @@ export class ApiClient {
 		actualStart?: string,
 		actualEnd?: string,
 		description?: string,
+		documentation?: string[],
 	): Promise<{ success: boolean; milestone?: Milestone | null; message?: string }> {
 		const response = await fetch(`${API_BASE}/milestones/${encodeURIComponent(id)}`, {
 			method: "PUT",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ title, dueDate, plannedStart, plannedEnd, actualStart, actualEnd, description }),
+			body: JSON.stringify({
+				title,
+				dueDate,
+				plannedStart,
+				plannedEnd,
+				actualStart,
+				actualEnd,
+				description,
+				documentation,
+			}),
 		});
 		if (!response.ok) {
 			const data = await response.json().catch(() => ({}));
