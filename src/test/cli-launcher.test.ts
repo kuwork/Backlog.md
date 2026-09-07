@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,13 +14,18 @@ const scriptsDir = join(import.meta.dir, "..", "..", "scripts");
 const tempDirs: string[] = [];
 
 /** Copy the launcher scripts into a temp dir with an optional fixture platform binary. */
-async function createLauncherDir(binaryContent?: string): Promise<string> {
+async function createLauncherDir(binaryContent?: string, binaryMode = 0o755): Promise<string> {
 	const dir = await mkdtemp(join(tmpdir(), "backlog-launcher-"));
 	tempDirs.push(dir);
 	await cp(join(scriptsDir, "cli.cjs"), join(dir, "cli.cjs"));
 	await cp(join(scriptsDir, "resolveBinary.cjs"), join(dir, "resolveBinary.cjs"));
-	// A package.json and node_modules dir keep Bun's auto-install from resolving real packages
-	await writeFile(join(dir, "package.json"), "{}");
+	// The fixture main package carries the repo's real name so the copied resolver
+	// derives the same package-name prefix, and a node_modules dir keeps Bun's
+	// auto-install from resolving real packages.
+	const repoPackage = JSON.parse(await readFile(join(import.meta.dir, "..", "..", "package.json"), "utf8")) as {
+		name?: string;
+	};
+	await writeFile(join(dir, "package.json"), JSON.stringify({ name: repoPackage.name }));
 	await mkdir(join(dir, "node_modules"), { recursive: true });
 	if (binaryContent !== undefined) {
 		const [packageName] = getCandidatePackageNames();
@@ -28,7 +33,7 @@ async function createLauncherDir(binaryContent?: string): Promise<string> {
 		await mkdir(packageDir, { recursive: true });
 		const binaryPath = join(packageDir, isWindows ? "backlog.exe" : "backlog");
 		await writeFile(binaryPath, binaryContent);
-		await chmod(binaryPath, 0o755);
+		await chmod(binaryPath, binaryMode);
 	}
 	return dir;
 }
@@ -56,6 +61,13 @@ describe("cli launcher", () => {
 		const result = runLauncher(dir, ["task", "list"]);
 		expect(result.status).toBe(7);
 		expect(result.stdout).toContain("args: task list");
+	});
+
+	it.skipIf(isWindows)("restores the executable bit before spawning when the package manager dropped it", async () => {
+		const dir = await createLauncherDir("#!/bin/sh\necho ran\n", 0o644);
+		const result = runLauncher(dir);
+		expect(result.status).toBe(0);
+		expect(result.stdout).toContain("ran");
 	});
 
 	it.skipIf(isWindows)("prints architecture guidance when the binary dies with SIGILL", async () => {

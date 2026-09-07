@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 
 const { spawn } = require("node:child_process");
+const { chmodSync } = require("node:fs");
 const { constants: osConstants } = require("node:os");
-const { getCandidatePackageNames, isRosettaTranslated, resolveBinaryPath } = require("./resolveBinary.cjs");
+const {
+	getCandidatePackageNames,
+	getOwnPackageName,
+	isRosettaTranslated,
+	resolveBinaryPath,
+} = require("./resolveBinary.cjs");
 
 function printInstallHelp() {
+	const mainPackage = getOwnPackageName() || "backlog.md";
 	console.error(`Detected: ${process.platform}-${process.arch} (Node ${process.version})`);
 	if (process.platform === "darwin") {
 		const rosetta = isRosettaTranslated();
@@ -19,11 +26,11 @@ function printInstallHelp() {
 		console.error(
 			"  - Homebrew: use the native brew (`which brew`; /opt/homebrew = arm64, /usr/local = Intel), then `brew reinstall backlog-md`.",
 		);
-		console.error("  - npm on Apple Silicon: `arch -arm64 npm i -g backlog.md`");
-		console.error("  - Bun on Apple Silicon: `arch -arm64 bun add -g backlog.md`");
+		console.error(`  - npm on Apple Silicon: \`arch -arm64 npm i -g ${mainPackage}\``);
+		console.error(`  - Bun on Apple Silicon: \`arch -arm64 bun add -g ${mainPackage}\``);
 		console.error("More details: https://github.com/MrLesk/Backlog.md#apple-silicon-macos");
 	} else {
-		console.error("Reinstall backlog.md so the platform package matching this architecture gets installed.");
+		console.error(`Reinstall ${mainPackage} so the platform package matching this architecture gets installed.`);
 	}
 }
 
@@ -58,13 +65,22 @@ function main() {
 		process.exit(1);
 	}
 
+	// Some package managers install the binary without the executable bit (-rw-r--r--).
+	if (process.platform !== "win32") {
+		try {
+			chmodSync(binaryPath, 0o755);
+		} catch {
+			// Remaining permission problems surface through the spawn error handling below.
+		}
+	}
+
 	// Clean up unexpected args some global shims pass (e.g. bun) like the binary path itself
 	const rawArgs = process.argv.slice(2);
 	const cleanedArgs = rawArgs.filter((arg) => {
 		if (arg === binaryPath) return false;
 		// Filter any accidental deep path to our platform package binary
 		try {
-			const pattern = /node_modules[/\\](@kuwork\/)?backlog\.md-(darwin|linux|windows)-[^/\\]+[/\\]backlog(\.exe)?$/i;
+			const pattern = /node_modules[/\\](@[^/]+\/)?backlog\.md-(darwin|linux|windows)-[^/\\]+[/\\]backlog(\.exe)?$/i;
 			return !pattern.test(arg);
 		} catch {
 			return true;
