@@ -12,6 +12,7 @@ import {
 	NO_MILESTONE_FILTER_VALUE,
 } from "./milestone-filter.ts";
 import { matchesModifiedFileFilters, normalizeModifiedFileFilters } from "./modified-files.ts";
+import { getTaskReadiness, type ReadinessGraph } from "./readiness.ts";
 
 export type LabelMatchMode = "any" | "all";
 
@@ -42,6 +43,11 @@ export interface SharedTaskFilterOptions {
 
 export interface TaskFilterOptions extends SharedTaskFilterOptions {
 	status?: string;
+	/**
+	 * When set, keep only tasks that are ready according to this graph. The graph carries the full
+	 * task corpus, so readiness never depends on which tasks survived the other filters.
+	 */
+	ready?: ReadinessGraph;
 }
 
 export interface TaskSearchIndex {
@@ -289,6 +295,11 @@ export function applyTaskFilters(tasks: Task[], options: TaskFilterOptions, inde
 
 	if (options.milestone) {
 		results = applyMilestoneFilter(results, options.milestone, options.resolveMilestoneLabel, tasks);
+	}
+
+	if (options.ready) {
+		const graph = options.ready;
+		results = results.filter((task) => getTaskReadiness(task, graph).isReady);
 	}
 
 	return results;

@@ -37,6 +37,10 @@ export const taskListSchema: JsonSchema = {
 			type: "string",
 			maxLength: 200,
 		},
+		ready: {
+			type: "boolean",
+			description: "When true, filter tasks that are ready for work (all dependencies satisfied/completed).",
+		},
 		limit: {
 			type: "number",
 			minimum: 1,

@@ -24,6 +24,7 @@ Search and read before changing anything. On the first interaction of a new sess
 - `backlog task list --status "<todo status>" --plain`
 - `backlog task list --status "<active status>" --plain`
 - `backlog task list --search "login" --labels frontend,bug --limit 20 --plain`
+- `backlog task list --ready --plain` — only tasks whose dependencies are all completed; tasks with unfinished or unresolvable dependencies are excluded (fail-closed). Combine with `--status`/`--assignee` to answer "what can I pick up now".
 - `backlog task view {{TASK_ID:123}} --plain`
 - `backlog overview --plain` — project health and recent activity
 
