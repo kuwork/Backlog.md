@@ -1,6 +1,9 @@
-import React, { useState, useRef, useEffect, type KeyboardEvent } from 'react';
+import React, { useState, useRef, useEffect, useMemo, type KeyboardEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { type Task } from '../../types';
 import { useI18n } from '../hooks/useI18n';
+import { stripAnyPrefix } from '../../utils/prefix-config';
+import { buildEntityIndex, resolveEntityReference } from '../utils/task-id-links';
 
 interface DependencyInputProps {
   value: string[];
@@ -20,11 +23,9 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
   const inputId = 'dependency-input';
   const { t } = useI18n();
 
-  // Get task display text
-  const getTaskDisplay = (taskId: string) => {
-    const task = availableTasks.find(t => t.id === taskId);
-    return task ? `${task.id} - ${task.title}` : taskId;
-  };
+  // Resolve chips through the same canonical identity the markdown auto-links use, so
+  // case and zero-padding differences still resolve and ambiguous IDs stay unlinked
+  const taskIdIndex = useMemo(() => buildEntityIndex({ tasks: availableTasks }), [availableTasks]);
 
   // Filter tasks based on input
   useEffect(() => {
@@ -119,22 +120,25 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
           {/* Display selected dependencies */}
           {value.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
-              {value.map((taskId, index) => (
+              {value.map((taskId, index) => {
+                const dependency = resolveEntityReference(taskIdIndex, 'task', taskId);
+                const display = dependency ? `${dependency.id} - ${dependency.title}` : taskId;
+                return (
                 <span
                   key={index}
                   className="inline-flex items-center gap-1 px-2 py-0.5 text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-md transition-colors duration-200 min-w-0 max-w-full"
                 >
-                  {onTaskClick ? (
-                    <button
-                      type="button"
-                      onClick={() => onTaskClick(taskId)}
-                      className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem] text-left hover:underline cursor-pointer"
-                      title={getTaskDisplay(taskId)}
+                  {dependency ? (
+                    <Link
+                      to={`/task/${stripAnyPrefix(dependency.id)}`}
+                      onClick={onTaskClick ? (e) => { e.preventDefault(); onTaskClick(dependency.id); } : undefined}
+                      className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem] text-left hover:underline"
+                      title={display}
                     >
-                      {getTaskDisplay(taskId)}
-                    </button>
+                      {display}
+                    </Link>
                   ) : (
-                    <span className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem]">{getTaskDisplay(taskId)}</span>
+                    <span className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem]" title={display}>{display}</span>
                   )}
                   {!disabled && (
                     <button
@@ -153,7 +157,8 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
                     </button>
                   )}
                 </span>
-              ))}
+                );
+              })}
             </div>
           )}
           

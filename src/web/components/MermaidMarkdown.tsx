@@ -1,12 +1,14 @@
 import Slugger from "github-slugger";
 import MDEditor from "@uiw/react-md-editor";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import type { Element, Root } from "hast";
 import { visit } from "unist-util-visit";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
+import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { renderMermaidIn } from "../utils/mermaid";
+import { createEntityLinkPlugin } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
 
 interface Props {
@@ -317,6 +319,8 @@ export default function MermaidMarkdown({
 		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(source, wikilinkBasePath))
 		: sanitizeMarkdownSource(encodeLocalFileLinkDestinations(source));
 	const { t } = useI18n();
+	const entityIndex = useTaskIdIndex();
+	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
 
 	useEffect(() => {
 		if (!ref.current) return;
@@ -559,6 +563,7 @@ export default function MermaidMarkdown({
 				source={safeSource}
 				components={{ a: LinkComponent, img: LightboxImage, video: VideoPlayer, audio: AudioPlayer }}
 				rehypePlugins={[rehypeHeadingMetadata]}
+				remarkPlugins={remarkPlugins}
 			/>
 		</div>
 	);

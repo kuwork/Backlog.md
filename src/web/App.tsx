@@ -36,12 +36,28 @@ import { useHealthCheckContext } from "./contexts/HealthCheckContext";
 import { useI18n } from "./hooks/useI18n";
 import { useI18nContext } from "./contexts/I18nContext";
 import { ImageLightboxProvider } from "./contexts/ImageLightboxContext";
+import { TaskIdIndexProvider } from "./contexts/TaskIdIndexContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { apiClient } from "./lib/api";
 import { isValidLocale } from "./locales";
 import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from "./utils/milestones";
 import { sanitizeUrlTitle } from "./utils/urlHelpers";
 import { getWebVersion } from "./utils/version";
+
+const collectWikiPagePaths = (nodes: WikiTreeNode[]): string[] => {
+	const paths: string[] = [];
+	const walk = (items: WikiTreeNode[]) => {
+		for (const item of items) {
+			if (item.type === "directory") {
+				walk(item.children ?? []);
+			} else if (item.path.toLowerCase().endsWith(".md")) {
+				paths.push(item.path.replace(/\.md$/i, ""));
+			}
+		}
+	};
+	walk(nodes);
+	return paths;
+};
 
 const buildMilestoneAliasMap = (milestones: Milestone[], archivedMilestones: Milestone[]): Map<string, string> => {
 	const aliasMap = new Map<string, string>();
@@ -757,6 +773,8 @@ function AppContent() {
 
 	const mainLocation = state?.backgroundLocation || location;
 
+	const entityWikiPaths = useMemo(() => collectWikiPagePaths(wikiTree), [wikiTree]);
+
 	// Show loading state while checking initialization
 	if (isInitialized === null) {
 		return (
@@ -773,6 +791,7 @@ function AppContent() {
 
 	return (
 		<>
+			<TaskIdIndexProvider tasks={tasks} docs={docs} decisions={decisions} drafts={drafts} wikiPaths={entityWikiPaths}>
 			{duplicatePlan && duplicatePlan.groups.length > 0 && (
 				<div className="fixed top-0 left-0 right-0 z-40 bg-yellow-50 dark:bg-yellow-900/40 border-b border-yellow-200 dark:border-yellow-700 px-4 py-2">
 					<div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -916,6 +935,7 @@ function AppContent() {
 					}
 				/>
 			)}
+			</TaskIdIndexProvider>
 		</>
 	);
 }

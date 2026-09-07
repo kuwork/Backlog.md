@@ -2,7 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiClient, isAmbiguousIdConflict } from '../lib/api';
 import { AmbiguousIdNotice } from './AmbiguousIdNotice';
-import MDEditor from '@uiw/react-md-editor';
+import { PasteAwareMDEditor } from './PasteAwareMDEditor';
 import MermaidMarkdown from './MermaidMarkdown';
 import { type Decision } from '../../types';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -54,7 +54,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	return (
 		<div className="h-full w-full flex flex-col">
 			<div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-				<MDEditor
+				<PasteAwareMDEditor
 					value={value}
 					onChange={onChange}
 					preview="edit"

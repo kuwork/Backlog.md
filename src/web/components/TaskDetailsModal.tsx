@@ -20,6 +20,8 @@ import {
 import { isTypingTarget } from "../utils/keyboard";
 import { useI18n } from "../hooks/useI18n";
 import { encodeWikiPath } from "../utils/urlHelpers";
+import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
+import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
 
 interface Props {
   task?: Task; // Optional for create mode
@@ -183,6 +185,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [displayComments, setDisplayComments] = useState<TaskComment[]>(task?.comments ?? []);
   const [commentBody, setCommentBody] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("");
+  const [commentTextareaEl, setCommentTextareaEl] = useState<HTMLTextAreaElement | null>(null);
+  const commentAutocomplete = useEntityAutocomplete({
+    textarea: commentTextareaEl,
+    value: commentBody,
+    onChange: (next: string) => setCommentBody(next),
+  });
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentsChanged, setCommentsChanged] = useState(false);
   const preserveEditModeAfterCommentRefresh = useRef(false);
@@ -609,6 +617,38 @@ export const TaskDetailsModal: React.FC<Props> = ({
     setCommentsChanged(false);
     if (onSaved) void onSaved();
   }, [commentsChanged, onSaved]);
+
+  const hasCommentDraft = commentBody.trim() !== "" || commentAuthor.trim() !== "";
+  // Nothing is persisted while creating, so any entered field is unsaved work.
+  const hasCreateModeEntries =
+    isCreateMode &&
+    (title.trim() !== "" ||
+      priority.trim() !== "" ||
+      milestone.trim() !== "" ||
+      assignee.length > 0 ||
+      labels.length > 0 ||
+      dependencies.length > 0 ||
+      references.length > 0 ||
+      documentation.length > 0);
+  const hasUnsavedEdits =
+    (mode === "edit" || mode === "create") && (isDirty || hasCommentDraft || hasCreateModeEntries);
+
+  // Links inside the modal (dependency chips, auto-linked entity IDs in markdown) leave this
+  // task behind, so they ask the same question cancel does before the navigation happens.
+  const confirmNavigationAwayFromEdits = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!hasUnsavedEdits || event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+    if (!link) return;
+    if (link.target && link.target !== "_self") return;
+    const destination = new URL(link.href, window.location.href);
+    if (destination.protocol !== "http:" && destination.protocol !== "https:") return;
+    // Same-page anchors (markdown heading links) do not unload the form.
+    if (destination.pathname === window.location.pathname && destination.search === window.location.search) return;
+    if (window.confirm("Discard unsaved changes and leave this task?")) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const handleCancelEdit = () => {
     if (isDirty) {
@@ -1104,7 +1144,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6" onClickCapture={confirmNavigationAwayFromEdits}>
         {/* Main content */}
         <div className="md:col-span-2 space-y-6">
           {/* Title field for create mode */}
@@ -1448,13 +1488,23 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     placeholder={t.taskDetails.placeholderCommentAuthor}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
                   />
-                  <textarea
-                    value={commentBody}
-                    onChange={(e) => setCommentBody(e.target.value)}
-                    rows={4}
-                    placeholder={t.taskDetails.placeholderCommentBody}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  />
+                  <div className="relative">
+                    <textarea
+                      ref={setCommentTextareaEl}
+                      value={commentBody}
+                      onChange={(e) => setCommentBody(e.target.value)}
+                      rows={4}
+                      placeholder={t.taskDetails.placeholderCommentBody}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                    {commentAutocomplete.menu && (
+                      <EntityLinkAutocompleteMenu
+                        menu={commentAutocomplete.menu}
+                        textarea={commentTextareaEl}
+                        onSelect={commentAutocomplete.insertCandidate}
+                      />
+                    )}
+                  </div>
                   <div className="flex justify-end">
                     <button
                       type="button"

@@ -1,9 +1,11 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import MDEditor, { commands } from "@uiw/react-md-editor";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { apiClient } from "../lib/api";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
+import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
+import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
 import { useI18n } from '../hooks/useI18n';
 
 type MDEditorProps = React.ComponentProps<typeof MDEditor>;
@@ -68,9 +70,49 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 	...rest
 }) => {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const textareaPropsRef = useRef(textareaProps);
+	textareaPropsRef.current = textareaProps;
+	const wrapperRef = useRef<HTMLDivElement | null>(null);
+	const [autocompleteTextarea, setAutocompleteTextarea] = useState<HTMLTextAreaElement | null>(null);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [isConverting, setIsConverting] = useState(false);
 	const { t } = useI18n();
+
+	// Stable identity: an inline ref callback would detach/attach on every
+	// render and, because it feeds setState, would loop.
+	const handleTextareaRef = useCallback((el: HTMLTextAreaElement | null) => {
+		textareaRef.current = el;
+		// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
+		const originalRef = (textareaPropsRef.current as any)?.ref;
+		if (typeof originalRef === "function") {
+			originalRef(el);
+		} else if (originalRef && typeof originalRef === "object" && "current" in originalRef) {
+			(originalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+		}
+	}, []);
+
+	// @uiw/react-md-editor v4 renders its own ref on the inner textarea,
+	// silently dropping textareaProps.ref, so locate the textarea from the
+	// wrapper and keep it in sync across preview-mode remounts.
+	useEffect(() => {
+		const wrapper = wrapperRef.current;
+		if (!wrapper) return undefined;
+		const sync = () => {
+			setAutocompleteTextarea(wrapper.querySelector("textarea"));
+		};
+		sync();
+		const observerCtor = wrapper.ownerDocument.defaultView?.MutationObserver ?? globalThis.MutationObserver;
+		if (!observerCtor) return undefined;
+		const observer = new observerCtor(sync);
+		observer.observe(wrapper, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, []);
+
+	const entityAutocomplete = useEntityAutocomplete({
+		textarea: autocompleteTextarea,
+		value: value ?? "",
+		onChange: onChange ? (next: string) => onChange(next) : undefined,
+	});
 
 	const handleDocxUpload = useCallback(
 		async (file: File) => {
@@ -228,6 +270,7 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 
 	return (
 		<div
+			ref={wrapperRef}
 			className="relative"
 			onDragOver={(e) => e.preventDefault()}
 			onDrop={(e) => {
@@ -259,19 +302,18 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 				textareaProps={{
 					...textareaProps,
 					// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
-					ref: (el: HTMLTextAreaElement | null) => {
-						textareaRef.current = el;
-						const originalRef = (textareaProps as any)?.ref;
-						if (typeof originalRef === "function") {
-							originalRef(el);
-						} else if (originalRef && typeof originalRef === "object" && "current" in originalRef) {
-							(originalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
-						}
-					},
+					ref: handleTextareaRef as any,
 					onPaste: handlePaste,
 					// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
 				} as any}
 			/>
+			{entityAutocomplete.menu && (
+				<EntityLinkAutocompleteMenu
+					menu={entityAutocomplete.menu}
+					textarea={autocompleteTextarea}
+					onSelect={entityAutocomplete.insertCandidate}
+				/>
+			)}
 		</div>
 	);
 };

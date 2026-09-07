@@ -7,6 +7,8 @@ import { JSDOM } from "jsdom";
 import MermaidMarkdown, { parseLocalUrl } from "../web/components/MermaidMarkdown.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
+import { TaskIdIndexProvider } from "../web/contexts/TaskIdIndexContext.tsx";
+import type { Decision, Document as BacklogDocument, Task } from "../types/index.ts";
 
 const originalFetch = globalThis.fetch;
 const originalWindowGlobal = (globalThis as { window?: typeof window }).window;
@@ -614,6 +616,113 @@ describe("MermaidMarkdown", () => {
 			});
 
 			expect(window.location.hash).toContain("#A1:%20Section%20Title%20");
+		});
+	});
+
+	describe("entity ID auto-linking", () => {
+		const taskFixtures = (...ids: string[]): Task[] =>
+			ids.map((id) => ({
+				id,
+				title: `Task ${id}`,
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-07-24",
+				labels: [],
+				dependencies: [],
+			}));
+		const docFixtures = (...ids: string[]): BacklogDocument[] =>
+			ids.map((id) => ({ id, title: `Doc ${id}`, type: "guide", createdDate: "2026-07-24", rawContent: "" }));
+		const decisionFixtures = (...ids: string[]): Decision[] =>
+			ids.map((id) => ({
+				id,
+				title: `Decision ${id}`,
+				date: "2026-07-24",
+				status: "accepted",
+				context: "",
+				decision: "",
+				consequences: "",
+				rawContent: "",
+			}));
+
+		const knownTasks = taskFixtures("BACK-123", "BACK-1", "BACK-2", "TASK-100");
+		const knownDocs = docFixtures("doc-9");
+		const knownDecisions = decisionFixtures("decision-1");
+		const knownDrafts = taskFixtures("draft-104");
+
+		const renderLinked = (source: string, tasks: Task[] = knownTasks): string =>
+			renderToString(
+				<I18nProvider initialLocale="en">
+					<ImageLightboxProvider>
+						<TaskIdIndexProvider
+							tasks={tasks}
+							docs={knownDocs}
+							decisions={knownDecisions}
+							drafts={knownDrafts}
+						>
+							<MermaidMarkdown source={source} />
+						</TaskIdIndexProvider>
+					</ImageLightboxProvider>
+				</I18nProvider>,
+			);
+
+		const hrefs = (html: string): string[] => {
+			const rendered = new JSDOM(html).window.document;
+			return Array.from(rendered.querySelectorAll("a[href]")).map((link) => link.getAttribute("href") ?? "");
+		};
+
+		it("links bare entity IDs of every kind to the singular routes", () => {
+			const html = renderLinked("See BACK-123, doc-9, decision-1 and DRAFT-104.");
+
+			expect(hrefs(html)).toEqual([
+				"/task/123",
+				"/documentation/9",
+				"/decisions/1",
+				"/draft/104",
+			]);
+		});
+
+		it("links lowercase and zero-padded references to the canonical href", () => {
+			const html = renderLinked("See back-0123.");
+
+			expect(hrefs(html)).toEqual(["/task/123"]);
+		});
+
+		it("does not auto-link IDs inside code backticks or existing links", () => {
+			const html = renderLinked("Code `BACK-123` and link [BACK-123](/task/BACK-123?view=detail)");
+
+			expect(html).toContain("<code>BACK-123</code>");
+			expect(hrefs(html)).toEqual(["/task/BACK-123?view=detail"]);
+		});
+
+		it("does not auto-link IDs inside fenced code blocks", () => {
+			const html = renderLinked("Run this:\n\n```bash\nbacklog task view BACK-123\n```\n\nThen open BACK-2.");
+
+			expect(hrefs(html)).toEqual(["/task/2"]);
+		});
+
+		it("does not auto-link tokens that only look like entity IDs", () => {
+			const html = renderLinked("Encoding UTF-8, dates in ISO-8601, release v1.2.3, file BACK-1.md, branch my-task-100.");
+
+			expect(hrefs(html)).toEqual([]);
+		});
+
+		it("does not auto-link IDs that match no known entity", () => {
+			const html = renderLinked("Unknown reference BACK-9999 and doc-99 stay plain.");
+
+			expect(hrefs(html)).toEqual([]);
+		});
+
+		it("does not auto-link ambiguous canonical IDs", () => {
+			const html = renderLinked("Ambiguous BACK-1 and unambiguous BACK-2.", taskFixtures("BACK-1", "BACK-01", "BACK-2"));
+
+			expect(hrefs(html)).toEqual(["/task/2"]);
+		});
+
+		it("renders bare IDs as plain text when no provider index is present", () => {
+			const html = render("See BACK-123.");
+
+			expect(hrefs(html)).toEqual([]);
+			expect(html).toContain("BACK-123");
 		});
 	});
 });
