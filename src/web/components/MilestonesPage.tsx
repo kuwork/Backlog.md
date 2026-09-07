@@ -574,7 +574,8 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					{/* Milestone dates */}
 					{(() => {
 						const entity = milestoneEntities.find((m) => m.id === bucket.milestone);
-						if (!entity || (!entity.dueDate && !entity.plannedStart && !entity.plannedEnd && !entity.actualStart && !entity.actualEnd)) return null;
+						const lastUpdated = entity ? (entity.updatedDate ?? entity.createdDate) : undefined;
+						if (!entity || (!entity.dueDate && !entity.plannedStart && !entity.plannedEnd && !entity.actualStart && !entity.actualEnd && !lastUpdated)) return null;
 						return (
 							<div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
 								{entity.dueDate && (
@@ -591,6 +592,9 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								)}
 								{entity.actualEnd && (
 									<span>{t.taskDetails.section.actualEnd}: {formatStoredUtcDateForDisplay(entity.actualEnd)}</span>
+								)}
+								{lastUpdated && (
+									<span>{t.taskDetails.section.lastUpdated}: {formatStoredUtcDateForDisplay(lastUpdated)}</span>
 								)}
 							</div>
 						);

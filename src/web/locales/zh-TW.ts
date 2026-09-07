@@ -208,6 +208,7 @@ export const zhTW: TranslationDict = {
 			plannedEnd: "計劃結束",
 			actualStart: "實際開始",
 			actualEnd: "實際結束",
+			lastUpdated: "最後更新",
 		},
 		clickToPreview: "點擊預覽",
 		removeReference: "移除引用",

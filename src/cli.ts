@@ -3845,7 +3845,7 @@ addHelpSchema(milestoneCmd.command("list"), {
 		{ name: "show-completed", type: "Boolean", description: "Include completed milestones" },
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 	],
-	output: "Milestone list with completion status",
+	output: "Milestone list with completion status and created/updated dates",
 	examples: ["backlog milestone list --plain"],
 })
 	.description("list milestones with completion status")
@@ -3869,7 +3869,13 @@ addHelpSchema(milestoneCmd.command("list"), {
 		const formatBucket = (bucket: (typeof buckets)[number]) => {
 			const id = bucket.milestone ?? bucket.label;
 			const label = bucket.label;
-			return `  ${id}: ${label} (${bucket.doneCount}/${bucket.total} done)`;
+			const milestoneEntity = [...milestones, ...archivedMilestones].find(
+				(milestone) => milestoneKey(milestone.id) === milestoneKey(id),
+			);
+			const date = milestoneEntity?.updatedDate ?? milestoneEntity?.createdDate;
+			const dateLabel = milestoneEntity?.updatedDate ? "updated" : "created";
+			const dateSuffix = date ? `, ${dateLabel} ${date}` : "";
+			return `  ${id}: ${label} (${bucket.doneCount}/${bucket.total} done${dateSuffix})`;
 		};
 
 		console.log(`Active milestones (${active.length}):`);

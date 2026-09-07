@@ -65,6 +65,17 @@ function formatListBlock(title: string, items: string[]): string {
 	return `${title}\n${items.map((item) => `  - ${item}`).join("\n")}`;
 }
 
+function formatMilestoneDates(milestone: Milestone): string {
+	const parts: string[] = [];
+	if (milestone.createdDate) {
+		parts.push(`Created: ${milestone.createdDate}`);
+	}
+	if (milestone.updatedDate) {
+		parts.push(`Updated: ${milestone.updatedDate}`);
+	}
+	return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+}
+
 function formatTaskIdList(taskIds: string[], limit = 20): string {
 	if (taskIds.length === 0) return "";
 	const shown = taskIds.slice(0, limit);
@@ -328,7 +339,7 @@ export class MilestoneHandlers {
 			.sort((a, b) => a.localeCompare(b));
 
 		const blocks: string[] = [];
-		const milestoneLines = fileMilestones.map((m) => `${m.id}: ${m.title}`);
+		const milestoneLines = fileMilestones.map((m) => `${m.id}: ${m.title}${formatMilestoneDates(m)}`);
 		blocks.push(formatListBlock(`Milestones (${fileMilestones.length}):`, milestoneLines));
 		blocks.push(formatListBlock(`Milestones found on tasks without files (${unconfigured.length}):`, unconfigured));
 		blocks.push(

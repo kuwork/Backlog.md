@@ -241,6 +241,8 @@ export function parseMilestone(content: string): Milestone {
 		title: String(frontmatter.title || ""),
 		description: extractSection(rawContent, "Description") || "",
 		rawContent,
+		createdDate: frontmatter.created_date ? normalizeDate(frontmatter.created_date) : undefined,
+		updatedDate: frontmatter.updated_date ? normalizeDate(frontmatter.updated_date) : undefined,
 		dueDate: frontmatter.due_date ? normalizeDate(frontmatter.due_date) : undefined,
 		plannedStart: frontmatter.planned_start ? normalizeDate(frontmatter.planned_start) : undefined,
 		plannedEnd: frontmatter.planned_end ? normalizeDate(frontmatter.planned_end) : undefined,

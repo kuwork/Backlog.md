@@ -13,6 +13,7 @@ import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets
 import { isDoneStatus, milestoneKey } from "../utils/milestones";
 import {
 	dateTimeLocalToStoredUtc,
+	formatStoredUtcDateForDisplay,
 	parseStoredUtcDate,
 	storedUtcToDateTimeLocal,
 } from "../utils/date-display";
@@ -529,7 +530,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										onClick={(event) => {
 											if (!confirmLeaveWithUnsavedEdits()) event.preventDefault();
 										}}
-										className="inline-flex items-center px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+										className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 									>
 										{t.milestones.board}
 									</Link>
@@ -538,7 +539,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										onClick={(event) => {
 											if (!confirmLeaveWithUnsavedEdits()) event.preventDefault();
 										}}
-										className="inline-flex items-center px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+										className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 									>
 										{t.milestones.list}
 									</Link>
@@ -546,7 +547,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										type="button"
 										onClick={() => setMode("edit")}
 										disabled={saving}
-										className="inline-flex items-center px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60"
+										className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60"
 									>
 										{t.common.edit}
 									</button>
@@ -554,7 +555,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										type="button"
 										onClick={() => void handleArchive()}
 										disabled={saving || archiving}
-										className="inline-flex items-center px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-60"
+										className="inline-flex items-center px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-800 text-sm font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-60"
 									>
 										{archiving ? t.common.archiving : t.milestones.archive}
 									</button>
@@ -562,7 +563,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										type="button"
 										onClick={openRemoveModal}
 										disabled={saving}
-										className="inline-flex items-center px-3 py-2 rounded-lg border border-red-200 dark:border-red-800 text-xs font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60"
+										className="inline-flex items-center px-4 py-2 rounded-lg border border-red-200 dark:border-red-800 text-sm font-medium text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60"
 									>
 										{t.common.remove}
 									</button>
@@ -639,9 +640,34 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 						</div>
 
 						{/* Sidebar metadata */}
-						<div className="space-y-6">
+						<div className="space-y-4">
+							{(activeMilestone.createdDate || activeMilestone.updatedDate) && (
+								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-1">
+									{activeMilestone.createdDate && (
+										<div>
+											<span className="font-semibold text-gray-800 dark:text-gray-100">
+												{t.common.created}:
+											</span>{" "}
+											<span className="text-gray-700 dark:text-gray-200">
+												{formatStoredUtcDateForDisplay(activeMilestone.createdDate)}
+											</span>
+										</div>
+									)}
+									{activeMilestone.updatedDate && (
+										<div>
+											<span className="font-semibold text-gray-800 dark:text-gray-100">
+												{t.common.updated}:
+											</span>{" "}
+											<span className="text-gray-700 dark:text-gray-200">
+												{formatStoredUtcDateForDisplay(activeMilestone.updatedDate)}
+											</span>
+										</div>
+									)}
+								</div>
+							)}
+
 							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2">
-								<SectionHeader title={t.taskDetails.section.title} />
+								<SectionHeader title={t.milestones.nameLabel} />
 								<input
 									type="text"
 									value={name}

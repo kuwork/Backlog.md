@@ -293,6 +293,42 @@ describe("MCP milestone tools", () => {
 		expect(text).toContain("- Unconfigured");
 	});
 
+	it("shows created and updated dates in milestone_list output", async () => {
+		await server.testInterface.callTool({
+			params: { name: "milestone_add", arguments: { name: "Release 1.0" } },
+		});
+		await server.testInterface.callTool({
+			params: {
+				name: "milestone_edit",
+				arguments: { from: "Release 1.0", to: "Release 1.0", description: "Updated scope", updateTasks: false },
+			},
+		});
+		await writeLegacyMilestoneFile(server, "m-5", "Legacy Release");
+
+		const list = await server.testInterface.callTool({
+			params: { name: "milestone_list", arguments: {} },
+		});
+		const text = getText(list.content);
+		expect(text).toMatch(
+			/m-0: Release 1\.0 \(Created: \d{4}-\d{2}-\d{2} \d{2}:\d{2}, Updated: \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)/,
+		);
+		expect(text).toContain("m-5: Legacy Release");
+		expect(text).not.toContain("m-5: Legacy Release (");
+	});
+
+	it("shows only the created date in milestone_list when a milestone was never updated", async () => {
+		await server.testInterface.callTool({
+			params: { name: "milestone_add", arguments: { name: "Release 1.0" } },
+		});
+
+		const list = await server.testInterface.callTool({
+			params: { name: "milestone_list", arguments: {} },
+		});
+		const text = getText(list.content);
+		expect(text).toMatch(/m-0: Release 1\.0 \(Created: \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)/);
+		expect(text).not.toContain("Updated:");
+	});
+
 	it("archives milestones and hides them from lists", async () => {
 		await server.testInterface.callTool({
 			params: { name: "milestone_add", arguments: { name: "Release 1.0" } },

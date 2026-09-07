@@ -206,6 +206,7 @@ export const en = {
 			plannedEnd: "Planned End",
 			actualStart: "Actual Start",
 			actualEnd: "Actual End",
+			lastUpdated: "Last Updated",
 		},
 		clickToPreview: "Click to preview",
 		removeReference: "Remove reference",

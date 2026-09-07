@@ -167,6 +167,8 @@ export function serializeMilestone(milestone: Milestone): string {
 	const frontmatter = {
 		id: milestone.id,
 		title: milestone.title,
+		...(milestone.createdDate && { created_date: milestone.createdDate }),
+		...(milestone.updatedDate && { updated_date: milestone.updatedDate }),
 		...(milestone.dueDate && { due_date: milestone.dueDate }),
 		...(milestone.plannedStart && { planned_start: milestone.plannedStart }),
 		...(milestone.plannedEnd && { planned_end: milestone.plannedEnd }),

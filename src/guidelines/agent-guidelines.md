@@ -898,7 +898,7 @@ backlog milestone edit "Release 2.0" --due-date 2026-06-15
 backlog milestone edit "Release 2.0" --planned-start 2026-06-01 --planned-end 2026-06-10
 backlog milestone edit "Release 2.0" --clear-due-date --clear-planned-start --clear-planned-end
 
-# List active milestones (shows completion ratio)
+# List active milestones (shows completion ratio and created/updated dates)
 backlog milestone list
 
 # Include completed milestones
@@ -944,12 +944,13 @@ backlog board --milestones
 - Use `milestone_add` to create milestones with title and optional description, actualStart, and actualEnd.
 - Use `milestone_edit` to rename a milestone and optionally update its date fields, including actualStart and actualEnd.
 - Use `milestone_archive` to archive a milestone.
-- Use `milestone_list` to list active and archived milestones.
+- Use `milestone_list` to list active and archived milestones (output includes created/updated dates for each milestone).
 
 #### Key Rules
 
 - Milestone files live under `backlog/milestones/`; archived milestones move to `backlog/archive/milestones/`.
 - Milestone IDs follow the `m-N` format and are auto-assigned at creation.
+- Milestone files carry automatic `created_date`/`updated_date` metadata (stamped like task fields); milestone list output shows the created/updated date for each milestone.
 - Archiving unbinds tasks but does not delete them; tasks revert to the unassigned pool.
 - Prefer CLI or MCP APIs over ad-hoc file writes so frontmatter and metadata remain valid.
 

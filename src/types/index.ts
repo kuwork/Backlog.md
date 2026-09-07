@@ -211,6 +211,8 @@ export interface Milestone {
 	title: string;
 	description: string;
 	readonly rawContent: string; // Raw markdown content without frontmatter
+	createdDate?: string;
+	updatedDate?: string;
 	dueDate?: string;
 	plannedStart?: string;
 	plannedEnd?: string;

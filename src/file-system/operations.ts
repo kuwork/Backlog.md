@@ -1463,11 +1463,13 @@ export class FileSystem {
 			const id = `m-${nextId}`;
 
 			const filename = this.buildMilestoneFilename(id, title);
+			const createdDate = new Date().toISOString().slice(0, 16).replace("T", " ");
 			const content = this.serializeMilestoneContent({
 				id,
 				title,
 				description: description || `Milestone: ${title}`,
 				rawContent: `## Description\n\n${description || `Milestone: ${title}`}`,
+				createdDate,
 				...(dueDate !== undefined && { dueDate: dueDate.trim() || undefined }),
 				...(plannedStart !== undefined && { plannedStart: plannedStart.trim() || undefined }),
 				...(plannedEnd !== undefined && { plannedEnd: plannedEnd.trim() || undefined }),
@@ -1478,12 +1480,7 @@ export class FileSystem {
 			const filepath = join(milestonesDir, filename);
 			await Bun.write(filepath, content);
 
-			return {
-				id,
-				title,
-				description: description || `Milestone: ${title}`,
-				rawContent: parseMilestone(content).rawContent,
-			};
+			return parseMilestone(content);
 		});
 	}
 
@@ -1536,7 +1533,7 @@ export class FileSystem {
 					`## Description\n\n${description}`,
 				);
 			}
-			const updatedContent = this.serializeMilestoneContent({
+			const nextMilestone: Milestone = {
 				...milestone,
 				title: normalizedTitle,
 				description: parseMilestone(nextRawContent).description,
@@ -1546,7 +1543,16 @@ export class FileSystem {
 				...(plannedEnd !== undefined && { plannedEnd: plannedEnd.trim() || undefined }),
 				...(actualStart !== undefined && { actualStart: actualStart.trim() || undefined }),
 				...(actualEnd !== undefined && { actualEnd: actualEnd.trim() || undefined }),
-			});
+			};
+			// Stamp updated_date only on substantive changes (mirrors task BACK-534 logic);
+			// the spread above already carries the original updatedDate through.
+			const { updatedDate: _originalUpdated, ...originalComparable } = milestone;
+			const { updatedDate: _nextUpdated, ...nextComparable } = nextMilestone;
+			const stampedMilestone =
+				JSON.stringify(originalComparable) !== JSON.stringify(nextComparable)
+					? { ...nextMilestone, updatedDate: new Date().toISOString().slice(0, 16).replace("T", " ") }
+					: nextMilestone;
+			const updatedContent = this.serializeMilestoneContent(stampedMilestone);
 
 			if (sourcePath !== targetPath) {
 				if (await Bun.file(targetPath).exists()) {

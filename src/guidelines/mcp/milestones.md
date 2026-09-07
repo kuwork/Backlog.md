@@ -12,7 +12,7 @@ Use Backlog.md public interfaces for milestone creation, listing, and archival s
 - `milestone_edit` — rename a milestone and optionally update its date fields, including actualStart and actualEnd
 - `milestone_remove` — remove an active milestone file and optionally clear/reassign tasks
 - `milestone_archive` — archive a milestone by moving it to `backlog/archive/milestones`
-- `milestone_list` — list active and archived milestones
+- `milestone_list` — list active and archived milestones (includes created/updated dates for each milestone)
 
 **Assigning tasks to milestones:**
 
@@ -29,5 +29,6 @@ To clear a milestone assignment, set `milestone` to an empty string or use the a
 
 - Milestone files live under `backlog/milestones/`; archived milestones move to `backlog/archive/milestones/`.
 - Milestone IDs follow the `m-N` format and are auto-assigned at creation.
+- Milestone files carry automatic `created_date`/`updated_date` metadata (stamped like task fields); `milestone_list` output includes the created/updated dates for each milestone.
 - Archiving unbinds tasks but does not delete them; tasks revert to the unassigned pool.
 - Prefer CLI or MCP APIs over ad-hoc file writes so frontmatter and metadata remain valid.
