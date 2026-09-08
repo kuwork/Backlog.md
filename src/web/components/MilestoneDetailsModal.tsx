@@ -93,6 +93,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	const [sortConfig, setSortConfig] = useState<TaskSortConfig | null>(null);
 
 	const [showRemove, setShowRemove] = useState(false);
+	const [showArchive, setShowArchive] = useState(false);
 	const [removeTaskHandling, setRemoveTaskHandling] = useState<RemoveTaskHandling>("clear");
 	const [removeReassignTo, setRemoveReassignTo] = useState("");
 	const [removing, setRemoving] = useState(false);
@@ -266,12 +267,11 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 
 	const handleArchive = async () => {
 		if (!activeMilestone) return;
-		const label = activeMilestone.title || activeMilestone.id;
-		if (!window.confirm(t.milestones.archiveConfirm(label))) return;
 		setArchiving(true);
 		setError(null);
 		try {
 			await apiClient.archiveMilestone(activeMilestone.id);
+			setShowArchive(false);
 			if (onRefreshData) await onRefreshData();
 			onClose();
 		} catch (err) {
@@ -563,7 +563,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									</button>
 									<button
 										type="button"
-										onClick={() => void handleArchive()}
+										onClick={() => setShowArchive(true)}
 										disabled={saving || archiving}
 										className="inline-flex items-center px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-800 text-sm font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-60"
 									>
@@ -911,6 +911,37 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				)}
 			</Modal>
 
+			{/* Archive confirmation */}
+			<Modal
+				isOpen={showArchive}
+				onClose={() => setShowArchive(false)}
+				title={t.milestones.archiveTitle}
+				maxWidthClass="max-w-md"
+			>
+				<div className="space-y-4">
+					<p className="text-sm text-gray-600 dark:text-gray-300">
+						{t.milestones.archiveDescription}
+					</p>
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							onClick={() => setShowArchive(false)}
+							className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+						>
+							{t.common.cancel}
+						</button>
+						<button
+							type="button"
+							onClick={() => void handleArchive()}
+							disabled={archiving}
+							className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-colors"
+						>
+							{archiving ? t.common.archiving : t.milestones.archive}
+						</button>
+					</div>
+				</div>
+			</Modal>
+
 			{/* Remove confirmation */}
 			<Modal
 				isOpen={showRemove}
@@ -920,7 +951,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 			>
 				<div className="space-y-4">
 					<p className="text-sm text-gray-600 dark:text-gray-300">
-						{t.milestones.removeDescription(activeMilestone?.title ?? "")}
+						{t.milestones.removeDescription}
 					</p>
 					<div className="space-y-3">
 						<label className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 dark:border-gray-700 px-3 py-3 text-sm text-gray-700 dark:text-gray-200">

@@ -94,6 +94,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 	const [archivingMilestoneKey, setArchivingMilestoneKey] = useState<string | null>(null);
 	const [removingMilestoneKey, setRemovingMilestoneKey] = useState<string | null>(null);
 	const [removingBucket, setRemovingBucket] = useState<MilestoneBucket | null>(null);
+	const [archivingBucket, setArchivingBucket] = useState<MilestoneBucket | null>(null);
 	const [removeTaskHandling, setRemoveTaskHandling] = useState<RemoveTaskHandling>("clear");
 	const [removeReassignTo, setRemoveReassignTo] = useState("");
 	const [modalError, setModalError] = useState<string | null>(null);
@@ -263,14 +264,12 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			if (!bucket.milestone) return;
 
 			const label = bucket.label || bucket.milestone;
-			const confirmed = window.confirm(t.milestones.archiveConfirm(label));
-			if (!confirmed) return;
-
 			setArchivingMilestoneKey(bucket.key);
 			setError(null);
 			setSuccess(null);
 			try {
 				await apiClient.archiveMilestone(bucket.milestone);
+				setArchivingBucket(null);
 				setSuccess(t.milestones.archiveSuccess(label));
 				if (onRefreshData) {
 					await onRefreshData();
@@ -283,8 +282,19 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 				setArchivingMilestoneKey(null);
 			}
 		},
-		[onRefreshData],
+		[onRefreshData, t],
 	);
+
+	const openArchiveModal = (bucket: MilestoneBucket) => {
+		if (!bucket.milestone) return;
+		setArchivingBucket(bucket);
+		setError(null);
+		setSuccess(null);
+	};
+
+	const closeArchiveModal = () => {
+		setArchivingBucket(null);
+	};
 
 	const openRemoveModal = (bucket: MilestoneBucket) => {
 		if (!bucket.milestone) return;
@@ -673,7 +683,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							</button>
 							<button
 								type="button"
-								onClick={() => handleArchiveMilestone(bucket)}
+								onClick={() => openArchiveModal(bucket)}
 								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-60"
 							>
@@ -981,10 +991,35 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			)}
 
 			{/* Remove modal */}
+			<Modal isOpen={archivingBucket !== null} onClose={closeArchiveModal} title={t.milestones.archiveTitle} maxWidthClass="max-w-md">
+				<div className="space-y-4">
+					<p className="text-sm text-gray-600 dark:text-gray-300">
+						{t.milestones.archiveDescription}
+					</p>
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							onClick={closeArchiveModal}
+							className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+						>
+							{t.common.cancel}
+						</button>
+						<button
+							type="button"
+							onClick={() => archivingBucket && handleArchiveMilestone(archivingBucket)}
+							disabled={archivingMilestoneKey !== null}
+							className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-colors"
+						>
+							{archivingMilestoneKey !== null ? t.common.archiving : t.milestones.archive}
+						</button>
+					</div>
+				</div>
+			</Modal>
+
 			<Modal isOpen={removingBucket !== null} onClose={closeRemoveModal} title={t.milestones.removeTitle} maxWidthClass="max-w-md">
 				<div className="space-y-4">
 					<p className="text-sm text-gray-600 dark:text-gray-300">
-						{t.milestones.removeDescription(removingBucket?.label ?? "")}
+						{t.milestones.removeDescription}
 					</p>
 					<div className="space-y-3">
 						<label className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 dark:border-gray-700 px-3 py-3 text-sm text-gray-700 dark:text-gray-200">

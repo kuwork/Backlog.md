@@ -250,8 +250,8 @@ describe("Web milestones page search", () => {
 		clickElement(removeButtons[0] as HTMLButtonElement);
 
 		const text = container.textContent ?? "";
-		expect(text).toContain("Remove milestone");
-		expect(text).toContain("Leave tasks unassigned");
+		expect(text).toContain("Remove Milestone");
+		expect(text).toContain("Clear the milestone field on tasks");
 		expect(text).toContain("Reassign tasks");
 
 		const select = container.querySelector("select") as HTMLSelectElement | null;
