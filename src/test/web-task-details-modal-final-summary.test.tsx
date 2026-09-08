@@ -717,4 +717,161 @@ describe("Web task popup Final Summary display", () => {
 			"Local draft description",
 		);
 	});
+
+	it("renders comment delete buttons in preview mode", () => {
+		setupDom();
+
+		const task: Task = {
+			id: "TASK-14",
+			title: "Preview comments",
+			status: "To Do",
+			assignee: [],
+			createdDate: "2025-01-01",
+			labels: [],
+			dependencies: [],
+			comments: [{ index: 1, createdDate: "2025-01-02 12:00", body: "Preview comment" }],
+		};
+
+		const html = renderToString(
+			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+			</ThemeProvider></I18nProvider></MemoryRouter>,
+		);
+
+		expect(html).toContain("Preview comment");
+		expect(html).toContain("Delete comment");
+		expect(html).toContain("Add comment");
+	});
+
+	it("removes a comment through the delete button", async () => {
+		setupDom();
+		window.confirm = () => true;
+
+		const task: Task = {
+			id: "TASK-15",
+			title: "Delete comment task",
+			status: "To Do",
+			assignee: [],
+			createdDate: "2025-01-01",
+			labels: [],
+			dependencies: [],
+			comments: [
+				{ index: 1, author: "@first", createdDate: "2025-01-02 12:00", body: "First comment" },
+				{ index: 2, author: "@second", createdDate: "2025-01-03 12:00", body: "Second comment" },
+			],
+		};
+		const updatedTask: Task = {
+			...task,
+			comments: [{ index: 1, author: "@second", createdDate: "2025-01-03 12:00", body: "Second comment" }],
+		};
+
+		const originalUpdateTask = apiClient.updateTask.bind(apiClient);
+		apiClient.updateTask = async (id, updates) => {
+			expect(id).toBe("TASK-15");
+			expect(updates.commentRemove).toEqual([1]);
+			return updatedTask;
+		};
+
+		try {
+			const container = document.getElementById("root");
+			expect(container).toBeTruthy();
+			activeRoot = createRoot(container as HTMLElement);
+
+			await act(async () => {
+				activeRoot?.render(
+					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider></I18nProvider></MemoryRouter>,
+				);
+				await Promise.resolve();
+			});
+
+			expect(container?.textContent).toContain("First comment");
+			expect((container as HTMLElement).querySelectorAll("button[title='Delete comment']").length).toBe(2);
+
+			const deleteButtons = Array.from((container as HTMLElement).querySelectorAll("button[title='Delete comment']"));
+			await act(async () => {
+				clickElement(deleteButtons[0] as HTMLButtonElement);
+				await Promise.resolve();
+			});
+
+			await act(async () => {
+				activeRoot?.render(
+					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+					</ThemeProvider></I18nProvider></MemoryRouter>,
+				);
+				await Promise.resolve();
+			});
+
+			expect(container?.textContent).not.toContain("First comment");
+			expect(container?.textContent).toContain("Second comment");
+		} finally {
+			apiClient.updateTask = originalUpdateTask;
+		}
+	});
+
+	it("clears all comments through the section header button", async () => {
+		setupDom();
+		window.confirm = () => true;
+
+		const task: Task = {
+			id: "TASK-16",
+			title: "Clear comments task",
+			status: "To Do",
+			assignee: [],
+			createdDate: "2025-01-01",
+			labels: [],
+			dependencies: [],
+			comments: [
+				{ index: 1, author: "@first", createdDate: "2025-01-02 12:00", body: "First comment" },
+				{ index: 2, author: "@second", createdDate: "2025-01-03 12:00", body: "Second comment" },
+			],
+		};
+		const updatedTask: Task = { ...task, comments: [] };
+
+		const originalUpdateTask = apiClient.updateTask.bind(apiClient);
+		apiClient.updateTask = async (id, updates) => {
+			expect(id).toBe("TASK-16");
+			expect(updates.commentClear).toBe(true);
+			return updatedTask;
+		};
+
+		try {
+			const container = document.getElementById("root");
+			expect(container).toBeTruthy();
+			activeRoot = createRoot(container as HTMLElement);
+
+			await act(async () => {
+				activeRoot?.render(
+					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider></I18nProvider></MemoryRouter>,
+				);
+				await Promise.resolve();
+			});
+
+			expect((container as HTMLElement).querySelectorAll("button[title='Clear comments']").length).toBe(1);
+
+			await act(async () => {
+				clickElement((container as HTMLElement).querySelector("button[title='Clear comments']") as HTMLButtonElement);
+				await Promise.resolve();
+			});
+
+			await act(async () => {
+				activeRoot?.render(
+					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
+						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+					</ThemeProvider></I18nProvider></MemoryRouter>,
+				);
+				await Promise.resolve();
+			});
+
+			expect(container?.textContent).not.toContain("First comment");
+			expect(container?.textContent).not.toContain("Second comment");
+			expect((container as HTMLElement).querySelectorAll("button[title='Clear comments']").length).toBe(0);
+		} finally {
+			apiClient.updateTask = originalUpdateTask;
+		}
+	});
 });

@@ -166,6 +166,7 @@ backlog task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
 # 跟踪工作
 backlog task list -s "To Do"
 backlog task edit BACK-1 --comment "Can we split the UI work into a separate PR?" --comment-author @sara
+backlog task edit BACK-1 --remove-comment 2  # Remove comment #2; --clear-comments removes all
 backlog search "kanban"
 backlog board
 

@@ -1002,6 +1002,39 @@ export const TaskDetailsModal: React.FC<Props> = ({
     }
   };
 
+  const handleDeleteComment = async (index: number) => {
+    if (!task || isFromOtherBranch) return;
+    if (!window.confirm(t.taskDetails.deleteCommentConfirm)) return;
+    setCommentSaving(true);
+    setError(null);
+    try {
+      const updatedTask = await apiClient.updateTask(task.id, { commentRemove: [index] });
+      setDisplayComments(updatedTask.comments ?? []);
+      setCommentsChanged(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCommentSaving(false);
+    }
+  };
+
+  const handleClearComments = async () => {
+    if (!task || isFromOtherBranch) return;
+    if (comments.length === 0) return;
+    if (!window.confirm(t.taskDetails.clearCommentsConfirm)) return;
+    setCommentSaving(true);
+    setError(null);
+    try {
+      const updatedTask = await apiClient.updateTask(task.id, { commentClear: true });
+      setDisplayComments(updatedTask.comments ?? []);
+      setCommentsChanged(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCommentSaving(false);
+    }
+  };
+
   // labels handled via ChipInput; no textarea parsing
 
 	const handleComplete = async () => {
@@ -1488,15 +1521,41 @@ export const TaskDetailsModal: React.FC<Props> = ({
           {/* Comments */}
           {!isCreateMode && (
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <SectionHeader title={`${t.taskDetails.section.comments}${comments.length ? ` (${comments.length})` : ""}`} />
+              <SectionHeader
+                title={`${t.taskDetails.section.comments}${comments.length ? ` (${comments.length})` : ""}`}
+                right={!isFromOtherBranch && comments.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleClearComments()}
+                    disabled={commentSaving}
+                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                    title={t.taskDetails.clearComments}
+                  >
+                    {t.taskDetails.clearCommentsLabel}
+                  </button>
+                ) : null}
+              />
               {comments.length > 0 ? (
                 <div className="space-y-4">
                   {comments.map((comment) => (
-                    <article key={`${comment.index}-${comment.createdDate}`} className="border-l-2 border-gray-200 dark:border-gray-700 pl-3">
+                    <article key={`${comment.index}-${comment.createdDate}`} className="border-l-2 border-gray-200 dark:border-gray-700 pl-3 group">
                       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                         <span className="font-semibold text-gray-700 dark:text-gray-200">#{comment.index}</span>
                         {comment.author ? <span>{comment.author}</span> : null}
                         {comment.createdDate ? <span>{formatStoredUtcDateForDisplay(comment.createdDate)}</span> : null}
+                        {!isFromOtherBranch && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteComment(comment.index)}
+                            disabled={commentSaving}
+                            className="ml-auto opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0 disabled:opacity-50"
+                            title={t.taskDetails.deleteComment}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
                         <MermaidMarkdown source={comment.body} wikilinkBasePath="index.md" />

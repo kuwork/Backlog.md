@@ -106,6 +106,8 @@ Important: Do not edit Backlog task, draft, document, decision, or milestone mar
 backlog task edit 7 --check-ac 1  # Mark AC #1 as complete
 backlog task edit 7 --notes "Implementation complete"  # Add notes
 backlog task edit 7 --comment "Review question" --comment-author @agent-k  # Add comment
+backlog task edit 7 --remove-comment 2  # Remove comment #2 (repeatable or comma-separated: --remove-comment 2,3)
+backlog task edit 7 --clear-comments  # Remove all comments
 backlog task edit 7 --final-summary "PR-style summary"  # Add final summary
 backlog task edit 7 -s "In Progress" -a @agent-k  # Change status and assign
 ```

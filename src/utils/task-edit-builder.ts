@@ -181,6 +181,14 @@ export function buildTaskUpdateInput(args: TaskEditArgs): TaskUpdateInput {
 		}));
 	}
 
+	if (Array.isArray(args.commentRemove) && args.commentRemove.length > 0) {
+		updateInput.removeComments = [...args.commentRemove];
+	}
+
+	if (args.commentClear) {
+		updateInput.clearComments = true;
+	}
+
 	if (typeof args.finalSummary === "string") {
 		updateInput.finalSummary = args.finalSummary;
 	}

@@ -388,4 +388,277 @@ describe("Task comments", () => {
 		const loaded = await core.filesystem.loadTask("task-1");
 		expect(loaded?.comments ?? []).toEqual([]);
 	});
+
+	it("removes a comment by index and renumbers the remaining comments", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Remove comment",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-05-31 10:00",
+				labels: [],
+				dependencies: [],
+				description: "Task description",
+			},
+			false,
+		);
+		await core.updateTaskFromInput(
+			"task-1",
+			{
+				appendComments: [
+					{ body: "first comment", author: "@one", createdDate: "2026-05-31 10:10" },
+					{ body: "second comment", author: "@two", createdDate: "2026-05-31 10:20" },
+					{ body: "third comment", createdDate: "2026-05-31 10:30" },
+				],
+			},
+			false,
+		);
+
+		await core.updateTaskFromInput("task-1", { removeComments: [2] }, false);
+
+		const loaded = (await core.filesystem.loadTask("task-1")) as Task;
+		expect(loaded.comments).toEqual([
+			{ index: 1, author: "@one", createdDate: "2026-05-31 10:10", body: "first comment" },
+			{ index: 2, createdDate: "2026-05-31 10:30", body: "third comment" },
+		]);
+		expect(loaded.description).toBe("Task description");
+		expect(loaded.rawContent).toContain("## Comments");
+
+		const matches = createTaskSearchIndex([loaded]).search({ query: "second" });
+		expect(matches.map((task) => task.id)).toEqual([]);
+	});
+
+	it("removes multiple comments in one update", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Remove multiple comments",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-05-31 10:00",
+				labels: [],
+				dependencies: [],
+				description: "Task description",
+			},
+			false,
+		);
+		await core.updateTaskFromInput(
+			"task-1",
+			{
+				appendComments: [
+					{ body: "alpha body", createdDate: "2026-05-31 10:10" },
+					{ body: "beta body", createdDate: "2026-05-31 10:20" },
+					{ body: "gamma body", createdDate: "2026-05-31 10:30" },
+				],
+			},
+			false,
+		);
+
+		await core.updateTaskFromInput("task-1", { removeComments: [1, 3] }, false);
+
+		const loaded = await core.filesystem.loadTask("task-1");
+		expect(loaded?.comments).toEqual([{ index: 1, createdDate: "2026-05-31 10:20", body: "beta body" }]);
+	});
+
+	it("clears all comments and strips the Comments section", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Clear comments",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-05-31 10:00",
+				labels: [],
+				dependencies: [],
+				description: "Task description",
+				comments: [{ index: 1, author: "@one", createdDate: "2026-05-31 10:10", body: "only comment" }],
+			},
+			false,
+		);
+
+		await core.updateTaskFromInput("task-1", { clearComments: true }, false);
+
+		const loaded = await core.filesystem.loadTask("task-1");
+		expect(loaded?.comments ?? []).toEqual([]);
+		expect(loaded?.rawContent).not.toContain("## Comments");
+		expect(loaded?.description).toBe("Task description");
+	});
+
+	it("rejects removing a comment index that does not exist", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-1",
+				title: "Missing comment",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-05-31 10:00",
+				labels: [],
+				dependencies: [],
+				description: "Task description",
+				comments: [{ index: 1, createdDate: "2026-05-31 10:10", body: "only comment" }],
+			},
+			false,
+		);
+
+		await expect(core.updateTaskFromInput("task-1", { removeComments: [5] }, false)).rejects.toThrow(
+			"Comment #5 not found.",
+		);
+
+		const loaded = await core.filesystem.loadTask("task-1");
+		expect(loaded?.comments).toEqual([{ index: 1, createdDate: "2026-05-31 10:10", body: "only comment" }]);
+	});
+
+	it("removes comments from legacy marker blocks", async () => {
+		const core = new Core(TEST_DIR);
+		const content = [
+			"---",
+			"id: task-1",
+			"title: Legacy comments",
+			"status: To Do",
+			"created_date: 2026-05-31 10:00",
+			"---",
+			"",
+			"## Description",
+			"",
+			"Task description",
+			"",
+			"## Comments",
+			"",
+			"<!-- COMMENTS:BEGIN -->",
+			"",
+			"<!-- COMMENT:BEGIN -->",
+			"index: 1",
+			"author: @one",
+			"created: 2026-05-31 10:10",
+			"",
+			"Legacy first",
+			"<!-- COMMENT:END -->",
+			"",
+			"<!-- COMMENT:BEGIN -->",
+			"index: 2",
+			"author: @two",
+			"created: 2026-05-31 10:20",
+			"",
+			"Legacy second",
+			"<!-- COMMENT:END -->",
+			"",
+			"<!-- COMMENTS:END -->",
+			"",
+		].join("\n");
+		await Bun.write(join(TEST_DIR, "backlog", "tasks", "task-1 - Legacy.md"), content);
+
+		const before = await core.filesystem.loadTask("task-1");
+		expect(before?.comments?.map((comment) => comment.body)).toEqual(["Legacy first", "Legacy second"]);
+
+		await core.updateTaskFromInput("task-1", { removeComments: [1] }, false);
+
+		const loaded = await core.filesystem.loadTask("task-1");
+		expect(loaded?.comments).toEqual([
+			{ index: 1, author: "@two", createdDate: "2026-05-31 10:20", body: "Legacy second" },
+		]);
+	});
+
+	it("removes and clears comments through the CLI", async () => {
+		const create = await $`bun ${[CLI_PATH, "task", "create", "CLI remove comment task"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(create.exitCode).toBe(0);
+
+		const append = await $`bun ${[CLI_PATH, "task", "edit", "1", "--comment", "keep me", "--comment", "drop me"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(append.exitCode).toBe(0);
+
+		const remove = await $`bun ${[CLI_PATH, "task", "edit", "1", "--remove-comment", "2", "--plain"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(remove.exitCode).toBe(0);
+		expect(remove.stdout.toString()).toContain("keep me");
+		expect(remove.stdout.toString()).not.toContain("drop me");
+
+		const clear = await $`bun ${[CLI_PATH, "task", "edit", "1", "--clear-comments", "--plain"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(clear.exitCode).toBe(0);
+		expect(clear.stdout.toString()).not.toContain("Comments:");
+
+		const core = new Core(TEST_DIR);
+		const loaded = await core.filesystem.loadTask("task-1");
+		expect(loaded?.comments ?? []).toEqual([]);
+		expect(loaded?.rawContent).not.toContain("## Comments");
+	});
+
+	it("rejects out-of-range CLI comment removal", async () => {
+		const create = await $`bun ${[CLI_PATH, "task", "create", "CLI missing comment task"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(create.exitCode).toBe(0);
+
+		const edit = await $`bun ${[CLI_PATH, "task", "edit", "1", "--remove-comment", "3"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(edit.exitCode).not.toBe(0);
+		expect(`${edit.stderr}${edit.stdout}`).toContain("Comment #3 not found.");
+	});
+
+	it("supports comma-separated --remove-comment indexes", async () => {
+		const create = await $`bun ${[CLI_PATH, "task", "create", "CLI comma remove task"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(create.exitCode).toBe(0);
+
+		const append =
+			await $`bun ${[CLI_PATH, "task", "edit", "1", "--comment", "first", "--comment", "second", "--comment", "third"]}`
+				.cwd(TEST_DIR)
+				.quiet()
+				.nothrow();
+		expect(append.exitCode).toBe(0);
+
+		const remove = await $`bun ${[CLI_PATH, "task", "edit", "1", "--remove-comment", "1,3", "--plain"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(remove.exitCode).toBe(0);
+		expect(remove.stdout.toString()).not.toContain("first");
+		expect(remove.stdout.toString()).toContain("second");
+		expect(remove.stdout.toString()).not.toContain("third");
+
+		const core = new Core(TEST_DIR);
+		const loaded = await core.filesystem.loadTask("task-1");
+		expect(loaded?.comments).toEqual([{ index: 1, createdDate: expect.any(String), body: "second" }]);
+	});
+
+	it("rejects combining --clear-comments with --comment or --remove-comment", async () => {
+		const create = await $`bun ${[CLI_PATH, "task", "create", "CLI clear conflict task"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(create.exitCode).toBe(0);
+
+		const withAppend = await $`bun ${[CLI_PATH, "task", "edit", "1", "--clear-comments", "--comment", "nope"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(withAppend.exitCode).not.toBe(0);
+		expect(`${withAppend.stderr}${withAppend.stdout}`).toContain("Cannot combine --clear-comments");
+
+		const withRemove = await $`bun ${[CLI_PATH, "task", "edit", "1", "--clear-comments", "--remove-comment", "1"]}`
+			.cwd(TEST_DIR)
+			.quiet()
+			.nothrow();
+		expect(withRemove.exitCode).not.toBe(0);
+		expect(`${withRemove.stderr}${withRemove.stdout}`).toContain("Cannot combine --clear-comments");
+	});
 });

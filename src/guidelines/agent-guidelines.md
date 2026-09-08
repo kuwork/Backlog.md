@@ -91,6 +91,8 @@ remains fully synchronized and up-to-date.
 backlog task edit 7 --check-ac 1  # Mark AC #1 as complete
 backlog task edit 7 --notes "Implementation complete"  # Add notes
 backlog task edit 7 --comment "Review question" --comment-author @agent-k  # Add comment
+backlog task edit 7 --remove-comment 2  # Remove comment #2
+backlog task edit 7 --clear-comments  # Remove all comments
 backlog task edit 7 --final-summary "PR-style summary"  # Add final summary
 backlog task edit 7 -s "In Progress" -a @agent-k  # Multiple commands: change status and assign the task when you start working on the task
 ```
@@ -195,6 +197,8 @@ PR-style summary of what was implemented.
 | Add Notes (replace)     | `backlog task edit 42 --notes "What I did"`              |
 | Append Notes            | `backlog task edit 42 --append-notes "Another note"` |
 | Add Comment             | `backlog task edit 42 --comment "Review question" --comment-author @agent` |
+| Remove Comment          | `backlog task edit 42 --remove-comment 2` |
+| Clear Comments          | `backlog task edit 42 --clear-comments` |
 | Add Final Summary       | `backlog task edit 42 --final-summary "PR-style summary"` |
 | Append Final Summary    | `backlog task edit 42 --append-final-summary "Another detail"` |
 | Clear Final Summary     | `backlog task edit 42 --clear-final-summary` |
@@ -614,6 +618,8 @@ backlog search --modified-file src/server/api.ts --plain
 | Check AC      | `backlog task edit 42 --check-ac 1`  | Change `- [ ]` to `- [x]` in file |
 | Add notes     | `backlog task edit 42 --notes "..."` | Type notes into .md file          |
 | Add comment   | `backlog task edit 42 --comment "..." --comment-author @agent` | Type comment into .md file |
+| Remove comment | `backlog task edit 42 --remove-comment 2` | Delete comment block in .md file |
+| Edit comment body/author | Use the text replacement tool (Edit) on the comment block in .md file | Rewrite the whole task file |
 | Add final summary | `backlog task edit 42 --final-summary "..."` | Type summary into .md file |
 | Change status | `backlog task edit 42 -s Done`       | Edit status in frontmatter        |
 | Add AC        | `backlog task edit 42 --ac "New"`    | Add `- [ ] New` to file           |
@@ -675,6 +681,8 @@ backlog search --modified-file src/server/api.ts --plain
 | Add notes        | `backlog task edit 42 --notes "Implementation details"`  |
 | Append description | `backlog task edit 42 --append-description "Extra context"` |
 | Add comment      | `backlog task edit 42 --comment "Review question" --comment-author @agent` |
+| Remove comment   | `backlog task edit 42 --remove-comment 2` |
+| Clear comments   | `backlog task edit 42 --clear-comments` |
 | Add final summary | `backlog task edit 42 --final-summary "PR-style summary"` |
 | Append final summary | `backlog task edit 42 --append-final-summary "More details"` |
 | Clear final summary | `backlog task edit 42 --clear-final-summary` |
@@ -780,7 +788,9 @@ To store a literal backslash-n sequence (`\n`) inside any multi-line field value
 ### Comments Formatting
 
 - Use comments for task discussion, review notes, questions, and handoff context that should remain visible to humans and agents.
-- Comments are append-only via `backlog task edit <id> --comment "..."`; include `--comment-author @name` when attribution is useful.
+- Add comments via `backlog task edit <id> --comment "..."`; include `--comment-author @name` when attribution is useful.
+- Remove a comment by its 1-based index with `--remove-comment <index>` (repeatable, comma-separated values allowed, e.g. `--remove-comment 2,3`); remove all comments with `--clear-comments` (cannot be combined with `--comment` or `--remove-comment`).
+- To edit an existing comment's body or author (no CLI flag exists), use the text replacement tool (Edit) to modify the `author:`/`created:` lines or the body inside that comment's `---` delimited block in the task file directly; keep all other task content untouched.
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters.
 - Do not use comments as the primary execution log; use Implementation Notes for progress and Final Summary for the PR description.
 

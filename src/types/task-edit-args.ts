@@ -30,6 +30,8 @@ export interface TaskEditArgs {
 	notesClear?: boolean;
 	commentsAppend?: string[];
 	commentAuthor?: string;
+	commentRemove?: number[];
+	commentClear?: boolean;
 	finalSummary?: string;
 	finalSummaryAppend?: string[];
 	finalSummaryClear?: boolean;

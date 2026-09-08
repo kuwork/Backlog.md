@@ -552,6 +552,18 @@ export class TaskHandlers {
 				args.acceptanceCriteriaSet = [];
 			}
 
+			if (args.commentClear) {
+				if (
+					(args.commentsAppend && args.commentsAppend.length > 0) ||
+					(args.commentRemove && args.commentRemove.length > 0)
+				) {
+					throw new BacklogToolError(
+						"Cannot combine commentClear with commentsAppend or commentRemove. Use commentClear alone.",
+						"VALIDATION_ERROR",
+					);
+				}
+			}
+
 			const updateInput = buildTaskUpdateInput(args);
 			if (typeof updateInput.milestone === "string") {
 				updateInput.milestone = await this.resolveMilestoneInput(updateInput.milestone);

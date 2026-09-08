@@ -383,6 +383,8 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.notes !== undefined ||
 			options.comment !== undefined ||
 			options.commentAuthor !== undefined ||
+			options.removeComment !== undefined ||
+			options.clearComments ||
 			options.finalSummary !== undefined ||
 			options.appendPlan !== undefined ||
 			options.appendNotes !== undefined ||
@@ -2957,6 +2959,12 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 	)
 	.option("--comment-author <author>", "author to record for appended comments")
 	.option(
+		"--remove-comment <index>",
+		"remove comment by index (1-based, repeatable, comma-separated values allowed)",
+		createMultiValueAccumulator(),
+	)
+	.option("--clear-comments", "remove all comments (cannot combine with --comment or --remove-comment)")
+	.option(
 		"--final-summary <text>",
 		"set final summary (replaces existing; multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 	)
@@ -3178,6 +3186,7 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		let removeDod: number[] | undefined;
 		let checkDod: number[] | undefined;
 		let uncheckDod: number[] | undefined;
+		let removeComments: number[] | undefined;
 
 		try {
 			const removes = parsePositiveIndexList(options.removeAc);
@@ -3204,6 +3213,10 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 			if (dodUnchecks.length > 0) {
 				uncheckDod = dodUnchecks;
 			}
+			const commentRemoves = parsePositiveIndexList(options.removeComment);
+			if (commentRemoves.length > 0) {
+				removeComments = commentRemoves;
+			}
 		} catch (error) {
 			console.error(formatTaskEditError(error, existingTask.id));
 			process.exitCode = 1;
@@ -3220,6 +3233,14 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		) {
 			console.error(
 				"Cannot combine --clear-ac with --ac, --acceptance-criteria, --remove-ac, --check-ac, or --uncheck-ac. Use --clear-ac by itself.",
+			);
+			process.exitCode = 1;
+			return;
+		}
+
+		if (options.clearComments && (options.comment !== undefined || options.removeComment !== undefined)) {
+			console.error(
+				"Cannot combine --clear-comments with --comment or --remove-comment. Use --clear-comments by itself.",
 			);
 			process.exitCode = 1;
 			return;
@@ -3357,6 +3378,12 @@ addHelpSchema(taskCmd.command("edit [taskId]"), {
 		}
 		if (typeof options.commentAuthor === "string") {
 			editArgs.commentAuthor = String(options.commentAuthor);
+		}
+		if (removeComments && removeComments.length > 0) {
+			editArgs.commentRemove = removeComments;
+		}
+		if (options.clearComments) {
+			editArgs.commentClear = true;
 		}
 		if (typeof options.finalSummary === "string") {
 			editArgs.finalSummary = processCliEscapes(String(options.finalSummary));

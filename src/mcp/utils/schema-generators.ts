@@ -348,6 +348,19 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 				maxLength: 100,
 				description: "Optional author label to store with appended comments.",
 			},
+			commentRemove: {
+				type: "array",
+				items: {
+					type: "number",
+					minimum: 1,
+				},
+				maxItems: 100,
+				description: "Remove comments by 1-based index. Cannot be combined with commentClear.",
+			},
+			commentClear: {
+				type: "boolean",
+				description: "Remove all comments. Cannot be combined with commentsAppend or commentRemove.",
+			},
 			planSet: {
 				type: "string",
 				maxLength: 20000,

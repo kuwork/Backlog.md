@@ -39,7 +39,7 @@
 - If feedback requires changes, revise the plan first via `task_edit` (planSet or planAppend fields)
 - Work in short loops: implement, run the relevant tests, and immediately check off acceptance criteria with `task_edit` (acceptanceCriteriaCheck field) when they are met
 - Log progress with `task_edit` (notesAppend field) to document decisions, blockers, or learnings
-- Use `task_edit` (`commentsAppend` with optional `commentAuthor`) for task discussion, review questions, or handoff notes that are not part of the execution log
+- Use `task_edit` (`commentsAppend` with optional `commentAuthor`) for task discussion, review questions, or handoff notes that are not part of the execution log; remove comments with `commentRemove` (1-based indexes) or `commentClear` (all)
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters
 - Keep task status aligned with reality via `task_edit`
 
@@ -68,6 +68,8 @@ Use `task_edit` to modify these fields:
 | Plan | `planSet` / `planAppend` / `planClear` |
 | Notes | `notesSet` / `notesAppend` / `notesClear` |
 | Comment | `commentsAppend` with optional `commentAuthor` |
+| Remove Comment | `commentRemove` (array of 1-based indexes) |
+| Clear Comments | `commentClear` |
 | Final Summary | `finalSummary` / `finalSummaryAppend` / `finalSummaryClear` |
 | Dependencies | `dependencies` |
 | References | `references` / `addReferences` / `removeReferences` |

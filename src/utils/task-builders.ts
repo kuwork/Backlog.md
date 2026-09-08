@@ -139,11 +139,17 @@ export function parseClearableStringList(value: unknown): string[] | undefined {
  * Throws an Error when any value is invalid so callers can surface CLI-friendly messaging.
  */
 export function parsePositiveIndexList(value: unknown): number[] {
-	const entries = Array.isArray(value) ? value : value !== undefined && value !== null ? [value] : [];
+	const entries = (Array.isArray(value) ? value : value !== undefined && value !== null ? [value] : [])
+		.flatMap((entry) =>
+			String(entry)
+				.split(",")
+				.map((item) => item.trim()),
+		)
+		.filter((entry) => entry.length > 0);
 	return entries.map((entry) => {
-		const parsed = Number.parseInt(String(entry), 10);
+		const parsed = Number.parseInt(entry, 10);
 		if (!Number.isFinite(parsed) || Number.isNaN(parsed) || parsed < 1) {
-			throw new Error(`Invalid index: ${String(entry)}. Index must be a positive number (1-based).`);
+			throw new Error(`Invalid index: ${entry}. Index must be a positive number (1-based).`);
 		}
 		return parsed;
 	});

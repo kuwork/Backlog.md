@@ -49,6 +49,8 @@ export type TaskUpdateRequest = Omit<Partial<Task>, "milestone"> & {
 	milestone?: string | null;
 	commentsAppend?: string[];
 	commentAuthor?: string;
+	commentRemove?: number[];
+	commentClear?: boolean;
 };
 
 export interface InitializationStatus {

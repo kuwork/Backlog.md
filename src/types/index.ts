@@ -162,6 +162,8 @@ export interface TaskUpdateInput {
 	appendImplementationNotes?: string[];
 	clearImplementationNotes?: boolean;
 	appendComments?: Array<TaskCommentInput | string>;
+	removeComments?: number[];
+	clearComments?: boolean;
 	finalSummary?: string;
 	appendFinalSummary?: string[];
 	clearFinalSummary?: boolean;

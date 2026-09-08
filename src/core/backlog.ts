@@ -202,7 +202,7 @@ function normalizeDocumentTypeInput(type: unknown): DocumentType | undefined {
 	throw new Error(`Document type must be one of: ${DOCUMENT_TYPE_VALUES.join(", ")}.`);
 }
 
-function formatAvailableIndexHint(items: AcceptanceCriterion[], emptyMessage: string): string {
+function formatAvailableIndexHint(items: Array<{ index: number }>, emptyMessage: string): string {
 	if (items.length === 0) {
 		return emptyMessage;
 	}
@@ -2079,6 +2079,30 @@ export class Core {
 				task.implementationNotes = value;
 				mutated = true;
 			}
+		}
+
+		if (input.clearComments) {
+			if (Array.isArray(task.comments) && task.comments.length > 0) {
+				task.comments = [];
+				mutated = true;
+			}
+		}
+
+		if (input.removeComments && input.removeComments.length > 0) {
+			const currentComments = Array.isArray(task.comments) ? task.comments.map((comment) => ({ ...comment })) : [];
+			const removalSet = new Set(input.removeComments);
+			const missing = input.removeComments.filter(
+				(index) => !currentComments.some((comment) => comment.index === index),
+			);
+			if (missing.length > 0) {
+				const label = missing.map((index) => `#${index}`).join(", ");
+				throw new Error(
+					`Comment ${label} not found. ${formatAvailableIndexHint(currentComments, "No comments are defined.")}`,
+				);
+			}
+			const remaining = currentComments.filter((comment) => !removalSet.has(comment.index));
+			task.comments = remaining.map((comment, index) => ({ ...comment, index: index + 1 }));
+			mutated = true;
 		}
 
 		if (input.appendComments && input.appendComments.length > 0) {

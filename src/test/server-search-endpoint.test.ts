@@ -244,6 +244,32 @@ describe("BacklogServer search endpoint", () => {
 			100,
 		);
 		expect(results.some((result) => result.task?.id === created.id)).toBe(true);
+
+		const removed = await fetchJson<Task>(`/api/tasks/${created.id}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				commentRemove: [1],
+			}),
+		});
+		expect(removed.comments ?? []).toEqual([]);
+
+		const removedFetch = await fetchJson<Task>(`/api/task/${created.id}`);
+		expect(removedFetch.comments ?? []).toEqual([]);
+
+		await retry(
+			async () => {
+				const data = await fetchJson<Array<{ type: string; task?: Task }>>(
+					"/api/search?type=task&query=server-comment-token",
+				);
+				if (data.some((result) => result.task?.id === created.id)) {
+					throw new Error("Removed comment still indexed");
+				}
+				return data;
+			},
+			20,
+			100,
+		);
 	});
 
 	it("persists milestone when creating tasks via POST", async () => {

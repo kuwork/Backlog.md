@@ -1232,6 +1232,16 @@ export class BacklogServer {
 				.filter((comment: { body: string }) => comment.body.length > 0);
 		}
 
+		if ("commentRemove" in updates && Array.isArray(updates.commentRemove)) {
+			updateInput.removeComments = updates.commentRemove
+				.map((index: unknown) => Number(index))
+				.filter((index: number) => Number.isInteger(index) && index > 0);
+		}
+
+		if ("commentClear" in updates && updates.commentClear === true) {
+			updateInput.clearComments = true;
+		}
+
 		if ("finalSummary" in updates && typeof updates.finalSummary === "string") {
 			updateInput.finalSummary = updates.finalSummary;
 		}

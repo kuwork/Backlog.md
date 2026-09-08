@@ -78,6 +78,8 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Add Notes (replace)     | `backlog task edit {{TASK_ID:123}} --notes "What I did"` |
 | Append Notes            | `backlog task edit {{TASK_ID:123}} --append-notes "Another note"` |
 | Add Comment             | `backlog task edit {{TASK_ID:123}} --comment "Review question" --comment-author @agent` |
+| Remove Comment          | `backlog task edit {{TASK_ID:123}} --remove-comment 2` (repeatable or comma-separated: `--remove-comment 2,3`) |
+| Clear Comments          | `backlog task edit {{TASK_ID:123}} --clear-comments` |
 | Add Final Summary       | `backlog task edit {{TASK_ID:123}} --final-summary "PR-style summary"` |
 | Append Final Summary    | `backlog task edit {{TASK_ID:123}} --append-final-summary "More details"` |
 | Clear Final Summary     | `backlog task edit {{TASK_ID:123}} --clear-final-summary` |
