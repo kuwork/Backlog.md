@@ -2,7 +2,7 @@
 title: 里程碑管理
 labels: [concept, milestones, cli, mcp]
 created_date: '2026-07-14 11:20'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-09-08 17:00'
 ---
 
 # 里程碑管理
@@ -93,6 +93,19 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 
 实现核心为 `src/utils/milestone-filter.ts` 的 `MilestoneFilterValueResolver` + `createMilestoneFilterMatcher`，被 Core 查询、task-search、交互式看板/列表和 MCP Draft 过滤复用。
 
+## documentation 字段（BACK-619）
+
+里程碑新增 `documentation` 字段：CLI / MCP / Web 三个 surface 经 `MilestoneHandlers` 一次实现，三端同时获得读写能力，无逐端补丁。
+
+## created_date / updated_date 字段（BACK-618）
+
+里程碑文件新增 `created_date` / `updated_date` 字段，与任务字段语义一致；实质变更时投影自动刷新时间戳，仅序号类无实质变更不刷新。
+
+## archive 与 remove 语义差异（BACK-622）
+
+- **仅 remove 动任务文件**：`milestone remove` 才按 `--task-handling` 处理（清空/保留/重新分配）任务文件；`milestone archive` 只解除绑定并移动里程碑文件本身，不触碰任务文件内容
+- **对话框文案澄清**：Web 确认对话框明确写出两者对任务文件的差异后果，避免用户误以为 archive 会删除任务
+
 ## Related Concepts
 
 - [[concepts/date-fields]] — 日期字段语义与格式
@@ -106,3 +119,6 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 - [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actualStart/actualEnd 支持
 - [[sources/back-543-milestone-cards-created-column]] — BACK-543 里程碑 Created 列
+- [[sources/back-618-milestone-created-updated-dates]] — BACK-618 里程碑创建/更新时间戳
+- [[sources/back-619-milestone-documentation-field]] — BACK-619 documentation 字段
+- [[sources/back-622-milestone-archive-remove-dialogs]] — BACK-622 archive/remove 语义与对话框

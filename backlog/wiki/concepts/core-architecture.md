@@ -2,6 +2,7 @@
 title: 核心架构与数据流
 labels: [concept]
 created_date: 2026-05-06 00:00
+updated_date: '2026-09-08 17:00'
 ---
 
 
@@ -145,6 +146,37 @@ autoCommit 不再整目录暂存或清空共享 index：
 - `resolveTaskForRead` / `resolveTaskForMutation` 桥接到 Core
 - 浏览器 handler 通过 Core 单一边界读写，不再重复读文件系统
 - 未移植上游的 publication-owner / batchTaskUpdates / transitionTask 机制
+
+## 增量跨分支加载架构（BACK-600/601/602、draft-125）
+
+跨分支任务加载从"每次冷扫描"演进为增量体系：
+
+- **不可变 tip 快照**：每个分支的加载结果以 tip 快照缓存，内容寻址、可复用
+- **共享缓存**：多消费者共享同一快照缓存，避免重复 git 操作
+- **有界 fetch**：10s 硬超时 + 进程组清理 + `GIT_TERMINAL_PROMPT=0` / `GCM_INTERACTIVE=Never` 环境钉死，防止 fetch 挂起或弹出交互提示
+- **60s ref 租约**：远程 ref 信息带 60 秒租约，租约内不重复查询
+- **请求合并**：并发相同加载请求合并为一次实际 Git 操作
+- 效果：warm 读取从 394 次 Git 操作降到 ≤3
+
+**publication-owner 体系**（BACK-601）是 BACK-602 的地基：epoch、generations/versions、`mergeConcurrentChanges`、config 事件构成发布所有权模型，增量加载在其上叠加。
+
+## 本地快路径（BACK-600）
+
+`queryTasks` 在 `includeCrossBranch: false` 时走纯本地快路径：直读文件系统、不初始化 ContentStore、不碰 Git，供只需要当前分支数据的调用方低成本使用。
+
+## createRuntimeCore() 工厂（BACK-593）
+
+`createRuntimeCore()` 成为唯一的 Core 构造路径，统一三端（CLI/MCP/Web）的 Core 创建逻辑：
+
+- init 遵循 `BACKLOG_CWD` 环境变量决定的工作目录
+- 找不到项目时优雅降级而非崩溃
+
+## entity-id 共享模块（BACK-596）
+
+文档/决策身份统一走共享 entity-id 模块（此前任务与文档/决策各有一套 ID 逻辑）：
+
+- `AmbiguousIdError` 携带候选列表，在各 surface fail-closed 呈现
+- 详见 [[concepts/task-identity]]
 
 ## Related Sources
 - [[sources/back-533-config-block-yaml-lists]] — BACK-533 块状 YAML 列表

@@ -1,7 +1,7 @@
 ---
 title: CI 平台契约测试策略
 created_date: '2026-08-17 23:00'
-updated_date: '2026-08-17 23:00'
+updated_date: '2026-09-08 17:00'
 labels: [concept, ci, testing]
 ---
 
@@ -32,6 +32,26 @@ labels: [concept, ci, testing]
 - Ubuntu 完整行为：~2m57s
 - macOS 平台契约：~35s
 
+## 显式 per-test 超时模式（BACK-609/610/612）
+
+Bun 测试运行器默认 5000ms 超时，在并行负载下会误杀慢速但健康的测试（MCP stdio 生命周期、优先级筛选、ContentStore 初始化等）。修复模式：
+
+- `bun test` 第三参数显式声明超时：`test("...", async () => {...}, 20000)`
+- 或文件级 `setDefaultTimeout(20000)` 覆盖默认 5000ms
+
+显式超时不放宽断言，只消除并行误杀的不稳定。
+
+## Windows 符号链接 checkout 隐性环境契约（BACK-605）
+
+`core.symlinks=true` 使符号链接成为检出内容的一部分，这成为 Windows 上的隐性环境契约：
+
+- checkout 仓库需要开发者模式或提权克隆，否则 symlink 检出失败
+- 影响 Claude agent 指南等依赖 symlink 分发的功能，需在文档中向开发者明示前置条件
+
 ## Related Sources
 
 - [[sources/draft-89-windows-ci-under-three-minutes]] — draft-89 CI 优化
+- [[sources/back-609-mcp-stdio-test-timeout]] — BACK-609 MCP stdio 测试超时
+- [[sources/back-610-cli-priority-filtering-test-timeouts]] — BACK-610 优先级筛选测试超时
+- [[sources/back-612-content-store-test-stabilization]] — BACK-612 ContentStore 测试稳定化
+- [[sources/back-605-claude-agent-guideline-symlink-windows]] — BACK-605 Windows symlink checkout 契约
