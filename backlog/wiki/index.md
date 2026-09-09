@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-08-17 22:06'
+updated_date: '2026-09-08 17:30'
 ---
 
 
@@ -144,6 +144,68 @@ Read this file FIRST on any wiki operation.
 | [[sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain]] | doc-8 上游 v1.48.0→v1.49.3 按领域迁移分析 | source, doc, migration, upstream |
 | [[sources/draft-89-windows-ci-under-three-minutes]] | draft-89 Windows CI 压到三分钟以下 | source, draft, ci, testing |
 | [[sources/readme-en-md]] | README.en.md 英文产品概述 | source |
+| [[sources/back-570-wiki-install-hints-cli-banner]] | BACK-570 CLI banner/agent nudge/README 补充 wiki install 指引 | source, cli, agent-guidance, wiki |
+| [[sources/back-571-fail-fast-concurrent-task-edits]] | BACK-571 并发任务编辑 fail-fast 文件锁 | source, migration, concurrency, core, bug |
+| [[sources/back-572-agent-guides-date-fields-multiline-input]] | BACK-572 agent 指南明确日期与多行输入约定 | source, agent-guidance, cli, mcp, docs |
+| [[sources/back-573-web-board-dnd-hide-empty-columns]] | BACK-573 hideEmptyColumns 下看板拖拽修复 | source, migration, web-ui, bug |
+| [[sources/back-574-decision-list-view-update-commands]] | BACK-574 decision list/view/update 命令与交互浏览器 | source, migration, cli, tui, decisions |
+| [[sources/back-575-doc-list-interactive-browser]] | BACK-575 doc list 交互浏览器 | source, cli, tui, docs |
+| [[sources/back-576-dedupe-generate-next-decision-id]] | BACK-576 去重 generateNextDecisionId、移除动态 import 环 | source, migration, cli, core |
+| [[sources/back-577-clear-deps-refs-docs-empty-setter-rejection]] | BACK-577 task edit --clear-* 与空 setter 拒绝 | source, migration, cli, mcp |
+| [[sources/back-578-task-edit-list-set-add-remove-flags]] | BACK-578 --ref/--doc/--dep set 语义 + --add-*/--remove-* | source, migration, cli, task-editing |
+| [[sources/back-579-default-assignee]] | BACK-579 defaultAssignee 全表面生效 | source, migration, config, core, cli, mcp |
+| [[sources/back-580-milestone-detail-view-edit-modal]] | BACK-580 Web 里程碑详情页与编辑模态框 | source, web-ui, milestones |
+| [[sources/back-581-web-settings-default-assignee]] | BACK-581 Web Settings 编辑 defaultAssignee | source, web-ui, config |
+| [[sources/back-582-agent-first-round-load-config]] | BACK-582 agent 首轮先加载项目实况 | source, agent-guidance, cli-instructions |
+| [[sources/back-583-labels-config-editor-web-settings]] | BACK-583 Web Settings labels 配置编辑器 | source, web-ui, cli |
+| [[sources/back-584-explicit-unassign-across-surfaces]] | BACK-584 跨表面显式取消指派（三态语义） | source, cli, web-ui, mcp |
+| [[sources/back-585-multi-assignee-parity-task-create]] | BACK-585 task create 多重 assignee 对齐 | source, cli |
+| [[sources/back-586-clear-default-editor]] | BACK-586 允许清空 defaultEditor | source, cli |
+| [[sources/back-587-repair-tui-task-composer-ux]] | BACK-587 TUI composer UX 修复 | source, tui |
+| [[sources/back-588-vim-keys-boundary-navigation]] | BACK-588 vim 键边界停留导航 | source, tui |
+| [[sources/back-589-vi-navigation-filter-popups]] | BACK-589 TUI filter 弹窗 vi 导航 | source, tui |
+| [[sources/back-590-hide-empty-board-columns]] | BACK-590 TUI 隐藏空看板列 | source, tui |
+| [[sources/back-591-tui-window-titles-project-name]] | BACK-591 TUI 窗口标题含项目名 + 终端标题恢复 | source, tui |
+| [[sources/back-592-doc-create-plain-flag]] | BACK-592 doc create 支持 --plain | source, cli |
+| [[sources/back-593-init-backlog-cwd-runtime-core]] | BACK-593 init 遵循 BACKLOG_CWD + createRuntimeCore 工厂 | source, cli, tui |
+| [[sources/back-594-align-filter-footer-hint]] | BACK-594 TUI footer 过滤提示统一 | source, tui |
+| [[sources/back-595-content-store-watcher-retry-rename]] | BACK-595 ContentStore 文档 watcher 修复 | source, server, web-ui, bug |
+| [[sources/back-596-fail-closed-document-decision-identity]] | BACK-596 文档/决策身份歧义 fail-closed | source, cli, server, mcp, bug |
+| [[sources/back-597-fix-cli-test-failures-doc-update-path-task-list-grouping]] | BACK-597 修复两个预存 CLI 测试失败 | source, cli, tests |
+| [[sources/back-598-doc-view-disambiguate-path-title-slug]] | BACK-598 doc view 按路径/标题 slug 消歧 | source, cli |
+| [[sources/back-599-gray-matter-no-cache-parse-wrapper]] | BACK-599 gray-matter no-cache 包装器 | source, markdown, bug |
+| [[sources/back-600-query-tasks-local-fast-path]] | BACK-600 queryTasks 本地快路径 | source, cli, performance |
+| [[sources/back-601-core-browser-publication-ownership]] | BACK-601 Core publication-owner 地基 | source, core, server |
+| [[sources/back-602-incremental-cross-branch-task-loading]] | BACK-602 增量跨分支任务加载（移植 BACK-624） | source, core, performance |
+| [[sources/back-603-heading-test-theme-adaptive-gray]] | BACK-603 heading 测试同步主题自适应色 | source, tui, tests |
+| [[sources/back-604-code-path-test-theme-adaptive-cyan]] | BACK-604 code-path 测试同步主题自适应色 | source, tui, tests |
+| [[sources/back-605-claude-agent-guideline-symlink-windows]] | BACK-605 Windows 符号链接 checkout 修复 | source, infra, windows, ci |
+| [[sources/back-606-cli-priority-plain-test-prefix-agnostic]] | BACK-606 优先级 plain 输出测试前缀无关化 | source, cli, tests |
+| [[sources/back-607-task-details-docs-tests-i18n-router]] | BACK-607 任务详情文档测试补 provider 包裹 | source, web-ui, tests |
+| [[sources/back-608-mcp-overview-status-excluded-doc]] | BACK-608 MCP overview 补 statusExcluded 文档 | source, mcp, docs |
+| [[sources/back-609-mcp-stdio-test-timeout]] | BACK-609 MCP stdio 测试显式超时 | source, test, ci |
+| [[sources/back-610-cli-priority-filtering-test-timeouts]] | BACK-610 CLI priority 测试超时放宽 | source, test, ci |
+| [[sources/back-611-mermaid-anchor-href-pathname-prefix]] | BACK-611 MermaidMarkdown 锚点断言同步 | source, test, web-ui |
+| [[sources/back-612-content-store-test-stabilization]] | BACK-612 ContentStore 测试稳定化 + 真实 bug 修复 | source, test, core, bug |
+| [[sources/back-613-web-task-list-width-page-shell]] | BACK-613 Web 任务列表无横向滚动适配 | source, web-ui |
+| [[sources/back-614-entity-id-auto-link-autocomplete]] | BACK-614 Web markdown 实体 ID 自动链接 | source, web-ui |
+| [[sources/back-615-dependency-readiness-guidance]] | BACK-615 依赖就绪指引（CLI/TUI/Web/MCP） | source, cli, tui, web-ui, mcp |
+| [[sources/back-616-tui-focus-list-recreation]] | BACK-616 applyFilters 重建列表后恢复焦点 | source, tui, bug |
+| [[sources/back-617-preview-mode-comment-add]] | BACK-617 preview 模式直接添加评论 | source, web-ui, comments |
+| [[sources/back-618-milestone-created-updated-dates]] | BACK-618 里程碑 created/updated 日期字段 | source, milestones, cli, mcp, web-ui |
+| [[sources/back-619-milestone-documentation-field]] | BACK-619 里程碑 documentation 字段 | source, milestones, cli, mcp, web-ui |
+| [[sources/back-620-swapped-empty-state-hints]] | BACK-620 修复互换的空态提示 | source, web-ui, bug, i18n |
+| [[sources/back-621-launcher-scoped-package-resolution]] | BACK-621 launcher scoped 包名解析修复 | source, cli, release |
+| [[sources/back-622-milestone-archive-remove-dialogs]] | BACK-622 里程碑归档/删除对话框澄清 | source, web-ui, milestones |
+| [[sources/back-623-comment-removal-flags]] | BACK-623 评论删除（--remove-comment/--clear-comments） | source, cli, mcp, comments |
+| [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] | doc-9 上游 v1.49.3→v1.50.1 差异分类 | source, doc, migration, upstream |
+| [[sources/doc-10-upstream-v1-49-3-to-v1-50-1-migration-analysis-by-domain]] | doc-10 上游 v1.49.3→v1.50.1 按领域分析 | source, doc, migration, upstream |
+| [[sources/doc-16-todo-tasks-vs-upstream-migration-report]] | doc-16 To-Do 任务与三次迁移对照清算 | source, doc, migration, backlog-hygiene |
+| [[sources/m-6-new-milestones-ui]] | m-6 New Milestones UI 里程碑 | source, milestone, milestones, web-ui |
+| [[sources/m-8-agent-cli-workflow]] | m-8 Agent CLI Workflow 里程碑 | source, milestone, cli, agent-workflow |
+| [[sources/draft-92-clear-task-dependencies-cli]] | draft-92 CLI 清除任务依赖（上游 issue #839） | source, draft, cli |
+| [[sources/draft-96-project-name-tui-window-titles]] | draft-96 TUI 窗口标题含项目名（上游 issue #853） | source, draft, tui |
+| [[sources/draft-125-incremental-cross-branch-task-loading]] | draft-125 增量跨分支加载（上游 BACK-624 原始草稿） | source, draft, performance, core |
 
 ## Execution Notes
 
@@ -166,6 +228,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/browser-launch-utils-pattern]] | 浏览器启动命令统一模式 | BROWSER 环境变量安全处理 + 平台 fallback 统一调用点 |
 | [[execution/task-identity-index-pattern]] | TaskIdentityIndex 替换 ID-keyed 合并模式 | canonical ID + 逻辑路径身份键 + 确定性胜出 + 歧义 fail-closed |
 | [[execution/search-score-threshold-pattern]] | 统一搜索分数阈值模式 | 所有搜索入口共用 Web 0.45 Fuse 阈值，过滤数字误匹配 |
+| [[execution/pre-existing-failure-triage]] | 预存测试失败分诊方法 | stash 探针 / 基线对照 / 计数对比 / 先红后绿 / JSDOM 钉桩 |
 
 ## Decisions
 
@@ -205,6 +268,20 @@ Read this file FIRST on any wiki operation.
 | [[decisions/browser-loopback-with-host-opt-in]] | 浏览器服务器默认回环 + --host 显式开放 LAN | BACK-558 安全默认 |
 | [[decisions/autocommit-exact-files-no-cas]] | autoCommit 精确文件提交但不移植临时索引 CAS 管线 | BACK-561 使用 git commit --only |
 | [[decisions/keep-sequences-upstream-removed]] | 保留 sequences 功能并补充 CLI 文档 | BACK-554 保留 fork 已有能力 |
+| [[decisions/fail-fast-task-editing-locks]] | 并发任务编辑采用 fail-fast 文件锁 | BACK-571 retries:0 无等待合并，锁目标是任务文件本身 |
+| [[decisions/empty-setter-rejection-over-emptyclears]] | 空 setter 值拒绝并指向 --clear-* | BACK-577 与上游 emptyClears 语义刻意分叉 |
+| [[decisions/tri-state-assignee-semantics]] | absent/显式 []/列表三态语义 | BACK-579/584/585 默认值落在 core 漏斗层 |
+| [[decisions/delayed-reveal-for-hidden-kanban-columns]] | 隐藏列 reveal 延迟一个 macrotask | BACK-573 避免 Chromium dragstart 期间同步布局中止拖拽 |
+| [[decisions/key-family-boundary-navigation]] | GenericList 按键族进边界回调 | BACK-588/589 无新配置键，vim 手动绑定而非 vi:true |
+| [[decisions/editor-clear-undefined-guard]] | 编辑器清空守卫改 !== undefined | BACK-586 真值回退会吞掉显式空标志 |
+| [[decisions/fail-closed-entity-identity]] | 实体身份歧义立即 fail-closed | BACK-596/598 身份语义优先于可用性 |
+| [[decisions/b16-publication-foundation-first]] | B16 先补 publication 地基再移植 624 | BACK-601/602 warm 读取 394→≤3 次 Git 操作 |
+| [[decisions/explicit-test-timeout-over-internal-guard]] | 测试显式超时覆盖并行调度噪声 | BACK-609/610/612 内部守卫保持不变 |
+| [[decisions/ready-guidance-completed-corpus]] | 就绪指引用 listCompletedTasks 语料 | BACK-615 112ms 替代上游 6.6s 方案 |
+| [[decisions/symlink-checkout-for-agent-definitions]] | agent 定义保留符号链接 | BACK-605 core.symlinks=true，副本方案被用户否决 |
+| [[decisions/launcher-scope-from-package-name]] | 包 scope 从 package.json name 推导 | BACK-621 不硬编码 @kuwork |
+| [[decisions/spread-passthrough-minimal-change]] | 新字段 spread 透传零签名改动 | BACK-618/619 自动刷新 updated_date |
+| [[decisions/identity-index-from-cached-tasks]] | identity-index 从 cachedTasks 重建 | BACK-612 测试稳定化挖出真实 store bug |
 
 ## Concepts
 
@@ -241,6 +318,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/browser-loading]] | 浏览器加载状态 | bind-first 服务器、WebSocket 三态、骨架屏/错误重试 |
 | [[concepts/upstream-migration]] | 上游迁移策略 | fork 对上游 A/B/C 分类与按领域迁移分析方法 |
 | [[concepts/ci-platform-contracts]] | CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
+| [[concepts/task-locking]] | 任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
 
 ## Entities
 
@@ -258,6 +336,7 @@ Read this file FIRST on any wiki operation.
 | [[patterns/bug-fix-prevention]] | Bug 修复 → 预防模式 | 症状修复 → 根因分析 → 审计扫荡 → 回归测试 |
 | [[patterns/tui-editor-integration]] | TUI / 编辑器集成模式 | blessed TUI 中安全启动外部编辑器的 8 步流程 |
 | [[patterns/skill-file-change-sync]] | Skill 文件变更 → 嵌入代码同步模式 | 修改 Skill 源文件后必须重新运行 embed 脚本并提交生成文件 |
+| [[patterns/upstream-migration-wave]] | 上游迁移波次执行模式 | 分类→领域分析→draft 导入→任务落地→三段式验证→清算闭环，经三波 60+ 任务验证 |
 
 ## Reasoning
 
@@ -268,7 +347,9 @@ Read this file FIRST on any wiki operation.
 
 ## Retrospectives
 
-_No retrospectives created yet._
+| File | Title | Description |
+|---|---|---|
+| [[retrospectives/2026-09-v1-50-1-wave]] | v1.50.1 迁移波次回顾 | 54 任务两波爆发（峰值 11/日），周期中位数 0 天，测试稳定化占 20% 工作量 |
 
 ## Comparisons
 

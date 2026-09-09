@@ -2,7 +2,7 @@
 title: CLI 指令表面
 labels: [concept, cli, agent-guidance]
 created_date: '2026-07-14 11:20'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-09-08 17:00'
 ---
 
 # CLI 指令表面
@@ -110,6 +110,21 @@ CLI instructions 与 MCP workflow guides 共享 `src/mcp/workflow-guides.ts` 注
 
 MCP 客户端通过 `get_backlog_instructions` 工具或 `backlog://workflow/...` 资源读取 MCP 版本；CLI 代理通过 `backlog instructions` 读取 CLI 版本。两者内容保持语义一致，但命令/工具示例分别使用 CLI 命令或 MCP 工具字段。
 
+## 首轮加载项目实况（BACK-582）
+
+agent 指南规定：agent **首轮必须先加载项目实况再作答**，例如先运行 `backlog config list --plain` 等只读命令了解配置、状态集、标签等项目实际状态，避免基于默认值或假设给建议。
+
+## 日期字段与多行输入约定（BACK-572）
+
+进入 agent 指南的输入约定：
+
+- **日期字段本地时区输入**：CLI 日期参数按本地时区解析（存储仍为 UTC），指南向 agent 明示这一约定
+- **多行字面 `\n` 约定**：多行字段内容在 CLI 参数中写作字面 `\n`（CLI 内部转义处理），与 BACK-547 的"避免 ANSI-C 引号"规则互补
+
+## MCP 指南死路径清理（BACK-572）
+
+从 MCP 指南删除 "Markdown 文件回退" 死路径指导——该回退路径已不存在，保留指导会让 agent 走向无效操作。指南内容应与实际支持的 surface 严格对齐。
+
 ## Related Concepts
 
 - [[concepts/mcp-workflow]] — MCP 工作流与 AI 集成
@@ -134,3 +149,5 @@ MCP 客户端通过 `get_backlog_instructions` 工具或 `backlog://workflow/...
 - [[sources/back-556-task-edit-append-plan]] — task edit --append-plan
 - [[sources/back-558-browser-server-loopback-only]] — browser loopback binding
 - [[sources/back-559-browser-launch-honor-browser-env]] — BROWSER launch
+- [[sources/back-582-agent-first-round-load-config]] — BACK-582 agent 首轮加载项目实况
+- [[sources/back-572-agent-guides-date-fields-multiline-input]] — BACK-572 日期/多行输入约定与死路径清理
