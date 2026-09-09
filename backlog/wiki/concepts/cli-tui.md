@@ -2,6 +2,7 @@
 title: CLI 与 TUI 界面
 labels: [concept]
 created_date: 2026-05-06 00:00
+updated_date: '2026-09-08 17:00'
 ---
 
 
@@ -81,6 +82,40 @@ TUI 看板卡片、任务列表和任务详情对 In Progress 任务显示 `[█
 - 无 AC 任务不显示任何值
 - 全部勾选的 In Progress 任务仍显示 In Progress 状态
 - 10 格条（终端宽度 <32 时回退到 5 格）
+
+## 按键族边界导航架构（BACK-588/589）
+
+列表组件支持 arrow / vim 两套按键族（h/j/k/l 与方向键并存）的边界导航：
+
+- `BoundaryNavigationKey` 类型 + `resolveListBoundaryNavigation` 解析助手统一判定按键在列表边界的语义（停在边界 / 越界切换 / 翻页）
+- `GenericList` 把按键族信息携带到边界回调，由调用方决定越界后的行为（如跳转到相邻面板）
+- vim 键在筛选弹窗等复合组件中同样生效（[[sources/back-589-vi-navigation-filter-popups]]）
+
+## footer / help 提示契约（BACK-590/594）
+
+- 大写按键指示器约定：footer 与帮助面板中的按键提示统一用大写字母指示可按键
+- `footer-content.ts` 常量模式：footer 文案集中为常量，避免散落字符串漂移
+
+## TUI 窗口标题（BACK-591）
+
+- `formatTuiTitle` 共享助手统一生成窗口标题格式
+- 终端标题 push/pop 配对：进入 TUI 压入标题，退出时弹出恢复原标题
+- tmux 环境通过 DCS 序列透传标题，嵌套终端中也能正确显示
+
+## 双 pane 交互浏览器模式（BACK-574/575）
+
+task → decision → doc 三类列表**三次复用同一交互模型**（双 pane 浏览器）：
+
+- 决策列表视图更新命令（[[sources/back-574-decision-list-view-update-commands]]）与文档列表交互浏览器（[[sources/back-575-doc-list-interactive-browser]]）共享同一套 pane 布局与导航逻辑
+- `releaseSharedProgram` 加固共享 blessed program 的释放，防止多次进入/退出后按键泄漏或屏幕错乱
+
+## 隐藏空列（BACK-590）
+
+看板隐藏空状态列：
+
+- 持久化共享 `hide_empty_columns` 配置键
+- 乐观翻转：UI 立即反映切换，写入异步落盘
+- 退出时 `await` 挂起的写入，避免配置丢失
 
 ## Shell 补全
 
