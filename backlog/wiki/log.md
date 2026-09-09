@@ -666,3 +666,43 @@ Chronological, append-only record of all wiki operations.
 **新增用户手册页面**: 0 个
 
 **更新导航**: `index.md`（User Manual 章节日期刷新）
+
+
+## [2026-09-08 17:30:00] batch-ingest | 增量摄取 BACK-570~623（v1.50.1 迁移波次）、doc-9/10/16、m-6/m-8、draft-92/96/125
+
+**基线**: 2026-08-17 23:00:00。git 不可用（全部 commit 的 committer 日期为今日，作者日期失真），回退全量扫描交叉对照 log.md。
+
+**新增 Sources（63）**:
+- BACK-570~623 共 54 个任务（全部 Done，v1.50.1 上游迁移波次）
+- 迁移文档：doc-9（v1.49.3→v1.50.1 差异分类 17A/9B/7C）、doc-10（按领域分析）、doc-16（To-Do 任务三次迁移对照清算）
+- 里程碑：m-6（New Milestones UI 存根）、m-8（Agent CLI Workflow）
+- 草稿：draft-92（上游 #839→BACK-577）、draft-96（上游 #853→BACK-591）、draft-125（上游 BACK-624→BACK-602）
+
+**新增 Decisions（14）**: fail-fast 任务锁、空 setter 拒绝（与上游 emptyClears 刻意分叉）、三态 assignee 语义、隐藏列延迟 reveal、按键族边界导航、编辑器清空守卫、实体身份 fail-closed、B16 先补 publication 地基、显式测试超时、就绪指引语料、符号链接 checkout、包 scope 推导、spread 透传、cachedTasks 重建 identity-index
+
+**新增 Concepts（1）**: concepts/task-locking（任务锁与并发编辑）
+
+**更新 Concepts（10）**: core-architecture（增量跨分支加载、本地快路径、createRuntimeCore、entity-id）、task-identity、task-comments、milestones、cli-tui、ci-platform-contracts、upstream-migration（第三波闭环）、cli-instructions、markdown-pipeline、web-ui-features
+
+**新增 Execution（1）**: execution/pre-existing-failure-triage（stash 探针/基线对照/计数对比/先红后绿/JSDOM 钉桩）
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 预存测试失败分诊方法（BACK-596~602/612 跨任务提取）
+- [x] `wiki/decisions/` — 提取 14 个微决策
+- [ ] `wiki/reasoning/` — 无复杂规划需记录（B16 两阶段方案已入 decisions/b16-publication-foundation-first）
+- [ ] `wiki/patterns/` — 迁移波次统一执行结构（git log --grep 审查→分类→适配→三段式验证）出现 6+ 次，建议固化为 pattern，**待人工确认后创建**
+- [ ] `wiki/retrospectives/` — 第三波迁移完成是回顾时机，数据回顾待人工发起
+
+**更新导航**: `index.md`（Sources 192 条，Concepts 32 条，Decisions 49 条，Execution 18 条）、`overview.md`
+
+**mini-lint**: 全 wiki wikilink 扫描——无真实 dangling link；剩余命中均为文档示例（`[[path/to/page]]`、`![[assets/photo.png]]` 语法示例）与历史 bug 复现描述，无需修复。
+
+## [2026-09-08 17:45:00] pattern + retrospective | 固化迁移波次模式，生成 v1.50.1 波次回顾
+
+**人工确认后创建**:
+- `patterns/upstream-migration-wave.md` — 三波 60+ 任务验证的上游迁移标准执行结构（分类→领域分析→draft 导入→任务落地→三段式验证→清算闭环），含 5 个陷阱与参考任务
+
+**数据回顾**:
+- `retrospectives/2026-09-v1-50-1-wave.md` — BACK-570~623 共 54 任务：两波爆发（08-22~08-27 完成 32，09-06~09-08 完成 22），周期中位数 0 天（31/54 当日创建当日完成）、P90 18 天、最大 56 天；测试稳定化簇占 20%；定性观察留待人工补充
+
+**更新导航**: `index.md`（Patterns 6 条，Retrospectives 首条）、`overview.md`
