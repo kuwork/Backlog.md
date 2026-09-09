@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-08-17 23:00'
+updated_date: '2026-09-08 17:30'
 ---
 
 # Knowledge Base Overview
@@ -99,6 +99,22 @@ updated_date: '2026-08-17 23:00'
 - **doc-7 差异分类**：按 CLI/Core、TUI、Web、Server、Infra、Nix 领域分组，最终 13 A / 5 B / 10 C，映射到 BACK-562/567/561/560/556/558/559/555/563/565/557/566/569 与 draft-89
 - **doc-8 领域分析**：逐项给出上游任务核心目的、变更文件、与 fork 定制冲突风险、可复用部分、需排除部分、迁移建议（①直接复用 / ②参考重写 / ③忽略）
 
+### 上游迁移（v1.49.3 .. v1.50.1）— 第三波，已完成
+- **doc-9 差异分类**：87 commits / 44 组，最终 17 A / 9 B / 7 C，含七波迁移顺序与 B16 两阶段方案
+- **doc-10 领域分析**：CLI-1~13 / TUI-1~8 / WEB-1~4 / SVR-1~2 / CI-1 逐条深度分析（六维度法 + file:line 证据）
+- **draft 导入**：draft-92（上游 issue #839 → BACK-577）、draft-96（上游 issue #853 → BACK-591）、draft-125（上游 BACK-624 → BACK-602）
+- **BACK-570~623 全部落地**（54 个任务，全部 Done）：迁移标志性结构为 AC #1 固定 "git log --grep / git show 审查上游变更"，收尾固定 tsc / biome / scoped tests 三段式；与上游刻意分叉点记录在 doc-10 CLI-4（BACK-577 emptyClears 语义）
+- **doc-16 To-Do 清算**：42 个 To-Do 任务与三次迁移波对照（13 归档实现、2 决策跳过、4 部分实现、25 未实现，全部经 src/ grep 实证），形成"分类→分析→导入→落地→清算"的完整迁移闭环
+- **本波核心技术成果**：
+  - **增量跨分支加载**（BACK-601/602）：不可变 tip 快照 + 共享缓存 + 有界 fetch（10s + ref 租约 60s）+ 请求合并，warm 读取从 394 次 Git 操作降到 ≤3
+  - **任务锁与并发保护**（BACK-571）：per-task fail-fast 文件锁（proper-lockfile retries:0），Web 409 / MCP OPERATION_FAILED，锁内重读
+  - **defaultAssignee**（BACK-579/584/585）：absent / 显式 `[]` / 列表三态语义，默认值落在 core.createTaskFromInput 漏斗层
+  - **实体身份 fail-closed 扩展**（BACK-596/598）：文档/决策身份歧义立即报错（CLI 1 / 409 / AMBIGUOUS_ID），doc view 支持路径与标题 slug 消歧
+  - **测试稳定化**（BACK-609~612）：显式 per-test 超时 + JSDOM 全局钉桩 + ContentStore 真实 bug 修复（identity-index 从 cachedTasks 重建）
+  - **TUI 一致性簇**（BACK-587~591）：composer 修复、vim 键边界导航、filter 弹窗 vi 导航、隐藏空列、窗口标题含项目名
+  - **里程碑增强**（BACK-618~622）：created/updated 日期、documentation 字段、详情页/编辑模态框、归档/删除语义澄清
+  - **评论闭环**（BACK-617/623）：preview 模式直接添加评论、--remove-comment/--clear-comments 全表面删除
+
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
 - **数据流**：Markdown 文件 → `FileSystem` → `ContentStore`（内存缓存 + 文件监视）→ `SearchService`（Fuse.js 索引）
@@ -133,12 +149,13 @@ updated_date: '2026-08-17 23:00'
 
 ## 统计
 
-- Sources ingested: 129
-- Concepts extracted: 31
+- Sources ingested: 192
+- Concepts extracted: 32
 - Entities catalogued: 2
-- Execution notes: 17
-- Decisions recorded: 35
-- Patterns: 5
+- Execution notes: 18
+- Decisions recorded: 49
+- Patterns: 6
 - Reasoning traces: 2
+- Retrospectives: 1
 - User manual pages: 24
 - Reports generated: 7
