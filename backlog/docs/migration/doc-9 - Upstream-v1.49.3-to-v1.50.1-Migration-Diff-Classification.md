@@ -3,7 +3,7 @@ id: doc-9
 title: Upstream v1.49.3 to v1.50.1 Migration Diff Classification
 type: guide
 created_date: '2026-08-14'
-updated_date: '2026-09-07 16:31'
+updated_date: '2026-09-08 17:55'
 ---
 # 上游变更差异分类（v1.49.3 .. v1.50.1）
 
@@ -38,11 +38,11 @@ updated_date: '2026-09-07 16:31'
 | B2 | **BACK-582 decision list 命令** | 新增 `backlog decision list`，复用既有决策序列/格式化。 | fork 只有 `decision create`（cli.ts:4150） | 低 | B | ①直接复用 | [BACK-574](/task/574) | [doc-10 CLI-3](/documentation/10:78-94) |
 | B3 | **BACK-572/586/618 clear deps/refs/docs + 空值清除** | `task edit --clear-deps`/`--clear-refs`/`--clear-docs` 清除列表；`--dep ""`/`--ref ""`/`--doc ""` 在 edit 时报错；create 仍拒绝空值。 | fork 只有 --clear-milestone/dates/ac/final-summary；`--ref ""` 假成功同上游 bug | 低 | **A**（升） | ②参考重写 | [BACK-577](/task/577) | [doc-10 CLI-4](/documentation/10:98-118) |
 | B4 | **BACK-597 增量引用标志** | `task edit --ref/--doc/--depends-on` 追加、 `--remove-ref/--remove-doc/--remove-dep` 移除， `--clear-*` 清空。 | fork 无此功能；模型层已支持（task-edit-builder） | 低 | B | ①直接复用 | [BACK-578](/task/578) | [doc-10 CLI-5](/documentation/10:122-139) |
-| B5 | **BACK-606/610 config fail-fast** | 畸形/错类型 config 值启动即报错，不再静默应用默认值。 | fork 无 "invalid value" 校验；default_assignee 类型差异需适配 | 低 | B | ②参考重写 | [DRAFT#111](/draft/111) [DRAFT#114](/draft/114) | [doc-10 CLI-6](/documentation/10:143-159) |
+| B5 | **BACK-606/610 config fail-fast** | 畸形/错类型 config 值启动即报错，不再静默应用默认值。 | fork 无 "invalid value" 校验；default_assignee 类型差异需适配 | 低 | B | ②参考重写 | [BACK-579](/task/579) Done（config watcher 最后好值保护，上游 #877/#882 适配） | [doc-10 CLI-6](/documentation/10:143-159) |
 | B6 | **BACK-612 决策 ID 去重 + 移除动态 import** | 去重 generateNextDecisionId，移除 core→CLI 动态 import。 | fork backlog.ts:2674-2676 正是同款动态 import | 低 | B | ①直接复用 | [BACK-576](/task/576) | [doc-10 CLI-7](/documentation/10:163-180) |
 | B14 | **BACK-622 JSON 输出 AC 进度** | `task list/view --json` 增加 acceptanceCriteriaCompleted/Count。 | fork 已有 AC 进度工具；字段名用 acceptanceCriteriaItems | 低 | B | ①直接复用 | [DRAFT#123](/draft/123) | [doc-10 CLI-8](/documentation/10:184-200) |
 | B15 | **BACK-598 Dependabot 修复** | mermaid 11.16.0→11.16.1 等依赖升级。 | fork mermaid 11.15.0，安全升级 | 低 | B | ①直接复用 | [DRAFT#106](/draft/106) | [doc-10 CLI-9](/documentation/10:204-218) |
-| B16 | **BACK-623 CLI 跨分支本地优先 + BACK-624 跨分支增量加载** | 623：CLI 命令避免跨分支工作（本地优先读取），已由 [BACK-600](/task/600) 落地。624：跨分支加载增量缓存；需先由 [BACK-601](/task/601) 补全上游 BACK-559（fork BACK-568 的轻量移植缺 publication-owner / batchTaskUpdates / transitionTask），再由 [BACK-602](/task/602) 移植完整 BACK-624（含 tip 快照、共享缓存、bounded fetch、ref 租约、MCP search 本地路径）。 | 上游 BACK-559→BACK-624 是同一架构演进；fork BACK-568 是上游 559 的轻量移植，缺 publication-owner 地基。先做 [BACK-601](/task/601) 补全 559，再做 [BACK-602](/task/602) 完整 624，整体可达 headline ≤3 Git 指标。 | 高（BACK-624 依赖 559 补全） | **A**（按方案 1：BACK-601 补全 559 地基，BACK-602 移植完整 BACK-624） | ②参考重写（BACK-601 补全 559）+ ②参考重写（BACK-602 完整 BACK-624） | [BACK-600](/task/600) Done；[BACK-601](/task/601)；[BACK-602](/task/602)；[DRAFT#125](/draft/125) | [doc-10 CLI-10](/documentation/10:222-246) |
+| B16 | **BACK-623 CLI 跨分支本地优先 + BACK-624 跨分支增量加载** | 623：CLI 命令避免跨分支工作（本地优先读取），已由 [BACK-600](/task/600) 落地。624：跨分支加载增量缓存；需先由 [BACK-601](/task/601) 补全上游 BACK-559（fork BACK-568 的轻量移植缺 publication-owner / batchTaskUpdates / transitionTask），再由 [BACK-602](/task/602) 移植完整 BACK-624（含 tip 快照、共享缓存、bounded fetch、ref 租约、MCP search 本地路径）。 | 上游 BACK-559→BACK-624 是同一架构演进；fork BACK-568 是上游 559 的轻量移植，缺 publication-owner 地基。先做 [BACK-601](/task/601) 补全 559，再做 [BACK-602](/task/602) 完整 624，整体可达 headline ≤3 Git 指标。 | 高（BACK-624 依赖 559 补全） | **A**（按方案 1：BACK-601 补全 559 地基，BACK-602 移植完整 BACK-624） | ②参考重写（BACK-601 补全 559）+ ②参考重写（BACK-602 完整 BACK-624） | [BACK-600](/task/600) Done；[BACK-601](/task/601)；[BACK-602](/task/602)（均已 Done） | [doc-10 CLI-10](/documentation/10:222-246) |
 | B22 | **BACK-603 create/draft 标志与 edit 对齐** | `task create`/`draft create` 重复 `-l` 丢值、`--dep`/`--depends-on` 合并、`\|` quirk 对齐 edit。 | fork create 同款 bug（cli.ts:1658/1742） | 低 | **A**（升） | ①直接复用 | [DRAFT#108](/draft/108) | [doc-10 CLI-11](/documentation/10:250-268) |
 | B23 | **BACK-608 gray-matter 缓存投毒** | 共享 no-cache parse 包装，移除缓存投毒类陈旧数据。 | fork 6 处直接 matter()（含 fork 特有 wiki-install.ts） | 低 | B | ①直接复用 | [BACK-599](/task/599) | [doc-10 CLI-12](/documentation/10:272-288) |
 | B26 | **BACK-576/574 create 多 assignee + 清空 defaultEditor** | task create 多 assignee（-a "@a,@b" 存字面值是数据 bug）；允许清空 defaultEditor。 | fork 三处 `[String(options.assignee)]`；defaultEditor 空值被拒 | 低 | **A**（升） | ①直接复用 | [BACK-585](/task/585) [BACK-586](/task/586) | [doc-10 CLI-13](/documentation/10:292-313) |
@@ -53,7 +53,7 @@ updated_date: '2026-09-07 16:31'
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 优先级 | 迁移建议 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|--------|----------|----------|----------|
-| B8 | **BACK-546 依赖就绪指引** | TUI/browser 显示任务是否被阻塞/可接手，歧义 ID fail-closed。 | fork 无 readiness 指示；前置件齐备（dependencies/listCompletedTasks/task-path） | 低 | B | ②参考重写 | [DRAFT#90](/draft/90) | [doc-10 TUI-1](/documentation/10:315-334) |
+| B8 | **BACK-546 依赖就绪指引** | TUI/browser 显示任务是否被阻塞/可接手，歧义 ID fail-closed。 | fork 无 readiness 指示；前置件齐备（dependencies/listCompletedTasks/task-path） | 低 | B | ②参考重写 | [BACK-615](/task/615) Done | [doc-10 TUI-1](/documentation/10:315-334) |
 | B9 | **BACK-565 TUI composer UX 修复** | 方向键导航、caret-aware 删除、固定状态选择器。 | fork composer 主体已自研；仍有 3 处缺口（picker.select 确认错项等） | 低 | **A**（升） | ①直接复用 | [BACK-587](/task/587) | [doc-10 TUI-2](/documentation/10:338-356) |
 | B11 | **BACK-577 TUI 窗口标题含项目名** | TUI 窗口标题显示项目名，退出时恢复（含 tmux）。 | fork 无窗口标题代码（board.ts:271 硬编码） | 低 | B | ②参考重写 | [BACK-591](/task/591) | [doc-10 TUI-3](/documentation/10:360-376) |
 | B12 | **BACK-584/616 vim 键边界 + filter popup vi 导航** | j/k 在列表边界内停留；filter popup 也支持 vi 导航。 | fork generic-list.ts:294 已有 vim 键循环导航；k 到顶跳出搜索框违背直觉 | 低 | **A**（升） | ②参考重写 | [BACK-588](/task/588) [BACK-589](/task/589) | [doc-10 TUI-4](/documentation/10:380-396) |
@@ -79,7 +79,7 @@ updated_date: '2026-09-07 16:31'
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 优先级 | 迁移建议 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|--------|----------|----------|----------|
-| B10 | **BACK-580/602 文档/决策身份 fail-closed** | 文档/决策身份歧义 fail-closed + doctor 诊断；frontmatter 身份统一。 | fork 有 AmbiguousTaskIdError（任务侧），doc/decision 侧完全缺失 fail-closed：loadDecision 仍 filename-prefix 匹配（operations.ts:971）、getDocument 静默取首中、entity-id/decision-id 模块不存在；SVR-2 已完成，原「依赖 store 层等价 ID 处理」前置解除（2026-08-25 复核维持 A） | 中 | **A**（升） | ①直接复用（新模块）+ ②参考重写（集成层） | [BACK-596](/task/596) [DRAFT#107](/draft/107) | [doc-10 SVR-1](/documentation/10:602-654) |
+| B10 | **BACK-580/602 文档/决策身份 fail-closed** | 文档/决策身份歧义 fail-closed + doctor 诊断；frontmatter 身份统一。 | fork 有 AmbiguousTaskIdError（任务侧），doc/decision 侧完全缺失 fail-closed：loadDecision 仍 filename-prefix 匹配（operations.ts:971）、getDocument 静默取首中、entity-id/decision-id 模块不存在；SVR-2 已完成，原「依赖 store 层等价 ID 处理」前置解除（2026-08-25 复核维持 A） | 中 | **A**（升） | ①直接复用（新模块）+ ②参考重写（集成层） | [BACK-596](/task/596) Done | [doc-10 SVR-1](/documentation/10:602-654) |
 | B17 | **BACK-613 content-store 文档 watcher 重试/重命名** | doc-1 风格文件名不再无限重试；零填充 ID 重命名按 path 发布，等价 ID 漂移时由 `strandedEquivalent` 触发全量刷新兜底；并发刷新不会复活已删等价条目。 | 已迁移完成（[BACK-595](/task/595) Done）：原同根缺陷（事件静默丢失）已按 fork retryRead 架构修复 | 低 | **A**（升） | ②参考重写（按 fork retryRead 架构） | [BACK-595](/task/595) | [doc-10 SVR-2](/documentation/10:657-689) |
 
 ---
