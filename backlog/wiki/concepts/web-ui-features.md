@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-08-09 00:00'
+updated_date: '2026-09-08 17:00'
 ---
 
 # Web UI 功能
@@ -178,6 +178,24 @@ updated_date: '2026-08-09 00:00'
 - 仅影响当前列展示顺序，不保存到后端
 - 拖拽任务后自动清除本地排序
 
+## 任务/里程碑详情模态框交互惯例簇（BACK-613/617/620/622/623）
+
+TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增功能按簇内既有惯例落地：
+
+- **cross-branch 只读门控**：跨分支来源的记录在详情中以只读呈现，禁止编辑
+- **edit / preview 双模式**：内容区在编辑与预览间切换，快捷键（E/C/D/P 等）按模式分派
+- **4 语言 i18n**：模态框内所有文案走统一 i18n 通道（英/日/简中/繁中）
+- **样式化确认模态框**：替代原生 `window.confirm`，确认/取消按钮与风险文案样式化
+- **空态提示与删除按钮 title 配对**：空状态给出操作指引 hint，删除按钮配 title 说明后果（[[sources/back-620-swapped-empty-state-hints]] 修正了两者的错位配对）
+
+## Web 实体 ID 自动链接（BACK-614）
+
+正文中的实体 ID（任务/文档/决策）在 Web 渲染时自动转为链接，输入时自动补全前缀：
+
+- **渲染端 fail-closed**：无法解析的 ID 原样显示为文本，不猜测
+- **输入端前缀自动补全**：输入裸数字 ID 时按上下文补全前缀
+- **共享 canonical entity index**：三实体共用同一索引；`canonicalTaskId` 提取到纯模块 `src/utils/task-id.ts`，渲染与输入两侧复用（[[sources/back-614-entity-id-auto-link-autocomplete]]）
+
 ## Related Concepts
 - [[concepts/web-server]] — Web Server HTTP API 与后端支撑
 - [[concepts/date-fields]] — 日期字段语义与存储格式
@@ -211,3 +229,9 @@ updated_date: '2026-08-09 00:00'
 - [[sources/back-546-label-filters-alphabetical]] — BACK-546 标签字母排序
 - [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除过滤
 - [[sources/back-549-hide-empty-board-columns]] — BACK-549 隐藏空状态列
+- [[sources/back-613-web-task-list-width-page-shell]] — BACK-613 任务列表宽度与页面 shell
+- [[sources/back-614-entity-id-auto-link-autocomplete]] — BACK-614 实体 ID 自动链接与补全
+- [[sources/back-617-preview-mode-comment-add]] — BACK-617 preview 模式评论交互
+- [[sources/back-620-swapped-empty-state-hints]] — BACK-620 空态提示与删除按钮配对修正
+- [[sources/back-622-milestone-archive-remove-dialogs]] — BACK-622 里程碑 archive/remove 对话框
+- [[sources/back-623-comment-removal-flags]] — BACK-623 评论删除标志位
