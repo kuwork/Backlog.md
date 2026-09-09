@@ -2,6 +2,7 @@
 title: Markdown 解析与序列化流水线
 labels: [concept]
 created_date: 2026-05-06 00:00
+updated_date: '2026-09-08 17:00'
 ---
 
 
@@ -92,6 +93,20 @@ FileSystem.saveTask() — 写入磁盘
 
 由于所有数据都是纯 Markdown，跨分支合并时不会产生二进制冲突。Git 可以正常 diff 和 merge 任务文件。这也是跨分支任务感知功能的基础——直接通过 `git show` 读取其他分支上的 Markdown 内容即可。
 
+## gray-matter 缓存投毒防护（BACK-599）
+
+gray-matter 的默认 options 缓存会在 options 对象引用变化时反复 miss、在共享引用时投毒共享条目。修复：
+
+- 新建 `frontmatter.ts` 作为**全仓库唯一 gray-matter 导入点**
+- `parseFrontmatter` / `stringifyFrontmatter` 传空 options 显式禁用缓存
+- 全部既有调用点迁移到该模块；**新调用点必须走 frontmatter.ts**，禁止直接 import gray-matter
+
+## Bun shell 插值陷阱（BACK-597）
+
+Bun shell 模板插值多行内容时会截断后续参数：内插值含真实换行会破坏命令行边界。修法是把多行内容**预转义为字面 `\n`** 再内插，让换行以转义形式安全穿过 shell 解析。
+
 ## Related Sources
 - [[sources/back-537-deterministic-checklist-serialization]] — BACK-537 清单确定性解析
 - [[sources/back-536-in-document-hash-links]] — BACK-536 文档锚点链接
+- [[sources/back-599-gray-matter-no-cache-parse-wrapper]] — BACK-599 gray-matter 无缓存封装
+- [[sources/back-597-fix-cli-test-failures-doc-update-path-task-list-grouping]] — BACK-597 Bun shell 插值陷阱
