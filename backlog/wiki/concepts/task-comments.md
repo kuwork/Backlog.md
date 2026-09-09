@@ -1,7 +1,7 @@
 ---
 title: 任务评论
 created_date: '2026-06-09 01:35'
-updated_date: '2026-06-09 01:35'
+updated_date: '2026-09-08 17:00'
 labels: [concept, feature, comments, markdown, cli, mcp, web-ui]
 ---
 
@@ -68,9 +68,27 @@ backlog task edit back-10 --comment "建议将 UI 部分拆分到独立 PR" --co
 | Implementation Notes | 执行进度与技术探索 | 调试过程、踩坑记录 |
 | Final Summary | PR 式完成摘要 | 实现概述、测试覆盖、关键变更 |
 
+## 评论删除语义（BACK-623）
+
+评论删除采用位置重编号而非标记删除：
+
+- 删除后剩余评论按位置重新编号，序号保持连续
+- 序列化顺序固定为 clear → remove → append：先清空评论区、再执行删除、最后重追加保留评论，保证 legacy 格式（无外层包裹等旧布局）兼容
+- 删除标志位驱动整条移除路径
+
+## Web 删除按钮可见性（BACK-617/623）
+
+Web 任务详情的评论删除按钮在 **preview 模式直接可见**，反转 BACK-470 引入的 edit-mode-only 门控。这是用户反馈驱动的修正：删除评论是常见操作，不该先进入编辑模式。
+
+## 编辑边界的刻意收窄
+
+评论的 **body/author 编辑不进 CLI**——不提供编辑子命令。需要修改既有评论时，指引规定用文本替换工具直接编辑任务文件的 Comments 区块。
+
 ## Related Sources
 - [[sources/back-470-task-comments]] — BACK-470 父任务
 - [[sources/back-470-1-core-task-comments]] — 核心模型与持久化
 - [[sources/back-470-2-cli-mcp-task-comments]] — CLI 与 MCP 暴露
 - [[sources/back-470-3-server-web-task-comments]] — Server API 与 Web UI
 - [[sources/back-470-4-tui-docs-task-comments]] — TUI 渲染与公共文档
+- [[sources/back-617-preview-mode-comment-add]] — BACK-617 preview 模式评论交互
+- [[sources/back-623-comment-removal-flags]] — BACK-623 评论删除与重编号
