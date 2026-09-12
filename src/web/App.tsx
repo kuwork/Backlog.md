@@ -621,11 +621,14 @@ function AppContent() {
 	);
 
 	const handleBack = useCallback(() => {
-		const parentTask = taskHistoryRef.current[taskHistoryRef.current.length - 1];
-		if (parentTask) {
-			navigate(getTaskUrlPath(parentTask), { state: { backgroundLocation: state?.backgroundLocation || location } });
+		// The parent entry IS the previous history entry (each drill-down pushed
+		// one entry on top of it), so pop it. Pushing the parent URL instead
+		// would leave the child entry behind and break handleCloseModal's
+		// navigate(-1), which would land back on the child modal.
+		if (taskHistoryRef.current.length > 0) {
+			navigate(-1);
 		}
-	}, [navigate, state, location, getTaskUrlPath]);
+	}, [navigate]);
 
 	const handleCloseModal = useCallback(() => {
 		if (taskIdFromUrl || draftIdFromUrl) {
