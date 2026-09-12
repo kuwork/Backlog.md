@@ -124,6 +124,18 @@ export const ja: TranslationDict = {
 		noSearchResults: "検索結果がありません",
 	},
 
+	searchDialog: {
+		placeholder: "タスク、ドキュメント、決定事項、Wiki を検索…",
+		filterAll: "すべて",
+		filterTask: "タスク",
+		filterDocument: "ドキュメント",
+		filterWiki: "Wiki",
+		filterDecision: "決定事項",
+		emptyHint: "キーワードを入力してタスク、ドキュメント、決定事項、Wiki を検索。",
+		collapseGroup: "グループを折りたたむ",
+		expandGroup: "グループを展開",
+	},
+
 	board: {
 		title: "カンバン",
 		loading: "タスクを読み込み中...",

@@ -114,7 +114,7 @@ describe("Web task popup empty hints across locales", () => {
 	const localeHints: Array<[string, { references: string; documentation: string }]> = [
 		["en", { references: "No references", documentation: "No documents" }],
 		["zh-CN", { references: "暂无引用", documentation: "暂无文档" }],
-		["zh-TW", { references: "暫無引用", documentation: "暫無文件" }],
+		["zh-TW", { references: "暫無引用", documentation: "暫無文檔" }],
 		["ja", { references: "参照がありません", documentation: "ドキュメントがありません" }],
 	];
 

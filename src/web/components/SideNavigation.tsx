@@ -1,18 +1,12 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from 'react-tooltip';
 import {
 	type Decision,
-	type DecisionSearchResult,
 	type DocsTreeNode,
 	type Document,
-	type DocumentSearchResult,
-	type SearchResult,
-	type SearchResultType,
 	type Task,
-	type TaskSearchResult,
 	type WikiTreeNode,
-	type WikiSearchResult,
 } from '../../types';
 import ErrorBoundary from './ErrorBoundary';
 import Modal from './Modal';
@@ -20,23 +14,12 @@ import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { getWebVersion } from '../utils/version';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../hooks/useI18n';
-import { parseSearchCommandQuery } from '../utils/search-command-query';
 import { translateLoadingMessage } from '../../utils/loading-messages';
 
 // Utility functions for ID transformations
 const stripIdPrefix = (id: string): string => {
 	// Remove any prefix pattern: letters followed by dash (task-, doc-, decision-, JIRA-, etc.)
 	return id.replace(/^[a-zA-Z]+-/, '');
-};
-
-const hasTaskSearchFilters = (parsedQuery: ReturnType<typeof parseSearchCommandQuery>): boolean => {
-	return Boolean(
-		parsedQuery.status ||
-			parsedQuery.priority ||
-			parsedQuery.assignee ||
-			(parsedQuery.labels && parsedQuery.labels.length > 0) ||
-			(parsedQuery.modifiedFiles && parsedQuery.modifiedFiles.length > 0),
-	);
 };
 
 const LoadingPhase = ({ message, className }: { message?: string | null; className: string }) => (
@@ -73,7 +56,7 @@ const NavigationCount = ({
 };
 
 // Icon components for better semantics and performance
-const Icons = {
+export const Icons = {
 	Tasks: () => (
 		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -649,14 +632,6 @@ const SideNavigation = memo(function SideNavigation({
 		return saved ? Number.parseInt(saved, 10) : 320;
 	});
 	const [isResizing, setIsResizing] = useState(false);
-	const [searchQuery, setSearchQuery] = useState('');
-	const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-	const [isSearching, setIsSearching] = useState(false);
-	const [searchError, setSearchError] = useState<string | null>(null);
-	const [searchInputRef, setSearchInputRef] = useState<HTMLInputElement | null>(null);
-	const [searchType, setSearchType] = useState<SearchResultType | 'all'>('all');
-	const [searchTypeDropdownOpen, setSearchTypeDropdownOpen] = useState(false);
-	const searchTypeDropdownRef = useRef<HTMLDivElement>(null);
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	const resizeGhostRef = useRef<HTMLDivElement>(null);
 	const [isDocsCollapsed, setIsDocsCollapsed] = useState(() => {
@@ -863,98 +838,27 @@ const SideNavigation = memo(function SideNavigation({
 		}
 	}, [wikiTree.length]);
 
-	// Add keyboard shortcut for search
+	// Add keyboard shortcut for the global search dialog
+	const openSearchDialog = useCallback(() => {
+		navigate('/search', { state: { backgroundLocation: location } });
+	}, [navigate, location]);
+	const openSearchDialogRef = useRef(openSearchDialog);
+	openSearchDialogRef.current = openSearchDialog;
+
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
 				e.preventDefault();
-				if (isCollapsed) {
-					// Expand sidebar first, then focus will happen on next render
-					setIsCollapsed(false);
-				} else if (searchInputRef) {
-					searchInputRef.focus();
-				}
+				openSearchDialogRef.current();
 			}
 		};
 
 		document.addEventListener('keydown', handleKeyDown);
 		return () => document.removeEventListener('keydown', handleKeyDown);
-	}, [searchInputRef, isCollapsed]);
-
-	// Auto-focus search input when sidebar expands
-	useEffect(() => {
-		if (!isCollapsed && searchInputRef) {
-			// Small delay to ensure the input is rendered
-			const timer = setTimeout(() => {
-				searchInputRef.focus();
-			}, 100);
-			return () => clearTimeout(timer);
-		}
-	}, [isCollapsed, searchInputRef]);
+	}, []);
 
 	location.pathname.startsWith('/documentation');
 	location.pathname.startsWith('/decisions');
-
-
-	// Perform unified search via centralized API (debounced)
-	useEffect(() => {
-		const query = searchQuery.trim();
-		if (query === '') {
-			setSearchResults([]);
-			setSearchError(null);
-			setIsSearching(false);
-			return;
-		}
-
-		let cancelled = false;
-		setIsSearching(true);
-		setSearchError(null);
-		const timeout = setTimeout(async () => {
-			try {
-				const parsedQuery = parseSearchCommandQuery(query);
-				let types: SearchResultType[] | undefined;
-				if (searchType !== 'all') {
-					types = [searchType];
-				} else {
-					types = parsedQuery.types ?? (hasTaskSearchFilters(parsedQuery) ? ['task'] : undefined);
-				}
-				const results = await apiClient.search({ ...parsedQuery, types, limit: 15 });
-				if (!cancelled) {
-					setSearchResults(results);
-				}
-			} catch (err) {
-				console.error('Sidebar search failed:', err);
-				if (!cancelled) {
-					setSearchResults([]);
-					setSearchError(t.nav.searchFailed);
-				}
-			} finally {
-				if (!cancelled) {
-					setIsSearching(false);
-				}
-			}
-		}, 200);
-
-		return () => {
-			cancelled = true;
-			clearTimeout(timeout);
-		};
-	}, [searchQuery, searchType]);
-
-	const unifiedSearchResults = useMemo(() => {
-		if (!searchQuery.trim()) {
-			return [];
-		}
-		const filtered = searchResults
-			.filter((result) => result.score === null || result.score <= 0.45)
-			.sort((a, b) => {
-				const scoreA = a.score ?? Number.POSITIVE_INFINITY;
-				const scoreB = b.score ?? Number.POSITIVE_INFINITY;
-				return scoreA - scoreB;
-			});
-
-		return filtered.slice(0, 5);
-	}, [searchQuery, searchResults]);
 
 	// Always show full lists in their sections, search results are separate
 	const filteredDecisions = decisions;
@@ -1005,17 +909,6 @@ const SideNavigation = memo(function SideNavigation({
 		};
 	}, [isResizing, handleResizeMove, handleResizeEnd]);
 
-	// Close search type dropdown on click outside
-	useEffect(() => {
-		const handleClickOutside = (e: MouseEvent) => {
-			if (searchTypeDropdownRef.current && !searchTypeDropdownRef.current.contains(e.target as Node)) {
-				setSearchTypeDropdownOpen(false);
-			}
-		};
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
-	}, []);
-
 	return (
 		<ErrorBoundary>
 			<div
@@ -1053,183 +946,30 @@ const SideNavigation = memo(function SideNavigation({
 				
 				{!isCollapsed ? (
 					<div className="flex items-center w-full">
-						<div className="relative flex-1" ref={searchTypeDropdownRef}>
-							<button
-								onClick={() => setSearchTypeDropdownOpen(!searchTypeDropdownOpen)}
-								className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
-								title="Search type"
-							>
-								{searchType === 'all' ? <Icons.Search /> :
-								 searchType === 'task' ? <Icons.Tasks /> :
-								 searchType === 'document' ? <Icons.Document /> :
-								 searchType === 'decision' ? <Icons.Decision /> :
-								 <Icons.DocumentBook />}
-							</button>
-							{searchTypeDropdownOpen && (
-								<div className="absolute left-0 top-full mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-									<button
-										onClick={() => { setSearchType('all'); setSearchTypeDropdownOpen(false); }}
-										className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${searchType === 'all' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-									>
-										<Icons.Search />
-										{t.common.all}
-									</button>
-									<button
-										onClick={() => { setSearchType('task'); setSearchTypeDropdownOpen(false); }}
-										className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${searchType === 'task' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-									>
-										<Icons.Tasks />
-										{t.common.task}
-									</button>
-									<button
-										onClick={() => { setSearchType('document'); setSearchTypeDropdownOpen(false); }}
-										className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${searchType === 'document' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-									>
-										<Icons.Document />
-										{t.common.document}
-									</button>
-									<button
-										onClick={() => { setSearchType('decision'); setSearchTypeDropdownOpen(false); }}
-										className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${searchType === 'decision' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-									>
-										<Icons.Decision />
-										{t.common.decision}
-									</button>
-									<button
-										onClick={() => { setSearchType('wiki'); setSearchTypeDropdownOpen(false); }}
-										className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${searchType === 'wiki' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-									>
-										<Icons.DocumentBook />
-										{t.nav.wiki}
-									</button>
-								</div>
-							)}
-							<input
-								ref={setSearchInputRef}
-								type="text"
-								placeholder={t.nav.searchPlaceholder}
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="w-full pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200"
-							/>
-								{searchQuery && (
-									<button
-										onClick={() => setSearchQuery('')}
-										className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
-									>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-									</svg>
-								</button>
-							)}
-						</div>
+						<button
+							type="button"
+							onClick={openSearchDialog}
+							className="w-full flex items-center gap-2 pl-3 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors duration-200"
+							title={t.nav.search}
+							aria-label={t.nav.search}
+						>
+							<Icons.Search />
+							<span className="truncate">{t.nav.searchPlaceholder}</span>
+						</button>
 					</div>
 				) : (
 						<div className="flex items-center justify-center">
 							<button
-								onClick={() => setIsCollapsed(false)}
+								onClick={openSearchDialog}
 								className="flex items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
 								title={t.nav.search}
+								aria-label={t.nav.search}
 							>
 								<Icons.Search />
 						</button>
 					</div>
 				)}
 			</div>
-
-			{/* Unified Search Results */}
-			{!isCollapsed && searchQuery.trim() && unifiedSearchResults.length > 0 && (
-				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-					<div className="flex items-center justify-between mb-3">
-						<h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.nav.searchResults}</h3>
-						{isSearching && (
-							<span className="text-xs text-gray-500 dark:text-gray-400">{t.nav.searching}</span>
-						)}
-					</div>
-					<div className="space-y-1">
-								{unifiedSearchResults.map((result, index) => {
-									const getResultLink = () => {
-										if (result.type === 'document') {
-											const doc = (result as DocumentSearchResult).document;
-											return `/documentation/${stripIdPrefix(doc.id)}/${sanitizeUrlTitle(doc.title)}`;
-										}
-										if (result.type === 'decision') {
-											const dec = (result as DecisionSearchResult).decision;
-											return `/decisions/${stripIdPrefix(dec.id)}/${sanitizeUrlTitle(dec.title)}`;
-										}
-										if (result.type === 'wiki') {
-											return `/wiki/${encodeWikiPath((result as WikiSearchResult).wiki.path)}`;
-										}
-										const task = (result as TaskSearchResult).task;
-										return `/?highlight=${encodeURIComponent(task.id)}`;
-									};
-
-									const getResultIcon = () => {
-										if (result.type === 'document') return <span className="text-green-500"><Icons.DocumentPage /></span>;
-										if (result.type === 'decision') return <span className="text-stone-500"><Icons.DecisionPage /></span>;
-										if (result.type === 'wiki') return <span className="text-blue-500"><Icons.WikiPage /></span>;
-										return <span className="text-purple-500"><Icons.Tasks /></span>;
-									};
-
-									const getResultMeta = () => {
-										if (result.type === 'document') {
-											const doc = (result as DocumentSearchResult).document;
-											return { title: doc.title, id: doc.id, label: t.common.document };
-										}
-										if (result.type === 'decision') {
-											const dec = (result as DecisionSearchResult).decision;
-											return { title: dec.title, id: dec.id, label: t.common.decision };
-										}
-										if (result.type === 'wiki') {
-											const wiki = (result as WikiSearchResult).wiki;
-											const title = typeof wiki.frontmatter.title === 'string' ? wiki.frontmatter.title : wiki.path.replace(/\.md$/i, '').split('/').pop() ?? wiki.path;
-											return { title, id: wiki.path, label: t.nav.wiki };
-										}
-										const task = (result as TaskSearchResult).task;
-										return { title: task.title, id: task.id, label: t.common.task };
-									};
-
-									const meta = getResultMeta();
-
-									return (
-										<NavLink
-											key={`${result.type}-${meta.id}-${index}`}
-											to={getResultLink()}
-											className="flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
-										>
-											{getResultIcon()}
-											<div className="flex-1 min-w-0">
-												<div className="font-medium truncate">
-													{meta.title}
-												</div>
-												<div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-													{meta.label} • {meta.id}
-												</div>
-											</div>
-											{result.score !== null && (
-												<div className="text-xs text-gray-400 dark:text-gray-500">
-													{`${Math.round((1 - result.score) * 100)}%`}
-												</div>
-											)}
-										</NavLink>
-									);
-								})}
-					</div>
-				</div>
-			)}
-
-			{!isCollapsed && searchQuery.trim() && unifiedSearchResults.length === 0 && !isSearching && !searchError && (
-				<div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-					{t.nav.noSearchResults}
-				</div>
-			)}
-
-			{!isCollapsed && searchQuery.trim() && searchError && (
-				<div className="px-4 py-2 text-sm text-red-600 dark:text-red-400 border-b border-gray-200 dark:border-gray-700">
-					{searchError}
-				</div>
-			)}
-
 
 			<nav className="flex-1 overflow-y-auto">
 				{/* Error State */}

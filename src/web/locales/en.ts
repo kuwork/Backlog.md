@@ -122,6 +122,18 @@ export const en = {
 		noSearchResults: "No search results",
 	},
 
+	searchDialog: {
+		placeholder: "Search tasks, docs, decisions, wiki…",
+		filterAll: "All",
+		filterTask: "Tasks",
+		filterDocument: "Docs",
+		filterWiki: "Wiki",
+		filterDecision: "Decisions",
+		emptyHint: "Type to search across tasks, documents, decisions and wiki.",
+		collapseGroup: "Collapse group",
+		expandGroup: "Expand group",
+	},
+
 	board: {
 		title: "Kanban Board",
 		loading: "Loading tasks...",

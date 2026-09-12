@@ -124,6 +124,18 @@ export const zhCN: TranslationDict = {
 		noSearchResults: "无搜索结果",
 	},
 
+	searchDialog: {
+		placeholder: "搜索任务、文档、决策、Wiki…",
+		filterAll: "全部",
+		filterTask: "任务",
+		filterDocument: "文档",
+		filterWiki: "Wiki",
+		filterDecision: "决策",
+		emptyHint: "输入关键字以搜索任务、文档、决策和 Wiki。",
+		collapseGroup: "折叠分组",
+		expandGroup: "展开分组",
+	},
+
 	board: {
 		title: "看板",
 		loading: "加载任务中...",

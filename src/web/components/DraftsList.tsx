@@ -6,6 +6,7 @@ import { type Milestone, type SearchPriorityFilter, type Task } from '../../type
 import LabelFilterDropdown from './LabelFilterDropdown';
 import { collectAvailableLabels } from '../../utils/label-filter.ts';
 import { getMilestoneLabel } from '../utils/milestones';
+import { getPriorityBadgeColor } from '../utils/task-badge-colors';
 import { formatStoredUtcDateForDisplay } from '../utils/date-display';
 
 interface DraftsListProps {
@@ -209,18 +210,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 		syncUrl("", "", [], "", "");
 	};
 
-	const getPriorityColor = (priority?: string) => {
-		switch (priority?.toLowerCase()) {
-			case 'high':
-				return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200';
-			case 'medium':
-				return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200';
-			case 'low':
-				return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200';
-			default:
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-		}
-	};
+	const getPriorityColor = getPriorityBadgeColor;
 
 	if (loading) {
 		return (

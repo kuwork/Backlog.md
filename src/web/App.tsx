@@ -26,6 +26,7 @@ import Layout from "./components/Layout";
 import MilestoneDetailsModal from "./components/MilestoneDetailsModal";
 import MilestonesPage from "./components/MilestonesPage";
 import Settings from "./components/Settings";
+import SearchDialog from "./components/search/SearchDialog";
 import Statistics from "./components/Statistics";
 import DuplicateTaskRepairModal from "./components/DuplicateTaskRepairModal";
 import { SuccessToast } from "./components/SuccessToast";
@@ -628,9 +629,15 @@ function AppContent() {
 
 	const handleCloseModal = useCallback(() => {
 		if (taskIdFromUrl || draftIdFromUrl) {
-			const backgroundPath = state?.backgroundLocation
-				? `${state.backgroundLocation.pathname}${state.backgroundLocation.search}`
-				: "/";
+			// This modal entry was pushed on top of state.backgroundLocation, so
+			// the previous history entry IS the background: pop it instead of
+			// replacing, otherwise background entries (e.g. /search) pile up and
+			// leaving the background takes one extra back/close per modal opened.
+			if (state?.backgroundLocation) {
+				navigate(-1);
+				return;
+			}
+			const backgroundPath = "/";
 			navigate(backgroundPath, { replace: true });
 		} else {
 			setShowModal(false);
@@ -925,7 +932,12 @@ function AppContent() {
 						}
 					/>
 				</Route>
+				<Route path="search" element={<Layout {...layoutProps} />}>
+					<Route index element={<BoardPage {...boardPageProps} />} />
+				</Route>
 			</Routes>
+
+			{location.pathname === "/search" && <SearchDialog />}
 
 			<MilestoneDetailsModal
 				milestoneId={milestoneIdFromUrl}

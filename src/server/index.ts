@@ -448,6 +448,8 @@ export class BacklogServer {
 					"/draft/:id/*": spaIndexHtml,
 					"/milestone/:id": spaIndexHtml,
 					"/milestone/:id/*": spaIndexHtml,
+					"/search": spaIndexHtml,
+					"/search/*": spaIndexHtml,
 
 					// API Routes using Bun's native route syntax
 					"/api/tasks": {
