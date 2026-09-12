@@ -107,9 +107,9 @@
   };
   "@braintree/sanitize-url" = {
     out_path = "@braintree/sanitize-url";
-    name = "@braintree/sanitize-url@7.1.1";
-    url = "https://registry.npmjs.org/@braintree/sanitize-url/-/sanitize-url-7.1.1.tgz";
-    hash = "sha512-i1L7noDNxtFyL5DmZafWy1wRVhGehQmzZaz1HiN5e7iylJMSZR7ekOV7NsIqa5qBldlLrsKv4HbgFUVlQrz8Mw==";
+    name = "@braintree/sanitize-url@7.1.2";
+    url = "https://registry.npmjs.org/@braintree/sanitize-url/-/sanitize-url-7.1.2.tgz";
+    hash = "sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA==";
   };
   "@bramus/specificity" = {
     out_path = "@bramus/specificity";
@@ -416,9 +416,9 @@
   };
   "@mermaid-js/parser" = {
     out_path = "@mermaid-js/parser";
-    name = "@mermaid-js/parser@1.1.1";
-    url = "https://registry.npmjs.org/@mermaid-js/parser/-/parser-1.1.1.tgz";
-    hash = "sha512-VuHdsYMK1bT6X2JbcAaWAhugTRvRBRyuZgd+c22swUeI9g/ntaxF7CY7dYarhZovofCbUNO0G7JesfmNtjYOCw==";
+    name = "@mermaid-js/parser@1.2.1";
+    url = "https://registry.npmjs.org/@mermaid-js/parser/-/parser-1.2.1.tgz";
+    hash = "sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw==";
   };
   "@modelcontextprotocol/sdk" = {
     out_path = "@modelcontextprotocol/sdk";
@@ -1361,9 +1361,9 @@
   };
   "cytoscape" = {
     out_path = "cytoscape";
-    name = "cytoscape@3.33.1";
-    url = "https://registry.npmjs.org/cytoscape/-/cytoscape-3.33.1.tgz";
-    hash = "sha512-iJc4TwyANnOGR1OmWhsS9ayRS3s+XQ185FmuHObThD+5AeJCakAAbWv8KimMTt08xCCLNgneQwFp+JRJOr9qGQ==";
+    name = "cytoscape@3.34.3";
+    url = "https://registry.npmjs.org/cytoscape/-/cytoscape-3.34.3.tgz";
+    hash = "sha512-yfYGhRcGAntq6YBD583j4n0Eg3jIxvWmZtz/5uz9UYkeIStSlMxuUja+ec5j3iBD8nv1rwaOAYMW09tBdkSeaQ==";
   };
   "cytoscape-cose-bilkent" = {
     out_path = "cytoscape-cose-bilkent";
@@ -1642,9 +1642,9 @@
   };
   "dayjs" = {
     out_path = "dayjs";
-    name = "dayjs@1.11.19";
-    url = "https://registry.npmjs.org/dayjs/-/dayjs-1.11.19.tgz";
-    hash = "sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==";
+    name = "dayjs@1.11.23";
+    url = "https://registry.npmjs.org/dayjs/-/dayjs-1.11.23.tgz";
+    hash = "sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==";
   };
   "debug" = {
     out_path = "debug";
@@ -2408,9 +2408,9 @@
     binaries = {
       "katex" = "../katex/cli.js";
     };
-    name = "katex@0.16.25";
-    url = "https://registry.npmjs.org/katex/-/katex-0.16.25.tgz";
-    hash = "sha512-woHRUZ/iF23GBP1dkDQMh1QBad9dmr8/PAwNA54VrSOVYgI12MAcE14TqnDdQOdzyEonGzMepYnqBMYdsoAr8Q==";
+    name = "katex@0.16.47";
+    url = "https://registry.npmjs.org/katex/-/katex-0.16.47.tgz";
+    hash = "sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==";
   };
   "katex/commander" = {
     out_path = "katex/node_modules/commander";
@@ -2702,9 +2702,9 @@
   };
   "mermaid" = {
     out_path = "mermaid";
-    name = "mermaid@11.15.0";
-    url = "https://registry.npmjs.org/mermaid/-/mermaid-11.15.0.tgz";
-    hash = "sha512-pTMbcf3rWdtLiYGpmoTjHEpeY8seiy6sR+9nD7LOs8KfUbHE4lOUAprTRqRAcWSQ6MQpdX+YEsxShtGsINtPtw==";
+    name = "mermaid@11.16.1";
+    url = "https://registry.npmjs.org/mermaid/-/mermaid-11.16.1.tgz";
+    hash = "sha512-TQsq6u22fAn3rek5VOubrhKPo1g5hwC3FXUN9hiyupTckcYiGuuKGkNQrKYwGJkXUxZdojwRG46gsSCFZMDp4g==";
   };
   "micromark" = {
     out_path = "micromark";
