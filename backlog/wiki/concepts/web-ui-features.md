@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-09-13 01:12'
 ---
 
 # Web UI 功能
@@ -36,7 +36,7 @@ updated_date: '2026-09-08 17:00'
 - 表格布局
 - 状态/优先级/标签/里程碑筛选
 - 多状态筛选支持
-- **搜索框与类型下拉**：输入框左侧图标按钮弹出下拉菜单（All / Tasks / Documents / Decisions / Wiki）
+- **搜索框与类型下拉**：输入框左侧图标按钮弹出下拉菜单（All / Tasks / Documents / Decisions / Wiki）；自 BACK-624 起该框退化为只读触发按钮，点击打开全局搜索对话框（见下）
 - **子任务归组**：按 ID 排序时子任务归组到父任务下方（BACK-496）
 - **状态包含/排除下拉**：两个独立多选下拉 StatusFilterDropdown（包含）与 StatusExcludedDropdown（排除），状态参数持久化到 URL 查询参数；修复单状态 URL 重复解析 bug（BACK-548）
 - **默认序号排序**：默认按 ordinal 排序（不新增 Ordinal 列）；表头三击循环：首次升序、二次降序、三次清除并恢复默认序号排序（BACK-542）
@@ -87,6 +87,20 @@ updated_date: '2026-09-08 17:00'
 - **语言切换**：英语 / 日语 / 简体中文 / 繁体中文
 - **Locale 切换防覆盖**：`App.tsx` 仅在首次加载时从服务器同步 locale，避免后台数据刷新覆盖用户手动选择（BACK-503）
 
+## 全局搜索对话框（BACK-624）
+
+macOS Spotlight 风格居中对话框，替代侧边栏 5 条上限的内联搜索：
+
+- `/search` modal-over-route，Ctrl/Cmd+K 从任意位置打开，底层页面保持挂载并锁定滚动
+- URL 即状态：`?q=`（关键词）+ `?type=`（all|task|doc|wiki|decision），刷新/分享链接可完整还原
+- 历史语义走 React Router：打开 push、输入/过滤 replace、关闭（Esc/×/遮罩/后退）统一 `navigate(-1)`
+- 结果单列分组（task → document → wiki → decision），表头可折叠，无结果上限，无右侧预览面板
+- 标题与资源 ID 均按服务端 `SearchMatch.indices` 高亮；状态/优先级胶囊复用 `utils/task-badge-colors.ts`
+- 手写定高虚拟列表（`search/VirtualList.tsx`，无新依赖），滚动位置以 `visibleStartIndex` 记入 `location.state` 并在后退时还原
+- 窄屏（<640px）转全屏两行定高行，虚拟滚动与位置还原行为一致
+
+详见 [[concepts/spotlight-search]]。
+
 ## 浏览器加载与状态（BACK-566 / BACK-568）
 
 - 服务器先绑定再初始化 Core 语料，浏览器 shell 立即可用
@@ -129,6 +143,8 @@ updated_date: '2026-09-08 17:00'
 - **AC 编号显示**：任务详情模态框验收标准项显示 `#${index}` 编号（仅详情预览，看板/列表卡片不变）（BACK-544）
 - **未保存编辑保留**：模态框打开期间任务文件后台变化时，仅更新未触碰字段，保留用户脏编辑（BACK-535）
 - **文档内锚点链接**：`#heading` 链接在当前文档上下文内跳转，标题 ID 用 github-slugger 生成（BACK-536）
+- **父子任务层级区块**：标题下方按需渲染 PARENT 行（父任务 ID/标题/状态徽章，点击打开父任务）与可折叠 SUBTASKS 区（`done/total` 计数、进度条、逐行完成指示 + 钻取），无父子关系时不渲染且布局不变（BACK-628）
+- **返回箭头消费历史条目**：钻取后点击返回箭头执行 `navigate(-1)`（pop）而非 push 父 URL，保证历史栈与模态栈严格 1:1，关闭一次即回到背景页（BACK-627；不变式见 [[execution/modal-route-history-invariant]]）
 
 ## 技术特性
 
@@ -136,7 +152,7 @@ updated_date: '2026-09-08 17:00'
 - **实时同步**：文件系统变更自动刷新所有视图
 - **响应式**：桌面与移动端适配
 - **暗黑模式**：Tailwind CSS dark mode
-- **Mermaid 图表**：任务中的 Mermaid 语法自动渲染
+- **Mermaid 图表**：任务中的 Mermaid 语法自动渲染；预构建 bundle 嵌入编译二进制，固定 `mermaid@11.16.1`（BACK-626 清除五个 GHSA）
 - **图片与附件**：`assets/` 自动提供，临时粘贴图片 promote 机制
 - **预览防崩溃**：尖括号类型字符串过滤
 - **草稿保留**：未保存的草稿在文件刷新后保留
@@ -197,6 +213,7 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - **共享 canonical entity index**：三实体共用同一索引；`canonicalTaskId` 提取到纯模块 `src/utils/task-id.ts`，渲染与输入两侧复用（[[sources/back-614-entity-id-auto-link-autocomplete]]）
 
 ## Related Concepts
+- [[concepts/spotlight-search]] — 全局搜索对话框的路由、虚拟列表与滚动记忆
 - [[concepts/web-server]] — Web Server HTTP API 与后端支撑
 - [[concepts/date-fields]] — 日期字段语义与存储格式
 - [[concepts/gantt-view]] — 甘特图详细技术实现
@@ -235,3 +252,7 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - [[sources/back-620-swapped-empty-state-hints]] — BACK-620 空态提示与删除按钮配对修正
 - [[sources/back-622-milestone-archive-remove-dialogs]] — BACK-622 里程碑 archive/remove 对话框
 - [[sources/back-623-comment-removal-flags]] — BACK-623 评论删除标志位
+- [[sources/back-624-global-search-dialog]] — BACK-624 全局搜索对话框
+- [[sources/back-626-dependabot-mermaid-bump]] — BACK-626 mermaid 安全升级
+- [[sources/back-627-back-arrow-history-fix]] — BACK-627 返回箭头历史条目修复
+- [[sources/back-628-task-hierarchy-section]] — BACK-628 任务模态框父子层级区块
