@@ -2,7 +2,7 @@
 title: Backlog.md CLI 工具
 labels: [entity]
 created_date: '2026-05-06 00:00'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-09-13 01:12'
 ---
 
 # Backlog.md CLI 工具
@@ -50,6 +50,9 @@ Markdown 原生的任务管理与看板可视化 CLI 工具，同时作为 MCP �
 - `backlog instructions overview` 现在包含 Sequences Quick Reference（[[sources/back-554-document-sequences-command-in-cli-instructions|BACK-554]]）
 - `autoCommit` 仅暂存本次操作触碰的文件（[[sources/back-561-autocommit-exact-files|BACK-561]]）
 - TUI 看板支持 `N` 键创建任务、主题自适应滚动、稳定 Tab 切换、AC 进度（[[sources/back-563-tui-intent-first-composer|BACK-563]]、[[sources/back-565-tui-theme-adaptive-scroll|BACK-565]]、[[sources/back-569-acceptance-criteria-progress-ui|BACK-569]]）
+- 任务 JSON 摘要新增 `acceptanceCriteriaCompleted` / `acceptanceCriteriaCount`（[[sources/back-625-ac-progress-json-output|BACK-625]]）
+- Web UI 新增 `/search` 全局搜索对话框路由（Ctrl/Cmd+K），静态路由表补 `/search`（[[sources/back-624-global-search-dialog|BACK-624]]）
+- mermaid 固定 `11.16.1`，清除五个 GHSA（[[sources/back-626-dependabot-mermaid-bump|BACK-626]]）
 
 ## Related Concepts
 
