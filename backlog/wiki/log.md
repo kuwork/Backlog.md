@@ -752,3 +752,36 @@ Chronological, append-only record of all wiki operations.
 **更新导航**: `index.md`（Sources 196 条，Concepts 33 条，Decisions 55 条，Execution 20 条，Reasoning 3 条）、`overview.md`（新增「波后增量」段与统计刷新；用户手册页数由陈旧的 24 修正为实际的 33）
 
 **mini-lint**: 全 wiki wikilink 扫描（1669 条出链）——本批新增/更新页面出链全部解析成功；`index.md` 覆盖全部 9 个内容子目录（无遗漏文件）。剩余 42 条未解析命中均为既有文档示例（`[[path/to/page]]`、`[[target|alias]]`、`![[assets/photo.png]]`）与 BACK-482 的历史 bug 复现描述（`[[../developer-notes/security-gotchas]]`，该 `../` 形式在修复后按页面相对语义解析，属正确用法），无需修复。已确认的语境性遗留：BACK-624 的 `zh-TW` 全量文案审计（记录于 source 页与 `searchDialog` 命名空间条目，非 wiki 缺陷）。
+
+## [2026-09-13 01:20:15] usermanual-update | 补齐 BACK-570~623 波次的用户手册覆盖
+
+**触发**：审查发现最近两次提交（`cc8c96b` V1.50.1 wiki摄取、`bf423cc` V1.50.2 wiki摄取）均未包含用户手册更新。核对结论：
+
+- `bf423cc`（BACK-624~628）对应的手册改动已于本轮补齐，但仍留在工作区未随该提交入库
+- `cc8c96b`（BACK-570~623 迁移波次，54 个任务）中**大量面向用户的能力从未写入手册**——该提交只更新了 wiki 的 source/concept/decision 层，没有 `usermanual-update` 记录（对比 `9e97cb1` 波次留有该记录）
+
+**缺失项审计（逐条核对 BACK-570~623 来源页）**：
+
+| 能力 | 来源 | 手册原状 |
+|---|---|---|
+| `defaultAssignee` / `--unassign` / 多重 `-a` | BACK-579/584/585 | 缺失；`-a` 被记为不可重复 |
+| `--add-*` / `--remove-*` / `--clear-*` 列表字段语义与空值拒绝 | BACK-577/578 | 缺失 |
+| `--remove-comment` / `--clear-comments` | BACK-623 | 缺失 |
+| 并发编辑 fail-fast（CLI 非零 / Web 409 / MCP 错误） | BACK-571 | 缺失 |
+| `task list --ready` 依赖就绪过滤 | BACK-615 | 缺失 |
+| `decision view` / `decision update` / 双栏浏览器 / `--json` | BACK-574 | 仅 create/list |
+| `doc list` 双栏浏览器、`doc create --plain`、`doc view` 三种引用形式与歧义 fail-closed | BACK-575/592/596/598 | 缺失 |
+| 里程碑 `created_date`/`updated_date`、`documentation` 字段、`milestone add` CLI、`milestone remove --task-handling` | BACK-618/619 | 缺失；且"创建主要通过 Web 界面"的说法已过时 |
+| Web 里程碑详情 `/milestone/:id`、编辑模态框重构、归档/移除对话框文案 | BACK-580/622 | 仅简单编辑描述 |
+| Web `defaultAssignee`/`labels` 编辑器、`defaultEditor` 可清空、`autoPort` | BACK-581/583/586（`autoPort` 属 BACK-514 的旧缺口） | 配置区块只列了少数项 |
+| 实体 ID 自动链接、任务列表全宽无横向滚动 | BACK-613/614 | 缺失 |
+| preview 模式直接添加评论、评论删除 UI | BACK-617/623 | 手册仍写"仅编辑模式可评论"（行为已变更） |
+| TUI vim 键边界导航、隐藏空列、窗口标题、Readiness 行、footer 大写提示 | BACK-588/589/590/591/615/594 | 缺失 |
+| `init` 及全套命令遵循 `--cwd` / `BACKLOG_CWD` | BACK-593 | 缺失 |
+| 代理首轮加载实况、日期本地时间输入与字面 `\n` 约定 | BACK-582/572 | 缺失 |
+
+**更新页面（12）**：`00-快速开始/01-安装与初始化`、`10-任务管理/01-创建与编辑任务`、`20-看板与可视化/00-TUI看板`、`30-文档与决策/00-文档管理`、`30-文档与决策/01-决策记录`、`30-文档与决策/02-里程碑管理`、`40-Web界面/00-启动与访问`、`40-Web界面/02-任务列表`、`40-Web界面/03-里程碑管理`、`40-Web界面/05-设置与主题`、`50-AI集成/02-代理指令文件`（另有本轮早前更新的 `40-Web界面/02-任务列表`、`10-任务管理/03-子任务与依赖` 等）
+
+**判定无需文档化**：纯内部实现（增量跨分支加载 BACK-601/602、queryTasks 本地快路径、gray-matter 无缓存包装、ContentStore watcher 重试、启动器包解析 BACK-621）、测试稳定化（BACK-603~612）、以及**行为纠正类修复**（空态提示互换 BACK-620、里程碑更新返回 BACK-515、任务列表宽度 BACK-613 的布局纠正）——后者恢复的是既有文档描述的行为，手册无需新增说明。`BACK-570` 的 CLI banner wiki 安装提示已由 `50-AI集成/03-Wiki Skill 安装` 覆盖。
+
+**重新生成**：`wiki_output/用户手册/manual.md`（merge.py；4557 行，较上一版 +346 行）。
