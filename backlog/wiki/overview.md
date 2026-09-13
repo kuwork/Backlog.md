@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-09-08 17:30'
+updated_date: '2026-09-13 01:12'
 ---
 
 # Knowledge Base Overview
@@ -38,6 +38,11 @@ updated_date: '2026-09-08 17:30'
 - **统计缓存自动刷新**：服务端 `cachedStatisticsResponse` + 500ms debounce `invalidateStatistics()`，ContentStore 变更触发重新计算，WebSocket 广播 `"statistics-updated"`，客户端 `localStorage` 缓存瞬时加载（BACK-503）
 - **Locale 切换可靠性**：修复 `App.tsx` `loadAllData()` 无条件覆盖 locale 的 bug，仅首次加载时同步服务器配置（BACK-503）
 - **看板拖拽修复**：拖拽开始时不再清除列排序，避免任务在光标下跳动；`draggedTaskId` 提升到 Board 级别，跨列拖拽支持精确插入到任意位置（BACK-504）
+- **全局搜索对话框**：`/search` modal-over-route（Ctrl/Cmd+K），单列分组结果、标题与 ID 高亮、手写定高虚拟列表、`visibleStartIndex` 滚动记忆、窄屏全屏两行布局；侧边栏搜索框退化为触发按钮（BACK-624）
+- **任务模态框父子层级**：标题下方按需渲染 PARENT 行与可折叠 SUBTASKS 区（完成计数 + 进度条 + 钻取），无层级时不渲染（BACK-628）
+- **模态历史栈不变式**：返回箭头与关闭统一 pop，背景条目只挂模态目标，历史栈与模态栈严格 1:1（BACK-624 / BACK-627）
+- **任务 JSON 验收标准进度**：`acceptanceCriteriaCompleted` / `acceptanceCriteriaCount` 在 list/view/search 三个 JSON 表面一致输出（BACK-625）
+- **依赖安全**：mermaid 固定 `11.16.1`，清除 5 个 GHSA（radar DoS、配置原型污染、CSS 注入、架构图原型污染、XY 图死循环）（BACK-626）
 - **依赖项钻取导航**：任务详情面板中 Dependencies 标签可点击打开子任务，标题栏左侧返回按钮回到父任务，关闭按钮清空整个浏览堆栈（BACK-505）
 - **稳定任务模态框 URL**：`/task/:id` 路由支持从任意视图打开任务详情，底层页面保持可见；前缀无关匹配（`506` → `BACK-506`）；裸 `/task/:id` 自动重定向到 `/task/:id/:title`；Markdown 中的 `/task/` 链接在模态框内打开（BACK-509）
 - **Wiki 编辑模式修复**：切换 Wiki 页面时自动退出编辑模式，避免新页面内容在编辑器中误显示（BACK-510）
@@ -105,6 +110,7 @@ updated_date: '2026-09-08 17:30'
 - **draft 导入**：draft-92（上游 issue #839 → BACK-577）、draft-96（上游 issue #853 → BACK-591）、draft-125（上游 BACK-624 → BACK-602）
 - **BACK-570~623 全部落地**（54 个任务，全部 Done）：迁移标志性结构为 AC #1 固定 "git log --grep / git show 审查上游变更"，收尾固定 tsc / biome / scoped tests 三段式；与上游刻意分叉点记录在 doc-10 CLI-4（BACK-577 emptyClears 语义）
 - **doc-16 To-Do 清算**：42 个 To-Do 任务与三次迁移波对照（13 归档实现、2 决策跳过、4 部分实现、25 未实现，全部经 src/ grep 实证），形成"分类→分析→导入→落地→清算"的完整迁移闭环
+- **波后增量（BACK-624~628，2026-09-11~12）**：全局搜索对话框（BACK-624）、任务 JSON 验收标准进度（BACK-625）、mermaid 安全升级（BACK-626）、返回箭头历史条目修复（BACK-627）、模态框父子层级区块（BACK-628）
 - **本波核心技术成果**：
   - **增量跨分支加载**（BACK-601/602）：不可变 tip 快照 + 共享缓存 + 有界 fetch（10s + ref 租约 60s）+ 请求合并，warm 读取从 394 次 Git 操作降到 ≤3
   - **任务锁与并发保护**（BACK-571）：per-task fail-fast 文件锁（proper-lockfile retries:0），Web 409 / MCP OPERATION_FAILED，锁内重读
@@ -149,13 +155,13 @@ updated_date: '2026-09-08 17:30'
 
 ## 统计
 
-- Sources ingested: 192
-- Concepts extracted: 32
+- Sources ingested: 196
+- Concepts extracted: 33
 - Entities catalogued: 2
-- Execution notes: 18
-- Decisions recorded: 49
+- Execution notes: 20
+- Decisions recorded: 55
 - Patterns: 6
-- Reasoning traces: 2
+- Reasoning traces: 3
 - Retrospectives: 1
-- User manual pages: 24
+- User manual pages: 33
 - Reports generated: 7

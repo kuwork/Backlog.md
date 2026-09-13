@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-31 01:11
+updated_date: '2026-09-13 01:12'
 ---
 
 
@@ -63,6 +63,8 @@ RESTful API 按资源组织：
 ## SPA 路由
 
 所有前端路由（`/tasks`、`/milestones`、`/documentation/*`、`/wiki/*` 等）都回退到 `index.html`，由 React Router 处理客户端路由。`Bun.serve()` 的 `routes` 配置原生支持 SPA fallback。
+
+全局搜索对话框（BACK-624）暴露了一个缺口：`/search` 与 `/search/*` 之前不在静态路由表中，刷新或打开分享链接会 404。现已显式注册为 `spaIndexHtml`——这是该任务**唯一**的服务端改动，`GET /api/search` 的处理逻辑未变（它本就支持无 limit、type 过滤、wiki 内容搜索与 `SearchMatch` 高亮索引）。
 
 ## 前端技术栈
 
