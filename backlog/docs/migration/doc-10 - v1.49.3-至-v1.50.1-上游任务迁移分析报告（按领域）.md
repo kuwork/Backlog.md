@@ -3,7 +3,7 @@ id: doc-10
 title: v1.49.3 至 v1.50.1 上游任务迁移分析报告（按领域）
 type: guide
 created_date: '2026-08-14'
-updated_date: '2026-09-07 16:27'
+updated_date: '2026-09-12 07:24'
 ---
 # 上游任务迁移分析报告（v1.49.3 .. v1.50.1，按领域）
 
@@ -181,7 +181,7 @@ updated_date: '2026-09-07 16:27'
 
 ---
 
-## CLI-8：BACK-622 JSON 输出 AC 进度（draft-123）
+## CLI-8：BACK-622 JSON 输出 AC 进度（draft-123，已迁移为 [BACK-625](/task/625)）
 
 **任务核心目的**：在 `task list`/`task view`/`search` 共用的 `toTaskSummaryJson` 里增加 acceptance criteria 完成计数，让 AI 代理无需展开 details 即可知 AC 进度。
 
@@ -201,7 +201,7 @@ updated_date: '2026-09-07 16:27'
 
 ---
 
-## CLI-9：BACK-598 Dependabot 修复（draft-106）
+## CLI-9：BACK-598 Dependabot 修复（draft-106，已迁移为 [BACK-626](/task/626)）
 
 **任务核心目的**：mermaid 11.16.0 → 11.16.1，修复 5 个 GHSA（radar/XY-chart DoS、config/architecture 原型污染、CSS 注入）——mermaid 被打进发布二进制并在运行时渲染仓库 markdown，属真实暴露面。
 
