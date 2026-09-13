@@ -706,3 +706,49 @@ Chronological, append-only record of all wiki operations.
 - `retrospectives/2026-09-v1-50-1-wave.md` — BACK-570~623 共 54 任务：两波爆发（08-22~08-27 完成 32，09-06~09-08 完成 22），周期中位数 0 天（31/54 当日创建当日完成）、P90 18 天、最大 56 天；测试稳定化簇占 20%；定性观察留待人工补充
 
 **更新导航**: `index.md`（Patterns 6 条，Retrospectives 首条）、`overview.md`
+
+## [2026-09-13 01:12:00] batch-ingest | 增量摄取 BACK-624~628（v1.50.1 迁移波后增量）
+
+**检测基线**: 2026-09-08 17:30:00（上次 batch-ingest）
+**Git 变更检测**: `git status --porcelain` 干净，HEAD = `cc8c96b`（上次摄取提交）。但该提交的祖先里含 2026-09-11/12 新增内容，故按作者日期逐文件比对 `git log --format='%h|%ai' --name-only` 后确定真实增量：`backlog/tasks/back-624..628`（5 个任务，作者日期 2026-09-11 23:33 ~ 09-12 17:09）及其 `src/` 变更、2 个 `backlog/assets/paste/` 参考图。`updated_date` 落在 2026-09-1x 的 backlog 项经核对仅这 5 个任务与 doc-9/doc-10（后两者内容已被上次摄取的上游迁移来源页覆盖）。
+
+**新 source 页面（5）**:
+- `sources/back-624-global-search-dialog` — Web UI 全局 Spotlight 搜索对话框（/search modal-over-route、虚拟列表、分组折叠、滚动记忆、8 轮反馈迭代）
+- `sources/back-625-ac-progress-json-output` — 任务 JSON 摘要新增 `acceptanceCriteriaCompleted` / `acceptanceCriteriaCount`
+- `sources/back-626-dependabot-mermaid-bump` — mermaid 11.15.0 → 11.16.1，清除 5 个 GHSA
+- `sources/back-627-back-arrow-history-fix` — 返回箭头由 push 改为 pop（历史栈/模态栈 1:1）
+- `sources/back-628-task-hierarchy-section` — 任务模态框 PARENT 行 + 可折叠 SUBTASKS 区
+
+**新 concept 页面（1）**: `concepts/spotlight-search`（路由与历史语义、结果呈现、虚拟列表、导航目标、视口适配）
+
+**更新 concept 页面（6）**: `web-ui-features`（搜索对话框章节、层级区块、返回箭头、mermaid 版本）、`json-output`（AC 进度字段）、`search-sequences`（Web 搜索入口重构与服务端能力说明）、`web-server`（SPA 路由补 `/search`）、`web-ui-i18n`（`searchDialog` 命名空间、zh-TW 审计待办）、`task-lifecycle`（子任务层级区块）
+
+**更新 entity（1）**: `entities/backlog-cli`（JSON AC 字段、/search 路由、mermaid 版本）
+
+**新 decision 页面（7）**:
+- `decisions/react-router-history-for-search-dialog` — PRD 的 pushState/popstate 契约映射为 Router 语义
+- `decisions/pop-over-push-for-modal-back` — 每个模态层级 pop 一个历史条目，**取代** `replace-over-navigate-minus-one`
+- `decisions/background-location-for-modal-targets-only` — 只给模态目标挂背景，整页目标走普通 push
+- `decisions/visible-start-index-over-scroll-top` — 滚动记忆用行索引而非像素
+- `decisions/hand-rolled-virtual-list-over-dependency` — 定高前提下零新依赖
+- `decisions/mermaid-11-16-1-supply-chain-maturity` — 供应链验证成熟度优先于版本新度
+- `decisions/pure-task-id-module-in-browser-bundle` — 浏览器 bundle 只导入纯模块
+
+**更新 decision 页面（2）**: `replace-over-navigate-minus-one` 标注为已被取代（保留无 backgroundLocation 的回退路径）；`background-location-modal-route` 追加后续细化
+
+**新 execution 页面（2）**:
+- `execution/modal-route-history-invariant` — 历史栈与模态栈 1:1 不变式、6 步标准流程、5 个常见陷阱
+- `execution/web-bundle-purity-guard` — Web 侧导入纯净性判定与 BACK-628 白屏案例
+
+**新 reasoning 页面（1）**: `reasoning/back-624-global-search-dialog` — PRD 适配、六项方案对比、风险与缓解
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 提取模态路由历史栈不变式与浏览器 bundle 纯净性守卫（BACK-624/627/628 跨任务可复用）
+- [x] `wiki/decisions/` — 提取 7 个微决策，其中 1 个显式取代旧决策
+- [x] `wiki/reasoning/` — BACK-624 分解与方案对比留痕（大特性 + PRD 偏差）
+- [ ] `wiki/patterns/` — 本批 5 个任务结构各异（UI 子系统 / JSON 字段 / 依赖升级 / 导航修复 / 模态区块），未达 3+ 同构阈值
+- [ ] `wiki/retrospectives/` — 2026-09 v1.50.1 波次回顾已于 09-08 生成，本批非周期性回顾时机
+
+**更新导航**: `index.md`（Sources 196 条，Concepts 33 条，Decisions 55 条，Execution 20 条，Reasoning 3 条）、`overview.md`（新增「波后增量」段与统计刷新；用户手册页数由陈旧的 24 修正为实际的 33）
+
+**mini-lint**: 全 wiki wikilink 扫描（1669 条出链）——本批新增/更新页面出链全部解析成功；`index.md` 覆盖全部 9 个内容子目录（无遗漏文件）。剩余 42 条未解析命中均为既有文档示例（`[[path/to/page]]`、`[[target|alias]]`、`![[assets/photo.png]]`）与 BACK-482 的历史 bug 复现描述（`[[../developer-notes/security-gotchas]]`，该 `../` 形式在修复后按页面相对语义解析，属正确用法），无需修复。已确认的语境性遗留：BACK-624 的 `zh-TW` 全量文案审计（记录于 source 页与 `searchDialog` 命名空间条目，非 wiki 缺陷）。
