@@ -22,6 +22,7 @@ Backlog.md 为只读命令提供版本化的 `--json` 输出，便于脚本、AI
 - 统一信封：`{ schemaVersion: 1, kind, ...payload }`
 - `kind` 示例：`task-list`、`task-details`、`search-results`、`document-list`
 - 字段可空：`nullable()` 将 `undefined` 转为 `null`，保持固定字段集
+- **验收标准进度**：每个任务摘要含 `acceptanceCriteriaCompleted` 与 `acceptanceCriteriaCount`（无 AC 时为 `0`/`0`）；三者共用 `toTaskSummaryJson` 单一漏斗，字段名与上游 BACK-622 对齐（BACK-625）
 - 日期：`normalizePublicDate` 输出 ISO UTC（fork 存储 UTC 策略）
 - 路径：`toProjectRelativePath` 返回项目相对路径
 - JSON 只写 stdout，错误写 stderr
@@ -38,3 +39,4 @@ Backlog.md 为只读命令提供版本化的 `--json` 输出，便于脚本、AI
 ## Related Sources
 
 - [[sources/back-562-stable-json-output]] — BACK-562 实现
+- [[sources/back-625-ac-progress-json-output]] — BACK-625 补齐验收标准进度字段
