@@ -2,6 +2,7 @@
 title: 搜索与序列
 labels: [concept]
 created_date: 2026-05-06 00:00
+updated_date: '2026-09-13 01:12'
 ---
 
 
@@ -43,7 +44,9 @@ backlog search "api" --unassigned                             # 未指派过滤
 
 ### Web 搜索
 
-支持命令过滤（command filters）和模糊匹配。
+支持命令过滤（command filters）和模糊匹配。自 BACK-624 起，主搜索入口是全局 Spotlight 风格对话框（`/search` 路由，Ctrl/Cmd+K），单列分组展示 task/document/wiki/decision，支持类型过滤、关键词与 ID 高亮、虚拟滚动与滚动位置记忆；侧边栏搜索框退化为只读触发按钮。详见 [[concepts/spotlight-search]]。
+
+服务端 `GET /api/search` 无需改动即可支撑该对话框：默认不设结果上限、支持 `type` 过滤（task|document|decision|wiki）、wiki 内容搜索，并返回 `SearchMatch.indices` 供前端高亮。旧的 5 条结果上限纯粹是客户端行为。
 
 ### 搜索分数阈值统一（BACK-564）
 
@@ -105,3 +108,4 @@ Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchSe
 ## Related Sources
 - [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除与多状态过滤
 - [[sources/back-551-unassigned-task-filtering]] — BACK-551 未指派过滤
+- [[sources/back-624-global-search-dialog]] — BACK-624 全局搜索对话框
