@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-09-08 17:30'
+updated_date: '2026-09-13 01:12'
 ---
 
 
@@ -206,6 +206,11 @@ Read this file FIRST on any wiki operation.
 | [[sources/draft-92-clear-task-dependencies-cli]] | draft-92 CLI 清除任务依赖（上游 issue #839） | source, draft, cli |
 | [[sources/draft-96-project-name-tui-window-titles]] | draft-96 TUI 窗口标题含项目名（上游 issue #853） | source, draft, tui |
 | [[sources/draft-125-incremental-cross-branch-task-loading]] | draft-125 增量跨分支加载（上游 BACK-624 原始草稿） | source, draft, performance, core |
+| [[sources/back-624-global-search-dialog]] | BACK-624 Web UI 全局 Spotlight 搜索对话框 | source, web-ui, search, routing, modal |
+| [[sources/back-625-ac-progress-json-output]] | BACK-625 任务 JSON 输出返回验收标准进度 | source, cli, json, api-contract |
+| [[sources/back-626-dependabot-mermaid-bump]] | BACK-626 mermaid 安全升级解除 5 个 Dependabot 告警 | source, security, dependencies, build |
+| [[sources/back-627-back-arrow-history-fix]] | BACK-627 修复钻取后返回箭头留下过期历史条目 | source, web-ui, routing, bug |
+| [[sources/back-628-task-hierarchy-section]] | BACK-628 任务模态框显示父任务与子任务 | source, web-ui, task-hierarchy |
 
 ## Execution Notes
 
@@ -229,6 +234,8 @@ Read this file FIRST on any wiki operation.
 | [[execution/task-identity-index-pattern]] | TaskIdentityIndex 替换 ID-keyed 合并模式 | canonical ID + 逻辑路径身份键 + 确定性胜出 + 歧义 fail-closed |
 | [[execution/search-score-threshold-pattern]] | 统一搜索分数阈值模式 | 所有搜索入口共用 Web 0.45 Fuse 阈值，过滤数字误匹配 |
 | [[execution/pre-existing-failure-triage]] | 预存测试失败分诊方法 | stash 探针 / 基线对照 / 计数对比 / 先红后绿 / JSDOM 钉桩 |
+| [[execution/modal-route-history-invariant]] | 模态路由历史栈不变式 | 历史栈与模态栈 1:1；push 打开、pop 关闭、背景条目只挂模态目标 |
+| [[execution/web-bundle-purity-guard]] | 浏览器 bundle 纯净性守卫 | Web 侧只导入纯模块，避免 Core 被打包导致白屏（BACK-628 案例） |
 
 ## Decisions
 
@@ -248,7 +255,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/draggedtaskid-lift-to-board]] | draggedTaskId 状态提升到 Board 组件 | 跨列拖拽需要所有列共享拖拽状态 |
 | [[decisions/task-history-stack-over-route]] | 使用任务历史堆栈替代路由实现钻取导航 | 保持单 Modal 架构，避免引入路由复杂性 |
 | [[decisions/background-location-modal-route]] | 使用 backgroundLocation 实现模态框背景保持 | React Router state 模式，保持底层页面可见 |
-| [[decisions/replace-over-navigate-minus-one]] | 模态框关闭使用 replace 替代 navigate(-1) | 消除关闭竞态，避免历史残留 |
+| [[decisions/replace-over-navigate-minus-one]] | 模态框关闭使用 replace 替代 navigate(-1)（已被取代） | BACK-509 逻辑，仅保留为无 backgroundLocation 时的回退路径 |
 | [[decisions/anchor-prefix-guard]] | Markdown 链接解析添加 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
 | [[decisions/simulate-bash-escape-on-windows]] | Windows 上模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
 | [[decisions/mcp-roots-discovery-scope]] | MCP Roots 发现扩展至正常启动路径并保留 Pinned CWD | BACK-522 选择复用现有 roots 发现而非重写 resolver |
@@ -282,6 +289,13 @@ Read this file FIRST on any wiki operation.
 | [[decisions/launcher-scope-from-package-name]] | 包 scope 从 package.json name 推导 | BACK-621 不硬编码 @kuwork |
 | [[decisions/spread-passthrough-minimal-change]] | 新字段 spread 透传零签名改动 | BACK-618/619 自动刷新 updated_date |
 | [[decisions/identity-index-from-cached-tasks]] | identity-index 从 cachedTasks 重建 | BACK-612 测试稳定化挖出真实 store bug |
+| [[decisions/react-router-history-for-search-dialog]] | 搜索对话框历史语义复用 React Router | BACK-624 PRD 的 pushState/popstate 契约映射为 Router 语义 |
+| [[decisions/pop-over-push-for-modal-back]] | 模态框返回与关闭改为 pop 而非 push/replace | BACK-624/627 修正历史栈与模态栈 1:1 不变式，取代 509 决策 |
+| [[decisions/background-location-for-modal-targets-only]] | backgroundLocation 只挂给模态目标 | BACK-624 任务走模态、文档/决策/wiki 走整页 push |
+| [[decisions/visible-start-index-over-scroll-top]] | 滚动记忆用 visibleStartIndex 而非 scrollTop | BACK-624 定高行下图元索引更稳定、可确定性降级 |
+| [[decisions/hand-rolled-virtual-list-over-dependency]] | 手写定高虚拟列表而非引入虚拟化库 | BACK-624 零新依赖，代价是行高必须恒定 |
+| [[decisions/mermaid-11-16-1-supply-chain-maturity]] | mermaid 选择 11.16.1 而非最新 11.17.2 | BACK-626 供应链验证成熟度优先于版本新度 |
+| [[decisions/pure-task-id-module-in-browser-bundle]] | 浏览器 bundle 只导入纯模块 | BACK-628 从 task-path 改 task-id 以避免 Core 入包白屏 |
 
 ## Concepts
 
@@ -319,6 +333,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/upstream-migration]] | 上游迁移策略 | fork 对上游 A/B/C 分类与按领域迁移分析方法 |
 | [[concepts/ci-platform-contracts]] | CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
 | [[concepts/task-locking]] | 任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
+| [[concepts/spotlight-search]] | 全局搜索对话框（Spotlight Search） | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
 
 ## Entities
 
@@ -344,6 +359,7 @@ Read this file FIRST on any wiki operation.
 |---|---|---|
 | [[reasoning/back-491-smart-gantt-view]] | BACK-491 甘特图视图规划痕迹 | 问题分解、方案对比（外部库 vs 自研）、关键设计决策与风险缓解 |
 | [[reasoning/tracking-gantt-design]] | BACK-495 跟踪甘特图设计推理 | 双层叠加 vs 切换模式 vs 并列条、视觉设计决策与子任务拆分 |
+| [[reasoning/back-624-global-search-dialog]] | BACK-624 全局搜索对话框设计推理 | PRD 到 Router 语义的适配、六项方案对比、风险与缓解 |
 
 ## Retrospectives
 

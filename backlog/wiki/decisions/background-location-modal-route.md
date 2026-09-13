@@ -37,3 +37,7 @@ BACK-509 需要任务详情模态框打开时，底层页面（看板、任务�
 
 ## 相关来源
 - [[sources/stable-task-modal-urls-task]] — BACK-509 实现
+
+## 后续细化
+
+BACK-624 进一步限定：`backgroundLocation` 只挂给**模态目标**（任务/草稿），文档/决策/wiki 是整页路由，走普通 push。见 [[decisions/background-location-for-modal-targets-only]]。关闭语义也由 `replace` 修正为 pop，见 [[decisions/pop-over-push-for-modal-back]]。
