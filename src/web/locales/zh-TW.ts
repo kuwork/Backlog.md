@@ -213,6 +213,8 @@ export const zhTW: TranslationDict = {
 			labels: "標籤",
 			milestone: "里程碑",
 			dependencies: "依賴",
+			parent: "父任務",
+			subtasks: "子任務",
 			priority: "優先級",
 			dates: "日期",
 			dueDate: "截止日期",

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { stripAnyPrefix } from "../../utils/prefix-config";
 import type { AcceptanceCriterion, Milestone, Task, TaskComment } from "../../types";
 import Modal from "./Modal";
+import TaskHierarchySection from "./TaskHierarchySection";
 import { apiClient } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
@@ -35,6 +36,7 @@ interface Props {
   onArchive?: () => void; // For archiving tasks
   onPromoted?: (task: Task) => void; // For opening a newly promoted task
   availableStatuses?: string[]; // Available statuses for new tasks
+  availableTasks?: Task[]; // Task corpus for hierarchy display and dependency picker
   isDraftMode?: boolean; // Whether creating a draft
   availableMilestones?: string[];
   milestoneEntities?: Milestone[];
@@ -154,6 +156,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   onArchive,
   onPromoted,
   availableStatuses,
+  availableTasks: initialAvailableTasks,
   availableMilestones: _availableMilestones,
   milestoneEntities,
   archivedMilestoneEntities,
@@ -353,7 +356,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [actualStart, setActualStart] = useState<string>(task?.actualStart || "");
   const [actualEnd, setActualEnd] = useState<string>(task?.actualEnd || "");
 
-  const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Task[]>(initialAvailableTasks ?? []);
   const [availableDrafts, setAvailableDrafts] = useState<Task[]>([]);
   type PreviewTarget =
     | { kind: "file"; path: string }
@@ -1203,6 +1206,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
             <span className="font-medium">{t.common.readOnly}:</span> {t.taskDetails.crossBranchHint(task?.branch || "")}
           </div>
         </div>
+      )}
+
+      {/* Parent/subtask hierarchy */}
+      {task && !isCreateMode && (
+        <TaskHierarchySection task={task} availableTasks={availableTasks} onTaskClick={handleTaskClick} />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6" onClickCapture={confirmNavigationAwayFromEdits}>

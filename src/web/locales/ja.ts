@@ -214,6 +214,8 @@ export const ja: TranslationDict = {
 			labels: "ラベル",
 			milestone: "マイルストーン",
 			dependencies: "依存関係",
+			parent: "親タスク",
+			subtasks: "サブタスク",
 			priority: "優先度",
 			dates: "日付",
 			dueDate: "期限",

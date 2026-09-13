@@ -211,6 +211,8 @@ export const en = {
 			labels: "Labels",
 			milestone: "Milestone",
 			dependencies: "Dependencies",
+			parent: "Parent",
+			subtasks: "Subtasks",
 			priority: "Priority",
 			dates: "Dates",
 			dueDate: "Due Date",

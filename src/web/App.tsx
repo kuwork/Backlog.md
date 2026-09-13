@@ -540,6 +540,15 @@ function AppContent() {
 					setTaskHistory((prev) => prev.slice(0, -1));
 					setEditingTask(topOfStack || null);
 					setIsDraftMode(topOfStack?.id?.startsWith("DRAFT-") ?? false);
+				} else if (taskHistoryRef.current.some((entry) => stripAnyPrefix(entry.id) === idFromUrl || entry.id === matchedTask.id)) {
+					// Navigated back to a task deeper in the stack (multi-step pop):
+					// drop the entries above it instead of pushing a duplicate.
+					const stackIndex = taskHistoryRef.current.findIndex(
+						(entry) => stripAnyPrefix(entry.id) === idFromUrl || entry.id === matchedTask.id,
+					);
+					setTaskHistory((prev) => prev.slice(0, stackIndex));
+					setEditingTask(matchedTask);
+					setIsDraftMode(matchedIsDraft);
 				} else {
 					// Drill down into dependency task
 					setTaskHistory((prev) => [...prev, editingTask]);
@@ -615,6 +624,16 @@ function AppContent() {
 
 	const handleDrillDown = useCallback(
 		(task: Task) => {
+			// Target already in the drill-down stack: pop back to it instead of
+			// pushing a duplicate entry (e.g. clicking the subtask we came from).
+			const targetBody = stripAnyPrefix(task.id);
+			const stackIndex = taskHistoryRef.current.findIndex(
+				(entry) => stripAnyPrefix(entry.id) === targetBody || entry.id === task.id,
+			);
+			if (stackIndex >= 0) {
+				navigate(-(taskHistoryRef.current.length - stackIndex));
+				return;
+			}
 			navigate(getTaskUrlPath(task), { state: { backgroundLocation: state?.backgroundLocation || location } });
 		},
 		[navigate, state, location, getTaskUrlPath],
@@ -964,6 +983,7 @@ function AppContent() {
 				onDrillDown={handleDrillDown}
 				onBack={taskHistory.length > 0 ? handleBack : undefined}
 				availableStatuses={isDraftMode ? ["Draft", ...statuses] : statuses}
+				availableTasks={tasks}
 				availableMilestones={milestones}
 				milestoneEntities={milestoneEntities}
 				archivedMilestoneEntities={archivedMilestones}

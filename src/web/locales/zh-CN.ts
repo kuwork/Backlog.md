@@ -213,6 +213,8 @@ export const zhCN: TranslationDict = {
 			labels: "标签",
 			milestone: "里程碑",
 			dependencies: "依赖",
+			parent: "父任务",
+			subtasks: "子任务",
 			priority: "优先级",
 			dates: "日期",
 			dueDate: "截止日期",
