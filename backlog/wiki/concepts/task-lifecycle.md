@@ -2,7 +2,7 @@
 title: 任务生命周期
 labels: [concept]
 created_date: '2026-05-06 00:00'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-09-13 01:12'
 ---
 
 # 任务生命周期
@@ -104,7 +104,7 @@ actual_end: "2026-05-15 18:30"
 
 使用小数编号：`back-4.1`、`back-4.2`。通过 `--parent` 参数创建：`backlog task create -p 4 "子任务标题"`。
 
-在 Web UI 中，按 ID 排序时子任务自动归组到父任务下方（[[sources/subtask-grouping-fix|BACK-496]]）。
+在 Web UI 中，按 ID 排序时子任务自动归组到父任务下方（[[sources/subtask-grouping-fix|BACK-496]]）。任务详情模态框自 BACK-628 起在标题下方渲染父子层级区块：有父任务时显示 PARENT 行，有子任务时显示带完成计数与进度条的 SUBTASKS 折叠区，点击任一行直接在模态框内钻取（[[sources/back-628-task-hierarchy-section|BACK-628]]）。
 
 ## 禁止直接编辑任务文件
 
@@ -138,6 +138,7 @@ actual_end: "2026-05-15 18:30"
 - [[sources/actual-start-end-fields-task]] — BACK-492 actual 字段实现
 - [[sources/actual-dates-auto-create-task]] — BACK-498 创建时自动填充
 - [[sources/subtask-grouping-fix]] — BACK-496 子任务归组修复
+- [[sources/back-628-task-hierarchy-section]] — BACK-628 模态框父子层级区块
 - [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
 - [[sources/back-537-deterministic-checklist-serialization]] — BACK-537 清单确定性解析
 - [[sources/back-538-duplicate-task-id-recovery]] — BACK-538 重复 ID 恢复

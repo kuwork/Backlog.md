@@ -2,7 +2,7 @@
 title: Web UI 国际化（i18n）
 labels: [concept]
 created_date: 2026-05-17 02:20
-updated_date: 2026-05-31 01:11
+updated_date: '2026-09-13 01:12'
 ---
 
 # Web UI 国际化（i18n）
@@ -54,6 +54,7 @@ type DeepString<T> = T extends (...args: infer P) => infer R
 | `filePreview` | 文件预览模态框 |
 | `pasteAwareMDEditor` | 粘贴编辑器提示 |
 | `wiki` | Wiki 页面编辑器 |
+| `searchDialog` | 全局搜索对话框（BACK-624）：占位符、类型过滤标签、分组标题、加载/空态、PARENT/SUBTASKS 层级标签 |
 
 ## 运行时架构
 
@@ -98,3 +99,5 @@ const { t } = useI18n();
 ## Related Sources
 - [[sources/web-ui-i18n-task]] — BACK-478 原始任务与实现笔记
 - [[sources/task-completion-heatmap-task]] — BACK-503 热力图 i18n 与 locale 切换修复
+- [[sources/back-624-global-search-dialog]] — BACK-624 新增 `searchDialog` 命名空间（zh-TW 全量审计待办）
+- [[sources/back-628-task-hierarchy-section]] — BACK-628 层级区块文案四语言同步

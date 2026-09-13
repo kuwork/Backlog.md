@@ -1,12 +1,14 @@
 ---
 title: 模态框关闭使用 replace 替代 navigate(-1)
-description: BACK-509 消除关闭竞态，避免历史残留
-labels: [decision, web-ui, routing, modal]
+description: BACK-509 消除关闭竞态，避免历史残留（已被 BACK-624/627 取代）
+labels: [decision, web-ui, routing, modal, superseded]
 created_date: '2026-06-05 15:19'
-updated_date: '2026-06-05 15:19'
+updated_date: '2026-09-13 01:12'
 ---
 
 # 模态框关闭使用 replace 替代 navigate(-1)
+
+> **⚠️ 已被取代（2026-09-13）**：BACK-624 引入可被模态覆盖的 `/search` 背景后，`replace` 会导致背景条目累积（打开 N 个任务需 N+1 次关闭）。现行规则是"每个模态层级 pop 一个历史条目"，见 [[decisions/pop-over-push-for-modal-back]]。本文仅保留为**直接加载无 `backgroundLocation` 的模态 URL** 时的回退路径。
 
 ## 背景
 
