@@ -39,10 +39,10 @@ function buildSearchUrl(nextQ: string, nextType: SearchFilterType): string {
 }
 
 const TYPE_ICON_COLORS: Record<SearchResultType, string> = {
-	task: "text-purple-400",
-	document: "text-green-400",
-	decision: "text-stone-400",
-	wiki: "text-blue-400",
+	task: "text-purple-600 dark:text-purple-400",
+	document: "text-green-600 dark:text-green-400",
+	decision: "text-stone-600 dark:text-stone-400",
+	wiki: "text-blue-600 dark:text-blue-400",
 };
 
 const SearchTypeIcon: React.FC<{ type: SearchResultType | "all"; className?: string }> = ({ type, className = "w-4 h-4" }) => {
@@ -65,7 +65,7 @@ const HighlightedText: React.FC<{ text: string; indices: Array<[number, number]>
 	for (const [i, [start, end]] of ranges.entries()) {
 		if (start > cursor) parts.push(text.slice(cursor, start));
 		parts.push(
-			<mark key={i} className="bg-amber-400/25 text-amber-100 rounded-[2px]">
+			<mark key={i} className="bg-amber-200/70 text-amber-900 dark:bg-amber-400/25 dark:text-amber-100 rounded-[2px]">
 				{text.slice(start, end + 1)}
 			</mark>,
 		);
@@ -466,7 +466,7 @@ const SearchDialog: React.FC = () => {
 					aria-expanded={!row.collapsed}
 					aria-label={row.collapsed ? t.searchDialog.expandGroup : t.searchDialog.collapseGroup}
 					title={row.collapsed ? t.searchDialog.expandGroup : t.searchDialog.collapseGroup}
-					className="w-full h-full flex items-center gap-1.5 px-4 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-gray-200 transition-colors"
+					className="w-full h-full flex items-center gap-1.5 px-4 text-xs font-medium text-gray-500 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
 					style={{ height: headerHeight }}
 				>
 					<svg
@@ -478,7 +478,7 @@ const SearchDialog: React.FC = () => {
 						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
 					</svg>
 					{groupLabel(row.type)}
-					<span className="text-gray-600 dark:text-gray-500">{row.count}</span>
+					<span className="text-gray-400 dark:text-gray-500">{row.count}</span>
 				</button>
 			);
 		}
@@ -489,8 +489,8 @@ const SearchDialog: React.FC = () => {
 		const isSelected = rowIndex === selectedRow;
 		const rowBaseClass = isNarrow ? "w-full h-full flex items-start flex-col justify-center gap-1 px-4 py-2 text-left" : "w-full h-full flex items-center gap-3 px-4 text-left";
 		const selectedClass = isSelected
-			? "bg-gray-700/70 border-l-2 border-blue-400"
-			: "border-l-2 border-transparent hover:bg-gray-700/40";
+			? "bg-gray-100 border-l-2 border-blue-500 dark:bg-gray-700/70 dark:border-blue-400"
+			: "border-l-2 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40";
 
 		const tags: React.ReactNode[] = [];
 		if (meta.status) {
@@ -515,7 +515,7 @@ const SearchDialog: React.FC = () => {
 		}
 		for (const tag of meta.tags?.slice(0, 2) ?? []) {
 			tags.push(
-				<span key={`tag-${tag}`} className="text-xs text-gray-400 dark:text-gray-500">
+				<span key={`tag-${tag}`} className="text-xs text-gray-500 dark:text-gray-500">
 					{tag}
 				</span>,
 			);
@@ -536,12 +536,12 @@ const SearchDialog: React.FC = () => {
 							<span className={TYPE_ICON_COLORS[row.type]}>
 								<SearchTypeIcon type={row.type} />
 							</span>
-							<span className="flex-1 min-w-0 truncate text-sm font-medium text-gray-100">
+							<span className="flex-1 min-w-0 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
 								<HighlightedText text={meta.title} indices={highlight} />
 							</span>
 						</span>
 						<span className="flex items-center gap-2 w-full min-w-0 pl-6">
-							<span className="min-w-0 truncate text-xs text-gray-400">
+							<span className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400">
 								<HighlightedText text={meta.id} indices={idHighlight} />
 							</span>
 							{tags.length > 0 && <span className="flex items-center gap-2 shrink-0">{tags}</span>}
@@ -553,10 +553,10 @@ const SearchDialog: React.FC = () => {
 							<SearchTypeIcon type={row.type} />
 						</span>
 						<span className="flex-1 min-w-0">
-							<span className="block truncate text-sm font-medium text-gray-100">
+							<span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
 								<HighlightedText text={meta.title} indices={highlight} />
 							</span>
-							<span className="block truncate text-xs text-gray-400">
+							<span className="block truncate text-xs text-gray-500 dark:text-gray-400">
 								<HighlightedText text={meta.id} indices={idHighlight} />
 							</span>
 						</span>
@@ -580,8 +580,8 @@ const SearchDialog: React.FC = () => {
 				onKeyDown={handleDialogKeyDown}
 				className={
 					isNarrow
-						? "absolute inset-0 bg-gray-900 flex flex-col"
-						: "absolute top-[12vh] left-1/2 -translate-x-1/2 w-[800px] max-w-[calc(100vw-2rem)] max-h-[75vh] bg-gray-900 rounded-xl border border-gray-700 shadow-2xl flex flex-col overflow-hidden"
+						? "absolute inset-0 bg-white dark:bg-gray-900 flex flex-col"
+						: "absolute top-[12vh] left-1/2 -translate-x-1/2 w-[800px] max-w-[calc(100vw-2rem)] max-h-[75vh] bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col overflow-hidden"
 				}
 			>
 				<div className={isNarrow ? "flex items-center gap-2 px-3 pt-3 shrink-0" : "flex items-center gap-2 px-4 pt-4 shrink-0"}>
@@ -595,13 +595,13 @@ const SearchDialog: React.FC = () => {
 						}}
 						placeholder={t.searchDialog.placeholder}
 						aria-label={t.searchDialog.placeholder}
-						className={`flex-1 min-w-0 bg-transparent text-gray-100 placeholder-gray-500 outline-none ${isNarrow ? "text-[32px]" : "text-[28px]"}`}
+						className={`flex-1 min-w-0 bg-transparent text-gray-900 placeholder-gray-400 dark:text-gray-100 dark:placeholder-gray-500 outline-none ${isNarrow ? "text-[32px]" : "text-[28px]"}`}
 					/>
 					<button
 						type="button"
 						onClick={close}
 						aria-label={t.modal.closeAria}
-						className="shrink-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded p-1 text-2xl leading-none w-8 h-8 flex items-center justify-center transition-colors duration-200"
+						className="shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 rounded p-1 text-2xl leading-none w-8 h-8 flex items-center justify-center transition-colors duration-200"
 					>
 						×
 					</button>
@@ -617,8 +617,8 @@ const SearchDialog: React.FC = () => {
 								onClick={() => syncUrlTo(draft, tab.type)}
 								className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors duration-200 ${
 									isActive
-										? "bg-gray-700 text-gray-100"
-										: "text-gray-400 hover:text-gray-200 hover:bg-gray-700/60"
+										? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+										: "text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/60"
 								}`}
 							>
 								<SearchTypeIcon type={tab.type} className="w-3.5 h-3.5" />
@@ -629,7 +629,7 @@ const SearchDialog: React.FC = () => {
 				</div>
 				<div className={`relative flex-1 min-h-0 flex flex-col overflow-hidden ${isNarrow ? "mt-2" : "mt-3"}`}>
 					{isLoading && (
-						<div className="absolute top-1 right-3 z-10 text-xs text-gray-500 bg-gray-900/80 rounded px-1.5 py-0.5">
+						<div className="absolute top-1 right-3 z-10 text-xs text-gray-500 bg-white/80 dark:bg-gray-900/80 rounded px-1.5 py-0.5">
 							{t.nav.searching}
 						</div>
 					)}
@@ -642,7 +642,7 @@ const SearchDialog: React.FC = () => {
 							{t.searchDialog.emptyHint}
 						</div>
 					) : searchError ? (
-						<div className="flex-1 flex items-center justify-center px-4 text-sm text-red-400">{t.nav.searchFailed}</div>
+						<div className="flex-1 flex items-center justify-center px-4 text-sm text-red-600 dark:text-red-400">{t.nav.searchFailed}</div>
 					) : items.length === 0 && !isLoading ? (
 						<div className="flex-1 flex items-center justify-center px-4 text-sm text-gray-500">{t.nav.noSearchResults}</div>
 					) : (
