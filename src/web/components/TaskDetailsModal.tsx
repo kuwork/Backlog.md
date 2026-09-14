@@ -22,8 +22,7 @@ import { isTypingTarget } from "../utils/keyboard";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { useI18n } from "../hooks/useI18n";
 import { encodeWikiPath } from "../utils/urlHelpers";
-import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
-import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
+import { commands } from "@uiw/react-md-editor";
 import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness } from "../../utils/readiness";
 import { canonicalTaskId } from "../../utils/task-id";
 
@@ -138,6 +137,10 @@ const buildTaskDetailsFormState = ({
 
 const containsCommentDelimiterLine = (value: string): boolean => /^\s*---\s*$/m.test(value.replace(/\r\n/g, "\n"));
 
+// The comment serializer rejects standalone '---' lines, and the Insert-HR
+// command always emits one, so it is dropped from the comment editor toolbar.
+const COMMENT_EDITOR_COMMANDS = commands.getCommands().filter((command) => command.name !== "hr");
+
 const SectionHeader: React.FC<{ title: string; right?: React.ReactNode }> = ({ title, right }) => (
   <div className="flex items-center justify-between mb-3">
     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight transition-colors duration-200">
@@ -191,12 +194,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [displayComments, setDisplayComments] = useState<TaskComment[]>(task?.comments ?? []);
   const [commentBody, setCommentBody] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("");
-  const [commentTextareaEl, setCommentTextareaEl] = useState<HTMLTextAreaElement | null>(null);
-  const commentAutocomplete = useEntityAutocomplete({
-    textarea: commentTextareaEl,
-    value: commentBody,
-    onChange: (next: string) => setCommentBody(next),
-  });
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentsChanged, setCommentsChanged] = useState(false);
   const [finalSummary, setFinalSummary] = useState(task?.finalSummary || "");
@@ -990,8 +987,18 @@ export const TaskDetailsModal: React.FC<Props> = ({
     setCommentSaving(true);
     setError(null);
     try {
+      // Promote temporary pasted images before saving, exactly like the other
+      // markdown fields: rewrite the body with the permanent URLs and keep the
+      // rewritten text in the editor so a failed save can be retried.
+      let bodyToSave = body;
+      const tempUrls = extractTempImageUrls(body);
+      if (tempUrls.length > 0) {
+        const mapping = await apiClient.promoteAssets(tempUrls);
+        bodyToSave = replaceTempImageUrls(bodyToSave, mapping);
+        setCommentBody(bodyToSave);
+      }
       const updatedTask = await apiClient.updateTask(task.id, {
-        commentsAppend: [body],
+        commentsAppend: [bodyToSave],
         ...(author.length > 0 && { commentAuthor: author }),
       });
       setDisplayComments(updatedTask.comments ?? []);
@@ -1583,22 +1590,16 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     placeholder={t.taskDetails.placeholderCommentAuthor}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
                   />
-                  <div className="relative">
-                    <textarea
-                      ref={setCommentTextareaEl}
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md">
+                    <PasteAwareMDEditor
                       value={commentBody}
-                      onChange={(e) => setCommentBody(e.target.value)}
-                      rows={4}
-                      placeholder={t.taskDetails.placeholderCommentBody}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      onChange={(val) => setCommentBody(val || "")}
+                      preview="edit"
+                      height={200}
+                      data-color-mode={theme}
+                      commands={COMMENT_EDITOR_COMMANDS}
+                      textareaProps={{ placeholder: t.taskDetails.placeholderCommentBody }}
                     />
-                    {commentAutocomplete.menu && (
-                      <EntityLinkAutocompleteMenu
-                        menu={commentAutocomplete.menu}
-                        textarea={commentTextareaEl}
-                        onSelect={commentAutocomplete.insertCandidate}
-                      />
-                    )}
                   </div>
                   <div className="flex justify-end">
                     <button
