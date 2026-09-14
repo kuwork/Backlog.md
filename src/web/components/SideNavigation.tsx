@@ -1178,19 +1178,14 @@ const SideNavigation = memo(function SideNavigation({
 										{t.nav.decisions} (<NavigationCount count={decisions.length} isLoading={isLoading} error={error} label="decision" />)
 									</span>
 								</div>
-								{/* Temporarily hidden - decisions editing not ready */}
-								{/*{false && (*/}
-								{/*	<button*/}
-								{/*		onClick={handleCreateDecision}*/}
-								{/*		className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors cursor-pointer"*/}
-								{/*		title="Create new decision"*/}
-								{/*	>*/}
-								{/*		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">*/}
-								{/*			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />*/}
-								{/*			<circle cx="12" cy="12" r="10" />*/}
-								{/*		</svg>*/}
-								{/*	</button>*/}
-								{/*)}*/}
+								<button
+									onClick={() => navigate('/decisions/new')}
+									className="p-1 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+									title={t.nav.createDecision}
+									aria-label={t.nav.createDecision}
+								>
+									<Icons.Plus />
+								</button>
 							</div>
 							
 							{/* Decision List */}

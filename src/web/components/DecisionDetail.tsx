@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useRef } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiClient, isAmbiguousIdConflict } from '../lib/api';
 import { AmbiguousIdNotice } from './AmbiguousIdNotice';
@@ -11,6 +11,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { useI18n } from '../hooks/useI18n';
 import { normalizeMarkdownHashLinks } from '../../markdown/hash-links';
+import { extractTempImageUrls, replaceTempImageUrls } from '../utils/temp-assets';
 
 // Utility function for ID transformations
 const stripIdPrefix = (id: string): string => {
@@ -103,8 +104,15 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	
 	const [isNewDecision, setIsNewDecision] = useState(false);
 	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+	const handledRouteIdRef = useRef<string | undefined>(undefined);
 
 	useEffect(() => {
+		// Only react to an actual route change. The parent refreshes its decisions
+		// array regularly, and re-running this on every refresh used to reset edit
+		// mode (closing the editor about a second after it opened) and to reload
+		// content over in-progress edits.
+		if (handledRouteIdRef.current === id) return;
+		handledRouteIdRef.current = id;
 		if (id === 'new') {
 			// Handle new decision creation
 			setIsNewDecision(true);
@@ -196,7 +204,19 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			
 			if (isNewDecision) {
 				// Create new decision
-				const decision = await apiClient.createDecision(decisionTitle);
+				const created = await apiClient.createDecision(decisionTitle);
+				// The create form also offers the body editor, so persist what was
+				// typed there (promoting temporary pasted images) instead of silently
+				// dropping it when navigating to the new decision.
+				let newContent = normalizeMarkdownHashLinks(content);
+				const tempUrls = extractTempImageUrls(newContent);
+				if (tempUrls.length > 0) {
+					const mapping = await apiClient.promoteAssets(tempUrls);
+					newContent = replaceTempImageUrls(newContent, mapping);
+				}
+				if (newContent.trim().length > 0) {
+					await apiClient.updateDecision(addDecisionPrefix(created.id), newContent);
+				}
 				// Refresh data and navigate to the new decision
 				await onRefreshData();
 				// Show success toast
@@ -205,13 +225,22 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 				// Exit edit mode and navigate to the new decision
 				setIsEditing(false);
 				setIsNewDecision(false);
-				const newId = stripIdPrefix(decision.id);
+				const newId = stripIdPrefix(created.id);
 				navigate(`/decisions/${newId}/${sanitizeUrlTitle(decisionTitle)}`);
 			} else {
 				// Update existing decision
 				if (!id) return;
-				const normalizedContent = normalizeMarkdownHashLinks(content);
-				await apiClient.updateDecision(addDecisionPrefix(id), normalizedContent);
+				let contentToSave = normalizeMarkdownHashLinks(content);
+				// Promote temporary pasted images before saving, exactly like the
+				// task description fields, and keep the rewritten body in the editor
+				// state so a failed save can be retried against the permanent URLs.
+				const tempUrls = extractTempImageUrls(contentToSave);
+				if (tempUrls.length > 0) {
+					const mapping = await apiClient.promoteAssets(tempUrls);
+					contentToSave = replaceTempImageUrls(contentToSave, mapping);
+					setContent(contentToSave);
+				}
+				await apiClient.updateDecision(addDecisionPrefix(id), contentToSave);
 				// Refresh data from parent
 				await onRefreshData();
 				// Show success toast
@@ -349,18 +378,17 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 							</div>
 						</div>
 						<div className="flex items-center space-x-3 ml-6">
-							{/* Temporarily hidden - decisions editing not ready */}
-								{false ? (
-									<button
-										onClick={handleEdit}
-										className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
-									>
-										<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-										</svg>
-										{t.common.edit}
+							{!isEditing && (
+								<button
+									onClick={handleEdit}
+									className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+								>
+									<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+									</svg>
+									{t.common.edit}
 								</button>
-							) : null}
+							)}
 							{isEditing && (
 								<div className="flex items-center space-x-2">
 										<button
