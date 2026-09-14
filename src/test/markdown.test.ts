@@ -327,6 +327,29 @@ Considered MongoDB and MySQL.`;
 			expect(decision.alternatives).toBe("Considered MongoDB and MySQL.");
 		});
 
+		it("should not absorb the next heading into an empty section", () => {
+			const content = `---
+id: decision-4
+title: "Empty sections"
+date: "2025-06-03"
+status: "proposed"
+---
+
+## Context
+
+## Decision
+
+## Consequences
+
+Better development experience.`;
+
+			const decision = parseDecision(content);
+
+			expect(decision.context).toBe("");
+			expect(decision.decision).toBe("");
+			expect(decision.consequences).toBe("Better development experience.");
+		});
+
 		it("should handle missing sections", () => {
 			const content = `---
 id: decision-3

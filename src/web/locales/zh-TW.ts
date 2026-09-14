@@ -384,6 +384,13 @@ export const zhTW: TranslationDict = {
 		titleRequired: "決策標題不能為空",
 		saveSuccessPrefix: "決策",
 		saveSuccessSuffix: "保存成功！",
+		statusLabels: {
+			proposed: "已提出",
+			accepted: "已接受",
+			rejected: "已拒絕",
+			deprecated: "已廢棄",
+			superseded: "已被替代",
+		},
 	},
 
 	settings: {

@@ -5,6 +5,7 @@ import { milestoneKey } from "../core/milestones.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { type GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
+import { extractSection } from "../markdown/parser.ts";
 import {
 	type AcceptanceCriterion,
 	type BacklogConfig,
@@ -3106,7 +3107,11 @@ export class Core {
 		}
 	}
 
-	async updateDecisionFromContent(decisionId: string, content: string, autoCommit?: boolean): Promise<void> {
+	async updateDecisionFromContent(
+		decisionId: string,
+		content: string,
+		options: { status?: string; autoCommit?: boolean } = {},
+	): Promise<void> {
 		const existingDecision = await this.fs.loadDecision(decisionId);
 		if (!existingDecision) {
 			throw new Error(`Decision ${decisionId} not found`);
@@ -3115,16 +3120,13 @@ export class Core {
 		// Parse the markdown content to extract the decision data
 		const frontmatter = parseFrontmatter(content).data as Partial<Pick<Decision, "title" | "status" | "date">>;
 
-		const extractSection = (content: string, sectionName: string): string | undefined => {
-			const regex = new RegExp(`## ${sectionName}\\s*([\\s\\S]*?)(?=## |$)`, "i");
-			const match = content.match(regex);
-			return match ? match[1]?.trim() : undefined;
-		};
-
 		const updatedDecision = {
 			...existingDecision,
 			title: frontmatter.title || existingDecision.title,
-			status: frontmatter.status || existingDecision.status,
+			// An explicit status argument wins, so a caller can change the status
+			// without rewriting the body (and without hand-writing frontmatter).
+			// Statuses are free-form at runtime, hence the cast at the boundary.
+			status: (options.status ?? frontmatter.status ?? existingDecision.status) as Decision["status"],
 			date: frontmatter.date || existingDecision.date,
 			context: extractSection(content, "Context") || existingDecision.context,
 			decision: extractSection(content, "Decision") || existingDecision.decision,
@@ -3132,7 +3134,17 @@ export class Core {
 			alternatives: extractSection(content, "Alternatives") || existingDecision.alternatives,
 		};
 
-		await this.updateDecision(updatedDecision, autoCommit);
+		await this.updateDecision(updatedDecision, options.autoCommit);
+	}
+
+	/** Change only the status of an existing decision, leaving its body untouched. */
+	async updateDecisionStatus(decisionId: string, status: string, autoCommit?: boolean): Promise<void> {
+		const existingDecision = await this.fs.loadDecision(decisionId);
+		if (!existingDecision) {
+			throw new Error(`Decision ${decisionId} not found`);
+		}
+
+		await this.updateDecision({ ...existingDecision, status: status as Decision["status"] }, autoCommit);
 	}
 
 	async createDecisionWithTitle(title: string, autoCommit?: boolean): Promise<Decision> {

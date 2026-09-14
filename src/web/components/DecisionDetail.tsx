@@ -19,6 +19,48 @@ const stripIdPrefix = (id: string): string => {
 	return id;
 };
 
+/** Canonical decision statuses offered by the editor; a non-canonical stored value is kept as an extra option. */
+const DECISION_STATUS_OPTIONS = ['proposed', 'accepted', 'rejected', 'superseded'] as const;
+
+/**
+ * Presentation for a decision status: the same muted, theme-aware pill as task
+ * statuses, plus a per-status leading icon so the state never relies on colour
+ * alone. Unknown (free-form) statuses fall back to a neutral info style.
+ */
+const DECISION_STATUS_STYLES: Record<string, { chip: string; icon: string; path: string }> = {
+	proposed: {
+		chip: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+		icon: 'text-gray-500 dark:text-gray-400',
+		path: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+	},
+	accepted: {
+		chip: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
+		icon: 'text-green-600 dark:text-green-400',
+		path: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+	},
+	rejected: {
+		chip: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+		icon: 'text-red-600 dark:text-red-400',
+		path: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+	},
+	deprecated: {
+		chip: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+		icon: 'text-amber-600 dark:text-amber-400',
+		path: 'M21 12a9 9 0 11-18 0 9 9 0 0118 0zM5.636 5.636l12.728 12.728',
+	},
+	superseded: {
+		chip: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
+		icon: 'text-blue-600 dark:text-blue-400',
+		path: 'M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5',
+	},
+};
+
+const DECISION_STATUS_UNKNOWN_STYLE = {
+	chip: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+	icon: 'text-gray-500 dark:text-gray-400',
+	path: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+};
+
 // Custom MDEditor wrapper for proper height handling
 const MarkdownEditor = memo(function MarkdownEditor({
 	value,
@@ -96,6 +138,8 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	const [originalContent, setOriginalContent] = useState<string>('');
 	const [decisionTitle, setDecisionTitle] = useState<string>('');
 	const [originalDecisionTitle, setOriginalDecisionTitle] = useState<string>('');
+	const [decisionStatus, setDecisionStatus] = useState<string>('proposed');
+	const [originalDecisionStatus, setOriginalDecisionStatus] = useState<string>('proposed');
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
@@ -122,6 +166,8 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			setDecision(null);
 			setDecisionTitle('');
 			setOriginalDecisionTitle('');
+			setDecisionStatus('proposed');
+			setOriginalDecisionStatus('proposed');
 		} else if (id) {
 			setIsNewDecision(false);
 			setIsEditing(false); // Ensure we start in preview mode for existing decisions
@@ -167,6 +213,8 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 				setOriginalContent(fullDecision.rawContent || '');
 				setDecisionTitle(fullDecision.title || '');
 				setOriginalDecisionTitle(fullDecision.title || '');
+				setDecisionStatus(fullDecision.status || 'proposed');
+				setOriginalDecisionStatus(fullDecision.status || 'proposed');
 				// Update decision state with full data
 				setDecision(fullDecision);
 			} catch (fetchError) {
@@ -184,6 +232,8 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 					setDecision(decision);
 					setDecisionTitle(decision.title || '');
 					setOriginalDecisionTitle(decision.title || '');
+					setDecisionStatus(decision.status || 'proposed');
+					setOriginalDecisionStatus(decision.status || 'proposed');
 				}
 			}
 		} catch (error) {
@@ -214,8 +264,14 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 					const mapping = await apiClient.promoteAssets(tempUrls);
 					newContent = replaceTempImageUrls(newContent, mapping);
 				}
-				if (newContent.trim().length > 0) {
-					await apiClient.updateDecision(addDecisionPrefix(created.id), newContent);
+				const hasBody = newContent.trim().length > 0;
+				// Only write when there is something to write: a body or a status the
+				// create call's default (proposed) did not already set.
+				if (hasBody || decisionStatus !== 'proposed') {
+					await apiClient.updateDecision(addDecisionPrefix(created.id), {
+						...(hasBody && { content: newContent }),
+						status: decisionStatus,
+					});
 				}
 				// Refresh data and navigate to the new decision
 				await onRefreshData();
@@ -230,17 +286,29 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			} else {
 				// Update existing decision
 				if (!id) return;
-				let contentToSave = normalizeMarkdownHashLinks(content);
-				// Promote temporary pasted images before saving, exactly like the
-				// task description fields, and keep the rewritten body in the editor
-				// state so a failed save can be retried against the permanent URLs.
-				const tempUrls = extractTempImageUrls(contentToSave);
-				if (tempUrls.length > 0) {
-					const mapping = await apiClient.promoteAssets(tempUrls);
-					contentToSave = replaceTempImageUrls(contentToSave, mapping);
-					setContent(contentToSave);
+				// The body is only sent when it actually changed, so a status-only edit
+				// does not round-trip the sections through the parser.
+				const bodyChanged = content !== originalContent;
+				let contentToSave = content;
+				if (bodyChanged) {
+					contentToSave = normalizeMarkdownHashLinks(content);
+					// Promote temporary pasted images before saving, exactly like the
+					// task description fields, and keep the rewritten body in the editor
+					// state so a failed save can be retried against the permanent URLs.
+					const tempUrls = extractTempImageUrls(contentToSave);
+					if (tempUrls.length > 0) {
+						const mapping = await apiClient.promoteAssets(tempUrls);
+						contentToSave = replaceTempImageUrls(contentToSave, mapping);
+						setContent(contentToSave);
+					}
 				}
-				await apiClient.updateDecision(addDecisionPrefix(id), contentToSave);
+				await apiClient.updateDecision(addDecisionPrefix(id), {
+					...(bodyChanged && { content: contentToSave }),
+					status: decisionStatus,
+				});
+				// Re-read from disk: the route does not change, so nothing else refreshes
+				// the title, body and status shown in preview.
+				await loadDecisionContent();
 				// Refresh data from parent
 				await onRefreshData();
 				// Show success toast
@@ -273,21 +341,33 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 			// Revert changes for existing decisions
 			setContent(originalContent);
 			setDecisionTitle(originalDecisionTitle);
+			setDecisionStatus(originalDecisionStatus);
 			setIsEditing(false);
 		}
 	};
 
-	const hasChanges = content !== originalContent || decisionTitle !== originalDecisionTitle;
+	const hasChanges =
+		content !== originalContent ||
+		decisionTitle !== originalDecisionTitle ||
+		decisionStatus !== originalDecisionStatus;
 
-	const getStatusColor = (status: string) => {
-		const colors = {
-			'proposed': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-			'accepted': 'bg-green-50 text-green-700 border-green-200',
-			'rejected': 'bg-red-50 text-red-700 border-red-200',
-			'superseded': 'bg-gray-50 text-gray-700 border-gray-200',
-		} as const;
-		return colors[status.toLowerCase() as keyof typeof colors] || 'bg-gray-50 text-gray-700 border-gray-200';
+	// A stored status outside the labelled set stays selectable instead of being
+	// silently replaced by the first option.
+	const statusOptions: string[] = (DECISION_STATUS_OPTIONS as readonly string[]).includes(decisionStatus)
+		? [...DECISION_STATUS_OPTIONS]
+		: [...DECISION_STATUS_OPTIONS, decisionStatus];
+
+	// Labels come from the active locale; an unlabelled free-form status (or one
+	// stored in a language the interface is not showing) falls back to its
+	// capitalized raw form.
+	const decisionStatusLabel = (status: string): string => {
+		const labels = t.decisions.statusLabels as Record<string, string>;
+		return labels[status.toLowerCase()] ?? status.charAt(0).toUpperCase() + status.slice(1);
 	};
+
+	const editedStatusStyle = DECISION_STATUS_STYLES[decisionStatus.toLowerCase()] ?? DECISION_STATUS_UNKNOWN_STYLE;
+	const savedStatusStyle =
+		DECISION_STATUS_STYLES[(decision?.status ?? '').toLowerCase()] ?? DECISION_STATUS_UNKNOWN_STYLE;
 
 	if (!id) {
 		return (
@@ -363,18 +443,34 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 										<span>{t.decisions.date}: {decision.date}</span>
 									</div>
 								)}
-								{decision?.status && (
+								{isEditing ? (
 									<div className="flex items-center space-x-2">
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+										<svg className={`w-4 h-4 flex-shrink-0 ${editedStatusStyle.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={editedStatusStyle.path} />
 										</svg>
-										<span 
-											className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(decision.status)}`}
+										<select
+											value={decisionStatus}
+											onChange={(event) => setDecisionStatus(event.target.value)}
+											aria-label={t.common.status}
+											className="h-8 rounded-md border border-gray-300 dark:border-gray-600 px-2 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
 										>
-											{decision.status.charAt(0).toUpperCase() + decision.status.slice(1)}
+											{statusOptions.map((option) => (
+												<option key={option} value={option}>
+													{decisionStatusLabel(option)}
+												</option>
+											))}
+										</select>
+									</div>
+								) : decision?.status ? (
+									<div className="flex items-center space-x-2">
+										<svg className={`w-4 h-4 flex-shrink-0 ${savedStatusStyle.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={savedStatusStyle.path} />
+										</svg>
+										<span className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${savedStatusStyle.chip}`}>
+											{decisionStatusLabel(decision.status)}
 										</span>
 									</div>
-								)}
+								) : null}
 							</div>
 						</div>
 						<div className="flex items-center space-x-3 ml-6">

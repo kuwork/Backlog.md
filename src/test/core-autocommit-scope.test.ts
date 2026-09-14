@@ -116,7 +116,7 @@ describe("core auto-commit scoping", () => {
 		await core.updateDecisionFromContent(
 			"decision-1",
 			"---\ntitle: Scoped decision\nstatus: approved\n---\n\n## Context\n\nUpdated context\n\n## Decision\n\nUpdated decision\n\n## Consequences\n\nUpdated consequences\n",
-			true,
+			{ autoCommit: true },
 		);
 
 		expect(await core.gitOps.getLastCommitMessage()).toContain("backlog: Update decision decision-1");

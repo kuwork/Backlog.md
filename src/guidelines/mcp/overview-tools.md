@@ -57,6 +57,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_remove`, `milestone_archive` — for details read the `milestones` guide via `get_backlog_instructions`
 - `document_list`, `document_view`, `document_create`, `document_update`, `document_search`
 - `document_create` and `document_update` support docs-directory-relative `path` values such as `guides/setup`; absolute paths and `..` traversal are rejected
+- `decision_update` updates a decision's status and/or body by id (`status` alone changes only the status; `content` replaces the body and `appendContent` appends to it); for the full decision workflow read the `decisions` guide via `get_backlog_instructions`
 - `definition_of_done_defaults_get`, `definition_of_done_defaults_upsert`
 
 **Definition of Done support**

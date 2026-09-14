@@ -282,6 +282,7 @@ describe("McpServer bootstrap", () => {
 			"document_create",
 			"document_update",
 			"document_search",
+			"decision_update",
 		]);
 
 		const resources = await server.testInterface.listResources();

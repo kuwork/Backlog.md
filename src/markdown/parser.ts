@@ -256,10 +256,15 @@ export function parseMilestone(content: string): Milestone {
 	};
 }
 
-function extractSection(content: string, sectionTitle: string): string | undefined {
+export function extractSection(content: string, sectionTitle: string): string | undefined {
 	// Normalize to LF for reliable matching across platforms
 	const src = content.replace(/\r\n/g, "\n");
-	const regex = new RegExp(`## ${sectionTitle}\\s*\\n([\\s\\S]*?)(?=\\n## |$)`, "i");
+	// Both the heading and the section boundary are anchored to a line start. The
+	// previous pattern (`## Title\s*\n(...)(?=\n## |$)`) let `\s*` consume the
+	// separating newlines, so for an empty section the lazy group had to swallow
+	// the following heading line to satisfy the lookahead - which then reappeared
+	// as duplicated headings on the next serialization.
+	const regex = new RegExp(`^##[ \\t]+${sectionTitle}[ \\t]*\\n([\\s\\S]*?)(?=^##[ \\t]|$(?![\\s\\S]))`, "im");
 	const match = src.match(regex);
 	return match?.[1]?.trim();
 }

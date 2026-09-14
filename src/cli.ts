@@ -4777,12 +4777,19 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 			type: "Markdown",
 			description: "Append a block to the decision body (can be used multiple times)",
 		},
+		{
+			name: "status",
+			type: "String",
+			description: "Decision status; free-form, common values are proposed, accepted, rejected, superseded",
+		},
 	],
-	writes: "Updates decision structured sections (Context / Decision / Consequences / Alternatives)",
+	writes:
+		"Updates decision structured sections (Context / Decision / Consequences / Alternatives) and/or the decision status",
 	output: "Updated decision ID",
 	examples: [
 		'backlog decision update decision-1 --content "## Context\\n\\n..."',
 		'backlog decision update decision-1 --append-content "## Alternatives\\n\\n..."',
+		"backlog decision update decision-1 --status accepted",
 	],
 })
 	.description("update a decision")
@@ -4794,6 +4801,10 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 		"--append-content <text>",
 		"append a block to the decision content (can be used multiple times; write \\n literally inside a single-quoted or double-quoted argument)",
 		createMultiValueAccumulator(),
+	)
+	.option(
+		"--status <status>",
+		"set the decision status (free-form; common values are proposed, accepted, rejected, superseded)",
 	)
 	.action(async (decisionId: string, options) => {
 		const cwd = await requireProjectRoot();
@@ -4820,9 +4831,10 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 			.filter((chunk) => chunk.length > 0);
 		const hasContent = typeof options.content === "string";
 		const hasAppend = appendContent.length > 0;
+		const hasStatus = typeof options.status === "string" && options.status.trim().length > 0;
 
-		if (!hasContent && !hasAppend) {
-			console.error("No update options provided. Provide --content or --append-content.");
+		if (!hasContent && !hasAppend && !hasStatus) {
+			console.error("No update options provided. Provide --content, --append-content or --status.");
 			process.exitCode = 1;
 			return;
 		}
@@ -4833,11 +4845,18 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 			if (hasAppend) {
 				content += `\n\n${appendContent.join("\n\n")}`;
 			}
-		} else {
+		} else if (hasAppend) {
 			content = [existingDecision.rawContent, ...appendContent].join("\n\n");
+		} else {
+			// Status-only update: write the status without round-tripping the body.
+			await core.updateDecisionStatus(existingDecision.id, String(options.status));
+			console.log(`Updated decision ${existingDecision.id}`);
+			return;
 		}
 
-		await core.updateDecisionFromContent(existingDecision.id, content);
+		await core.updateDecisionFromContent(existingDecision.id, content, {
+			status: hasStatus ? String(options.status) : undefined,
+		});
 		console.log(`Updated decision ${existingDecision.id}`);
 	});
 

@@ -1702,10 +1702,29 @@ export class BacklogServer {
 	}
 
 	private async handleUpdateDecision(req: Request, decisionId: string): Promise<Response> {
-		const content = await req.text();
+		const contentType = req.headers.get("content-type") || "";
+		let content: string | undefined;
+		let status: string | undefined;
+		if (contentType.includes("application/json")) {
+			const body = (await req.json()) as { content?: unknown; status?: unknown };
+			// An absent content key means "leave the body alone" (status-only update).
+			content = typeof body.content === "string" ? body.content : undefined;
+			status = typeof body.status === "string" && body.status.trim().length > 0 ? body.status : undefined;
+		} else {
+			// Plain-text body: the decision markdown only, kept for compatibility.
+			content = await req.text();
+		}
 
 		try {
-			await this.core.updateDecisionFromContent(decisionId, content);
+			if (content === undefined) {
+				if (status === undefined) {
+					return Response.json({ error: "No decision update provided" }, { status: 400 });
+				}
+				// Status-only change: write it without round-tripping the sections.
+				await this.core.updateDecisionStatus(decisionId, status);
+			} else {
+				await this.core.updateDecisionFromContent(decisionId, content, { status });
+			}
 			return Response.json({ success: true });
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {

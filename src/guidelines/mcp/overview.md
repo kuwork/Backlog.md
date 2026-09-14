@@ -43,7 +43,7 @@ Searching first avoids duplicate tasks and helps you understand existing context
 - **Finalizing tasks** → `backlog://workflow/task-finalization` - Definition of Done, finalization checklist, next steps
 - **Managing milestones** → `backlog://workflow/milestones` - How to create, edit, remove, and archive milestones
 - **Managing documents** → `backlog://workflow/documents` - How to create, update, list, and view project documents
-- **Managing decisions** → `backlog://workflow/decisions` - How to create and list decisions, including output modes and status handling
+- **Managing decisions** → `backlog://workflow/decisions` - How to create, list and update decisions, including output modes and status handling
 - **Managing drafts** → `backlog://workflow/drafts` - How to create, promote, demote, and archive drafts
 
 ### Core Principle

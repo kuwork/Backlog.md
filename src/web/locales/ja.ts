@@ -388,6 +388,13 @@ export const ja: TranslationDict = {
 		titleRequired: "決定事項タイトルは必須です",
 		saveSuccessPrefix: "決定事項",
 		saveSuccessSuffix: "が保存されました！",
+		statusLabels: {
+			proposed: "提案中",
+			accepted: "承認済み",
+			rejected: "却下",
+			deprecated: "非推奨",
+			superseded: "置き換え済み",
+		},
 	},
 
 	settings: {

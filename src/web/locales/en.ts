@@ -384,6 +384,13 @@ export const en = {
 		titleRequired: "Decision title is required",
 		saveSuccessPrefix: "Decision",
 		saveSuccessSuffix: "saved successfully!",
+		statusLabels: {
+			proposed: "Proposed",
+			accepted: "Accepted",
+			rejected: "Rejected",
+			deprecated: "Deprecated",
+			superseded: "Superseded",
+		},
 	},
 
 	settings: {

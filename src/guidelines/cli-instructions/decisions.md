@@ -11,7 +11,7 @@ Always use Backlog.md CLI commands to create and list decisions so IDs, frontmat
 | Create a decision | `backlog decision create "<title>" [-s <status>] [--plain]` |
 | List decisions | `backlog decision list [--plain] [--json]` |
 | View a decision | `backlog decision view <decisionId> [--plain]` |
-| Update a decision | `backlog decision update <decisionId> --content "..."` / `--append-content "..."` |
+| Update a decision | `backlog decision update <decisionId> [--content "..."] [--append-content "..."] [--status <status>]` |
 
 ### Creating Decisions
 
@@ -59,7 +59,7 @@ backlog decision list --json
 
 ### Updating Decisions
 
-`backlog decision update <decisionId>` changes a decision's structured sections. It parses the provided markdown body and updates the matching Context / Decision / Consequences / Alternatives sections, leaving the frontmatter intact. Omitted sections keep their current values.
+`backlog decision update <decisionId>` changes a decision's structured sections and/or its status. It parses the provided markdown body and updates the matching Context / Decision / Consequences / Alternatives sections, leaving the frontmatter intact. Omitted sections keep their current values.
 
 Parameters:
 
@@ -67,8 +67,25 @@ Parameters:
 |-------------|----------|-------------|
 | `--content <content>` | No | Replace the entire decision body. |
 | `--append-content <text>` | No | Append a markdown block to the body (can be used multiple times). |
+| `--status <status>` | No | Set the decision status; free-form, common values are `proposed`, `accepted`, `rejected`, `superseded`. |
 
-When both flags are provided, `--content` replaces the body first and `--append-content` blocks are appended after it.
+At least one of `--content`, `--append-content` or `--status` is required.
+
+When both content flags are provided, `--content` replaces the body first and `--append-content` blocks are appended after it.
+
+`--status` can be combined with the content flags; the explicit value wins over any `status` in the content frontmatter. Used on its own it changes only the status and leaves the body untouched.
+
+```bash
+# Mark a decision as accepted without touching its body
+backlog decision update decision-1 --status accepted
+
+# Replace the body and set the status in one call
+backlog decision update decision-1 --status superseded --content "## Context\n\nOutdated runtime choice"
+```
+
+### Updating Decisions over MCP
+
+The MCP server exposes the same capability as `decision_update`, so agents working through MCP do not have to shell out. It takes the decision `id` plus any of `content`, `appendContent` and `status`, with the same rules as the CLI flags (at least one is required; `status` alone changes only the status).
 
 ### Multi-line Content
 

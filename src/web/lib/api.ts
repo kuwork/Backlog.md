@@ -557,13 +557,13 @@ export class ApiClient {
 		return response.json();
 	}
 
-	async updateDecision(id: string, content: string): Promise<void> {
+	async updateDecision(id: string, update: { content?: string; status?: string }): Promise<void> {
 		const response = await fetch(`${API_BASE}/decisions/${encodeURIComponent(id)}`, {
 			method: "PUT",
 			headers: {
-				"Content-Type": "text/plain",
+				"Content-Type": "application/json",
 			},
-			body: content,
+			body: JSON.stringify(update),
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to update decision");
