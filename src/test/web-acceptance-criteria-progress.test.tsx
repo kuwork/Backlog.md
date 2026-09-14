@@ -52,6 +52,28 @@ describe("AcceptanceCriteriaProgress", () => {
 		expect(html).toContain("1 of 2 acceptance criteria checked");
 	});
 
+	it("renders the modal-style bar with the exact fraction for the board variant", () => {
+		const html = renderToString(
+			<AcceptanceCriteriaProgress
+				variant="bar"
+				task={task({
+					acceptanceCriteriaItems: [
+						{ index: 1, text: "a", checked: true },
+						{ index: 2, text: "b", checked: true },
+						{ index: 3, text: "c", checked: false },
+						{ index: 4, text: "d", checked: false },
+					],
+				})}
+			/>,
+		);
+		expect(html).toContain(">2/4<");
+		expect(html).toContain("width:50%");
+		expect(html).toContain("aria-valuenow=\"2\"");
+		expect(html).toContain("aria-valuemax=\"4\"");
+		expect(html).not.toContain("data-cell-count");
+		expect(html.indexOf("width:50%")).toBeLessThan(html.indexOf(">2/4<"));
+	});
+
 	it("renders nothing for tasks without acceptance criteria", () => {
 		const html = renderToString(<AcceptanceCriteriaProgress cells={10} task={task({ acceptanceCriteriaItems: [] })} />);
 		expect(html).toBe("");

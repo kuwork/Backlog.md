@@ -239,10 +239,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
           </div>
         )}
 
-        {/* Header row with task ID, planned dates, and priority badge */}
+        {/* Header row with task ID, acceptance-criteria progress, planned dates, and priority badge */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-xs text-gray-400 dark:text-gray-500 font-mono transition-colors duration-200">{task.id}</span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-mono transition-colors duration-200">{task.id}</span>
+            <AcceptanceCriteriaProgress task={task} variant="bar" className="flex-1 min-w-[2.5rem]" />
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             {(() => {
               const planned = formatPlannedRange(task.plannedStart, task.plannedEnd);
               return planned ? (
@@ -273,8 +276,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
         }`}>
           {task.title}
         </h4>
-
-        <AcceptanceCriteriaProgress task={task} cells={10} className="mt-1" />
 
         {/* Labels - width-aware overflow */}
         {task.labels.length > 0 && (
