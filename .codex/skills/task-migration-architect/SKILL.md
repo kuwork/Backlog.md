@@ -137,7 +137,7 @@ git show <上游分支>:backlog/TASK-xxx.md
    - **删除**上游任务专属字段：`assignee`、`labels`、`dependencies`、`priority`、`parent_task_id`、`modified_files` 等。
 4. 保留正文所有章节（Description、Acceptance Criteria、Plan、Implementation Notes、Final Summary、Comments），不修改内容。
 5. 若存在父任务和若干子任务（如 `BACK-355` 与 `BACK-355.01..06`），父任务单独占用一个 draft，子任务按顺序分配相邻 ID。
-6. 导入完成后，在分类文档中引用原始任务时统一使用 `[DRAFT#N](/draft/N)` 格式，不使用 `DOC#`、`/documentation/` 或文件路径链接。
+6. 导入完成后，在分类文档中引用原始任务时统一使用 `[DRAFT#N](/draft/N)` 格式，不使用 `DOC#`、`/documentation/` 或文件路径链接。此约束仅针对「原始/迁移任务」列；「分析报告」列按下方规定使用 `/documentation/<docId>:start-end`，不受此限。
 7. 这些 draft 仅作为分析素材，**在升级为当前 fork 任务后会被 `backlog draft promote` 删除**，升级完成后不应再被引用。
 8. 清理旧的重复导入（如 `backlog/docs/migration/v1.47.1-to-v1.48.0/original-A1.md` 这类临时文件），避免与 draft 重复。
 
@@ -146,7 +146,7 @@ git show <上游分支>:backlog/TASK-xxx.md
 - [ ] 所有导入的 draft 文件 `id` 与文件名编号一致。
 - [ ] 所有导入的 draft `status` 为 `Draft`。
 - [ ] 分类文档中所有原始任务链接均为 `/draft/N` 且目标文件存在。
-- [ ] 分类文档中无 `DOC#`、无 `/documentation/` 链接残留。
+- [ ] 分类文档「原始/迁移任务」列无 `DOC#`、无 `/documentation/` 或文件路径链接残留（「分析报告」列的 `/documentation/<docId>:start-end` 属规定用法，不计入）。
 - [ ] draft 升级为当前 fork 任务后，分类文档「原始/迁移任务」列已同步改为迁移任务链接（`[BACK-XXX](/task/XXX)`），且不再引用原 draft。
 
 **批量导入执行要点（多条目时）：**
@@ -338,8 +338,8 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 是否分析 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|----------|----------|----------|
-| A1 | **BACK-xxx 标题** | 简述变更内容 | 为何必须合入/评估/跳过 | 高/中/低 | 是 | [DRAFT#N](/draft/N) | [doc-5 A1](/doc/5:16-27) |
-| A4 | **BACK-540 修复 config.yml ...** | ... | 配置解析 bug | 低 | 是 | [BACK-533](/task/533) | [doc-5 A4](/doc/5:58-69) |
+| A1 | **BACK-xxx 标题** | 简述变更内容 | 为何必须合入/评估/跳过 | 高/中/低 | 是 | [DRAFT#N](/draft/N) | [doc-5 A1](/documentation/5:16-27) |
+| A4 | **BACK-540 修复 config.yml ...** | ... | 配置解析 bug | 低 | 是 | [BACK-533](/task/533) | [doc-5 A4](/documentation/5:58-69) |
 | B1 | **BACK-yyy 标题** | 简述变更内容 | 新功能，需评估冲突 | 高/中/低 | 可选 | [DRAFT#M](/draft/M) | 待分析 |
 | C1 | **BACK-zzz 标题** | 简述变更内容 | 与当前 fork 演进方向冲突 | 高/中/低 | 否 | 不适用 | 不适用 |
 
@@ -348,7 +348,8 @@ backlog task create "<尽量保持与上游相同的任务标题>" \
 - **#**：唯一编号，A/B/C 类内部按顺序递增，如 `A1`、`A2`、`B1`、`C1`。方便用户用编号指定下一步分析。
 - **原始/迁移任务**：本列同时登记上游原始任务和升级后的当前 fork 迁移任务。未升级时，上游任务文件以 draft 形式导入到 `backlog/drafts/`，使用 `[DRAFT#N](/draft/N)` 引用；升级后，替换为迁移任务链接 `[BACK-XXX](/task/XXX)`。**禁止**为了登记迁移任务而新增一列，否则会导致 Backlog.md Web UI 表格渲染异常；应合并到本列中。同时禁止直接引用 `/documentation/` 或文件路径。
 - **分析报告**：分析完成后，使用 short local link 的**行号范围后缀**指向具体分析文档的对应章节。语法参考 `BACK-531`（Support line-range suffix on short local links）：
-  - 格式：`[doc-5 A1](/doc/5:16-27)`，其中 `16-27` 是目标文档章节所在的行号范围。
+  - 格式：`[doc-5 A1](/documentation/5:16-27)`，其中 `16-27` 是目标文档章节所在的行号范围。
+  - **前缀必须是 `/documentation/<docId>:`**，不能写成 `/doc/5:16-27` —— 该路由不存在（`src/web/App.tsx` 只有 `documentation/:id`）。Web 端 `src/web/components/MermaidMarkdown.tsx:177` 用 `^\/documentation\/([^/]+)` 匹配后再交 `parseLineRange()`（同文件 :134）拆出 id 与行号范围，前缀不符只会退化成普通站内跳转，行号范围失效。
   - 尚未分析时填 `待分析`。
   - **范围边界算法（必须精确，否则预览会带入下一个任务的第一行）**：
     1. 起始 = 章节标题行号（`## XXX-N`）。
