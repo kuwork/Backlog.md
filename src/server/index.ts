@@ -1394,6 +1394,7 @@ export class BacklogServer {
 				createdDate: doc.createdDate,
 				updatedDate: doc.updatedDate,
 				lastModified: doc.updatedDate || doc.createdDate,
+				contentHash: doc.contentHash,
 				tags: doc.tags || [],
 			}));
 			return Response.json(docFiles);

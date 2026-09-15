@@ -1,4 +1,5 @@
 import type { AcceptanceCriterion, Decision, Document, Milestone, ParsedMarkdown, Task } from "../types/index.ts";
+import { contentFingerprint } from "../utils/content-fingerprint.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 import {
 	AcceptanceCriteriaManager,
@@ -229,6 +230,7 @@ export function parseDocument(content: string): Document {
 		createdDate: normalizeDate(frontmatter.created_date),
 		updatedDate: frontmatter.updated_date ? normalizeDate(frontmatter.updated_date) : undefined,
 		rawContent,
+		contentHash: contentFingerprint(rawContent),
 		tags: Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : undefined,
 	};
 }

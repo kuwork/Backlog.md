@@ -117,6 +117,9 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
         | { kind: "entity"; type: "task" | "draft" | "doc" | "decision" | "wiki"; id: string; lineStart?: number; lineEnd?: number };
     const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
     const handledRouteIdRef = useRef<string | undefined>(undefined);
+    // Fingerprint of the body currently on screen, together with the route it belongs to.
+    // It is what tells a real external edit apart from an unrelated refresh.
+    const renderedFingerprintRef = useRef<{ id: string; hash?: string } | undefined>(undefined);
     const contentRef = useRef<HTMLDivElement | null>(null);
     // Publishes the rendered headings to the header outline; empty while editing.
     usePageToc(contentRef, isEditing ? null : content);
@@ -127,6 +130,8 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
             // refresh used to reload the content: the document was unmounted while the
             // spinner showed, which scrolled the reader back to the top of the page and
             // discarded an in-progress hash link position.
+            // A refresh that really did change this document's body is handled by the
+            // fingerprint effect below instead.
             if (handledRouteIdRef.current === id) return;
             handledRouteIdRef.current = id;
             if (id === 'new') {
@@ -171,12 +176,17 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
         }
     }, [id, docTitle, document, isLoading, title, navigate, location.hash]);
 
-    const loadDocContent = useCallback(async () => {
+    const loadDocContent = useCallback(async (options?: { silent?: boolean }) => {
         if (!id) return;
+        // A silent reload is the external-edit path: the body is already on screen, so keep the
+        // DOM mounted (no loading state, no error takeover) and only swap the content.
+        const silent = options?.silent === true;
 
         try {
-            setIsLoading(true);
-            setError(null);
+            if (!silent) {
+                setIsLoading(true);
+                setError(null);
+            }
             // Find document from props
             const prefixedId = addDocPrefix(id);
             const doc = docs.find(d => d.id === prefixedId);
@@ -185,6 +195,9 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
             // This ensures deep linking works even before the parent component loads the docs array
             try {
                 const fullDoc = await apiClient.fetchDoc(prefixedId);
+                // The reader may have switched documents while this was in flight.
+                if (handledRouteIdRef.current !== id) return;
+                renderedFingerprintRef.current = { id, hash: fullDoc.contentHash };
                 setContent(fullDoc.rawContent || '');
                 setOriginalContent(fullDoc.rawContent || '');
                 setDocTitle(fullDoc.title || '');
@@ -194,6 +207,11 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
                 // Update document state with full data
                 setDocument(fullDoc);
             } catch (fetchError) {
+                if (silent) {
+                    // Keep the body already on screen and let the next refresh retry.
+                    console.error('Failed to refresh document:', fetchError);
+                    return;
+                }
                 if (isAmbiguousIdConflict(fetchError)) {
                     // Fail closed: never fall back to the cached entry when identity is ambiguous.
                     setDocument(null);
@@ -215,12 +233,31 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
             }
         } catch (err) {
             const error = err instanceof Error ? err : new Error('Failed to load document');
-            setError(error);
+            if (!silent) {
+                setError(error);
+            }
             console.error('Failed to load document:', error);
         } finally {
-            setIsLoading(false);
+            if (!silent) {
+                setIsLoading(false);
+            }
         }
     }, [id, docs]);
+
+    // The parent hands down a fresh docs array on every websocket refresh, including edits
+    // made outside the app. The route guard above deliberately ignores those refreshes, and
+    // the docs payload only carries metadata, so the body fingerprint is what tells a real
+    // edit apart from an unrelated refresh. Reload silently: the rendered DOM (and the
+    // reader's scroll position) survives an unchanged refresh, and an in-progress edit is
+    // never overwritten.
+    useEffect(() => {
+        if (!id || id === 'new' || isEditing || isLoading) return;
+        const rendered = renderedFingerprintRef.current;
+        if (!rendered || rendered.id !== id) return;
+        const incoming = docs.find(d => d.id === addDocPrefix(id))?.contentHash;
+        if (!incoming || incoming === rendered.hash) return;
+        loadDocContent({ silent: true });
+    }, [id, docs, isEditing, isLoading, loadDocContent]);
 
     const handleTaskClick = useCallback((taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
         if (range?.lineStart !== undefined) {

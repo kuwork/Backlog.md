@@ -253,6 +253,13 @@ export interface Document {
 	createdDate: string;
 	updatedDate?: string;
 	rawContent: string; // Raw markdown content without frontmatter
+	/**
+	 * Fingerprint of rawContent, recomputed on every read.
+	 *
+	 * Lets the web viewer tell an external body edit apart from an unrelated refresh, so it
+	 * reloads the open document only when the text really changed. Never written to disk.
+	 */
+	contentHash?: string;
 	tags?: string[];
 	// Web UI specific fields
 	name?: string;

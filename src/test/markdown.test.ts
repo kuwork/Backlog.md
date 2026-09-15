@@ -9,6 +9,7 @@ import {
 } from "../markdown/serializer.ts";
 import { AcceptanceCriteriaManager, DefinitionOfDoneManager } from "../markdown/structured-sections.ts";
 import type { Decision, Document, Task } from "../types/index.ts";
+import { contentFingerprint } from "../utils/content-fingerprint.ts";
 
 describe("Markdown Parser", () => {
 	describe("parseMarkdown", () => {
@@ -391,6 +392,26 @@ Document body.`;
 			expect(doc.createdDate).toBe("2025-06-07");
 			expect(doc.tags).toEqual(["api"]);
 			expect(doc.rawContent).toBe("Document body.");
+		});
+
+		it("should fingerprint the body so the web viewer can spot an external edit", () => {
+			const source = `---
+id: doc-1
+title: "API Guide"
+created_date: 2025-06-07
+---
+
+Document body.`;
+
+			const doc = parseDocument(source);
+			const reparsed = parseDocument(source);
+			const edited = parseDocument(source.replace("Document body.", "Edited body."));
+
+			expect(doc.contentHash).toBe(contentFingerprint("Document body."));
+			expect(reparsed.contentHash).toBe(doc.contentHash);
+			expect(edited.contentHash).not.toBe(doc.contentHash);
+			// Derived state: it must never reach the markdown written back to disk.
+			expect(serializeDocument(doc)).not.toContain("contentHash");
 		});
 	});
 });
