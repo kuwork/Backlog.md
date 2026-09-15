@@ -8,6 +8,7 @@ import MermaidMarkdown, { parseLocalUrl } from "../web/components/MermaidMarkdow
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { TaskIdIndexProvider } from "../web/contexts/TaskIdIndexContext.tsx";
+import { ThemeProvider, useTheme } from "../web/contexts/ThemeContext.tsx";
 import type { Decision, Document as BacklogDocument, Task } from "../types/index.ts";
 
 const originalFetch = globalThis.fetch;
@@ -723,6 +724,87 @@ describe("MermaidMarkdown", () => {
 
 			expect(hrefs(html)).toEqual([]);
 			expect(html).toContain("BACK-123");
+		});
+	});
+
+	describe("diagram color mode", () => {
+		let root: Root | null = null;
+		let container: HTMLElement | null = null;
+
+		afterEach(() => {
+			act(() => {
+				root?.unmount();
+			});
+			// biome-ignore lint/suspicious/noExplicitAny: Mock cleanup
+			delete (globalThis as any).__MERMAID_MOCK__;
+			cleanupInteractiveDom();
+		});
+
+		it("re-renders diagrams with the dark theme after the theme is toggled", async () => {
+			setupInteractiveDom();
+			container = document.getElementById("root");
+			expect(container).toBeTruthy();
+			root = createRoot(container as HTMLElement);
+
+			// biome-ignore lint/suspicious/noExplicitAny: Mock signature flexibility
+			const configs: Record<string, any>[] = [];
+			// biome-ignore lint/suspicious/noExplicitAny: Mock needed for testing
+			(globalThis as any).__MERMAID_MOCK__ = {
+				default: {
+					// biome-ignore lint/suspicious/noExplicitAny: Mock signature flexibility
+					initialize: (config: Record<string, any>) => {
+						configs.push(config);
+					},
+					// biome-ignore lint/suspicious/noExplicitAny: Mock signature flexibility
+					run: async ({ nodes }: any) => {
+						nodes?.[0]?.setAttribute("data-mocked", "true");
+					},
+				},
+			};
+
+			const source = "```mermaid\ngraph TD\nA-->B\n```";
+
+			function Harness() {
+				const { toggleTheme } = useTheme();
+				return (
+					<>
+						<button type="button" id="toggle-theme" onClick={toggleTheme}>
+							toggle
+						</button>
+						<MermaidMarkdown source={source} />
+					</>
+				);
+			}
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ThemeProvider>
+							<ImageLightboxProvider>
+								<Harness />
+							</ImageLightboxProvider>
+						</ThemeProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			expect(container?.querySelector(".mermaid")?.getAttribute("data-mocked")).toBe("true");
+			expect(configs.at(-1)?.theme).toBe("default");
+
+			const toggle = container?.querySelector("#toggle-theme") as HTMLButtonElement;
+			await act(async () => {
+				toggle.click();
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			expect(configs.at(-1)?.theme).toBe("dark");
+			// The diagram must be rebuilt from the restored code block, not left as-is.
+			expect(container?.querySelector(".mermaid")?.getAttribute("data-mocked")).toBe("true");
+			expect(container?.querySelectorAll(".mermaid")).toHaveLength(1);
 		});
 	});
 });
