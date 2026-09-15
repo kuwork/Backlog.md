@@ -1,4 +1,4 @@
-import {useState, useEffect, memo, useCallback} from 'react';
+import {useState, useEffect, memo, useCallback, useRef} from 'react';
 import {useParams, useNavigate, useLocation, useSearchParams} from 'react-router-dom';
 import {apiClient, isAmbiguousIdConflict} from '../lib/api';
 import { AmbiguousIdNotice } from './AmbiguousIdNotice';
@@ -112,8 +112,16 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
         | { kind: "file"; path: string }
         | { kind: "entity"; type: "task" | "draft" | "doc" | "decision" | "wiki"; id: string; lineStart?: number; lineEnd?: number };
     const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+    const handledRouteIdRef = useRef<string | undefined>(undefined);
 
     useEffect(() => {
+            // Only react to an actual route change. The parent refreshes its docs array
+            // regularly (initial load, websocket updates), and re-running this on every
+            // refresh used to reload the content: the document was unmounted while the
+            // spinner showed, which scrolled the reader back to the top of the page and
+            // discarded an in-progress hash link position.
+            if (handledRouteIdRef.current === id) return;
+            handledRouteIdRef.current = id;
             if (id === 'new') {
                 // Handle new document creation
                 setIsNewDocument(true);
@@ -151,9 +159,10 @@ export default function DocumentationDetail({docs, onRefreshData}: Documentation
         if (!id || id === 'new' || isLoading || !document) return;
         const expectedSlug = sanitizeUrlTitle(docTitle);
         if (title !== expectedSlug) {
-            navigate(`/documentation/${id}/${expectedSlug}`, { replace: true });
+            // Keep the anchor: a bare id link with an in-document hash must still land on its heading.
+            navigate(`/documentation/${id}/${expectedSlug}${location.hash}`, { replace: true });
         }
-    }, [id, docTitle, document, isLoading, title, navigate]);
+    }, [id, docTitle, document, isLoading, title, navigate, location.hash]);
 
     const loadDocContent = useCallback(async () => {
         if (!id) return;

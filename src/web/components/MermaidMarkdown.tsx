@@ -7,6 +7,7 @@ import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
+import { findHeadingByHashTarget, HEADING_PREFIX_ID_REGEX, scrollToHeading } from "../utils/hash-target";
 import { renderMermaidIn } from "../utils/mermaid";
 import { createEntityLinkPlugin } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
@@ -24,7 +25,6 @@ interface Props {
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\u0000-\u0020]*>/;
 const EMAIL_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+>/;
-const HEADING_PREFIX_ID_REGEX = /^([A-Za-z]*\d+(?:\.[A-Za-z]*\d+)*)(?=\s*[:：.、]|\s+|$)/;
 
 function getTextContent(node: Element): string {
 	let text = "";
@@ -36,46 +36,6 @@ function getTextContent(node: Element): string {
 		}
 	}
 	return text;
-}
-
-function findHeadingByHashTarget(target: string): HTMLElement | null {
-	// Decode percent-encoded anchors, e.g. <#A1: Section Title> renders as #A1:%20Section%20Title.
-	let decodedTarget: string;
-	try {
-		decodedTarget = decodeURIComponent(target);
-	} catch {
-		decodedTarget = target;
-	}
-
-	// Exact ID match covers github-slugger slugs and prefix ids.
-	const byId = document.getElementById(decodedTarget);
-	if (byId && /^h[1-6]$/i.test(byId.tagName)) return byId;
-
-	// Fallback: human-friendly anchors using the original heading prefix or title.
-	const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
-	for (const heading of headings) {
-		const element = heading as HTMLElement;
-		if (element.getAttribute("data-heading-prefix") === decodedTarget) return element;
-		if (element.getAttribute("data-heading-text") === decodedTarget) return element;
-	}
-
-	// If the anchor starts with a section prefix (e.g. "A1:"), treat it as a heading-text
-	// prefix so that full-heading-title anchors written with angle brackets still resolve.
-	if (HEADING_PREFIX_ID_REGEX.test(decodedTarget)) {
-		let bestMatch: HTMLElement | null = null;
-		let bestMatchLength = 0;
-		for (const heading of headings) {
-			const element = heading as HTMLElement;
-			const text = element.getAttribute("data-heading-text");
-			if (text && text.startsWith(decodedTarget) && text.length > bestMatchLength) {
-				bestMatch = element;
-				bestMatchLength = text.length;
-			}
-		}
-		if (bestMatch) return bestMatch;
-	}
-
-	return null;
 }
 
 function rehypeHeadingMetadata() {
@@ -368,9 +328,7 @@ export default function MermaidMarkdown({
 					const targetId = href.slice(1);
 					const target = findHeadingByHashTarget(targetId);
 					if (target) {
-						if (typeof target.scrollIntoView === "function") {
-							target.scrollIntoView({ behavior: "smooth" });
-						}
+						scrollToHeading(target);
 						window.history.pushState(null, "", resolvedHref);
 					} else {
 						window.location.href = resolvedHref;

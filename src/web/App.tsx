@@ -35,6 +35,7 @@ import TaskList from "./components/TaskList";
 import WikiDetail from "./components/WikiDetail";
 import type { DuplicateRepairPlan } from "../core/duplicate-task-repair.ts";
 import { useHealthCheckContext } from "./contexts/HealthCheckContext";
+import { useHashScroll } from "./hooks/useHashScroll";
 import { useI18n } from "./hooks/useI18n";
 import { useI18nContext } from "./contexts/I18nContext";
 import { ImageLightboxProvider } from "./contexts/ImageLightboxContext";
@@ -207,6 +208,7 @@ function App() {
 function AppContent() {
 	const location = useLocation();
 	const navigate = useNavigate();
+	useHashScroll();
 	const state = location.state as { backgroundLocation?: Location } | null;
 	const taskRouteMatch = useMatch("/task/:id");
 	const taskRouteMatchWildcard = useMatch("/task/:id/*");

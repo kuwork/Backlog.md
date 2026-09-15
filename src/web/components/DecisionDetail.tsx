@@ -192,9 +192,10 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 		if (!id || id === 'new' || isLoading || !decision) return;
 		const expectedSlug = sanitizeUrlTitle(decisionTitle);
 		if (title !== expectedSlug) {
-			navigate(`/decisions/${id}/${expectedSlug}`, { replace: true });
+			// Keep the anchor: a bare id link with an in-document hash must still land on its heading.
+			navigate(`/decisions/${id}/${expectedSlug}${location.hash}`, { replace: true });
 		}
-	}, [id, decisionTitle, decision, isLoading, title, navigate]);
+	}, [id, decisionTitle, decision, isLoading, title, navigate, location.hash]);
 
 	const loadDecisionContent = async () => {
 		if (!id) return;
