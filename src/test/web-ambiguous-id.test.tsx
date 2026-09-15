@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Decision as BacklogDecision, Document as BacklogDocument } from "../types/index.ts";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { TocProvider } from "../web/contexts/TocContext.tsx";
 import DecisionDetail from "../web/components/DecisionDetail.tsx";
 import DocumentationDetail from "../web/components/DocumentationDetail.tsx";
 
@@ -51,13 +52,15 @@ async function renderRoute(path: string, pattern: string, element: React.ReactEl
 	activeRoot = createRoot(container);
 	await act(async () => {
 		activeRoot?.render(
-			<I18nProvider>
-				<MemoryRouter initialEntries={[path]}>
-					<Routes>
-						<Route path={pattern} element={element} />
-					</Routes>
-				</MemoryRouter>
-			</I18nProvider>,
+			<TocProvider>
+				<I18nProvider>
+					<MemoryRouter initialEntries={[path]}>
+						<Routes>
+							<Route path={pattern} element={element} />
+						</Routes>
+					</MemoryRouter>
+				</I18nProvider>
+			</TocProvider>,
 		);
 	});
 	return container;

@@ -805,6 +805,13 @@ export const zhCN: TranslationDict = {
 		placeholderBody: "在此编写 Wiki 内容...",
 		saveSuccess: "Wiki 页面保存成功！",
 	},
+	toc: {
+		title: "本页目录",
+		expand: "展开此节",
+		collapse: "折叠此节",
+		expandAll: "展开所有",
+		collapseAll: "折叠所有",
+	},
 	loadingPhases: {
 		loadingLocalTasks: "正在加载本地任务...",
 		loadedTasks: "任务已加载",

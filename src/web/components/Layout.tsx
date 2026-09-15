@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import SideNavigation from './SideNavigation';
 import Navigation from './Navigation';
 import { HealthIndicator, HealthSuccessToast } from './HealthIndicator';
+import { TocProvider } from '../contexts/TocContext';
 import { type Task, type Document, type Decision, type DocsTreeNode, type WikiTreeNode } from '../../types';
 
 interface LayoutProps {
@@ -34,6 +35,7 @@ export default function Layout({
 	onRefreshData 
 }: LayoutProps) {
 	return (
+		<TocProvider>
 		<div className="h-screen bg-gray-50 dark:bg-gray-900 flex overflow-hidden transition-colors duration-200">
 			<HealthIndicator />
 			<SideNavigation 
@@ -58,5 +60,6 @@ export default function Layout({
 				<HealthSuccessToast onDismiss={onDismissToast} />
 			)}
 		</div>
+		</TocProvider>
 	);
 }

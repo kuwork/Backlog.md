@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { apiClient } from "../lib/api";
 import MermaidMarkdown from "./MermaidMarkdown";
+import { usePageToc } from "../contexts/TocContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
@@ -178,6 +179,8 @@ export default function WikiDetail() {
 	const [editTitle, setEditTitle] = useState("");
 	const [originalTitle, setOriginalTitle] = useState("");
 	const [editLabels, setEditLabels] = useState<string[]>([]);
+	// Publishes the rendered headings to the header outline; empty while editing.
+	usePageToc(contentRef, isEditing ? null : page?.content);
 	const [originalLabels, setOriginalLabels] = useState<string[]>([]);
 	const [isSaving, setIsSaving] = useState(false);
 	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
@@ -471,31 +474,31 @@ export default function WikiDetail() {
 
 				{/* Content Section */}
 				<div className="flex-1 bg-gray-50 dark:bg-gray-800 transition-colors duration-200 flex flex-col">
-					<div className="flex-1 p-8 flex flex-col min-h-0">
-						{isEditing ? (
-							<div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-								<PasteAwareMDEditor
-									value={editContent}
-									onChange={(val) => setEditContent(val || "")}
-									preview="edit"
-									height="100%"
-									hideToolbar={false}
+				<div className="flex-1 p-8 flex flex-col min-h-0">
+					{isEditing ? (
+								<div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+									<PasteAwareMDEditor
+										value={editContent}
+										onChange={(val) => setEditContent(val || "")}
+										preview="edit"
+										height="100%"
+										hideToolbar={false}
+										data-color-mode={theme}
+										textareaProps={{
+											placeholder: t.wiki.placeholderBody,
+											style: { fontSize: "14px", resize: "none" },
+										}}
+									/>
+								</div>
+							) : (
+								<div
+									ref={contentRef}
+									className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 									data-color-mode={theme}
-									textareaProps={{
-										placeholder: t.wiki.placeholderBody,
-										style: { fontSize: "14px", resize: "none" },
-									}}
-								/>
-							</div>
-						) : (
-							<div
-								ref={contentRef}
-								className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-								data-color-mode={theme}
-							>
-								<MermaidMarkdown source={page.content} wikilinkBasePath={wikiPath} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
-							</div>
-						)}
+								>
+									<MermaidMarkdown source={page.content} wikilinkBasePath={wikiPath} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
+								</div>
+							)}
 					</div>
 				</div>
 			</div>

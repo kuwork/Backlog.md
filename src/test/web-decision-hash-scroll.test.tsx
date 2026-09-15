@@ -7,6 +7,7 @@ import type { Decision as BacklogDecision } from "../types/index.ts";
 import DecisionDetail from "../web/components/DecisionDetail.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { TocProvider } from "../web/contexts/TocContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
 import { useHashScroll } from "../web/hooks/useHashScroll.ts";
 
@@ -105,19 +106,21 @@ describe("DecisionDetail hash links", () => {
 	const renderDecisions = async (entry: string, decisions: BacklogDecision[]) => {
 		act(() => {
 			root?.render(
-				<ThemeProvider>
-					<I18nProvider initialLocale="en">
-						<ImageLightboxProvider>
-							<MemoryRouter initialEntries={[entry]}>
-								<LocationProbe />
-								<Routes>
-									<Route path="/decisions/:id/:title" element={<Harness decisions={decisions} />} />
-									<Route path="/decisions/:id" element={<Harness decisions={decisions} />} />
-								</Routes>
-							</MemoryRouter>
-						</ImageLightboxProvider>
-					</I18nProvider>
-				</ThemeProvider>,
+				<TocProvider>
+					<ThemeProvider>
+						<I18nProvider initialLocale="en">
+							<ImageLightboxProvider>
+								<MemoryRouter initialEntries={[entry]}>
+									<LocationProbe />
+									<Routes>
+										<Route path="/decisions/:id/:title" element={<Harness decisions={decisions} />} />
+										<Route path="/decisions/:id" element={<Harness decisions={decisions} />} />
+									</Routes>
+								</MemoryRouter>
+							</ImageLightboxProvider>
+						</I18nProvider>
+					</ThemeProvider>
+				</TocProvider>,
 			);
 		});
 		await act(async () => {

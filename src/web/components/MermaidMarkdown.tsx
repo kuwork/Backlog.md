@@ -7,7 +7,7 @@ import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
-import { findHeadingByHashTarget, HEADING_PREFIX_ID_REGEX, scrollToHeading } from "../utils/hash-target";
+import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-target";
 import { renderMermaidIn } from "../utils/mermaid";
 import { createEntityLinkPlugin } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
@@ -325,12 +325,7 @@ export default function MermaidMarkdown({
 
 				const handleHashClick = (e: React.MouseEvent) => {
 					e.preventDefault();
-					const targetId = href.slice(1);
-					const target = findHeadingByHashTarget(targetId);
-					if (target) {
-						scrollToHeading(target);
-						window.history.pushState(null, "", resolvedHref);
-					} else {
+					if (!activateHashTarget(href.slice(1))) {
 						window.location.href = resolvedHref;
 					}
 				};

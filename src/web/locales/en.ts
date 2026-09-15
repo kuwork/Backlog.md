@@ -823,6 +823,13 @@ export const en = {
 		placeholderBody: "Write your wiki content here...",
 		saveSuccess: "Wiki page saved successfully!",
 	},
+	toc: {
+		title: "On this page",
+		expand: "Expand section",
+		collapse: "Collapse section",
+		expandAll: "Expand all",
+		collapseAll: "Collapse all",
+	},
 	loadingPhases: {
 		loadingLocalTasks: "Loading local tasks...",
 		loadedTasks: "Loaded tasks",

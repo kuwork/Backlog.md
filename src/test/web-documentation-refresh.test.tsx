@@ -7,6 +7,7 @@ import type { Document as BacklogDocument } from "../types/index.ts";
 import DocumentationDetail from "../web/components/DocumentationDetail.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { TocProvider } from "../web/contexts/TocContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
 import { useHashScroll } from "../web/hooks/useHashScroll.ts";
 
@@ -119,19 +120,21 @@ describe("DocumentationDetail refresh while a hash link is open", () => {
 	const renderDocs = async (docs: BacklogDocument[], entry: string = DOC_PATH) => {
 		act(() => {
 			root?.render(
-				<ThemeProvider>
-					<I18nProvider initialLocale="en">
-						<ImageLightboxProvider>
-							<MemoryRouter initialEntries={[entry]}>
-								<LocationProbe />
-								<Routes>
-									<Route path="/documentation/:id/:title" element={<Harness docs={docs} />} />
-									<Route path="/documentation/:id" element={<Harness docs={docs} />} />
-								</Routes>
-							</MemoryRouter>
-						</ImageLightboxProvider>
-					</I18nProvider>
-				</ThemeProvider>,
+				<TocProvider>
+					<ThemeProvider>
+						<I18nProvider initialLocale="en">
+							<ImageLightboxProvider>
+								<MemoryRouter initialEntries={[entry]}>
+									<LocationProbe />
+									<Routes>
+										<Route path="/documentation/:id/:title" element={<Harness docs={docs} />} />
+										<Route path="/documentation/:id" element={<Harness docs={docs} />} />
+									</Routes>
+								</MemoryRouter>
+							</ImageLightboxProvider>
+						</I18nProvider>
+					</ThemeProvider>
+				</TocProvider>,
 			);
 		});
 		await act(async () => {

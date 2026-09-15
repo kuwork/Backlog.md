@@ -1,9 +1,10 @@
-import { useState, useEffect, memo, useRef } from 'react';
+import { useState, useEffect, memo, useRef, type Ref } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiClient, isAmbiguousIdConflict } from '../lib/api';
 import { AmbiguousIdNotice } from './AmbiguousIdNotice';
 import { PasteAwareMDEditor } from './PasteAwareMDEditor';
 import MermaidMarkdown from './MermaidMarkdown';
+import { usePageToc } from '../contexts/TocContext';
 import { type Decision } from '../../types';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { SuccessToast } from './SuccessToast';
@@ -71,6 +72,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	onDocClick,
 	onDecisionClick,
 	onWikiClick,
+	containerRef,
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
@@ -81,13 +83,14 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	onDocClick?: (docId: string) => void;
 	onDecisionClick?: (decisionId: string) => void;
 	onWikiClick?: (wikiPath: string) => void;
+	containerRef?: Ref<HTMLDivElement | null>;
 }) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	if (!isEditing) {
 		// Preview mode - just show the rendered markdown without editor UI
 			return (
-				<div className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" data-color-mode={theme}>
+				<div ref={containerRef} className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" data-color-mode={theme}>
 					<MermaidMarkdown source={value} onTaskClick={onTaskClick} onDraftClick={onDraftClick} onDocClick={onDocClick} onDecisionClick={onDecisionClick} onWikiClick={onWikiClick} wikilinkBasePath="index.md" />
 				</div>
 			);
@@ -149,6 +152,9 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	const [isNewDecision, setIsNewDecision] = useState(false);
 	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 	const handledRouteIdRef = useRef<string | undefined>(undefined);
+	const contentRef = useRef<HTMLDivElement | null>(null);
+	// Publishes the rendered headings to the header outline; empty while editing.
+	usePageToc(contentRef, isEditing ? null : content);
 
 	useEffect(() => {
 		// Only react to an actual route change. The parent refreshes its decisions
@@ -522,6 +528,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 						value={content}
 						onChange={(val) => setContent(val || '')}
 						isEditing={isEditing}
+						containerRef={contentRef}
 						onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
 						onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
 						onDocClick={(docId) => navigate(`/documentation/${docId}`)}

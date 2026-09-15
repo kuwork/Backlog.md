@@ -818,6 +818,13 @@ export const ja: TranslationDict = {
 		placeholderBody: "ここに Wiki コンテンツを作成...",
 		saveSuccess: "Wiki ページが保存されました！",
 	},
+	toc: {
+		title: "このページの目次",
+		expand: "この節を展開",
+		collapse: "この節を折りたたむ",
+		expandAll: "すべて展開",
+		collapseAll: "すべて折りたたむ",
+	},
 	loadingPhases: {
 		loadingLocalTasks: "ローカルタスクを読み込み中...",
 		loadedTasks: "タスクを読み込みました",

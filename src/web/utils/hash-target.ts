@@ -69,3 +69,20 @@ export function scrollToHashTarget(hash: string): boolean {
 	scrollToHeading(heading);
 	return true;
 }
+
+/**
+ * Scroll to an in-document target and reflect it in the URL. Shared by markdown
+ * anchor links and the table of contents so both behave identically. Returns
+ * false when no heading matches, leaving the caller free to fall back.
+ */
+export function activateHashTarget(target: string): boolean {
+	if (!target) return false;
+	const heading = findHeadingByHashTarget(target);
+	if (!heading) return false;
+	scrollToHeading(heading);
+	if (typeof window !== "undefined") {
+		const { pathname, search } = window.location;
+		window.history.pushState(null, "", `${pathname}${search}#${target}`);
+	}
+	return true;
+}

@@ -805,6 +805,13 @@ export const zhTW: TranslationDict = {
 		placeholderBody: "在此編寫 Wiki 內容...",
 		saveSuccess: "Wiki 頁面保存成功！",
 	},
+	toc: {
+		title: "本頁目錄",
+		expand: "展開此節",
+		collapse: "收合此節",
+		expandAll: "展開所有",
+		collapseAll: "收合所有",
+	},
 	loadingPhases: {
 		loadingLocalTasks: "正在載入本機任務...",
 		loadedTasks: "任務已載入",

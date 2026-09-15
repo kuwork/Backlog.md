@@ -1,6 +1,7 @@
 import React from 'react';
 import { useI18n } from '../hooks/useI18n';
 import ThemeToggle from './ThemeToggle';
+import TocButton from './TocButton';
 
 interface NavigationProps {
     projectName: string;
@@ -9,7 +10,7 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({projectName}) => {
     const { t } = useI18n();
     return (
-        <nav className="px-8 h-18 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
+        <nav className="relative z-20 px-8 h-18 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
             <div className="h-full flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{projectName || t.common.loading}</h1>
@@ -23,7 +24,10 @@ const Navigation: React.FC<NavigationProps> = ({projectName}) => {
                         Backlog.md
                     </a>
                 </div>
-                <ThemeToggle />
+                <div className="flex items-center gap-1">
+                    <TocButton />
+                    <ThemeToggle />
+                </div>
             </div>
         </nav>
     );
