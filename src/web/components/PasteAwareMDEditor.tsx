@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MDEditor, { commands } from "@uiw/react-md-editor";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
@@ -6,6 +6,7 @@ import { apiClient } from "../lib/api";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
 import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
 import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
+import { MermaidAwarePre } from "./MermaidDiagram";
 import { useI18n } from '../hooks/useI18n';
 
 type MDEditorProps = React.ComponentProps<typeof MDEditor>;
@@ -67,6 +68,7 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 	onChange,
 	textareaProps,
 	extraCommands: propExtraCommands,
+	previewOptions,
 	...rest
 }) => {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -77,6 +79,18 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [isConverting, setIsConverting] = useState(false);
 	const { t } = useI18n();
+
+	// The editor's own preview panes ("Live code" / "Preview code") render markdown
+	// without going through MermaidMarkdown, so diagrams stayed raw code blocks
+	// there. Overriding `pre` keeps the behaviour identical in every pane.
+	const mergedPreviewOptions = useMemo<MDEditorProps["previewOptions"]>(() => {
+		const callerComponents = (previewOptions?.components ?? {}) as Record<string, unknown>;
+		return {
+			...previewOptions,
+			components: { ...callerComponents, pre: MermaidAwarePre },
+			// biome-ignore lint/suspicious/noExplicitAny: library types narrow `components` per element
+		} as any;
+	}, [previewOptions]);
 
 	// Stable identity: an inline ref callback would detach/attach on every
 	// render and, because it feeds setState, would loop.
@@ -271,7 +285,11 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 	return (
 		<div
 			ref={wrapperRef}
-			className="relative"
+			// `h-full` keeps the editor filling definite-height containers: MDEditor sizes
+			// itself with `height: 100%`, which collapses to its content when this wrapper
+			// is an auto-height block. That is invisible in edit/live mode (the textarea
+			// supplies a height) but it flattened the preview-only pane to a 20px strip.
+			className="relative h-full"
 			onDragOver={(e) => e.preventDefault()}
 			onDrop={(e) => {
 				e.preventDefault();
@@ -298,6 +316,7 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 				{...rest}
 				value={value}
 				onChange={onChange}
+				previewOptions={mergedPreviewOptions}
 				extraCommands={[wordCommand, ...(propExtraCommands ?? commands.getExtraCommands())]}
 				textareaProps={{
 					...textareaProps,

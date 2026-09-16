@@ -5,6 +5,7 @@ import type { Element, Root } from "hast";
 import { visit } from "unist-util-visit";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
+import { useOptionalTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-target";
@@ -279,6 +280,7 @@ export default function MermaidMarkdown({
 		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(source, wikilinkBasePath))
 		: sanitizeMarkdownSource(encodeLocalFileLinkDestinations(source));
 	const { t } = useI18n();
+	const theme = useOptionalTheme();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
 
@@ -289,12 +291,12 @@ export default function MermaidMarkdown({
 		// Use requestAnimationFrame to ensure MDEditor has finished rendering
 		const frameId = requestAnimationFrame(() => {
 			if (ref.current) {
-				void renderMermaidIn(ref.current);
+				void renderMermaidIn(ref.current, { mode: theme });
 			}
 		});
 
 		return () => cancelAnimationFrame(frameId);
-	}, [safeSource]);
+	}, [safeSource, theme]);
 
 	const LinkComponent = React.useCallback(
 		({
@@ -513,6 +515,9 @@ export default function MermaidMarkdown({
 	return (
 		<div ref={ref} className="wmde-markdown">
 			<MDEditor.Markdown
+				// Re-mounting on theme change restores the original code blocks, which
+				// `renderMermaidIn` replaces with its own SVG containers.
+				key={theme}
 				source={safeSource}
 				components={{ a: LinkComponent, img: LightboxImage, video: VideoPlayer, audio: AudioPlayer }}
 				rehypePlugins={[rehypeHeadingMetadata]}

@@ -911,9 +911,12 @@ const SideNavigation = memo(function SideNavigation({
 
 	return (
 		<ErrorBoundary>
+			{/* z-30 keeps the sidebar above the page header (Navigation is z-20). The collapse
+			    toggle straddles the sidebar border (-right-3), so its right half sits inside the
+			    header column and would be covered by the header's opaque background otherwise. */}
 			<div
 				ref={sidebarRef}
-				className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-full z-10 ${isCollapsed ? 'w-16 transition-all duration-300' : 'transition-all duration-300'}`}
+				className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-full z-30 ${isCollapsed ? 'w-16 transition-all duration-300' : 'transition-all duration-300'}`}
 				style={isCollapsed ? undefined : { width: sidebarWidth }}
 			>
 				{/* Resize Handle */}

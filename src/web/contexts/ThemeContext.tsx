@@ -17,6 +17,13 @@ export const useTheme = () => {
 	return context;
 };
 
+/**
+ * Color mode for leaf renderers that also get rendered outside the provider
+ * (standalone markdown previews, server-side rendering, component tests).
+ * Falls back to `light` instead of throwing.
+ */
+export const useOptionalTheme = (): Theme => useContext(ThemeContext)?.theme ?? 'light';
+
 interface ThemeProviderProps {
 	children: React.ReactNode;
 }
