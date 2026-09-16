@@ -67,6 +67,7 @@ import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
 import { documentReferenceSuggestions } from "./utils/document-id.ts";
+import { type DraftIdentityFindings, hasDraftIdentityFindings } from "./utils/duplicate-detection.ts";
 import { isAmbiguousIdError } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
@@ -3813,11 +3814,16 @@ draftCmd
 	.action(async (taskId: string) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const success = await core.archiveDraft(taskId);
-		if (success) {
-			console.log(`Archived draft ${taskId}`);
-		} else {
-			console.error(`Draft ${taskId} not found.`);
+		try {
+			const success = await core.archiveDraft(taskId);
+			if (success) {
+				console.log(`Archived draft ${taskId}`);
+			} else {
+				console.error(`Draft ${taskId} not found.`);
+			}
+		} catch (error) {
+			console.error(error instanceof Error ? error.message : String(error));
+			process.exitCode = 1;
 		}
 	});
 
@@ -3847,17 +3853,8 @@ draftCmd
 	.action(async (taskId: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const { getDraftPath } = await import("./utils/task-path.ts");
-		const filePath = await getDraftPath(taskId, core);
-		if (!filePath) {
-			console.error(`Draft ${taskId} not found.`);
-			return;
-		}
-		const draft = await core.filesystem.loadDraft(taskId);
-		if (!draft) {
-			console.error(`Draft ${taskId} not found.`);
-			return;
-		}
+		const draft = await loadDraftOrReport(taskId, core);
+		if (!draft) return;
 
 		// Plain text output for non-interactive environments
 		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
@@ -3881,22 +3878,13 @@ draftCmd
 
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const { getDraftPath } = await import("./utils/task-path.ts");
-		const filePath = await getDraftPath(taskId, core);
-		if (!filePath) {
-			console.error(`Draft ${taskId} not found.`);
-			return;
-		}
-		const draft = await core.filesystem.loadDraft(taskId);
-		if (!draft) {
-			console.error(`Draft ${taskId} not found.`);
-			return;
-		}
+		const draft = await loadDraftOrReport(taskId, core);
+		if (!draft) return;
 
 		// Plain text output for non-interactive environments
 		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
 		if (usePlainOutput) {
-			console.log(formatTaskPlainText(draft, { filePathOverride: filePath }));
+			console.log(formatTaskPlainText(draft, { filePathOverride: draft.filePath }));
 			return;
 		}
 
@@ -5589,6 +5577,49 @@ addHelpSchema(program.command("cleanup"), {
 		}
 	});
 
+/**
+ * Loads one draft by id for the read-only draft commands, reporting resolution failures
+ * (including ambiguous identities) on stderr without conflating them with "not found".
+ */
+async function loadDraftOrReport(draftId: string, core: Core): Promise<Task | null> {
+	try {
+		const draft = await core.filesystem.loadDraft(draftId);
+		if (!draft) {
+			console.error(`Draft ${draftId} not found.`);
+		}
+		return draft;
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exitCode = 1;
+		return null;
+	}
+}
+
+function printDraftIdentityReport(findings: DraftIdentityFindings): void {
+	if (findings.duplicates.length > 0) {
+		console.log("\nDuplicate draft IDs (diagnostic only):");
+		for (const group of findings.duplicates) {
+			console.log(`  ${group.id}:`);
+			for (const path of group.paths) console.log(`    - ${path}`);
+		}
+		console.log("Rename one file to a distinct numeric id, then make its frontmatter agree.");
+	}
+	if (findings.drifted.length > 0) {
+		console.log("\nDrifted draft files (frontmatter id does not match filename):");
+		for (const drift of findings.drifted) {
+			console.log(
+				`  - ${drift.path}: frontmatter declares ${drift.frontmatterId}, filename declares ${drift.filenameId}`,
+			);
+		}
+		console.log("Fix the frontmatter id or rename each file so they agree.");
+	}
+	if (findings.unreadable.length > 0) {
+		console.log("\nUnreadable draft files or directories:");
+		for (const path of findings.unreadable) console.log(`  - ${path}`);
+		console.log("Repair the YAML/frontmatter or file permissions; identity could not be checked for these drafts.");
+	}
+}
+
 // Doctor command for duplicate task ID diagnosis and repair
 addHelpSchema(program.command("doctor"), {
 	reads: "Active and completed task files plus Backlog Markdown references",
@@ -5601,7 +5632,7 @@ addHelpSchema(program.command("doctor"), {
 	],
 	writes:
 		"With --fix, atomically renames duplicate task files and updates only their frontmatter IDs; --commit removes retained backups; --rollback restores original files",
-	output: "Duplicate-ID diagnosis, deterministic repair preview, and lifecycle reminders",
+	output: "Duplicate-ID diagnosis for tasks and drafts, deterministic repair preview, and lifecycle reminders",
 	examples: [
 		"backlog doctor",
 		"backlog doctor --fix",
@@ -5610,7 +5641,7 @@ addHelpSchema(program.command("doctor"), {
 		"backlog doctor --rollback",
 	],
 })
-	.description("diagnose and safely repair duplicate task IDs")
+	.description("diagnose duplicate task and draft IDs and safely repair duplicate task IDs")
 	.option("--fix", "apply the displayed duplicate task ID repair")
 	.option("--yes", "skip confirmation when applying the repair")
 	.option("--commit", "discard retained backups after references are resolved")
@@ -5645,12 +5676,23 @@ addHelpSchema(program.command("doctor"), {
 			}
 
 			const plan = await previewDuplicateTaskIdRepair(core);
-			if (plan.groups.length === 0) {
+			const draftIdentity = await core.filesystem.diagnoseDraftIdentity();
+			const draftIdentityBroken = hasDraftIdentityFindings(draftIdentity);
+			if (plan.groups.length === 0 && !draftIdentityBroken) {
 				console.log("No duplicate task IDs found.");
 				return;
 			}
 
-			printDuplicateRepairPlan(plan);
+			if (plan.groups.length > 0) {
+				printDuplicateRepairPlan(plan);
+			}
+			printDraftIdentityReport(draftIdentity);
+
+			if (plan.groups.length === 0) {
+				console.log("\nDraft identity findings are diagnostic only; resolve them by hand.");
+				process.exitCode = 1;
+				return;
+			}
 			if (!plan.repairable) {
 				console.log("\nResolve the blocked reasons above, then run 'backlog doctor' again.");
 				process.exitCode = 1;
@@ -5659,6 +5701,7 @@ addHelpSchema(program.command("doctor"), {
 
 			if (!options.fix) {
 				console.log("\nRun 'backlog doctor --fix' to apply this repair after reviewing the preview.");
+				if (draftIdentityBroken) process.exitCode = 1;
 				return;
 			}
 
@@ -5684,6 +5727,10 @@ addHelpSchema(program.command("doctor"), {
 			}
 			console.log("\nBackups are retained. Run 'backlog doctor --commit' after reviewing/fixing references,");
 			console.log("or 'backlog doctor --rollback' to undo the repair before committing.");
+			if (draftIdentityBroken) {
+				console.log("Draft identity findings remain diagnostic-only and still require manual resolution.");
+				process.exitCode = 1;
+			}
 		} catch (err) {
 			console.error("Failed to run doctor", err);
 			process.exitCode = 1;

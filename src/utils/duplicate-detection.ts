@@ -12,6 +12,23 @@ export interface DuplicateGroup {
 }
 
 /**
+ * Draft identity findings reported by `backlog doctor`. Draft identities are filename-derived,
+ * so a file that fails to parse still occupies (and can duplicate) its id.
+ */
+export interface DraftIdentityFindings {
+	/** Canonical ids claimed by more than one draft file, with every claiming filename. */
+	duplicates: Array<{ id: string; paths: string[] }>;
+	/** Draft files that could not be read or parsed, plus unscannable drafts directories. */
+	unreadable: string[];
+	/** Files whose frontmatter id does not agree with their filename id. */
+	drifted: Array<{ path: string; frontmatterId: string; filenameId: string }>;
+}
+
+export function hasDraftIdentityFindings(findings: DraftIdentityFindings): boolean {
+	return findings.duplicates.length > 0 || findings.unreadable.length > 0 || findings.drifted.length > 0;
+}
+
+/**
  * Detect duplicate task IDs across a list of tasks.
  *
  * Equivalence is determined by {@link taskIdsEqual}, which handles:

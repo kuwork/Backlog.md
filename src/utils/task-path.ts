@@ -10,7 +10,7 @@ import {
 	idForFilename,
 	normalizeId,
 } from "./prefix-config.ts";
-import { DEFAULT_TASK_PREFIX, extractTaskBody, normalizeTaskId } from "./task-id.ts";
+import { canonicalTaskId, DEFAULT_TASK_PREFIX, extractTaskBody, normalizeTaskId } from "./task-id.ts";
 
 // Re-exported for existing consumers; the canonical identity helpers live in the
 // pure module task-id.ts so browser-facing code (web UI) can import them without
@@ -246,8 +246,10 @@ function normalizeDraftId(draftId: string): string {
 
 /**
  * Checks if an input ID matches a filename loosely for drafts.
+ * Loose means case-insensitive with leading zeros ignored, the same rule the
+ * filename-derived draft finder applies.
  */
-function draftIdsMatchLoosely(inputId: string, filename: string): boolean {
+export function draftIdsMatchLoosely(inputId: string, filename: string): boolean {
 	const candidate = extractDraftIdFromFilename(filename);
 	if (!candidate) return false;
 	return draftIdsEqual(inputId, candidate);
@@ -256,7 +258,7 @@ function draftIdsMatchLoosely(inputId: string, filename: string): boolean {
 /**
  * Extracts the draft ID from a filename.
  */
-function extractDraftIdFromFilename(filename: string): string | null {
+export function extractDraftIdFromFilename(filename: string): string | null {
 	const regex = buildFilenameIdRegex(DEFAULT_DRAFT_PREFIX);
 	const match = filename.match(regex);
 	if (!match?.[1]) return null;
@@ -264,62 +266,44 @@ function extractDraftIdFromFilename(filename: string): string | null {
 }
 
 /**
- * Compares two draft IDs for equality.
+ * The one canonicalization authority for draft identity: lowercase prefix plus a
+ * zero-padding-insensitive dotted-decimal body. "draft-1", "DRAFT-01" and "draft-0001" collapse
+ * together, and so do "draft-1.1" and "draft-1.01". Every consumer that groups, matches, or
+ * compares draft identities must go through this so no two surfaces disagree about which files
+ * are the same draft.
+ */
+export function draftIdentityKey(id: string): string {
+	const trimmed = id.trim();
+	if (trimmed === "") return "";
+	return canonicalTaskId(trimmed, DEFAULT_DRAFT_PREFIX).toLowerCase();
+}
+
+/**
+ * Groups draft filenames by their canonical numeric identity (see {@link draftIdentityKey}) and
+ * returns every group that claims more than one file (e.g. "draft-1 - A.md" alongside
+ * "draft-01 - B.md", or "draft-1.1 - A.md" alongside "draft-1.01 - B.md"). Such sets are
+ * ambiguous wherever a draft identity is resolved, so callers must fail closed on them instead
+ * of offering one of the files as an arbitrary winner.
+ */
+export function findDuplicateDraftFilenameGroups(filenames: readonly string[]): string[][] {
+	const groups = new Map<string, string[]>();
+	for (const filename of filenames) {
+		const declared = extractDraftIdFromFilename(filename);
+		if (!declared) continue;
+		const key = draftIdentityKey(declared);
+		const group = groups.get(key) ?? [];
+		group.push(filename);
+		groups.set(key, group);
+	}
+	return [...groups.values()].filter((group) => group.length > 1);
+}
+
+/**
+ * Compares two draft IDs for equality through {@link draftIdentityKey}.
  */
 function draftIdsEqual(left: string, right: string): boolean {
-	const leftBody = extractDraftBody(left);
-	const rightBody = extractDraftBody(right);
-
-	if (leftBody && rightBody) {
-		const leftSegs = leftBody.split(".").map((seg) => Number.parseInt(seg, 10));
-		const rightSegs = rightBody.split(".").map((seg) => Number.parseInt(seg, 10));
-		if (leftSegs.length !== rightSegs.length) {
-			return false;
-		}
-		return leftSegs.every((value, index) => value === rightSegs[index]);
-	}
-
-	return normalizeDraftId(left).toLowerCase() === normalizeDraftId(right).toLowerCase();
-}
-
-/**
- * Extracts the body from a draft ID.
- */
-function extractDraftBody(value: string): string | null {
-	const trimmed = value.trim();
-	if (trimmed === "") return "";
-	const prefixPattern = new RegExp(`^(?:${escapeRegex(DEFAULT_DRAFT_PREFIX)}-)?([0-9]+(?:\\.[0-9]+)*)$`, "i");
-	const match = trimmed.match(prefixPattern);
-	return match?.[1] ?? null;
-}
-
-/**
- * Get the file path for a draft by ID
- */
-export async function getDraftPath(draftId: string, core: Core): Promise<string | null> {
-	try {
-		const draftsDir = await core.filesystem.getDraftsDir();
-		const files = await Array.fromAsync(
-			new Bun.Glob(buildGlobPattern("draft")).scan({ cwd: draftsDir, followSymlinks: true }),
-		);
-		const normalizedId = normalizeDraftId(draftId);
-		// Use lowercase ID for filename matching (filenames use lowercase prefix)
-		const filenameId = idForFilename(normalizedId);
-		// First exact match
-		let draftFile = files.find((f) => f.startsWith(`${filenameId} -`) || f.startsWith(`${filenameId}-`));
-		// Fallback to loose numeric match ignoring leading zeros
-		if (!draftFile) {
-			draftFile = files.find((f) => draftIdsMatchLoosely(draftId, f));
-		}
-
-		if (draftFile) {
-			return join(draftsDir, draftFile);
-		}
-
-		return null;
-	} catch {
-		return null;
-	}
+	const leftKey = draftIdentityKey(left);
+	return leftKey !== "" && leftKey === draftIdentityKey(right);
 }
 
 /**

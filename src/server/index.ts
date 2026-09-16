@@ -1807,6 +1807,9 @@ export class BacklogServer {
 			}
 			return Response.json(draft);
 		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
 			console.error("Error loading draft:", error);
 			return Response.json({ error: "Draft not found" }, { status: 404 });
 		}
@@ -1820,8 +1823,13 @@ export class BacklogServer {
 			}
 			return Response.json(task);
 		} catch (error) {
-			console.error("Error promoting draft:", error);
-			if (isCreateLockError(error)) {
+			if (!isAmbiguousIdError(error)) {
+				console.error("Error promoting draft:", error);
+			}
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
+			if (isCreateLockError(error) || isTaskLockError(error)) {
 				return Response.json({ error: error.message }, { status: 409 });
 			}
 			return Response.json({ error: "Failed to promote draft" }, { status: 500 });
