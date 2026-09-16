@@ -87,6 +87,83 @@ function escapeForRegex(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+interface FenceState {
+	character: string;
+	length: number;
+}
+
+const FENCE_OPEN_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
+
+function fenceOpenerFor(line: string): FenceState | undefined {
+	const marker = FENCE_OPEN_PATTERN.exec(line)?.[1];
+	if (!marker) return undefined;
+	return { character: marker.slice(0, 1), length: marker.length };
+}
+
+function isFenceCloser(line: string, fence: FenceState): boolean {
+	let start = 0;
+	while (start < 3 && line[start] === " ") {
+		start += 1;
+	}
+	if (line[start] !== fence.character) return false;
+	let end = start;
+	while (line[end] === fence.character) {
+		end += 1;
+	}
+	if (end - start < fence.length) return false;
+	return line.slice(end).trim() === "";
+}
+
+/**
+ * Collapses runs of two or more blank lines into a single blank line outside fenced code
+ * blocks, leaving fenced content byte-for-byte intact. A fence is three or more backticks
+ * or tildes indented by at most three spaces, closed by a line that repeats the opening
+ * character at least as many times and carries nothing but whitespace afterwards; an
+ * unterminated fence protects everything that follows it. Leading blank lines are dropped
+ * and trailing ones are left to the caller, matching the normalization these callers
+ * already applied around it.
+ */
+function collapseBlankLines(text: string): string {
+	const output: string[] = [];
+	let fence: FenceState | undefined;
+	let pendingBlankLines = 0;
+
+	const flushBlankRun = () => {
+		if (pendingBlankLines > 0 && output.length > 0) {
+			output.push("");
+		}
+		pendingBlankLines = 0;
+	};
+
+	for (const line of text.split("\n")) {
+		if (fence) {
+			output.push(line);
+			if (isFenceCloser(line, fence)) {
+				fence = undefined;
+			}
+			continue;
+		}
+
+		const opener = fenceOpenerFor(line);
+		if (opener) {
+			flushBlankRun();
+			output.push(line);
+			fence = opener;
+			continue;
+		}
+
+		if (line.trim() === "") {
+			pendingBlankLines += 1;
+			continue;
+		}
+
+		flushBlankRun();
+		output.push(line);
+	}
+
+	return output.join("\n");
+}
+
 function getConfig(key: StructuredSectionKey): SectionConfig {
 	return SECTION_CONFIG[key];
 }
@@ -533,7 +610,7 @@ function stripSectionInstances(content: string, key: StructuredSectionKey): stri
 	const legacyRegex = legacySectionRegex(title, "gi");
 	stripped = stripped.replace(legacyRegex, "\n");
 
-	return stripped.replace(/\n{3,}/g, "\n\n").trimEnd();
+	return collapseBlankLines(stripped).trimEnd();
 }
 
 function insertAfterSection(content: string, title: string, block: string): { inserted: boolean; content: string } {
@@ -674,7 +751,7 @@ export function updateStructuredSections(content: string, sections: SectionValue
 		output = insertAtStart(tail, descriptionBlock);
 	}
 
-	const finalOutput = output.replace(/\n{3,}/g, "\n\n").trim();
+	const finalOutput = collapseBlankLines(output).trim();
 	return restoreLineEndings(finalOutput, useCRLF);
 }
 
@@ -1086,7 +1163,7 @@ function stripCommentsSection(content: string): string {
 	for (const range of findCommentSectionRanges(content)) {
 		stripped = `${stripped.slice(0, range.start)}\n${stripped.slice(range.end)}`;
 	}
-	return stripped.replace(/\n{3,}/g, "\n\n").trimEnd();
+	return collapseBlankLines(stripped).trimEnd();
 }
 
 function updateCommentsContent(content: string, comments: TaskComment[]): string {
@@ -1114,7 +1191,7 @@ function updateCommentsContent(content: string, comments: TaskComment[]): string
 		res = insertAfterSection(stripped, getConfig("description").title, newSection);
 	}
 	const output = res.inserted ? res.content : appendBlock(stripped, newSection);
-	return restoreLineEndings(output.replace(/\n{3,}/g, "\n\n").trim(), useCRLF);
+	return restoreLineEndings(collapseBlankLines(output).trim(), useCRLF);
 }
 
 /* biome-ignore lint/complexity/noStaticOnlyClass: Utility methods grouped for clarity */
