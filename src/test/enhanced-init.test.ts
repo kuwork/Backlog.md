@@ -572,3 +572,93 @@ describe("Enhanced init command", () => {
 		).rejects.toThrow("Backlog directory source and backlog directory value must agree.");
 	});
 });
+
+describe("Reserved task prefixes at init", () => {
+	let reservedDir: string;
+
+	beforeEach(async () => {
+		reservedDir = createUniqueTestDir("test-reserved-prefix-init");
+	});
+
+	afterEach(async () => {
+		try {
+			await safeCleanup(reservedDir);
+		} catch {
+			// Ignore cleanup errors - the unique directory names prevent conflicts
+		}
+	});
+
+	test.each([
+		"draft",
+		"DRAFT",
+		"doc",
+		"Doc",
+		"decision",
+		"DECISION",
+	])("initializeProject rejects %s as a task prefix and writes no config", async (prefix) => {
+		const core = new Core(reservedDir);
+
+		await expect(
+			initializeProject(core, {
+				projectName: "Reserved Prefix",
+				integrationMode: "none",
+				advancedConfig: { taskPrefix: prefix },
+			}),
+		).rejects.toThrow(/is reserved for drafts, docs, or decisions/);
+
+		expect(await core.filesystem.loadConfig()).toBeNull();
+	});
+
+	test("initializeProject rejects padded input instead of persisting it", async () => {
+		const core = new Core(reservedDir);
+
+		await expect(
+			initializeProject(core, {
+				projectName: "Padded Prefix",
+				integrationMode: "none",
+				advancedConfig: { taskPrefix: " JIRA " },
+			}),
+		).rejects.toThrow(/must contain only letters/);
+
+		expect(await core.filesystem.loadConfig()).toBeNull();
+	});
+
+	test("a re-init that explicitly requests a reserved prefix is rejected and leaves the prefix untouched", async () => {
+		const core = new Core(reservedDir);
+		await initializeProject(core, {
+			projectName: "Keeps JIRA",
+			integrationMode: "none",
+			advancedConfig: { taskPrefix: "JIRA" },
+		});
+		const existingConfig = await core.filesystem.loadConfig();
+		expect(existingConfig?.prefixes?.task).toBe("JIRA");
+
+		await expect(
+			initializeProject(core, {
+				projectName: "Keeps JIRA",
+				integrationMode: "none",
+				existingConfig,
+				advancedConfig: { taskPrefix: "draft" },
+			}),
+		).rejects.toThrow(/is reserved for drafts, docs, or decisions/);
+
+		const afterFailedReInit = await new Core(reservedDir).filesystem.loadConfig();
+		expect(afterFailedReInit?.prefixes?.task).toBe("JIRA");
+	});
+
+	test("a re-init without a prefix still preserves a legacy reserved prefix", async () => {
+		const core = new Core(reservedDir);
+		await initializeProject(core, { projectName: "Legacy Reserved", integrationMode: "none" });
+		const legacyConfig = await core.filesystem.loadConfig();
+		if (!legacyConfig) throw new Error("Config not loaded");
+		await core.filesystem.saveConfig({ ...legacyConfig, prefixes: { task: "draft" } });
+
+		const result = await initializeProject(new Core(reservedDir), {
+			projectName: "Legacy Reserved",
+			integrationMode: "none",
+			existingConfig: await new Core(reservedDir).filesystem.loadConfig(),
+		});
+
+		expect(result.config.prefixes?.task).toBe("draft");
+	});
+});

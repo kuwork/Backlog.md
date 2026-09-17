@@ -682,7 +682,7 @@ export const zhTW: TranslationDict = {
 		leaveBlankForDefault: "留空以使用預設值",
 		failedToInitialize: "專案初始化失敗",
 		taskPrefix: "任務前綴",
-		taskPrefixHint: "用於任務 ID（例如 task-001）。在初始化時設定。",
+		taskPrefixHint: "用於任務 ID（例如 task-001）。僅限字母；draft、doc、decision 為保留前綴。在初始化時設定。",
 		taskPrefixPlaceholder: "task",
 		activeBranchDays: "活躍分支天數",
 		selectIntegrationMode: "選擇整合模式",

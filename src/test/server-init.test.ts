@@ -53,4 +53,23 @@ describe("BacklogServer init endpoint", () => {
 		expect(config?.remoteOperations).toBe(false);
 		expect(config?.checkActiveBranches).toBe(false);
 	});
+
+	it("rejects a reserved task prefix with 400 and writes no config", async () => {
+		const server = new BacklogServer(TEST_DIR) as unknown as InitHandler;
+		const response = await server.handleInit(initRequest({ advancedConfig: { taskPrefix: "draft" } }));
+
+		expect(response.status).toBe(400);
+		const body = (await response.json()) as { error?: string };
+		expect(body.error).toContain("is reserved for drafts, docs, or decisions");
+		expect(await new Core(TEST_DIR).filesystem.loadConfig()).toBeNull();
+	});
+
+	it("accepts a non-reserved task prefix", async () => {
+		const server = new BacklogServer(TEST_DIR) as unknown as InitHandler;
+		const response = await server.handleInit(initRequest({ advancedConfig: { taskPrefix: "JIRA" } }));
+
+		expect(response.status).toBe(200);
+		const config = await new Core(TEST_DIR).filesystem.loadConfig();
+		expect(config?.prefixes?.task).toBe("JIRA");
+	});
 });

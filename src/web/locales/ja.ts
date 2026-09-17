@@ -697,7 +697,8 @@ export const ja: TranslationDict = {
 		leaveBlankForDefault: "デフォルトを使用する場合は空白のままにしてください",
 		failedToInitialize: "プロジェクトの初期化に失敗しました",
 		taskPrefix: "タスクプレフィックス",
-		taskPrefixHint: "タスク ID に使用されます（例: task-001）。初期化時に設定されます。",
+		taskPrefixHint:
+			"タスク ID に使用されます（例: task-001）。英字のみ。draft、doc、decision は予約済みです。初期化時に設定されます。",
 		taskPrefixPlaceholder: "task",
 		activeBranchDays: "アクティブブランチ日数",
 		selectIntegrationMode: "統合モードを選択",

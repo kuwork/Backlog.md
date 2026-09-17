@@ -682,7 +682,7 @@ export const zhCN: TranslationDict = {
 		leaveBlankForDefault: "留空以使用默认值",
 		failedToInitialize: "项目初始化失败",
 		taskPrefix: "任务前缀",
-		taskPrefixHint: "用于任务 ID（例如 task-001）。在初始化时设置。",
+		taskPrefixHint: "用于任务 ID（例如 task-001）。仅限字母；draft、doc、decision 为保留前缀。在初始化时设置。",
 		taskPrefixPlaceholder: "task",
 		activeBranchDays: "活跃分支天数",
 		selectIntegrationMode: "选择集成模式",

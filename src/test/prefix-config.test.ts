@@ -12,8 +12,10 @@ import {
 	generateNextSubtaskId,
 	getDefaultPrefixConfig,
 	getPrefixForType,
+	getTaskPrefixError,
 	hasPrefix,
 	idsEqual,
+	isReservedTaskPrefix,
 	mergePrefixConfig,
 	normalizeId,
 } from "../utils/prefix-config.ts";
@@ -362,6 +364,56 @@ describe("prefix-config", () => {
 
 		test("handles word IDs", () => {
 			expect(extractAnyPrefix("bug-fix-login")).toBe("bug");
+		});
+	});
+});
+
+describe("reserved task prefixes", () => {
+	describe("isReservedTaskPrefix", () => {
+		test("flags draft, doc, and decision regardless of case", () => {
+			expect(isReservedTaskPrefix("draft")).toBe(true);
+			expect(isReservedTaskPrefix("DRAFT")).toBe(true);
+			expect(isReservedTaskPrefix("Draft")).toBe(true);
+			expect(isReservedTaskPrefix("doc")).toBe(true);
+			expect(isReservedTaskPrefix("Doc")).toBe(true);
+			expect(isReservedTaskPrefix("decision")).toBe(true);
+			expect(isReservedTaskPrefix("DECISION")).toBe(true);
+		});
+
+		test("trims surrounding whitespace before comparing", () => {
+			expect(isReservedTaskPrefix("  draft  ")).toBe(true);
+		});
+
+		test("accepts ordinary and look-alike prefixes", () => {
+			expect(isReservedTaskPrefix("task")).toBe(false);
+			expect(isReservedTaskPrefix("JIRA")).toBe(false);
+			expect(isReservedTaskPrefix("docs")).toBe(false);
+			expect(isReservedTaskPrefix("decisions")).toBe(false);
+			expect(isReservedTaskPrefix("")).toBe(false);
+		});
+	});
+
+	describe("getTaskPrefixError", () => {
+		test("accepts the empty value and ordinary prefixes", () => {
+			expect(getTaskPrefixError("")).toBeUndefined();
+			expect(getTaskPrefixError("task")).toBeUndefined();
+			expect(getTaskPrefixError("JIRA")).toBeUndefined();
+		});
+
+		test("rejects a reserved prefix and names it", () => {
+			for (const prefix of ["draft", "DRAFT", "Doc", "decision", "DECISION"]) {
+				const error = getTaskPrefixError(prefix);
+				expect(error).toContain(prefix);
+				expect(error).toContain("is reserved for drafts, docs, or decisions");
+			}
+		});
+
+		test("judges the value exactly as given so padding is never persisted", () => {
+			const lettersOnly = "Task prefix must contain only letters (a-z, A-Z).";
+			expect(getTaskPrefixError("JIRA1")).toBe(lettersOnly);
+			expect(getTaskPrefixError("   ")).toBe(lettersOnly);
+			expect(getTaskPrefixError(" JIRA ")).toBe(lettersOnly);
+			expect(getTaskPrefixError("  draft  ")).toBe(lettersOnly);
 		});
 	});
 });

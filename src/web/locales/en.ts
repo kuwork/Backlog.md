@@ -702,7 +702,8 @@ export const en = {
 		leaveBlankForDefault: "Leave blank for default",
 		failedToInitialize: "Failed to initialize project",
 		taskPrefix: "Task Prefix",
-		taskPrefixHint: "Used for task IDs (e.g., task-001). Set during initialization.",
+		taskPrefixHint:
+			"Used for task IDs (e.g., task-001). Letters only; draft, doc, and decision are reserved. Set during initialization.",
 		taskPrefixPlaceholder: "task",
 		activeBranchDays: "Active branch days",
 		selectIntegrationMode: "Select integration mode",

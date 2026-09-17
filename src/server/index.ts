@@ -32,7 +32,7 @@ import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
-import { DRAFT_PREFIX, extractAnyPrefix } from "../utils/prefix-config.ts";
+import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
 
@@ -2561,6 +2561,12 @@ export class BacklogServer {
 			// Input validation (browser layer responsibility)
 			if (!projectName) {
 				return Response.json({ error: "Project name is required" }, { status: 400 });
+			}
+			const taskPrefixError = getTaskPrefixError(
+				typeof advancedConfig.taskPrefix === "string" ? advancedConfig.taskPrefix : "",
+			);
+			if (taskPrefixError) {
+				return Response.json({ error: taskPrefixError }, { status: 400 });
 			}
 
 			// Check if already initialized (for browser, we don't allow re-init)

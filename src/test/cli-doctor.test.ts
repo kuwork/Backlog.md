@@ -206,4 +206,55 @@ describe("backlog doctor command", () => {
 			expect(restoredContent).toContain("id: TASK-01");
 		});
 	});
+
+	describe("reserved task prefix", () => {
+		async function setupReservedPrefixProject(prefix = "draft"): Promise<Core> {
+			const core = await setupProject();
+			const config = await core.filesystem.loadConfig();
+			if (!config) throw new Error("Config not loaded");
+			await core.filesystem.saveConfig({ ...config, prefixes: { task: prefix } });
+			return core;
+		}
+
+		it("reports the collision and refuses --fix instead of masking it", async () => {
+			await setupReservedPrefixProject("draft");
+
+			const diagnose = await $`bun ${CLI_PATH} doctor`.cwd(TEST_DIR).nothrow().quiet();
+			const diagnoseOutput = diagnose.stdout.toString() + diagnose.stderr.toString();
+
+			expect(diagnose.exitCode).toBe(1);
+			expect(diagnoseOutput).toContain('Task prefix "draft" collides with a reserved prefix');
+			expect(diagnoseOutput).toContain("set task_prefix in the project config file");
+			expect(diagnoseOutput).not.toContain("No duplicate task IDs found.");
+
+			const fix = await $`bun ${CLI_PATH} doctor --fix --yes`.cwd(TEST_DIR).nothrow().quiet();
+			expect(fix.stdout.toString() + fix.stderr.toString()).toContain(
+				"Resolve the reserved task prefix before running --fix.",
+			);
+			expect((await findBackups()).length).toBe(0);
+		});
+
+		it("keeps runtime commands working on a project that already carries a reserved prefix", async () => {
+			await setupReservedPrefixProject("draft");
+
+			const list = await $`bun ${CLI_PATH} task list --plain`.cwd(TEST_DIR).nothrow().quiet();
+			expect(list.exitCode).toBe(0);
+
+			const create = await $`bun ${CLI_PATH} task create "Still Works" --plain`.cwd(TEST_DIR).nothrow().quiet();
+			expect(create.exitCode).toBe(0);
+			expect(create.stdout.toString()).toContain("Still Works");
+		});
+
+		it("stops reporting once the prefix is no longer reserved", async () => {
+			const core = await setupReservedPrefixProject("doc");
+			const config = await core.filesystem.loadConfig();
+			if (!config) throw new Error("Config not loaded");
+			await core.filesystem.saveConfig({ ...config, prefixes: { task: "JIRA" } });
+
+			const result = await $`bun ${CLI_PATH} doctor`.cwd(TEST_DIR).nothrow().quiet();
+
+			expect(result.exitCode).toBe(0);
+			expect((result.stdout.toString() + result.stderr.toString()).length).toBeGreaterThan(0);
+		});
+	});
 });
