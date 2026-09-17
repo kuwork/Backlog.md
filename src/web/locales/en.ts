@@ -254,6 +254,11 @@ export const en = {
 		archiveTask: "Archive Task",
 		completeConfirm: "Complete this task? It will be moved to the completed folder.",
 		demoteConfirm: "Demote this task to draft? It will be moved to the drafts folder.",
+		demoteInProgress: "Demoting…",
+		demoteRefreshFailed:
+			"The task was moved to drafts, but refreshing the view failed. Close this dialog and verify the draft before retrying.",
+		demoteResponseLost:
+			"The demotion request may have succeeded, but its response was lost. Check the task and drafts views before retrying.",
 		promoteConfirm: "Promote this draft to a task? It will be moved to the tasks folder.",
 		discardAndClosePrompt: "Discard unsaved changes and close?",
 		failedToUpdateCriterion: "Failed to update criterion",

@@ -4,7 +4,7 @@ import { stripAnyPrefix } from "../../utils/prefix-config";
 import type { AcceptanceCriterion, Milestone, Task, TaskComment } from "../../types";
 import Modal from "./Modal";
 import TaskHierarchySection from "./TaskHierarchySection";
-import { apiClient } from "../lib/api";
+import { apiClient, NetworkError } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
@@ -181,7 +181,9 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const previousTaskId = useRef(task?.id ?? "");
   const previousIsOpen = useRef(isOpen);
   const formBaselineRef = useRef<TaskDetailsFormState | null>(null);
+  const activeDemotionRequest = useRef<{ identity: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [demoting, setDemoting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Title field for create mode
@@ -489,9 +491,37 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const isDoneStatus = (status || "").toLowerCase().includes("done");
   const isDraftTask = task?.id?.startsWith("DRAFT-") ?? false;
 
+  // A demotion moves the record, so every continuation after the request must prove it still
+  // belongs to the task it started on: the popup may have switched task, closed, or the record
+  // may have turned from a task into a draft while the request was in flight.
+  const demotionIdentity = [
+    isOpen ? "open" : "closed",
+    task?.id ?? "",
+    task?.source ?? "",
+    task?.branch ?? "",
+    isDraftTask ? "draft" : "task",
+  ].join("\0");
+  const demotionIdentityRef = useRef(demotionIdentity);
+  demotionIdentityRef.current = demotionIdentity;
+
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  // Retire an in-flight demotion on unmount so its continuation cannot touch a dead component.
+  useEffect(
+    () => () => {
+      activeDemotionRequest.current = null;
+    },
+    [],
+  );
+
+  // Switching task, opening or closing the popup or changing the record type retires the request
+  // in flight: its continuations would otherwise close or refresh a view it no longer owns.
+  useEffect(() => {
+    activeDemotionRequest.current = null;
+    setDemoting(false);
+  }, [demotionIdentity]);
 
   // Intercept Escape to cancel edit (not close modal) when in edit mode
   useEffect(() => {
@@ -509,6 +539,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
       // Preview shortcuts must not intercept typing in editable fields,
       // while edit-mode Escape and Cmd/Ctrl+S above keep working there.
       if (mode !== "preview" || isTypingTarget(e)) return;
+      // A demotion is already moving the record, so no shortcut may start another write.
+      if (demoting) return;
 
       if (e.key.toLowerCase() === "e" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
@@ -533,7 +565,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true } as any);
-  }, [mode, title, description, plan, notes, finalSummary, criteria, definitionOfDone, status, isDraftTask]);
+  }, [mode, title, description, plan, notes, finalSummary, criteria, definitionOfDone, status, isDraftTask, demoting]);
 
   // Reset local state when task changes or modal opens
   useEffect(() => {
@@ -694,6 +726,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleCancelEdit = () => {
+    if (demoting) return;
     if (isDirty) {
       const confirmDiscard = window.confirm(t.taskDetails.unsavedChangesPrompt);
       if (!confirmDiscard) return;
@@ -816,6 +849,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleSave = async () => {
+    if (demoting) return;
     setSaving(true);
     setError(null);
 
@@ -913,6 +947,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleToggleCriterion = async (index: number, checked: boolean) => {
+    if (demoting) return;
     if (!task) return; // Can't toggle in create mode
     if (isFromOtherBranch) return; // Can't toggle for cross-branch tasks
     // Optimistic update
@@ -929,6 +964,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleToggleDefinitionOfDone = async (index: number, checked: boolean) => {
+    if (demoting) return;
     if (!task) return; // Can't toggle in create mode
     if (isFromOtherBranch) return; // Can't toggle for cross-branch tasks
     const next = (definitionOfDone || []).map((c) => (c.index === index ? { ...c, checked } : c));
@@ -946,6 +982,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleInlineMetaUpdate = async (updates: InlineMetaUpdatePayload) => {
+    if (demoting) return;
     // Don't allow updates for cross-branch tasks
     if (isFromOtherBranch) return;
 
@@ -972,6 +1009,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleAddComment = async () => {
+    if (demoting) return;
     if (!task || isFromOtherBranch) return;
     const body = commentBody.trim();
     if (!body) return;
@@ -1013,6 +1051,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleDeleteComment = async (index: number) => {
+    if (demoting) return;
     if (!task || isFromOtherBranch) return;
     if (!window.confirm(t.taskDetails.deleteCommentConfirm)) return;
     setCommentSaving(true);
@@ -1029,6 +1068,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
   const handleClearComments = async () => {
+    if (demoting) return;
     if (!task || isFromOtherBranch) return;
     if (comments.length === 0) return;
     if (!window.confirm(t.taskDetails.clearCommentsConfirm)) return;
@@ -1048,6 +1088,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   // labels handled via ChipInput; no textarea parsing
 
 	const handleComplete = async () => {
+		if (demoting) return;
 		if (!task) return;
 		if (!window.confirm(t.taskDetails.completeConfirm)) return;
 		try {
@@ -1060,18 +1101,67 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
 	const handleDemote = async () => {
-		if (!task) return;
+		if (demoting || !task || isDraftTask || isDoneStatus || isFromOtherBranch) return;
+		if (activeDemotionRequest.current !== null) return;
 		if (!window.confirm(t.taskDetails.demoteConfirm)) return;
+
+		const request = { identity: demotionIdentity };
+		activeDemotionRequest.current = request;
+		// Every continuation has to prove that both the request it came from and the record it is
+		// about are still the current ones before it may touch state, refresh or close.
+		const isCurrentRequest = () =>
+			activeDemotionRequest.current === request && demotionIdentityRef.current === request.identity;
+		// The record has already moved, so the user has to learn about the follow-up failure before
+		// the popup disappears even when the refresh itself is what broke.
+		const finishWithRefreshWarning = async (message: string) => {
+			window.dispatchEvent(new CustomEvent("drafts-updated"));
+			try {
+				if (onSaved) await onSaved();
+			} catch (refreshError) {
+				console.error("Task was demoted, but refreshing the Web UI failed", refreshError);
+			}
+			if (!isCurrentRequest()) return;
+			try {
+				window.alert(message);
+			} catch {
+				setError(message);
+			}
+			onClose();
+		};
+
+		setDemoting(true);
+		setError(null);
 		try {
 			await apiClient.demoteTask(task.id);
-			if (onSaved) await onSaved();
+			if (!isCurrentRequest()) return;
+			try {
+				window.dispatchEvent(new CustomEvent("drafts-updated"));
+				if (onSaved) await onSaved();
+			} catch {
+				await finishWithRefreshWarning(t.taskDetails.demoteRefreshFailed);
+				return;
+			}
+			if (!isCurrentRequest()) return;
 			onClose();
 		} catch (err) {
+			if (!isCurrentRequest()) return;
+			// A lost response is not a rejection: the move may well have happened, so the user has
+			// to verify the drafts list instead of being told the demotion failed.
+			if (err instanceof NetworkError) {
+				await finishWithRefreshWarning(t.taskDetails.demoteResponseLost);
+				return;
+			}
 			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			if (isCurrentRequest()) {
+				activeDemotionRequest.current = null;
+				setDemoting(false);
+			}
 		}
 	};
 
 	const handlePromote = async () => {
+		if (demoting) return;
 		if (!task) return;
 		if (!window.confirm(t.taskDetails.promoteConfirm)) return;
 		try {
@@ -1086,6 +1176,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	};
 
   const handleArchive = async () => {
+    if (demoting) return;
     if (!task || !onArchive) return;
     if (!window.confirm(t.taskDetails.archiveConfirm(task.title))) return;
     onArchive();
@@ -1106,6 +1197,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
     <Modal
       isOpen={isOpen}
       onClose={() => {
+        // A demotion is already moving the record; closing here would hide what it reports.
+        if (demoting) return;
         // When in edit mode, confirm closing if dirty
         if (mode === "edit" && isDirty) {
           if (!window.confirm(t.taskDetails.discardAndClosePrompt)) return;
@@ -1115,7 +1208,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
       }}
       title={isCreateMode ? (isDraftMode ? t.taskDetails.createDraft : t.taskDetails.createTask) : `${displayId} — ${task.title}`}
       maxWidthClass="max-w-5xl"
-      disableEscapeClose={mode === "edit" || mode === "create"}
+      disableEscapeClose={mode === "edit" || mode === "create" || demoting}
       leftActions={
         onBack ? (
           <button
@@ -1131,10 +1224,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
         ) : undefined
       }
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
 		          {isDoneStatus && mode === "preview" && !isCreateMode && !isFromOtherBranch && (
 		            <button
 		              onClick={handleComplete}
+		              disabled={demoting}
 		              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 dark:bg-emerald-700 hover:bg-emerald-700 dark:hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 		              title={t.taskDetails.markCompletedTitle}
 		            >
@@ -1144,15 +1238,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		          {!isDoneStatus && !isDraftTask && mode === "preview" && !isCreateMode && !isFromOtherBranch && (
 		            <button
 		              onClick={handleDemote}
-		              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-amber-500 dark:bg-amber-600 hover:bg-amber-600 dark:hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+		              disabled={demoting}
+		              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-amber-500 dark:bg-amber-600 hover:bg-amber-600 dark:hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
 		              title={t.taskDetails.demoteToDraftTitle}
 		            >
-		              {t.taskDetails.demoteToDraft}
+		              {demoting ? t.taskDetails.demoteInProgress : t.taskDetails.demoteToDraft}
 		            </button>
 		          )}
 		          {isDraftTask && mode === "preview" && !isCreateMode && !isFromOtherBranch && (
 		            <button
 		              onClick={handlePromote}
+		              disabled={demoting}
 		              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 dark:bg-emerald-700 hover:bg-emerald-700 dark:hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 		              title={t.taskDetails.promoteToTaskTitle}
 		            >
@@ -1162,6 +1258,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		          {mode === "preview" && !isCreateMode && !isFromOtherBranch ? (
 		            <button
 		              onClick={() => setMode("edit")}
+		              disabled={demoting}
 		              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 		              title={t.common.edit}
 		            >
@@ -1175,6 +1272,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             <div className="flex items-center gap-2">
 		              <button
 		                onClick={handleCancelEdit}
+		                disabled={demoting}
 		                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 		                title={t.common.cancel}
 		              >
@@ -1185,7 +1283,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               </button>
 		              <button
 		                onClick={() => void handleSave()}
-		                disabled={saving}
+		                disabled={saving || demoting}
 		                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:opacity-50"
 		                title={t.common.save}
 		              >

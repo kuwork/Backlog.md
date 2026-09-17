@@ -257,6 +257,11 @@ export const ja: TranslationDict = {
 		archiveTask: "タスクをアーカイブ",
 		completeConfirm: "このタスクを完了しますか？完了フォルダに移動されます。",
 		demoteConfirm: "このタスクをドラフトに降格しますか？ドラフトフォルダに移動されます。",
+		demoteInProgress: "降格中…",
+		demoteRefreshFailed:
+			"タスクはドラフトに移動しましたが、表示の更新に失敗しました。このダイアログを閉じてドラフトを確認してから再試行してください。",
+		demoteResponseLost:
+			"降格リクエストは成功した可能性がありますが、応答が失われました。再試行する前にタスクとドラフトの一覧を確認してください。",
 		promoteConfirm: "このドラフトをタスクに昇格しますか？タスクフォルダに移動されます。",
 		discardAndClosePrompt: "未保存の変更を破棄して閉じますか？",
 		failedToUpdateCriterion: "受入基準の更新に失敗しました",

@@ -113,8 +113,14 @@ export class ApiClient {
 	}
 
 	// Enhanced fetch with retry logic and better error handling
-	private async fetchWithRetry(url: string, options: RequestInit = {}, customTimeout?: number): Promise<Response> {
-		const { retries = 3, timeout = 10000 } = this.config;
+	private async fetchWithRetry(
+		url: string,
+		options: RequestInit = {},
+		customTimeout?: number,
+		retriesOverride?: number,
+	): Promise<Response> {
+		const { retries: configuredRetries = 3, timeout = 10000 } = this.config;
+		const retries = retriesOverride ?? configuredRetries;
 		const effectiveTimeout = customTimeout ?? timeout;
 		let lastError: Error | undefined;
 
@@ -167,6 +173,13 @@ export class ApiClient {
 			throw lastError;
 		}
 		throw new NetworkError(`Request failed after ${retries + 1} attempts: ${lastError?.message}`);
+	}
+
+	// Non-idempotent mutations must not be replayed: a retry can apply the move twice or replace
+	// the original server error with an unrelated later failure (for example a 404 once the file
+	// has already moved away).
+	private async fetchWithoutRetry(url: string, options: RequestInit = {}): Promise<Response> {
+		return await this.fetchWithRetry(url, options, undefined, 0);
 	}
 
 	// Helper method for JSON responses
@@ -309,7 +322,9 @@ export class ApiClient {
 	}
 
 	async demoteTask(id: string): Promise<void> {
-		await this.fetchWithRetry(`${API_BASE}/tasks/${id}/demote`, {
+		// Demotion allocates a new draft id and moves the task file, so a replayed request would
+		// target a task that no longer exists instead of reporting the original failure.
+		await this.fetchWithoutRetry(`${API_BASE}/tasks/${id}/demote`, {
 			method: "POST",
 		});
 	}
