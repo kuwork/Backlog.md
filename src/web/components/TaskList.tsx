@@ -810,7 +810,7 @@ const TaskList: React.FC<TaskListProps> = ({
 															{task.branch}
 														</span>
 													)}
-													<AcceptanceCriteriaProgress task={task} cells={10} />
+													<AcceptanceCriteriaProgress task={task} variant="bar" className="w-20 shrink-0" />
 												</div>
 											</td>
 											<td className="px-3 py-2.5">

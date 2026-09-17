@@ -74,6 +74,24 @@ describe("AcceptanceCriteriaProgress", () => {
 		expect(html.indexOf("width:50%")).toBeLessThan(html.indexOf(">2/4<"));
 	});
 
+	it("supports a fixed-width track via className for the task list", () => {
+		const html = renderToString(
+			<AcceptanceCriteriaProgress
+				variant="bar"
+				className="w-20 shrink-0"
+				task={task({
+					acceptanceCriteriaItems: [
+						{ index: 1, text: "a", checked: true },
+						{ index: 2, text: "b", checked: false },
+					],
+				})}
+			/>,
+		);
+		expect(html).toContain("w-20 shrink-0");
+		expect(html).not.toContain("flex-1");
+		expect(html).toContain("width:50%");
+	});
+
 	it("renders nothing for tasks without acceptance criteria", () => {
 		const html = renderToString(<AcceptanceCriteriaProgress cells={10} task={task({ acceptanceCriteriaItems: [] })} />);
 		expect(html).toBe("");

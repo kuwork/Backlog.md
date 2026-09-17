@@ -2,7 +2,7 @@ import type { Task } from "../../types";
 
 interface AcceptanceCriteriaProgressProps {
 	task: Pick<Task, "status" | "acceptanceCriteriaItems">;
-	/** "cells" renders the monospace [██░░] indicator; "bar" renders the rounded track used by the task modal. */
+	/** "cells" renders the monospace [██░░] indicator; "bar" renders the rounded track used by the task modal. The bar track is w-full, so the width is controlled by the component className (e.g. "flex-1" to fill or "w-20" for a fixed width). */
 	variant?: "cells" | "bar";
 	/** Cell count for the "cells" variant. */
 	cells?: 5 | 10;
@@ -49,7 +49,7 @@ export default function AcceptanceCriteriaProgress({
 				</>
 			) : (
 				<>
-					<span className="flex-1 min-w-0 h-2 rounded-full bg-gray-200 dark:bg-gray-500 overflow-hidden">
+					<span className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-500 overflow-hidden">
 						<span className="block h-full bg-emerald-500 transition-all duration-300" style={{ width: `${percent}%` }} />
 					</span>
 					<span className="flex-shrink-0">{fraction}</span>
