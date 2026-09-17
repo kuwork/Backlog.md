@@ -58,6 +58,22 @@ describe("TaskIdentityIndex", () => {
 		}
 	});
 
+	it("orders tasks by numeric id segments so BACK-1.2 precedes BACK-1.11", () => {
+		const ids = Array.from({ length: 11 }, (_, position) => `BACK-1.${position + 1}`);
+		const records: TaskIdentityRecord[] = [...ids].reverse().map((id) => ({
+			id,
+			type: "task",
+			branch: "local",
+			path: `backlog/tasks/${id.toLowerCase()} - Subtask.md`,
+			lastModified: new Date("2026-08-01T10:00:00Z"),
+			task: task(`Subtask ${id}`, id),
+		}));
+
+		const ordered = index(records).getTasks();
+
+		expect(ordered.map((entry) => entry.id)).toEqual(ids);
+	});
+
 	it("resolves same ID at the same path as one identity with the working copy authoritative", () => {
 		const branchCopy = record({
 			id: "BACK-1",
