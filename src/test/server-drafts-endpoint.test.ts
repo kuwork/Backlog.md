@@ -21,6 +21,25 @@ function draftHandlers(target: BacklogServer): {
 	};
 }
 
+/** The task routes under test; they serve drafts as well, which is the point of the block below. */
+function taskHandlers(target: BacklogServer): {
+	handleGetTask(taskId: string): Promise<Response>;
+	handleUpdateTask(req: Request, taskId: string): Promise<Response>;
+} {
+	return target as unknown as {
+		handleGetTask(taskId: string): Promise<Response>;
+		handleUpdateTask(req: Request, taskId: string): Promise<Response>;
+	};
+}
+
+function updateRequest(taskId: string, updates: unknown): Request {
+	return new Request(`http://localhost/api/tasks/${encodeURIComponent(taskId)}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(updates),
+	});
+}
+
 function makeDraft(overrides: Partial<Task>): Task {
 	return {
 		id: "DRAFT-1",
@@ -34,36 +53,36 @@ function makeDraft(overrides: Partial<Task>): Task {
 	};
 }
 
-describe("BacklogServer draft handlers fail closed on ambiguous identities", () => {
-	beforeEach(async () => {
-		TEST_DIR = createUniqueTestDir("server-drafts");
-		await mkdir(TEST_DIR, { recursive: true });
-		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
-		await core.filesystem.saveConfig({
-			projectName: "Server Drafts",
-			statuses: ["To Do", "In Progress", "Done"],
-			labels: [],
-			milestones: [],
-			dateFormat: "YYYY-MM-DD",
-			remoteOperations: false,
-		});
-
-		server = new BacklogServer(TEST_DIR);
+beforeEach(async () => {
+	TEST_DIR = createUniqueTestDir("server-drafts");
+	await mkdir(TEST_DIR, { recursive: true });
+	core = new Core(TEST_DIR);
+	await core.filesystem.ensureBacklogStructure();
+	await core.filesystem.saveConfig({
+		projectName: "Server Drafts",
+		statuses: ["To Do", "In Progress", "Done"],
+		labels: [],
+		milestones: [],
+		dateFormat: "YYYY-MM-DD",
+		remoteOperations: false,
 	});
 
-	afterEach(async () => {
-		if (server) {
-			try {
-				await server.stop();
-			} catch {
-				// The server was never started for these handler-level assertions.
-			}
-			server = null;
+	server = new BacklogServer(TEST_DIR);
+});
+
+afterEach(async () => {
+	if (server) {
+		try {
+			await server.stop();
+		} catch {
+			// The server was never started for these handler-level assertions.
 		}
-		await safeCleanup(TEST_DIR);
-	});
+		server = null;
+	}
+	await safeCleanup(TEST_DIR);
+});
 
+describe("BacklogServer draft handlers fail closed on ambiguous identities", () => {
 	async function writeAmbiguousTwins(): Promise<{ first: string; second: string }> {
 		const draftsDir = join(TEST_DIR, "backlog", "drafts");
 		const first = await core.filesystem.saveDraft(makeDraft({ id: "DRAFT-1", title: "Alpha" }));
@@ -114,5 +133,99 @@ describe("BacklogServer draft handlers fail closed on ambiguous identities", () 
 		expect(await core.filesystem.listTasks()).toHaveLength(tasksBefore.length);
 		expect(await Bun.file(first).exists()).toBe(true);
 		expect(await Bun.file(second).exists()).toBe(true);
+	});
+});
+
+describe("BacklogServer task routes serve drafts", () => {
+	it("returns a draft through the task GET handler", async () => {
+		const created = await core.createTaskFromInput({ title: "Only draft", status: "Draft" }, false);
+
+		const response = await taskHandlers(server as BacklogServer).handleGetTask(created.task.id);
+
+		expect(response.status).toBe(200);
+		const draft = (await response.json()) as Task;
+		expect(draft.id).toBe(created.task.id);
+		expect(draft.title).toBe("Only draft");
+	});
+
+	// Reporter flow: a draft opened from the web Drafts page is saved on the task route it uses.
+	it("saves an edit to a draft instead of reporting it as a missing task", async () => {
+		await core.createTaskFromInput({ title: "First draft", status: "Draft" }, false);
+		const second = await core.createTaskFromInput({ title: "Second draft", status: "Draft" }, false);
+		const draftId = second.task.id;
+
+		const response = await taskHandlers(server as BacklogServer).handleUpdateTask(
+			updateRequest(draftId, {
+				title: "Second draft edited",
+				description: "Edited from the drafts page",
+				status: "Draft",
+				acceptanceCriteriaItems: [{ text: "Draft edits persist", checked: false }],
+			}),
+			draftId,
+		);
+
+		expect(response.status).toBe(200);
+		const updated = (await response.json()) as Task;
+		expect(updated.id).toBe(draftId);
+		expect(updated.title).toBe("Second draft edited");
+		expect(updated.status).toBe("Draft");
+
+		const stored = await core.filesystem.loadDraft(draftId);
+		expect(stored?.title).toBe("Second draft edited");
+		expect(stored?.description).toContain("Edited from the drafts page");
+		expect(stored?.acceptanceCriteriaItems?.[0]?.text).toBe("Draft edits persist");
+
+		// The edit must not move the draft into the task folder.
+		expect(await core.filesystem.loadTask(draftId)).toBeNull();
+	});
+
+	it("promotes a draft when the request sets a configured status", async () => {
+		const created = await core.createTaskFromInput({ title: "Promote me", status: "Draft" }, false);
+
+		const response = await taskHandlers(server as BacklogServer).handleUpdateTask(
+			updateRequest(created.task.id, { title: "Promote me", status: "To Do" }),
+			created.task.id,
+		);
+
+		expect(response.status).toBe(200);
+		const promoted = (await response.json()) as Task;
+		expect(promoted.id.startsWith("TASK-")).toBe(true);
+		expect(promoted.status).toBe("To Do");
+		expect(await core.filesystem.loadDraft(created.task.id)).toBeNull();
+		expect(await core.filesystem.loadTask(promoted.id)).not.toBeNull();
+	});
+
+	it("keeps a prefix-less id pointing at the task with that number", async () => {
+		const task = await core.createTaskFromInput({ title: "Real task one" }, false);
+		const bareId = task.task.id.replace(/^[a-zA-Z]+-/, "");
+		// A draft sharing the task's number must stay out of reach of the bare id.
+		const draftId = `DRAFT-${bareId}`;
+		await core.filesystem.saveDraft(makeDraft({ id: draftId, title: "Only draft" }));
+
+		const read = await taskHandlers(server as BacklogServer).handleGetTask(bareId);
+		expect(read.status).toBe(200);
+		expect(((await read.json()) as Task).id).toBe(task.task.id);
+
+		const write = await taskHandlers(server as BacklogServer).handleUpdateTask(
+			updateRequest(bareId, { title: "Real task one edited" }),
+			bareId,
+		);
+		expect(write.status).toBe(200);
+		expect(((await write.json()) as Task).id).toBe(task.task.id);
+		expect((await core.filesystem.loadDraft(draftId))?.title).toBe("Only draft");
+	});
+
+	it("reports an unknown draft id as missing", async () => {
+		const read = await taskHandlers(server as BacklogServer).handleGetTask("DRAFT-9");
+
+		expect(read.status).toBe(404);
+
+		const write = await taskHandlers(server as BacklogServer).handleUpdateTask(
+			updateRequest("DRAFT-9", { title: "Nope" }),
+			"DRAFT-9",
+		);
+
+		expect(write.status).toBe(404);
+		expect(((await write.json()) as { error: string }).error).toBe("Draft not found");
 	});
 });

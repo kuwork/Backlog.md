@@ -32,6 +32,7 @@ import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
+import { DRAFT_PREFIX, extractAnyPrefix } from "../utils/prefix-config.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
 
@@ -39,6 +40,14 @@ import { getVersion } from "../utils/version.ts";
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
 const DEFAULT_PREFIX = "task-";
 const DOCUMENT_TYPES = new Set<Document["type"]>(DOCUMENT_TYPE_VALUES);
+
+/**
+ * The task routes serve drafts too, so only an explicit DRAFT- id addresses a draft.
+ * A prefix-less id such as "2" keeps naming a task, which is what the task store resolves it to.
+ */
+function isDraftId(taskId: string): boolean {
+	return extractAnyPrefix(taskId) === DRAFT_PREFIX;
+}
 
 class DocumentPayloadValidationError extends Error {
 	constructor(message: string) {
@@ -1131,6 +1140,12 @@ export class BacklogServer {
 	}
 
 	private async handleGetTask(taskId: string): Promise<Response> {
+		if (isDraftId(taskId)) {
+			// Tasks and drafts share this route: handleGetDraft already resolves a draft id, reports
+			// 404 for a missing draft and 409 for an ambiguous one.
+			return await this.handleGetDraft(taskId);
+		}
+
 		try {
 			const task = await this.core.getTask(taskId);
 			if (task) {
@@ -1150,17 +1165,20 @@ export class BacklogServer {
 
 	private async handleUpdateTask(req: Request, taskId: string): Promise<Response> {
 		const updates = await req.json();
-		let existingTask: Task | null;
+		const draftId = isDraftId(taskId);
+		let exists: boolean;
 		try {
-			existingTask = await this.core.getTask(taskId);
+			exists = draftId
+				? (await this.core.filesystem.loadDraft(taskId)) !== null
+				: (await this.core.getTask(taskId)) !== null;
 		} catch (error) {
-			if (error instanceof AmbiguousTaskIdError) {
+			if (error instanceof AmbiguousTaskIdError || isAmbiguousIdError(error)) {
 				return Response.json({ error: error.message }, { status: 409 });
 			}
 			throw error;
 		}
-		if (!existingTask) {
-			return Response.json({ error: "Task not found" }, { status: 404 });
+		if (!exists) {
+			return Response.json({ error: draftId ? "Draft not found" : "Task not found" }, { status: 404 });
 		}
 
 		const updateInput: TaskUpdateInput = {};
@@ -1298,11 +1316,14 @@ export class BacklogServer {
 		}
 
 		try {
-			const updatedTask = await this.core.updateTaskFromInput(taskId, updateInput);
+			// editTaskOrDraft keeps a draft a draft, or promotes it when a real status is requested.
+			const updatedTask = draftId
+				? await this.core.editTaskOrDraft(taskId, updateInput)
+				: await this.core.updateTaskFromInput(taskId, updateInput);
 			return Response.json(updatedTask);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to update task";
-			const conflict = error instanceof AmbiguousTaskIdError || isTaskLockError(error);
+			const conflict = error instanceof AmbiguousTaskIdError || isAmbiguousIdError(error) || isTaskLockError(error);
 			return Response.json({ error: message }, { status: conflict ? 409 : 400 });
 		}
 	}
