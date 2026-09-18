@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
@@ -142,5 +142,70 @@ describe("CLI task list --ready", () => {
 
 		const unassignedResult = await $`bun ${cliPath} task list --plain --ready --unassigned`.cwd(TEST_DIR).quiet();
 		expect(unassignedResult.stdout.toString()).toContain("No tasks found.");
+	});
+
+	it("should publish the verdict it filtered on for every task list --json row", async () => {
+		const core = new Core(TEST_DIR);
+
+		await createTask(core, { id: "task-1", title: "Finished Work", status: "Done" });
+		await createTask(core, { id: "task-2", title: "Unfinished Blocker", status: "In Progress" });
+		await createTask(core, { id: "task-3", title: "Blocked", status: "To Do", dependencies: ["task-2"] });
+		await createTask(core, { id: "task-4", title: "Ready", status: "To Do", dependencies: ["task-1"] });
+		await createTask(core, { id: "task-5", title: "Unknown Dependency", status: "To Do", dependencies: ["task-404"] });
+
+		const listResult = await $`bun ${cliPath} task list --json`.cwd(TEST_DIR).quiet();
+		const rows = JSON.parse(listResult.stdout.toString()).tasks as Array<{ id: string; isReady: boolean }>;
+		const verdicts: Record<string, boolean> = Object.fromEntries(rows.map((row) => [row.id, row.isReady]));
+		expect(verdicts).toEqual({
+			"TASK-1": false,
+			"TASK-2": true,
+			"TASK-3": false,
+			"TASK-4": true,
+			"TASK-5": false,
+		});
+
+		// --ready serializes the verdict it selected on rather than a second, later one.
+		const readyResult = await $`bun ${cliPath} task list --json --ready`.cwd(TEST_DIR).quiet();
+		const ready = JSON.parse(readyResult.stdout.toString()).tasks as Array<{ id: string; isReady: boolean }>;
+		expect(ready.map((row) => row.id).sort()).toEqual(["TASK-2", "TASK-4"]);
+		expect(ready.every((row) => row.isReady)).toBe(true);
+		expect(ready.every((row) => verdicts[row.id] === row.isReady)).toBe(true);
+	});
+
+	it("should derive isReady from the completed corpus and the configured statuses", async () => {
+		const core = new Core(TEST_DIR);
+
+		await createTask(core, {
+			id: "task-1",
+			title: "Depends On Completed",
+			status: "To Do",
+			dependencies: ["task-2"],
+		});
+		await createTask(core, { id: "task-2", title: "Completed Dep", status: "Done" });
+		expect(await core.completeTask("task-2", false)).toBe(true);
+
+		const publishedVerdict = async (): Promise<boolean> => {
+			const result = await $`bun ${cliPath} task list --json`.cwd(TEST_DIR).quiet();
+			const rows = JSON.parse(result.stdout.toString()).tasks as Array<{ id: string; isReady: boolean }>;
+			const row = rows.find((candidate) => candidate.id === "TASK-1");
+			if (!row) throw new Error("TASK-1 missing from task list --json");
+			return row.isReady;
+		};
+
+		expect(await publishedVerdict()).toBe(true);
+
+		// The dependency is satisfied only by the completed record, so the JSON read has to consult it.
+		const completed = (await core.filesystem.listCompletedTasks())[0];
+		if (!completed?.filePath) throw new Error("Missing completed task path");
+		await rm(completed.filePath);
+		expect(await publishedVerdict()).toBe(false);
+
+		// A status the configuration no longer treats as final stops satisfying the dependency.
+		await createTask(core, { id: "task-2", title: "Completed Dep", status: "Done" });
+		expect(await publishedVerdict()).toBe(true);
+		const config = await core.filesystem.loadConfig();
+		if (!config) throw new Error("Missing config");
+		await core.filesystem.saveConfig({ ...config, statuses: ["To Do", "Done", "Finished"] });
+		expect(await publishedVerdict()).toBe(false);
 	});
 });

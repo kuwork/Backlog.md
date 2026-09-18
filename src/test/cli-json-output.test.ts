@@ -114,6 +114,8 @@ describe("CLI JSON output", () => {
 					plannedEnd: "2026-07-18",
 					actualStart: null,
 					actualEnd: null,
+					// TASK-1's only dependency does not exist, and an unresolvable dependency fails closed.
+					isReady: false,
 				},
 			],
 		});
@@ -134,6 +136,15 @@ describe("CLI JSON output", () => {
 			expect(output.task.path).toMatch(/^backlog\/tasks\/task-1 - JSON-task\.md$/);
 			expect(output.task.description).toBe("Machine-readable output");
 			expect(output.task.dependencies).toEqual(["TASK-2"]);
+			// The detail read publishes the verdict and the blockers behind it, from the same derivation
+			// as the list's isReady.
+			expect(output.task.isReady).toBe(false);
+			expect(output.task.readiness).toEqual({
+				isReady: false,
+				isBlocked: true,
+				blockingDependencies: [],
+				missingDependencies: ["TASK-2"],
+			});
 			expect(output.task.acceptanceCriteriaCompleted).toBe(1);
 			expect(output.task.acceptanceCriteriaCount).toBe(1);
 			expect(output.task.acceptanceCriteria).toEqual([{ index: 1, text: "Produces JSON", checked: true }]);
@@ -198,12 +209,59 @@ describe("CLI JSON output", () => {
 		expect(output.results[1].data.dueDate).toBe("2026-07-20");
 		expect(output.results[1].data.acceptanceCriteriaCompleted).toBe(1);
 		expect(output.results[1].data.acceptanceCriteriaCount).toBe(1);
+		// A search result carries the same verdict the task list publishes for the same record.
+		expect(output.results[1].data.isReady).toBe(false);
 		expect(output.results[2].data).toEqual({
 			id: "decision-1",
 			title: "Use stable JSON",
 			status: "accepted",
 			date: "2026-07-12",
 		});
+	});
+
+	it("reports one verdict for the same record across list, view and search", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-2",
+				title: "JSON task dependency",
+				status: "Done",
+				assignee: [],
+				createdDate: "2026-07-16 09:00",
+				labels: [],
+				dependencies: [],
+			},
+			false,
+		);
+
+		const list = await runCli(["task", "list", "--json"]);
+		const verdicts: Record<string, boolean> = Object.fromEntries(
+			(JSON.parse(list.stdout.toString()).tasks as Array<{ id: string; isReady: boolean }>).map((row) => [
+				row.id,
+				row.isReady,
+			]),
+		);
+		// TASK-1's dependency now exists and is finished, so TASK-1 can be picked up while the finished
+		// record itself can not: work that is over is neither ready nor blocked.
+		expect(verdicts).toMatchObject({ "TASK-1": true, "TASK-2": false });
+
+		const view = await runCli(["task", "view", "1", "--json"]);
+		const detail = JSON.parse(view.stdout.toString()).task;
+		expect(detail.isReady).toBe(true);
+		expect(detail.readiness).toEqual({
+			isReady: true,
+			isBlocked: false,
+			blockingDependencies: [],
+			missingDependencies: [],
+		});
+
+		const search = await runCli(["search", "JSON", "--json"]);
+		const searchVerdicts: Record<string, boolean> = Object.fromEntries(
+			(JSON.parse(search.stdout.toString()).results as Array<{ type: string; data: { id: string; isReady: boolean } }>)
+				.filter((result) => result.type === "task")
+				.map((result) => [result.data.id, result.data.isReady]),
+		);
+		expect(searchVerdicts).toEqual({ "TASK-1": true, "TASK-2": false });
 	});
 
 	it("returns complete, partial, and empty acceptance-criteria progress across task JSON surfaces", async () => {

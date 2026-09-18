@@ -21,6 +21,7 @@ import {
 	decisionListJson,
 	documentListJson,
 	printJson,
+	type SearchResultInput,
 	searchJson,
 	taskListJson,
 	taskViewJson,
@@ -82,7 +83,7 @@ import {
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
 import { getTaskPrefixError, hasAnyPrefix, isReservedTaskPrefix } from "./utils/prefix-config.ts";
 import { type ReadOutputMode, resolveReadOutputMode } from "./utils/read-output-mode.ts";
-import { getTaskReadiness, loadReadinessGraph } from "./utils/readiness.ts";
+import { getTaskReadiness, loadReadinessGraph, type ReadinessGraph, withReadiness } from "./utils/readiness.ts";
 import { resolveRuntimeCwd } from "./utils/runtime-cwd.ts";
 import { formatValidStatuses, getCanonicalStatus, getCanonicalStatuses, getValidStatuses } from "./utils/status.ts";
 import {
@@ -2131,7 +2132,24 @@ addHelpSchema(program.command("search [query]"), {
 			})
 			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45);
 		if (outputMode === "json") {
-			printJson(searchJson(searchResults, cwd, core.filesystem.docsDir));
+			// Readiness is derived from the completed corpus, which a plain list read does not load, so
+			// only the JSON output pays for it, and only once a task result actually needs it. Each
+			// verdict stays on the record it was read for rather than being rejoined by task ID: two
+			// files can claim one identity with different dependencies, and each keeps its own answer.
+			const payload: SearchResultInput[] = [];
+			let readinessGraph: ReadinessGraph | null = null;
+			for (const result of searchResults) {
+				if (result.type !== "task") {
+					payload.push(result);
+					continue;
+				}
+				readinessGraph ??= await loadReadinessGraph(core);
+				payload.push({
+					...result,
+					task: { ...result.task, isReady: getTaskReadiness(result.task, readinessGraph).isReady },
+				});
+			}
+			printJson(searchJson(payload, cwd, core.filesystem.docsDir));
 			cleanup();
 			return;
 		}
@@ -2529,17 +2547,19 @@ addHelpSchema(taskCmd.command("list"), {
 
 		const usePlainOutput = outputMode !== "interactive";
 		if (usePlainOutput) {
-			let tasks = await core.queryTasks({
+			const tasks = await core.queryTasks({
 				query: searchQuery || undefined,
 				filters: Object.keys(baseFilters).length > 0 ? baseFilters : undefined,
 				includeCrossBranch: false,
 			});
 			const config = await core.filesystem.loadConfig();
 
-			if (options.ready) {
-				const readinessGraph = await loadReadinessGraph(core);
-				tasks = tasks.filter((task) => getTaskReadiness(task, readinessGraph).isReady);
-			}
+			// Readiness needs the completed corpus, so only the reads that filter on or publish the
+			// verdict pay for one: `--ready` filters on it and `--json` carries it. Both read it once,
+			// from this one pass, so a row selected as ready can never be serialized from a later verdict.
+			const derivesReadiness = Boolean(options.ready) || outputMode === "json";
+			const readinessRows =
+				derivesReadiness && tasks.length > 0 ? withReadiness(tasks, await loadReadinessGraph(core)) : null;
 
 			if (parentId) {
 				const parentExists = (await core.queryTasks({ includeCrossBranch: false })).some((task) =>
@@ -2553,45 +2573,51 @@ addHelpSchema(taskCmd.command("list"), {
 				}
 			}
 
-			let sortedTasks = tasks;
-			if (options.sort) {
-				const validSortFields = ["priority", "id", "ordinal"];
-				const sortField = options.sort.toLowerCase();
-				if (!validSortFields.includes(sortField)) {
-					console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
-					process.exitCode = 1;
-					cleanup();
-					return;
-				}
-				sortedTasks = sortTasks(tasks, sortField);
-			} else {
-				sortedTasks = sortTasks(tasks, "ordinal");
-			}
+			// Ordering, the parent narrowing, the labels and the limit are the same whatever the rows
+			// carry, so the readiness projection travels through them instead of being derived twice.
+			// The sort field was validated above, before any task was read.
+			const sortField = options.sort ? options.sort.toLowerCase() : "ordinal";
+			const narrowForDisplay = <T extends Task>(rows: T[]): { filtered: T[]; display: T[] } => {
+				const sorted = sortTasks(rows, sortField);
+				const narrowed = parentId
+					? sorted.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId))
+					: sorted;
+				const labelled =
+					labelFilters.length > 0 ? narrowed.filter((task) => taskMatchesAllLabels(task, labelFilters)) : narrowed;
+				return { filtered: labelled, display: taskLimit !== undefined ? labelled.slice(0, taskLimit) : labelled };
+			};
 
-			let filtered = sortedTasks;
-			if (parentId) {
-				filtered = filtered.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId));
-			}
-			if (labelFilters.length > 0) {
-				filtered = filtered.filter((task) => taskMatchesAllLabels(task, labelFilters));
-			}
-
-			if (filtered.length === 0) {
+			const reportEmptyList = (): void => {
 				if (options.parent) {
-					const canonicalParent = normalizeTaskId(String(options.parent));
-					console.log(`No child tasks found for parent task ${canonicalParent}.`);
+					console.log(`No child tasks found for parent task ${normalizeTaskId(String(options.parent))}.`);
 				} else {
 					console.log("No tasks found.");
 				}
 				cleanup();
-				return;
-			}
+			};
 
-			const displayTasks = taskLimit !== undefined ? filtered.slice(0, taskLimit) : filtered;
-			if (outputMode === "json") {
-				printJson(taskListJson(displayTasks));
-				cleanup();
-				return;
+			let displayTasks: Task[];
+			if (derivesReadiness) {
+				const rows = options.ready ? (readinessRows ?? []).filter((row) => row.isReady) : (readinessRows ?? []);
+				const narrowed = narrowForDisplay(rows);
+				if (narrowed.filtered.length === 0) {
+					reportEmptyList();
+					return;
+				}
+				if (outputMode === "json") {
+					// The rows the verdict selected are the rows serialized: one pass, one answer.
+					printJson(taskListJson(narrowed.display));
+					cleanup();
+					return;
+				}
+				displayTasks = narrowed.display;
+			} else {
+				const narrowed = narrowForDisplay(tasks);
+				if (narrowed.filtered.length === 0) {
+					reportEmptyList();
+					return;
+				}
+				displayTasks = narrowed.display;
 			}
 
 			if (options.sort && options.sort.toLowerCase() === "priority") {
@@ -3511,7 +3537,9 @@ addHelpSchema(taskCmd.command("view <taskId>"), {
 
 		// Plain text output for non-interactive environments
 		if (outputMode === "json") {
-			printJson(taskViewJson(task, cwd));
+			// The detail read publishes the verdict together with the blockers behind it, derived from
+			// the whole corpus rather than from this task's own row, so the two never disagree.
+			printJson(taskViewJson({ ...task, readiness: getTaskReadiness(task, await loadReadinessGraph(core)) }, cwd));
 			return;
 		}
 
@@ -3684,7 +3712,9 @@ taskCmd
 
 		// Plain text output for non-interactive environments
 		if (outputMode === "json") {
-			printJson(taskViewJson(task, cwd));
+			// The detail read publishes the verdict together with the blockers behind it, derived from
+			// the whole corpus rather than from this task's own row, so the two never disagree.
+			printJson(taskViewJson({ ...task, readiness: getTaskReadiness(task, await loadReadinessGraph(core)) }, cwd));
 			return;
 		}
 

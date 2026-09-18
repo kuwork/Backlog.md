@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import type { Task } from "../types/index.ts";
 import { generateDetailContent } from "../ui/task-viewer-with-search.ts";
-import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness } from "../utils/readiness.ts";
+import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness, withReadiness } from "../utils/readiness.ts";
 import { applyTaskFilters } from "../utils/task-search.ts";
 import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
@@ -179,6 +179,35 @@ describe("getTaskReadiness", () => {
 		const readiness = readinessOf(task, [dep, task], customStatuses);
 		expect(readiness.isReady).toBe(true);
 		expect(readiness.isBlocked).toBe(false);
+	});
+});
+
+describe("withReadiness", () => {
+	it("answers every row from one index without touching the records handed in", () => {
+		const finished = makeTask("BACK-1", "Done");
+		const blocked = makeTask("BACK-2", "To Do", ["BACK-3"]);
+		const blocker = makeTask("BACK-3", "In Progress");
+		const ready = makeTask("BACK-4", "To Do", ["BACK-1"]);
+		const tasks = [finished, blocked, blocker, ready];
+
+		const rows = withReadiness(tasks, graphOf(tasks));
+
+		expect(rows.map((row) => [row.id, row.isReady])).toEqual([
+			["BACK-1", false],
+			["BACK-2", false],
+			["BACK-3", true],
+			["BACK-4", true],
+		]);
+		// The verdict is derived at read time, so it never reaches the record it was read for.
+		expect("isReady" in finished).toBe(false);
+	});
+
+	it("fails closed for a dependency no single record claims", () => {
+		const orphan = makeTask("BACK-9", "To Do", ["BACK-404"]);
+
+		const rows = withReadiness([orphan], graphOf([orphan]));
+
+		expect(rows[0]?.isReady).toBe(false);
 	});
 });
 

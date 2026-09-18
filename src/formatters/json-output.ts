@@ -1,6 +1,15 @@
 import { isAbsolute, join, relative } from "node:path";
-import type { Decision, Document, SearchResult, Task } from "../types/index.ts";
+import type {
+	Decision,
+	DecisionSearchResult,
+	Document,
+	DocumentSearchResult,
+	Task,
+	TaskSearchResult,
+	WikiSearchResult,
+} from "../types/index.ts";
 import { isLocalEditableTask } from "../types/index.ts";
+import type { TaskListItem, TaskReadiness } from "../utils/readiness.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
 
 type TaskSummaryJson = {
@@ -23,6 +32,11 @@ type TaskSummaryJson = {
 	plannedEnd: string | null;
 	actualStart: string | null;
 	actualEnd: string | null;
+	/**
+	 * Derived from the whole visible corpus at read time, never stored: work can start now because
+	 * the task is unfinished and every dependency it names resolved to a completed task.
+	 */
+	isReady: boolean;
 };
 
 type ChecklistItemJson = {
@@ -42,6 +56,8 @@ type TaskDetailsJson = TaskSummaryJson & {
 	path: string | null;
 	description: string | null;
 	dependencies: string[];
+	/** Why the `isReady` above reads the way it does, from the same derivation. */
+	readiness: TaskReadiness;
 	references: string[];
 	documentation: string[];
 	modifiedFiles: string[];
@@ -53,6 +69,24 @@ type TaskDetailsJson = TaskSummaryJson & {
 	comments: TaskCommentJson[];
 	finalSummary: string | null;
 };
+
+/**
+ * A task as a detail read hands it back: the stored record plus the full readiness verdict that
+ * read publishes, blockers included. Derived at read time and never written to the Markdown file.
+ */
+export type TaskDetail = Task & { readiness: TaskReadiness };
+
+/**
+ * A search result set whose task records already carry readiness.
+ *
+ * The verdict travels on the record inside each result rather than being looked up by ID: two files
+ * can claim one ID with different dependencies, and each claimant has to keep its own answer.
+ */
+export type SearchResultInput =
+	| DocumentSearchResult
+	| DecisionSearchResult
+	| WikiSearchResult
+	| (Omit<TaskSearchResult, "task"> & { task: TaskListItem });
 
 type DocumentSummaryJson = {
 	id: string;
@@ -104,7 +138,7 @@ function normalizePublicDate(value: string | undefined): string | null {
 	return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
-function toTaskSummaryJson(task: Task): TaskSummaryJson {
+function toTaskSummaryJson(task: TaskListItem): TaskSummaryJson {
 	const acceptanceCriteria = task.acceptanceCriteriaItems ?? [];
 	return {
 		id: task.id,
@@ -126,6 +160,7 @@ function toTaskSummaryJson(task: Task): TaskSummaryJson {
 		plannedEnd: nullable(task.plannedEnd),
 		actualStart: normalizePublicDate(task.actualStart),
 		actualEnd: normalizePublicDate(task.actualEnd),
+		isReady: task.isReady,
 	};
 }
 
@@ -142,12 +177,13 @@ function toChecklistJson(items: Task["acceptanceCriteriaItems"]): ChecklistItemJ
 		.map(({ index, text, checked }) => ({ index, text, checked }));
 }
 
-function toTaskDetailsJson(task: Task, projectRoot: string): TaskDetailsJson {
+function toTaskDetailsJson(task: TaskDetail, projectRoot: string): TaskDetailsJson {
 	return {
-		...toTaskSummaryJson(task),
+		...toTaskSummaryJson({ ...task, isReady: task.readiness.isReady }),
 		path: toProjectRelativePath(projectRoot, task.filePath),
 		description: nullableDescription(task.description),
 		dependencies: task.dependencies ?? [],
+		readiness: task.readiness,
 		references: task.references ?? [],
 		documentation: task.documentation ?? [],
 		modifiedFiles: task.modifiedFiles ?? [],
@@ -197,7 +233,7 @@ function toWikiSummaryJson(wiki: { path: string; content: string }): WikiSummary
 	};
 }
 
-export function taskListJson(tasks: Task[]) {
+export function taskListJson(tasks: TaskListItem[]) {
 	return { schemaVersion: 1, kind: "task-list" as const, tasks: tasks.map(toTaskSummaryJson) };
 }
 
@@ -213,11 +249,11 @@ export function documentListJson(documents: Document[], projectRoot: string, doc
 	};
 }
 
-export function taskViewJson(task: Task, projectRoot: string) {
+export function taskViewJson(task: TaskDetail, projectRoot: string) {
 	return { schemaVersion: 1, kind: "task-view" as const, task: toTaskDetailsJson(task, projectRoot) };
 }
 
-export function searchJson(results: SearchResult[], projectRoot: string, docsDir: string) {
+export function searchJson(results: SearchResultInput[], projectRoot: string, docsDir: string) {
 	const publicResults: SearchResultJson[] = [];
 	for (const result of results) {
 		if (result.type === "task") {

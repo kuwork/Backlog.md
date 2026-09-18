@@ -118,6 +118,23 @@ export function getTaskReadiness(task: Task, graph: ReadinessGraph): TaskReadine
 }
 
 /**
+ * A task as a list, search or board read hands it back: the stored record plus the one readiness
+ * verdict that read publishes. The blockers behind the verdict belong to the detail read, so a list
+ * of any size stays the size it already was.
+ */
+export type TaskListItem = Task & { isReady: boolean };
+
+/**
+ * Attach readiness to a whole list from an index the caller already built.
+ *
+ * The index is what keeps a list surface linear: every row answers from the same graph instead of
+ * resolving its own dependencies, and the verdicts all describe one snapshot of the corpus.
+ */
+export function withReadiness<T extends Task>(tasks: readonly T[], graph: ReadinessGraph): TaskListItem[] {
+	return tasks.map((task) => ({ ...task, isReady: getTaskReadiness(task, graph).isReady }));
+}
+
+/**
  * Explain why a task is not ready, in one line shared by every surface. Unfinished dependencies
  * and dependency IDs that could not be resolved are named separately so they are not confused.
  */
