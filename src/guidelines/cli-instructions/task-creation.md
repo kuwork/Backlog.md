@@ -78,7 +78,7 @@ Include:
 - A clear title.
 - A description explaining the outcome and why it matters.
 - Acceptance criteria that are specific, testable, and independent.
-- References or documentation when they are needed for implementation.
+- References or documentation when they are needed for implementation. Local code references carry the line number that makes them useful; see [References](#references).
 - Dependencies when work must happen in order.
 - An assignee with `-a` when the task has a known owner; omitting it applies the project's configured `defaultAssignee` when one is set; use `--unassign` to create the task with no assignee even when a default is configured. `-a` accepts multiple assignees: repeat the flag (`-a @alice -a @bob`) or pass comma-separated names (`-a "@alice,@bob"`).
 
@@ -97,18 +97,13 @@ backlog task create "Add project search" \
 ```bash
 backlog task create "Add settings docs" \
   --doc docs/settings.md \
-  --ref https://example.com/spec
+  --ref src/file-system/operations.ts:2193
 ```
 
-Empty values for `--dep`, `--ref`, and `--doc` are rejected during creation. Omit the flag to leave the corresponding list unset, or use `--depends-on task-1` to set dependencies explicitly:
+Empty values for `--dep`, `--ref`, and `--doc` are rejected during creation with an error such as `Cannot use an empty value with --ref. Omit the flag to leave references unset.` Omit the flag when the list should stay unset, or use `--depends-on task-1` to set dependencies explicitly:
 
 ```bash
-# Correct: omit the flag when there are no references
 backlog task create "Standalone task"
-
-# Wrong: empty setter values are rejected
-backlog task create "Bad task" --ref ""
-# Error: Cannot use an empty value with --ref. Omit the flag to leave references unset.
 ```
 
 After creation, manage the documentation list with `task edit`: `--doc` replaces the list, `--add-doc` appends unique values, `--remove-doc` removes entries by value, and `--clear-docs` empties it.
@@ -124,6 +119,36 @@ backlog task create "Add project search" \
 ```
 
 > **Do not use bash `$'...'` quoting for multi-line values, and do not press Enter for a real newline inside the argument.** Bash converts `\n` into real newlines before the argument reaches the CLI, which splits the command across lines and leaves only the first line saved in the field. Instead, write the two characters `\n` literally inside a single-quoted or double-quoted argument; the CLI interprets that sequence as a newline when writing the field.
+
+### References
+
+`--ref` takes one location per entry. Three forms are supported:
+
+| Form | Example | What the preview opens |
+|------|---------|----------------------|
+| URL | `https://github.com/MrLesk/Backlog.md/issues/1` | The external page |
+| File | `src/file-system/operations.ts` | The whole file, from line 1 |
+| File with line range | `src/file-system/operations.ts:2193` (single line) or `src/file-system/operations.ts:2193-2197` (multi-line) | The file scoped to those lines |
+
+```bash
+backlog task create "Open the file preview at the referenced lines" \
+  --ref src/file-system/operations.ts:2193 \
+  --ref src/file-system/operations.ts:2193-2197 \
+  --ref src/server/index.ts:2465 \
+  --ref https://github.com/MrLesk/Backlog.md/issues/1
+```
+
+The web task details view treats every non-URL reference as a project-relative path and previews it at the referenced lines, so the line suffix is what makes a reference land on the right code. Prefer a line range over a bare file when only part of the file matters.
+
+Keep one location per entry — each `--ref` carries exactly one value. `--ref` values are split on commas, so a comma inside a value becomes a second, meaningless entry, and a range spanning hundreds of lines previews the wrong region. Give each location its own flag:
+
+```bash
+backlog task create "Fix the line-range preview" \
+  --ref src/file-system/operations.ts:2193 \
+  --ref src/server/index.ts:2465
+```
+
+Manage the list after creation with `task edit`: `--add-ref` appends, `--remove-ref` removes a value, and `--clear-refs` empties it.
 
 ### Task Dates
 

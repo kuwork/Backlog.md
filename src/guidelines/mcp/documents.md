@@ -129,6 +129,34 @@ Recommended examples (ID-only):
 
 When rendered, the links above display as `TASK#506`, `DOC#001`, `Decisions#042`, and `TASK#506` respectively, while remaining clickable. Only same-origin paths are transformed; external URLs are left unchanged.
 
+##### Line suffix
+
+Append `:LINE` or `:START-END` to the id to open the target scoped to those lines instead of navigating. The migration classification document uses this form to point at the matching section of the analysis report: `[doc-13 CORE-19](/documentation/13:319-329)`.
+
+```markdown
+- [doc-13 CORE-19](/documentation/13:319-329) opens the analysis report at lines 319-329.
+- [BACK-650](/task/650:30) opens the task at line 30.
+- Alias left empty: [](/documentation/13:319) renders the default alias `DOC#13:319`.
+```
+
+Rules:
+
+- The suffix belongs to the id segment, so an optional title slug still follows it: `/documentation/13:319-329/migration-analysis`.
+- A link with a custom label keeps that label. A link without a label renders the default alias with the range appended: `DOC#13:319-329`, `TASK#650:30`.
+- Clicking a suffixed link opens the preview modal scoped to those lines instead of navigating, and the modal title shows the range; a link without a suffix behaves as before.
+- Links rendered by views that only navigate — a decision page, or the file preview modal itself — ignore the suffix and keep navigating.
+- A relative project path such as `src/file-system/operations.ts` is **not** a short local link and gets no alias: it stays a code file link, where the same suffix scopes the file preview instead (see below).
+
+**Code file links.** A link destination can be an external URL (left unchanged), a backlog item path such as `/task/506`, or a project-relative file path. A code file link carries the same `:LINE` / `:START-END` suffix, and the file preview opens at those lines — a single line or a multi-line range:
+
+```markdown
+- [sanitizeFilename](src/file-system/operations.ts:1811-1822) opens that function.
+- [readProjectFile](src/file-system/operations.ts:2183) opens a single line.
+- [operations.ts](src/file-system/operations.ts) opens the whole file, when the line is not the point.
+```
+
+An item link opens the item modal; a code file link opens the file preview. Add the suffix whenever the reader only needs part of a file — a bare path opens it from line 1.
+
 ### Key Rules
 
 - Document paths are relative to `backlog/docs/`; absolute paths and `..` traversal are rejected.

@@ -96,7 +96,8 @@ export function generateTaskCreateSchema(config: BacklogConfig): JsonSchema {
 					type: "string",
 					maxLength: 500,
 				},
-				description: "Reference URLs or file paths related to this task",
+				description:
+					"References for this task. One location per entry, in one of three forms: a URL; a project-relative file path; or a file path with a line range, `path:LINE` for a single line or `path:START-END` for a multi-line range, which the file preview opens at those lines.",
 			},
 			documentation: {
 				type: "array",
@@ -248,7 +249,8 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 					type: "string",
 					maxLength: 500,
 				},
-				description: "Set reference URLs or file paths (replaces existing)",
+				description:
+					"Set references for this task (replaces existing). One location per entry, in one of three forms: a URL; a project-relative file path; or a file path with a line range, `path:LINE` for a single line or `path:START-END` for a multi-line range, which the file preview opens at those lines.",
 			},
 			addReferences: {
 				type: "array",
@@ -256,7 +258,8 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 					type: "string",
 					maxLength: 500,
 				},
-				description: "Add reference URLs or file paths",
+				description:
+					"Add references, in one of three forms: a URL; a project-relative file path; or a file path with a line range, `path:LINE` for a single line or `path:START-END` for a multi-line range.",
 			},
 			removeReferences: {
 				type: "array",
@@ -264,7 +267,8 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 					type: "string",
 					maxLength: 500,
 				},
-				description: "Remove reference URLs or file paths",
+				description:
+					"Remove references by exact value: a URL, a project-relative file path, or a file path with a line range (`path:LINE` or `path:START-END`).",
 			},
 			documentation: {
 				type: "array",

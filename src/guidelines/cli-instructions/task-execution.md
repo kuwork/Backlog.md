@@ -98,15 +98,10 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 
 ### Clearing List Fields
 
-The `--clear-deps`, `--clear-refs`, and `--clear-docs` flags remove every entry from the corresponding list. The `--dep`, `--ref`, and `--doc` setter flags replace the entire list, while `--add-dep`, `--add-ref`, and `--add-doc` append to it. Set and add flags are mutually exclusive. Use the clear flags when you want to empty a list; do **not** pass an empty string to the setter flags:
+The `--clear-deps`, `--clear-refs`, and `--clear-docs` flags remove every entry from the corresponding list. The `--dep`, `--ref`, and `--doc` setter flags replace the entire list, while `--add-dep`, `--add-ref`, and `--add-doc` append to it. Set and add flags are mutually exclusive. Use the clear flags when you want to empty a list: the setter flags reject an empty string with an error such as `Cannot use an empty value with --ref. Use --clear-refs to remove all references.`
 
 ```bash
-# Correct: use the clear flag
 backlog task edit {{TASK_ID:123}} --clear-refs
-
-# Wrong: empty setter values are rejected
-backlog task edit {{TASK_ID:123}} --ref ""
-# Error: Cannot use an empty value with --ref. Use --clear-refs to remove all references.
 ```
 
 `task create` also rejects empty values for `--dep`, `--ref`, and `--doc`; omit the flag to leave the list unset.

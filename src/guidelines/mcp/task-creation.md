@@ -36,7 +36,8 @@ If the work requires multiple tasks, proceed to choose the appropriate task stru
 - Write tasks as work orders for strangers: include all required context inside the task
 - Never reference "what we discussed" without restating the essential decisions and constraints
 - Dependencies must explicitly state what the other task provides (e.g., output, schema, artifact)
-- Use the `references` field for external references such as GitHub issues, PRs, tickets, or URLs
+- Use the `references` field for one location per entry. Three forms are supported: a URL, such as a GitHub issue, PR, ticket, or spec; a project-relative file path such as `src/file-system/operations.ts`; and a file path with a line range, either `src/file-system/operations.ts:2193` for a single line or `src/file-system/operations.ts:2193-2197` for a multi-line range. Prefer a line range over a bare file when only part of the file matters
+- Prefer two entries over one wide range: the web task details view previews each non-URL reference at the referenced lines, and a range spanning hundreds of lines opens the wrong region
 - Use the `documentation` field for design docs, API specs, manuals, or other reference materials that help understand the task context
 - Only include minimal local code context in the description when omitting it would make the task ambiguous or unsafe for a future implementer
 

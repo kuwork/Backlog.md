@@ -342,6 +342,21 @@ describe("MermaidMarkdown", () => {
 				expect(result).toEqual({ type: "doc", id: "5", alias: "DOC#5:19-29", range: { lineStart: 19, lineEnd: 29 } });
 			});
 
+			it("keeps the range when a title slug follows the suffixed id", () => {
+				const result = parseLocalUrl("/documentation/13:319-329/migration-analysis");
+				expect(result).toEqual({
+					type: "doc",
+					id: "13",
+					alias: "DOC#13:319-329",
+					range: { lineStart: 319, lineEnd: 329 },
+				});
+			});
+
+			it("parses the single-line range documented for doc links", () => {
+				const result = parseLocalUrl("/documentation/13:319");
+				expect(result).toEqual({ type: "doc", id: "13", alias: "DOC#13:319", range: { lineStart: 319, lineEnd: 319 } });
+			});
+
 			it("parses full same-origin documentation URLs", () => {
 				const result = parseLocalUrl("http://localhost:6420/documentation/001/testing-style-guide");
 				expect(result).toEqual({ type: "doc", id: "001", alias: "DOC#001" });
@@ -491,6 +506,42 @@ describe("MermaidMarkdown", () => {
 
 			expect(clickedPath).not.toBeNull();
 			expect(clickedPath ?? "").toContain("backlog/docs/doc-001 - Configuring");
+		});
+
+		it("keeps the line range when a code file link is clicked", async () => {
+			let clickedPath: string | null = null;
+			const source = "[sanitizeFilename](src/file-system/operations.ts:1811-1822)";
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<MermaidMarkdown
+								source={source}
+								onFileClick={(path) => {
+									clickedPath = path;
+								}}
+							/>
+						</ImageLightboxProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			const link = container?.querySelector("a");
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute("href")).toContain("src/file-system/operations.ts");
+
+			const MouseEventCtor = (dom?.window as unknown as { MouseEvent: typeof MouseEvent })?.MouseEvent;
+			await act(async () => {
+				link?.dispatchEvent(new MouseEventCtor("click", { bubbles: true, cancelable: true }));
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			});
+
+			expect(clickedPath as string | null).toBe("src/file-system/operations.ts:1811-1822");
 		});
 
 		it("does not treat hash-only links as file links", async () => {

@@ -351,10 +351,37 @@ backlog task edit 42 -s "In Progress" -a @{myself}
 ### 5.2. Review Task References and Documentation
 
 Before planning, check if the task has any attached `references` or `documentation`:
-- **References**: Related code files, GitHub issues, or URLs relevant to the implementation
+- **References**: A URL (issue, PR, spec), a code file, or a code file with a line range — a single line (`src/file-system/operations.ts:2193`) or a multi-line range (`src/file-system/operations.ts:2193-2197`)
 - **Documentation**: Design docs, API specs, or other materials for understanding context
 
 These are visible in the task view output. Review them to understand the full context before drafting your plan.
+
+**File references.** A reference to a code file carries an optional line suffix, and the web file preview opens at those lines:
+
+```bash
+# The whole file, when the line is not the point
+backlog task create "Title" --ref src/file-system/operations.ts
+# A single line
+backlog task create "Title" --ref src/file-system/operations.ts:2193
+# A multi-line range
+backlog task create "Title" --ref src/file-system/operations.ts:2193-2197
+```
+
+A URL reference is never previewed locally — it stays a link out of the repository:
+
+```bash
+backlog task create "Title" --ref https://github.com/MrLesk/Backlog.md/issues/1
+```
+
+Use one `--ref` per location — each flag carries exactly one value, and a value that contains a comma is split into a second, meaningless entry instead of a second location. A range that spans the whole file (`:1-2573`) previews far more than the reader needs — give the second location its own `--ref`.
+
+Links you write into descriptions, plans, notes, or documents behave the same way:
+
+```markdown
+See [sanitizeFilename](src/file-system/operations.ts:1811-1822) and [readProjectFile](src/file-system/operations.ts:2183).
+```
+
+A link to a backlog item opens that item's modal scoped to the lines instead: `[doc-13 CORE-19](/documentation/13:319-329)`.
 
 ### 5.3. Create an Implementation Plan (The "how")
 
@@ -636,10 +663,13 @@ backlog search --modified-file src/server/api.ts --plain
 | With description | `backlog task create "Title" -d "Description"`                                      |
 | With AC          | `backlog task create "Title" --ac "Criterion 1" --ac "Criterion 2"` or `--acceptance-criteria "Criterion 1"` |
 | With final summary | `backlog task create "Title" --final-summary "PR-style summary"`                 |
-| With references  | `backlog task create "Title" --ref src/api.ts --ref https://github.com/issue/123`   |
+| With references (file) | `backlog task create "Title" --ref src/file-system/operations.ts` |
+| With references (single line) | `backlog task create "Title" --ref src/file-system/operations.ts:2193` |
+| With references (line range) | `backlog task create "Title" --ref src/file-system/operations.ts:2193-2197` |
+| With references (URL) | `backlog task create "Title" --ref https://github.com/MrLesk/Backlog.md/issues/1` |
 | With documentation | `backlog task create "Title" --doc https://design-docs.example.com`               |
 | With modified files | `backlog task create "Title" --modified-file src/api.ts --modified-file src/ui.ts` |
-| With all options | `backlog task create "Title" -d "Desc" -a @sara -s "To Do" -l auth --priority high --ref src/api.ts --doc docs/spec.md --modified-file src/api.ts` |
+| With all options | `backlog task create "Title" -d "Desc" -a @sara -s "To Do" -l auth --priority high --ref src/file-system/operations.ts:2193 --doc docs/spec.md --modified-file src/api.ts` |
 | Create draft     | `backlog task create "Title" --draft`                                               |
 | Create subtask   | `backlog task create "Title" -p 42`                                                 |
 
@@ -689,15 +719,15 @@ backlog search --modified-file src/server/api.ts --plain
 | Set dependencies | `backlog task edit 42 --dep task-1 --dep task-2`         |
 | Add dependencies | `backlog task edit 42 --add-dep task-3 --add-dep task-4` |
 | Remove dependencies | `backlog task edit 42 --remove-dep task-1 --remove-dep task-2` |
-| Set references   | `backlog task edit 42 --ref src/api.ts --ref https://github.com/issue/123` |
-| Add references   | `backlog task edit 42 --add-ref new-ref.md` |
-| Remove references | `backlog task edit 42 --remove-ref old-ref.md` |
+| Set references (file, line, range, URL) | `backlog task edit 42 --ref src/file-system/operations.ts --ref src/file-system/operations.ts:2193 --ref src/file-system/operations.ts:2193-2197 --ref https://github.com/MrLesk/Backlog.md/issues/1` |
+| Add references   | `backlog task edit 42 --add-ref src/server/index.ts:2465` |
+| Remove references | `backlog task edit 42 --remove-ref src/file-system/operations.ts:2193` |
 | Set documentation | `backlog task edit 42 --doc https://design-docs.example.com --doc docs/spec.md` |
 | Add documentation | `backlog task edit 42 --add-doc new-doc.md` |
 | Remove documentation | `backlog task edit 42 --remove-doc old-doc.md` |
 | Set modified files | `backlog task edit 42 --modified-file src/api.ts --modified-file src/ui.ts` |
 
-> **Note on list fields in `task edit`**: `--ref`, `--doc`, `--depends-on` / `--dep` **replace** the existing list. Use `--add-ref`, `--add-doc`, `--add-depends-on` / `--add-dep` to **append** to the existing list. Use `--clear-refs`, `--clear-docs`, or `--clear-deps` to remove the whole list, or `--remove-ref`, `--remove-doc`, `--remove-dep` to remove specific values. `--ref`/`--doc`/`--depends-on`/`--dep` are mutually exclusive with their `--add-*` counterparts.
+> **Note on list fields in `task edit`**: `--ref`, `--doc`, `--depends-on` / `--dep` **replace** the existing list. Use `--add-ref`, `--add-doc`, `--add-depends-on` / `--add-dep` to **append** to the existing list. Use `--clear-refs`, `--clear-docs`, or `--clear-deps` to remove the whole list, or `--remove-ref`, `--remove-doc`, `--remove-dep` to remove specific values. `--ref`/`--doc`/`--depends-on`/`--dep` are mutually exclusive with their `--add-*` counterparts. These options also split each value on commas, so one flag carries one value at a time: pass two locations as `--ref src/file-system/operations.ts:2193 --ref src/server/index.ts:2465`.
 
 ### Multi‑line Input (Description/Plan/Notes/Comments/Final Summary)
 
