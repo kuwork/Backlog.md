@@ -8,6 +8,7 @@ import {
 	type TaskListFilter,
 } from "../../../types/index.ts";
 import type { TaskEditArgs, TaskEditRequest } from "../../../types/task-edit-args.ts";
+import { formatAcceptanceCriteriaSummarySuffix } from "../../../ui/acceptance-criteria-progress.ts";
 import { createMilestoneFilterMatcher, createMilestoneFilterValueResolver } from "../../../utils/milestone-filter.ts";
 import { resolveMilestoneInputForStorage } from "../../../utils/milestone-storage.ts";
 import { getTaskReadiness, loadReadinessGraph } from "../../../utils/readiness.ts";
@@ -93,7 +94,8 @@ export class TaskHandlers {
 		const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
 		const status = task.status || (task.source === "completed" ? "Done" : "");
 		const statusText = options.includeStatus && status ? ` (${status})` : "";
-		return `  ${priorityIndicator}${task.id} - ${task.title}${statusText}`;
+		const acceptanceCriteria = formatAcceptanceCriteriaSummarySuffix(task);
+		return `  ${priorityIndicator}${task.id} - ${task.title}${statusText}${acceptanceCriteria}`;
 	}
 
 	private async loadTaskOrThrow(id: string): Promise<Task> {

@@ -61,6 +61,7 @@ import {
 	type TaskSearchResult,
 } from "./types/index.ts";
 import type { TaskEditArgs } from "./types/task-edit-args.ts";
+import { formatAcceptanceCriteriaSummarySuffix } from "./ui/acceptance-criteria-progress.ts";
 import { runDecisionListViewer } from "./ui/decision-list-viewer.ts";
 import { runDocumentListViewer } from "./ui/document-list-viewer.ts";
 import { createLoadingScreen } from "./ui/loading.ts";
@@ -2579,7 +2580,8 @@ async function runTaskList(
 			for (const t of displayTasks) {
 				const priorityIndicator = t.priority ? `[${t.priority.toUpperCase()}] ` : "";
 				const statusIndicator = t.status ? ` (${t.status})` : "";
-				console.log(`  ${priorityIndicator}${t.id} - ${t.title}${statusIndicator}`);
+				const acceptanceCriteria = formatAcceptanceCriteriaSummarySuffix(t);
+				console.log(`  ${priorityIndicator}${t.id} - ${t.title}${statusIndicator}${acceptanceCriteria}`);
 			}
 			cleanup();
 			return;
@@ -2611,7 +2613,8 @@ async function runTaskList(
 			console.log(`${status || "No Status"}:`);
 			list.forEach((task) => {
 				const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
-				console.log(`  ${priorityIndicator}${task.id} - ${task.title}`);
+				const acceptanceCriteria = formatAcceptanceCriteriaSummarySuffix(task);
+				console.log(`  ${priorityIndicator}${task.id} - ${task.title}${acceptanceCriteria}`);
 			});
 			console.log();
 		}
