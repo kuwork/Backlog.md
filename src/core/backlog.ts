@@ -6,6 +6,7 @@ import { FileSystem } from "../file-system/operations.ts";
 import { type GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import { extractSection } from "../markdown/parser.ts";
+import { assertSectionInputHasNoMarkerLines } from "../markdown/structured-sections.ts";
 import {
 	type AcceptanceCriterion,
 	type BacklogConfig,
@@ -213,6 +214,35 @@ function formatAvailableIndexHint(items: Array<{ index: number }>, emptyMessage:
 	const last = indexes[indexes.length - 1] ?? first;
 	const range = first === last ? `#${first}` : `#${first}-#${last}`;
 	return `Available indexes: ${range}.`;
+}
+
+/**
+ * Structured-section input that contains its own sentinel marker as a whole
+ * line is rejected before any write: wrapping it would nest markers and hide
+ * the stored content from every reader (GitHub issue #932).
+ */
+function assertSectionInputsSafe(input: {
+	description?: string;
+	implementationPlan?: string;
+	implementationNotes?: string;
+	finalSummary?: string;
+	appendImplementationPlan?: string[];
+	appendImplementationNotes?: string[];
+	appendFinalSummary?: string[];
+}): void {
+	assertSectionInputHasNoMarkerLines(input.description, "description");
+	assertSectionInputHasNoMarkerLines(input.implementationPlan, "implementationPlan");
+	assertSectionInputHasNoMarkerLines(input.implementationNotes, "implementationNotes");
+	assertSectionInputHasNoMarkerLines(input.finalSummary, "finalSummary");
+	for (const value of input.appendImplementationPlan ?? []) {
+		assertSectionInputHasNoMarkerLines(value, "implementationPlan");
+	}
+	for (const value of input.appendImplementationNotes ?? []) {
+		assertSectionInputHasNoMarkerLines(value, "implementationNotes");
+	}
+	for (const value of input.appendFinalSummary ?? []) {
+		assertSectionInputHasNoMarkerLines(value, "finalSummary");
+	}
 }
 
 const REMOTE_REF_REFRESH_INTERVAL_MS = 60_000;
@@ -1454,6 +1484,7 @@ export class Core {
 		if (!input.title || input.title.trim().length === 0) {
 			throw new Error("Title is required to create a task.");
 		}
+		assertSectionInputsSafe(input);
 
 		// Determine if this is a draft BEFORE generating the ID
 		const requestedStatus = input.status?.trim();
@@ -1666,6 +1697,7 @@ export class Core {
 		input: TaskUpdateInput,
 		statusResolver: (status: string) => Promise<string>,
 	): Promise<{ task: Task; mutated: boolean }> {
+		assertSectionInputsSafe(input);
 		let mutated = false;
 
 		const applyStringField = (
