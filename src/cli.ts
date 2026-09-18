@@ -2165,7 +2165,9 @@ addHelpSchema(program.command("search [query]"), {
 		// Use the first search result as the selected task, or first available task if no results
 		const firstTask = searchResultTasks[0] || interactiveTasks[0];
 		const priorityFilter = filters.priority ? filters.priority : undefined;
-		const statusFilter = Array.isArray(filters.status) ? (filters.status[0] ?? "") : filters.status;
+		// Keep the whole selection: a repeated or comma-separated --status has to reach the view as
+		// it reached the search results, or the interactive filter contradicts --plain output.
+		const statusFilter = filters.status;
 		const statusExcludedFilter = Array.isArray(filters.statusExcluded)
 			? filters.statusExcluded
 			: filters.statusExcluded
@@ -2196,7 +2198,7 @@ addHelpSchema(program.command("search [query]"), {
 	});
 
 function buildSearchFilterDescription(filters: {
-	status?: string;
+	status?: string | string[];
 	statusExcluded?: string | string[];
 	priority?: SearchPriorityFilter;
 	query?: string;
@@ -2207,7 +2209,10 @@ function buildSearchFilterDescription(filters: {
 		parts.push(`Query: ${filters.query}`);
 	}
 	if (filters.status) {
-		parts.push(`Status: ${filters.status}`);
+		const statusText = Array.isArray(filters.status) ? filters.status.join(", ") : filters.status;
+		if (statusText) {
+			parts.push(`Status: ${statusText}`);
+		}
 	}
 	if (filters.statusExcluded) {
 		const excluded = Array.isArray(filters.statusExcluded) ? filters.statusExcluded : [filters.statusExcluded];

@@ -25,13 +25,42 @@ describe("unified view filter state", () => {
 		});
 
 		expect(filters.searchQuery).toBe("sync");
-		expect(filters.statusFilter).toBe("In Progress");
+		expect(filters.statusFilter).toEqual(["In Progress"]);
 		expect(filters.priorityFilter).toBe("high");
 		expect(filters.labelFilter).toEqual(["backend"]);
 		expect(filters.labelMatch).toBe("all");
 		expect(filters.milestoneFilter).toBe("Release 1");
 		expect(filters.limit).toBe(2);
 		expect(filters.labelFilter).not.toBe(labels);
+	});
+
+	it("keeps a multi-status selection as a list", () => {
+		const filters = createUnifiedViewFilters({
+			status: ["To Do", "In Progress"],
+		});
+
+		expect(filters.statusFilter).toEqual(["To Do", "In Progress"]);
+
+		const single = createUnifiedViewFilters({ status: "Done" });
+		expect(single.statusFilter).toEqual(["Done"]);
+
+		const none = createUnifiedViewFilters({});
+		expect(none.statusFilter).toEqual([]);
+	});
+
+	it("does not alias the status list when merging filter updates", () => {
+		const updated: UnifiedViewFilters = {
+			searchQuery: "",
+			statusFilter: ["To Do", "Done"],
+			statusExcludedFilter: [],
+			priorityFilter: "",
+			labelFilter: [],
+			milestoneFilter: "",
+		};
+
+		const merged = mergeUnifiedViewFilters(createUnifiedViewFilters({}), updated);
+		expect(merged.statusFilter).toEqual(["To Do", "Done"]);
+		expect(merged.statusFilter).not.toBe(updated.statusFilter);
 	});
 
 	it("preserves milestone filter when merging filter updates", () => {
@@ -44,7 +73,7 @@ describe("unified view filter state", () => {
 
 		const updated: UnifiedViewFilters = {
 			searchQuery: "api",
-			statusFilter: "To Do",
+			statusFilter: ["To Do"],
 			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: ["infra"],
@@ -68,7 +97,7 @@ describe("unified view filter state", () => {
 
 		const updated: UnifiedViewFilters = {
 			searchQuery: "api auth",
-			statusFilter: "",
+			statusFilter: [],
 			statusExcludedFilter: [],
 			priorityFilter: "high",
 			labelFilter: ["frontend", "bug"],
@@ -88,7 +117,7 @@ describe("unified view filter state", () => {
 
 		const updated: UnifiedViewFilters = {
 			searchQuery: "auth",
-			statusFilter: "",
+			statusFilter: [],
 			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: ["frontend", "bug"],
@@ -107,7 +136,7 @@ describe("unified view filter state", () => {
 
 		const updated: UnifiedViewFilters = {
 			searchQuery: "",
-			statusFilter: "",
+			statusFilter: [],
 			statusExcludedFilter: [],
 			priorityFilter: "",
 			labelFilter: ["frontend", "bug"],
@@ -396,7 +425,7 @@ describe("unified view filter state", () => {
 			priority: "",
 			labels: [],
 		});
-		expect(filters.statusFilter).toBe("To Do");
+		expect(filters.statusFilter).toEqual(["To Do"]);
 		expect(filters.statusExcludedFilter).toEqual(["Done", "Blocked"]);
 	});
 
@@ -407,7 +436,7 @@ describe("unified view filter state", () => {
 
 		const updated: UnifiedViewFilters = {
 			searchQuery: "api",
-			statusFilter: "To Do",
+			statusFilter: ["To Do"],
 			statusExcludedFilter: ["Done", "Blocked"],
 			priorityFilter: "",
 			labelFilter: [],

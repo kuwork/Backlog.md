@@ -12,7 +12,7 @@ export type FilterControlId = "search" | "status" | "priority" | "labels" | "mil
 
 export interface FilterState {
 	search: string;
-	status: string;
+	status: string[];
 	priority: string;
 	labels: string[];
 	milestone: string;
@@ -147,7 +147,7 @@ export class FilterHeader {
 		this.visibleFilterIds = normalizeVisibleFilters(options.visibleFilters);
 		this.state = {
 			search: options.initialFilters?.search ?? "",
-			status: options.initialFilters?.status ?? "",
+			status: options.initialFilters?.status ?? [],
 			priority: options.initialFilters?.priority ?? "",
 			labels: options.initialFilters?.labels ?? [],
 			milestone: options.initialFilters?.milestone ?? "",
@@ -194,7 +194,7 @@ export class FilterHeader {
 			this.searchInput?.setValue(filters.search);
 		}
 		if (filters.status !== undefined) {
-			this.state.status = filters.status;
+			this.state.status = [...filters.status];
 			this.updateStatusButton();
 		}
 		if (filters.priority !== undefined) {
@@ -598,7 +598,9 @@ export class FilterHeader {
 	private getPopupButtonContent(field: Exclude<FilterControlId, "search">): string {
 		switch (field) {
 			case "status":
-				return this.state.status ? `${this.state.status} ▼` : "All ▼";
+				if (this.state.status.length === 0) return "All ▼";
+				if (this.state.status.length === 1) return `${this.state.status[0]} ▼`;
+				return `${this.state.status.length} selected ▼`;
 			case "priority":
 				return this.state.priority ? `${this.state.priority} ▼` : "All ▼";
 			case "milestone":

@@ -7,6 +7,7 @@ import type { BacklogConfig, Decision, Document, Task, TaskListFilter, WikiPage 
 import { watchConfigFile } from "../utils/config-watcher.ts";
 import { documentFilenameId, documentIdsEqual } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath } from "../utils/document-path.ts";
+import { normalizeStatusSet, statusMatchesSet } from "../utils/status-filter.ts";
 import { canonicalTaskId, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
 import {
@@ -277,19 +278,15 @@ export class ContentStore {
 
 		let tasks = this.cachedTasks;
 		if (filter?.status) {
-			const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
-			const allowedStatuses = new Set(statuses.map((status) => status.trim().toLowerCase()).filter(Boolean));
-			if (allowedStatuses.size > 0) {
-				tasks = tasks.filter((task) => allowedStatuses.has(task.status.toLowerCase()));
+			const wanted = normalizeStatusSet(filter.status);
+			if (wanted.size > 0) {
+				tasks = tasks.filter((task) => statusMatchesSet(wanted, task.status));
 			}
 		}
 		if (filter?.statusExcluded) {
-			const excludedStatuses = Array.isArray(filter.statusExcluded) ? filter.statusExcluded : [filter.statusExcluded];
-			const excluded = new Set(
-				excludedStatuses.map((status) => status.trim().toLowerCase()).filter((status) => status.length > 0),
-			);
+			const excluded = normalizeStatusSet(filter.statusExcluded);
 			if (excluded.size > 0) {
-				tasks = tasks.filter((task) => !excluded.has(task.status.toLowerCase()));
+				tasks = tasks.filter((task) => !statusMatchesSet(excluded, task.status));
 			}
 		}
 		if (filter?.assignee) {

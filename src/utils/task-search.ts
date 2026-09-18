@@ -13,6 +13,7 @@ import {
 } from "./milestone-filter.ts";
 import { matchesModifiedFileFilters, normalizeModifiedFileFilters } from "./modified-files.ts";
 import { getTaskReadiness, type ReadinessGraph } from "./readiness.ts";
+import { normalizeStatusSet, statusMatchesSet } from "./status-filter.ts";
 
 export type LabelMatchMode = "any" | "all";
 
@@ -42,7 +43,8 @@ export interface SharedTaskFilterOptions {
 }
 
 export interface TaskFilterOptions extends SharedTaskFilterOptions {
-	status?: string;
+	/** Matches any of these when several are given, mirroring `statusExcluded`. */
+	status?: string | string[];
 	/**
 	 * When set, keep only tasks that are ready according to this graph. The graph carries the full
 	 * task corpus, so readiness never depends on which tasks survived the other filters.
@@ -191,17 +193,16 @@ export function createTaskSearchIndex(tasks: Task[]): TaskSearchIndex {
 				results = [...searchableTasks];
 			}
 
-			// Apply status filter
-			if (options.status) {
-				const statuses = Array.isArray(options.status) ? options.status : [options.status];
-				const allowedStatuses = new Set(statuses.map((status) => status.toLowerCase()));
-				results = results.filter((t) => allowedStatuses.has(t.statusLower));
+			// Apply status filter: any of the given statuses, matching the stores.
+			const wantedStatuses = options.status ? normalizeStatusSet(options.status) : null;
+			if (wantedStatuses && wantedStatuses.size > 0) {
+				results = results.filter((t) => statusMatchesSet(wantedStatuses, t.statusLower));
 			}
 
 			// Apply exclude-status filter
-			if (options.statusExcluded && options.statusExcluded.length > 0) {
-				const excludedStatuses = new Set(options.statusExcluded.map((status) => status.toLowerCase()));
-				results = results.filter((t) => !excludedStatuses.has(t.statusLower));
+			const excludedStatuses = options.statusExcluded ? normalizeStatusSet(options.statusExcluded) : null;
+			if (excludedStatuses && excludedStatuses.size > 0) {
+				results = results.filter((t) => !statusMatchesSet(excludedStatuses, t.statusLower));
 			}
 
 			// Apply priority filter
