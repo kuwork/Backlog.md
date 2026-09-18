@@ -56,6 +56,7 @@ Humans and agents can run `backlog instructions` for workflow guides and `backlo
 | List tasks  | `backlog task list [-s <status>] [-a <assignee>] [-p <parent>] [--labels <labels>] [--search <query>] [--limit <n>]` |
 | List filtered | `backlog task list --labels frontend,bug --search "login" --limit 10 --plain` |
 | List by parent | `backlog task list --parent 42` or `backlog task list -p task-42` |
+| Watch a queue | `backlog task list --json --watch --status "In Progress" --assignee @sara` |
 | View detail | `backlog task 7` (interactive UI, press 'E' to edit in editor) |
 | View (AI mode) | `backlog task 7 --plain`                           |
 | Edit        | `backlog task edit 7 -a @sara -l auth,backend`       |
@@ -83,6 +84,8 @@ Humans and agents can run `backlog instructions` for workflow guides and `backlo
 | Set planned dates | `backlog task edit 7 --planned-start 2026-06-01 --planned-end 2026-06-10` |
 | Set actual dates | `backlog task edit 7 --actual-start "2026-06-02 09:00" --actual-end "2026-06-09 17:00"` |
 | Clear dates | `backlog task edit 7 --clear-due-date --clear-planned-start --clear-planned-end --clear-actual-start --clear-actual-end` |
+
+`backlog task list --json --watch` streams a live view of the filtered list: it writes the full JSON result immediately, then a full replacement whenever the result changes. Every response uses the same fields, envelope, indentation, and trailing newline as `task list --json`, so read successive complete JSON values and replace the previous list — do not parse individual lines or read the whole stream as one document. For example, `backlog task list --json --watch --status "In Progress" --assignee @sara` follows one assignee's active queue. Filters, sorting, limits, and local editable task scope are unchanged; completed storage, archives, drafts, and other branches are not added to the list. Dependency and configuration changes can update derived fields or which tasks match. Unchanged results are suppressed, rapid edits or slow consumers may coalesce intermediate states, and the command reconciles periodically as well as on file notifications, so it is a current-state subscription rather than an edit history. `--watch` requires `--json` and cannot be combined with `--plain`. Stop it with Ctrl+C, by terminating the process, or by closing the output pipe. A failure after earlier responses writes a diagnostic to stderr and exits nonzero without emitting a replacement for that failed read.
 
 Task comments are append-only discussion entries with optional author labels. Use comments for review questions and collaboration notes; use implementation notes for execution progress and final summary for PR-ready completion notes.
 

@@ -66,3 +66,25 @@ export function detectDuplicateTaskIds(tasks: Task[]): DuplicateGroup[] {
 
 	return groups.filter((group) => group.tasks.length > 1);
 }
+
+/**
+ * Render the human-readable warning printed when several task files claim one identity.
+ *
+ * Every claim is listed with its file so the collision can be repaired by hand, and the
+ * last line points at the command that previews a safe repair.
+ */
+export function formatDuplicateTaskIdWarning(groups: DuplicateGroup[]): string {
+	const duplicateCount = groups.reduce((total, group) => total + group.tasks.length, 0);
+	const lines = [
+		`WARNING: ${groups.length} duplicate task ID ${groups.length === 1 ? "group affects" : "groups affect"} ${duplicateCount} files.`,
+		"Some task views may hide files and ID-based commands are blocked until the collision is repaired.",
+	];
+	for (const group of groups) {
+		lines.push(`  ${group.id}:`);
+		for (const task of group.tasks) {
+			lines.push(`    - ${task.filePath ?? task.title}`);
+		}
+	}
+	lines.push("Run 'backlog doctor' to preview a safe, human-readable repair.");
+	return lines.join("\n");
+}

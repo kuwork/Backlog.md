@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { stdin as input } from "node:process";
 import { createInterface } from "node:readline/promises";
 import * as clack from "@clack/prompts";
-import { Command } from "commander";
+import { Command, type OptionValues } from "commander";
 import { runAdvancedConfigWizard } from "./commands/advanced-config-wizard.ts";
 import { type CompletionInstallResult, installCompletion, registerCompletionCommand } from "./commands/completion.ts";
 import { configureAdvancedSettings } from "./commands/configure-advanced-settings.ts";
@@ -12,14 +12,17 @@ import { addHelpSchema, choiceType, statusType } from "./commands/help-schema.ts
 import { registerInstructionsCommand } from "./commands/instructions.ts";
 import { registerMcpCommand } from "./commands/mcp.ts";
 import { pickTaskForEditWizard, runTaskCreateWizard, runTaskEditWizard } from "./commands/task-wizard.ts";
+import { watchJson } from "./commands/watch-json.ts";
 import { formatInstallResult, installWikiSkill } from "./commands/wiki-install.ts";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
+import { findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
 import { initializeProject } from "./core/init.ts";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
 import {
 	decisionListJson,
 	documentListJson,
+	formatJson,
 	printJson,
 	type SearchResultInput,
 	searchJson,
@@ -68,7 +71,11 @@ import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
 import { documentReferenceSuggestions } from "./utils/document-id.ts";
-import { type DraftIdentityFindings, hasDraftIdentityFindings } from "./utils/duplicate-detection.ts";
+import {
+	type DraftIdentityFindings,
+	formatDuplicateTaskIdWarning,
+	hasDraftIdentityFindings,
+} from "./utils/duplicate-detection.ts";
 import { isAmbiguousIdError } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
@@ -2375,6 +2382,377 @@ function isDocumentSearchResult(result: SearchResult): result is DocumentSearchR
 	return result.type === "document";
 }
 
+async function printDuplicateIntegrityWarning(core: Core): Promise<boolean> {
+	const groups = await findLocalDuplicateTaskIds(core);
+	if (groups.length === 0) return false;
+	console.error(formatDuplicateTaskIdWarning(groups));
+	process.exitCode = 1;
+	return true;
+}
+
+async function runTaskList(
+	options: OptionValues,
+	emitJson: (value: ReturnType<typeof taskListJson>) => void = printJson,
+) {
+	const outputMode = getTaskReadOutputMode(options);
+	if (!outputMode) return;
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	const hasDuplicateIds = await printDuplicateIntegrityWarning(core);
+	const cleanup = () => {
+		core.disposeSearchService();
+		core.disposeContentStore();
+	};
+	if (hasDuplicateIds && outputMode === "json") {
+		// Two files claiming one identity would publish a list the schema cannot disambiguate,
+		// so the JSON read fails closed; the warning above already named the colliding files.
+		cleanup();
+		return;
+	}
+	if (options.assignee && options.unassigned) {
+		console.error("--unassigned cannot be combined with --assignee.");
+		process.exitCode = 1;
+		cleanup();
+		return;
+	}
+	const baseFilters: TaskListFilter = {};
+	if (options.status) {
+		baseFilters.status = options.status;
+	}
+	if (options.assignee) {
+		baseFilters.assignee = options.assignee;
+	}
+	if (options.unassigned) {
+		baseFilters.unassigned = true;
+	}
+	if (options.milestone) {
+		baseFilters.milestone = options.milestone;
+	}
+	if (options.priority) {
+		const priorityLower = options.priority.toLowerCase();
+		const validPriorities = ["high", "medium", "low"] as const;
+		if (!validPriorities.includes(priorityLower as (typeof validPriorities)[number])) {
+			console.error(`Invalid priority: ${options.priority}. Valid values are: high, medium, low`);
+			process.exitCode = 1;
+			cleanup();
+			return;
+		}
+		baseFilters.priority = priorityLower as (typeof validPriorities)[number];
+	}
+
+	const labelFilters = parseDelimitedStringList(options.labels) ?? [];
+	const rawStatuses = parseDelimitedStringList(options.status) ?? [];
+	const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
+	let canonicalStatuses: string[] = [];
+	if (rawStatuses.length > 0) {
+		const result = await normalizeCliStatusList(core, rawStatuses, "--status");
+		if (result === null) {
+			process.exitCode = 1;
+			cleanup();
+			return;
+		}
+		canonicalStatuses = result;
+	}
+	let canonicalExcludeStatuses: string[] = [];
+	if (rawExcludeStatuses.length > 0) {
+		const result = await normalizeCliStatusList(core, rawExcludeStatuses, "--exclude-status");
+		if (result === null) {
+			process.exitCode = 1;
+			cleanup();
+			return;
+		}
+		canonicalExcludeStatuses = result;
+	}
+	if (canonicalStatuses.length > 0) {
+		baseFilters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
+	}
+	if (canonicalExcludeStatuses.length > 0) {
+		baseFilters.statusExcluded = canonicalExcludeStatuses;
+	}
+	const searchQuery = typeof options.search === "string" ? options.search.trim() : "";
+	let taskLimit: number | undefined;
+	if (options.limit !== undefined) {
+		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog task list --help");
+		if (parsedLimit === null) {
+			cleanup();
+			return;
+		}
+		taskLimit = parsedLimit;
+	}
+
+	let parentId: string | undefined;
+	if (options.parent) {
+		const parentInput = String(options.parent);
+		parentId = normalizeTaskId(parentInput);
+		baseFilters.parentTaskId = parentInput;
+	}
+
+	if (options.sort) {
+		const validSortFields = ["priority", "id", "ordinal"];
+		const sortField = options.sort.toLowerCase();
+		if (!validSortFields.includes(sortField)) {
+			console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
+			process.exitCode = 1;
+			cleanup();
+			return;
+		}
+	}
+
+	const usePlainOutput = outputMode !== "interactive";
+	if (usePlainOutput) {
+		const tasks = await core.queryTasks({
+			query: searchQuery || undefined,
+			filters: Object.keys(baseFilters).length > 0 ? baseFilters : undefined,
+			includeCrossBranch: false,
+		});
+		const config = await core.filesystem.loadConfig();
+
+		// Readiness needs the completed corpus, so only the reads that filter on or publish the
+		// verdict pay for one: `--ready` filters on it and `--json` carries it. Both read it once,
+		// from this one pass, so a row selected as ready can never be serialized from a later verdict.
+		const derivesReadiness = Boolean(options.ready) || outputMode === "json";
+		const readinessRows =
+			derivesReadiness && tasks.length > 0 ? withReadiness(tasks, await loadReadinessGraph(core)) : null;
+
+		if (parentId) {
+			const parentExists = (await core.queryTasks({ includeCrossBranch: false })).some((task) =>
+				taskIdsEqual(parentId, task.id),
+			);
+			if (!parentExists) {
+				console.error(`Parent task ${parentId} not found.`);
+				process.exitCode = 1;
+				cleanup();
+				return;
+			}
+		}
+
+		// Ordering, the parent narrowing, the labels and the limit are the same whatever the rows
+		// carry, so the readiness projection travels through them instead of being derived twice.
+		// The sort field was validated above, before any task was read.
+		const sortField = options.sort ? options.sort.toLowerCase() : "ordinal";
+		const narrowForDisplay = <T extends Task>(rows: T[]): { filtered: T[]; display: T[] } => {
+			const sorted = sortTasks(rows, sortField);
+			const narrowed = parentId
+				? sorted.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId))
+				: sorted;
+			const labelled =
+				labelFilters.length > 0 ? narrowed.filter((task) => taskMatchesAllLabels(task, labelFilters)) : narrowed;
+			return { filtered: labelled, display: taskLimit !== undefined ? labelled.slice(0, taskLimit) : labelled };
+		};
+
+		const reportEmptyList = (): void => {
+			if (options.parent) {
+				console.log(`No child tasks found for parent task ${normalizeTaskId(String(options.parent))}.`);
+			} else {
+				console.log("No tasks found.");
+			}
+			cleanup();
+		};
+
+		let filtered: Task[];
+		let displayTasks: Task[];
+		if (derivesReadiness) {
+			const rows = options.ready ? (readinessRows ?? []).filter((row) => row.isReady) : (readinessRows ?? []);
+			const narrowed = narrowForDisplay(rows);
+			if (outputMode === "json") {
+				// The rows the verdict selected are the rows serialized: one pass, one answer. An empty
+				// result is still a response, so a subscriber always gets a list to replace.
+				emitJson(taskListJson(narrowed.display));
+				cleanup();
+				return;
+			}
+			filtered = narrowed.filtered;
+			displayTasks = narrowed.display;
+		} else {
+			const narrowed = narrowForDisplay(tasks);
+			filtered = narrowed.filtered;
+			displayTasks = narrowed.display;
+		}
+
+		if (filtered.length === 0) {
+			reportEmptyList();
+			return;
+		}
+
+		if (options.sort && options.sort.toLowerCase() === "priority") {
+			console.log("Tasks (sorted by priority):");
+			for (const t of displayTasks) {
+				const priorityIndicator = t.priority ? `[${t.priority.toUpperCase()}] ` : "";
+				const statusIndicator = t.status ? ` (${t.status})` : "";
+				console.log(`  ${priorityIndicator}${t.id} - ${t.title}${statusIndicator}`);
+			}
+			cleanup();
+			return;
+		}
+
+		const canonicalByLower = new Map<string, string>();
+		const statuses = config?.statuses || [];
+		for (const status of statuses) {
+			canonicalByLower.set(status.toLowerCase(), status);
+		}
+
+		const groups = new Map<string, Task[]>();
+		for (const task of displayTasks) {
+			const rawStatus = (task.status || "").trim();
+			const canonicalStatus = canonicalByLower.get(rawStatus.toLowerCase()) || rawStatus;
+			const list = groups.get(canonicalStatus) || [];
+			list.push(task);
+			groups.set(canonicalStatus, list);
+		}
+
+		const orderedStatuses = [
+			...statuses.filter((status) => groups.has(status)),
+			...Array.from(groups.keys()).filter((status) => !statuses.includes(status)),
+		];
+
+		for (const status of orderedStatuses) {
+			const list = groups.get(status);
+			if (!list) continue;
+			console.log(`${status || "No Status"}:`);
+			list.forEach((task) => {
+				const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
+				console.log(`  ${priorityIndicator}${task.id} - ${task.title}`);
+			});
+			console.log();
+		}
+		cleanup();
+		return;
+	}
+
+	let filterDescription = "";
+	let title = "Tasks";
+	const activeFilters: string[] = [];
+	if (canonicalStatuses.length > 0) {
+		activeFilters.push(`Status: ${canonicalStatuses.join(", ")}`);
+	}
+	if (canonicalExcludeStatuses.length > 0) {
+		activeFilters.push(`Exclude status: ${canonicalExcludeStatuses.join(", ")}`);
+	}
+	if (options.assignee) activeFilters.push(`Assignee: ${options.assignee}`);
+	if (options.unassigned) activeFilters.push("Unassigned");
+	if (options.ready) activeFilters.push("Ready");
+	if (options.parent) {
+		activeFilters.push(`Parent: ${normalizeTaskId(String(options.parent))}`);
+	}
+	if (options.milestone) activeFilters.push(`Milestone: ${options.milestone}`);
+	if (options.priority) activeFilters.push(`Priority: ${options.priority}`);
+	if (labelFilters.length > 0) activeFilters.push(`Labels: ${labelFilters.join(", ")}`);
+	if (searchQuery) activeFilters.push(`Search: ${searchQuery}`);
+	if (taskLimit !== undefined) activeFilters.push(`Limit: ${taskLimit}`);
+	if (options.sort) activeFilters.push(`Sort: ${options.sort}`);
+	if (activeFilters.length > 0) {
+		filterDescription = activeFilters.join(", ");
+		title = `Tasks (${activeFilters.join(" • ")})`;
+	}
+	const initialUnifiedFilter: {
+		status?: string;
+		statusExcluded?: string[];
+		assignee?: string;
+		milestone?: string;
+		priority?: string;
+		sort?: string;
+		labels?: string[];
+		labelMatch?: "all";
+		searchQuery?: string;
+		title?: string;
+		filterDescription?: string;
+		parentTaskId?: string;
+		limit?: number;
+		ready?: boolean;
+	} = {
+		status: canonicalStatuses.length === 1 ? canonicalStatuses[0] : undefined,
+		statusExcluded: canonicalExcludeStatuses,
+		assignee: options.assignee,
+		milestone: options.milestone,
+		priority: options.priority,
+		sort: options.sort,
+		labels: labelFilters,
+		labelMatch: labelFilters.length > 0 ? "all" : undefined,
+		title,
+		filterDescription,
+		parentTaskId: parentId,
+		limit: taskLimit,
+		ready: options.ready,
+	};
+	if (searchQuery) {
+		initialUnifiedFilter.searchQuery = searchQuery;
+	}
+
+	const { runUnifiedView } = await import("./ui/unified-view.ts");
+	const interactiveLoaderFilters: TaskListFilter = {};
+	if (options.assignee) {
+		interactiveLoaderFilters.assignee = options.assignee;
+	}
+	if (options.unassigned) {
+		interactiveLoaderFilters.unassigned = true;
+	}
+	if (parentId) {
+		interactiveLoaderFilters.parentTaskId = parentId;
+	}
+	if (canonicalStatuses.length > 0) {
+		interactiveLoaderFilters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
+	}
+	if (canonicalExcludeStatuses.length > 0) {
+		interactiveLoaderFilters.statusExcluded = canonicalExcludeStatuses;
+	}
+	const prefiltersDisplayList = Object.keys(interactiveLoaderFilters).length > 0;
+	await runUnifiedView({
+		core,
+		initialView: "task-list",
+		tasksLoader: async (updateProgress) => {
+			updateProgress("Loading configuration...");
+			const config = await core.filesystem.loadConfig();
+			// Use loadTasks with progress callback for consistent loading experience
+			// This populates the ContentStore, so subsequent queryTasks calls are fast
+			await core.loadTasks((msg) => {
+				updateProgress(msg);
+			});
+			// Now query with filters - this will use the already-populated ContentStore
+			updateProgress("Applying filters...");
+			const [tasks, allTasksForParentCheck] = await Promise.all([
+				core.queryTasks({
+					filters: Object.keys(interactiveLoaderFilters).length > 0 ? interactiveLoaderFilters : undefined,
+					includeCrossBranch: false,
+				}),
+				parentId ? core.queryTasks() : Promise.resolve(undefined),
+			]);
+			if (parentId && allTasksForParentCheck) {
+				const parentExists = allTasksForParentCheck.some((task) => taskIdsEqual(parentId, task.id));
+				if (!parentExists) {
+					throw new Error(`Parent task ${parentId} not found.`);
+				}
+			}
+
+			let sortedTasks = tasks;
+			if (options.sort) {
+				const validSortFields = ["priority", "id", "ordinal"];
+				const sortField = options.sort.toLowerCase();
+				if (!validSortFields.includes(sortField)) {
+					throw new Error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
+				}
+				sortedTasks = sortTasks(tasks, sortField);
+			} else {
+				sortedTasks = sortTasks(tasks, "ordinal");
+			}
+
+			let filtered = sortedTasks;
+			if (parentId) {
+				filtered = filtered.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId));
+			}
+
+			return {
+				tasks: filtered,
+				statuses: config?.statuses || [],
+				// The filters above narrow what is displayed. Dependency readiness must still see
+				// every task, or a dependency assigned to someone else reads as unknown.
+				readinessTasks: prefiltersDisplayList ? await core.queryTasks({ includeCrossBranch: false }) : undefined,
+			};
+		},
+		filter: initialUnifiedFilter,
+	});
+	cleanup();
+}
+
 addHelpSchema(taskCmd.command("list"), {
 	reads: "Local editable tasks from the configured backlog directory",
 	required: [],
@@ -2411,11 +2789,18 @@ addHelpSchema(taskCmd.command("list"), {
 			type: choiceType(["priority", "id", "ordinal"]),
 			description: "Task ordering before applying limit",
 		},
+		{
+			name: "watch",
+			type: "Boolean",
+			description: "Requires --json; emit an initial full list and changed replacements until stopped",
+		},
 	],
-	output: "Interactive task list or plain text with --plain",
+	output:
+		"Interactive task list or plain text with --plain. With --json --watch, successive complete JSON values use the same formatting; replace the previous list with each value. Restart for a fresh snapshot; intermediate edits may be coalesced.",
 	examples: [
 		'backlog task list --status "<todo status>" --plain',
 		"backlog task list --ready --plain",
+		'backlog task list --json --watch --status "In Progress" --assignee @sara',
 		"backlog task list --parent {{TASK_ID:1}}",
 		'backlog task list --labels frontend,bug --search "login" --limit 10 --plain',
 	],
@@ -2447,356 +2832,30 @@ addHelpSchema(taskCmd.command("list"), {
 	.option("--sort <field>", "sort tasks by field (priority, id, ordinal)")
 	.option("--plain", "use plain text output instead of interactive UI")
 	.option("--json", "print versioned machine-readable JSON output")
+	.option("--watch", "keep emitting changed full JSON lists (requires --json)")
 	.action(async (options) => {
-		const outputMode = getTaskReadOutputMode(options);
-		if (!outputMode) return;
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		const cleanup = () => {
-			core.disposeSearchService();
-			core.disposeContentStore();
-		};
-		if (options.assignee && options.unassigned) {
-			console.error("--unassigned cannot be combined with --assignee.");
+		if (!options.watch) {
+			await runTaskList(options);
+			return;
+		}
+		if (getTaskReadOutputMode(options) !== "json") {
+			console.error("--watch requires --json and cannot be combined with --plain.");
 			process.exitCode = 1;
-			cleanup();
 			return;
 		}
-		const baseFilters: TaskListFilter = {};
-		if (options.status) {
-			baseFilters.status = options.status;
-		}
-		if (options.assignee) {
-			baseFilters.assignee = options.assignee;
-		}
-		if (options.unassigned) {
-			baseFilters.unassigned = true;
-		}
-		if (options.milestone) {
-			baseFilters.milestone = options.milestone;
-		}
-		if (options.priority) {
-			const priorityLower = options.priority.toLowerCase();
-			const validPriorities = ["high", "medium", "low"] as const;
-			if (!validPriorities.includes(priorityLower as (typeof validPriorities)[number])) {
-				console.error(`Invalid priority: ${options.priority}. Valid values are: high, medium, low`);
-				process.exitCode = 1;
-				cleanup();
-				return;
-			}
-			baseFilters.priority = priorityLower as (typeof validPriorities)[number];
-		}
-
-		const labelFilters = parseDelimitedStringList(options.labels) ?? [];
-		const rawStatuses = parseDelimitedStringList(options.status) ?? [];
-		const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
-		let canonicalStatuses: string[] = [];
-		if (rawStatuses.length > 0) {
-			const result = await normalizeCliStatusList(core, rawStatuses, "--status");
-			if (result === null) {
-				process.exitCode = 1;
-				cleanup();
-				return;
-			}
-			canonicalStatuses = result;
-		}
-		let canonicalExcludeStatuses: string[] = [];
-		if (rawExcludeStatuses.length > 0) {
-			const result = await normalizeCliStatusList(core, rawExcludeStatuses, "--exclude-status");
-			if (result === null) {
-				process.exitCode = 1;
-				cleanup();
-				return;
-			}
-			canonicalExcludeStatuses = result;
-		}
-		if (canonicalStatuses.length > 0) {
-			baseFilters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
-		}
-		if (canonicalExcludeStatuses.length > 0) {
-			baseFilters.statusExcluded = canonicalExcludeStatuses;
-		}
-		const searchQuery = typeof options.search === "string" ? options.search.trim() : "";
-		let taskLimit: number | undefined;
-		if (options.limit !== undefined) {
-			const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog task list --help");
-			if (parsedLimit === null) {
-				cleanup();
-				return;
-			}
-			taskLimit = parsedLimit;
-		}
-
-		let parentId: string | undefined;
-		if (options.parent) {
-			const parentInput = String(options.parent);
-			parentId = normalizeTaskId(parentInput);
-			baseFilters.parentTaskId = parentInput;
-		}
-
-		if (options.sort) {
-			const validSortFields = ["priority", "id", "ordinal"];
-			const sortField = options.sort.toLowerCase();
-			if (!validSortFields.includes(sortField)) {
-				console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
-				process.exitCode = 1;
-				cleanup();
-				return;
-			}
-		}
-
-		const usePlainOutput = outputMode !== "interactive";
-		if (usePlainOutput) {
-			const tasks = await core.queryTasks({
-				query: searchQuery || undefined,
-				filters: Object.keys(baseFilters).length > 0 ? baseFilters : undefined,
-				includeCrossBranch: false,
+		const cwd = await requireProjectRoot();
+		const filesystem = new Core(cwd).filesystem;
+		await watchJson([filesystem.backlogDir, dirname(filesystem.configFilePath)], async () => {
+			let result: string | undefined;
+			await runTaskList(options, (value) => {
+				result = formatJson(value);
 			});
-			const config = await core.filesystem.loadConfig();
-
-			// Readiness needs the completed corpus, so only the reads that filter on or publish the
-			// verdict pay for one: `--ready` filters on it and `--json` carries it. Both read it once,
-			// from this one pass, so a row selected as ready can never be serialized from a later verdict.
-			const derivesReadiness = Boolean(options.ready) || outputMode === "json";
-			const readinessRows =
-				derivesReadiness && tasks.length > 0 ? withReadiness(tasks, await loadReadinessGraph(core)) : null;
-
-			if (parentId) {
-				const parentExists = (await core.queryTasks({ includeCrossBranch: false })).some((task) =>
-					taskIdsEqual(parentId, task.id),
-				);
-				if (!parentExists) {
-					console.error(`Parent task ${parentId} not found.`);
-					process.exitCode = 1;
-					cleanup();
-					return;
-				}
-			}
-
-			// Ordering, the parent narrowing, the labels and the limit are the same whatever the rows
-			// carry, so the readiness projection travels through them instead of being derived twice.
-			// The sort field was validated above, before any task was read.
-			const sortField = options.sort ? options.sort.toLowerCase() : "ordinal";
-			const narrowForDisplay = <T extends Task>(rows: T[]): { filtered: T[]; display: T[] } => {
-				const sorted = sortTasks(rows, sortField);
-				const narrowed = parentId
-					? sorted.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId))
-					: sorted;
-				const labelled =
-					labelFilters.length > 0 ? narrowed.filter((task) => taskMatchesAllLabels(task, labelFilters)) : narrowed;
-				return { filtered: labelled, display: taskLimit !== undefined ? labelled.slice(0, taskLimit) : labelled };
-			};
-
-			const reportEmptyList = (): void => {
-				if (options.parent) {
-					console.log(`No child tasks found for parent task ${normalizeTaskId(String(options.parent))}.`);
-				} else {
-					console.log("No tasks found.");
-				}
-				cleanup();
-			};
-
-			let displayTasks: Task[];
-			if (derivesReadiness) {
-				const rows = options.ready ? (readinessRows ?? []).filter((row) => row.isReady) : (readinessRows ?? []);
-				const narrowed = narrowForDisplay(rows);
-				if (narrowed.filtered.length === 0) {
-					reportEmptyList();
-					return;
-				}
-				if (outputMode === "json") {
-					// The rows the verdict selected are the rows serialized: one pass, one answer.
-					printJson(taskListJson(narrowed.display));
-					cleanup();
-					return;
-				}
-				displayTasks = narrowed.display;
-			} else {
-				const narrowed = narrowForDisplay(tasks);
-				if (narrowed.filtered.length === 0) {
-					reportEmptyList();
-					return;
-				}
-				displayTasks = narrowed.display;
-			}
-
-			if (options.sort && options.sort.toLowerCase() === "priority") {
-				console.log("Tasks (sorted by priority):");
-				for (const t of displayTasks) {
-					const priorityIndicator = t.priority ? `[${t.priority.toUpperCase()}] ` : "";
-					const statusIndicator = t.status ? ` (${t.status})` : "";
-					console.log(`  ${priorityIndicator}${t.id} - ${t.title}${statusIndicator}`);
-				}
-				cleanup();
-				return;
-			}
-
-			const canonicalByLower = new Map<string, string>();
-			const statuses = config?.statuses || [];
-			for (const status of statuses) {
-				canonicalByLower.set(status.toLowerCase(), status);
-			}
-
-			const groups = new Map<string, Task[]>();
-			for (const task of displayTasks) {
-				const rawStatus = (task.status || "").trim();
-				const canonicalStatus = canonicalByLower.get(rawStatus.toLowerCase()) || rawStatus;
-				const list = groups.get(canonicalStatus) || [];
-				list.push(task);
-				groups.set(canonicalStatus, list);
-			}
-
-			const orderedStatuses = [
-				...statuses.filter((status) => groups.has(status)),
-				...Array.from(groups.keys()).filter((status) => !statuses.includes(status)),
-			];
-
-			for (const status of orderedStatuses) {
-				const list = groups.get(status);
-				if (!list) continue;
-				console.log(`${status || "No Status"}:`);
-				list.forEach((task) => {
-					const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
-					console.log(`  ${priorityIndicator}${task.id} - ${task.title}`);
-				});
-				console.log();
-			}
-			cleanup();
-			return;
-		}
-
-		let filterDescription = "";
-		let title = "Tasks";
-		const activeFilters: string[] = [];
-		if (canonicalStatuses.length > 0) {
-			activeFilters.push(`Status: ${canonicalStatuses.join(", ")}`);
-		}
-		if (canonicalExcludeStatuses.length > 0) {
-			activeFilters.push(`Exclude status: ${canonicalExcludeStatuses.join(", ")}`);
-		}
-		if (options.assignee) activeFilters.push(`Assignee: ${options.assignee}`);
-		if (options.unassigned) activeFilters.push("Unassigned");
-		if (options.ready) activeFilters.push("Ready");
-		if (options.parent) {
-			activeFilters.push(`Parent: ${normalizeTaskId(String(options.parent))}`);
-		}
-		if (options.milestone) activeFilters.push(`Milestone: ${options.milestone}`);
-		if (options.priority) activeFilters.push(`Priority: ${options.priority}`);
-		if (labelFilters.length > 0) activeFilters.push(`Labels: ${labelFilters.join(", ")}`);
-		if (searchQuery) activeFilters.push(`Search: ${searchQuery}`);
-		if (taskLimit !== undefined) activeFilters.push(`Limit: ${taskLimit}`);
-		if (options.sort) activeFilters.push(`Sort: ${options.sort}`);
-		if (activeFilters.length > 0) {
-			filterDescription = activeFilters.join(", ");
-			title = `Tasks (${activeFilters.join(" • ")})`;
-		}
-		const initialUnifiedFilter: {
-			status?: string;
-			statusExcluded?: string[];
-			assignee?: string;
-			milestone?: string;
-			priority?: string;
-			sort?: string;
-			labels?: string[];
-			labelMatch?: "all";
-			searchQuery?: string;
-			title?: string;
-			filterDescription?: string;
-			parentTaskId?: string;
-			limit?: number;
-			ready?: boolean;
-		} = {
-			status: canonicalStatuses.length === 1 ? canonicalStatuses[0] : undefined,
-			statusExcluded: canonicalExcludeStatuses,
-			assignee: options.assignee,
-			milestone: options.milestone,
-			priority: options.priority,
-			sort: options.sort,
-			labels: labelFilters,
-			labelMatch: labelFilters.length > 0 ? "all" : undefined,
-			title,
-			filterDescription,
-			parentTaskId: parentId,
-			limit: taskLimit,
-			ready: options.ready,
-		};
-		if (searchQuery) {
-			initialUnifiedFilter.searchQuery = searchQuery;
-		}
-
-		const { runUnifiedView } = await import("./ui/unified-view.ts");
-		const interactiveLoaderFilters: TaskListFilter = {};
-		if (options.assignee) {
-			interactiveLoaderFilters.assignee = options.assignee;
-		}
-		if (options.unassigned) {
-			interactiveLoaderFilters.unassigned = true;
-		}
-		if (parentId) {
-			interactiveLoaderFilters.parentTaskId = parentId;
-		}
-		if (canonicalStatuses.length > 0) {
-			interactiveLoaderFilters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
-		}
-		if (canonicalExcludeStatuses.length > 0) {
-			interactiveLoaderFilters.statusExcluded = canonicalExcludeStatuses;
-		}
-		const prefiltersDisplayList = Object.keys(interactiveLoaderFilters).length > 0;
-		await runUnifiedView({
-			core,
-			initialView: "task-list",
-			tasksLoader: async (updateProgress) => {
-				updateProgress("Loading configuration...");
-				const config = await core.filesystem.loadConfig();
-				// Use loadTasks with progress callback for consistent loading experience
-				// This populates the ContentStore, so subsequent queryTasks calls are fast
-				await core.loadTasks((msg) => {
-					updateProgress(msg);
-				});
-				// Now query with filters - this will use the already-populated ContentStore
-				updateProgress("Applying filters...");
-				const [tasks, allTasksForParentCheck] = await Promise.all([
-					core.queryTasks({
-						filters: Object.keys(interactiveLoaderFilters).length > 0 ? interactiveLoaderFilters : undefined,
-						includeCrossBranch: false,
-					}),
-					parentId ? core.queryTasks() : Promise.resolve(undefined),
-				]);
-				if (parentId && allTasksForParentCheck) {
-					const parentExists = allTasksForParentCheck.some((task) => taskIdsEqual(parentId, task.id));
-					if (!parentExists) {
-						throw new Error(`Parent task ${parentId} not found.`);
-					}
-				}
-
-				let sortedTasks = tasks;
-				if (options.sort) {
-					const validSortFields = ["priority", "id", "ordinal"];
-					const sortField = options.sort.toLowerCase();
-					if (!validSortFields.includes(sortField)) {
-						throw new Error(`Invalid sort field: ${options.sort}. Valid values are: priority, id, ordinal`);
-					}
-					sortedTasks = sortTasks(tasks, sortField);
-				} else {
-					sortedTasks = sortTasks(tasks, "ordinal");
-				}
-
-				let filtered = sortedTasks;
-				if (parentId) {
-					filtered = filtered.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId));
-				}
-
-				return {
-					tasks: filtered,
-					statuses: config?.statuses || [],
-					// The filters above narrow what is displayed. Dependency readiness must still see
-					// every task, or a dependency assigned to someone else reads as unknown.
-					readinessTasks: prefiltersDisplayList ? await core.queryTasks({ includeCrossBranch: false }) : undefined,
-				};
-			},
-			filter: initialUnifiedFilter,
+			return result;
 		});
-		cleanup();
+		// Bun can retain a native stdout write after stream destruction when the reader stops
+		// draining a pipe. Watch cleanup has finished; do not wait for that reader after an
+		// explicit termination request.
+		if (process.exitCode === 130 || process.exitCode === 143) process.exit(process.exitCode);
 	});
 
 addHelpSchema(taskCmd.command("edit [taskId]"), {

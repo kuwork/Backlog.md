@@ -176,6 +176,7 @@ Use CLI commands for Backlog changes:
 - List with multi-status selection: `backlog task list --status "To Do,In Progress" --plain`
 - List excluding statuses: `backlog task list --exclude-status "Done,Blocked" --plain`
 - Combine multi-select with exclusion: `backlog task list --status "To Do,In Progress" --exclude-status "Blocked" --plain`
+- Watch a filtered queue as it changes: `backlog task list --json --watch --status "In Progress" --assignee @your-name`
 - Update: `backlog task edit {{TASK_ID:123}} ...`
 - Create docs: `backlog doc create "Title"`
 - Update docs: `backlog doc update doc-1 --content "Markdown"`
