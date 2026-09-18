@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import type { Task, TaskCreateInput } from "../types/index.ts";
 import { getCreatedTaskBoardOutcome, upsertBoardTask } from "../ui/board.ts";
+import type { CaretLines } from "../ui/components/task-composer.ts";
 import {
+	caretIndexFromCursor,
 	createTaskComposerValues,
+	cursorFromCaretIndex,
 	getTaskComposerLayout,
 	getTaskComposerPriorityChoices,
 	getTaskComposerStatusChoices,
@@ -96,6 +99,43 @@ describe("TUI task composer model", () => {
 			expect(popupHeight).toBeLessThanOrEqual(screenHeight);
 		}
 		expect(getTaskComposerLayout(80, 10).popupHeight).toBe(8);
+	});
+
+	it("maps a display-cell cursor onto code-point boundaries around a wide astral character", () => {
+		const value = "A\u{20BB7}B";
+		const lines: CaretLines = {
+			// The widget adds \x03 as an internal placeholder for the character's second cell.
+			real: ["A\u{20BB7}\x03B"],
+			rtof: [0],
+			fakeCount: 1,
+			displayWidth: (text) =>
+				Array.from(text).reduce((width, character) => width + (character === "\u{20BB7}" ? 2 : 1), 0),
+		};
+
+		// The widget can leave its cursor on the second cell of a wide character. Resolve that
+		// ambiguous cell to the boundary before the character, never between its surrogates.
+		expect(caretIndexFromCursor(value, { x: -2, y: 0 }, lines)).toBe(1);
+		expect(cursorFromCaretIndex(value, 1, lines)).toEqual({ x: -3, y: 0 });
+		for (const index of [0, 1, 3, 4]) {
+			expect(caretIndexFromCursor(value, cursorFromCaretIndex(value, index, lines), lines)).toBe(index);
+		}
+	});
+
+	it("never resolves a caret inside a surrogate pair, for any displayed column", () => {
+		const value = "A\u{20BB7}B";
+		const writeWidth = (text: string) => Array.from(text).reduce((w, ch) => w + (ch === "\u{20BB7}" ? 2 : 1), 0);
+		const lines: CaretLines = { real: ["A\u{20BB7}\x03B"], rtof: [0], fakeCount: 1, displayWidth: writeWidth };
+
+		// Columns are walked to one past the end so the cursor can sit on either cell of the wide
+		// character: no column may produce an index that splits its surrogate pair.
+		for (let column = 0; column <= writeWidth("A\u{20BB7}B") + 2; column += 1) {
+			const caret = caretIndexFromCursor(value, { x: -column, y: 0 }, lines);
+			expect(caret).not.toBe(2);
+			expect(`${value.slice(0, caret)}X${value.slice(caret)}`).not.toContain("\uFFFD");
+		}
+		// Without a display-width hook the conversion still cannot split the pair.
+		const fallback: CaretLines = { real: ["A\u{20BB7}\x03B"], rtof: [0], fakeCount: 1 };
+		expect(caretIndexFromCursor(value, { x: -2, y: 0 }, fallback)).not.toBe(2);
 	});
 
 	it("does not persist invalid input and preserves values after a failed attempt", async () => {
