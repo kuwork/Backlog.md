@@ -168,6 +168,118 @@ describe("exportKanbanBoardToFile", () => {
 		await rm(dir, { recursive: true, force: true });
 	});
 
+	it("includes subtasks of subtasks under their parent", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "board-export-"));
+		const file = join(dir, "README.md");
+		const tasks: Task[] = [
+			{
+				id: "task-10",
+				title: "Epic",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-01",
+				labels: [],
+				dependencies: [],
+			},
+			{
+				id: "task-11",
+				title: "Child",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-02",
+				labels: [],
+				dependencies: [],
+				parentTaskId: "task-10",
+			},
+			{
+				id: "task-12",
+				title: "Grandchild",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-03",
+				labels: [],
+				dependencies: [],
+				parentTaskId: "task-11",
+			},
+		];
+
+		await exportKanbanBoardToFile(tasks, ["To Do"], file, "TestProject");
+		const content = await Bun.file(file).text();
+
+		const normalized = content.replace(/^Generated on: .*$/m, "Generated on: TIMESTAMP");
+		expect(normalized).toBe(
+			[
+				"# Kanban Board Export (powered by Backlog.md)",
+				"Generated on: TIMESTAMP",
+				"Project: TestProject",
+				"",
+				"| To Do |",
+				"| --- |",
+				"| **TASK-10** - Epic |",
+				"| └─ **TASK-11** - Child |",
+				"| └─ **TASK-12** - Grandchild |",
+				"",
+			].join("\n"),
+		);
+
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	it("keeps flat parent/child export output unchanged", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "board-export-"));
+		const file = join(dir, "README.md");
+		const tasks: Task[] = [
+			{
+				id: "task-204",
+				title: "Test Task",
+				status: "To Do",
+				assignee: ["alice"],
+				createdDate: "2025-01-01",
+				labels: ["ui"],
+				dependencies: [],
+			},
+			{
+				id: "task-205",
+				title: "Subtask Example",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-02",
+				labels: [],
+				dependencies: [],
+				parentTaskId: "task-204",
+			},
+			{
+				id: "task-206",
+				title: "Standalone",
+				status: "Done",
+				assignee: [],
+				createdDate: "2025-01-03",
+				labels: [],
+				dependencies: [],
+			},
+		];
+
+		await exportKanbanBoardToFile(tasks, ["To Do", "Done"], file, "TestProject");
+		const content = await Bun.file(file).text();
+
+		const normalized = content.replace(/^Generated on: .*$/m, "Generated on: TIMESTAMP");
+		expect(normalized).toBe(
+			[
+				"# Kanban Board Export (powered by Backlog.md)",
+				"Generated on: TIMESTAMP",
+				"Project: TestProject",
+				"",
+				"| To Do | Done |",
+				"| --- | --- |",
+				"| **TASK-204** - Test Task [@alice]<br>*#ui* | **TASK-206** - Standalone |",
+				"| └─ **TASK-205** - Subtask Example |  |",
+				"",
+			].join("\n"),
+		);
+
+		await rm(dir, { recursive: true, force: true });
+	});
+
 	it("handles assignees with existing @ symbols correctly", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "board-export-"));
 		const file = join(dir, "README.md");
@@ -270,6 +382,56 @@ describe("generateMilestoneGroupedBoard", () => {
 		expect(board.match(/## Release 1\.0 \(\d+ tasks\)/g)?.length).toBe(1);
 		expect(board).toContain("**TASK-1** - By ID");
 		expect(board).toContain("**TASK-2** - By title");
+	});
+
+	it("lists a grandchild in the milestone grouped board", () => {
+		const tasks: Task[] = [
+			{
+				id: "task-40",
+				title: "Epic",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-01",
+				labels: [],
+				dependencies: [],
+				milestone: "m-0",
+			},
+			{
+				id: "task-41",
+				title: "Child",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-02",
+				labels: [],
+				dependencies: [],
+				parentTaskId: "task-40",
+				milestone: "m-0",
+			},
+			{
+				id: "task-42",
+				title: "Grandchild",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2025-01-03",
+				labels: [],
+				dependencies: [],
+				parentTaskId: "task-41",
+				milestone: "m-0",
+			},
+		];
+		const milestones: Milestone[] = [
+			{
+				id: "m-0",
+				title: "Release 1.0",
+				description: "Milestone: Release 1.0",
+				rawContent: "## Description\n\nMilestone: Release 1.0",
+			},
+		];
+
+		const board = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project");
+		expect(board).toContain("  - **TASK-40** - Epic");
+		expect(board).toContain("  - **TASK-41** - Child");
+		expect(board).toContain("  - **TASK-42** - Grandchild");
 	});
 
 	it("keeps ambiguous reused milestone titles as separate sections", () => {
