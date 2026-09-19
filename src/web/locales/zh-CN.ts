@@ -192,6 +192,7 @@ export const zhCN: TranslationDict = {
 		promoteToTaskTitle: "提升为任务",
 		moveToCompletedHint: "移至已完成文件夹（从看板移除）",
 		crossBranchHint: (branch: string) => `此任务存在于 ${branch} 分支。请切换到该分支进行编辑。`,
+		completedCorpusHint: "此任务位于已完成归档，仅供查看，无法在此编辑。",
 		unsavedChangesPrompt: "放弃未保存的更改并关闭？",
 		placeholderTitle: "输入任务标题",
 		placeholderAssignee: "输入姓名并按回车",

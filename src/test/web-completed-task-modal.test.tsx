@@ -29,6 +29,33 @@ const completedTask: Task = {
 	source: "completed",
 };
 
+/** A board record: part of the corpus, so its popup has to stay a working surface. */
+const ACTIVE_TASK_ID = "BACK-500";
+const ACTIVE_TASK_TITLE = "An active board task";
+const activeTask: Task = {
+	id: ACTIVE_TASK_ID,
+	title: ACTIVE_TASK_TITLE,
+	status: "To Do",
+	assignee: [],
+	createdDate: "2026-08-01 10:00",
+	labels: [],
+	dependencies: [],
+};
+
+/** Merged in from another branch: read-only like a completed record, but for a different reason. */
+const CROSS_BRANCH_TASK_ID = "BACK-501";
+const CROSS_BRANCH_TASK_TITLE = "A task from another branch";
+const crossBranchTask: Task = {
+	id: CROSS_BRANCH_TASK_ID,
+	title: CROSS_BRANCH_TASK_TITLE,
+	status: "To Do",
+	assignee: [],
+	createdDate: "2026-08-01 10:00",
+	labels: [],
+	dependencies: [],
+	branch: "feature/other",
+};
+
 const originalFetch = globalThis.fetch;
 const originalWebSocket = globalThis.WebSocket;
 
@@ -108,11 +135,11 @@ function setupDom(path: string): HTMLElement {
 }
 
 /**
- * Serves the collections the app loads. The board corpus intentionally stays empty: the
+ * Serves the collections the app loads. The board corpus is whatever the caller passes; the
  * completed record exists only as the navigation payload, the way the search dialog
  * widened-corpus flow delivers it.
  */
-function serveApi(): void {
+function serveApi(boardTasks: Task[] = []): void {
 	globalThis.fetch = (async (input: RequestInfo | URL) => {
 		const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 		const path = new URL(raw, "http://localhost").pathname;
@@ -132,9 +159,16 @@ function serveApi(): void {
 			});
 		}
 		if (path === "/api/tasks/duplicate-ids") return json({ groups: [] });
-		if (path === "/api/search") return json([]);
+		if (path === "/api/search") return json(boardTasks.map((task) => ({ type: "task", task })));
 		return json([]);
 	}) as unknown as typeof globalThis.fetch;
+}
+
+/** The action buttons render their label as the button text, so this is the reliable probe. */
+function buttonWithText(label: string): HTMLButtonElement | undefined {
+	return Array.from(document.querySelectorAll("button")).find(
+		(button) => button.textContent?.trim() === label,
+	) as HTMLButtonElement | undefined;
 }
 
 async function flush(milliseconds = 0): Promise<void> {
@@ -175,7 +209,7 @@ afterEach(async () => {
 	globalThis.WebSocket = originalWebSocket;
 });
 
-describe("completed task opened from the widened search corpus", () => {
+describe("task popup for records read outside the board corpus", () => {
 	it("opens the modal from the record carried in the navigation state", async () => {
 		serveApi();
 		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
@@ -192,6 +226,63 @@ describe("completed task opened from the widened search corpus", () => {
 
 		expect(window.location.pathname).toBe(TASK_PATH);
 		expect(document.body.textContent).toContain(TASK_TITLE);
+	});
+
+	it("locks the popup down and names the completed archive under the title bar", async () => {
+		serveApi();
+		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+		await renderApp("/search?q=plugin");
+		await flush(SOCKET_HANDSHAKE_MS);
+		await broadcast({ type: "loaded" });
+		await flush();
+
+		await navigateHistory(TASK_PATH, {
+			backgroundLocation: { pathname: "/search", search: "?q=plugin", hash: "", state: null },
+			preloadedTask: completedTask,
+		});
+		await flush();
+
+		expect(document.body.textContent).toContain("Read-only");
+		expect(document.body.textContent).toContain("completed archive");
+		expect(buttonWithText("Edit")).toBeUndefined();
+		expect(buttonWithText("Save")).toBeUndefined();
+	});
+
+	it("keeps an active board task editable", async () => {
+		serveApi([activeTask]);
+		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+		await renderApp("/search?q=plugin");
+		await flush(SOCKET_HANDSHAKE_MS);
+		await broadcast({ type: "loaded" });
+		await flush();
+
+		await navigateHistory(`/task/${ACTIVE_TASK_ID}`, {
+			backgroundLocation: { pathname: "/search", search: "?q=plugin", hash: "", state: null },
+		});
+		await flush();
+
+		expect(document.body.textContent).toContain(ACTIVE_TASK_TITLE);
+		expect(buttonWithText("Edit")).toBeDefined();
+		expect(document.body.textContent).not.toContain("Read-only");
+	});
+
+	it("names the source branch instead of the archive for a cross-branch record", async () => {
+		serveApi([crossBranchTask]);
+		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+		await renderApp("/search?q=plugin");
+		await flush(SOCKET_HANDSHAKE_MS);
+		await broadcast({ type: "loaded" });
+		await flush();
+
+		await navigateHistory(`/task/${CROSS_BRANCH_TASK_ID}`, {
+			backgroundLocation: { pathname: "/search", search: "?q=plugin", hash: "", state: null },
+		});
+		await flush();
+
+		expect(document.body.textContent).toContain(CROSS_BRANCH_TASK_TITLE);
+		expect(document.body.textContent).toContain("feature/other branch");
+		expect(document.body.textContent).not.toContain("completed archive");
+		expect(buttonWithText("Edit")).toBeUndefined();
 	});
 
 	it("still falls back to the board for an unknown id without a preloaded record", async () => {

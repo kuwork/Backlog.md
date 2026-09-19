@@ -192,6 +192,7 @@ export const zhTW: TranslationDict = {
 		promoteToTaskTitle: "提升為任務",
 		moveToCompletedHint: "移至已完成資料夾（從看板移除）",
 		crossBranchHint: (branch: string) => `此任務存在於 ${branch} 分支。請切換到該分支進行編輯。`,
+		completedCorpusHint: "此任務位於已完成封存，僅供檢視，無法在此編輯。",
 		unsavedChangesPrompt: "放棄未保存的更改並關閉？",
 		placeholderTitle: "輸入任務標題",
 		placeholderAssignee: "輸入姓名並按回車",

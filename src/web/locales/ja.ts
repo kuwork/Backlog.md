@@ -193,6 +193,7 @@ export const ja: TranslationDict = {
 		moveToCompletedHint: "完了フォルダに移動（ボードから削除）",
 		crossBranchHint: (branch: string) =>
 			`このタスクは ${branch} ブランチに存在します。編集するにはそのブランチに切り替えてください。`,
+		completedCorpusHint: "このタスクは完了済みアーカイブにあり、参照専用のためここでは編集できません。",
 		unsavedChangesPrompt: "未保存の変更を破棄して閉じますか？",
 		placeholderTitle: "タスクのタイトルを入力",
 		placeholderAssignee: "名前を入力して Enter を押してください",

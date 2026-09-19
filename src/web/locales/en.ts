@@ -190,6 +190,8 @@ export const en = {
 		promoteToTaskTitle: "Promote to Task",
 		moveToCompletedHint: "Move to completed folder (removes from board)",
 		crossBranchHint: (branch: string) => `This task exists in the ${branch} branch. Switch to that branch to edit it.`,
+		completedCorpusHint:
+			"This task lives in the completed archive. It is kept for reference only and cannot be edited here.",
 		unsavedChangesPrompt: "Discard unsaved changes and close?",
 		placeholderTitle: "Enter task title",
 		placeholderAssignee: "Type name and press Enter",

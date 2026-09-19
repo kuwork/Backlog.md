@@ -176,6 +176,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const navigate = useNavigate();
   const isCreateMode = !task;
   const isFromOtherBranch = Boolean(task?.branch);
+  // A record read out of backlog/completed reaches the popup the same way a cross-branch record
+  // does: it is not part of the board corpus, so nothing here can refresh it and a save would be
+  // written against a copy the board does not own. Both are reading surfaces; only the hint differs.
+  const isCompletedCorpus = task?.source === "completed";
+  const isReadOnly = isFromOtherBranch || isCompletedCorpus;
   const [mode, setMode] = useState<Mode>(isCreateMode ? "create" : "preview");
   const modeRef = useRef(mode);
   const previousTaskId = useRef(task?.id ?? "");
@@ -949,7 +954,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const handleToggleCriterion = async (index: number, checked: boolean) => {
     if (demoting) return;
     if (!task) return; // Can't toggle in create mode
-    if (isFromOtherBranch) return; // Can't toggle for cross-branch tasks
+    if (isReadOnly) return; // Can't toggle for records the board does not own
     // Optimistic update
     const next = (criteria || []).map((c) => (c.index === index ? { ...c, checked } : c));
     setCriteria(next);
@@ -966,7 +971,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const handleToggleDefinitionOfDone = async (index: number, checked: boolean) => {
     if (demoting) return;
     if (!task) return; // Can't toggle in create mode
-    if (isFromOtherBranch) return; // Can't toggle for cross-branch tasks
+    if (isReadOnly) return; // Can't toggle for records the board does not own
     const next = (definitionOfDone || []).map((c) => (c.index === index ? { ...c, checked } : c));
     setDefinitionOfDone(next);
     try {
@@ -983,8 +988,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   const handleInlineMetaUpdate = async (updates: InlineMetaUpdatePayload) => {
     if (demoting) return;
-    // Don't allow updates for cross-branch tasks
-    if (isFromOtherBranch) return;
+    // Don't allow updates for off-board records
+    if (isReadOnly) return;
 
     // Optimistic UI
     if (updates.status !== undefined) setStatus(String(updates.status));
@@ -1010,7 +1015,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   const handleAddComment = async () => {
     if (demoting) return;
-    if (!task || isFromOtherBranch) return;
+    if (!task || isReadOnly) return;
     const body = commentBody.trim();
     if (!body) return;
     const author = commentAuthor.trim();
@@ -1052,7 +1057,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   const handleDeleteComment = async (index: number) => {
     if (demoting) return;
-    if (!task || isFromOtherBranch) return;
+    if (!task || isReadOnly) return;
     if (!window.confirm(t.taskDetails.deleteCommentConfirm)) return;
     setCommentSaving(true);
     setError(null);
@@ -1069,7 +1074,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   const handleClearComments = async () => {
     if (demoting) return;
-    if (!task || isFromOtherBranch) return;
+    if (!task || isReadOnly) return;
     if (comments.length === 0) return;
     if (!window.confirm(t.taskDetails.clearCommentsConfirm)) return;
     setCommentSaving(true);
@@ -1101,7 +1106,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   };
 
 	const handleDemote = async () => {
-		if (demoting || !task || isDraftTask || isDoneStatus || isFromOtherBranch) return;
+		if (demoting || !task || isDraftTask || isDoneStatus || isReadOnly) return;
 		if (activeDemotionRequest.current !== null) return;
 		if (!window.confirm(t.taskDetails.demoteConfirm)) return;
 
@@ -1225,7 +1230,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
       }
       actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-		          {isDoneStatus && mode === "preview" && !isCreateMode && !isFromOtherBranch && (
+		          {isDoneStatus && mode === "preview" && !isCreateMode && !isReadOnly && (
 		            <button
 		              onClick={handleComplete}
 		              disabled={demoting}
@@ -1235,7 +1240,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		              {t.taskDetails.markCompleted}
 		            </button>
 		          )}
-		          {!isDoneStatus && !isDraftTask && mode === "preview" && !isCreateMode && !isFromOtherBranch && (
+		          {!isDoneStatus && !isDraftTask && mode === "preview" && !isCreateMode && !isReadOnly && (
 		            <button
 		              onClick={handleDemote}
 		              disabled={demoting}
@@ -1245,7 +1250,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		              {demoting ? t.taskDetails.demoteInProgress : t.taskDetails.demoteToDraft}
 		            </button>
 		          )}
-		          {isDraftTask && mode === "preview" && !isCreateMode && !isFromOtherBranch && (
+		          {isDraftTask && mode === "preview" && !isCreateMode && !isReadOnly && (
 		            <button
 		              onClick={handlePromote}
 		              disabled={demoting}
@@ -1255,7 +1260,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		              {t.taskDetails.promoteToTask}
 		            </button>
 		          )}
-		          {mode === "preview" && !isCreateMode && !isFromOtherBranch ? (
+		          {mode === "preview" && !isCreateMode && !isReadOnly ? (
 		            <button
 		              onClick={() => setMode("edit")}
 		              disabled={demoting}
@@ -1301,14 +1306,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
         <div className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</div>
       )}
 
-      {/* Cross-branch task indicator */}
-      {isFromOtherBranch && (
+      {/* Off-board record indicator: cross-branch or completed corpus */}
+      {isReadOnly && (
         <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg text-amber-800 dark:text-amber-200">
           <svg className="w-5 h-5 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
           <div className="flex-1">
-            <span className="font-medium">{t.common.readOnly}:</span> {t.taskDetails.crossBranchHint(task?.branch || "")}
+            <span className="font-medium">{t.common.readOnly}:</span>{" "}
+            {isFromOtherBranch
+              ? t.taskDetails.crossBranchHint(task?.branch || "")
+              : t.taskDetails.completedCorpusHint}
           </div>
         </div>
       )}
@@ -1386,7 +1394,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                           </button>
                         )}
                       </span>
-                      {!isFromOtherBranch && (
+                      {!isReadOnly && (
                         <button
                           onClick={() => {
                             const newRefs = references.filter((_, i) => i !== idx);
@@ -1406,7 +1414,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noReferences}</p>
               )}
-              {!isFromOtherBranch && (
+              {!isReadOnly && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1463,7 +1471,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                           </button>
                         )}
                       </span>
-                      {!isFromOtherBranch && (
+                      {!isReadOnly && (
                         <button
                           onClick={() => {
                             const newDocs = documentation.filter((_, i) => i !== idx);
@@ -1483,7 +1491,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
               )}
-              {!isFromOtherBranch && (
+              {!isReadOnly && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1636,7 +1644,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
               <SectionHeader
                 title={`${t.taskDetails.section.comments}${comments.length ? ` (${comments.length})` : ""}`}
-                right={!isFromOtherBranch && comments.length > 0 ? (
+                right={!isReadOnly && comments.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => void handleClearComments()}
@@ -1656,7 +1664,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                         <span className="font-semibold text-gray-700 dark:text-gray-200">#{comment.index}</span>
                         {comment.author ? <span>{comment.author}</span> : null}
                         {comment.createdDate ? <span>{formatStoredUtcDateForDisplay(comment.createdDate)}</span> : null}
-                        {!isFromOtherBranch && (
+                        {!isReadOnly && (
                           <button
                             type="button"
                             onClick={() => void handleDeleteComment(comment.index)}
@@ -1679,7 +1687,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noComments}</div>
               )}
-              {!isFromOtherBranch && (
+              {!isReadOnly && (
                 <div className="mt-4 space-y-2">
                   <input
                     type="text"
@@ -1771,8 +1779,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     e.currentTarget.blur();
                   }
                 }}
-                disabled={isFromOtherBranch}
-                className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly}
+                className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
           )}
@@ -1780,7 +1788,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           {/* Status */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
             <SectionHeader title={t.taskDetails.section.status} />
-            <StatusSelect current={status} onChange={(val) => handleInlineMetaUpdate({ status: val })} disabled={isFromOtherBranch || isDraftTask} />
+            <StatusSelect current={status} onChange={(val) => handleInlineMetaUpdate({ status: val })} disabled={isReadOnly || isDraftTask} />
           </div>
 
           {/* Assignee */}
@@ -1792,7 +1800,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               value={assignee}
               onChange={(value) => handleInlineMetaUpdate({ assignee: value })}
               placeholder={t.taskDetails.placeholderAssignee}
-              disabled={isFromOtherBranch}
+              disabled={isReadOnly}
               availableOptions={availableAssignees}
             />
           </div>
@@ -1806,7 +1814,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               value={labels}
               onChange={(value) => handleInlineMetaUpdate({ labels: value })}
               placeholder={t.taskDetails.placeholderLabels}
-              disabled={isFromOtherBranch}
+              disabled={isReadOnly}
               availableOptions={availableLabels}
             />
           </div>
@@ -1815,10 +1823,10 @@ export const TaskDetailsModal: React.FC<Props> = ({
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
             <SectionHeader title={t.taskDetails.section.priority} />
             <select
-              className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
               value={priority}
               onChange={(e) => handleInlineMetaUpdate({ priority: e.target.value as any })}
-              disabled={isFromOtherBranch}
+              disabled={isReadOnly}
             >
               <option value="">{t.common.none}</option>
               <option value="low">{t.common.low}</option>
@@ -1831,14 +1839,14 @@ export const TaskDetailsModal: React.FC<Props> = ({
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
             <SectionHeader title={t.taskDetails.section.milestone} />
             <select
-              className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
               value={milestoneSelectionValue}
 				onChange={(e) => {
 					const value = e.target.value;
 					setMilestone(value);
 					handleInlineMetaUpdate({ milestone: value.trim().length > 0 ? value : null });
 				}}
-              disabled={isFromOtherBranch}
+              disabled={isReadOnly}
             >
               <option value="">{t.taskDetails.noMilestone}</option>
               {!hasMilestoneSelection && milestoneSelectionValue ? (
@@ -1861,7 +1869,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
               availableTasks={availableTasks}
               currentTaskId={task?.id}
               label=""
-              disabled={isFromOtherBranch}
+              disabled={isReadOnly}
               onTaskClick={(taskId) => {
                 const targetTask = availableTasks.find(t => t.id === taskId);
                 if (targetTask && onDrillDown) {
@@ -1909,8 +1917,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       handleInlineMetaUpdate(updates);
                     }
                   }}
-                  disabled={isFromOtherBranch}
-                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly}
+                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                 />
               </div>
               <div>
@@ -1925,8 +1933,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       handleInlineMetaUpdate({ plannedStart: value });
                     }
                   }}
-                  disabled={isFromOtherBranch}
-                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly}
+                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                 />
               </div>
               <div>
@@ -1941,8 +1949,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       handleInlineMetaUpdate({ plannedEnd: value });
                     }
                   }}
-                  disabled={isFromOtherBranch}
-                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly}
+                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                 />
               </div>
               <div>
@@ -1957,8 +1965,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       handleInlineMetaUpdate({ actualStart: value });
                     }
                   }}
-                  disabled={isFromOtherBranch}
-                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly}
+                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                 />
               </div>
               <div>
@@ -1973,15 +1981,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       handleInlineMetaUpdate({ actualEnd: value });
                     }
                   }}
-                  disabled={isFromOtherBranch}
-                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isFromOtherBranch ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly}
+                  className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 dark:[color-scheme:dark] ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                 />
               </div>
             </div>
           </div>
 
           {/* Archive button at bottom of sidebar */}
-		          {task && onArchive && !isFromOtherBranch && (
+		          {task && onArchive && !isReadOnly && (
 		            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
 		              <button
 		                onClick={handleArchive}
