@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
@@ -296,6 +297,96 @@ describe("Core shared task corpus regressions", () => {
 			git.fetch = originalFetch;
 		}
 		expect(fetches).toBe(1);
+	});
+
+	it("allocates past a remote task pushed while a non-forced fetch is in flight", async () => {
+		// This scenario needs a real push plus a surviving remote-tracking ref, so it runs in
+		// its own project outside the checkout rather than in the shared temp project: a
+		// scratch repository inside the workspace can resolve upward to the source checkout.
+		const root = await mkdtemp(join(tmpdir(), "backlog-allocation-in-flight-"));
+		extraDirs.push(root);
+		const subject = trackCore(new Core(root));
+		await subject.filesystem.ensureBacklogStructure();
+		await subject.filesystem.saveConfig({
+			projectName: "Core allocation in-flight freshness",
+			statuses: ["To Do", "In Progress", "Done"],
+			labels: [],
+			milestones: [],
+			dateFormat: "YYYY-MM-DD",
+			remoteOperations: true,
+			checkActiveBranches: true,
+			activeBranchDays: 30,
+			autoCommit: false,
+		});
+		await $`git init -b main`.cwd(root).quiet();
+
+		const originDir = `${root}-origin`;
+		extraDirs.push(originDir);
+		await mkdir(originDir, { recursive: true });
+		await $`git init --bare -b main`.cwd(originDir).quiet();
+		await writeTask(subject.filesystem.tasksDir, "task-1 - Local.md", task("TASK-1", "Local task"));
+		await $`git add -A`.cwd(root).quiet();
+		await $`GIT_AUTHOR_DATE="${recentCommitDate(2)}" GIT_COMMITTER_DATE="${recentCommitDate(2)}" git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Add local task"`
+			.cwd(root)
+			.quiet();
+		await $`git remote add origin ${originDir}`.cwd(root).quiet();
+		await $`git push -u origin main`.cwd(root).quiet();
+
+		const git = subject.gitOps;
+		const originalFetch = git.fetch.bind(git);
+		let fetches = 0;
+		let releaseFirstFetch: () => void = () => {};
+		const firstFetchStarted = new Promise<void>((resolve) => {
+			git.fetch = async (...args) => {
+				fetches += 1;
+				const isFirstFetch = fetches === 1;
+				// Capture the remote state now (before any later push), but withhold
+				// resolution until released, so the caller is still "in flight" per the
+				// remoteRefRefreshPromise coalescing while the push below lands.
+				const result = await originalFetch(...args);
+				if (isFirstFetch) {
+					resolve();
+					await new Promise<void>((releaseResolve) => {
+						releaseFirstFetch = releaseResolve;
+					});
+				}
+				return result;
+			};
+		});
+
+		try {
+			// A read starts a non-forced fetch and blocks in flight.
+			const readPromise = subject.loadTasks();
+			await firstFetchStarted;
+
+			// A contributor pushes a new task while that fetch is still running, so it
+			// is invisible to the fetch already in flight.
+			const contributorDir = `${root}-contributor`;
+			extraDirs.push(contributorDir);
+			await $`git clone ${originDir} ${contributorDir}`.cwd(root).quiet();
+			await $`git switch -c contributed`.cwd(contributorDir).quiet();
+			await writeTask(
+				join(contributorDir, "backlog", "tasks"),
+				"task-2 - Contributed.md",
+				task("TASK-2", "Contributed"),
+			);
+			await $`git add -A`.cwd(contributorDir).quiet();
+			await $`git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Contribute task"`
+				.cwd(contributorDir)
+				.quiet();
+			await $`git push -u origin contributed`.cwd(contributorDir).quiet();
+
+			// A forced allocation joins the in-flight fetch; it must not treat that
+			// stale-at-start fetch as sufficient once it observes the push above.
+			const allocationPromise = subject.generateNextId();
+			releaseFirstFetch();
+
+			const [nextId] = await Promise.all([allocationPromise, readPromise]);
+			expect(nextId).toBe("TASK-3");
+		} finally {
+			git.fetch = originalFetch;
+		}
+		expect(fetches).toBe(2);
 	});
 
 	it("cancels a load before it starts a remote refresh", async () => {
