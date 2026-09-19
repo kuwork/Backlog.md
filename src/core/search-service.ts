@@ -31,6 +31,7 @@ interface TaskSearchEntity extends BaseSearchEntity {
 	readonly idVariants: string[];
 	readonly dependencyIds: string[];
 	readonly modifiedFiles: string[];
+	readonly isCompleted?: boolean;
 }
 
 interface DocumentSearchEntity extends BaseSearchEntity {
@@ -166,7 +167,7 @@ export class SearchService {
 			throw new Error("SearchService not initialized. Call ensureInitialized() first.");
 		}
 
-		const { query = "", limit, types, filters } = options;
+		const { query = "", limit, types, filters, includeCompleted = false } = options;
 
 		const trimmedQuery = query.trim();
 		const allowedTypes = new Set<SearchResultType>(
@@ -175,7 +176,7 @@ export class SearchService {
 		const normalizedFilters = this.normalizeFilters(filters);
 
 		if (trimmedQuery === "") {
-			return this.collectWithoutQuery(allowedTypes, normalizedFilters, limit);
+			return this.collectWithoutQuery(allowedTypes, normalizedFilters, limit, includeCompleted);
 		}
 
 		const fuse = this.fuse;
@@ -192,6 +193,13 @@ export class SearchService {
 				continue;
 			}
 
+			// Completed-corpus entries share the index so widening the source corpus never
+			// perturbs active-result scores; skipping them here keeps the default output
+			// byte-identical and keeps them from consuming limit slots.
+			if (entity.type === "task" && entity.isCompleted && !includeCompleted) {
+				continue;
+			}
+
 			if (entity.type === "task" && !this.matchesTaskFilters(entity, normalizedFilters)) {
 				continue;
 			}
@@ -205,9 +213,35 @@ export class SearchService {
 		return results;
 	}
 
+	private toTaskEntity(task: Task, isCompleted: boolean): TaskSearchEntity {
+		return {
+			id: task.id,
+			type: "task",
+			title: task.title,
+			bodyText: buildTaskBodyText(task),
+			// The completed bucket of the corpus does not uniformly carry the source tag (the
+			// disk loader leaves it unset), so widened rows get it here for consumers to route on.
+			task: isCompleted && task.source !== "completed" ? { ...task, source: "completed" } : task,
+			statusLower: task.status.toLowerCase(),
+			priorityLower: task.priority ? (task.priority.toLowerCase() as SearchPriorityFilter) : undefined,
+			assigneesLower: (task.assignee ?? []).map((assignee) => assignee.toLowerCase()),
+			labelsLower: (task.labels || []).map((label) => label.toLowerCase()),
+			idVariants: createTaskIdVariants(task.id),
+			dependencyIds: (task.dependencies ?? []).flatMap((dependency) => createTaskIdVariants(dependency)),
+			modifiedFiles: task.modifiedFiles ?? [],
+			isCompleted,
+		};
+	}
+
 	private async initialize(): Promise<void> {
 		const snapshot = await this.store.ensureInitialized();
-		this.applySnapshot(snapshot.tasks, snapshot.documents, snapshot.decisions, snapshot.wikis);
+		this.applySnapshot(
+			snapshot.tasks,
+			snapshot.documents,
+			snapshot.decisions,
+			snapshot.wikis,
+			snapshot.taskCorpus?.completedTasks ?? [],
+		);
 
 		if (!this.unsubscribe) {
 			this.unsubscribe = this.store.subscribe((event) => {
@@ -224,24 +258,28 @@ export class SearchService {
 			return;
 		}
 		this.version = event.version;
-		this.applySnapshot(event.snapshot.tasks, event.snapshot.documents, event.snapshot.decisions, event.snapshot.wikis);
+		this.applySnapshot(
+			event.snapshot.tasks,
+			event.snapshot.documents,
+			event.snapshot.decisions,
+			event.snapshot.wikis,
+			event.snapshot.taskCorpus?.completedTasks ?? [],
+		);
 	}
 
-	private applySnapshot(tasks: Task[], documents: Document[], decisions: Decision[], wikis: WikiPage[]): void {
-		this.tasks = tasks.map((task) => ({
-			id: task.id,
-			type: "task",
-			title: task.title,
-			bodyText: buildTaskBodyText(task),
-			task,
-			statusLower: task.status.toLowerCase(),
-			priorityLower: task.priority ? (task.priority.toLowerCase() as SearchPriorityFilter) : undefined,
-			assigneesLower: (task.assignee ?? []).map((assignee) => assignee.toLowerCase()),
-			labelsLower: (task.labels || []).map((label) => label.toLowerCase()),
-			idVariants: createTaskIdVariants(task.id),
-			dependencyIds: (task.dependencies ?? []).flatMap((dependency) => createTaskIdVariants(dependency)),
-			modifiedFiles: task.modifiedFiles ?? [],
-		}));
+	private applySnapshot(
+		tasks: Task[],
+		documents: Document[],
+		decisions: Decision[],
+		wikis: WikiPage[],
+		completedTasks: Task[] = [],
+	): void {
+		// The completed array comes from the corpus' completed bucket, whose entries do not all
+		// carry the source tag (the disk loader does not set it), so the flag is set per bucket.
+		this.tasks = [
+			...tasks.map((task) => this.toTaskEntity(task, task.source === "completed")),
+			...completedTasks.map((task) => this.toTaskEntity(task, true)),
+		];
 
 		this.documents = documents.map((document) => ({
 			id: document.id,
@@ -304,12 +342,16 @@ export class SearchService {
 		allowedTypes: Set<SearchResultType>,
 		filters: NormalizedFilters,
 		limit?: number,
+		includeCompleted = false,
 	): SearchResult[] {
 		const results: SearchResult[] = [];
 
 		if (allowedTypes.has("task")) {
 			const tasks = this.applyTaskFilters(this.tasks, filters);
 			for (const entity of tasks) {
+				if (entity.isCompleted && !includeCompleted) {
+					continue;
+				}
 				results.push(this.mapEntityToResult(entity));
 				if (limit && results.length >= limit) {
 					return results;

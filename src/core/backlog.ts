@@ -121,6 +121,8 @@ interface TaskQueryOptions {
 	limit?: number;
 	includeCrossBranch?: boolean;
 	refreshCrossBranch?: boolean;
+	/** Widens the task source corpus with completed-corpus tasks; defaults to active-only. */
+	includeCompleted?: boolean;
 }
 
 interface TaskReadOptions {
@@ -719,6 +721,7 @@ export class Core {
 			const { filters, query, limit } = options;
 			const trimmedQuery = query?.trim();
 			const includeCrossBranch = options.includeCrossBranch ?? true;
+			const includeCompleted = options.includeCompleted ?? false;
 			const milestoneResolverPromise = filters?.milestone
 				? Promise.all([filesystem.listMilestones(), filesystem.listArchivedMilestones()]).then(
 						([activeMilestones, archivedMilestones]) =>
@@ -739,9 +742,18 @@ export class Core {
 			};
 
 			if (!includeCrossBranch) {
-				const localTasks = await filesystem.listTasks();
+				const [localTasks, completedTasks] = includeCompleted
+					? await Promise.all([filesystem.listTasks(), filesystem.listCompletedTasks()])
+					: [await filesystem.listTasks(), [] as Task[]];
 				if (projectChanged()) continue;
-				const tasks = trimmedQuery ? createTaskSearchIndex(localTasks).search({ query: trimmedQuery }) : localTasks;
+				// Completed tasks only widen the source corpus; active records win on an id clash.
+				const byId = new Map(localTasks.map((task) => [normalizeTaskId(task.id).toLowerCase(), task]));
+				for (const task of completedTasks) {
+					const key = normalizeTaskId(task.id).toLowerCase();
+					if (!byId.has(key)) byId.set(key, { ...task, source: "completed" as const });
+				}
+				const corpus = includeCompleted ? [...byId.values()] : localTasks;
+				const tasks = trimmedQuery ? createTaskSearchIndex(corpus).search({ query: trimmedQuery }) : corpus;
 				const filteredTasks = await applyFiltersAndLimit(tasks);
 				if (projectChanged()) continue;
 				return filteredTasks;
@@ -757,7 +769,7 @@ export class Core {
 			if (projectChanged() || store !== this.contentStore) continue;
 
 			if (!trimmedQuery) {
-				const filteredTasks = await applyFiltersAndLimit(store.getTasks());
+				const filteredTasks = await applyFiltersAndLimit(store.getTasks(undefined, { includeCompleted }));
 				if (projectChanged() || store !== this.contentStore) continue;
 				return filteredTasks;
 			}
@@ -786,6 +798,7 @@ export class Core {
 				limit,
 				types: ["task"],
 				filters: Object.keys(searchFilters).length > 0 ? searchFilters : undefined,
+				includeCompleted,
 			});
 
 			const seen = new Set<string>();

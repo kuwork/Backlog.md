@@ -37,6 +37,11 @@ type TaskSummaryJson = {
 	 * the task is unfinished and every dependency it names resolved to a completed task.
 	 */
 	isReady: boolean;
+	/**
+	 * Which corpus bucket the record came from. Present (as "completed") only when the read
+	 * widened its source corpus; active reads omit it.
+	 */
+	source: Task["source"] | null;
 };
 
 type ChecklistItemJson = {
@@ -161,6 +166,7 @@ function toTaskSummaryJson(task: TaskListItem): TaskSummaryJson {
 		actualStart: normalizePublicDate(task.actualStart),
 		actualEnd: normalizePublicDate(task.actualEnd),
 		isReady: task.isReady,
+		source: task.source ?? null,
 	};
 }
 

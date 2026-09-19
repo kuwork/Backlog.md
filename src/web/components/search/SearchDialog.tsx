@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { SearchResult, SearchResultType } from "../../../types";
+import type { SearchResult, SearchResultType, TaskSearchResult } from "../../../types";
 import { apiClient } from "../../lib/api";
 import { useI18n } from "../../hooks/useI18n";
 import { Icons } from "../SideNavigation";
@@ -29,11 +29,12 @@ const SCROLL_PERSIST_DEBOUNCE_MS = 300;
 const SEARCH_DEBOUNCE_MS = 300;
 const NARROW_MEDIA_QUERY = "(max-width: 639px)";
 
-function buildSearchUrl(nextQ: string, nextType: SearchFilterType): string {
+function buildSearchUrl(nextQ: string, nextType: SearchFilterType, nextCompleted: boolean): string {
 	const params = new URLSearchParams();
 	if (nextQ !== "") params.set("q", nextQ);
 	const serialized = serializeSearchTypeParam(nextType);
 	if (nextType !== "all") params.set("type", serialized);
+	if (nextCompleted) params.set("completed", "true");
 	const query = params.toString();
 	return `/search${query === "" ? "" : `?${query}`}`;
 }
@@ -82,6 +83,7 @@ const SearchDialog: React.FC = () => {
 	const searchParams = new URLSearchParams(location.search);
 	const q = searchParams.get("q") ?? "";
 	const type = parseSearchTypeParam(searchParams.get("type"));
+	const completed = searchParams.get("completed") === "true";
 	const locationState = (location.state ?? null) as SearchDialogLocationState | null;
 
 	const dialogRef = useRef<HTMLDivElement>(null);
@@ -103,6 +105,8 @@ const SearchDialog: React.FC = () => {
 	const [draft, setDraft] = useState(q);
 	const draftRef = useRef(draft);
 	draftRef.current = draft;
+	const completedRef = useRef(completed);
+	completedRef.current = completed;
 	const urlSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [restoreIndex, setRestoreIndex] = useState<number | null>(() => {
 		const saved = locationState?.visibleStartIndex;
@@ -139,10 +143,11 @@ const SearchDialog: React.FC = () => {
 			backgroundLocation: locationState?.backgroundLocation,
 			q: draft,
 			type: serializeSearchTypeParam(type),
+			completed,
 			visibleStartIndex: visibleStartRef.current,
 			...overrides,
 		}),
-		[locationState, draft, type],
+		[locationState, draft, type, completed],
 	);
 
 	// Refs so debounced callbacks always see the latest URL/state builders
@@ -167,7 +172,7 @@ const SearchDialog: React.FC = () => {
 		const timeout = setTimeout(async () => {
 			try {
 				const types = type === "all" ? undefined : [type];
-				const nextResults = await apiClient.search({ query, types });
+				const nextResults = await apiClient.search({ query, types, completed: completed || undefined });
 				if (!cancelled && sequenceRef.current === sequence) {
 					setResults(nextResults);
 					setSearchError(false);
@@ -188,7 +193,7 @@ const SearchDialog: React.FC = () => {
 			cancelled = true;
 			clearTimeout(timeout);
 		};
-	}, [draft, type]);
+	}, [draft, type, completed]);
 
 	const rows = useMemo(() => buildSearchRows(results, collapsedTypes), [results, collapsedTypes]);
 	const rowsRef = useRef(rows);
@@ -234,7 +239,7 @@ const SearchDialog: React.FC = () => {
 		setSelectedRow((prev) => (prev < rows.length ? prev : Math.max(0, rows.length - 1)));
 	}, [rows]);
 
-	const resetKey = `${draft}|${type}`;
+	const resetKey = `${draft}|${type}|${completed}`;
 	const prevResetKeyRef = useRef(resetKey);
 	useEffect(() => {
 		if (prevResetKeyRef.current !== resetKey) {
@@ -246,21 +251,22 @@ const SearchDialog: React.FC = () => {
 
 	// Immediate URL sync (filter tab clicks, debounced-flush boundaries)
 	const syncUrlTo = useCallback(
-		(nextQ: string, nextType: SearchFilterType) => {
+		(nextQ: string, nextType: SearchFilterType, nextCompleted: boolean) => {
 			if (urlSyncTimerRef.current) {
 				clearTimeout(urlSyncTimerRef.current);
 				urlSyncTimerRef.current = null;
 			}
-			navigate(buildSearchUrl(nextQ, nextType), {
+			navigate(buildSearchUrl(nextQ, nextType, nextCompleted), {
 				replace: true,
 				state: stateBuilderRef.current({
 					q: nextQ,
 					type: serializeSearchTypeParam(nextType),
+					completed: nextCompleted,
 					visibleStartIndex: 0,
 				}),
 			});
 			visibleStartRef.current = 0;
-			searchUrlRef.current = buildSearchUrl(nextQ, nextType);
+			searchUrlRef.current = buildSearchUrl(nextQ, nextType, nextCompleted);
 		},
 		[navigate],
 	);
@@ -268,9 +274,9 @@ const SearchDialog: React.FC = () => {
 	// Typing: debounce the URL sync so per-keystroke navigation never re-renders
 	// the controlled input mid-edit (which used to reset the caret to the end).
 	const queueUrlSync = useCallback(
-		(nextQ: string, nextType: SearchFilterType) => {
+		(nextQ: string, nextType: SearchFilterType, nextCompleted: boolean) => {
 			if (urlSyncTimerRef.current) clearTimeout(urlSyncTimerRef.current);
-			urlSyncTimerRef.current = setTimeout(() => syncUrlTo(nextQ, nextType), SEARCH_DEBOUNCE_MS);
+			urlSyncTimerRef.current = setTimeout(() => syncUrlTo(nextQ, nextType, nextCompleted), SEARCH_DEBOUNCE_MS);
 		},
 		[syncUrlTo],
 	);
@@ -363,7 +369,7 @@ const SearchDialog: React.FC = () => {
 				if (urlSyncTimerRef.current) {
 					clearTimeout(urlSyncTimerRef.current);
 					urlSyncTimerRef.current = null;
-					navigate(buildSearchUrl(draftRef.current, type), {
+					navigate(buildSearchUrl(draftRef.current, type, completedRef.current), {
 						replace: true,
 						state: stateBuilderRef.current({ visibleStartIndex: visibleStartRef.current }),
 					});
@@ -376,12 +382,16 @@ const SearchDialog: React.FC = () => {
 			} else if (urlSyncTimerRef.current) {
 				clearTimeout(urlSyncTimerRef.current);
 				urlSyncTimerRef.current = null;
-				syncUrlTo(draftRef.current, type);
+				syncUrlTo(draftRef.current, type, completedRef.current);
 			}
 			if (isModalSearchTarget(item.result)) {
 				// Task/draft routes render as overlay modals: keep /search as the background
-				// so closing the modal returns to the dialog with its state intact.
-				navigate(getSearchResultLink(item.result), { state: { backgroundLocation: location } });
+				// so closing the modal returns to the dialog with its state intact. Completed
+				// tasks are not in the board corpus, so the resolved record travels with the
+				// navigation for App to open without a corpus hit.
+				navigate(getSearchResultLink(item.result), {
+					state: { backgroundLocation: location, preloadedTask: (item.result as TaskSearchResult).task },
+				});
 			} else {
 				// Document/decision/wiki routes render as full pages: plain push, so the
 				// route actually renders; browser back returns to the /search entry.
@@ -457,6 +467,13 @@ const SearchDialog: React.FC = () => {
 	const headerHeight = isNarrow ? NARROW_HEADER_HEIGHT : DESKTOP_HEADER_HEIGHT;
 	const hasQuery = draft.trim() !== "";
 
+	// Decision statuses are a closed canonical enum with locale labels (same rule as
+	// DecisionDetail); task statuses stay raw because they are user-configured values.
+	const decisionStatusLabel = (status: string): string => {
+		const labels = t.decisions.statusLabels as Record<string, string>;
+		return labels[status.toLowerCase()] ?? status.charAt(0).toUpperCase() + status.slice(1);
+	};
+
 	const renderRow = (row: SearchRow, rowIndex: number) => {
 		if (row.kind === "header") {
 			return (
@@ -493,13 +510,23 @@ const SearchDialog: React.FC = () => {
 			: "border-l-2 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40";
 
 		const tags: React.ReactNode[] = [];
+		if (meta.completed) {
+			tags.push(
+				<span
+					key="completed"
+					className="inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+				>
+					{t.searchDialog.completed}
+				</span>,
+			);
+		}
 		if (meta.status) {
 			tags.push(
 				<span
 					key="status"
 					className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${getStatusBadgeColor(meta.status)}`}
 				>
-					{meta.status}
+					{row.type === "decision" ? decisionStatusLabel(meta.status) : meta.status}
 				</span>,
 			);
 		}
@@ -509,7 +536,7 @@ const SearchDialog: React.FC = () => {
 					key="priority"
 					className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${getPriorityBadgeColor(meta.priority)}`}
 				>
-					{meta.priority}
+					{t.taskDetails.priorityLabel(meta.priority)}
 				</span>,
 			);
 		}
@@ -591,7 +618,7 @@ const SearchDialog: React.FC = () => {
 						value={draft}
 						onChange={(e) => {
 							setDraft(e.target.value);
-							queueUrlSync(e.target.value, type);
+							queueUrlSync(e.target.value, type, completed);
 						}}
 						placeholder={t.searchDialog.placeholder}
 						aria-label={t.searchDialog.placeholder}
@@ -614,7 +641,7 @@ const SearchDialog: React.FC = () => {
 								key={tab.type}
 								type="button"
 								aria-pressed={isActive}
-								onClick={() => syncUrlTo(draft, tab.type)}
+								onClick={() => syncUrlTo(draft, tab.type, completed)}
 								className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors duration-200 ${
 									isActive
 										? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
@@ -626,6 +653,20 @@ const SearchDialog: React.FC = () => {
 							</button>
 						);
 					})}
+					<label
+						className={`ml-auto flex items-center gap-1.5 shrink-0 pl-3 pr-1 py-1.5 text-xs cursor-pointer select-none transition-colors duration-200 ${
+							completed ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
+						}`}
+					>
+						<input
+							type="checkbox"
+							checked={completed}
+							onChange={(e) => syncUrlTo(draft, type, e.target.checked)}
+							aria-label={t.searchDialog.completed}
+							className="h-3.5 w-3.5 rounded accent-blue-600 dark:accent-blue-400 cursor-pointer"
+						/>
+						{t.searchDialog.completed}
+					</label>
 				</div>
 				<div className={`relative flex-1 min-h-0 flex flex-col overflow-hidden ${isNarrow ? "mt-2" : "mt-3"}`}>
 					{isLoading && (

@@ -1070,7 +1070,15 @@ export class BacklogServer {
 				await this.core.refreshTasksForTaskRead();
 			}
 
-			const results = searchService.search({ query, limit, types, filters });
+			const results = searchService.search({
+				query,
+				limit,
+				types,
+				filters,
+				// Query-parameter passthrough only: the web app does not send this yet, and the
+				// board/search-panel composition must not change in this task.
+				includeCompleted: url.searchParams.get("completed") === "true",
+			});
 			return Response.json(results);
 		} catch (error) {
 			console.error("Error performing search:", error);

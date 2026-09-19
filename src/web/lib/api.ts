@@ -224,6 +224,7 @@ export class ApiClient {
 			assignee?: string | string[];
 			labels?: string[];
 			modifiedFiles?: string[];
+			completed?: boolean;
 			limit?: number;
 		} = {},
 	): Promise<SearchResult[]> {
@@ -275,6 +276,9 @@ export class ApiClient {
 					params.append("modifiedFile", file.trim());
 				}
 			}
+		}
+		if (options.completed) {
+			params.set("completed", "true");
 		}
 		if (options.limit !== undefined) {
 			params.set("limit", String(options.limit));

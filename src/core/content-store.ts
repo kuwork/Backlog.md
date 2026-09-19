@@ -271,12 +271,14 @@ export class ContentStore {
 		await this.localTaskRefreshPromise;
 	}
 
-	getTasks(filter?: TaskListFilter): Task[] {
+	getTasks(filter?: TaskListFilter, options?: { includeCompleted?: boolean }): Task[] {
 		if (!this.initialized) {
 			throw new Error("ContentStore not initialized. Call ensureInitialized() first.");
 		}
 
-		let tasks = this.cachedTasks;
+		// Widening the source corpus is the only behavioral change: the identity index already
+		// tags completed-corpus tasks with source "completed", and the fallback below mirrors that.
+		let tasks = options?.includeCompleted ? this.visibleCorpusWithCompleted() : this.cachedTasks;
 		if (filter?.status) {
 			const wanted = normalizeStatusSet(filter.status);
 			if (wanted.size > 0) {
@@ -303,6 +305,22 @@ export class ContentStore {
 		}
 
 		return tasks.slice();
+	}
+
+	/**
+	 * The full task corpus (active plus completed) for source-widened reads. The identity
+	 * index is authoritative because it dedupes cross-branch records and tags completed
+	 * entries with source "completed"; without an index, tag the disk-loaded list manually.
+	 */
+	private visibleCorpusWithCompleted(): Task[] {
+		if (this.taskIdentityIndex) {
+			return this.taskIdentityIndex.getTasks(true);
+		}
+		const seen = new Set(this.cachedTasks.map((task) => normalizeTaskId(task.id)));
+		const completed = this.completedTasks
+			.filter((task) => !seen.has(normalizeTaskId(task.id)))
+			.map((task) => ({ ...task, source: "completed" as const }));
+		return [...this.cachedTasks, ...completed];
 	}
 
 	/**
@@ -472,6 +490,9 @@ export class ContentStore {
 			documents: this.cachedDocuments.slice(),
 			decisions: this.cachedDecisions.slice(),
 			wikis: this.cachedWikis.slice(),
+			// SearchService reads the completed corpus from here; snapshots are only
+			// requested after initialization, so the guarded call cannot throw.
+			taskCorpus: this.initialized ? this.getTaskCorpusSnapshot() : undefined,
 		};
 	}
 

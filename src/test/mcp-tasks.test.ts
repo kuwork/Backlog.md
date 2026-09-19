@@ -509,7 +509,7 @@ describe("MCP task tools (MVP)", () => {
 		expect(text).not.toContain("TASK-3 - Blocked Task");
 	});
 
-	it("includes completed tasks in task_search results and excludes archived tasks", async () => {
+	it("task_search excludes completed tasks by default, widens with completed:true, and excludes archived tasks", async () => {
 		await mcpServer.testInterface.callTool({
 			params: {
 				name: "task_create",
@@ -556,11 +556,19 @@ describe("MCP task tools (MVP)", () => {
 			},
 		});
 
-		const searchResult = await mcpServer.testInterface.callTool({
+		// Default corpus stays active-only: completed tasks surface only when the caller widens.
+		const defaultSearch = await mcpServer.testInterface.callTool({
 			params: { name: "task_search", arguments: { query: "task" } },
 		});
+		const defaultText = getText(defaultSearch.content);
+		expect(defaultText).not.toContain("TASK-2 - Completed task");
+		expect(defaultText).not.toContain("TASK-3 - Archived task");
 
-		const searchText = getText(searchResult.content);
+		const widenedSearch = await mcpServer.testInterface.callTool({
+			params: { name: "task_search", arguments: { query: "task", completed: true } },
+		});
+
+		const searchText = getText(widenedSearch.content);
 		expect(searchText).toContain("TASK-2 - Completed task");
 		expect(searchText).toContain("(Done)");
 		expect(searchText).not.toContain("TASK-3 - Archived task");

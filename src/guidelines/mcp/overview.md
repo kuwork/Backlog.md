@@ -58,6 +58,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 
 - `task_list` — list tasks with optional filtering by status (or `statusExcluded` to exclude one or more statuses), assignee (or `unassigned: true`), milestone, labels, search, `ready: true` for unblocked tasks, or limit
 - `task_search` — search tasks by title and description, or use `modifiedFiles` to filter by project-root-relative modified file path substrings
+- `task_list` and `task_search` accept `completed: true` to widen the source corpus with the completed folder; widened rows carry `source: "completed"` so they can be told apart from active work. The default reads active tasks only.
 - `task_view` — read full task context (description, plan, notes, comments, final summary, acceptance criteria, Definition of Done)
 - `definition_of_done_defaults_get` — read project-level Definition of Done defaults from config
 - `definition_of_done_defaults_upsert` — replace project-level Definition of Done defaults in config
@@ -130,9 +131,9 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 
 ## Search Quick Reference
 
-- `task_search` — fuzzy search by title and description; supports `query`, `status`, `priority`, `modifiedFiles`, and `limit`
-- `task_list` — list tasks with filters: `status`, `assignee` (or `unassigned: true`), `milestone`, `labels`, `search`, `ready`, `limit`
-- `search` (global) — searches tasks, docs, and decisions; supports `--type task`, `--status`, `--priority`, `--modified-file`
+- `task_search` — fuzzy search by title and description; supports `query`, `status`, `priority`, `modifiedFiles`, `limit`, and `completed: true` to widen the corpus with the completed folder (widened rows carry `source: "completed"`)
+- `task_list` — list tasks with filters: `status`, `assignee` (or `unassigned: true`), `milestone`, `labels`, `search`, `ready`, `limit`, and `completed: true` to widen the source corpus with the completed folder
+- `search` (global) — searches tasks, docs, and decisions; supports `--type task`, `--status`, `--priority`, `--modified-file`, and `--completed`
 
 `status` accepts a single string or an array for multi-select (e.g., `"status": ["To Do", "In Progress"]`); `statusExcluded` accepts a string or array to exclude one or more statuses (e.g., `"statusExcluded": ["Done", "Blocked"]`), combinable with `status`.
 

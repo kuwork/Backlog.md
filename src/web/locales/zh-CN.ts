@@ -131,6 +131,7 @@ export const zhCN: TranslationDict = {
 		filterDocument: "文档",
 		filterWiki: "Wiki",
 		filterDecision: "决策",
+		completed: "已完成",
 		emptyHint: "输入关键字以搜索任务、文档、决策和 Wiki。",
 		collapseGroup: "折叠分组",
 		expandGroup: "展开分组",

@@ -15,6 +15,7 @@ export interface SearchDialogLocationState {
 	backgroundLocation?: unknown;
 	q?: string;
 	type?: string;
+	completed?: boolean;
 	visibleStartIndex?: number;
 }
 
@@ -27,6 +28,8 @@ export interface SearchResultMeta {
 	title: string;
 	status?: string;
 	priority?: "high" | "medium" | "low";
+	/** True when the task result came from the completed corpus (source "completed"). */
+	completed?: boolean;
 	tags?: string[];
 }
 
@@ -98,7 +101,13 @@ export function getSearchResultMeta(result: SearchResult): SearchResultMeta {
 		return { id: wiki.path, title };
 	}
 	const task = (result as TaskSearchResult).task;
-	return { id: task.id, title: task.title, status: task.status, priority: task.priority };
+	return {
+		id: task.id,
+		title: task.title,
+		status: task.status,
+		priority: task.priority,
+		completed: task.source === "completed",
+	};
 }
 
 /**

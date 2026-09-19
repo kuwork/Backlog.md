@@ -41,6 +41,11 @@ export const taskListSchema: JsonSchema = {
 			type: "boolean",
 			description: "When true, filter tasks that are ready for work (all dependencies satisfied/completed).",
 		},
+		completed: {
+			type: "boolean",
+			description:
+				"When true, widen the task source corpus with completed tasks. Results carry source completed; the default lists active tasks only.",
+		},
 		limit: {
 			type: "number",
 			minimum: 1,
@@ -85,6 +90,11 @@ export const taskSearchSchema: JsonSchema = {
 			type: "number",
 			minimum: 1,
 			maximum: 100,
+		},
+		completed: {
+			type: "boolean",
+			description:
+				"When true, widen the task source corpus with completed tasks. Results carry source completed; the default searches active tasks only.",
 		},
 	},
 	required: [],

@@ -2017,9 +2017,18 @@ addHelpSchema(program.command("search [query]"), {
 			description: "Filter by modified file path substring",
 		},
 		{ name: "limit", type: "Integer", description: "Maximum number of results" },
+		{
+			name: "completed",
+			type: "Boolean",
+			description: "Widen the task source corpus with completed tasks; results carry source completed",
+		},
 	],
 	output: "Interactive search UI or plain text with --plain",
-	examples: ['backlog search "auth" --plain', 'backlog search "api" --type task --status "<active status>"'],
+	examples: [
+		'backlog search "auth" --plain',
+		'backlog search "api" --type task --status "<active status>"',
+		'backlog search "auth" --completed --type task --status "Done" --plain',
+	],
 })
 	.description("search tasks, documents, decisions, and wiki using the shared index")
 	.option("--type <type>", "limit results to type (task, document, decision, wiki)", createMultiValueAccumulator())
@@ -2040,6 +2049,7 @@ addHelpSchema(program.command("search [query]"), {
 		createMultiValueAccumulator(),
 	)
 	.option("--limit <number>", "limit total results returned")
+	.option("--completed", "include completed-corpus tasks in the results")
 	.option("--plain", "print plain text output instead of interactive UI")
 	.option("--json", "print versioned machine-readable JSON output")
 	.action(async (query: string | undefined, options) => {
@@ -2137,6 +2147,7 @@ addHelpSchema(program.command("search [query]"), {
 				limit,
 				types,
 				filters,
+				includeCompleted: options.completed === true,
 			})
 			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45);
 		if (outputMode === "json") {
@@ -2170,7 +2181,9 @@ addHelpSchema(program.command("search [query]"), {
 
 		const taskResults = searchResults.filter(isTaskSearchResult);
 		const searchResultTasks = taskResults.map((result) => result.task);
-		const allTasks = (await core.queryTasks()).filter(
+		// The interactive pool feeds the TUI's own re-filtering, so it must be widened by the same
+		// flag as the plain/JSON search above or --completed would be lost as soon as the TUI opens.
+		const allTasks = (await core.queryTasks({ includeCompleted: options.completed === true })).filter(
 			(task) => task.id && task.id.trim() !== "" && hasAnyPrefix(task.id),
 		);
 		// If no tasks exist at all, show plain text results
@@ -2505,6 +2518,7 @@ async function runTaskList(
 			query: searchQuery || undefined,
 			filters: Object.keys(baseFilters).length > 0 ? baseFilters : undefined,
 			includeCrossBranch: false,
+			includeCompleted: options.completed === true,
 		});
 		const config = await core.filesystem.loadConfig();
 
@@ -2716,6 +2730,7 @@ async function runTaskList(
 				core.queryTasks({
 					filters: Object.keys(interactiveLoaderFilters).length > 0 ? interactiveLoaderFilters : undefined,
 					includeCrossBranch: false,
+					includeCompleted: options.completed === true,
 				}),
 				parentId ? core.queryTasks() : Promise.resolve(undefined),
 			]);
@@ -2786,6 +2801,11 @@ addHelpSchema(taskCmd.command("list"), {
 		},
 		{ name: "search", type: "String", description: "Search task title, description, notes, comments, and metadata" },
 		{ name: "ready", type: "Boolean", description: "Only show unblocked tasks with all dependencies completed" },
+		{
+			name: "completed",
+			type: "Boolean",
+			description: "Widen the source corpus with completed-corpus tasks; results carry source completed",
+		},
 		{ name: "limit", type: "Positive integer", description: "Maximum tasks to display after sorting" },
 		{
 			name: "sort",
@@ -2806,6 +2826,7 @@ addHelpSchema(taskCmd.command("list"), {
 		'backlog task list --json --watch --status "In Progress" --assignee @sara',
 		"backlog task list --parent {{TASK_ID:1}}",
 		'backlog task list --labels frontend,bug --search "login" --limit 10 --plain',
+		'backlog task list --completed --status "Done" --plain',
 	],
 })
 	.description("list tasks grouped by status")
@@ -2831,6 +2852,7 @@ addHelpSchema(taskCmd.command("list"), {
 	)
 	.option("--search <query>", "search task title, description, notes, comments, and metadata")
 	.option("--ready", "only show unblocked tasks with all dependencies completed")
+	.option("--completed", "include completed-corpus tasks in the results")
 	.option("--limit <number>", "limit tasks displayed after sorting")
 	.option("--sort <field>", "sort tasks by field (priority, id, ordinal)")
 	.option("--plain", "use plain text output instead of interactive UI")

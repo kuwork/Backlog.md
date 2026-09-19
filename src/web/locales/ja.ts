@@ -131,6 +131,7 @@ export const ja: TranslationDict = {
 		filterDocument: "ドキュメント",
 		filterWiki: "Wiki",
 		filterDecision: "決定事項",
+		completed: "完了済み",
 		emptyHint: "キーワードを入力してタスク、ドキュメント、決定事項、Wiki を検索。",
 		collapseGroup: "グループを折りたたむ",
 		expandGroup: "グループを展開",

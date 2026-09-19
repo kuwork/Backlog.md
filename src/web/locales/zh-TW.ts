@@ -131,6 +131,7 @@ export const zhTW: TranslationDict = {
 		filterDocument: "文檔",
 		filterWiki: "Wiki",
 		filterDecision: "決策",
+		completed: "已完成",
 		emptyHint: "輸入關鍵字以搜尋任務、文檔、決策和 Wiki。",
 		collapseGroup: "收合分組",
 		expandGroup: "展開分組",

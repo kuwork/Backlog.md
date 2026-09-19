@@ -129,6 +129,7 @@ export const en = {
 		filterDocument: "Docs",
 		filterWiki: "Wiki",
 		filterDecision: "Decisions",
+		completed: "Completed",
 		emptyHint: "Type to search across tasks, documents, decisions and wiki.",
 		collapseGroup: "Collapse group",
 		expandGroup: "Expand group",

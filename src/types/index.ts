@@ -309,6 +309,8 @@ export interface SearchOptions {
 	limit?: number;
 	types?: SearchResultType[];
 	filters?: SearchFilters;
+	/** Widens the task source corpus with completed-corpus tasks; the pipeline itself is unchanged. */
+	includeCompleted?: boolean;
 }
 
 export interface TaskSearchResult {

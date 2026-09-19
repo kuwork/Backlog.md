@@ -51,6 +51,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `get_backlog_instructions`
 - `task_list`, `task_search`, `task_view`, `task_create`, `task_edit`, `task_complete`, `task_archive`
 - `task_search` accepts `modifiedFiles` for case-insensitive substring filtering against project-root-relative modified file paths
+- `task_list` and `task_search` accept `completed: true` to widen the source corpus with the completed folder; widened rows carry `source: "completed"`. The default reads active tasks only.
 - `task_edit` accepts `commentsAppend` and optional `commentAuthor` to append task discussion or review comments; `commentRemove` (array of 1-based indexes) removes specific comments and `commentClear` removes all (cannot be combined with append/remove)
 - `task_edit` also supports acceptance criteria operations (`acceptanceCriteriaClear`, `acceptanceCriteriaAdd/Remove/Check/Uncheck`) and task-level Definition of Done operations (`definitionOfDoneAdd/Remove/Check/Uncheck`). For large acceptance-criteria replacements, clear first with `acceptanceCriteriaClear`, then add the replacement list with `acceptanceCriteriaAdd` in a second call.
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters

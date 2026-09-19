@@ -55,6 +55,7 @@ export type TaskListArgs = {
 	labels?: string[];
 	search?: string;
 	ready?: boolean;
+	completed?: boolean;
 	limit?: number;
 };
 
@@ -64,6 +65,7 @@ export type TaskSearchArgs = {
 	statusExcluded?: string | string[];
 	priority?: SearchPriorityFilter;
 	modifiedFiles?: string[];
+	completed?: boolean;
 	limit?: number;
 };
 
@@ -258,6 +260,7 @@ export class TaskHandlers {
 			query: args.search,
 			filters: Object.keys(filters).length > 0 ? filters : undefined,
 			includeCrossBranch: false,
+			includeCompleted: args.completed === true,
 		});
 
 		if (args.ready) {
@@ -389,7 +392,9 @@ export class TaskHandlers {
 			};
 		}
 
-		const tasks = await this.core.loadWorkingCopyTasks(true);
+		// Aligned with the other read surfaces: completed tasks only appear when the caller
+		// asks for them. Before this flag the search always widened the corpus.
+		const tasks = await this.core.loadWorkingCopyTasks(args.completed === true);
 		const searchIndex = createTaskSearchIndex(tasks);
 		const excludeStatuses = Array.isArray(args.statusExcluded)
 			? args.statusExcluded

@@ -209,7 +209,7 @@ function AppContent() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	useHashScroll();
-	const state = location.state as { backgroundLocation?: Location } | null;
+	const state = location.state as { backgroundLocation?: Location; preloadedTask?: Task } | null;
 	const taskRouteMatch = useMatch("/task/:id");
 	const taskRouteMatchWildcard = useMatch("/task/:id/*");
 	const taskIdFromUrl = taskRouteMatch?.params?.id ?? taskRouteMatchWildcard?.params?.id;
@@ -527,6 +527,16 @@ function AppContent() {
 			matchedIsDraft = true;
 		} else if (taskIdFromUrl) {
 			matchedTask = tasks.find((t) => stripAnyPrefix(t.id) === taskIdFromUrl || t.id === taskIdFromUrl);
+			if (!matchedTask) {
+				// Completed tasks are not in the board corpus. A task opened from a widened
+				// surface (e.g. the search dialog with the completed toggle) travels with the
+				// navigation, so the modal opens without a corpus hit instead of falling back
+				// to the board the way an unknown deep link does.
+				const preloaded = state?.preloadedTask;
+				if (preloaded && (stripAnyPrefix(preloaded.id) === taskIdFromUrl || preloaded.id === taskIdFromUrl)) {
+					matchedTask = preloaded;
+				}
+			}
 			matchedIsDraft = false;
 		}
 
