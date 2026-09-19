@@ -14,11 +14,14 @@ import { formatStoredUtcDateForCompactDisplay, parseStoredUtcDate } from "../uti
 import { getPriorityBadgeColor, getStatusBadgeColor } from "../utils/task-badge-colors";
 import CleanupModal from "./CleanupModal";
 import AcceptanceCriteriaProgress from "./AcceptanceCriteriaProgress";
+import CompletedBadge from "./CompletedBadge";
+import CompletedFilterToggle from "./CompletedFilterToggle";
 import LabelFilterDropdown from "./LabelFilterDropdown";
 import StatusExcludeDropdown from "./StatusExcludeDropdown";
 import StatusFilterDropdown from "./StatusFilterDropdown";
 import { SuccessToast } from "./SuccessToast";
 import { useI18n } from "../hooks/useI18n";
+import { useCompletedTasks } from "../hooks/useCompletedTasks";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 
 interface TaskListProps {
@@ -126,6 +129,9 @@ const TaskList: React.FC<TaskListProps> = ({
 		return labels.map((label) => label.trim()).filter((label) => label.length > 0);
 	}, []);
 	const [labelFilter, setLabelFilter] = useState<string[]>(initialLabelParams);
+	const [showCompleted, setShowCompleted] = useState(() => searchParams.get("completed") === "1");
+	// Only requested while the box is checked, so an unchecked view never sees the corpus.
+	const completedTasks = useCompletedTasks(showCompleted);
 	const [displayTasks, setDisplayTasks] = useState<Task[]>(() => sortByOrdinal(tasks));
 	const [error, setError] = useState<string | null>(null);
 	const [showCleanupModal, setShowCleanupModal] = useState(false);
@@ -269,17 +275,28 @@ const TaskList: React.FC<TaskListProps> = ({
 		return normalized;
 	};
 
-	const sortedBaseTasks = useMemo(() => sortByOrdinal(tasks), [tasks]);
+	// The corpus this view counts and filters over. Completed records only join it while
+	// the checkbox is on, so an unchecked view renders exactly what it rendered before.
+	const visibleTasks = useMemo(
+		() => (showCompleted ? [...tasks, ...completedTasks] : tasks),
+		[tasks, completedTasks, showCompleted],
+	);
+	const sortedBaseTasks = useMemo(() => sortByOrdinal(visibleTasks), [visibleTasks]);
 	const mergedAvailableLabels = useMemo(
-		() => collectAvailableLabels(tasks, availableLabels),
-		[tasks, availableLabels],
+		() => collectAvailableLabels(visibleTasks, availableLabels),
+		[visibleTasks, availableLabels],
 	);
 	const milestoneOptions = useMemo(() => {
 		const uniqueMilestones = Array.from(new Set([...availableMilestones.map((m) => m.trim()).filter(Boolean)]));
 		return uniqueMilestones;
 	}, [availableMilestones]);
 	const hasActiveFilters = Boolean(
-		statusFilter.length > 0 || statusExcludedFilter.length > 0 || priorityFilter || labelFilter.length > 0 || milestoneFilter,
+		statusFilter.length > 0 ||
+			statusExcludedFilter.length > 0 ||
+			priorityFilter ||
+			labelFilter.length > 0 ||
+			milestoneFilter ||
+			showCompleted,
 	);
 	const totalTasks = sortedBaseTasks.length;
 
@@ -302,6 +319,7 @@ const TaskList: React.FC<TaskListProps> = ({
 			paramLabels.push(...labelsCsv.split(","));
 		}
 		const normalizedLabels = paramLabels.map((label) => label.trim()).filter((label) => label.length > 0);
+		const paramCompleted = searchParams.get("completed") === "1";
 
 		if (normalizedStatuses.join("|") !== statusFilter.join("|")) {
 			setStatusFilter(normalizedStatuses);
@@ -317,6 +335,9 @@ const TaskList: React.FC<TaskListProps> = ({
 		}
 		if (normalizedLabels.join("|") !== labelFilter.join("|")) {
 			setLabelFilter(normalizedLabels);
+		}
+		if (paramCompleted !== showCompleted) {
+			setShowCompleted(paramCompleted);
 		}
 	}, [searchParams]);
 
@@ -365,6 +386,8 @@ const TaskList: React.FC<TaskListProps> = ({
 					statusExcluded: statusExcludedFilter.length > 0 ? statusExcludedFilter : undefined,
 					priority: (priorityFilter || undefined) as SearchPriorityFilter | undefined,
 					labels: labelFilter.length > 0 ? labelFilter : undefined,
+					// The widened corpus rides the same filters, so a checked box only adds records.
+					completed: showCompleted,
 				});
 				if (cancelled) {
 					return;
@@ -393,6 +416,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		statusExcludedFilter,
 		labelFilter,
 		tasks,
+		showCompleted,
 		milestoneFilter,
 		sortedBaseTasks,
 		milestoneAliasToCanonical,
@@ -405,6 +429,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		nextPriority: "" | SearchPriorityFilter,
 		nextLabels: string[],
 		nextMilestone: string,
+		nextCompleted: boolean,
 	) => {
 		const params = new URLSearchParams();
 		for (const status of nextStatuses) {
@@ -424,33 +449,41 @@ const TaskList: React.FC<TaskListProps> = ({
 		if (nextMilestone) {
 			params.set("milestone", nextMilestone);
 		}
+		if (nextCompleted) {
+			params.set("completed", "1");
+		}
 		setSearchParams(params, { replace: true });
 	};
 
 	const handleStatusChange = (statuses: string[]) => {
 		setStatusFilter(statuses);
-		syncUrl(statuses, statusExcludedFilter, priorityFilter, labelFilter, milestoneFilter);
+		syncUrl(statuses, statusExcludedFilter, priorityFilter, labelFilter, milestoneFilter, showCompleted);
 	};
 
 	const handleExcludeStatusChange = (statuses: string[]) => {
 		setStatusExcludedFilter(statuses);
-		syncUrl(statusFilter, statuses, priorityFilter, labelFilter, milestoneFilter);
+		syncUrl(statusFilter, statuses, priorityFilter, labelFilter, milestoneFilter, showCompleted);
 	};
 
 	const handlePriorityChange = (value: "" | SearchPriorityFilter) => {
 		setPriorityFilter(value);
-		syncUrl(statusFilter, statusExcludedFilter, value, labelFilter, milestoneFilter);
+		syncUrl(statusFilter, statusExcludedFilter, value, labelFilter, milestoneFilter, showCompleted);
 	};
 
 	const handleLabelChange = (next: string[]) => {
 		const normalized = next.map((label) => label.trim()).filter((label) => label.length > 0);
 		setLabelFilter(normalized);
-		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, normalized, milestoneFilter);
+		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, normalized, milestoneFilter, showCompleted);
 	};
 
 	const handleMilestoneChange = (value: string) => {
 		setMilestoneFilter(value);
-		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, labelFilter, value);
+		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, labelFilter, value, showCompleted);
+	};
+
+	const handleCompletedChange = (next: boolean) => {
+		setShowCompleted(next);
+		syncUrl(statusFilter, statusExcludedFilter, priorityFilter, labelFilter, milestoneFilter, next);
 	};
 
 	const handleClearFilters = () => {
@@ -459,8 +492,9 @@ const TaskList: React.FC<TaskListProps> = ({
 		setPriorityFilter("");
 		setLabelFilter([]);
 		setMilestoneFilter("");
-		syncUrl([], [], "", [], "");
-		setDisplayTasks(sortedBaseTasks);
+		setShowCompleted(false);
+		syncUrl([], [], "", [], "", false);
+		setDisplayTasks(sortByOrdinal(tasks));
 		setError(null);
 	};
 
@@ -689,22 +723,11 @@ const TaskList: React.FC<TaskListProps> = ({
 							menuId="task-list-labels-menu"
 						/>
 
-					</div>
-
-					<div className="flex items-center gap-3 flex-shrink-0">
-						{isFilteringTerminalStatus && currentCount > 0 && (
-								<button
-									type="button"
-									onClick={() => setShowCleanupModal(true)}
-									className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
-									title={t.taskColumn.cleanUpTitle}
-								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-								</svg>
-								{t.taskColumn.cleanUp}
-							</button>
-						)}
+						<CompletedFilterToggle
+							id="task-list-completed-filter"
+							checked={showCompleted}
+							onChange={handleCompletedChange}
+						/>
 
 						{hasActiveFilters && (
 							<button
@@ -713,7 +736,23 @@ const TaskList: React.FC<TaskListProps> = ({
 								className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg whitespace-nowrap transition-colors duration-200 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
 							>
 								{t.board.clearFilters}
-						</button>
+							</button>
+						)}
+					</div>
+
+					<div className="flex items-center gap-3 flex-shrink-0">
+						{isFilteringTerminalStatus && currentCount > 0 && (
+							<button
+								type="button"
+								onClick={() => setShowCleanupModal(true)}
+								className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
+								title={t.taskColumn.cleanUpTitle}
+							>
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								</svg>
+								{t.taskColumn.cleanUp}
+							</button>
 						)}
 
 						<div className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap text-right min-w-[170px]">
@@ -770,6 +809,7 @@ const TaskList: React.FC<TaskListProps> = ({
 							<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 								{sortedDisplayTasks.map((task) => {
 									const isFromOtherBranch = Boolean(task.branch);
+									const isFromCompletedCorpus = task.source === "completed";
 									const visibleLabels = task.labels.slice(0, 2);
 									const labelOverflow = Math.max(task.labels.length - visibleLabels.length, 0);
 									const visibleAssignees = task.assignee.slice(0, 2);
@@ -809,6 +849,9 @@ const TaskList: React.FC<TaskListProps> = ({
 														>
 															{task.branch}
 														</span>
+													)}
+													{isFromCompletedCorpus && (
+														<CompletedBadge className="rounded-circle px-2 py-0.5 text-[10px] font-medium" />
 													)}
 													<AcceptanceCriteriaProgress task={task} variant="bar" className="w-20 shrink-0" />
 												</div>

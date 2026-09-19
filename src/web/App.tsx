@@ -596,7 +596,9 @@ function AppContent() {
 
 	const handleOpenTask = useCallback(
 		(task: Task) => {
-			navigate(getTaskUrlPath(task), { state: { backgroundLocation: location } });
+			// Completed records are not in the board corpus, so the record travels with the
+			// navigation and the modal opens it read-only instead of hitting the fallback.
+			navigate(getTaskUrlPath(task), { state: { backgroundLocation: location, preloadedTask: task } });
 		},
 		[navigate, location, getTaskUrlPath],
 	);

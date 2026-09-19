@@ -20,6 +20,7 @@ import {
 } from "../../utils/search-results";
 import { getPriorityBadgeColor, getStatusBadgeColor } from "../../utils/task-badge-colors";
 import VirtualList, { type VirtualListHandle } from "./VirtualList";
+import Switch from "../Switch";
 
 const DESKTOP_ITEM_HEIGHT = 56;
 const DESKTOP_HEADER_HEIGHT = 28;
@@ -514,7 +515,7 @@ const SearchDialog: React.FC = () => {
 			tags.push(
 				<span
 					key="completed"
-					className="inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+					className="inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium bg-emerald-600 text-white dark:bg-emerald-700"
 				>
 					{t.searchDialog.completed}
 				</span>,
@@ -642,7 +643,7 @@ const SearchDialog: React.FC = () => {
 								type="button"
 								aria-pressed={isActive}
 								onClick={() => syncUrlTo(draft, tab.type, completed)}
-								className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors duration-200 ${
+								className={`flex items-center gap-1.5 px-3 py-1.5 rounded-circle text-xs whitespace-nowrap transition-colors duration-200 ${
 									isActive
 										? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
 										: "text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/60"
@@ -658,14 +659,12 @@ const SearchDialog: React.FC = () => {
 							completed ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
 						}`}
 					>
-						<input
-							type="checkbox"
+						{t.common.showCompleted}
+						<Switch
 							checked={completed}
-							onChange={(e) => syncUrlTo(draft, type, e.target.checked)}
-							aria-label={t.searchDialog.completed}
-							className="h-3.5 w-3.5 rounded accent-blue-600 dark:accent-blue-400 cursor-pointer"
+							onChange={(next) => syncUrlTo(draft, type, next)}
+							ariaLabel={t.common.showCompleted}
 						/>
-						{t.searchDialog.completed}
 					</label>
 				</div>
 				<div className={`relative flex-1 min-h-0 flex flex-col overflow-hidden ${isNarrow ? "mt-2" : "mt-3"}`}>

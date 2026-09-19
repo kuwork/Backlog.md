@@ -56,6 +56,7 @@ export const ja: TranslationDict = {
 		medium: "中",
 		low: "低",
 		unassigned: "未割り当て",
+		showCompleted: "完了を表示",
 		completedBadge: "完了",
 		date: "日付",
 		status: "ステータス",

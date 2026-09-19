@@ -10,6 +10,7 @@ import { translateLoadingMessage } from '../../utils/loading-messages';
 import TaskColumn from './TaskColumn';
 import CleanupModal from './CleanupModal';
 import LabelFilterDropdown from './LabelFilterDropdown';
+import CompletedFilterToggle from './CompletedFilterToggle';
 import { SuccessToast } from './SuccessToast';
 
 interface BoardProps {
@@ -33,7 +34,8 @@ interface BoardProps {
   filterAssignee?: string;
   filterLabels?: string[];
   filterPriority?: string;
-  onFiltersChange?: (filters: { assignee: string; labels: string[]; priority: string }) => void;
+  filterCompleted?: boolean;
+  onFiltersChange?: (filters: { assignee: string; labels: string[]; priority: string; completed: boolean }) => void;
   hideEmptyColumns?: boolean;
   labelColors?: Record<string, string>;
   onLabelColorsChange?: (colors: Record<string, string>) => void;
@@ -65,6 +67,7 @@ const Board: React.FC<BoardProps> = ({
   filterAssignee = '',
   filterLabels = [],
   filterPriority = '',
+  filterCompleted = false,
   onFiltersChange,
   hideEmptyColumns = false,
   labelColors,
@@ -245,7 +248,8 @@ const Board: React.FC<BoardProps> = ({
     [filterLabels]
   );
 
-  const hasActiveFilters = filterAssignee !== '' || normalizedFilterLabels.length > 0 || filterPriority !== '';
+  const hasActiveFilters =
+    filterAssignee !== '' || normalizedFilterLabels.length > 0 || filterPriority !== '' || filterCompleted;
 
   // Filter tasks by milestone when milestoneFilter is set, then apply assignee/label/priority filters
   const filteredTasks = useMemo(() => {
@@ -537,7 +541,7 @@ const Board: React.FC<BoardProps> = ({
                 <select
                   aria-label={t.board.filterAssignee}
                   value={filterAssignee}
-                  onChange={e => onFiltersChange({ assignee: e.target.value, labels: normalizedFilterLabels, priority: filterPriority })}
+                  onChange={e => onFiltersChange({ assignee: e.target.value, labels: normalizedFilterLabels, priority: filterPriority, completed: filterCompleted })}
                   className={BOARD_FILTER_SELECT_CLASS}
                 >
                   <option value="">{t.board.allAssignees}</option>
@@ -550,7 +554,7 @@ const Board: React.FC<BoardProps> = ({
                 <LabelFilterDropdown
                   availableLabels={uniqueLabels}
                   selectedLabels={normalizedFilterLabels}
-                  onChange={labels => onFiltersChange({ assignee: filterAssignee, labels, priority: filterPriority })}
+                  onChange={labels => onFiltersChange({ assignee: filterAssignee, labels, priority: filterPriority, completed: filterCompleted })}
                   menuId="board-labels-filter-menu"
                   className="min-w-[200px]"
                   labelColors={labelColors}
@@ -560,7 +564,7 @@ const Board: React.FC<BoardProps> = ({
                 <select
                   aria-label={t.board.filterPriority}
                   value={filterPriority}
-                  onChange={e => onFiltersChange({ assignee: filterAssignee, labels: normalizedFilterLabels, priority: e.target.value })}
+                  onChange={e => onFiltersChange({ assignee: filterAssignee, labels: normalizedFilterLabels, priority: e.target.value, completed: filterCompleted })}
                   className={BOARD_FILTER_SELECT_CLASS}
                 >
                   {PRIORITY_OPTIONS.map(opt => (
@@ -568,10 +572,16 @@ const Board: React.FC<BoardProps> = ({
                   ))}
                 </select>
 
+                <CompletedFilterToggle
+                  id="board-completed-filter"
+                  checked={filterCompleted}
+                  onChange={completed => onFiltersChange({ assignee: filterAssignee, labels: normalizedFilterLabels, priority: filterPriority, completed })}
+                />
+
                 {hasActiveFilters && (
                   <button
                     type="button"
-                    onClick={() => onFiltersChange({ assignee: '', labels: [], priority: '' })}
+                    onClick={() => onFiltersChange({ assignee: '', labels: [], priority: '', completed: false })}
                     className={BOARD_FILTER_BUTTON_CLASS}
                   >
                     {t.board.clearFilters}

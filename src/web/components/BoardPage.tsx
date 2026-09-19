@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Board from './Board';
 import { type Milestone, type Task } from '../../types';
 import { type LaneMode } from '../lib/lanes';
+import { useCompletedTasks } from '../hooks/useCompletedTasks';
 
 interface BoardPageProps {
 	onEditTask: (task: Task) => void;
@@ -99,7 +100,7 @@ export default function BoardPage({
 		}, { replace: true });
 	};
 
-	const handleFiltersChange = (filters: { assignee: string; labels: string[]; priority: string }) => {
+	const handleFiltersChange = (filters: { assignee: string; labels: string[]; priority: string; completed: boolean }) => {
 		setSearchParams(params => {
 			if (filters.assignee) {
 				params.set('assignee', filters.assignee);
@@ -119,6 +120,11 @@ export default function BoardPage({
 			} else {
 				params.delete('priority');
 			}
+			if (filters.completed) {
+				params.set('completed', '1');
+			} else {
+				params.delete('completed');
+			}
 			return params;
 		}, { replace: true });
 	};
@@ -129,6 +135,16 @@ export default function BoardPage({
 		...searchParams.getAll('labels').flatMap((value) => value.split(',')),
 	].map((label) => label.trim()).filter((label) => label.length > 0);
 	const filterPriority = searchParams.get('priority') ?? '';
+	const filterCompleted = searchParams.get('completed') === '1';
+
+	// Only fetched while the box is checked, so an unchecked board sees exactly what it saw
+	// before. Completed records then ride the normal board pipeline: same filters, same
+	// status columns, same counters.
+	const completedTasks = useCompletedTasks(filterCompleted);
+	const boardTasks = useMemo(
+		() => (filterCompleted ? [...tasks, ...completedTasks] : tasks),
+		[filterCompleted, tasks, completedTasks],
+	);
 
 	return (
 		<div className="page-shell transition-colors duration-200">
@@ -136,7 +152,7 @@ export default function BoardPage({
 				onEditTask={handleEditTask}
 				onNewTask={onNewTask}
 				highlightTaskId={highlightTaskId}
-				tasks={tasks}
+				tasks={boardTasks}
 				onRefreshData={onRefreshData}
 				onTasksUpdated={onTasksUpdated}
 				statuses={statuses}
@@ -153,6 +169,7 @@ export default function BoardPage({
 				filterAssignee={filterAssignee}
 				filterLabels={filterLabels}
 				filterPriority={filterPriority}
+				filterCompleted={filterCompleted}
 				onFiltersChange={handleFiltersChange}
 				hideEmptyColumns={hideEmptyColumns}
 				labelColors={labelColors}

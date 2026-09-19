@@ -3,6 +3,7 @@ import { useI18n } from '../hooks/useI18n';
 import { type Task } from '../../types';
 import { getLabelColorClasses } from '../utils/labelColors';
 import AcceptanceCriteriaProgress from './AcceptanceCriteriaProgress';
+import CompletedBadge from './CompletedBadge';
 
 interface TaskCardProps {
   task: Task;
@@ -152,6 +153,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
 
   // Check if task is from another branch (read-only)
   const isFromOtherBranch = Boolean(task.branch);
+  // Completed-corpus records are read-only too (BACK-663) and must not be dragged into a
+  // status column, so they follow the cross-branch treatment for dragging.
+  const isFromCompletedCorpus = task.source === 'completed';
 
   // Compute due-date risk border class
   let dueDateRiskClass = "";
@@ -222,7 +226,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
         } ${getPriorityClass(task.priority)} ${dueDateRiskClass} ${
           isDragging ? 'opacity-50 transform rotate-2 scale-105' : ''
         }`}
-        draggable={!isFromOtherBranch}
+        draggable={!isFromOtherBranch && !isFromCompletedCorpus}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onClick={() => onEdit(task)}
@@ -239,7 +243,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
           </div>
         )}
 
-        {/* Header row with task ID, acceptance-criteria progress, planned dates, and priority badge */}
+        {/* Header row with task ID, acceptance-criteria progress, then the right-hand badge
+            group: planned dates, the completed marker, and the priority badge */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-mono transition-colors duration-200">{task.id}</span>
@@ -257,6 +262,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
                 </span>
               ) : null;
             })()}
+            {/* The completed marker is a badge like the priority one, so it sits in that group
+                on the right, directly left of the priority badge. */}
+            {isFromCompletedCorpus && <CompletedBadge className="rounded px-1.5 py-0.5 text-[10px] font-medium" />}
             {(() => {
               const badge = getPriorityBadge(task.priority);
               return badge ? (

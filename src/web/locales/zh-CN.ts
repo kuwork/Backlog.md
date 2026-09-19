@@ -56,6 +56,7 @@ export const zhCN: TranslationDict = {
 		medium: "中",
 		low: "低",
 		unassigned: "未分配",
+		showCompleted: "显示已完成",
 		completedBadge: "已完成",
 		date: "日期",
 		status: "状态",

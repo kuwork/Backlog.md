@@ -152,10 +152,11 @@ function setupDom(path: string): HTMLElement {
  * completed record exists only as the navigation payload, the way the search dialog
  * widened-corpus flow delivers it.
  */
-function serveApi(boardTasks: Task[] = [], singleRecords: Task[] = []): void {
+function serveApi(boardTasks: Task[] = [], singleRecords: Task[] = [], completedRecords: Task[] = []): void {
 	globalThis.fetch = (async (input: RequestInfo | URL) => {
 		const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-		const path = new URL(raw, "http://localhost").pathname;
+		const url = new URL(raw, "http://localhost");
+		const path = url.pathname;
 
 		if (path === "/api/status") return json({ initialized: true });
 		if (path === "/api/version") return json({ version: "1.52.0" });
@@ -172,7 +173,12 @@ function serveApi(boardTasks: Task[] = [], singleRecords: Task[] = []): void {
 			});
 		}
 		if (path === "/api/tasks/duplicate-ids") return json({ groups: [] });
-		if (path === "/api/search") return json(boardTasks.map((task) => ({ type: "task", task })));
+		if (path === "/api/search") {
+			// A widened corpus answers with the board tasks too, the way the real endpoint does.
+			const includeCompleted = url.searchParams.get("completed") === "true";
+			const corpus = includeCompleted ? [...boardTasks, ...completedRecords] : boardTasks;
+			return json(corpus.map((task) => ({ type: "task", task })));
+		}
 		if (path.startsWith("/api/task/")) {
 			const requestedId = path.slice("/api/task/".length);
 			const record = singleRecords.find((task) => task.id === requestedId);
@@ -364,6 +370,35 @@ describe("completed predecessor in the dependency input", () => {
 
 		expect(window.location.pathname).toBe(TASK_PATH);
 		expect(document.body.textContent).toContain(TASK_TITLE);
+		expect(document.body.textContent).toContain("completed archive");
+		expect(buttonWithText("Edit")).toBeUndefined();
+	});
+});
+
+describe("completed rows in the task list", () => {
+	it("opens a completed row read-only instead of bouncing back to the board", async () => {
+		serveApi([activeTask], [], [completedTask]);
+		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+		await renderApp("/tasks?completed=1");
+		await flush(SOCKET_HANDSHAKE_MS);
+		await broadcast({ type: "loaded" });
+		await flush();
+
+		// The checkbox starts ticked from the URL, so the archive row is on the list.
+		expect(document.body.textContent).toContain(TASK_TITLE);
+		const row = Array.from(document.querySelectorAll("tbody tr")).find((element) =>
+			element.textContent?.includes(TASK_TITLE),
+		);
+		expect(row).toBeTruthy();
+
+		await act(async () => {
+			row?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+			await Promise.resolve();
+		});
+		await flush();
+
+		// Without the record riding the navigation this lands back on the board (/tasks).
+		expect(window.location.pathname).toBe(TASK_PATH);
 		expect(document.body.textContent).toContain("completed archive");
 		expect(buttonWithText("Edit")).toBeUndefined();
 	});
