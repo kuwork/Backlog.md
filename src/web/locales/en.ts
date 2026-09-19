@@ -54,6 +54,7 @@ export const en = {
 		medium: "Medium",
 		low: "Low",
 		unassigned: "Unassigned",
+		completedBadge: "Completed",
 		date: "Date",
 		status: "Status",
 		title: "Title",

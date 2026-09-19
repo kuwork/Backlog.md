@@ -655,7 +655,12 @@ function AppContent() {
 				navigate(-(taskHistoryRef.current.length - stackIndex));
 				return;
 			}
-			navigate(getTaskUrlPath(task), { state: { backgroundLocation: state?.backgroundLocation || location } });
+			// The drill-down target may not be in the board corpus (a completed predecessor keeps
+			// its record in backlog/completed), so the navigation carries the record it is about
+			// the way the search dialog does; otherwise the deep link reads as an unknown id.
+			navigate(getTaskUrlPath(task), {
+				state: { backgroundLocation: state?.backgroundLocation || location, preloadedTask: task },
+			});
 		},
 		[navigate, state, location, getTaskUrlPath],
 	);

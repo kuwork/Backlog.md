@@ -1,6 +1,7 @@
 import type { Core } from "../core/backlog.ts";
-import type { AcceptanceCriterion } from "../types/index.ts";
-import { normalizeTaskId, taskIdsEqual } from "./task-path.ts";
+import type { AcceptanceCriterion, Task } from "../types/index.ts";
+import { AmbiguousIdError } from "./entity-id.ts";
+import { AmbiguousTaskIdError, canonicalTaskId, normalizeTaskId, taskIdsEqual } from "./task-path.ts";
 
 /**
  * Shared utilities for building tasks and validating dependencies
@@ -33,6 +34,33 @@ export function normalizeDependencies(dependencies: unknown): string[] {
 }
 
 /**
+ * Resolve one dependency input against the corpus, or null when nothing matches.
+ *
+ * Several matches are never resolved silently, mirroring the identity rules every other read path
+ * uses: an input naming more than one canonical identity is underspecified (bare numbers span the
+ * separate task and draft counters), while several records claiming one identity is the
+ * duplicate-ID defect `backlog doctor` repairs.
+ */
+function resolveUniqueDependency(dependency: string, matches: Task[]): string | null {
+	const [first, ...rest] = matches;
+	if (!first) return null;
+	if (rest.length === 0) return first.id;
+
+	const candidates = matches.map((match) => match.filePath ?? match.id);
+	const [canonicalId, ...otherIdentities] = [...new Set(matches.map((match) => canonicalTaskId(match.id)))];
+	if (canonicalId && otherIdentities.length === 0) {
+		// Name the colliding identity rather than the input, which may be a bare number.
+		throw new AmbiguousTaskIdError(canonicalId, candidates);
+	}
+	throw new AmbiguousIdError(
+		"Dependency",
+		dependency,
+		candidates,
+		`Use a full task ID instead of ${dependency.trim()} to choose one.`,
+	);
+}
+
+/**
  * Validate that all dependencies exist in the current project
  * Returns arrays of valid and invalid dependency IDs
  */
@@ -46,15 +74,34 @@ export async function validateDependencies(
 		return { valid, invalid };
 	}
 	// Task dependencies should honor cross-branch visibility when enabled in config,
-	// while draft dependencies remain local-only.
-	const [tasks, drafts] = await Promise.all([core.queryTasks(), core.filesystem.listDrafts()]);
-	const knownIds = [...tasks.map((t) => t.id), ...drafts.map((d) => d.id)];
-	for (const dep of dependencies) {
-		const match = knownIds.find((id) => taskIdsEqual(dep, id));
-		if (match) {
-			valid.push(match);
-		} else {
-			invalid.push(dep);
+	// while draft dependencies remain local-only. Completed records belong in the corpus too: Done is
+	// the normal end state of a predecessor, so a target that has left the working copy must stay a
+	// valid, editable dependency. Archived records are deliberately left out: archiving releases the
+	// ID (the allocator counts active and completed records only), so keeping an archived file here
+	// would make an ordinary dependency on the task that later claims that identity ambiguous and
+	// the ID unusable as a target.
+	const [tasks, drafts, completed] = await Promise.all([
+		core.queryTasks(),
+		core.filesystem.listDrafts(),
+		core.filesystem.listCompletedTasks(),
+	]);
+	const known = [...tasks, ...drafts, ...completed];
+	for (const dependency of dependencies) {
+		const resolved = resolveUniqueDependency(
+			dependency,
+			known.filter((candidate) => taskIdsEqual(dependency, candidate.id)),
+		);
+		if (!resolved) {
+			invalid.push(dependency);
+			continue;
+		}
+		// Called for its ambiguity check: it raises AmbiguousTaskIdError when several working-copy
+		// files (active or completed) claim this ID, which queryTasks() hides by collapsing one
+		// identity to a single record. Drafts and archived records resolve to null here.
+		await core.loadTaskById(resolved, { includeCrossBranch: false });
+		// Equivalent spellings of one task (1 and BACK-1) must not persist twice.
+		if (!valid.some((existing) => taskIdsEqual(existing, resolved))) {
+			valid.push(resolved);
 		}
 	}
 	return { valid, invalid };

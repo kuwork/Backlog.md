@@ -4,6 +4,8 @@ import { type Task } from '../../types';
 import { useI18n } from '../hooks/useI18n';
 import { stripAnyPrefix } from '../../utils/prefix-config';
 import { buildEntityIndex, resolveEntityReference } from '../utils/task-id-links';
+import { canonicalTaskId } from '../../utils/task-id';
+import CompletedBadge from './CompletedBadge';
 
 interface DependencyInputProps {
   value: string[];
@@ -13,11 +15,13 @@ interface DependencyInputProps {
   label?: string; // optional label; render only if provided
   disabled?: boolean;
   onTaskClick?: (taskId: string) => void;
+  /** Searches records that left the board corpus (completed predecessors) for the typed text. */
+  searchCompletedTasks?: (query: string) => Promise<Task[]>;
 }
 
-const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, availableTasks, currentTaskId, label, disabled, onTaskClick }) => {
+const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, availableTasks, currentTaskId, label, disabled, onTaskClick, searchCompletedTasks }) => {
   const [inputValue, setInputValue] = useState('');
-  const [suggestions, setSuggestions] = useState<Task[]>([]);
+  const [offBoardMatches, setOffBoardMatches] = useState<Task[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputId = 'dependency-input';
@@ -27,21 +31,56 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
   // case and zero-padding differences still resolve and ambiguous IDs stay unlinked
   const taskIdIndex = useMemo(() => buildEntityIndex({ tasks: availableTasks }), [availableTasks]);
 
-  // Filter tasks based on input
-  useEffect(() => {
-    if (inputValue.trim()) {
-      const filtered = availableTasks.filter(task => 
-        task.id !== currentTaskId && // Don't suggest current task
-        !value.includes(task.id) && // Don't suggest already added tasks
-        (task.id.toLowerCase().includes(inputValue.toLowerCase()) ||
-         task.title.toLowerCase().includes(inputValue.toLowerCase()))
-      );
-      setSuggestions(filtered);
-      setSelectedIndex(0);
-    } else {
-      setSuggestions([]);
-    }
+  // Board tasks matching the typed text
+  const localSuggestions = useMemo(() => {
+    const query = inputValue.trim().toLowerCase();
+    if (!query) return [];
+    return availableTasks.filter(task =>
+      task.id !== currentTaskId && // Don't suggest current task
+      !value.includes(task.id) && // Don't suggest already added tasks
+      (task.id.toLowerCase().includes(query) ||
+       task.title.toLowerCase().includes(query))
+    );
   }, [inputValue, availableTasks, value, currentTaskId]);
+
+  // A completed predecessor left the board corpus, so the caller searches those records on the
+  // side and the dropdown shows both sources as one keyboard-navigable list.
+  const suggestions = useMemo(() => {
+    const known = new Set(localSuggestions.map(task => canonicalTaskId(task.id)));
+    const extra = offBoardMatches.filter(task =>
+      task.id !== currentTaskId &&
+      !value.includes(task.id) &&
+      !known.has(canonicalTaskId(task.id))
+    );
+    return extra.length === 0 ? localSuggestions : [...localSuggestions, ...extra];
+  }, [localSuggestions, offBoardMatches, value, currentTaskId]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [inputValue]);
+
+  // Debounced so typing a title does not issue a search per keystroke; clearing the input drops
+  // the previous matches instead of leaving a stale list behind.
+  useEffect(() => {
+    if (!searchCompletedTasks || !inputValue.trim()) {
+      setOffBoardMatches(current => (current.length === 0 ? current : []));
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      searchCompletedTasks(inputValue.trim())
+        .then(matches => {
+          if (!cancelled) setOffBoardMatches(matches);
+        })
+        .catch(() => {
+          if (!cancelled) setOffBoardMatches([]);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [inputValue, searchCompletedTasks]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -51,12 +90,18 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
     }
   }, [value]);
 
+  // Suggestions are derived from the input, so dropping them means dropping the typed text and the
+  // asynchronously fetched matches together.
+  const clearSuggestions = () => {
+    setInputValue('');
+    setOffBoardMatches(current => (current.length === 0 ? current : []));
+  };
+
   const addDependency = (taskId: string) => {
     if (disabled) return;
     if (!value.includes(taskId)) {
       onChange([...value, taskId]);
-      setInputValue('');
-      setSuggestions([]);
+      clearSuggestions();
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
@@ -85,14 +130,15 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
       // Remove last dependency when backspace on empty input
       onChange(value.slice(0, -1));
     } else if (e.key === 'Escape') {
-      setSuggestions([]);
-      setInputValue('');
+      clearSuggestions();
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  // onInput rather than onChange: for a text control React's onChange *is* the input event, and the
+  // binding is driven directly in tests the way the milestone search field already is.
+  const handleInputChange = (e: React.FormEvent<HTMLTextAreaElement>) => {
     if (disabled) return;
-    const newValue = e.target.value;
+    const newValue = (e.target as HTMLTextAreaElement).value;
     // Check if user typed a comma
     if (newValue.endsWith(',')) {
       const searchValue = newValue.slice(0, -1).trim();
@@ -167,7 +213,7 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
             ref={textareaRef}
             id={inputId}
             value={inputValue}
-            onChange={handleInputChange}
+            onInput={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? t.dependencyInput.placeholderEmpty : t.dependencyInput.placeholderAddMore}
             className="w-full outline-none text-sm bg-transparent resize-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
@@ -188,7 +234,12 @@ const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, avai
                   index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''
                 }`}
               >
-                <div className="font-medium text-gray-900 dark:text-white">{task.id}</div>
+                <div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white">
+                  <span>{task.id}</span>
+                  {task.source === 'completed' && (
+                    <CompletedBadge className="rounded-circle px-1.5 py-0.5 text-[10px] font-medium" />
+                  )}
+                </div>
                 <div className="text-gray-600 dark:text-gray-300 break-words whitespace-normal">{task.title}</div>
               </button>
             ))}

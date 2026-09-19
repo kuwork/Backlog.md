@@ -441,6 +441,21 @@ export const TaskDetailsModal: React.FC<Props> = ({
     };
   }, [isOpen, unresolvedDependencyKey]);
 
+  // A completed predecessor is not in the board corpus, so chips, picker suggestions and
+  // click-through resolve against the records fetched by ID as well. The readiness graph keeps its
+  // own active/completed split.
+  const dependencyCorpus = useMemo(
+    () => [...availableTasks, ...offBoardDependencies],
+    [availableTasks, offBoardDependencies],
+  );
+
+  // Completed records are the one thing the board corpus cannot answer, and BACK-662's completed
+  // corpus makes the search service the surface that can.
+  const searchCompletedDependencies = useCallback(async (query: string): Promise<Task[]> => {
+    const results = await apiClient.search({ query, types: ["task"], completed: true, limit: 8 });
+    return results.flatMap((result) => (result.type === "task" ? [result.task] : []));
+  }, []);
+
   // Dependency readiness, derived at render time from the dependencies and status currently shown,
   // so an inline edit is reflected immediately instead of waiting for a refresh.
   // Only meaningful while dependencies exist and the task has not been completed.
@@ -1866,12 +1881,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
             <DependencyInput
               value={dependencies}
               onChange={(value) => handleInlineMetaUpdate({ dependencies: value })}
-              availableTasks={availableTasks}
+              availableTasks={dependencyCorpus}
               currentTaskId={task?.id}
               label=""
               disabled={isReadOnly}
+              searchCompletedTasks={searchCompletedDependencies}
               onTaskClick={(taskId) => {
-                const targetTask = availableTasks.find(t => t.id === taskId);
+                const targetTask = dependencyCorpus.find(t => stripAnyPrefix(t.id) === taskId || t.id === taskId);
                 if (targetTask && onDrillDown) {
                   onDrillDown(targetTask);
                 }

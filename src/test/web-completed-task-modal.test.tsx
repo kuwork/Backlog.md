@@ -56,6 +56,19 @@ const crossBranchTask: Task = {
 	branch: "feature/other",
 };
 
+/** A board record whose predecessor has already moved to backlog/completed. */
+const SUCCESSOR_TASK_ID = "BACK-502";
+const SUCCESSOR_TASK_TITLE = "A task that depends on a completed record";
+const successorTask: Task = {
+	id: SUCCESSOR_TASK_ID,
+	title: SUCCESSOR_TASK_TITLE,
+	status: "To Do",
+	assignee: [],
+	createdDate: "2026-08-01 10:00",
+	labels: [],
+	dependencies: [TASK_ID],
+};
+
 const originalFetch = globalThis.fetch;
 const originalWebSocket = globalThis.WebSocket;
 
@@ -139,7 +152,7 @@ function setupDom(path: string): HTMLElement {
  * completed record exists only as the navigation payload, the way the search dialog
  * widened-corpus flow delivers it.
  */
-function serveApi(boardTasks: Task[] = []): void {
+function serveApi(boardTasks: Task[] = [], singleRecords: Task[] = []): void {
 	globalThis.fetch = (async (input: RequestInfo | URL) => {
 		const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 		const path = new URL(raw, "http://localhost").pathname;
@@ -160,6 +173,11 @@ function serveApi(boardTasks: Task[] = []): void {
 		}
 		if (path === "/api/tasks/duplicate-ids") return json({ groups: [] });
 		if (path === "/api/search") return json(boardTasks.map((task) => ({ type: "task", task })));
+		if (path.startsWith("/api/task/")) {
+			const requestedId = path.slice("/api/task/".length);
+			const record = singleRecords.find((task) => task.id === requestedId);
+			return record ? json(record) : json([]);
+		}
 		return json([]);
 	}) as unknown as typeof globalThis.fetch;
 }
@@ -299,5 +317,54 @@ describe("task popup for records read outside the board corpus", () => {
 		await flush();
 
 		expect(window.location.pathname).toBe("/");
+	});
+});
+
+/** Opens the board record whose predecessor has already moved to the completed archive. */
+async function openSuccessorPopup(): Promise<void> {
+	serveApi([successorTask], [completedTask]);
+	globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+	await renderApp("/search?q=plugin");
+	await flush(SOCKET_HANDSHAKE_MS);
+	await broadcast({ type: "loaded" });
+	await flush();
+
+	await navigateHistory(`/task/${SUCCESSOR_TASK_ID}`, {
+		backgroundLocation: { pathname: "/search", search: "?q=plugin", hash: "", state: null },
+	});
+	// One flush for the popup, one for the dependency fetch it kicks off.
+	await flush();
+	await flush();
+}
+
+function dependencyChip(): HTMLAnchorElement | undefined {
+	return Array.from(document.querySelectorAll("a")).find((anchor) => anchor.textContent?.includes(TASK_ID)) as
+		| HTMLAnchorElement
+		| undefined;
+}
+
+describe("completed predecessor in the dependency input", () => {
+	it("resolves the chip to the completed record instead of leaving a bare id", async () => {
+		await openSuccessorPopup();
+
+		const chip = dependencyChip();
+		expect(chip?.getAttribute("href")).toBe("/task/411");
+		expect(chip?.textContent).toBe(`${TASK_ID} - ${TASK_TITLE}`);
+	});
+
+	it("opens the completed record read-only when the chip is clicked", async () => {
+		await openSuccessorPopup();
+		const chip = dependencyChip();
+		expect(chip).toBeDefined();
+
+		await act(async () => {
+			chip?.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+		});
+		await flush();
+
+		expect(window.location.pathname).toBe(TASK_PATH);
+		expect(document.body.textContent).toContain(TASK_TITLE);
+		expect(document.body.textContent).toContain("completed archive");
+		expect(buttonWithText("Edit")).toBeUndefined();
 	});
 });
