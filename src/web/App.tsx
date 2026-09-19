@@ -344,6 +344,9 @@ function AppContent() {
 	);
 
 	const hasLoadedRef = useRef(false);
+	// Reactive twin of hasLoadedRef: the deep-link effect needs to re-run when the first load
+	// completes, and a ref change alone would not retrigger it.
+	const [hasCompletedFirstLoad, setHasCompletedFirstLoad] = useState(false);
 
 	const loadAllData = useCallback(async () => {
 		const isFirstLoad = !hasLoadedRef.current;
@@ -406,6 +409,7 @@ function AppContent() {
 			if (isFirstLoad) {
 				setIsLoading(false);
 				hasLoadedRef.current = true;
+				setHasCompletedFirstLoad(true);
 			}
 		}
 	}, [applySearchResults]);
@@ -509,7 +513,11 @@ function AppContent() {
 			return;
 		}
 
-		if (!isInitialized || isLoading) return;
+		// Resolve the id only once this browser has finished its own first load. A server
+		// "loaded" broadcast clears isLoading while the first /api/search is still in flight,
+		// and matching against the still-empty task list would read a valid deep link as an
+		// unknown id and replace it with the board.
+		if (!isInitialized || isLoading || !hasCompletedFirstLoad) return;
 
 		let matchedTask: Task | undefined;
 		let matchedIsDraft = false;
@@ -569,6 +577,7 @@ function AppContent() {
 		drafts,
 		isInitialized,
 		isLoading,
+		hasCompletedFirstLoad,
 		showModal,
 		editingTask,
 		navigate,
