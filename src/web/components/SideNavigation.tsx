@@ -228,6 +228,7 @@ const countDocsFiles = (nodes: DocsTreeNode[]): number => {
 
 type DocsSortColumn = 'name' | 'id';
 type WikiSortColumn = 'title' | 'file';
+type DecisionSortColumn = 'title' | 'id';
 type SortDirection = 'asc' | 'desc';
 
 /**
@@ -306,6 +307,22 @@ const sortWikiTree = (nodes: WikiTreeNode[], column: WikiSortColumn, direction: 
 			return sign * (a.type === 'directory' ? compareWikiNodeNames(a, b) : compareWikiNodeLabels(a, b, column));
 		})
 		.map((node) => (node.children ? { ...node, children: sortWikiTree(node.children, column, direction) } : node));
+};
+
+const compareDecisionTitles = (a: Decision, b: Decision): number =>
+	a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+
+const compareDecisions = (a: Decision, b: Decision, column: DecisionSortColumn): number =>
+	column === 'id' ? compareTaskIds(a.id, b.id) || compareDecisionTitles(a, b) : compareDecisionTitles(a, b);
+
+/**
+ * Order the decisions list for the sidebar. Decisions are flat — there are no folders to hold back —
+ * so the whole list is ordered by the selected column and the input array is left untouched. The
+ * columns match the documents tree: title first, then the ID the list is identified by.
+ */
+const sortDecisions = (items: Decision[], column: DecisionSortColumn, direction: SortDirection): Decision[] => {
+	const sign = direction === 'asc' ? 1 : -1;
+	return [...items].sort((a, b) => sign * compareDecisions(a, b, column));
 };
 
 const WIKI_EXPANDED_PATHS_KEY = 'wikiExpandedPaths';
@@ -740,6 +757,8 @@ const SideNavigation = memo(function SideNavigation({
 	const [docsSortDirection, setDocsSortDirection] = useState<SortDirection>('asc');
 	const [wikiSortColumn, setWikiSortColumn] = useState<WikiSortColumn>('title');
 	const [wikiSortDirection, setWikiSortDirection] = useState<SortDirection>('asc');
+	const [decisionSortColumn, setDecisionSortColumn] = useState<DecisionSortColumn>('title');
+	const [decisionSortDirection, setDecisionSortDirection] = useState<SortDirection>('asc');
 	const docTitles = useMemo(() => new Map(docs.map((doc) => [doc.id, doc.title])), [docs]);
 	const sortedDocsTree = useMemo(
 		() => sortDocsTree(docsTree, docsSortColumn, docsSortDirection, docTitles),
@@ -830,7 +849,16 @@ const SideNavigation = memo(function SideNavigation({
 		setWikiSortDirection('asc');
 	};
 
-	/** Both trees use the same control: a column label with the pair of direction arrows. */
+	const handleDecisionSortChange = (column: DecisionSortColumn) => {
+		if (decisionSortColumn === column) {
+			setDecisionSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+			return;
+		}
+		setDecisionSortColumn(column);
+		setDecisionSortDirection('asc');
+	};
+
+	/** Every section uses the same control: a column label with the pair of direction arrows. */
 	const renderSortButton = (label: string, hint: string, isActive: boolean, isAsc: boolean, onToggle: () => void) => {
 		return (
 			<button
@@ -865,6 +893,11 @@ const SideNavigation = memo(function SideNavigation({
 	const renderWikiSortButton = (label: string, hint: string, column: WikiSortColumn) =>
 		renderSortButton(label, hint, wikiSortColumn === column, wikiSortDirection === 'asc', () =>
 			handleWikiSortChange(column),
+		);
+
+	const renderDecisionSortButton = (label: string, hint: string, column: DecisionSortColumn) =>
+		renderSortButton(label, hint, decisionSortColumn === column, decisionSortDirection === 'asc', () =>
+			handleDecisionSortChange(column),
 		);
 
 	useEffect(() => {
@@ -1016,6 +1049,10 @@ const SideNavigation = memo(function SideNavigation({
 
 	// Always show full lists in their sections, search results are separate
 	const filteredDecisions = decisions;
+	const sortedDecisions = useMemo(
+		() => sortDecisions(filteredDecisions, decisionSortColumn, decisionSortDirection),
+		[filteredDecisions, decisionSortColumn, decisionSortDirection],
+	);
 
 	const toggleCollapse = useCallback(() => {
 		setIsCollapsed((prev: any) => !prev);
@@ -1339,14 +1376,18 @@ const SideNavigation = memo(function SideNavigation({
 										{t.nav.decisions} (<NavigationCount count={decisions.length} isLoading={isLoading} error={error} label="decision" />)
 									</span>
 								</div>
-								<button
-									onClick={() => navigate('/decisions/new')}
-									className="p-1 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-									title={t.nav.createDecision}
-									aria-label={t.nav.createDecision}
-								>
-									<Icons.Plus />
-								</button>
+								<div className="flex items-center gap-1">
+									{renderDecisionSortButton(t.nav.sortDecisionsByTitle, t.nav.sortDecisionsByTitleHint, 'title')}
+									{renderDecisionSortButton(t.nav.sortDecisionsById, t.nav.sortDecisionsByIdHint, 'id')}
+									<button
+										onClick={() => navigate('/decisions/new')}
+										className="p-1 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+										title={t.nav.createDecision}
+										aria-label={t.nav.createDecision}
+									>
+										<Icons.Plus />
+									</button>
+								</div>
 							</div>
 							
 							{/* Decision List */}
@@ -1356,10 +1397,10 @@ const SideNavigation = memo(function SideNavigation({
 										<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
 									) : error ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.decisionsUnavailable}</p>
-									) : filteredDecisions.length === 0 ? (
+									) : sortedDecisions.length === 0 ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDecisions}</p>
 									) : (
-										filteredDecisions.map((decision) => (
+										sortedDecisions.map((decision) => (
 											<NavLink
 												key={decision.id}
 												to={`/decisions/${stripIdPrefix(decision.id)}/${sanitizeUrlTitle(decision.title)}`}

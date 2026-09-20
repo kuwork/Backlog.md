@@ -217,10 +217,10 @@ describe("SideNavigation document tree sorting", () => {
 
 	it("localizes the sort labels", () => {
 		const cases: Array<[Locale, string, string, string]> = [
-			["en", "Name", "Sort by title", "Sort by document ID"],
-			["ja", "名前", "タイトルで並べ替え", "ドキュメント ID で並べ替え"],
-			["zh-CN", "名称", "按标题排序", "按文档 ID 排序"],
-			["zh-TW", "名稱", "按標題排序", "按文檔 ID 排序"],
+			["en", "Title", "Sort by title", "Sort by document ID"],
+			["ja", "タイトル", "タイトルで並べ替え", "ドキュメント ID で並べ替え"],
+			["zh-CN", "标题", "按标题排序", "按文档 ID 排序"],
+			["zh-TW", "標題", "按標題排序", "按文檔 ID 排序"],
 		];
 
 		for (const [locale, nameLabel, nameHint, idHint] of cases) {
