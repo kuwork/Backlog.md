@@ -205,6 +205,7 @@ export const zhTW: TranslationDict = {
 			description: "描述",
 			references: "引用",
 			documentation: "文檔",
+			modifiedFiles: "檔案變更",
 			acceptanceCriteria: "驗收標準",
 			definitionOfDone: "完成檢查項",
 			implementationPlan: "實作計畫",
@@ -231,6 +232,8 @@ export const zhTW: TranslationDict = {
 		clickToPreview: "點擊預覽",
 		removeReference: "移除引用",
 		removeDocumentation: "移除文檔",
+		removeModifiedFile: "移除該檔案記錄",
+		metadataTabsLabel: "任務元資料",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;
@@ -244,6 +247,7 @@ export const zhTW: TranslationDict = {
 		noPlan: "暫無實作計畫",
 		noReferences: "暫無引用",
 		noDocumentation: "暫無文檔",
+		noModifiedFiles: "暫無檔案變更",
 		noComments: "暫無評論",
 		placeholderFinalSummary: "輸入最終總結",
 		placeholderReferences: "輸入引用並按回車",

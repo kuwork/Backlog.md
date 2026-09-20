@@ -205,6 +205,7 @@ export const zhCN: TranslationDict = {
 			description: "描述",
 			references: "引用",
 			documentation: "文档",
+			modifiedFiles: "文件变更",
 			acceptanceCriteria: "验收标准",
 			definitionOfDone: "完成检查项",
 			implementationPlan: "实现计划",
@@ -231,6 +232,8 @@ export const zhCN: TranslationDict = {
 		clickToPreview: "点击预览",
 		removeReference: "移除引用",
 		removeDocumentation: "移除文档",
+		removeModifiedFile: "移除该文件记录",
+		metadataTabsLabel: "任务元数据",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;
@@ -244,6 +247,7 @@ export const zhCN: TranslationDict = {
 		noPlan: "暂无实现计划",
 		noReferences: "暂无引用",
 		noDocumentation: "暂无文档",
+		noModifiedFiles: "暂无文件变更",
 		noComments: "暂无评论",
 		placeholderFinalSummary: "输入最终总结",
 		placeholderReferences: "输入引用并按回车",

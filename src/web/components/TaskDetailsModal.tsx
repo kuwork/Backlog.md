@@ -64,6 +64,8 @@ type InlineMetaUpdatePayload = Omit<Partial<Task>, "milestone"> & {
   milestone?: string | null;
 };
 
+type MetadataTab = "references" | "documentation" | "modifiedFiles";
+
 type TaskDetailsFormState = {
   title: string;
   description: string;
@@ -80,6 +82,7 @@ type TaskDetailsFormState = {
   dependencies: string[];
   references: string[];
   documentation: string[];
+  modifiedFiles: string[];
   milestone: string;
   dueDate: string;
   plannedStart: string;
@@ -89,6 +92,10 @@ type TaskDetailsFormState = {
 };
 
 const areJsonEqual = (first: unknown, second: unknown): boolean => JSON.stringify(first) === JSON.stringify(second);
+
+// A modified file is a path from the project root, so the References form's URL branch has no
+// counterpart here: a scheme-looking value is refused rather than stored as a path.
+const looksLikeUrl = (value: string): boolean => /^[a-z][a-z0-9+.-]*:\/\//i.test(value.trim());
 
 const preserveDirtyRefreshValue = <T,>(
   current: T,
@@ -127,6 +134,7 @@ const buildTaskDetailsFormState = ({
   dependencies: task?.dependencies || [],
   references: task?.references || [],
   documentation: task?.documentation || [],
+  modifiedFiles: task?.modifiedFiles || [],
   milestone: task?.milestone || "",
   dueDate: task?.dueDate || "",
   plannedStart: task?.plannedStart || "",
@@ -148,6 +156,48 @@ const SectionHeader: React.FC<{ title: string; right?: React.ReactNode }> = ({ t
     </h3>
     {right ? <div className="ml-2 text-xs text-gray-500 dark:text-gray-400">{right}</div> : null}
   </div>
+);
+
+// References, Documentation and Modified Files are the modal's three list-shaped metadata fields.
+// They share one panel behind this strip instead of stacking as three cards: a finished task can
+// list hundreds of paths, and the third card would push everything below it out of reach.
+const metadataTabId = (tab: MetadataTab) => `task-details-tab-${tab}`;
+
+// The tab that opens follows the lists and the task's state. A finished task is opened for the
+// files it touched, so Modified Files leads there; a task that is still under way is opened for
+// what it is built on, so the strip is read left to right and References wins as soon as it has
+// entries. Either way the first filled list in that order opens, and References is the fallback
+// when nothing is filled at all.
+const metadataTabPriorityFor = (isDone: boolean): readonly MetadataTab[] =>
+	isDone ? ["modifiedFiles", "references", "documentation"] : ["references", "modifiedFiles", "documentation"];
+
+const defaultMetadataTabFor = (counts: Record<MetadataTab, number>, isDone: boolean): MetadataTab =>
+  metadataTabPriorityFor(isDone).find((tab) => counts[tab] > 0) ?? "references";
+
+const MetadataTabButton: React.FC<{
+  tab: MetadataTab;
+  label: string;
+  count: number;
+  active: boolean;
+  onSelect: (tab: MetadataTab) => void;
+}> = ({ tab, label, count, active, onSelect }) => (
+  <button
+    type="button"
+    role="tab"
+    id={metadataTabId(tab)}
+    aria-selected={active}
+    onClick={() => onSelect(tab)}
+    className={`px-3 py-1.5 rounded-md text-sm font-semibold tracking-tight transition-colors duration-200 ${
+      active
+        ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-700/50 dark:hover:text-gray-100"
+    }`}
+  >
+    {label}
+    {/* A count is only worth its space when there is something behind it: an empty list shows the
+        bare caption, so the strip does not fill up with (0)s. */}
+    {count > 0 && <span className="ml-1 font-normal tabular-nums">{`(${count})`}</span>}
+  </button>
 );
 
 export const TaskDetailsModal: React.FC<Props> = ({
@@ -353,6 +403,20 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [dependencies, setDependencies] = useState<string[]>(task?.dependencies || []);
   const [references, setReferences] = useState<string[]>(task?.references || []);
   const [documentation, setDocumentation] = useState<string[]>(task?.documentation || []);
+  const [modifiedFiles, setModifiedFiles] = useState<string[]>(task?.modifiedFiles || []);
+  const isDoneStatus = (status || "").toLowerCase().includes("done");
+  // null means the panel follows the task: the tab is derived from the state and the lists above,
+  // with References as the fallback. A click pins the chosen tab for the open task.
+  const [metadataTab, setMetadataTab] = useState<MetadataTab | null>(null);
+  const defaultMetadataTab = defaultMetadataTabFor(
+    {
+      references: references.length,
+      documentation: documentation.length,
+      modifiedFiles: modifiedFiles.length,
+    },
+    isDoneStatus,
+  );
+  const activeMetadataTab = metadataTab ?? defaultMetadataTab;
   const [milestone, setMilestone] = useState<string>(task?.milestone || "");
   const [dueDate, setDueDate] = useState<string>(task?.dueDate || "");
   const [plannedStart, setPlannedStart] = useState<string>(task?.plannedStart || "");
@@ -508,7 +572,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
     );
   }, [title, description, plan, notes, finalSummary, criteria, definitionOfDone, dueDate, plannedStart, plannedEnd, actualStart, actualEnd, baseline]);
 
-  const isDoneStatus = (status || "").toLowerCase().includes("done");
   const isDraftTask = task?.id?.startsWith("DRAFT-") ?? false;
 
   // A demotion moves the record, so every continuation after the request must prove it still
@@ -604,6 +667,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
     const shouldPreserveEditMode =
       !isCreateMode && sameOpenModalRefresh && modeRef.current === "edit";
 
+    // Opening the modal on another task drops a pinned tab so the default follows the new task.
+    if (nextTaskId !== previousTaskId.current || !isOpen || !previousIsOpen.current) {
+      setMetadataTab(null);
+    }
+
     if (sameOpenModalRefresh && previousFormState) {
       setTitle((current) => preserveDirtyRefreshValue(current, previousFormState.title, nextFormState.title));
       setDescription((current) =>
@@ -644,6 +712,9 @@ export const TaskDetailsModal: React.FC<Props> = ({
       );
       setDocumentation((current) =>
         preserveDirtyRefreshValue(current, previousFormState.documentation, nextFormState.documentation, areJsonEqual),
+      );
+      setModifiedFiles((current) =>
+        preserveDirtyRefreshValue(current, previousFormState.modifiedFiles, nextFormState.modifiedFiles, areJsonEqual),
       );
       setMilestone((current) =>
         preserveDirtyRefreshValue(current, previousFormState.milestone, nextFormState.milestone),
@@ -691,6 +762,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     setDependencies(nextFormState.dependencies);
     setReferences(nextFormState.references);
     setDocumentation(nextFormState.documentation);
+    setModifiedFiles(nextFormState.modifiedFiles);
     setMilestone(nextFormState.milestone);
     setDueDate(nextFormState.dueDate);
     setPlannedStart(nextFormState.plannedStart);
@@ -724,7 +796,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
       labels.length > 0 ||
       dependencies.length > 0 ||
       references.length > 0 ||
-      documentation.length > 0);
+      documentation.length > 0 ||
+      modifiedFiles.length > 0);
   const hasUnsavedEdits =
     (mode === "edit" || mode === "create") && (isDirty || hasCommentDraft || hasCreateModeEntries);
 
@@ -919,6 +992,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
         dependencies,
         references,
         documentation,
+        modifiedFiles,
         milestone: milestone.trim().length > 0 ? milestone.trim() : undefined,
         dueDate: dueDate.trim(),
         plannedStart: plannedStart.trim(),
@@ -1014,6 +1088,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     if (updates.dependencies !== undefined) setDependencies(updates.dependencies as string[]);
     if (updates.references !== undefined) setReferences(updates.references as string[]);
     if (updates.documentation !== undefined) setDocumentation(updates.documentation as string[]);
+    if (updates.modifiedFiles !== undefined) setModifiedFiles(updates.modifiedFiles as string[]);
     if (updates.milestone !== undefined) setMilestone((updates.milestone ?? "") as string);
 
     // Only update server if editing existing task
@@ -1381,158 +1456,264 @@ export const TaskDetailsModal: React.FC<Props> = ({
             )}
           </div>
 
-          {/* References */}
+          {/* References, Documentation and Modified Files are one panel: the three list-shaped
+              metadata fields share a tab strip instead of stacking as three cards, so a long file
+              list cannot push the sections below out of reach. */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <SectionHeader title={t.taskDetails.section.references} />
-            <div className="space-y-3">
-              {references.length > 0 ? (
-                <ul className="space-y-2">
-                  {references.map((ref, idx) => (
-                    <li key={idx} className="flex items-center gap-3 group">
-                      <span className="flex-1 min-w-0">
-                        {ref.startsWith("http://") || ref.startsWith("https://") ? (
-                          <a
-                            href={ref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-                          >
-                            {ref}
-                          </a>
-                        ) : (
-                          <button
-                            onClick={() => setPreviewTarget({ kind: "file", path: ref })}
-                            className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
-                            title={t.taskDetails.clickToPreview}
-                          >
-                            {ref}
-                          </button>
-                        )}
-                      </span>
-                      {!isReadOnly && (
-                        <button
-                          onClick={() => {
-                            const newRefs = references.filter((_, i) => i !== idx);
-                            handleInlineMetaUpdate({ references: newRefs });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
-                          title={t.taskDetails.removeReference}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noReferences}</p>
-              )}
-              {!isReadOnly && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const input = e.currentTarget.elements.namedItem("newRef") as HTMLInputElement;
-                    const value = input.value.trim();
-                    if (value && !references.includes(value)) {
-                      handleInlineMetaUpdate({ references: [...references, value] });
-                      input.value = "";
-                    }
-                  }}
-                  className="flex gap-2"
-                >
-                  <PathAutocomplete
-                    name="newRef"
-                    placeholder={t.taskDetails.placeholderRefDoc}
-                    className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                  >
-                    {t.common.add}
-                  </button>
-                </form>
-              )}
+            <div role="tablist" aria-label={t.taskDetails.metadataTabsLabel} className="flex flex-wrap gap-1 mb-3">
+              <MetadataTabButton
+                tab="references"
+                label={t.taskDetails.section.references}
+                count={references.length}
+                active={activeMetadataTab === "references"}
+                onSelect={setMetadataTab}
+              />
+              <MetadataTabButton
+                tab="documentation"
+                label={t.taskDetails.section.documentation}
+                count={documentation.length}
+                active={activeMetadataTab === "documentation"}
+                onSelect={setMetadataTab}
+              />
+              <MetadataTabButton
+                tab="modifiedFiles"
+                label={t.taskDetails.section.modifiedFiles}
+                count={modifiedFiles.length}
+                active={activeMetadataTab === "modifiedFiles"}
+                onSelect={setMetadataTab}
+              />
             </div>
-          </div>
 
-          {/* Documentation */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <SectionHeader title={t.taskDetails.section.documentation} />
-            <div className="space-y-3">
-              {documentation.length > 0 ? (
-                <ul className="space-y-2">
-                  {documentation.map((doc, idx) => (
-                    <li key={idx} className="flex items-center gap-3 group">
-                      <span className="flex-1 min-w-0">
-                        {doc.startsWith("http://") || doc.startsWith("https://") ? (
-                          <a
-                            href={doc}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-                          >
-                            {doc}
-                          </a>
-                        ) : (
+            {activeMetadataTab === "references" && (
+              <div
+                role="tabpanel"
+                id="task-details-metadata-panel-references"
+                aria-labelledby={metadataTabId("references")}
+                className="space-y-3"
+              >
+                {references.length > 0 ? (
+                  <ul className="space-y-2">
+                    {references.map((ref, idx) => (
+                      <li key={idx} className="flex items-center gap-3 group">
+                        <span className="flex-1 min-w-0">
+                          {ref.startsWith("http://") || ref.startsWith("https://") ? (
+                            <a
+                              href={ref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                            >
+                              {ref}
+                            </a>
+                          ) : (
+                            <button
+                              onClick={() => setPreviewTarget({ kind: "file", path: ref })}
+                              className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
+                              title={t.taskDetails.clickToPreview}
+                            >
+                              {ref}
+                            </button>
+                          )}
+                        </span>
+                        {!isReadOnly && (
                           <button
-                            onClick={() => setPreviewTarget({ kind: "file", path: doc })}
+                            onClick={() => {
+                              const newRefs = references.filter((_, i) => i !== idx);
+                              handleInlineMetaUpdate({ references: newRefs });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+                            title={t.taskDetails.removeReference}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noReferences}</p>
+                )}
+                {!isReadOnly && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = e.currentTarget.elements.namedItem("newRef") as HTMLInputElement;
+                      const value = input.value.trim();
+                      if (value && !references.includes(value)) {
+                        handleInlineMetaUpdate({ references: [...references, value] });
+                        input.value = "";
+                      }
+                    }}
+                    className="flex gap-2"
+                  >
+                    <PathAutocomplete
+                      name="newRef"
+                      placeholder={t.taskDetails.placeholderRefDoc}
+                      className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                      {t.common.add}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {activeMetadataTab === "documentation" && (
+              <div
+                role="tabpanel"
+                id="task-details-metadata-panel-documentation"
+                aria-labelledby={metadataTabId("documentation")}
+                className="space-y-3"
+              >
+                {documentation.length > 0 ? (
+                  <ul className="space-y-2">
+                    {documentation.map((doc, idx) => (
+                      <li key={idx} className="flex items-center gap-3 group">
+                        <span className="flex-1 min-w-0">
+                          {doc.startsWith("http://") || doc.startsWith("https://") ? (
+                            <a
+                              href={doc}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                            >
+                              {doc}
+                            </a>
+                          ) : (
+                            <button
+                              onClick={() => setPreviewTarget({ kind: "file", path: doc })}
+                              className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
+                              title={t.taskDetails.clickToPreview}
+                            >
+                              {doc}
+                            </button>
+                          )}
+                        </span>
+                        {!isReadOnly && (
+                          <button
+                            onClick={() => {
+                              const newDocs = documentation.filter((_, i) => i !== idx);
+                              handleInlineMetaUpdate({ documentation: newDocs });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+                            title={t.taskDetails.removeDocumentation}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
+                )}
+                {!isReadOnly && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
+                      const value = input.value.trim();
+                      if (value && !documentation.includes(value)) {
+                        handleInlineMetaUpdate({ documentation: [...documentation, value] });
+                        input.value = "";
+                      }
+                    }}
+                    className="flex gap-2"
+                  >
+                    <PathAutocomplete
+                      name="newDoc"
+                      placeholder={t.taskDetails.placeholderRefDoc}
+                      className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                      {t.common.add}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {activeMetadataTab === "modifiedFiles" && (
+              <div
+                role="tabpanel"
+                id="task-details-metadata-panel-modifiedFiles"
+                aria-labelledby={metadataTabId("modifiedFiles")}
+                className="space-y-3"
+              >
+                {modifiedFiles.length > 0 ? (
+                  <ul className="space-y-2">
+                    {modifiedFiles.map((file, idx) => (
+                      <li key={idx} className="flex items-center gap-3 group">
+                        <span className="flex-1 min-w-0">
+                          {/* Same rendering as a reference path, minus the URL branch: a modified file
+                              is always a path from the project root. */}
+                          <button
+                            onClick={() => setPreviewTarget({ kind: "file", path: file })}
                             className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
                             title={t.taskDetails.clickToPreview}
                           >
-                            {doc}
+                            {file}
+                          </button>
+                        </span>
+                        {!isReadOnly && (
+                          <button
+                            onClick={() => {
+                              const newFiles = modifiedFiles.filter((_, i) => i !== idx);
+                              handleInlineMetaUpdate({ modifiedFiles: newFiles });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+                            title={t.taskDetails.removeModifiedFile}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                           </button>
                         )}
-                      </span>
-                      {!isReadOnly && (
-                        <button
-                          onClick={() => {
-                            const newDocs = documentation.filter((_, i) => i !== idx);
-                            handleInlineMetaUpdate({ documentation: newDocs });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
-                          title={t.taskDetails.removeDocumentation}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
-              )}
-              {!isReadOnly && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
-                    const value = input.value.trim();
-                    if (value && !documentation.includes(value)) {
-                      handleInlineMetaUpdate({ documentation: [...documentation, value] });
-                      input.value = "";
-                    }
-                  }}
-                  className="flex gap-2"
-                >
-                  <PathAutocomplete
-                    name="newDoc"
-                    placeholder={t.taskDetails.placeholderRefDoc}
-                    className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noModifiedFiles}</p>
+                )}
+                {!isReadOnly && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = e.currentTarget.elements.namedItem("newModifiedFile") as HTMLInputElement;
+                      const value = input.value.trim();
+                      if (value && !looksLikeUrl(value) && !modifiedFiles.includes(value)) {
+                        handleInlineMetaUpdate({ modifiedFiles: [...modifiedFiles, value] });
+                        input.value = "";
+                      }
+                    }}
+                    className="flex gap-2"
                   >
-                    {t.common.add}
-                  </button>
-                </form>
-              )}
-            </div>
+                    <PathAutocomplete
+                      name="newModifiedFile"
+                      placeholder={t.taskDetails.placeholderRefDoc}
+                      className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                      {t.common.add}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Acceptance Criteria */}

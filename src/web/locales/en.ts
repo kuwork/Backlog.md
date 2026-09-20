@@ -204,6 +204,7 @@ export const en = {
 			description: "Description",
 			references: "References",
 			documentation: "Documentation",
+			modifiedFiles: "Modified Files",
 			acceptanceCriteria: "Acceptance Criteria",
 			definitionOfDone: "Definition of Done",
 			implementationPlan: "Implementation Plan",
@@ -230,6 +231,8 @@ export const en = {
 		clickToPreview: "Click to preview",
 		removeReference: "Remove reference",
 		removeDocumentation: "Remove document",
+		removeModifiedFile: "Remove modified file",
+		metadataTabsLabel: "Task metadata",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "High", medium: "Medium", low: "Low" };
 			return map[level] ?? level;
@@ -243,6 +246,7 @@ export const en = {
 		noPlan: "No implementation plan",
 		noReferences: "No references",
 		noDocumentation: "No documents",
+		noModifiedFiles: "No modified files",
 		noComments: "No comments",
 		placeholderFinalSummary: "PR-style summary of what was implemented (write when task is complete)",
 		placeholderReferences: "Type reference and press Enter",

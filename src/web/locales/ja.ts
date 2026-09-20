@@ -206,6 +206,7 @@ export const ja: TranslationDict = {
 			description: "説明",
 			references: "参照",
 			documentation: "ドキュメント",
+			modifiedFiles: "変更ファイル",
 			acceptanceCriteria: "受入基準",
 			definitionOfDone: "完了チェック項目",
 			implementationPlan: "実装計画",
@@ -232,6 +233,8 @@ export const ja: TranslationDict = {
 		clickToPreview: "クリックしてプレビュー",
 		removeReference: "参照を削除",
 		removeDocumentation: "ドキュメントを削除",
+		removeModifiedFile: "変更ファイルを削除",
+		metadataTabsLabel: "タスクのメタデータ",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;
@@ -245,6 +248,7 @@ export const ja: TranslationDict = {
 		noPlan: "実装計画がありません",
 		noReferences: "参照がありません",
 		noDocumentation: "ドキュメントがありません",
+		noModifiedFiles: "変更ファイルがありません",
 		noComments: "コメントがありません",
 		placeholderFinalSummary: "最終サマリーを入力",
 		placeholderReferences: "参照を入力して Enter を押してください",
