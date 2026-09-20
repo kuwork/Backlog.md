@@ -227,7 +227,8 @@ const countDocsFiles = (nodes: DocsTreeNode[]): number => {
 };
 
 type DocsSortColumn = 'name' | 'id';
-type DocsSortDirection = 'asc' | 'desc';
+type WikiSortColumn = 'title' | 'file';
+type SortDirection = 'asc' | 'desc';
 
 /**
  * What the sidebar prints for a node: the document title when the corpus has one, otherwise the file
@@ -257,7 +258,7 @@ const compareDocsNodeIds = (a: DocsTreeNode, b: DocsTreeNode, docTitles: Map<str
 const sortDocsTree = (
 	nodes: DocsTreeNode[],
 	column: DocsSortColumn,
-	direction: DocsSortDirection,
+	direction: SortDirection,
 	docTitles: Map<string, string>,
 ): DocsTreeNode[] => {
 	const sign = direction === 'asc' ? 1 : -1;
@@ -270,6 +271,41 @@ const sortDocsTree = (
 		.map((node) =>
 			node.children ? { ...node, children: sortDocsTree(node.children, column, direction, docTitles) } : node,
 		);
+};
+
+/** The file name a wiki page is listed under: the markdown extension is not part of the label. */
+const wikiNodeFileName = (node: WikiTreeNode): string => node.name.replace(/\.md$/i, '');
+
+/**
+ * What the sidebar prints for a wiki node: the page title when the corpus has one, otherwise the file
+ * name. The selected column decides which of the two shows, so the list always prints the same field
+ * it is sorted by.
+ */
+const wikiNodeLabel = (node: WikiTreeNode, column: WikiSortColumn): string =>
+	column === 'title' ? node.title || wikiNodeFileName(node) : wikiNodeFileName(node);
+
+const compareWikiNodeNames = (a: WikiTreeNode, b: WikiTreeNode): number =>
+	a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+
+const compareWikiNodeLabels = (a: WikiTreeNode, b: WikiTreeNode, column: WikiSortColumn): number =>
+	wikiNodeLabel(a, column).localeCompare(wikiNodeLabel(b, column), undefined, {
+		numeric: true,
+		sensitivity: 'base',
+	});
+
+/**
+ * Order a wiki tree for the sidebar. Folders always come first and are ordered by name in the active
+ * direction (a folder has no page title), then the pages, ordered by the selected column. Every level
+ * is sorted on its own and the input tree is left untouched.
+ */
+const sortWikiTree = (nodes: WikiTreeNode[], column: WikiSortColumn, direction: SortDirection): WikiTreeNode[] => {
+	const sign = direction === 'asc' ? 1 : -1;
+	return [...nodes]
+		.sort((a, b) => {
+			if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+			return sign * (a.type === 'directory' ? compareWikiNodeNames(a, b) : compareWikiNodeLabels(a, b, column));
+		})
+		.map((node) => (node.children ? { ...node, children: sortWikiTree(node.children, column, direction) } : node));
 };
 
 const WIKI_EXPANDED_PATHS_KEY = 'wikiExpandedPaths';
@@ -362,11 +398,13 @@ const WikiActionDropdown = memo(function WikiActionDropdown({
 
 const WikiTreeItem = memo(function WikiTreeItem({
 	node,
+	sortColumn,
 	onCreateFile,
 	onCreateFolder,
 	onRename,
 }: {
 	node: WikiTreeNode;
+	sortColumn: WikiSortColumn;
 	onCreateFile: (parentPath: string) => void;
 	onCreateFolder: (parentPath: string) => void;
 	onRename: (path: string, name: string) => void;
@@ -433,7 +471,14 @@ const WikiTreeItem = memo(function WikiTreeItem({
 				{isExpanded && node.children && (
 					<div className="ml-4 space-y-1">
 						{node.children.map((child) => (
-							<WikiTreeItem key={child.path} node={child} onCreateFile={onCreateFile} onCreateFolder={onCreateFolder} onRename={onRename} />
+							<WikiTreeItem
+								key={child.path}
+								node={child}
+								sortColumn={sortColumn}
+								onCreateFile={onCreateFile}
+								onCreateFolder={onCreateFolder}
+								onRename={onRename}
+							/>
 						))}
 					</div>
 				)}
@@ -454,7 +499,7 @@ const WikiTreeItem = memo(function WikiTreeItem({
 				}
 			>
 				<span className="text-gray-400 dark:text-gray-500"><Icons.File /></span>
-				<span className="truncate">{node.name.replace(/\.md$/i, '')}</span>
+				<span className="truncate">{wikiNodeLabel(node, sortColumn)}</span>
 			</NavLink>
 			<div className="absolute right-1.5 opacity-0 group-hover/file:opacity-100 group-hover/file:pointer-events-auto pointer-events-none transition-opacity duration-150">
 				<WikiActionDropdown
@@ -692,11 +737,17 @@ const SideNavigation = memo(function SideNavigation({
 		return decisions.length > 6;
 	});
 	const [docsSortColumn, setDocsSortColumn] = useState<DocsSortColumn>('name');
-	const [docsSortDirection, setDocsSortDirection] = useState<DocsSortDirection>('asc');
+	const [docsSortDirection, setDocsSortDirection] = useState<SortDirection>('asc');
+	const [wikiSortColumn, setWikiSortColumn] = useState<WikiSortColumn>('title');
+	const [wikiSortDirection, setWikiSortDirection] = useState<SortDirection>('asc');
 	const docTitles = useMemo(() => new Map(docs.map((doc) => [doc.id, doc.title])), [docs]);
 	const sortedDocsTree = useMemo(
 		() => sortDocsTree(docsTree, docsSortColumn, docsSortDirection, docTitles),
 		[docsTree, docsSortColumn, docsSortDirection, docTitles],
+	);
+	const sortedWikiTree = useMemo(
+		() => sortWikiTree(wikiTree, wikiSortColumn, wikiSortDirection),
+		[wikiTree, wikiSortColumn, wikiSortDirection],
 	);
 	const [isWikiCollapsed, setIsWikiCollapsed] = useState(() => {
 		const saved = localStorage.getItem('wikiCollapsed');
@@ -770,16 +821,24 @@ const SideNavigation = memo(function SideNavigation({
 		setDocsSortDirection('asc');
 	};
 
-	const renderDocsSortButton = (label: string, hint: string, column: DocsSortColumn) => {
-		const isActive = docsSortColumn === column;
-		const isAsc = docsSortDirection === 'asc';
+	const handleWikiSortChange = (column: WikiSortColumn) => {
+		if (wikiSortColumn === column) {
+			setWikiSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+			return;
+		}
+		setWikiSortColumn(column);
+		setWikiSortDirection('asc');
+	};
+
+	/** Both trees use the same control: a column label with the pair of direction arrows. */
+	const renderSortButton = (label: string, hint: string, isActive: boolean, isAsc: boolean, onToggle: () => void) => {
 		return (
 			<button
 				type="button"
-				onClick={() => handleDocsSortChange(column)}
+				onClick={onToggle}
 				title={hint}
 				aria-label={hint}
-				className={`inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${
+				className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${
 					isActive
 						? 'text-gray-600 dark:text-gray-300'
 						: 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-100'
@@ -797,6 +856,16 @@ const SideNavigation = memo(function SideNavigation({
 			</button>
 		);
 	};
+
+	const renderDocsSortButton = (label: string, hint: string, column: DocsSortColumn) =>
+		renderSortButton(label, hint, docsSortColumn === column, docsSortDirection === 'asc', () =>
+			handleDocsSortChange(column),
+		);
+
+	const renderWikiSortButton = (label: string, hint: string, column: WikiSortColumn) =>
+		renderSortButton(label, hint, wikiSortColumn === column, wikiSortDirection === 'asc', () =>
+			handleWikiSortChange(column),
+		);
 
 	useEffect(() => {
 		localStorage.setItem('sideNavCollapsed', JSON.stringify(isCollapsed));
@@ -1208,7 +1277,7 @@ const SideNavigation = memo(function SideNavigation({
 						
 						{/* Documents Section */}
 						<div className="px-4 py-4">
-							<div className="flex items-center justify-between mb-4">
+							<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
 									<div className="flex items-center space-x-3">
 										<button
 											onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
@@ -1256,7 +1325,7 @@ const SideNavigation = memo(function SideNavigation({
 
 						{/* Decisions Section */}
 						<div className="px-4 py-4">
-							<div className="flex items-center justify-between mb-4">
+							<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
 									<div className="flex items-center space-x-3">
 										<button
 											onClick={() => setIsDecisionsCollapsed(!isDecisionsCollapsed)}
@@ -1316,7 +1385,7 @@ const SideNavigation = memo(function SideNavigation({
 
 						{/* Wiki Section */}
 						<div className="px-4 py-4">
-							<div className="flex items-center justify-between mb-4">
+							<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
 								<div className="flex items-center space-x-3">
 									<button
 										onClick={() => setIsWikiCollapsed(!isWikiCollapsed)}
@@ -1328,13 +1397,17 @@ const SideNavigation = memo(function SideNavigation({
 									<span className="text-gray-500 dark:text-gray-400"><Icons.DocumentBook /></span>
 									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.nav.wiki} ({countWikiFiles(wikiTree)})</span>
 								</div>
-								<WikiActionDropdown
-									nodeName=""
-									isFile={false}
-									parentPath=""
-									onCreateFile={handleCreateWikiFile}
-									onCreateFolder={handleCreateWikiFolder}
-								/>
+								<div className="flex items-center gap-1">
+									{renderWikiSortButton(t.nav.sortWikiByTitle, t.nav.sortWikiByTitleHint, 'title')}
+									{renderWikiSortButton(t.nav.sortWikiByFileName, t.nav.sortWikiByFileNameHint, 'file')}
+									<WikiActionDropdown
+										nodeName=""
+										isFile={false}
+										parentPath=""
+										onCreateFile={handleCreateWikiFile}
+										onCreateFolder={handleCreateWikiFolder}
+									/>
+								</div>
 							</div>
 
 							{/* Wiki Tree */}
@@ -1343,8 +1416,15 @@ const SideNavigation = memo(function SideNavigation({
 									{wikiTree.length === 0 ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noWikiPages}</p>
 									) : (
-										wikiTree.map((node) => (
-											<WikiTreeItem key={node.path} node={node} onCreateFile={handleCreateWikiFile} onCreateFolder={handleCreateWikiFolder} onRename={handleRenameWiki} />
+										sortedWikiTree.map((node) => (
+											<WikiTreeItem
+												key={node.path}
+												node={node}
+												sortColumn={wikiSortColumn}
+												onCreateFile={handleCreateWikiFile}
+												onCreateFolder={handleCreateWikiFolder}
+												onRename={handleRenameWiki}
+											/>
 										))
 									)}
 								</div>

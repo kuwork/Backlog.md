@@ -428,6 +428,8 @@ export interface WikiTreeNode {
 	name: string;
 	path: string;
 	type: "file" | "directory";
+	/** Page title from the loaded corpus; absent when the page is unknown, so clients fall back to `name`. */
+	title?: string;
 	children?: WikiTreeNode[];
 }
 

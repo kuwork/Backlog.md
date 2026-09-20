@@ -26,6 +26,7 @@ import {
 	type Task,
 	type TaskUpdateInput,
 	type WikiPage,
+	type WikiTreeNode,
 } from "../types/index.ts";
 import { launchBrowser } from "../utils/browser-launch.ts";
 import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
@@ -35,6 +36,7 @@ import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
+import { withWikiPageTitles } from "../utils/wiki-titles.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
@@ -1484,10 +1486,24 @@ export class BacklogServer {
 	private async handleGetWikiTree(): Promise<Response> {
 		try {
 			const tree = await this.core.filesystem.getWikiTree();
-			return Response.json(tree);
+			return Response.json(await this.attachWikiPageTitles(tree));
 		} catch (error) {
 			console.error("Error building wiki tree:", error);
 			return Response.json([]);
+		}
+	}
+
+	/**
+	 * Wiki page titles live in the loaded corpus rather than on disk, so the sidebar can sort and
+	 * label pages by title. A store that is not ready yet is not an error here: the client falls back
+	 * to file names, exactly as it does for pages missing from the corpus.
+	 */
+	private async attachWikiPageTitles(tree: WikiTreeNode[]): Promise<WikiTreeNode[]> {
+		try {
+			const store = await this.getContentStoreInstance();
+			return withWikiPageTitles(tree, store.getWikis());
+		} catch {
+			return tree;
 		}
 	}
 
