@@ -79,13 +79,22 @@ describe("SideNavigation task loading", () => {
 });
 
 describe("BoardPage loading and error states", () => {
-	it("shows a loading panel while loading with no tasks", () => {
+	it("shows the first-load skeleton while loading with no tasks", () => {
 		const loading = renderBoard(true);
-		expect(loading).toContain("Loading tasks...");
 		expect(loading).toContain('role="status"');
+		expect(loading).toContain('aria-label="Loading tasks..."');
+		// Ghost columns mirror the configured status count, and the ring is the circular utility
+		// rather than the dead rounded-full class that used to render a bordered square.
+		expect(loading.split("min-w-[16rem]").length - 1).toBe(2);
+		expect(loading).toContain("rounded-circle");
+		expect(loading).not.toContain("rounded-full");
 
+		// The real board takes over: its columns reuse the same geometry, so the skeleton is gone
+		// rather than the layout changing.
 		const loadedEmpty = renderBoard(false);
+		expect(loadedEmpty).toContain("Empty");
 		expect(loadedEmpty).not.toContain("Loading tasks...");
+		expect(loadedEmpty).not.toContain('role="status"');
 	});
 
 	it("shows a retryable error panel instead of empty content", () => {

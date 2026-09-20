@@ -23,6 +23,7 @@ import DraftsList from "./components/DraftsList";
 import GanttView from "./components/GanttView";
 import InitializationScreen from "./components/InitializationScreen";
 import Layout from "./components/Layout";
+import LoadingSpinner from "./components/LoadingSpinner";
 import MilestoneDetailsModal from "./components/MilestoneDetailsModal";
 import MilestonesPage from "./components/MilestonesPage";
 import Settings from "./components/Settings";
@@ -860,8 +861,9 @@ function AppContent() {
 	// Show loading state while checking initialization
 	if (isInitialized === null) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-				<div className="text-lg text-gray-600 dark:text-gray-300">Loading...</div>
+			<div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900" role="status">
+				<LoadingSpinner size="md" text="" />
+				<span className="sr-only">{t.nav.projectLoading}</span>
 			</div>
 		);
 	}

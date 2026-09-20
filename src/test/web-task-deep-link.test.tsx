@@ -24,7 +24,7 @@ const SOCKET_HANDSHAKE_MS = 150;
 const INDICATOR_APPEAR_MS = 400;
 const INDICATOR_EXIT_MS = 400;
 
-/** The board loading panel the app shows instead of content; the indicator replaces it mid-session. */
+/** The board skeleton label the app shows instead of content; the indicator replaces it mid-session. */
 const BOARD_LOADING_TEXT = "Loading tasks...";
 
 const originalFetch = globalThis.fetch;
@@ -49,6 +49,17 @@ let releaseDuplicateIds: () => void = () => {};
 
 /** Served by `/api/search` once the gate opens. */
 let searchResults: SearchResult[] = [];
+
+/** Keeps `/api/status` pending so the app stays on its pre-init screen. */
+let statusGate: Promise<void> = Promise.resolve();
+let releaseStatus: () => void = () => {};
+
+/** Keeps the initialization check pending until `releaseStatus()` is called. */
+function holdStatusOpen(): void {
+	statusGate = new Promise<void>((resolve) => {
+		releaseStatus = resolve;
+	});
+}
 
 /** Keeps the first `/api/search` pending until `releaseSearch()` is called. */
 function holdSearchOpen(): void {
@@ -143,7 +154,10 @@ function serveApi(): void {
 		const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 		const path = new URL(raw, "http://localhost").pathname;
 
-		if (path === "/api/status") return json({ initialized: true });
+		if (path === "/api/status") {
+			await statusGate;
+			return json({ initialized: true });
+		}
 		if (path === "/api/version") return json({ version: "1.52.0" });
 		if (path === "/api/statuses") return json(STATUSES);
 		if (path === "/api/config") {
@@ -256,10 +270,11 @@ describe("task deep links", () => {
 		searchResults = [{ type: "task", score: null, task: openTask() }];
 		serveApi();
 
-		// The index route, so the board's own loading panel is on screen while the phase runs.
+		// The index route, so the board's own first-load skeleton is on screen while the phase runs.
 		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
 		await renderApp("/");
 		await flush(SOCKET_HANDSHAKE_MS);
+		expect(document.querySelector('[role="status"][aria-label="Loading tasks..."]')).not.toBeNull();
 
 		// The phase sentence is gone from the sidebar and the board, so the header chip is the
 		// only place the server message shows - and only once the state has persisted.
@@ -291,9 +306,10 @@ describe("task deep links", () => {
 		await flush(SOCKET_HANDSHAKE_MS);
 		await flush();
 
-		// The first load has completed, so the board renders the task instead of its loading panel.
+		// The first load has completed, so the board renders the task instead of its skeleton.
 		expect(document.body.textContent).toContain(TASK_TITLE);
 		expect(document.body.textContent).not.toContain(BOARD_LOADING_TEXT);
+		expect(document.querySelector('[aria-label="Loading tasks..."]')).toBeNull();
 
 		await broadcast({ type: "loading", message: LOADING_MESSAGE });
 		await flush(INDICATOR_APPEAR_MS);
@@ -306,5 +322,27 @@ describe("task deep links", () => {
 
 		await broadcast({ type: "loaded" });
 		await flush(INDICATOR_EXIT_MS);
+	});
+
+	it("shows a copy-free ring while the initialization check is pending", async () => {
+		holdStatusOpen();
+		serveApi();
+
+		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+		await renderApp("/");
+
+		// Pre-init screen: the shared ring, no visible copy, announced to assistive tech only.
+		const status = document.querySelector('[role="status"]');
+		expect(status).not.toBeNull();
+		expect(status?.textContent).toBe("Loading...");
+		expect(status?.querySelector("p")).toBeNull();
+		const ring = status?.querySelector(".animate-spin");
+		expect(ring).not.toBeNull();
+		expect(ring?.className).toContain("rounded-circle");
+		expect(ring?.className).toContain("motion-reduce:animate-none");
+		expect(status?.innerHTML).not.toContain("rounded-full");
+
+		releaseStatus();
+		await flush();
 	});
 });
