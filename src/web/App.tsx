@@ -344,6 +344,9 @@ function AppContent() {
 	);
 
 	const hasLoadedRef = useRef(false);
+	// Content is on screen once the first load has succeeded; from then on a mid-session
+	// indexing broadcast must not flip the blocking skeleton back on.
+	const hasLoadedDataRef = useRef(false);
 	// Reactive twin of hasLoadedRef: the deep-link effect needs to re-run when the first load
 	// completes, and a ref change alone would not retrigger it.
 	const [hasCompletedFirstLoad, setHasCompletedFirstLoad] = useState(false);
@@ -377,6 +380,7 @@ function AppContent() {
 			const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestonesData, milestonesData));
 			const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
 			const { tasks: tasksList } = applySearchResults(searchResults, archivedKeys, milestoneAliases);
+			hasLoadedDataRef.current = true;
 
 			setStatuses(statusesData);
 			setProjectName(configData.projectName);
@@ -743,7 +747,11 @@ function AppContent() {
 			} else {
 				const loadingState = parseBrowserLoadingState(event.data);
 			if (loadingState?.type === "loading") {
-				setIsLoading(true);
+				// Once content is on screen it stays interactive; the header indexing
+				// indicator (driven by loadingMessage) is the only loading signal. A new
+				// loading attempt always clears a stale terminal error, so a passive client
+				// shows its cached content instead of the obsolete failure.
+				if (!hasLoadedDataRef.current) setIsLoading(true);
 				setLoadError(null);
 				setLoadingMessage(loadingState.message);
 			} else if (loadingState?.type === "loaded") {
@@ -839,7 +847,6 @@ function AppContent() {
 		milestoneEntities,
 		archivedMilestones,
 		isLoading,
-		loadingMessage,
 		loadError,
 		labelColors,
 		onLabelColorsChange: handleLabelColorsChange,

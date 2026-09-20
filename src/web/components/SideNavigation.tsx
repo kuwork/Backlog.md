@@ -14,7 +14,6 @@ import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
 import { getWebVersion } from '../utils/version';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../hooks/useI18n';
-import { translateLoadingMessage } from '../../utils/loading-messages';
 import { compareTaskIds } from '../../utils/task-sorting';
 
 // Utility functions for ID transformations
@@ -23,14 +22,12 @@ const stripIdPrefix = (id: string): string => {
 	return id.replace(/^[a-zA-Z]+-/, '');
 };
 
-const LoadingPhase = ({ message, className }: { message?: string | null; className: string }) => (
+const LoadingPhase = ({ className }: { className: string }) => (
 	<p className={className} role="status">
-		{message ?? (
-			<span
-				className="inline-block h-3 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-700"
-				aria-label="Loading content"
-			/>
-		)}
+		<span
+			className="inline-block h-3 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-700"
+			aria-label="Loading content"
+		/>
 	</p>
 );
 
@@ -650,7 +647,6 @@ interface SideNavigationProps {
 	decisions: Decision[];
 	wikiTree: WikiTreeNode[];
 	isLoading: boolean;
-	loadingMessage?: string | null;
 	error?: Error | null;
 	onRetry?: () => void;
 	onRefreshData: () => Promise<void>;
@@ -663,12 +659,11 @@ const SideNavigation = memo(function SideNavigation({
 	decisions,
 	wikiTree,
 	isLoading,
-	loadingMessage,
 	error,
 	onRetry,
 	onRefreshData,
 }: SideNavigationProps) {
-	const { t, locale } = useI18n();
+	const { t } = useI18n();
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		const saved = localStorage.getItem('sideNavCollapsed');
 		return saved ? JSON.parse(saved) : false;
@@ -1106,7 +1101,7 @@ const SideNavigation = memo(function SideNavigation({
 							</span>
 						</div>
 						{isLoading && (
-							<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="mt-2 text-xs text-gray-500 dark:text-gray-400" />
+							<LoadingPhase className="mt-2 text-xs text-gray-500 dark:text-gray-400" />
 						)}
 					</div>
 				)}
@@ -1243,7 +1238,7 @@ const SideNavigation = memo(function SideNavigation({
 							{!isDocsCollapsed && (
 								<div className="space-y-1">
 									{isLoading ? (
-										<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
+										<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
 									) : error ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.documentsUnavailable}</p>
 									) : sortedDocsTree.length === 0 ? (
@@ -1289,7 +1284,7 @@ const SideNavigation = memo(function SideNavigation({
 							{!isDecisionsCollapsed && (
 								<div className="space-y-1">
 									{isLoading ? (
-										<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
+										<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
 									) : error ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.decisionsUnavailable}</p>
 									) : filteredDecisions.length === 0 ? (

@@ -1,13 +1,15 @@
 import React from 'react';
 import { useI18n } from '../hooks/useI18n';
+import { BranchIndexingIndicator } from './BranchIndexingIndicator';
 import ThemeToggle from './ThemeToggle';
 import TocButton from './TocButton';
 
 interface NavigationProps {
     projectName: string;
+    loadingMessage?: string | null;
 }
 
-const Navigation: React.FC<NavigationProps> = ({projectName}) => {
+const Navigation: React.FC<NavigationProps> = ({projectName, loadingMessage}) => {
     const { t } = useI18n();
     return (
         <nav className="relative z-20 px-8 h-18 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
@@ -25,6 +27,7 @@ const Navigation: React.FC<NavigationProps> = ({projectName}) => {
                     </a>
                 </div>
                 <div className="flex items-center gap-1">
+                    <BranchIndexingIndicator message={loadingMessage} />
                     <TocButton />
                     <ThemeToggle />
                 </div>

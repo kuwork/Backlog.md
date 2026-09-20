@@ -20,6 +20,13 @@ const LOADING_MESSAGE = "Fetching remote branches...";
 /** The health-check socket connects on a 100ms timer, so a flush has to outlast it. */
 const SOCKET_HANDSHAKE_MS = 150;
 
+/** The header indexing indicator waits out its appear/exit windows before it mounts or leaves. */
+const INDICATOR_APPEAR_MS = 400;
+const INDICATOR_EXIT_MS = 400;
+
+/** The board loading panel the app shows instead of content; the indicator replaces it mid-session. */
+const BOARD_LOADING_TEXT = "Loading tasks...";
+
 const originalFetch = globalThis.fetch;
 const originalWebSocket = globalThis.WebSocket;
 
@@ -243,26 +250,61 @@ describe("task deep links", () => {
 		expect(window.location.pathname).toBe("/");
 	});
 
-	it("keeps driving the loading indicator from the socket frames", async () => {
+	it("drives the header indexing indicator from the socket frames", async () => {
 		holdSearchOpen();
 		holdDuplicateIdsOpen();
 		searchResults = [{ type: "task", score: null, task: openTask() }];
 		serveApi();
 
+		// The index route, so the board's own loading panel is on screen while the phase runs.
 		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
-		await renderApp(DEEP_LINK_PATH);
+		await renderApp("/");
 		await flush(SOCKET_HANDSHAKE_MS);
 
+		// The phase sentence is gone from the sidebar and the board, so the header chip is the
+		// only place the server message shows - and only once the state has persisted.
 		await broadcast({ type: "loading", message: LOADING_MESSAGE });
-		await flush();
-		expect(document.body.textContent).toContain(LOADING_MESSAGE);
+		await flush(INDICATOR_APPEAR_MS);
+		expect(document.querySelector(".animate-indexing-sweep")).not.toBeNull();
+		// Exactly one occurrence in the body text: the chip's visible label. The sidebar
+		// placeholders are pure skeletons and the board panel falls back to its generic label.
+		expect(document.body.textContent?.split(LOADING_MESSAGE).length).toBe(2);
 
 		await broadcast({ type: "loaded" });
-		await flush();
+		await flush(INDICATOR_EXIT_MS);
+		expect(document.querySelector(".animate-indexing-sweep")).toBeNull();
 		expect(document.body.textContent).not.toContain(LOADING_MESSAGE);
 
 		releaseSearch();
 		releaseDuplicateIds();
 		await flush();
+	});
+
+	it("keeps already-loaded content mounted while a later indexing frame runs", async () => {
+		searchGate = Promise.resolve();
+		duplicateIdsGate = Promise.resolve();
+		searchResults = [{ type: "task", score: null, task: openTask() }];
+		serveApi();
+
+		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
+		await renderApp("/");
+		await flush(SOCKET_HANDSHAKE_MS);
+		await flush();
+
+		// The first load has completed, so the board renders the task instead of its loading panel.
+		expect(document.body.textContent).toContain(TASK_TITLE);
+		expect(document.body.textContent).not.toContain(BOARD_LOADING_TEXT);
+
+		await broadcast({ type: "loading", message: LOADING_MESSAGE });
+		await flush(INDICATOR_APPEAR_MS);
+
+		// Already-loaded content stays on screen and the blocking skeleton must not come back;
+		// the header indicator is the only loading signal left.
+		expect(document.body.textContent).toContain(TASK_TITLE);
+		expect(document.body.textContent).not.toContain(BOARD_LOADING_TEXT);
+		expect(document.querySelector(".animate-indexing-sweep")).not.toBeNull();
+
+		await broadcast({ type: "loaded" });
+		await flush(INDICATOR_EXIT_MS);
 	});
 });

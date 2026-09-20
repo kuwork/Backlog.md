@@ -17,14 +17,9 @@ globalThis.localStorage = {
 	},
 } as Storage;
 
-const renderNavigation = (
-	isLoading: boolean,
-	error?: Error,
-	loadingMessage?: string,
-	initialLocale: "en" | "zh-CN" = "en",
-): string =>
+const renderNavigation = (isLoading: boolean, error?: Error): string =>
 	renderToString(
-		<I18nProvider initialLocale={initialLocale}>
+		<I18nProvider initialLocale="en">
 			<MemoryRouter>
 				<SideNavigation
 					tasks={[]}
@@ -33,7 +28,6 @@ const renderNavigation = (
 					decisions={[]}
 					wikiTree={[]}
 					isLoading={isLoading}
-					loadingMessage={loadingMessage}
 					error={error}
 					onRetry={async () => {}}
 					onRefreshData={async () => {}}
@@ -42,7 +36,7 @@ const renderNavigation = (
 		</I18nProvider>,
 	);
 
-const renderBoard = (isLoading: boolean, error?: Error, loadingMessage?: string): string =>
+const renderBoard = (isLoading: boolean, error?: Error): string =>
 	renderToString(
 		<I18nProvider initialLocale="en">
 			<MemoryRouter>
@@ -56,7 +50,6 @@ const renderBoard = (isLoading: boolean, error?: Error, loadingMessage?: string)
 					milestoneEntities={[]}
 					archivedMilestones={[]}
 					isLoading={isLoading}
-					loadingMessage={loadingMessage}
 					loadError={error}
 					onRefreshData={async () => {}}
 				/>
@@ -66,14 +59,15 @@ const renderBoard = (isLoading: boolean, error?: Error, loadingMessage?: string)
 
 describe("SideNavigation task loading", () => {
 	it("keeps navigation mounted while only the task count is loading", () => {
-		const phase = "Hydrating 21 remote candidates...";
-		const loading = renderNavigation(true, undefined, phase);
+		const loading = renderNavigation(true);
 		expect(loading).toContain("Kanban Board");
 		expect(loading).toContain("All Tasks");
 		expect(loading).toContain('aria-label="Loading task count"');
 		expect(loading).toContain('aria-label="Loading document count"');
 		expect(loading).toContain('aria-label="Loading decision count"');
-		expect(loading).toContain(phase);
+		// The indexing progress sentence no longer renders here; the phase placeholders are
+		// skeleton pulses and the header indicator carries the message.
+		expect(loading).toContain('aria-label="Loading content"');
 		expect(loading).not.toContain("No documents");
 		expect(loading).not.toContain("No decisions");
 
@@ -82,26 +76,16 @@ describe("SideNavigation task loading", () => {
 		expect(loaded).toContain("All Tasks");
 		expect(loaded).toContain("(0)");
 	});
-
-	it("localizes the loading phase message", () => {
-		const phase = "Hydrating 21 remote candidates...";
-		const loading = renderNavigation(true, undefined, phase, "zh-CN");
-		expect(loading).toContain("正在水合 21 个远程候选任务...");
-		expect(loading).not.toContain(phase);
-	});
-
-	it("falls back to the localized generic message for unknown phases", () => {
-		const loading = renderNavigation(true, undefined, "Something unknown here");
-		expect(loading).toContain("Something unknown here");
-	});
 });
 
 describe("BoardPage loading and error states", () => {
 	it("shows a loading panel while loading with no tasks", () => {
-		const phase = "Indexing 12 recent remote branches (last 30 days)...";
-		const loading = renderBoard(true, undefined, phase);
-		expect(loading).toContain(phase);
+		const loading = renderBoard(true);
+		expect(loading).toContain("Loading tasks...");
 		expect(loading).toContain('role="status"');
+
+		const loadedEmpty = renderBoard(false);
+		expect(loadedEmpty).not.toContain("Loading tasks...");
 	});
 
 	it("shows a retryable error panel instead of empty content", () => {
