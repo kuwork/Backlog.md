@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from 'react-tooltip';
 import {
@@ -15,6 +15,7 @@ import { getWebVersion } from '../utils/version';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../hooks/useI18n';
 import { translateLoadingMessage } from '../../utils/loading-messages';
+import { compareTaskIds } from '../../utils/task-sorting';
 
 // Utility functions for ID transformations
 const stripIdPrefix = (id: string): string => {
@@ -226,6 +227,52 @@ const countDocsFiles = (nodes: DocsTreeNode[]): number => {
 		}
 	}
 	return count;
+};
+
+type DocsSortColumn = 'name' | 'id';
+type DocsSortDirection = 'asc' | 'desc';
+
+/**
+ * What the sidebar prints for a node: the document title when the corpus has one, otherwise the file
+ * name without its extension. Sorting by name sorts on this label, so the order matches what is shown.
+ */
+const docsNodeLabel = (node: DocsTreeNode, docTitles: Map<string, string>): string =>
+	(node.docId ? docTitles.get(node.docId) : undefined) || node.name.replace(/\.md$/i, '');
+
+const compareDocsNodeNames = (a: DocsTreeNode, b: DocsTreeNode): number =>
+	// Natural order so doc-2 sorts before doc-10, which is what a folder listing is expected to do.
+	a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+
+const compareDocsNodeLabels = (a: DocsTreeNode, b: DocsTreeNode, docTitles: Map<string, string>): number =>
+	docsNodeLabel(a, docTitles).localeCompare(docsNodeLabel(b, docTitles), undefined, {
+		numeric: true,
+		sensitivity: 'base',
+	});
+
+const compareDocsNodeIds = (a: DocsTreeNode, b: DocsTreeNode, docTitles: Map<string, string>): number =>
+	compareTaskIds(a.docId || a.name, b.docId || b.name) || compareDocsNodeLabels(a, b, docTitles);
+
+/**
+ * Order a docs tree for the sidebar. Folders always come first and are ordered by name in the active
+ * direction (a folder is not a document, so it has no title or ID to sort by), then the files, ordered
+ * by the selected column. Every level is sorted on its own and the input tree is left untouched.
+ */
+const sortDocsTree = (
+	nodes: DocsTreeNode[],
+	column: DocsSortColumn,
+	direction: DocsSortDirection,
+	docTitles: Map<string, string>,
+): DocsTreeNode[] => {
+	const sign = direction === 'asc' ? 1 : -1;
+	const compareFiles = column === 'id' ? compareDocsNodeIds : compareDocsNodeLabels;
+	return [...nodes]
+		.sort((a, b) => {
+			if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+			return sign * (a.type === 'directory' ? compareDocsNodeNames(a, b) : compareFiles(a, b, docTitles));
+		})
+		.map((node) =>
+			node.children ? { ...node, children: sortDocsTree(node.children, column, direction, docTitles) } : node,
+		);
 };
 
 const WIKI_EXPANDED_PATHS_KEY = 'wikiExpandedPaths';
@@ -497,12 +544,12 @@ const DocActionDropdown = memo(function DocActionDropdown({
 
 const DocTreeItem = memo(function DocTreeItem({
 	node,
-	docs,
+	docTitles,
 	onCreateFile,
 	onCreateFolder,
 }: {
 	node: DocsTreeNode;
-	docs: Document[];
+	docTitles: Map<string, string>;
 	onCreateFile: (parentPath: string) => void;
 	onCreateFolder: (parentPath: string) => void;
 }) {
@@ -566,7 +613,7 @@ const DocTreeItem = memo(function DocTreeItem({
 				{isExpanded && node.children && (
 					<div className="ml-4 space-y-1">
 						{node.children.map((child) => (
-							<DocTreeItem key={child.path} node={child} docs={docs} onCreateFile={onCreateFile} onCreateFolder={onCreateFolder} />
+							<DocTreeItem key={child.path} node={child} docTitles={docTitles} onCreateFile={onCreateFile} onCreateFolder={onCreateFolder} />
 						))}
 					</div>
 				)}
@@ -574,9 +621,8 @@ const DocTreeItem = memo(function DocTreeItem({
 		);
 	}
 
-	const doc = node.docId ? docs.find(d => d.id === node.docId) : undefined;
-	const docTitle = doc?.title || node.name.replace(/\.md$/i, '');
-	const docId = doc?.id || node.docId || '';
+	const docTitle = docsNodeLabel(node, docTitles);
+	const docId = node.docId || '';
 
 	return (
 		<div className="group/file relative flex items-center rounded-lg transition-colors duration-200">
@@ -650,6 +696,13 @@ const SideNavigation = memo(function SideNavigation({
 		// Auto-collapse if more than 6 decisions
 		return decisions.length > 6;
 	});
+	const [docsSortColumn, setDocsSortColumn] = useState<DocsSortColumn>('name');
+	const [docsSortDirection, setDocsSortDirection] = useState<DocsSortDirection>('asc');
+	const docTitles = useMemo(() => new Map(docs.map((doc) => [doc.id, doc.title])), [docs]);
+	const sortedDocsTree = useMemo(
+		() => sortDocsTree(docsTree, docsSortColumn, docsSortDirection, docTitles),
+		[docsTree, docsSortColumn, docsSortDirection, docTitles],
+	);
 	const [isWikiCollapsed, setIsWikiCollapsed] = useState(() => {
 		const saved = localStorage.getItem('wikiCollapsed');
 		if (saved !== null) {
@@ -712,6 +765,43 @@ const SideNavigation = memo(function SideNavigation({
 			setIsCreatingDocsFolder(false);
 		}
 	}, [newDocsFolderName, createDocsFolderParentPath, onRefreshData, t.nav.failedToCreate]);
+
+	const handleDocsSortChange = (column: DocsSortColumn) => {
+		if (docsSortColumn === column) {
+			setDocsSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+			return;
+		}
+		setDocsSortColumn(column);
+		setDocsSortDirection('asc');
+	};
+
+	const renderDocsSortButton = (label: string, hint: string, column: DocsSortColumn) => {
+		const isActive = docsSortColumn === column;
+		const isAsc = docsSortDirection === 'asc';
+		return (
+			<button
+				type="button"
+				onClick={() => handleDocsSortChange(column)}
+				title={hint}
+				aria-label={hint}
+				className={`inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${
+					isActive
+						? 'text-gray-600 dark:text-gray-300'
+						: 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-100'
+				}`}
+			>
+				{label}
+				<span className="inline-flex items-center justify-center w-4 text-xs select-none" aria-hidden="true">
+					<span className={isActive && isAsc ? 'text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600'}>
+						↑
+					</span>
+					<span className={isActive && !isAsc ? 'text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600'}>
+						↓
+					</span>
+				</span>
+			</button>
+		);
+	};
 
 	useEffect(() => {
 		localStorage.setItem('sideNavCollapsed', JSON.stringify(isCollapsed));
@@ -1137,12 +1227,16 @@ const SideNavigation = memo(function SideNavigation({
 										{t.nav.documents} (<NavigationCount count={docs.length} isLoading={isLoading} error={error} label="document" />)
 									</span>
 								</div>
-								<DocActionDropdown
-									parentPath=""
-									isFile={false}
-									onCreateFile={handleCreateDocFile}
-									onCreateFolder={handleCreateDocFolder}
-								/>
+								<div className="flex items-center gap-1">
+									{renderDocsSortButton(t.nav.sortDocsByName, t.nav.sortDocsByNameHint, 'name')}
+									{renderDocsSortButton(t.nav.sortDocsById, t.nav.sortDocsByIdHint, 'id')}
+									<DocActionDropdown
+										parentPath=""
+										isFile={false}
+										onCreateFile={handleCreateDocFile}
+										onCreateFolder={handleCreateDocFolder}
+									/>
+								</div>
 							</div>
 							
 							{/* Document Tree */}
@@ -1152,11 +1246,11 @@ const SideNavigation = memo(function SideNavigation({
 										<LoadingPhase message={loadingMessage ? translateLoadingMessage(loadingMessage, locale) : t.nav.projectLoading} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
 									) : error ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.documentsUnavailable}</p>
-									) : docsTree.length === 0 ? (
+									) : sortedDocsTree.length === 0 ? (
 										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDocuments}</p>
 									) : (
-										docsTree.map((node) => (
-											<DocTreeItem key={node.path} node={node} docs={docs} onCreateFile={handleCreateDocFile} onCreateFolder={handleCreateDocFolder} />
+										sortedDocsTree.map((node) => (
+											<DocTreeItem key={node.path} node={node} docTitles={docTitles} onCreateFile={handleCreateDocFile} onCreateFolder={handleCreateDocFolder} />
 										))
 									)}
 								</div>
