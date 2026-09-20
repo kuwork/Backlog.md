@@ -331,7 +331,9 @@ describe("task deep links", () => {
 		globalThis.WebSocket = StubSocket as unknown as typeof WebSocket;
 		await renderApp("/");
 
-		// Pre-init screen: the shared ring, no visible copy, announced to assistive tech only.
+		// Pre-init screen: the shared ring, no visible copy, announced to assistive tech only. The
+		// ring keeps turning even when the host reports prefers-reduced-motion (BACK-670), so no
+		// reduced-motion escape may appear here.
 		const status = document.querySelector('[role="status"]');
 		expect(status).not.toBeNull();
 		expect(status?.textContent).toBe("Loading...");
@@ -339,7 +341,8 @@ describe("task deep links", () => {
 		const ring = status?.querySelector(".animate-spin");
 		expect(ring).not.toBeNull();
 		expect(ring?.className).toContain("rounded-circle");
-		expect(ring?.className).toContain("motion-reduce:animate-none");
+		expect(ring?.className).not.toContain("animate-none");
+		expect(status?.innerHTML).not.toContain("motion-reduce");
 		expect(status?.innerHTML).not.toContain("rounded-full");
 
 		releaseStatus();

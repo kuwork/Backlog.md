@@ -143,4 +143,20 @@ describe("BranchIndexingIndicator", () => {
 		expect(chip?.textContent).toBe("Indexing 35 other local branches...");
 		expect(chip?.getAttribute("title")).toBe("Indexing 35 other local branches...");
 	});
+
+	it("keeps the ring and the sweep animating on hosts that switch system animations off", async () => {
+		const container = setupDom();
+		renderIndicator(container, "Indexing 35 other local branches...");
+
+		await wait(APPEAR_MS * 3);
+
+		// Ring and sweep carry the whole signal, so neither may be switched off by the host's
+		// animation setting: on those hosts the chip would sit perfectly still (BACK-670).
+		expect(container.innerHTML).not.toContain("motion-reduce");
+		const ring = container.querySelector(".animate-spin");
+		expect(ring).not.toBeNull();
+		expect(ring?.className).toContain("rounded-circle");
+		expect(ring?.className).not.toContain("animate-none");
+		expect(container.querySelector(".animate-indexing-sweep")).not.toBeNull();
+	});
 });

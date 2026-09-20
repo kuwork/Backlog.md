@@ -54,13 +54,13 @@ describe("BoardLoadingSkeleton", () => {
 		expect(status?.getAttribute("aria-label")).toBe("Loading tasks...");
 		expect(status?.querySelector(".sr-only")?.textContent).toBe("Loading tasks...");
 
-		// The ring is the shared circular design: motion-reduce aware, and never the dead
-		// `rounded-full` utility (excluded from the compiled CSS since TASK-179, which is what
-		// made the old board spinner render as a bordered square).
+		// The ring is the shared circular design: always turning, and never the dead `rounded-full`
+		// utility (excluded from the compiled CSS since TASK-179, which is what made the old board
+		// spinner render as a bordered square).
 		const ring = status?.querySelector(".animate-spin");
 		expect(ring).not.toBeNull();
 		expect(ring?.className).toContain("rounded-circle");
-		expect(ring?.className).toContain("motion-reduce:animate-none");
+		expect(ring?.className).not.toContain("animate-none");
 		expect(container.innerHTML).not.toContain("rounded-full");
 	});
 
@@ -76,8 +76,20 @@ describe("BoardLoadingSkeleton", () => {
 		const pulses = Array.from(ghosts?.querySelectorAll(".animate-pulse") ?? []);
 		expect(pulses.length).toBeGreaterThan(0);
 		for (const pulse of pulses) {
-			expect(pulse.className).toContain("motion-reduce:animate-none");
+			expect(pulse.className).not.toContain("animate-none");
 		}
+	});
+
+	it("keeps the whole placeholder animating when the host switches system animations off", () => {
+		const container = setupDom();
+		renderSkeleton(container);
+
+		// RDP and VM hosts commonly run with MinAnimate=0, which Chromium maps to
+		// prefers-reduced-motion: reduce. A skeleton that honours it there is a ring around a still
+		// board - indistinguishable from a hung one - so nothing may carry a reduced-motion escape.
+		expect(container.innerHTML).not.toContain("motion-reduce");
+		expect(container.querySelectorAll(".animate-spin").length).toBe(1);
+		expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
 	});
 
 	it("keeps ghost columns at the real column floor height so the board never contracts", () => {

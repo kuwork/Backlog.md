@@ -19,6 +19,10 @@ interface BranchIndexingIndicatorProps {
  * the sidebar and board sentence placeholders used, so the phase detail - branch counts included -
  * stays visible while the content underneath stays interactive. Long phases truncate, and the
  * full line stays available as the tooltip.
+ *
+ * The ring and the sweep are the indicator's whole signal, so they animate even on hosts that ask
+ * for reduced motion (BACK-670): those are the hosts with system animations switched off, and a
+ * still chip there is indistinguishable from a stuck one.
  */
 export function BranchIndexingIndicator({
 	message,
@@ -61,14 +65,14 @@ export function BranchIndexingIndicator({
 				}`}
 			>
 				<span
-					className="h-3 w-3 shrink-0 animate-spin rounded-circle border-2 border-blue-200 border-t-blue-600 motion-reduce:animate-none dark:border-blue-400/30 dark:border-t-blue-400"
+					className="h-3 w-3 shrink-0 animate-spin rounded-circle border-2 border-blue-200 border-t-blue-600 dark:border-blue-400/30 dark:border-t-blue-400"
 					aria-hidden="true"
 				/>
 				<span className="hidden max-w-[16rem] truncate sm:inline-block">{detail}</span>
 			</div>
 			<div
 				aria-hidden="true"
-				className={`pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden transition-opacity duration-200 motion-reduce:hidden ${
+				className={`pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden transition-opacity duration-200 ${
 					active ? "opacity-100" : "opacity-0"
 				}`}
 			>
