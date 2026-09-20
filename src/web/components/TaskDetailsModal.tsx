@@ -15,9 +15,9 @@ import DependencyInput from "./DependencyInput";
 import { PathAutocomplete } from "./PathAutocomplete";
 import {
   dateTimeLocalToStoredUtc,
-  formatStoredUtcDateForDisplay,
   storedUtcToDateTimeLocal,
 } from "../utils/date-display";
+import StoredDate from "./StoredDate";
 import { isTypingTarget } from "../utils/keyboard";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { useI18n } from "../hooks/useI18n";
@@ -1859,7 +1859,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                         <span className="font-semibold text-gray-700 dark:text-gray-200">#{comment.index}</span>
                         {comment.author ? <span>{comment.author}</span> : null}
-                        {comment.createdDate ? <span>{formatStoredUtcDateForDisplay(comment.createdDate)}</span> : null}
+                        {comment.createdDate ? <span><StoredDate value={comment.createdDate} /></span> : null}
                         {!isReadOnly && (
                           <button
                             type="button"
@@ -1949,9 +1949,9 @@ export const TaskDetailsModal: React.FC<Props> = ({
           {/* Dates */}
 	          {task && (
 	            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-1">
-	              <div><span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.created}:</span> <span className="text-gray-700 dark:text-gray-200">{formatStoredUtcDateForDisplay(task.createdDate)}</span></div>
+	              <div><span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.created}:</span> <span className="text-gray-700 dark:text-gray-200"><StoredDate value={task.createdDate} /></span></div>
 	              {task.updatedDate && (
-	                <div><span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.updated}:</span> <span className="text-gray-700 dark:text-gray-200">{formatStoredUtcDateForDisplay(task.updatedDate)}</span></div>
+	                <div><span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.updated}:</span> <span className="text-gray-700 dark:text-gray-200"><StoredDate value={task.updatedDate} /></span></div>
 	              )}
 	            </div>
 	          )}

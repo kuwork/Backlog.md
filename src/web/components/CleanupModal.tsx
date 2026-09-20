@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import StoredDate from './StoredDate';
 import { apiClient } from '../lib/api';
 import { useI18n } from '../hooks/useI18n';
 
@@ -87,26 +88,6 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 		onClose();
 	};
 
-	const formatDate = (dateStr?: string) => {
-		if (!dateStr) return '';
-		const hasTime = dateStr.includes(' ') || dateStr.includes('T');
-		const date = new Date(dateStr.replace(' ', 'T') + (hasTime ? ':00Z' : 'T00:00:00Z'));
-		if (hasTime) {
-			return date.toLocaleString(undefined, {
-				year: 'numeric',
-				month: 'short',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit',
-			});
-		}
-		return date.toLocaleDateString(undefined, {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-		});
-	};
-
 	return (
 		<Modal isOpen={isOpen} onClose={handleClose} title={t.cleanup.title} maxWidthClass="max-w-3xl">
 			<div className="space-y-6">
@@ -172,7 +153,7 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 															{task.title}
 														</p>
 														<p className="text-xs text-gray-500 dark:text-gray-400">
-															{task.id} • {formatDate(task.updatedDate || task.createdDate)}
+															{task.id} • <StoredDate value={task.updatedDate || task.createdDate} />
 														</p>
 													</div>
 												</div>

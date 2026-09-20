@@ -4,6 +4,7 @@ import {
 	formatStoredUtcDateForCompactDisplay,
 	formatStoredUtcDateForDisplay,
 	parseStoredUtcDate,
+	storedUtcHoverTitle,
 	storedUtcToDateTimeLocal,
 } from "./date-display";
 
@@ -26,22 +27,44 @@ describe("parseStoredUtcDate", () => {
 	});
 });
 
+describe("storedUtcHoverTitle", () => {
+	it("marks the canonical stored value as UTC", () => {
+		expect(storedUtcHoverTitle("2026-02-09 06:01")).toBe("2026-02-09 06:01 (UTC)");
+		expect(storedUtcHoverTitle("  2026-02-09 06:01  ")).toBe("2026-02-09 06:01 (UTC)");
+	});
+
+	it("stays absent when the record has no time to claim", () => {
+		expect(storedUtcHoverTitle("2026-02-09")).toBeUndefined();
+		expect(storedUtcHoverTitle("")).toBeUndefined();
+		expect(storedUtcHoverTitle(undefined)).toBeUndefined();
+	});
+
+	it("stays absent for unparsable values", () => {
+		expect(storedUtcHoverTitle("not-a-date")).toBeUndefined();
+		expect(storedUtcHoverTitle("2026-02-31 06:01")).toBeUndefined();
+	});
+});
+
 describe("formatStoredUtcDateForDisplay", () => {
-	it("formats datetime values in local timezone", () => {
+	it("formats datetime values in local timezone and keeps the UTC value for hover", () => {
 		const expected = new Date(Date.UTC(2026, 1, 9, 6, 1, 0)).toLocaleString(undefined, {
 			dateStyle: "medium",
 			timeStyle: "short",
 		});
-		expect(formatStoredUtcDateForDisplay("2026-02-09 06:01")).toBe(expected);
+		expect(formatStoredUtcDateForDisplay("2026-02-09 06:01")).toEqual({
+			text: expected,
+			title: "2026-02-09 06:01 (UTC)",
+		});
 	});
 
-	it("formats date-only values as local dates", () => {
+	it("formats date-only values as local dates with no hover", () => {
 		const expected = new Date(Date.UTC(2026, 1, 9, 0, 0, 0)).toLocaleDateString();
-		expect(formatStoredUtcDateForDisplay("2026-02-09")).toBe(expected);
+		expect(formatStoredUtcDateForDisplay("2026-02-09")).toEqual({ text: expected });
 	});
 
 	it("falls back to original value when parsing fails", () => {
-		expect(formatStoredUtcDateForDisplay("not-a-date")).toBe("not-a-date");
+		expect(formatStoredUtcDateForDisplay("not-a-date")).toEqual({ text: "not-a-date" });
+		expect(formatStoredUtcDateForDisplay("2026-02-31 06:01")).toEqual({ text: "2026-02-31 06:01" });
 	});
 });
 
@@ -49,19 +72,34 @@ describe("formatStoredUtcDateForCompactDisplay", () => {
 	const now = new Date(Date.UTC(2026, 1, 21, 12, 0, 0));
 
 	it("formats recent values as relative days", () => {
-		expect(formatStoredUtcDateForCompactDisplay("2026-02-21", now)).toBe("today");
-		expect(formatStoredUtcDateForCompactDisplay("2026-02-20", now)).toBe("yesterday");
-		expect(formatStoredUtcDateForCompactDisplay("2026-02-18", now)).toBe("3d ago");
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-21", now)).toEqual({ text: "today" });
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-20", now)).toEqual({ text: "yesterday" });
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-18", now)).toEqual({ text: "3d ago" });
 	});
 
-	it("formats older values as short date", () => {
+	it("keeps the UTC value on hover for relative labels of timestamps", () => {
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-21 06:00", now)).toEqual({
+			text: "today",
+			title: "2026-02-21 06:00 (UTC)",
+		});
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-19 06:00", now)).toEqual({
+			text: "2d ago",
+			title: "2026-02-19 06:00 (UTC)",
+		});
+	});
+
+	it("formats older values as short date, keeping the hover", () => {
 		const expected = new Date(Date.UTC(2026, 1, 10, 0, 0, 0)).toLocaleDateString();
-		expect(formatStoredUtcDateForCompactDisplay("2026-02-10", now)).toBe(expected);
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-10", now)).toEqual({ text: expected });
+		expect(formatStoredUtcDateForCompactDisplay("2026-02-10 08:15", now)).toEqual({
+			text: expected,
+			title: "2026-02-10 08:15 (UTC)",
+		});
 	});
 
 	it("handles missing and invalid values gracefully", () => {
-		expect(formatStoredUtcDateForCompactDisplay("", now)).toBe("—");
-		expect(formatStoredUtcDateForCompactDisplay("not-a-date", now)).toBe("not-a-date");
+		expect(formatStoredUtcDateForCompactDisplay("", now)).toEqual({ text: "—" });
+		expect(formatStoredUtcDateForCompactDisplay("not-a-date", now)).toEqual({ text: "not-a-date" });
 	});
 });
 

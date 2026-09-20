@@ -10,11 +10,12 @@ import type {
 import { collectAvailableLabels } from "../../utils/label-filter.ts";
 import { isTerminalStatus } from "../../utils/terminal-status.ts";
 import { collectArchivedMilestoneKeys, getMilestoneLabel, milestoneKey } from "../utils/milestones";
-import { formatStoredUtcDateForCompactDisplay, parseStoredUtcDate } from "../utils/date-display";
+import { parseStoredUtcDate } from "../utils/date-display";
 import { getPriorityBadgeColor, getStatusBadgeColor } from "../utils/task-badge-colors";
 import CleanupModal from "./CleanupModal";
 import AcceptanceCriteriaProgress from "./AcceptanceCriteriaProgress";
 import CompletedBadge from "./CompletedBadge";
+import StoredDate from "./StoredDate";
 import CompletedFilterToggle from "./CompletedFilterToggle";
 import LabelFilterDropdown from "./LabelFilterDropdown";
 import StatusExcludeDropdown from "./StatusExcludeDropdown";
@@ -815,7 +816,6 @@ const TaskList: React.FC<TaskListProps> = ({
 									const visibleAssignees = task.assignee.slice(0, 2);
 									const assigneeOverflow = Math.max(task.assignee.length - visibleAssignees.length, 0);
 									const milestoneLabel = task.milestone ? getMilestoneLabel(task.milestone, milestoneEntities) : "—";
-									const createdLabel = formatStoredUtcDateForCompactDisplay(task.createdDate ?? "");
 
 									return (
 										<tr
@@ -916,7 +916,7 @@ const TaskList: React.FC<TaskListProps> = ({
 												{milestoneLabel}
 											</td>
 											<td className="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-												{createdLabel}
+												<StoredDate value={task.createdDate ?? ""} compact />
 											</td>
 										</tr>
 									);

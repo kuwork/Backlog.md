@@ -14,10 +14,10 @@ import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets
 import { isDoneStatus, milestoneKey } from "../utils/milestones";
 import {
 	dateTimeLocalToStoredUtc,
-	formatStoredUtcDateForDisplay,
 	parseStoredUtcDate,
 	storedUtcToDateTimeLocal,
 } from "../utils/date-display";
+import StoredDate from "./StoredDate";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import { stripAnyPrefix } from "../../utils/prefix-config";
 
@@ -732,7 +732,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 												{t.common.created}:
 											</span>{" "}
 											<span className="text-gray-700 dark:text-gray-200">
-												{formatStoredUtcDateForDisplay(activeMilestone.createdDate)}
+												<StoredDate value={activeMilestone.createdDate} />
 											</span>
 										</div>
 									)}
@@ -742,7 +742,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 												{t.common.updated}:
 											</span>{" "}
 											<span className="text-gray-700 dark:text-gray-200">
-												{formatStoredUtcDateForDisplay(activeMilestone.updatedDate)}
+												<StoredDate value={activeMilestone.updatedDate} />
 											</span>
 										</div>
 									)}

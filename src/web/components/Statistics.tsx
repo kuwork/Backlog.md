@@ -3,6 +3,7 @@ import { apiClient } from '../lib/api';
 import type { TaskStatistics } from '../../core/statistics';
 import type { Task } from '../../types';
 import LoadingSpinner from './LoadingSpinner';
+import StoredDate from './StoredDate';
 import { useI18n } from '../hooks/useI18n';
 
 interface StatisticsData extends Omit<TaskStatistics, 'statusCounts' | 'priorityCounts'> {
@@ -418,23 +419,6 @@ const Statistics: React.FC<StatisticsProps> = ({
 	}
 
 	const TaskPreview = ({ task, showDate, onClick }: { task: Task; showDate: 'created' | 'updated' | 'dueDate'; onClick?: () => void }) => {
-		const formatDate = (dateStr: string) => {
-			const hasTime = dateStr.includes(" ") || dateStr.includes("T");
-			const date = new Date(dateStr.replace(" ", "T") + (hasTime ? ":00Z" : "T00:00:00Z"));
-			
-			if (hasTime) {
-				return date.toLocaleString(undefined, {
-					year: 'numeric',
-					month: 'short',
-					day: 'numeric',
-					hour: '2-digit',
-					minute: '2-digit'
-				});
-			} else {
-				return date.toLocaleDateString();
-			}
-		};
-
 		const displayDate = showDate === 'created'
 			? task.createdDate
 			: showDate === 'dueDate'
@@ -458,7 +442,7 @@ const Statistics: React.FC<StatisticsProps> = ({
 				<div className="flex-1 min-w-0">
 					<p className="font-medium text-gray-900 dark:text-gray-100 truncate">{task.title}</p>
 					<p className="text-sm text-gray-500 dark:text-gray-400">
-						{task.id} • {dateLabel} {displayDate ? formatDate(displayDate) : ''}
+						{task.id} • {dateLabel} {displayDate ? <StoredDate value={displayDate} /> : ''}
 					</p>
 				</div>
 			</div>

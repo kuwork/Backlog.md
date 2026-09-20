@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents } from "../../utils/task-sorting";
+import { storedUtcHoverTitle } from "../utils/date-display";
 import { useI18n } from "../hooks/useI18n";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -747,12 +748,12 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 										)}
 											{showActualTime && (
 												<React.Fragment>
-													<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`}>
+													<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`} title={storedUtcHoverTitle(task.originalStart)}>
 														{task.raw.actualStart ? formatDisplayDate(task.start) : (
 															<span className="text-amber-600 dark:text-amber-400">{formatDisplayDate(task.start)} *</span>
 														)}
 													</td>
-													<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`}>
+													<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`} title={storedUtcHoverTitle(task.originalEnd)}>
 														{task.raw.actualEnd ? formatDisplayDate(task.end) : (
 															<span className="text-amber-600 dark:text-amber-400">{formatDisplayDate(task.end)} *</span>
 														)}

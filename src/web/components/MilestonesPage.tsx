@@ -4,12 +4,13 @@ import Fuse from "fuse.js";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
-import { formatStoredUtcDateForDisplay, parseStoredUtcDate } from "../utils/date-display";
+import { parseStoredUtcDate } from "../utils/date-display";
 import { type Milestone, type MilestoneBucket, type Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import MilestoneAddModal from "./MilestoneAddModal";
 import Modal from "./Modal";
+import StoredDate from "./StoredDate";
 
 interface MilestoneSearchEntry {
 	id: string;
@@ -598,13 +599,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 									<span>{t.taskDetails.section.plannedEnd}: {entity.plannedEnd}</span>
 								)}
 								{entity.actualStart && (
-									<span>{t.taskDetails.section.actualStart}: {formatStoredUtcDateForDisplay(entity.actualStart)}</span>
+									<span>{t.taskDetails.section.actualStart}: <StoredDate value={entity.actualStart} /></span>
 								)}
 								{entity.actualEnd && (
-									<span>{t.taskDetails.section.actualEnd}: {formatStoredUtcDateForDisplay(entity.actualEnd)}</span>
+									<span>{t.taskDetails.section.actualEnd}: <StoredDate value={entity.actualEnd} /></span>
 								)}
 								{lastUpdated && (
-									<span>{t.taskDetails.section.lastUpdated}: {formatStoredUtcDateForDisplay(lastUpdated)}</span>
+									<span>{t.taskDetails.section.lastUpdated}: <StoredDate value={lastUpdated} /></span>
 								)}
 							</div>
 						);

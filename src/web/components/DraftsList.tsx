@@ -7,7 +7,7 @@ import LabelFilterDropdown from './LabelFilterDropdown';
 import { collectAvailableLabels } from '../../utils/label-filter.ts';
 import { getMilestoneLabel } from '../utils/milestones';
 import { getPriorityBadgeColor } from '../utils/task-badge-colors';
-import { formatStoredUtcDateForDisplay } from '../utils/date-display';
+import StoredDate from './StoredDate';
 
 interface DraftsListProps {
 	onEditTask: (task: Task) => void;
@@ -366,9 +366,9 @@ const DraftsList: React.FC<DraftsListProps> = ({
 									</div>
 									<div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
 										<span>{draft.id}</span>
-										<span>{t.drafts.created}: {formatStoredUtcDateForDisplay(draft.createdDate)}</span>
+										<span>{t.drafts.created}: <StoredDate value={draft.createdDate} /></span>
 										{draft.updatedDate && (
-											<span>{t.drafts.updated}: {formatStoredUtcDateForDisplay(draft.updatedDate)}</span>
+											<span>{t.drafts.updated}: <StoredDate value={draft.updatedDate} /></span>
 										)}
 									</div>
 									{draft.assignee && draft.assignee.length > 0 && (

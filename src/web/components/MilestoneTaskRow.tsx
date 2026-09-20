@@ -1,7 +1,7 @@
 import React from "react";
 import type { Task } from "../../types";
 import { useI18n } from "../hooks/useI18n";
-import { formatStoredUtcDateForCompactDisplay } from "../utils/date-display";
+import StoredDate from "./StoredDate";
 
 interface MilestoneTaskRowProps {
 	task: Task;
@@ -75,7 +75,7 @@ const MilestoneTaskRow: React.FC<MilestoneTaskRowProps> = ({
 		</div>
 
 			<div className={`flex justify-center text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ${isDone ? "opacity-60" : ""}`}>
-				{formatStoredUtcDateForCompactDisplay(task.createdDate ?? "")}
+				<StoredDate value={task.createdDate ?? ""} compact />
 			</div>
 	</div>
 	);

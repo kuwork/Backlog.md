@@ -2,6 +2,7 @@ import React from 'react';
 import { useI18n } from '../hooks/useI18n';
 import { type Task } from '../../types';
 import { getLabelColorClasses } from '../utils/labelColors';
+import { storedUtcHoverTitle } from '../utils/date-display';
 import AcceptanceCriteriaProgress from './AcceptanceCriteriaProgress';
 import CompletedBadge from './CompletedBadge';
 
@@ -293,7 +294,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
         {/* Footer with due date, created date, and assignee */}
         <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-600/50 transition-colors duration-200">
           <div className="flex items-center gap-2">
-            <span>{formatRelativeDate(task.createdDate)}</span>
+            <span title={storedUtcHoverTitle(task.createdDate)}>{formatRelativeDate(task.createdDate)}</span>
             {task.dueDate && (() => {
               const today = new Date();
               today.setHours(0, 0, 0, 0);
