@@ -833,12 +833,22 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 		});
 
 		for (const field of ["status", "priority"] as const) {
-			const widget = widgets[field];
-			widget.key(["enter", "space"], () => {
+			widgets[field].key(["enter", "space"], () => {
 				void openPicker(field);
 				return false;
 			});
-			widget.on("click", () => void openPicker(field));
+		}
+
+		// Pointer activation reuses the keyboard transition, so a clicked text field enters read
+		// mode with a caret and every field has one source of truth for focus styling and scrolling.
+		for (const field of ["title", "description", "status", "priority"] as const) {
+			widgets[field].on("click", () => {
+				focusField(field);
+				if (field === "status" || field === "priority") void openPicker(field);
+				// Stop the click from bubbling: blessed otherwise auto-focuses the clicked widget
+				// after this handler runs, which blurs the reader focusField just started.
+				return false;
+			});
 		}
 
 		for (const field of ["status", "priority", "create", "cancel"] as const) {
