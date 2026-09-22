@@ -1,6 +1,7 @@
 import type { BoxInterface, ScreenInterface, TextboxInterface } from "neo-neo-bblessed";
 import * as neoBblessed from "neo-neo-bblessed";
 import { box, textbox } from "neo-neo-bblessed";
+import { DEFAULT_STATUSES } from "../../constants/index.ts";
 import type { Task, TaskCreateInput } from "../../types/index.ts";
 
 // The bundled d.ts does not expose textarea to the type system (bun resolution gap),
@@ -144,7 +145,7 @@ export type TaskComposerValues = {
 
 export type TaskComposerLayout = {
 	compact: boolean;
-	popupWidth: string | number;
+	popupWidth: number;
 	popupHeight: number;
 	descriptionHeight: number;
 	detailsTop: number;
@@ -153,19 +154,79 @@ export type TaskComposerLayout = {
 	contentHeight: number;
 };
 
-export function getTaskComposerLayout(screenWidth: number, screenHeight: number): TaskComposerLayout {
-	const compact = screenWidth < 64 || screenHeight < 20;
-	const descriptionHeight = compact ? 3 : 6;
-	const detailsTop = 3 + descriptionHeight;
-	const detailsHeight = compact ? 4 : 3;
+/** A bordered text input: its top border, one editable row and its bottom border. */
+const TEXT_INPUT_HEIGHT = 3;
+/** Two popup borders, the form's top offset and the two rows it reserves below the form. */
+const POPUP_FORM_VERTICAL_CHROME = 5;
+/** Two popup borders and the form's one-column inset on each side. */
+const POPUP_FORM_HORIZONTAL_CHROME = 4;
+/** createPopupChrome's backdrop extends two columns beyond each side of the popup. */
+const POPUP_OUTER_HORIZONTAL_MARGIN = 4;
+const PREFERRED_POPUP_WIDTH = 72;
+const NORMAL_SELECTOR_WIDTH_RATIO = 0.3;
+const EXPANDED_DESCRIPTION_HEIGHT = 6;
+const EXPANDED_DETAILS_HEIGHT = 3;
+const EXPANDED_ACTIONS_HEIGHT = 2;
+
+export type TaskComposerLayoutOptions = {
+	statuses?: readonly string[];
+	priorities?: readonly string[];
+};
+
+/** The widest selector row the composer can render, in terminal cells, cue included. */
+function getLongestSelectorWidth(options: TaskComposerLayoutOptions): number {
+	const selectors: Array<[string, FilterPopupChoice[]]> = [
+		["Status", getTaskComposerStatusChoices(options.statuses ?? DEFAULT_STATUSES)],
+		["Priority", getTaskComposerPriorityChoices(options.priorities)],
+	];
+	let longest = 0;
+	for (const [label, choices] of selectors) {
+		for (const choice of choices) {
+			longest = Math.max(longest, Bun.stringWidth(`${label}: ${displayChoice(choice.value)} ▼`));
+		}
+	}
+	return longest;
+}
+
+export function getTaskComposerLayout(
+	screenWidth: number,
+	screenHeight: number,
+	options: TaskComposerLayoutOptions = {},
+): TaskComposerLayout {
+	const longestSelectorWidth = getLongestSelectorWidth(options);
+	// Selectors are sized proportionally, so the popup grows until the widest configured value
+	// plus its cue still fits a normal column; the terminal width is the only hard cap.
+	const requiredPopupWidth =
+		Math.ceil(longestSelectorWidth / NORMAL_SELECTOR_WIDTH_RATIO) + POPUP_FORM_HORIZONTAL_CHROME;
+	const availablePopupWidth = Math.max(1, screenWidth - POPUP_OUTER_HORIZONTAL_MARGIN);
+	const popupWidth = Math.min(availablePopupWidth, Math.max(PREFERRED_POPUP_WIDTH, requiredPopupWidth));
+	// The popup must never be taller than the screen: blessed centers it by subtracting
+	// half its height, so an oversized popup starts at a negative row and its actions,
+	// error and help rows fall outside the terminal. Below ten rows it also has to keep
+	// room for the popup chrome and one complete bordered input, or the focused field's
+	// editable row and its cursor are clipped.
+	const popupHeight = Math.min(
+		20,
+		screenHeight,
+		Math.max(screenHeight - 2, POPUP_FORM_VERTICAL_CHROME + TEXT_INPUT_HEIGHT),
+	);
+	const normalSelectorWidth = Math.floor(
+		Math.max(0, popupWidth - POPUP_FORM_HORIZONTAL_CHROME) * NORMAL_SELECTOR_WIDTH_RATIO,
+	);
+	const visibleFormHeight = Math.max(0, popupHeight - POPUP_FORM_VERTICAL_CHROME);
+	const expandedContentHeight =
+		TEXT_INPUT_HEIGHT + EXPANDED_DESCRIPTION_HEIGHT + EXPANDED_DETAILS_HEIGHT + EXPANDED_ACTIONS_HEIGHT;
+	// Compact is the layout that stacks both selectors on their own full-width rows, so it
+	// engages whenever a normal column would clip its content or the expanded form no longer fits.
+	const compact = normalSelectorWidth < longestSelectorWidth || visibleFormHeight < expandedContentHeight;
+	const descriptionHeight = compact ? 3 : EXPANDED_DESCRIPTION_HEIGHT;
+	const detailsTop = TEXT_INPUT_HEIGHT + descriptionHeight;
+	const detailsHeight = compact ? 4 : EXPANDED_DETAILS_HEIGHT;
 	const actionsTop = detailsTop + detailsHeight;
 	return {
 		compact,
-		popupWidth: screenWidth < 76 ? "96%" : 72,
-		// The popup must never be taller than the screen: blessed centers it by subtracting
-		// half its height, so an oversized popup starts at a negative row and its actions,
-		// error and help rows fall outside the terminal.
-		popupHeight: Math.min(20, Math.max(3, screenHeight - 2)),
+		popupWidth,
+		popupHeight,
 		descriptionHeight,
 		detailsTop,
 		detailsHeight,
@@ -293,7 +354,7 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 		let settled = false;
 		let pickerOpen = false;
 		let activeField: TaskComposerField = "title";
-		let layout = getTaskComposerLayout(options.screen.width, options.screen.height);
+		let layout = getTaskComposerLayout(options.screen.width, options.screen.height, options);
 		const { popup, close, reflow } = createPopupChrome({
 			screen: options.screen,
 			title: "Create Task",
@@ -473,7 +534,7 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 		};
 
 		const applyLayout = () => {
-			layout = getTaskComposerLayout(options.screen.width, options.screen.height);
+			layout = getTaskComposerLayout(options.screen.width, options.screen.height, options);
 			reflow(layout.popupWidth, layout.popupHeight, getTaskComposerHelpText(options.screen.width, layout.compact));
 			descriptionInput.height = layout.descriptionHeight;
 			detailsGroup.top = layout.detailsTop;

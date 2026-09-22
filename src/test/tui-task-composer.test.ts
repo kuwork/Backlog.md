@@ -73,7 +73,7 @@ describe("TUI task composer model", () => {
 		});
 	});
 
-	it("keeps the composer compact at 100x30 and 80x24, then stacks details at 50x18", () => {
+	it("keeps the normal layout at 100x30 and 80x24, then stacks details at 50x18", () => {
 		expect(getTaskComposerLayout(100, 30)).toMatchObject({
 			compact: false,
 			popupHeight: 20,
@@ -91,6 +91,26 @@ describe("TUI task composer model", () => {
 			detailsHeight: 4,
 			actionsTop: 10,
 		});
+	});
+
+	it("sizes the popup so the longest configured selector fits a normal column", () => {
+		const shipped = getTaskComposerLayout(80, 24, { statuses: ["To Do", "In Progress", "Done"] });
+		// "Status: In Progress ▼" is 21 cells, and a normal selector column is 30% of the form,
+		// so the popup grows past its preferred 72 columns instead of clipping the cue.
+		expect(shipped.popupWidth).toBe(74);
+		expect(shipped.compact).toBe(false);
+
+		// Content that cannot fit any normal column switches to the stacked compact layout.
+		expect(getTaskComposerLayout(80, 24, { statuses: ["Waiting for external review", "To Do"] }).compact).toBe(true);
+		expect(getTaskComposerLayout(140, 24, { statuses: ["To Do", "Done"] }).popupWidth).toBe(72);
+	});
+
+	it("reserves a complete bordered input at heights of 8 to 10 rows", () => {
+		for (const screenHeight of [8, 9, 10]) {
+			const { popupHeight } = getTaskComposerLayout(80, screenHeight);
+			expect(popupHeight).toBeGreaterThanOrEqual(8);
+			expect(popupHeight).toBeLessThanOrEqual(screenHeight);
+		}
 	});
 
 	it("keeps the composer inside short terminals so no row is pushed off-screen", () => {
