@@ -48,6 +48,7 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 |-------------------------|----------------------------------------------------------|
 | Title                   | `backlog task edit {{TASK_ID:123}} -t "New Title"`       |
 | Status                  | `backlog task edit {{TASK_ID:123}} -s "In Progress"`     |
+| Status of several tasks | `backlog task edit {{TASK_ID:123}} {{TASK_ID:124}} -s "In Progress"` |
 | Assignee                | `backlog task edit {{TASK_ID:123}} -a @sara`             |
 | Assignees (multiple)    | `backlog task edit {{TASK_ID:123}} -a @sara -a @tam` or `-a "@sara,@tam"` |
 | Clear Assignee          | `backlog task edit {{TASK_ID:123}} --unassign`           |

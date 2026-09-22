@@ -8,7 +8,7 @@ Use a draft when the request is too vague for concrete acceptance criteria, when
 
 ### CLI Usage
 
-The CLI supports creating, listing, viewing, promoting, demoting, and archiving drafts.
+The CLI supports creating, listing, viewing, editing, promoting, demoting, and archiving drafts.
 
 #### Creating drafts
 
@@ -46,6 +46,27 @@ backlog draft view DRAFT-1 --plain
 ```
 
 You can use either the bare number (`1`) or the full prefixed ID (`DRAFT-1`) in draft commands.
+
+#### Editing a draft
+
+Drafts are editable in place, with the same field flags `backlog task edit` takes:
+
+```bash
+backlog draft edit DRAFT-1 --priority high --add-ref src/cli.ts
+backlog draft edit DRAFT-1 --ac "Resolver returns correct data for happy path" --check-ac 1
+backlog draft edit DRAFT-1 --assignee @sara --append-notes "Waiting on the schema decision"
+```
+
+Everything a task edit accepts works here - title, description, assignee, labels, priority, milestone, dates, acceptance criteria, Definition of Done, plan, notes, comments, final summary, references, documentation and modified files - including the set/add/remove/clear shape of every flag.
+
+A draft cannot take a real status. `--status` only accepts `Draft`; anything else is refused with a pointer at `backlog draft promote`, so a promotion stays an explicit step:
+
+```bash
+backlog draft edit DRAFT-1 --status "In Progress"
+# -> Drafts keep the Draft status. Use 'backlog draft promote DRAFT-1' to turn this draft into a task with a real status.
+```
+
+Drafts are edited one at a time - pass exactly one id. Add `--plain` to print the whole updated record instead of the one-line confirmation.
 
 #### Promoting a draft to a task
 
@@ -96,4 +117,5 @@ backlog draft archive DRAFT-5
 - Draft files live under `backlog/drafts/`. Promoting moves them to `backlog/tasks/` with a new task ID; demoting moves them back to `backlog/drafts/` with a new draft ID.
 - `backlog draft promote` and `backlog task demote` output the new ID without its prefix. Use the bare number or the full prefixed ID in the next command.
 - Prefer `backlog draft create` for quick captures. Use `backlog task create --draft` when you want to attach rich metadata (acceptance criteria, references, priority, etc.) at creation time.
+- A draft keeps the `Draft` status. `backlog draft edit` refuses any other `--status`; promote the draft when it is ready to become a task.
 - Do not edit draft markdown files directly. Use the `backlog draft` and `backlog task` commands so metadata and file naming stay consistent.

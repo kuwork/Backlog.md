@@ -60,6 +60,7 @@ Humans and agents can run `backlog instructions` for workflow guides and `backlo
 | View detail | `backlog task 7` (interactive UI, press 'E' to edit in editor) |
 | View (AI mode) | `backlog task 7 --plain`                           |
 | Edit        | `backlog task edit 7 -a @sara -l auth,backend`       |
+| Edit several | `backlog task edit 7 8 9 -s "In Progress"` (one shared-field change per task; per-task-only flags such as `-t`, `--plan`, `--notes`, `--comment`, `--ordinal`, `--modified-file`, or a checklist index are rejected) |
 | Add plan    | `backlog task edit 7 --plan "Implementation approach"`    |
 | Add AC      | `backlog task edit 7 --ac "New criterion" --ac "Another one"` |
 | Add DoD     | `backlog task edit 7 --dod "Ship notes"` |
@@ -193,7 +194,7 @@ Find tasks, documents, and decisions across your entire backlog with fuzzy searc
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
 | Create draft | `backlog task create "Feature" --draft`             |
-| Draft flow  | `backlog draft create "Spike GraphQL"` → `backlog draft promote 3.1` |
+| Draft flow  | `backlog draft create "Spike GraphQL"` → `backlog draft edit 1 --priority high` → `backlog draft promote 3.1` |
 | Demote to draft| `backlog task demote <id>` |
 
 ## Dependency Management

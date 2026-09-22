@@ -170,6 +170,7 @@ PR-style summary of what was implemented.
 |-------------------------|----------------------------------------------------------|
 | Title                   | `backlog task edit 42 -t "New Title"`                    |
 | Status                  | `backlog task edit 42 -s "In Progress"`                  |
+| Status of several tasks | `backlog task edit 42 43 44 -s "In Progress"`            |
 | Assignee                | `backlog task edit 42 -a @sara`                          |
 | Labels                  | `backlog task edit 42 -l backend,api`                    |
 | Due Date                | `backlog task edit 42 --due-date 2026-06-15`             |
@@ -202,6 +203,13 @@ PR-style summary of what was implemented.
 | Add Final Summary       | `backlog task edit 42 --final-summary "PR-style summary"` |
 | Append Final Summary    | `backlog task edit 42 --append-final-summary "Another detail"` |
 | Clear Final Summary     | `backlog task edit 42 --clear-final-summary` |
+
+Several task IDs apply the same shared-field change to every listed task: `backlog task edit 42 43 44 -s "In Progress"`,
+`-a @sara`, `--priority high`, `--add-label`, `--due-date`, or `--unassign`. Each task is written on its own, so one
+failure is reported per task and the rest still change. Flags whose value belongs to one task — `--title`,
+`--description`, `--plan`, `--notes`, `--final-summary`, `--comment`, `--ordinal`, `--modified-file`, and the
+checklist-index flags (`--ac`, `--check-ac`, `--remove-ac`, `--clear-ac`, `--dod`, and their variants) — are rejected
+for more than one ID; run `task edit` once per task for those.
 
 ---
 
