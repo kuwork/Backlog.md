@@ -1,17 +1,16 @@
-import Fuse, { type FuseResult, type FuseResultMatch } from "fuse.js";
+import Fuse, { type FuseResult, type FuseResultMatch, type IFuseOptions } from "fuse.js";
 import type {
 	Decision,
 	Document,
 	SearchFilters,
 	SearchMatch,
 	SearchOptions,
-	SearchPriorityFilter,
 	SearchResult,
 	SearchResultType,
 	Task,
 	WikiPage,
 } from "../types/index.ts";
-import { matchesModifiedFileFilters, normalizeModifiedFileFilters } from "../utils/modified-files.ts";
+import { buildTaskSearchFields, createTaskFilterMatcher, TASK_SEARCH_FUSE_OPTIONS } from "../utils/task-search.ts";
 import type { ContentStore, ContentStoreEvent } from "./content-store.ts";
 
 interface BaseSearchEntity {
@@ -19,18 +18,15 @@ interface BaseSearchEntity {
 	readonly type: SearchResultType;
 	readonly title: string;
 	readonly bodyText: string;
+	readonly idVariants: string[];
+	readonly dependencyIds: string[];
+	readonly modifiedFiles: string[];
+	readonly fileName?: string;
 }
 
 interface TaskSearchEntity extends BaseSearchEntity {
 	readonly type: "task";
 	readonly task: Task;
-	readonly statusLower: string;
-	readonly priorityLower?: SearchPriorityFilter;
-	readonly assigneesLower: string[];
-	readonly labelsLower: string[];
-	readonly idVariants: string[];
-	readonly dependencyIds: string[];
-	readonly modifiedFiles: string[];
 	readonly isCompleted?: boolean;
 }
 
@@ -51,73 +47,6 @@ interface WikiSearchEntity extends BaseSearchEntity {
 }
 
 type SearchEntity = TaskSearchEntity | DocumentSearchEntity | DecisionSearchEntity | WikiSearchEntity;
-
-type NormalizedFilters = {
-	statuses?: string[];
-	excludedStatuses?: string[];
-	priorities?: SearchPriorityFilter[];
-	assignees?: string[];
-	labels?: string[];
-	modifiedFiles?: string[];
-};
-
-// Regex pattern to match any prefix (letters followed by dash)
-const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
-
-/**
- * Extract prefix from an ID if present (e.g., "task-" from "task-123")
- */
-function extractPrefix(id: string): string | null {
-	const match = id.match(PREFIX_PATTERN);
-	return match ? match[0] : null;
-}
-
-/**
- * Strip any prefix from an ID (e.g., "task-123" -> "123", "JIRA-456" -> "456")
- */
-function stripPrefix(id: string): string {
-	return id.replace(PREFIX_PATTERN, "");
-}
-
-function parseTaskIdSegments(value: string): number[] | null {
-	const withoutPrefix = stripPrefix(value.toLowerCase());
-	if (!/^[0-9]+(?:\.[0-9]+)*$/.test(withoutPrefix)) {
-		return null;
-	}
-	return withoutPrefix.split(".").map((segment) => Number.parseInt(segment, 10));
-}
-
-function createTaskIdVariants(id: string): string[] {
-	const lowerId = id.toLowerCase();
-	const segments = parseTaskIdSegments(id);
-	const prefix = extractPrefix(id) ?? "task-"; // Default to task- if no prefix
-
-	if (!segments) {
-		// Non-numeric ID - just return the ID and its lowercase variant
-		return id === lowerId ? [id] : [id, lowerId];
-	}
-
-	const canonicalSuffix = segments.join(".");
-	const variants = new Set<string>();
-
-	// Add original ID and lowercase variant
-	variants.add(id);
-	variants.add(lowerId);
-
-	// Add with extracted/default prefix
-	variants.add(`${prefix}${canonicalSuffix}`);
-	variants.add(`${prefix.toLowerCase()}${canonicalSuffix}`);
-
-	// Add just the numeric part
-	variants.add(canonicalSuffix);
-
-	// Also add individual numeric segments for short-query matching (e.g., "7" matching "TASK-0007")
-	for (const segment of segments) {
-		variants.add(String(segment));
-	}
-
-	return Array.from(variants);
-}
 
 export class SearchService {
 	private initialized = false;
@@ -158,6 +87,7 @@ export class SearchService {
 		this.tasks = [];
 		this.documents = [];
 		this.decisions = [];
+		this.wikis = [];
 		this.initialized = false;
 		this.initializing = null;
 	}
@@ -173,10 +103,10 @@ export class SearchService {
 		const allowedTypes = new Set<SearchResultType>(
 			types && types.length > 0 ? types : ["task", "document", "decision", "wiki"],
 		);
-		const normalizedFilters = this.normalizeFilters(filters);
+		const taskMatcher = this.createTaskMatcher(filters);
 
 		if (trimmedQuery === "") {
-			return this.collectWithoutQuery(allowedTypes, normalizedFilters, limit, includeCompleted);
+			return this.collectWithoutQuery(allowedTypes, taskMatcher, limit, includeCompleted);
 		}
 
 		const fuse = this.fuse;
@@ -200,7 +130,7 @@ export class SearchService {
 				continue;
 			}
 
-			if (entity.type === "task" && !this.matchesTaskFilters(entity, normalizedFilters)) {
+			if (entity.type === "task" && !taskMatcher(entity.task)) {
 				continue;
 			}
 
@@ -215,21 +145,12 @@ export class SearchService {
 
 	private toTaskEntity(task: Task, isCompleted: boolean): TaskSearchEntity {
 		return {
-			id: task.id,
 			type: "task",
-			title: task.title,
-			bodyText: buildTaskBodyText(task),
 			// The completed bucket of the corpus does not uniformly carry the source tag (the
 			// disk loader leaves it unset), so widened rows get it here for consumers to route on.
 			task: isCompleted && task.source !== "completed" ? { ...task, source: "completed" } : task,
-			statusLower: task.status.toLowerCase(),
-			priorityLower: task.priority ? (task.priority.toLowerCase() as SearchPriorityFilter) : undefined,
-			assigneesLower: (task.assignee ?? []).map((assignee) => assignee.toLowerCase()),
-			labelsLower: (task.labels || []).map((label) => label.toLowerCase()),
-			idVariants: createTaskIdVariants(task.id),
-			dependencyIds: (task.dependencies ?? []).flatMap((dependency) => createTaskIdVariants(dependency)),
-			modifiedFiles: task.modifiedFiles ?? [],
 			isCompleted,
+			...buildTaskSearchFields(task),
 		};
 	}
 
@@ -287,6 +208,9 @@ export class SearchService {
 			title: document.title,
 			bodyText: document.rawContent ?? "",
 			document,
+			idVariants: [],
+			dependencyIds: [],
+			modifiedFiles: [],
 		}));
 
 		this.decisions = decisions.map((decision) => ({
@@ -295,6 +219,9 @@ export class SearchService {
 			title: decision.title,
 			bodyText: decision.rawContent ?? "",
 			decision,
+			idVariants: [],
+			dependencyIds: [],
+			modifiedFiles: [],
 		}));
 
 		this.wikis = wikis.map((wiki) => {
@@ -307,6 +234,9 @@ export class SearchService {
 				bodyText: wiki.content,
 				wiki,
 				fileName,
+				idVariants: [],
+				dependencyIds: [],
+				modifiedFiles: [],
 			};
 		});
 
@@ -320,34 +250,40 @@ export class SearchService {
 			return;
 		}
 
-		this.fuse = new Fuse(this.collection, {
-			includeScore: true,
+		// Same keys, weights, and threshold as every other task search, plus the fileName key the
+		// wiki corpus needs; only the highlight ranges this surface reports back are extra.
+		const keys = [...(TASK_SEARCH_FUSE_OPTIONS.keys ?? []), { name: "fileName", weight: 0.25 }];
+		const options = {
+			...TASK_SEARCH_FUSE_OPTIONS,
 			includeMatches: true,
-			threshold: 0.35,
-			ignoreLocation: true,
-			minMatchCharLength: 2,
-			keys: [
-				{ name: "title", weight: 0.35 },
-				{ name: "bodyText", weight: 0.3 },
-				{ name: "id", weight: 0.2 },
-				{ name: "idVariants", weight: 0.1 },
-				{ name: "dependencyIds", weight: 0.05 },
-				{ name: "modifiedFiles", weight: 0.15 },
-				{ name: "fileName", weight: 0.25 },
-			],
+			keys,
+		} as IFuseOptions<SearchEntity>;
+		this.fuse = new Fuse(this.collection, options);
+	}
+
+	/** Task filtering goes through the shared predicate so every surface resolves filters alike. */
+	private createTaskMatcher(filters?: SearchFilters): (task: Task) => boolean {
+		return createTaskFilterMatcher({
+			status: filters?.status,
+			statusExcluded: filters?.statusExcluded,
+			priority: filters?.priority,
+			assignee: filters?.assignee,
+			labels: filters?.labels,
+			labelMatch: filters?.labelMatch,
+			modifiedFiles: filters?.modifiedFiles,
 		});
 	}
 
 	private collectWithoutQuery(
 		allowedTypes: Set<SearchResultType>,
-		filters: NormalizedFilters,
+		taskMatcher: (task: Task) => boolean,
 		limit?: number,
 		includeCompleted = false,
 	): SearchResult[] {
 		const results: SearchResult[] = [];
 
 		if (allowedTypes.has("task")) {
-			const tasks = this.applyTaskFilters(this.tasks, filters);
+			const tasks = this.tasks.filter((entity) => taskMatcher(entity.task));
 			for (const entity of tasks) {
 				if (entity.isCompleted && !includeCompleted) {
 					continue;
@@ -387,155 +323,6 @@ export class SearchService {
 		}
 
 		return results;
-	}
-
-	private applyTaskFilters(tasks: TaskSearchEntity[], filters: NormalizedFilters): TaskSearchEntity[] {
-		let filtered = tasks;
-		if (filters.statuses && filters.statuses.length > 0) {
-			const allowedStatuses = new Set(filters.statuses);
-			filtered = filtered.filter((task) => allowedStatuses.has(task.statusLower));
-		}
-		if (filters.excludedStatuses && filters.excludedStatuses.length > 0) {
-			const excludedStatuses = new Set(filters.excludedStatuses);
-			filtered = filtered.filter((task) => !excludedStatuses.has(task.statusLower));
-		}
-		if (filters.priorities && filters.priorities.length > 0) {
-			const allowedPriorities = new Set(filters.priorities);
-			filtered = filtered.filter((task) => {
-				if (!task.priorityLower) {
-					return false;
-				}
-				return allowedPriorities.has(task.priorityLower);
-			});
-		}
-		if (filters.assignees && filters.assignees.length > 0) {
-			const requiredAssignees = new Set(filters.assignees);
-			filtered = filtered.filter((task) => {
-				if (!task.assigneesLower || task.assigneesLower.length === 0) {
-					return false;
-				}
-				return task.assigneesLower.some((assignee) => requiredAssignees.has(assignee));
-			});
-		}
-		if (filters.labels && filters.labels.length > 0) {
-			const requiredLabels = new Set(filters.labels);
-			filtered = filtered.filter((task) => {
-				if (!task.labelsLower || task.labelsLower.length === 0) {
-					return false;
-				}
-				return task.labelsLower.some((label) => requiredLabels.has(label));
-			});
-		}
-		if (filters.modifiedFiles && filters.modifiedFiles.length > 0) {
-			filtered = filtered.filter((task) => matchesModifiedFileFilters(task.modifiedFiles, filters.modifiedFiles));
-		}
-		return filtered;
-	}
-
-	private matchesTaskFilters(task: TaskSearchEntity, filters: NormalizedFilters): boolean {
-		if (filters.statuses && filters.statuses.length > 0) {
-			if (!filters.statuses.includes(task.statusLower)) {
-				return false;
-			}
-		}
-		if (filters.excludedStatuses?.includes(task.statusLower)) {
-			return false;
-		}
-
-		if (filters.priorities && filters.priorities.length > 0) {
-			if (!task.priorityLower || !filters.priorities.includes(task.priorityLower)) {
-				return false;
-			}
-		}
-
-		if (filters.assignees && filters.assignees.length > 0) {
-			if (!task.assigneesLower || task.assigneesLower.length === 0) {
-				return false;
-			}
-			const assigneeSet = new Set(task.assigneesLower);
-			const anyMatch = filters.assignees.some((assignee) => assigneeSet.has(assignee));
-			if (!anyMatch) {
-				return false;
-			}
-		}
-
-		if (filters.labels && filters.labels.length > 0) {
-			if (!task.labelsLower || task.labelsLower.length === 0) {
-				return false;
-			}
-			const labelSet = new Set(task.labelsLower);
-			const anyMatch = filters.labels.some((label) => labelSet.has(label));
-			if (!anyMatch) {
-				return false;
-			}
-		}
-
-		if (filters.modifiedFiles && !matchesModifiedFileFilters(task.modifiedFiles, filters.modifiedFiles)) {
-			return false;
-		}
-
-		return true;
-	}
-
-	private normalizeFilters(filters?: SearchFilters): NormalizedFilters {
-		if (!filters) {
-			return {};
-		}
-
-		const statuses = this.normalizeStringArray(filters.status);
-		const excludedStatuses = this.normalizeStringArray(filters.statusExcluded);
-		const priorities = this.normalizePriorityArray(filters.priority);
-		const assignees = this.normalizeStringArray(filters.assignee);
-		const labels = this.normalizeLabelsArray(filters.labels);
-		const modifiedFiles = normalizeModifiedFileFilters(filters.modifiedFiles);
-
-		return {
-			statuses,
-			excludedStatuses,
-			priorities,
-			assignees,
-			labels,
-			modifiedFiles,
-		};
-	}
-
-	private normalizeStringArray(value?: string | string[]): string[] | undefined {
-		if (!value) {
-			return undefined;
-		}
-
-		const values = Array.isArray(value) ? value : [value];
-		const normalized = values.map((item) => item.trim().toLowerCase()).filter((item) => item.length > 0);
-
-		return normalized.length > 0 ? normalized : undefined;
-	}
-
-	private normalizeLabelsArray(value?: string | string[]): string[] | undefined {
-		if (!value) {
-			return undefined;
-		}
-
-		const values = Array.isArray(value) ? value : [value];
-		const normalized = values.map((item) => item.trim().toLowerCase()).filter((item) => item.length > 0);
-
-		return normalized.length > 0 ? normalized : undefined;
-	}
-
-	private normalizePriorityArray(
-		value?: SearchPriorityFilter | SearchPriorityFilter[],
-	): SearchPriorityFilter[] | undefined {
-		if (!value) {
-			return undefined;
-		}
-
-		const values = Array.isArray(value) ? value : [value];
-		const normalized = values
-			.map((item) => item.trim().toLowerCase())
-			.filter((item): item is SearchPriorityFilter => {
-				return item === "high" || item === "medium" || item === "low";
-			});
-
-		return normalized.length > 0 ? normalized : undefined;
 	}
 
 	private mapEntityToResult(entity: SearchEntity, result?: FuseResult<SearchEntity>): SearchResult {
@@ -588,36 +375,4 @@ export class SearchService {
 			value: match.value,
 		}));
 	}
-}
-function buildTaskBodyText(task: Task): string {
-	const parts: string[] = [];
-
-	if (task.description) {
-		parts.push(task.description);
-	}
-
-	if (Array.isArray(task.acceptanceCriteriaItems) && task.acceptanceCriteriaItems.length > 0) {
-		const lines = [...task.acceptanceCriteriaItems]
-			.sort((a, b) => a.index - b.index)
-			.map((criterion) => `- [${criterion.checked ? "x" : " "}] ${criterion.text}`);
-		parts.push(lines.join("\n"));
-	}
-
-	if (task.implementationPlan) {
-		parts.push(task.implementationPlan);
-	}
-
-	if (task.implementationNotes) {
-		parts.push(task.implementationNotes);
-	}
-
-	if (Array.isArray(task.comments) && task.comments.length > 0) {
-		parts.push(task.comments.map((comment) => comment.body).join("\n\n"));
-	}
-
-	if (task.modifiedFiles?.length) {
-		parts.push(task.modifiedFiles.join("\n"));
-	}
-
-	return parts.join("\n\n");
 }

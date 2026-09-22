@@ -9,11 +9,14 @@ import {
 } from "../../../types/index.ts";
 import type { TaskEditArgs, TaskEditRequest } from "../../../types/task-edit-args.ts";
 import { formatAcceptanceCriteriaSummarySuffix } from "../../../ui/acceptance-criteria-progress.ts";
-import { createMilestoneFilterMatcher, createMilestoneFilterValueResolver } from "../../../utils/milestone-filter.ts";
+import {
+	createMilestoneFilterValueResolver,
+	type MilestoneFilterValueResolver,
+} from "../../../utils/milestone-filter.ts";
 import { resolveMilestoneInputForStorage } from "../../../utils/milestone-storage.ts";
 import { getTaskReadiness, loadReadinessGraph } from "../../../utils/readiness.ts";
 import { buildTaskUpdateInput } from "../../../utils/task-edit-builder.ts";
-import { createTaskSearchIndex } from "../../../utils/task-search.ts";
+import { applyTaskFilters, createTaskSearchIndex } from "../../../utils/task-search.ts";
 import { sortByOrdinalAndPriority } from "../../../utils/task-sorting.ts";
 import { getTerminalStatus, isTerminalStatus } from "../../../utils/terminal-status.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
@@ -92,6 +95,14 @@ export class TaskHandlers {
 		return (status ?? "").trim().toLowerCase() === "draft";
 	}
 
+	private async createMilestoneFilterValueResolver(): Promise<MilestoneFilterValueResolver> {
+		const [activeMilestones, archivedMilestones] = await Promise.all([
+			this.core.filesystem.listMilestones(),
+			this.core.filesystem.listArchivedMilestones(),
+		]);
+		return createMilestoneFilterValueResolver([...activeMilestones, ...archivedMilestones]);
+	}
+
 	private formatTaskSummaryLine(task: Task, options: { includeStatus?: boolean } = {}): string {
 		const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
 		const status = task.status || (task.source === "completed" ? "Done" : "");
@@ -166,48 +177,19 @@ export class TaskHandlers {
 			throw new BacklogToolError("unassigned cannot be combined with assignee.", "VALIDATION_ERROR");
 		}
 		if (this.isDraftStatus(args.status)) {
-			let drafts = await this.core.filesystem.listDrafts();
-			if (args.search) {
-				const draftSearch = createTaskSearchIndex(drafts);
-				drafts = draftSearch.search({ query: args.search, status: "Draft", scoreThreshold: 0.45 });
-			}
-
-			if (args.assignee) {
-				drafts = drafts.filter((draft) => (draft.assignee ?? []).includes(args.assignee ?? ""));
-			}
-			if (args.unassigned) {
-				drafts = drafts.filter((draft) => !(draft.assignee ?? []).some((value) => value.trim().length > 0));
-			}
-			if (args.milestone) {
-				const [activeMilestones, archivedMilestones] = await Promise.all([
-					this.core.filesystem.listMilestones(),
-					this.core.filesystem.listArchivedMilestones(),
-				]);
-				const resolveMilestoneFilterValue = createMilestoneFilterValueResolver([
-					...activeMilestones,
-					...archivedMilestones,
-				]);
-				const milestoneValues = drafts.map((draft) => draft.milestone ?? "");
-				const matchesMilestone = createMilestoneFilterMatcher(
-					args.milestone,
-					milestoneValues,
-					resolveMilestoneFilterValue,
-				);
-				drafts = drafts.filter((draft) => matchesMilestone(draft.milestone ?? ""));
-			}
-
-			const labelFilters = args.labels ?? [];
-			if (labelFilters.length > 0) {
-				drafts = drafts.filter((draft) => {
-					const draftLabels = draft.labels ?? [];
-					return labelFilters.every((label) => draftLabels.includes(label));
-				});
-			}
-
-			if (args.ready) {
-				const readinessGraph = await loadReadinessGraph(this.core);
-				drafts = drafts.filter((draft) => getTaskReadiness(draft, readinessGraph).isReady);
-			}
+			const drafts = applyTaskFilters(await this.core.filesystem.listDrafts(), {
+				query: args.search,
+				// Searching drafts has always narrowed to the literal "Draft" status; listing them has not.
+				status: args.search ? "Draft" : undefined,
+				scoreThreshold: args.search ? 0.45 : undefined,
+				assignee: args.assignee,
+				unassigned: args.unassigned,
+				milestone: args.milestone,
+				resolveMilestoneLabel: args.milestone ? await this.createMilestoneFilterValueResolver() : undefined,
+				labels: args.labels,
+				labelMatch: "all",
+				ready: args.ready ? await loadReadinessGraph(this.core) : undefined,
+			});
 
 			if (drafts.length === 0) {
 				return {
@@ -255,6 +237,11 @@ export class TaskHandlers {
 		if (args.milestone) {
 			filters.milestone = args.milestone;
 		}
+		if (args.labels?.length) {
+			// The MCP labels argument requires every label, like the CLI --labels flag.
+			filters.labels = args.labels;
+			filters.labelMatch = "all";
+		}
 
 		let tasks = await this.core.queryTasks({
 			query: args.search,
@@ -268,14 +255,7 @@ export class TaskHandlers {
 			tasks = tasks.filter((task) => getTaskReadiness(task, readinessGraph).isReady);
 		}
 
-		let filteredByLabels = tasks.filter((task) => isLocalEditableTask(task));
-		const labelFilters = args.labels ?? [];
-		if (labelFilters.length > 0) {
-			filteredByLabels = filteredByLabels.filter((task) => {
-				const taskLabels = task.labels ?? [];
-				return labelFilters.every((label) => taskLabels.includes(label));
-			});
-		}
+		const filteredByLabels = tasks.filter((task) => isLocalEditableTask(task));
 
 		if (filteredByLabels.length === 0) {
 			return {

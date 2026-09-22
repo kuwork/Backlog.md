@@ -80,7 +80,6 @@ import {
 import { isAmbiguousIdError } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
-import { labelsToLower } from "./utils/label-filter.ts";
 import {
 	formatMcpClientSetupCommand,
 	getMcpClientSetupCommand,
@@ -267,15 +266,6 @@ function formatTaskEditError(error: unknown, taskId: string): string {
 		return `${message}\nRun 'backlog task view ${taskId} --plain' to inspect indexes, or 'backlog task edit ${taskId} --help' for edit options.`;
 	}
 	return message;
-}
-
-function taskMatchesAllLabels(task: Task, labels: string[]): boolean {
-	const requiredLabels = labelsToLower(labels);
-	if (requiredLabels.length === 0) {
-		return true;
-	}
-	const taskLabels = new Set(labelsToLower(task.labels ?? []));
-	return requiredLabels.every((label) => taskLabels.has(label));
 }
 
 /**
@@ -2510,6 +2500,12 @@ async function runTaskList(
 	}
 
 	const labelFilters = parseDelimitedStringList(options.labels) ?? [];
+	if (labelFilters.length > 0) {
+		// `--labels` is documented as requiring every listed label; the shared core predicate
+		// applies them so the plain, JSON, and interactive paths resolve labels identically.
+		baseFilters.labels = labelFilters;
+		baseFilters.labelMatch = "all";
+	}
 	const rawStatuses = parseDelimitedStringList(options.status) ?? [];
 	const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
 	let canonicalStatuses: string[] = [];
@@ -2596,18 +2592,17 @@ async function runTaskList(
 			}
 		}
 
-		// Ordering, the parent narrowing, the labels and the limit are the same whatever the rows
+		// Ordering, the parent narrowing, and the limit are the same whatever the rows
 		// carry, so the readiness projection travels through them instead of being derived twice.
-		// The sort field was validated above, before any task was read.
+		// The sort field was validated above, before any task was read. Labels are resolved by the
+		// shared core predicate with `baseFilters`, not here.
 		const sortField = options.sort ? options.sort.toLowerCase() : "ordinal";
 		const narrowForDisplay = <T extends Task>(rows: T[]): { filtered: T[]; display: T[] } => {
 			const sorted = sortTasks(rows, sortField);
 			const narrowed = parentId
 				? sorted.filter((task) => task.parentTaskId && taskIdsEqual(parentId, task.parentTaskId))
 				: sorted;
-			const labelled =
-				labelFilters.length > 0 ? narrowed.filter((task) => taskMatchesAllLabels(task, labelFilters)) : narrowed;
-			return { filtered: labelled, display: taskLimit !== undefined ? labelled.slice(0, taskLimit) : labelled };
+			return { filtered: narrowed, display: taskLimit !== undefined ? narrowed.slice(0, taskLimit) : narrowed };
 		};
 
 		const reportEmptyList = (): void => {

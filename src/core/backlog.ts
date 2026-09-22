@@ -39,11 +39,7 @@ import {
 import { openInEditor } from "../utils/editor.ts";
 import { findBacklogRoot } from "../utils/find-backlog-root.ts";
 import { generateNextDecisionId, generateNextDocId } from "../utils/id-generators.ts";
-import {
-	createMilestoneFilterMatcher,
-	createMilestoneFilterValueResolver,
-	type MilestoneFilterValueResolver,
-} from "../utils/milestone-filter.ts";
+import { createMilestoneFilterValueResolver, type MilestoneFilterValueResolver } from "../utils/milestone-filter.ts";
 import {
 	buildGlobPattern,
 	buildIdRegex,
@@ -58,7 +54,6 @@ import {
 	getValidStatuses as resolveValidStatuses,
 } from "../utils/status.ts";
 import { executeStatusCallback } from "../utils/status-callback.ts";
-import { normalizeStatusSet, statusMatchesSet } from "../utils/status-filter.ts";
 import {
 	buildDefinitionOfDoneItems,
 	normalizeDependencies,
@@ -73,7 +68,7 @@ import {
 	normalizeTaskId,
 	taskIdsEqual,
 } from "../utils/task-path.ts";
-import { createTaskSearchIndex } from "../utils/task-search.ts";
+import { applyTaskFilters, createTaskSearchIndex } from "../utils/task-search.ts";
 import { attachSubtaskSummaries } from "../utils/task-subtasks.ts";
 import { upsertTaskUpdatedDate } from "../utils/task-updated-date.ts";
 import { isTerminalStatus } from "../utils/terminal-status.ts";
@@ -594,52 +589,19 @@ export class Core {
 		if (!filters) {
 			return tasks;
 		}
-		let result = tasks;
-		if (filters.status) {
-			const wanted = normalizeStatusSet(filters.status);
-			if (wanted.size > 0) {
-				result = result.filter((task) => statusMatchesSet(wanted, task.status));
-			}
-		}
-		if (filters.statusExcluded) {
-			const excluded = normalizeStatusSet(filters.statusExcluded);
-			if (excluded.size > 0) {
-				result = result.filter((task) => !statusMatchesSet(excluded, task.status));
-			}
-		}
-		if (filters.assignee) {
-			const assigneeLower = filters.assignee.toLowerCase();
-			result = result.filter((task) => (task.assignee ?? []).some((value) => value.toLowerCase() === assigneeLower));
-		}
-		if (filters.unassigned) {
-			result = result.filter((task) => !(task.assignee ?? []).some((value) => value.trim().length > 0));
-		}
-		if (filters.priority) {
-			const priorityLower = String(filters.priority).toLowerCase();
-			result = result.filter((task) => (task.priority ?? "").toLowerCase() === priorityLower);
-		}
-		if (filters.milestone) {
-			const resolveValue = resolveMilestoneFilterValue ?? createMilestoneFilterValueResolver([]);
-			const milestoneValues = tasks.map((task) => task.milestone ?? "");
-			const matchesMilestone = createMilestoneFilterMatcher(filters.milestone, milestoneValues, resolveValue);
-			result = result.filter((task) => matchesMilestone(task.milestone ?? ""));
-		}
-		if (filters.parentTaskId) {
-			const parentFilter = filters.parentTaskId;
-			result = result.filter((task) => task.parentTaskId && taskIdsEqual(parentFilter, task.parentTaskId));
-		}
-		if (filters.labels && filters.labels.length > 0) {
-			const requiredLabels = filters.labels.map((label) => label.toLowerCase()).filter(Boolean);
-			if (requiredLabels.length > 0) {
-				result = result.filter((task) => {
-					const taskLabels = task.labels?.map((label) => label.toLowerCase()) || [];
-					if (taskLabels.length === 0) return false;
-					const labelSet = new Set(taskLabels);
-					return requiredLabels.some((label) => labelSet.has(label));
-				});
-			}
-		}
-		return result;
+		// One shared predicate owns every filter so the CLI, MCP, TUI, and web surfaces agree.
+		return applyTaskFilters(tasks, {
+			status: filters.status,
+			statusExcluded: filters.statusExcluded,
+			assignee: filters.assignee,
+			unassigned: filters.unassigned,
+			priority: filters.priority,
+			milestone: filters.milestone,
+			resolveMilestoneLabel: resolveMilestoneFilterValue,
+			parentTaskId: filters.parentTaskId,
+			labels: filters.labels,
+			labelMatch: filters.labelMatch,
+		});
 	}
 
 	private filterLocalEditableTasks(tasks: Task[]): Task[] {
@@ -791,6 +753,7 @@ export class Core {
 			}
 			if (filters?.labels) {
 				searchFilters.labels = filters.labels;
+				searchFilters.labelMatch = filters.labelMatch;
 			}
 
 			const searchResults = searchService.search({

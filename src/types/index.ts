@@ -193,6 +193,7 @@ export interface TaskListFilter {
 	milestone?: string;
 	parentTaskId?: string;
 	labels?: string[];
+	labelMatch?: "any" | "all";
 }
 
 export interface Decision {
@@ -301,6 +302,7 @@ export interface SearchFilters {
 	priority?: SearchPriorityFilter | SearchPriorityFilter[];
 	assignee?: string | string[];
 	labels?: string | string[];
+	labelMatch?: "any" | "all";
 	modifiedFiles?: string | string[];
 }
 
