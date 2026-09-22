@@ -32,7 +32,7 @@ Layout: horizontally centered, 12vh from top, fixed 800px width, max-height 75vh
 
 Narrow viewports (< 640px): dialog becomes full-screen (100vw x 100dvh, no rounded corners or mask); rows switch to a fixed-height two-line layout (line 1: title with keyword highlight; line 2: resource ID + muted status/priority tags) so row height stays constant and virtual scrolling plus visibleStartIndex restore keep working unchanged. No free text wrapping inside rows.
 
-Icons: reuse the established search type icons already used in the sidebar search dropdown — magnifier for 全部/search, clipboard for 任务/task, document for 文档/doc, shield for 决策/decision, book for Wiki.
+Icons: reuse the established search type icons already used in the sidebar search dropdown - a magnifier for the all-types row, a clipboard for tasks, a document for docs, a shield for decisions, and a book for wiki pages.
 
 Non-goals: no right preview panel, no fullscreen search page, no in-dialog editing of tasks/docs, no local search history/favorites.
 <!-- SECTION:DESCRIPTION:END -->
@@ -88,7 +88,7 @@ Post-completion fixes (user feedback rounds):
 1. Fixed filter tab row clipped by input (flex shrink-0 on header rows).
 2. ID keyword highlight: getIdMatchIndices renders <mark> on resource IDs (e.g. 411 in BACK-411), incl. wiki path offset; +6 unit tests.
 3. Task/draft modal opened from search now closes back to the search dialog with q/type/visibleStartIndex intact (openItemAt passes backgroundLocation=location; handleCloseModal carries background state through).
-4. Sidebar search box converted to a read-only trigger button (搜索 (⌘K)…) that opens the dialog; inline sidebar search/dropdown removed.
+4. Sidebar search box converted to a read-only trigger button (its label is the localized word for "search" followed by `(⌘K)`) that opens the dialog; inline sidebar search/dropdown removed.
 5. Collapsible result groups: header rows toggle collapsed (click or Enter/Space), collapsed groups excluded from virtual rows so next group is directly visible; state resets on query/filter change; +3 unit tests. 29 search-results tests, full suite 2241 pass.
 
 Round 4 navigation fixes (done directly, subagent lock was stuck):
@@ -102,7 +102,7 @@ Round 5-8 polish (user feedback):
 10. Dialog height: fixed-height experiment reverted; instead an invisible same-size placeholder keeps the empty-state height while first results load, so the window no longer collapses when typing starts. 'Searching' indicator moved from input row to an overlay badge at the results area top-right (no layout shift).
 11. Input font sized up per user request: 28px desktop / 32px narrow (also keeps narrow >=16px to avoid iOS focus zoom).
 12. Task status/priority render as colored pills identical to TaskList; color logic deduplicated into shared src/web/utils/task-badge-colors.ts (TaskList + DraftsList now import it).
-13. zh-TW searchDialog terminology unified with sidebar (工作->任務). NOTE: full-file zh-TW audit was requested but interrupted before starting — still pending.
+13. zh-TW searchDialog terminology unified with the sidebar (its word for a task now matches the sidebar's). NOTE: a full-file zh-TW audit was requested but interrupted before starting - still pending.
 14. Input cursor jitter fixed: keystrokes update a local draft synchronously; URL replace is debounced 300ms (buildSearchUrl helper). Flush before opening a result, timer cleared on unmount/external navigation.
 15. SearchTypeIcon normalizes sidebar SVGs (hardcoded w-4/w-5) into the requested box with flex centering — fixes vertically off-center filter tab icons.
 <!-- SECTION:NOTES:END -->

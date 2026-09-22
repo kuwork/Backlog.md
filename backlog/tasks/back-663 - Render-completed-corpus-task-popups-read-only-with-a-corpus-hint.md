@@ -66,7 +66,7 @@ Locales: completedCorpusHint added to en, zh-CN, zh-TW and ja. TranslationDict i
 
 Verification: bunx tsc --noEmit clean; bun run check . clean (3 pre-existing assets.ts warnings); 172 tests across all 29 src/test/web-*.test.tsx green, including the 8 modal suites. Revert probes run one half at a time: (A) isReadOnly back to branch-only turned "locks the popup down and names the completed archive under the title bar" red; (B) reverting the banner to always crossBranchHint turned the same case red with "Read-only: This task exists in the  branch" (empty branch), which is the exact symptom the popup had before this task.
 
-Real browser: headless Chrome over CDP against the source server on port 6456 (locale zh-CN). Searched "cli setup core project" with completed=true, clicked the BACK-1 row, and the popup at /task/1/cli-setup-core-project-bun-typescript-git-linters rendered "只读: 此任务位于已完成归档，仅供查看，无法在此编辑。" with zero action buttons (no 编辑, 保存, 归档 or 添加评论), matching the cross-branch banner's amber treatment.
+Real browser: headless Chrome over CDP against the source server on port 6456 (locale zh-CN). Searched "cli setup core project" with completed=true, clicked the BACK-1 row, and the popup at /task/1/cli-setup-core-project-bun-typescript-git-linters rendered the localized read-only hint - "read-only: this task lives in the completed archive, so it is view-only here" - with zero action buttons (no edit, save, archive or add-comment control), matching the cross-branch banner's amber treatment.
 
 Known shared limitation left in place: in preview mode the acceptance-criteria checkboxes come from AcceptanceCriteriaEditor with disableToggle={isCreateMode}, so on a read-only popup they still look clickable and the toggle silently no-ops through the isReadOnly guard. Cross-branch popups behave the same way today, so changing it would have altered that popup too; it is a one-line follow-up if the user wants both to disable the control outright.
 <!-- SECTION:NOTES:END -->
@@ -78,7 +78,7 @@ The task popup now treats a backlog/completed record the way it already treated 
 
 Changes:
 - src/web/components/TaskDetailsModal.tsx - split the gate into isFromOtherBranch (why) and isReadOnly = isFromOtherBranch || source === "completed" (what). Every guard, action button, disabled prop and read-only styling reads isReadOnly; the banner picks completedCorpusHint or crossBranchHint by reason.
-- src/web/locales/{en,zh-CN,zh-TW,ja}.ts - new completedCorpusHint string ("此任务位于已完成归档，仅供查看，无法在此编辑。").
+- src/web/locales/{en,zh-CN,zh-TW,ja}.ts - new completedCorpusHint string in all four dictionaries (the localized form of "this task lives in the completed archive, so it is view-only here").
 
 Verification:
 - bunx tsc --noEmit, bun run check . (3 pre-existing warnings)

@@ -89,12 +89,12 @@ Known pre-existing failure unrelated to this task: core-task-corpus-regressions 
 author: kimi
 created: 2026-09-19 07:26
 ---
-Scope extension (user directive, 2026-09-19): the web UI part landed in the same working tree. The search dialog gained a 已完成/Completed toggle that sends completed=true to /api/search; completed rows carry a Completed badge; clicking one opens the task modal via a preloadedTask navigation payload (App falls back to it when the corpus has no match) so completed deep links from search no longer bounce to the board. Deliberately still out of scope: cold deep links to completed tasks (no navigation payload) remain a follow-up. Covered by web-search-dialog-completed.test.tsx and web-completed-task-modal.test.tsx (5 cases).
+Scope extension (user directive, 2026-09-19): the web UI part landed in the same working tree. The search dialog gained a completed-corpus toggle (labelled with the localized word for "completed") that sends completed=true to /api/search; completed rows carry a Completed badge; clicking one opens the task modal via a preloadedTask navigation payload (App falls back to it when the corpus has no match) so completed deep links from search no longer bounce to the board. Deliberately still out of scope: cold deep links to completed tasks (no navigation payload) remain a follow-up. Covered by web-search-dialog-completed.test.tsx and web-completed-task-modal.test.tsx (5 cases).
 ---
 
 author: kimi
 created: 2026-09-19 07:45
 ---
-Web search dialog i18n polish (review findings, same working tree): the result-row badges no longer render raw enum values. Priority now uses the shared t.taskDetails.priorityLabel (高/中/低 etc.); decision status uses the canonical t.decisions.statusLabels with a capitalized-raw fallback for free-form values, mirroring DecisionDetail. Task status stays raw by design (user-configured strings). Covered by web-search-dialog-completed.test.tsx (4 cases, decision case included).
+Web search dialog i18n polish (review findings, same working tree): the result-row badges no longer render raw enum values. Priority now uses the shared t.taskDetails.priorityLabel (the localized high / medium / low labels); decision status uses the canonical t.decisions.statusLabels with a capitalized-raw fallback for free-form values, mirroring DecisionDetail. Task status stays raw by design (user-configured strings). Covered by web-search-dialog-completed.test.tsx (4 cases, decision case included).
 ---
 <!-- COMMENTS:END -->

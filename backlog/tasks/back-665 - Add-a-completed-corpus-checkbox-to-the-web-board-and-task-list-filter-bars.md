@@ -113,13 +113,13 @@ Two things the checkbox alone did not cover:
 
 One real bug the tests caught: the widened search answers with the active corpus as well, so appending it raw duplicated the active task on both views (React warned about duplicate keys). The hook therefore keeps only records marked `source: "completed"`. A test asserts one row per record on both views so this cannot come back.
 
-i18n: `common.showCompleted` is "显示已完成" / "Show completed" / "顯示已完成" / "完了を表示".
+i18n: `common.showCompleted` exists in all four dictionaries, the English value being "Show completed".
 
 Verified against the running board (`bun src/cli.ts browser -p 6477 --no-open`, headless Chrome over CDP, locale zh-CN):
 - /tasks, box unchecked: `#task-list-completed-filter` present and unchecked, no BACK-624 row, and no request carried `completed=true`.
-- /tasks, box ticked: URL becomes `?completed=1`, one `completed=true` request, the row reads "BACK-624 Global Spotlight-style search dialog for Web UI 已完成", the badge tooltip is the corpus hint, and 清除筛选 is the toggle label's next element sibling.
-- Clicking that row opens /task/624/global-spotlight-style-search-dialog-for-web-ui with the archive hint, zero 编辑 buttons and no comment box.
-- The board is the index route (`/`): unchecked shows no completed card; ticked shows the card with the 已完成 badge, `draggable="false"`, and 清除筛选 directly behind the toggle.
+- /tasks, box ticked: URL becomes `?completed=1`, one `completed=true` request, the row reads "BACK-624 Global Spotlight-style search dialog for Web UI" followed by the "Completed" marker, the badge tooltip is the corpus hint, and the "Clear filters" control is the toggle label's next element sibling.
+- Clicking that row opens /task/624/global-spotlight-style-search-dialog-for-web-ui with the archive hint, zero "Edit" buttons and no comment box.
+- The board is the index route (`/`): unchecked shows no completed card; ticked shows the card with the "Completed" badge, `draggable="false"`, and "Clear filters" directly behind the toggle.
 
 Revert verification, one half at a time (each run confirmed red, then restored):
 - hook's `source === "completed"` filter removed -> the two no-duplicate assertions fail, the other two stay green.
@@ -135,9 +135,9 @@ Gates: bunx tsc --noEmit clean; bun run check . clean (3 pre-existing assets.ts 
 
 Review follow-up - two corrections to where the marker sits and what colour it wears, both verified the same way as the rest of the change.
 
-Placement: the card marker used to sit next to the task ID on the left. On a board card the marker is a badge like the priority one, so it now lives in the header's right-hand group, directly left of the priority badge, right-aligned with the row. Measured on the running board with the checkbox ticked: the marker's group is the header row's last child, and its right neighbour is the priority badge (the group reads "已完成高" on BACK-120).
+Placement: the card marker used to sit next to the task ID on the left. On a board card the marker is a badge like the priority one, so it now lives in the header's right-hand group, directly left of the priority badge, right-aligned with the row. Measured on the running board with the checkbox ticked: the marker's group is the header row's last child, and its right neighbour is the priority badge (the group reads "Completed High" on BACK-120).
 
-Colour: the marker wears the emerald of the task modal's 标记为已完成 button - the action that puts a task into this corpus. `CompletedBadge` renders it once and both the board card and the task list row reuse it, each passing its own chip shape: `bg-emerald-600 text-white dark:bg-emerald-700`. Computed colours on the running app: marker `oklch(0.508 0.118 165.612)` on `rgb(255, 255, 255)`, the modal button `oklch(0.508 0.118 165.612)` on `rgb(255, 255, 255)` - identical.
+Colour: the marker wears the emerald of the task modal's "Mark as completed" button - the action that puts a task into this corpus. `CompletedBadge` renders it once and both the board card and the task list row reuse it, each passing its own chip shape: `bg-emerald-600 text-white dark:bg-emerald-700`. Computed colours on the running app: marker `oklch(0.508 0.118 165.612)` on `rgb(255, 255, 255)`, the modal button `oklch(0.508 0.118 165.612)` on `rgb(255, 255, 255)` - identical.
 
 Revert verification, one half at a time: marker moved back next to the task ID -> only the placement assertion fails (`Received: "BACK-624Completed"`); the shared component's colour reverted to the old slate -> only the two colour assertions fail, on the board and the task list alike. Gates after restoring: tsc clean, biome clean, web suites 182 pass.
 <!-- SECTION:NOTES:END -->

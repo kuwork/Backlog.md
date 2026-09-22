@@ -50,7 +50,7 @@ Add created_date and updated_date automatic metadata fields to milestones, mirro
 Why: tasks carry these fields so users can tell when a task was created and when it was last touched; milestones lack equivalent metadata. Precedent: BACK-493 added actualStart/actualEnd to milestones; this task follows the same cross-surface (CLI/Web/MCP) rollout.
 
 Web UI display requirements:
-- On the milestone page, show a "Last Updated" label (最近更新 in zh-CN) to the left of the planned start time (plannedStart); visible only when updated_date or created_date is non-empty; prefer updated_date, fall back to created_date
+- On the milestone page, show a "Last Updated" label (localized in all four dictionaries) to the left of the planned start time (plannedStart); visible only when updated_date or created_date is non-empty; prefer updated_date, fall back to created_date
 - The milestone edit page shows created_date and updated_date in the top-right corner, styled like the task edit page
 <!-- SECTION:DESCRIPTION:END -->
 
@@ -61,7 +61,7 @@ Web UI display requirements:
 - [x] #3 All date reads use parseStoredUtcDate and render correctly across timezones
 - [x] #4 Existing milestone files missing created_date/updated_date do not error; display falls back to created_date when updated_date is missing
 - [x] #5 Both fields are visible or retrievable on the CLI, Web UI, and MCP surfaces
-- [x] #6 Web milestone page shows "Last Updated" (最近更新) to the left of the planned start time: visible only when updated_date or created_date is non-empty; prefer updated_date, fall back to created_date
+- [x] #6 Web milestone page shows "Last Updated" (localized) to the left of the planned start time: visible only when updated_date or created_date is non-empty; prefer updated_date, fall back to created_date
 - [x] #7 Web milestone edit page shows created_date and updated_date in the top-right corner, styled consistently with the task edit page
 <!-- AC:END -->
 
@@ -95,7 +95,7 @@ Add Created/Updated to milestone list output (cli.ts:3841); cover with tests in 
 Add Created/Updated to milestone_list text output (src/mcp/tools/milestones/handlers.ts listMilestones); cover with tests in mcp-milestones.test.ts.
 
 6. Web UI surface (subagent C; AC #7, #8)
-- MilestonesPage.tsx:574-597 'Milestone dates' block: add 'Last Updated' (最近更新 in zh-CN) to the LEFT of plannedStart (lines 583-585); visible only when updatedDate || createdDate is non-empty; prefer updatedDate, fall back to createdDate; use parseStoredUtcDate + formatStoredUtcDateForDisplay
+- MilestonesPage.tsx:574-597 'Milestone dates' block: add 'Last Updated' (localized in all four dictionaries) to the LEFT of plannedStart (lines 583-585); visible only when updatedDate || createdDate is non-empty; prefer updatedDate, fall back to createdDate; use parseStoredUtcDate + formatStoredUtcDateForDisplay
 - MilestoneDetailsModal.tsx: show created/updated in the top-right corner, reusing the task detail sidebar style and the common.created / common.updated i18n keys (already in all 4 locales)
 - Add new i18n key(s) (e.g. milestones.lastUpdated) to en/zh-CN/zh-TW/ja
 - Web component tests for the 'Last Updated' display/fallback logic
@@ -130,7 +130,7 @@ AC cleanup: removed redundant AC (verification of tsc/biome/bun-test) — covera
 
 Final full-suite run (3rd, complete log): 2175 pass, 2 fail + 1 error, all three identified as pre-existing Windows environment flakes unrelated to this change: (1) task-edit-preservation 5s timeout — 10/10 in isolation; (2) board-loading beforeEach git init exit 255; (3) uv_spawn 'git' ENOENT during real-repo branch scan (log line 1633-1637). None touch milestone/task-timestamp code paths. DoD #3 satisfied via scoped tests + flake attribution. Marking Done.
 
-Post-completion UI polish (3 fixes): (1) MilestoneAddModal inputClass now includes placeholder:text-gray-400 dark:placeholder:text-gray-500 so the milestone name placeholder is no longer white; (2) MilestoneDetailsModal title section header changed from taskDetails.section.title to milestones.nameLabel (里程碑名称/Milestone Name); (3) MilestoneDetailsModal sidebar spacing space-y-6 -> space-y-4 to match the task details page. Verified: tsc clean, biome clean, 20 web milestone tests pass.
+Post-completion UI polish (3 fixes): (1) MilestoneAddModal inputClass now includes placeholder:text-gray-400 dark:placeholder:text-gray-500 so the milestone name placeholder is no longer white; (2) MilestoneDetailsModal title section header changed from taskDetails.section.title to milestones.nameLabel (Milestone Name and its localized label); (3) MilestoneDetailsModal sidebar spacing space-y-6 -> space-y-4 to match the task details page. Verified: tsc clean, biome clean, 20 web milestone tests pass.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -142,7 +142,7 @@ Changes:
 - Core: Milestone type + parseMilestone/serializeMilestone round-trip the new fields (conditional, so legacy files stay clean); fs.createMilestone stamps created_date (UTC YYYY-MM-DD HH:MM) and returns the parsed milestone; fs.updateMilestone centrally stamps updated_date only on substantive changes via a comparable projection excluding the timestamp itself (mirrors BACK-534), so no-op updates and legacy files preserve their state. No function signatures changed — the {...milestone} spread carries the fields through every caller (CLI/MCP/Web/task status auto-population).
 - CLI: milestone list appends a date suffix — '(updated ...)' or '(created ...)' (updatedDate ?? createdDate), omitted when both absent.
 - MCP: milestone_list lines append '(Created: ..., Updated: ...)' with labels only for present fields.
-- Web UI: milestone card shows 'Last Updated' (最近更新) left of the planned dates, visible only when updatedDate || createdDate (prefer updatedDate, fall back to createdDate); milestone details modal shows 创建于/更新于 in a compact info box at the top of the sidebar, same markup and common.created/common.updated labels as the task edit page. Added taskDetails.section.lastUpdated i18n key in en/zh-CN/zh-TW/ja.
+- Web UI: milestone card shows 'Last Updated' (localized) left of the planned dates, visible only when updatedDate || createdDate (prefer updatedDate, fall back to createdDate); milestone details modal shows the created and updated timestamps in a compact info box at the top of the sidebar, same markup and common.created/common.updated labels as the task edit page. Added taskDetails.section.lastUpdated i18n key in en/zh-CN/zh-TW/ja.
 - Docs: synced the new behavior into src/guidelines/cli-instructions/milestones.md, src/guidelines/mcp/milestones.md, and src/guidelines/agent-guidelines.md (BACK-521 backport pattern).
 
 Verification:

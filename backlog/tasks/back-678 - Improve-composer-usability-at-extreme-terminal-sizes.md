@@ -63,7 +63,7 @@ The goal is a composer that stays legible and obviously editable across the term
 <!-- SECTION:NOTES:BEGIN -->
 Implemented content-derived composer geometry in `src/ui/components/task-composer.ts`. The popup height now reserves the popup chrome plus one complete three-row bordered input, and both the popup width and the compact decision come from the longest configured selector content measured with `Bun.stringWidth` instead of the fixed 64-column breakpoint and the fixed 72/96% widths. A normal selector column is still 30% of the form; the popup simply grows (capped by the terminal and by `createPopupChrome`'s four-column backdrop margin) until that column holds the widest configured value plus its trailing cue.
 
-Fork adaptation: upstream's separate `stackSelectors` flag was not ported. This fork has no type selector and its compact layout already stacks both selectors on their own full-width rows, so compact is the only stacked shape and a second flag would have been dead state.
+Fork adaptation: the separate `stackSelectors` flag was not ported. This fork has no type selector and its compact layout already stacks both selectors on their own full-width rows, so compact is the only stacked shape and a second flag would have been dead state.
 
 Measured before/after on real blessed screens (`Object.defineProperty(screen, "width"/"height")` + `openTaskComposer`, widgets inspected through `screen.children`):
 - 80x8: scrollable form 1 -> 3 rows. The focused field's editable row (widget row 1, below the input's top border) was outside the one-row viewport, so the bordered Title and Description inputs showed a bare border with no editable row and no caret.
@@ -75,9 +75,9 @@ Validation: the new `src/test/tui-task-composer-layout.test.ts` (4 tests, 72 ass
 
 Rollback verification: restoring the whole implementation from HEAD turns exactly the six new assertions red (4 rendered + 2 layout) while the 13 pre-existing ones stay green. Two targeted rollbacks isolate them: reverting only the popup-height clause reddens the two height assertions (the old code reports `form.height` 1 against the required 3 at 80x8) and leaves the four width ones green; reverting only the popup width and the compact decision reddens exactly the four width/compact assertions and leaves the height ones green.
 
-Evidence limits worth recording: a genuine PTY run is not possible on this machine - the repository's interactive PTY harness (`tui-ready-filter-pty`) skips itself on win32 because it needs `expect` - so the evidence is the rendered-widget geometry of real blessed screens, the same measure upstream recorded as its deterministic widget evidence. At 50 columns a 37-cell selector cannot fit at all (the terminal caps the popup at 46 cells), so that step asserts the stacked geometry only.
+Evidence limits worth recording: a genuine PTY run is not possible on this machine - the repository's interactive PTY harness (`tui-ready-filter-pty`) skips itself on win32 because it needs `expect` - so the evidence is the rendered-widget geometry of real blessed screens, recorded here as deterministic widget-level evidence. At 50 columns a 37-cell selector cannot fit at all (the terminal caps the popup at 46 cells), so that step asserts the stacked geometry only.
 
-ID note: this fork allocates BACK-678 locally, a number an upstream task also uses for CORE-34 (due date as a date-only string). The fork keeps its allocated number and the classification ledger line is left for a separate bookkeeping change.
+ID note: this fork allocates BACK-678 locally, but that number is already allocated to an unrelated entry in the migration ledger. The fork keeps its allocated number and the ledger line is left for a separate bookkeeping change.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

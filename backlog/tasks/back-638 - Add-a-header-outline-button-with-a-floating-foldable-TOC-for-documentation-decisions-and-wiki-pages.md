@@ -163,7 +163,7 @@ Files:
 
 Verification: bunx tsc --noEmit clean; bun run check . reports only the 3 pre-existing warnings in src/core/assets.ts; bun test src/test/web- passes 149 tests across 25 files.
 
-Browser run over CDP against /documentation/2: the panel opened at 13 visible rows with the control reading "展开所有"; one click unfolded all 31 rows and the control became "折叠所有"; the next click left a single row with the control back to "展开所有", and the prose stayed 1270px wide at a 1664px viewport. Scrolling to 55% and then to 85% of the page kept the single row, with the accent colour on it, so the folded tree survives the scrollspy. Screenshots: tmp/toc-toggle-all-expanded.png and tmp/toc-toggle-all-folded.png.
+Browser run over CDP against /documentation/2: the panel opened at 13 visible rows with the control reading the localized "expand all"; one click unfolded all 31 rows and the control became the localized "collapse all"; the next click left a single row with the control back to the localized "expand all", and the prose stayed 1270px wide at a 1664px viewport. Scrolling to 55% and then to 85% of the page kept the single row, with the accent colour on it, so the folded tree survives the scrollspy. Screenshots: tmp/toc-toggle-all-expanded.png and tmp/toc-toggle-all-folded.png.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

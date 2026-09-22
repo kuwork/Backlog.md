@@ -54,12 +54,12 @@ Adopt the task status badge treatment for decisions - the same borderless, theme
 <!-- SECTION:NOTES:BEGIN -->
 Changed src/web/locales/{en,ja,zh-CN,zh-TW}.ts and src/web/components/DecisionDetail.tsx.
 
-- Each locale's decisions block gained a statusLabels map for proposed, accepted, rejected, deprecated and superseded: en Proposed/Accepted/Rejected/Deprecated/Superseded, ja 提案中/承認済み/却下/非推奨/置き換え済み, zh-CN 已提出/已接受/已拒绝/已废弃/已被替代, zh-TW 已提出/已接受/已拒絕/已廢棄/已被替代. deprecated is labelled even though it is not one of the four canonical editor options (it is documented in the user manual and can exist in stored data), so an existing value renders properly instead of falling back.
+- Each locale's decisions block gained a statusLabels map covering proposed, accepted, rejected, deprecated and superseded: the English dictionary carries the canonical English words and the ja, zh-CN and zh-TW dictionaries carry their own translation of all five. deprecated is labelled even though it is not one of the four canonical editor options (it is documented in the user manual and can exist in stored data), so an existing value renders properly instead of falling back.
 - DecisionDetail renders both places that show a decision status through one local helper: the preview badge and the edit-mode select options. The helper looks the lowercased status up in the locale map and falls back to the previous capitalized-raw behaviour, so free-form statuses and statuses stored in another language still display. Option values stay the raw status string, so translating the interface never rewrites stored data.
 
 Verification (real browser, server on port 6611 + Chromium, repo locale zh-CN; throwaway decision created and deleted afterwards):
-- Edit mode: select option values were proposed/accepted/rejected/superseded while the labels read 已提出/已接受/已拒绝/已被替代, with aria-label 状态.
-- Choosing 已接受 and saving left status: accepted in the file and rendered the badge as 已接受.
+- Edit mode: the select's option values stayed proposed/accepted/rejected/superseded while the printed labels were the localized ones, under an aria-label carrying the localized word for "status".
+- Choosing the localized "accepted" option and saving left `status: accepted` in the file and rendered the badge with that same localized label.
 - A non-canonical status (triage, set through the CLI) rendered as the capitalized fallback 'Triage' in the badge, and the select listed the four localized options plus an extra option valued triage and labelled 'Triage' - preserving the stored value instead of dropping it.
 - All four locale files define the same five keys (checked per file).
 
@@ -90,7 +90,7 @@ Changes:
 - src/web/components/DecisionDetail.tsx: both the preview badge and the edit-mode select options render through one lookup that falls back to the capitalized raw value; option values remain the raw status string
 
 Verification:
-- real browser: labels read 已提出/已接受/已拒绝/已被替代 with raw values preserved, saving 已接受 stored status: accepted and showed 已接受, and a non-canonical status (triage) fell back to 'Triage' while staying selectable
+- real browser: the printed labels were the localized ones while the raw values stayed intact, saving the localized "accepted" option stored `status: accepted` and showed that same label, and a non-canonical status (triage) fell back to 'Triage' while staying selectable
 - bunx tsc --noEmit; 37 tests pass in the i18n-adjacent suites
 
 The status is also presented like a task status rather than with its own light-only colours: the old bg-yellow-50 / text-yellow-700 / border-yellow-200 chip (no dark variants) jarred against the dark header, so it now uses the task-status palette with dark pairs plus a per-status leading icon (clock, check, x, slash, swap arrows, info fallback) and a plain edit-mode select.

@@ -93,7 +93,7 @@ The backdrop is what stops hugging the popup. `createPopupChrome` centers the po
 - `getHelpPopupHeight` returns `Math.min(screen.height, preferred)`. Below the five-row minimum the popup is simply as tall as the terminal (3 rows on a 3-row screen), which keeps the border and help row on-screen instead of pushing them past the bottom.
 - `applyLayout` runs on open as well as on every resize, so the first paint already carries the measured bound and the right footer; the `helpText: getHelpText(false)` passed to `createPopupChrome` is only the pre-layout placeholder.
 - `screen.height` reads `program.rows`, and the renderer updates it before emitting `resize`, so the handler already sees the new size. The fork's previous `typeof screen.height === "number" ? screen.height : 40` fallback is gone because the property is a number on every path.
-- The repository handed this task BACK-677 - upstream uses BACK-677 for WEB-15 (show local time in the web UI), which the fork already landed as BACK-673. The fork keeps the allocated number and renumbers nothing. The ledger row for this collision is deliberately left to a separate bookkeeping change that has to be asked for, so nothing under `backlog/docs/migration/` is touched here.
+- The repository handed this task BACK-677, but that number is already allocated to an unrelated entry in the migration ledger (which the fork had landed under another task). The fork keeps the allocated number and renumbers nothing. The ledger row for this collision is deliberately left to a separate bookkeeping change that has to be asked for, so nothing under `backlog/docs/migration/` is touched here.
 
 ## Verification
 

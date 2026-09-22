@@ -64,9 +64,9 @@ Changed src/web/components/TaskDetailsModal.tsx only.
 Follow-up fix (user report: pasted images stayed in .temp after adding a comment): handleAddComment never promoted temporary assets, unlike handleSave. It now follows the same three steps as the task description path: extractTempImageUrls(body) -> apiClient.promoteAssets(urls) -> replaceTempImageUrls(body, mapping), and it writes the rewritten body back into the editor state with setCommentBody so a failed save can be retried against the permanent URLs instead of re-promoting an already-moved file.
 
 Verification on a throwaway task, deleted again afterwards:
-- Editor renders as the only .w-md-editor in preview mode, 200px tall, placeholder 添加评论..., full markdown toolbar, no Insert-HR button.
+- Editor renders as the only .w-md-editor in preview mode, 200px tall, its placeholder reading as the localized "add a comment...", full markdown toolbar, no Insert-HR button.
 - Entity autocomplete: typing BACK-6 opened the menu with TASK BACK-600..604 and Enter inserted see [BACK-600](/task/600). The trigger is a bare ID prefix, not a [[ prefix.
-- Image promotion, exercised twice with a real paste event carrying a PNG: the editor first held ![image](/assets/.temp/<uuid>.png); after clicking 添加评论 the stored comment body held ![image](/assets/paste/<uuid>.png), the .temp file was gone from disk, the file existed under assets/paste, and the modal rendered the image from the permanent URL. The editor cleared after saving.
+- Image promotion, exercised twice with a real paste event carrying a PNG: the editor first held ![image](/assets/.temp/<uuid>.png); after clicking the add-comment button the stored comment body held ![image](/assets/paste/<uuid>.png), the .temp file was gone from disk, the file existed under assets/paste, and the modal rendered the image from the permanent URL. The editor cleared after saving.
 - Dark mode: editor reported data-color-mode=dark with background rgb(30,41,59) and text rgb(241,245,249), matching the description editor.
 
 Known related gap (not part of this task): DecisionDetail.tsx also uses PasteAwareMDEditor and saves through apiClient.updateDecision without any promoteAssets call, so pasted images in decisions stay in .temp too.

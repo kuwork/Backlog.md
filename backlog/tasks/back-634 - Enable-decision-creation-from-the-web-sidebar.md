@@ -59,7 +59,7 @@ Changed src/web/components/SideNavigation.tsx and src/web/components/DecisionDet
 - DecisionDetail, create branch: after apiClient.createDecision(title) it now normalizes the typed body, promotes any /assets/.temp images through apiClient.promoteAssets, and persists it with apiClient.updateDecision when non-empty. An empty body still yields the default Context/Decision/Consequences template. Navigation, refresh and the success toast are unchanged.
 
 Verification (real app; browser server on port 6611 plus Chromium; the decision created during the test was deleted afterwards together with its promoted asset):
-- The Decisions header row shows the plus button with title and aria-label '新建决策' (the active zh-CN locale), next to the collapse chevron.
+- The Decisions header row shows the plus button carrying the localized title and aria-label for creating a decision (the active zh-CN strings), next to the collapse chevron.
 - Clicking it opened /decisions/new with the title input and the body editor.
 - Filling the title with 'TEMP created decision check' and a body containing a temporary pasted image, then clicking Save, navigated to /decisions/2/temp-created-decision-check.
 - The created file contained the title, 'Created through the sidebar button.' inside Context, the image as ![pasted](/assets/paste/9d21afca-....png) (promoted out of .temp, which no longer held it) and the default Decision/Consequences template text.

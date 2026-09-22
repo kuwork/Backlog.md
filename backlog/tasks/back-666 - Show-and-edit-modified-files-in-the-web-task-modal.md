@@ -79,12 +79,12 @@ Layout
 
 - References, Documentation and Modified Files are three tabs of one panel in `src/web/components/TaskDetailsModal.tsx`, replacing the two stacked cards the modal had. The strip carries `role="tablist"`/`role="tab"` and the body `role="tabpanel"`, and only the active tab's body is rendered, so the new list cannot push Acceptance Criteria and the fields below it out of reach.
 - The tab on open is derived from the task's state and the lists the panel renders: `metadataTabPriorityFor(isDone)` puts Modified Files first for a finished record and References first otherwise, the first filled list in that order opens, and References is the fallback when everything is empty. A `metadataTab` state of `null` means "follow the task", so the rule also re-runs when an unsaved edit fills or empties a list or the status changes; clicking a tab pins it, and the pin is cleared when the task identity changes or the modal reopens. The first cut keyed the default off the status, a leftmost-filled variant replaced it, and the request then settled back on the state-driven order with the lists as the tie-breaker.
-- The Chinese labels read `文件变更` / `檔案變更` for the section, with the empty hint and the row
-  button following it (`暂无文件变更`, `移除该文件记录`): the strip is a row of noun phrases beside `引用` and
-  `文档`, and `修改文件` reads as a verb-object, which made `移除修改文件` sound like removing and modifying
-  a file. `被修改的文件` is the more literal rendering, but it sits heavy in a caption that also carries a
-  count. The row button says `记录` for the same reason: the x drops the entry from the task's list and never
-  touches the file on disk, which `移除该文件` failed to say.
+- The section caption reads `Modified Files`, with the empty hint and the row
+  button following it (`No modified files`, `Remove modified file`): the strip is a row of noun phrases beside `References` and
+  `Documentation`, and a verb-object caption would make the row button sound like it both removes and modifies
+  a file. The more literal sentence-style rendering is heavier in a caption that also carries a
+  count. The row button names the modified file rather than the file alone for the same reason: the x drops the entry from the task's list and never
+  touches the file on disk, which the shorter wording would misstate.
 - Each tab caption carries its list length in parentheses (`References(5)`, `Modified Files(12)`), read from the same state the panel renders, so the count follows an unsaved add or remove rather than the saved task. A list with no entries shows the bare caption — no `(0)` — so the strip does not fill up with zeros. The count is a `font-normal tabular-nums` span beside the label, so it de-emphasises itself against the semibold caption in both themes without a second colour.
 
 Modified Files tab
@@ -93,18 +93,18 @@ Modified Files tab
 - The add form reuses `PathAutocomplete`, so it offers the same path suggestions the References form does, and refuses URLs on submit through a module-local `looksLikeUrl` that matches any `scheme://`, not only http/https.
 - `modifiedFiles` runs through the modal's existing plumbing: `buildTaskDetailsFormState`, the refresh-preserving sync, the task-switch reset, `handleInlineMetaUpdate`, and the create-mode entry check that already counted references.
 
-Divergences from upstream
+Divergences from the ported implementation
 
-- Upstream shipped a third stacked card with hardcoded English strings and a `max-h-64` scrollable list. This fork routes every user-facing string through i18n, and bounds the footprint with the tab panel instead: the file list is not height-capped, exactly like the References list beside it. A cap, if it is ever needed, belongs on all three lists at once.
-- Upstream deliberately kept `modifiedFiles` out of `handleSave`. Here it is sent together with references and documentation, because the create form sends those and a path added while creating would otherwise be lost.
+- The ported version shipped a third stacked card with hardcoded English strings and a `max-h-64` scrollable list. This fork routes every user-facing string through i18n, and bounds the footprint with the tab panel instead: the file list is not height-capped, exactly like the References list beside it. A cap, if it is ever needed, belongs on all three lists at once.
+- The ported version deliberately kept `modifiedFiles` out of `handleSave`. Here it is sent together with references and documentation, because the create form sends those and a path added while creating would otherwise be lost.
 
 Verification
 
-- Live check against the source server with headless Chrome: BACK-666 (Done, 4 references and 7 modified files) opens on Modified Files(7) with 7 rows in the panel, and clicking References opens References(4); BACK-664 (Done, 5 references and 12 modified files) opens on Modified Files(12) - it opened on References before the state-driven rule; BACK-438 (To Do, 3 references, nothing else) opens on References(3) with the other two captions bare, no `(0)`; every caption matched its task's stored lists (`引用(4) 文档 文件变更(7)`), the panel's row count matched the caption on every tab, and a click still overrides the rule for the open task.
+- Live check against the source server with headless Chrome: BACK-666 (Done, 4 references and 7 modified files) opens on Modified Files(7) with 7 rows in the panel, and clicking References opens References(4); BACK-664 (Done, 5 references and 12 modified files) opens on Modified Files(12) - it opened on References before the state-driven rule; BACK-438 (To Do, 3 references, nothing else) opens on References(3) with the other two captions bare, no `(0)`; every caption matched its task's stored lists (`References(4) Documentation Modified Files(7)`), the panel's row count matched the caption on every tab, and a click still overrides the rule for the open task.
 - The Chinese captions were re-checked on the source server with `locale: "zh-CN"` in `backlog/config.yml`: the
-  strip reads `引用(4) 文档 文件变更(7)` on BACK-666 and opens on the file tab with seven rows whose remove button
-  reads `移除该文件记录`, and BACK-438 (To Do) shows the bare
-  `文件变更` caption with the `暂无文件变更` hint once the tab is clicked.
+  strip reads `References(4) Documentation Modified Files(7)` on BACK-666 and opens on the file tab with seven rows whose remove button
+  reads `Remove modified file`, and BACK-438 (To Do) shows the bare
+  `Modified Files` caption with the `No modified files` hint once the tab is clicked.
 - The deep link paints the modal before the corpus arrives, so the first frame shows References and the strip settles on Modified Files once the task loads. That is the rule re-evaluating rather than a stale choice.
 - Tests: the new `src/test/web-task-details-modal-modified-files.test.tsx` (18 cases) uses the repository's `createRoot` + `act` harness with a stubbed `fetch`, and `web-task-details-modal-documentation.test.tsx` selects the tab it asserts on. Probes: forcing References to lead for every status fails the finished-task cases (2) and letting Modified Files lead for every status fails the under-way cases (2); restoring a content-only order fails the finished-task case; deriving the default from the saved task instead of the rendered lists fails the follow-the-edit case; always rendering the count span fails 6 cases (the earlier probes still hold - tab panel revert 16/17, Modified-only revert 7, caption span always-on 8). Both tab files match captions by label prefix, so an assertion never depends on the count.
 <!-- SECTION:NOTES:END -->

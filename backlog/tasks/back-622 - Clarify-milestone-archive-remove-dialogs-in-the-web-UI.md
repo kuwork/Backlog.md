@@ -71,7 +71,7 @@ Implemented archive/remove dialog clarification for milestones (web UI).
 Changes:
 - Replaced window.confirm archive flow with a styled confirmation modal in MilestonesPage and MilestoneDetailsModal
 - Removed redundant question sentences from both dialogs' descriptions in all 4 locales (title bar already names the action)
-- Renamed clear option label: "Leave tasks unassigned" -> "Clear the milestone field on tasks" (zh: 清空任务的里程碑字段)
+- Renamed the clear option label: "Leave tasks unassigned" -> "Clear the milestone field on tasks" (with the matching localized label in the other three locales)
 - Archive description now uses future tense: "Task files will not be modified; tasks will keep their reference to this milestone."
 
 Verification:

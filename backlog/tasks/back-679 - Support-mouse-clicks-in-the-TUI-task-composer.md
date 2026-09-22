@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@dsv4flash'
 created_date: '2026-08-07 20:45'
-updated_date: '2026-09-21 06:05'
+updated_date: '2026-09-21 06:15'
 labels:
   - tui
 dependencies: []
@@ -23,24 +23,25 @@ actual_end: '2026-09-21 06:05'
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-TUI composer 的鼠标点击只走了一半：点得到焦点，却从不进入读入态——比完全不支持更糟。
+Mouse support in the TUI composer is only half wired: a click can move focus but never enters the read state, which is worse than not supporting the mouse at all.
 
-实测（真实 blessed screen 100x30，走真实鼠标派发路径 `program.emit("mouse", …)` + 从 `lpos` 取的真实坐标）：点击 Description 后 `screen.focused` 确实是 description，但 `_reading=undefined`、边框仍是 gray、**Title 仍保持黄色高亮**，随后输入的 "Clicked description" 一个字都没进字段（`getValue()` 仍为 `""`）；键盘导航走后回点 Title 同症状（`_reading=false`，"First" 丢失）。用户看到的就是「上一个控件仍高亮、打字没反应」的假死 composer。
+Reproduced on a real blessed screen at 100x30 through the real mouse dispatch path (`program.emit("mouse", ...)` with coordinates taken from the rendered `lpos`): after clicking Description, `screen.focused` did become description, but `_reading` was `undefined`, the border stayed gray and **Title kept its yellow highlight**, while the following "Clicked description" keystrokes never landed in the field (`getValue()` stayed `""`). Keyboard navigation followed by a click back on Title showed the same symptom (`_reading=false`, "First" lost). What the user sees is a wedged composer: the previous control stays highlighted and typing does nothing.
 
-根因两层：① 两个文本字段以 `inputOnFocus: false` 创建、且没有任何 click 处理器，没人把它们接进既有的 `focusField` / `readInput` 路径；② 选择器虽已有 click 处理器，但它既没先走 `focusField`，处理器又返回 undefined → blessed 的祖先链 `element click` autofocus 会对同一个 widget 再 `focus()` 一次，而 `screen.focused` 的 setter 走 `_focus(el, old)` 会**无条件** `old.emit("blur")`，于是该 widget 自己 blur 自己，`readInput` 注册的 blur 处理器立刻把 `_reading` 翻回 false。
+Two layers of root cause. (1) The two text fields are created with `inputOnFocus: false` and carry no click handler at all, so nothing routes them into the existing `focusField` / `readInput` path. (2) The selectors do have a click handler, but it neither went through `focusField` first nor returned a value, so blessed's ancestor-chain `element click` autofocus focuses the same widget a second time - and the `screen.focused` setter goes through `_focus(el, old)`, which **unconditionally** emits `old.emit("blur")`. The widget therefore blurs itself, and the blur handler that `readInput` registered immediately flips `_reading` back to false.
 
-fork 没有 Type 选择器（TUI-3 已确认），所以适用面是 Title / Description / Status / Priority 四个字段。期望：点哪个字段哪个字段就独占高亮并进入读入态（文本字段光标可见、可立即输入），点选择器打开既有 picker；键盘导航、动作按钮、持久化与布局行为不变。
+The composer has no Type selector, so the surface is Title / Description / Status / Priority. Expected behaviour: clicking a field gives that field sole highlight and enters the read state - text fields show a cursor and accept typing immediately, selectors open the existing picker - while keyboard navigation, action buttons, persistence and layout behaviour stay unchanged.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 点击任一 composer 文本字段（Title / Description）后它独自高亮并进入读入态：`screen.focused` 为被点字段、`_reading === true`、`getCursor()` 有值，且随后的按键字符落到该字段（实测 100x30：点 Description 后输入 "Clicked description" → `getValue()` 等于该串；修复前为 ""）
-- [x] #2 点击后原高亮控件可见地取消高亮：被点文本字段边框为 yellow、另一个文本字段边框回到 gray（实测 Title 边框由 yellow 变 gray）
-- [x] #3 键盘导航离开 Title 后回点 Title，与首次点击行为一致：进入读入态、可继续输入（实测输入的 "First" 落在 Title 上）
-- [x] #4 重复点击已激活的同一个 Title 不丢读入态：仍 `_reading === true`，后续输入追加在同一值上
-- [x] #5 点击 Status / Priority 打开其 picker，条目等于该字段配置的完整选项集（含 Draft / None 等既有构造规则），确认后焦点回到被点的选择器；fork 无 Type 选择器，故 Type 不在适用面内（同 BACK-678 / TUI-3 结论）
-- [x] #6 点击处理器 `return false` 掐断冒泡的效果被测试钉住：点击后字段仍处于读入态，不出现「同一 widget 二次 focus → 自 blur → `_reading` 翻 false」；该断言在删掉 `return false` 时必须变红
-- [x] #7 任务 Notes 记录真实 screen + 真实鼠标派发路径的实测数值与证据边界，且键盘导航、动作按钮、持久化、布局行为不变（相邻 composer / board 套件保持全绿）
+- [x] #1 Review the upstream changes with `git log --oneline v1.50.1..v1.52.0 --grep BACK-590` and `git show b2fecd1d` as implementation reference, and confirm each change against the fork before porting it - the composer is self-authored here, so the port targets the fork's own insertion point rather than an upstream file
+- [x] #2 Clicking either composer text field (Title / Description) leaves it solely highlighted and in the read state: `screen.focused` is the clicked field, `_reading === true`, `getCursor()` returns a value, and the following keystrokes land in that field - measured at 100x30, typing "Clicked description" after clicking Description makes `getValue()` equal that string, where the pre-change code still returned ""
+- [x] #3 The previously highlighted control visibly loses its highlight on click: the clicked text field's border is yellow while the other text field's border returns to gray - measured with the Title border going from yellow to gray
+- [x] #4 Navigating away from Title with the keyboard and then clicking Title behaves like the first click: it enters the read state and accepts further input - measured with the typed "First" landing in Title
+- [x] #5 Clicking the already-active Title again does not drop the read state: `_reading === true` still holds and later input is appended to the same value
+- [x] #6 Clicking Status / Priority opens its picker with entries equal to that field's full configured option set (including the existing construction rules such as Draft / None), and confirming returns focus to the clicked selector; the composer has no Type selector, so Type is out of scope
+- [x] #7 The effect of the click handler's `return false` bubbling cut is pinned by a test: after a click the field is still in the read state and the "same widget focuses twice -> self-blur -> `_reading` flips false" path does not occur; that assertion must go red when `return false` is removed
+- [x] #8 The task notes record the measured values and the evidence boundary of the real-screen, real-mouse dispatch path, and keyboard navigation, action buttons, persistence and layout behaviour are unchanged (the neighbouring composer / board suites stay green)
 <!-- AC:END -->
 
 ## Definition of Done
@@ -53,38 +54,42 @@ fork 没有 Type 选择器（TUI-3 已确认），所以适用面是 Title / Des
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. 用一个循环把 Title / Description / Status / Priority 的 `click` 统一接进既有的 `focusField` 转换：文本字段因此复用 readInput / caret 行为，选择器沿用既有 openPicker；删掉选择器原先那条只开 picker、不经 focusField 的 click 处理器。
-2. 处理器 `return false` 掐断冒泡：阻止 blessed 祖先链上的 `element click` 对同一个 widget 二次 focus（经 `_focus(el, old)` 的 `old.emit("blur")` 自 blur），否则 readInput 刚建立的读入态会被立刻取消（实测去掉后 `_reading` 由 true 变 false）。
-3. 用真实鼠标派发路径写回归：`program.emit("mouse", { action: "mousedown" | "mouseup", x, y })`，坐标取自渲染后的 `lpos` 中心；覆盖点击进入读入态与光标、独占高亮、打字落地、重复点击同一 Title、以及 Status / Priority 点开 picker 并恢复焦点。
-4. 跑聚焦 composer 套件、`bunx tsc --noEmit`、`bun run check .`；做整份与按子句两层回退验证；把实测数值写进任务 Notes。
+1. Route the `click` of Title / Description / Status / Priority into the existing `focusField` transition through one loop: text fields thereby reuse the readInput / caret behaviour and selectors keep the existing openPicker; delete the selector's previous click handler that only opened the picker without going through `focusField`.
+
+2. Have the handler `return false` to cut the bubbling: this stops blessed's ancestor-chain `element click` from focusing the same widget a second time (which self-blurs through `_focus(el, old)`'s `old.emit("blur")`) and cancelling the read state readInput had just established - measured as `_reading` going from true to false once the return is removed.
+
+3. Write the regression through the real mouse dispatch path: `program.emit("mouse", { action: "mousedown" | "mouseup", x, y })` with coordinates taken from the centre of the rendered `lpos`; cover entering the read state with a cursor, sole highlight, typed input landing, re-clicking an active Title, and Status / Priority opening their pickers and restoring focus.
+
+4. Run the focused composer suites, `bunx tsc --noEmit` and `bun run check .`; perform both whole-change and per-clause rollback verification; write the measured values into the task notes.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-用一个循环把 Title / Description / Status / Priority 的 `click` 统一接进既有的 `focusField` 转换，并删掉选择器原先那条只开 picker、不经 focusField 的 click 处理器；处理器 `return false` 掐断冒泡。
+Title / Description / Status / Priority `click` handlers now funnel into the existing `focusField` transition through a single loop, and the selector's old click handler - which only opened the picker without going through `focusField` - is gone; the handler returns `false` to cut the bubbling.
 
-**为什么 `return false` 是必需的（实测机制，不是照抄上游注释）**：blessed 的 `screen.focused` setter 走 `Screen._focus(el, old)`，会**无条件** `old.emit("blur")`；点击冒泡到祖先链上的 `element click` 后，screen 的 autofocus 处理器对该 widget 再 `focus()` 一次 → 同一个 widget 自己 blur 自己 → `readInput` 注册的 blur 处理器 `_done` 立刻把 `_reading` 置 false 并 `delete this._done`（dist 12823-12832）；而 `__listener` 要到 `nextTick` 才挂上，于是 keypress 监听器留在原处、`_done` 已被删除。实测后果不只是丢读入态：此后再按 Escape 会走到 `_listener` 的 `done(null, null)` 而抛 **TypeError: done is not a function**（dist 12894，实测在测试收尾时炸出来并连带污染后续用例）。
+**Why `return false` is required (measured mechanism, not an inherited comment)**: blessed's `screen.focused` setter runs `Screen._focus(el, old)`, which **unconditionally** does `old.emit("blur")`. Once the click bubbles to the ancestor-chain `element click`, the screen's autofocus handler focuses the same widget again, so the widget blurs itself and the blur handler `readInput` registered (`_done`) immediately sets `_reading` to false and does `delete this._done` (dist 12823-12832). `__listener` is only attached on the following `nextTick`, so the keypress listener stays in place while `_done` has already been deleted. The measured fallout is not limited to the lost read state: pressing Escape afterwards reaches `_listener`'s `done(null, null)` and throws **TypeError: done is not a function** (dist 12894, observed blowing up in test teardown and smearing into later cases).
 
-**实测证据**（真实 blessed screen 100x30，走真实鼠标派发路径 `program.emit("mouse", { action: "mousedown" | "mouseup", x, y })`，坐标取自渲染后 `lpos` 的中心）：
-- 修复前：点 Description → `screen.focused` 确实变为 description，但 `_reading=undefined`、边框仍 gray、**Title 仍 yellow**（旧高亮不撤），随后输入 "Clicked description" 后 `getValue()` 仍为 `""`；键盘导航走后回点 Title 同症（`_reading=false`，"First" 丢失）。
-- 修复后：同两步 → `_reading=true`、`getCursor()` 有值、被点框 yellow 且另一框 gray、输入分别落地为 "Clicked description" / "First"；重复点已激活的 Title 仍 `_reading=true` 且字符追加（"First" → "First again"）；点 Status / Priority 打开 picker，条目分别等于 `["Draft","To Do","In Progress","Done"]` / `["None","High","Medium","Low"]`，确认后焦点回到被点选择器（inverse + bold）。
+**Measurements** (real blessed screen at 100x30 through the real mouse dispatch path `program.emit("mouse", { action: "mousedown" | "mouseup", x, y })`, coordinates taken from the centre of the rendered `lpos`):
 
-**适用面裁剪**：fork 无 Type 选择器（同 BACK-678 / TUI-3 结论），上游 AC 的「Status, Type, Priority」在 fork 收敛为 Status / Priority。上游测试用 `widget.emit("click", …)` 直投；fork 改用真实鼠标派发路径（blessed 自己的命中测试、clickable 注册与冒泡链全部参与），并显式断言「picker 打开期间先前聚焦的文本框已让出高亮」——该断言是选择器那一半改动的唯一判别点。
+- Before the fix: clicking Description did move `screen.focused` to description, but `_reading=undefined`, the border stayed gray and **Title stayed yellow** (the old highlight was never withdrawn); typing "Clicked description" afterwards left `getValue()` at `""`. Clicking Title after keyboard navigation behaved the same (`_reading=false`, "First" lost).
+- After the fix: the same two steps give `_reading=true`, a `getCursor()` value, a yellow border on the clicked field and gray on the other, and the input landing as "Clicked description" / "First" respectively; re-clicking the active Title keeps `_reading=true` and appends ("First" then "First again"); clicking Status / Priority opens their pickers with entries equal to `["Draft","To Do","In Progress","Done"]` / `["None","High","Medium","Low"]`, and confirming returns focus to the clicked selector (inverse + bold).
 
-**回退矩阵**（4 变体 × 4 用例逐条单跑）：修复前 HEAD → 4 条全红；只去掉 `return false` → 3 条文本用例红（卡在 `_reading` true vs false）、选择器用例保持绿；只让选择器跳过 `focusField` → 恰好选择器用例红；当前实现 → 4 条全绿。整份回退时选择器用例同样变红（它已依赖 focusField 那条断言）。
+**Surface trim**: the composer has no Type selector, so the criteria cover Status / Priority rather than Status / Type / Priority. The regression drives the real mouse dispatch path instead of emitting `click` on the widget directly (blessed's own hit testing, clickable registration and the bubbling chain all participate) and explicitly asserts that the previously focused text field has given up its highlight while the picker is open - that assertion is the only discriminator for the selector half of the change.
 
-**测试助手踩坑**：收尾阶段若让异常穿透，会掩盖真正的断言失败并让后续用例级联报 `Cannot switch a node's screen`（实测护栏缺失态下 Escape 在 blessed 内抛错，屏幕未销毁）→ `withComposer` 的 finally 用 try/catch 包住收尾并保证 `screen.destroy()` 落到 finally。双弹窗收尾顺序：第一次 Escape 关 picker，第二次取消 composer。
+**Rollback matrix** (4 variants x 4 cases, each run on its own): pre-change HEAD -> all 4 red; with only `return false` removed -> the 3 text cases red (stuck on `_reading` true vs false) while the selector case stays green; with the selector skipping `focusField` -> exactly the selector case red; current implementation -> all 4 green. A whole-block rollback also turns the selector case red, since it now depends on the focusField assertion.
 
-**验证**：新增 `src/test/tui-task-composer-mouse.test.ts`（4 用例 / 33 断言）；相邻 12 个套件 88 pass / 0 fail（tui-task-composer 15 / layout 4 / unicode 2 / board-hide-empty-columns 14 / board-render 4 / help-popup 8 / tui-vim-boundary-navigation 5 / tui-emoji-width 4 / tui-acceptance-criteria-progress 18 / generic-list-selection 3 / line-wrapping 7）；`bunx tsc --noEmit` 干净；`bun run check .` 432 文件仅 3 条既有 `assets.ts` warning。
+**Test-helper pitfall**: letting an exception escape during teardown masks the real assertion failure and makes later cases cascade with `Cannot switch a node's screen` (measured with the guard missing: Escape throws inside blessed and the screen is never destroyed), so `withComposer`'s finally wraps teardown in try/catch and guarantees `screen.destroy()` runs in the finally block. Two-popup teardown order: the first Escape closes the picker, the second cancels the composer.
 
-**证据边界**：fork 的 `createScreen` 传 `mouse: process.platform !== "win32"`，本机 win32 上拿不到真机 PTY 鼠标事件（仓库自带的交互 PTY 用例 `tui-ready-filter-pty` 在 win32 恒 skip），故证据为 widget 级的真实派发路径（与上游自称的 deterministic widget evidence 同口径）。
+**Verification**: new `src/test/tui-task-composer-mouse.test.ts` (4 cases / 33 assertions); the 12 neighbouring suites give 88 pass / 0 fail (tui-task-composer 15 / layout 4 / unicode 2 / board-hide-empty-columns 14 / board-render 4 / help-popup 8 / tui-vim-boundary-navigation 5 / tui-emoji-width 4 / tui-acceptance-criteria-progress 18 / generic-list-selection 3 / line-wrapping 7); `bunx tsc --noEmit` clean; `bun run check .` over 432 files reports only the 3 pre-existing `assets.ts` warnings.
 
-**撞号登记**：本任务分配到 BACK-679，撞上游 BACK-679（= CORE-35「Quote assignee and reporter under every frontmatter key spelling」，分类表里判为 C 类忽略）。fork 保持分配号不改号，台账（doc-12 / doc-13）的登记与提交按用户 2026-09-19 规则先问后做。
+**Evidence boundary**: the fork's `createScreen` passes `mouse: process.platform !== "win32"`, so a real PTY mouse event is not reachable on this win32 host (the repository's interactive PTY case `tui-ready-filter-pty` is permanently skipped on win32). The evidence is therefore the widget-level real dispatch path.
+
+**Number collision**: the allocated id duplicates an unrelated entry already registered in the migration ledger (a category-C entry carrying no code of its own here). The fork keeps the number it was handed and renumbers nothing; the ledger row for the collision, and its bookkeeping commit, are left to a separate change per the 2026-09-19 rule to ask first.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-composer 的鼠标激活现在与键盘导航共用同一条 `focusField` / `readInput` 转换：点任一文本字段都会独占高亮并进入读入态（光标可见、字符立即落地），重复点已激活的 Title 仍可继续输入，点 Status / Priority 打开既有 picker 并在确认后把焦点交回被点的选择器。关键细节是点击处理器 `return false` 掐断冒泡——否则 blessed 的祖先链 autofocus 会对同一 widget 二次 focus，经 `screen.focused` setter 的 `old.emit("blur")` 自 blur，刚建立的读入态被立刻取消（实测会让后续 Escape 在 blessed 内抛 TypeError）。新增 `src/test/tui-task-composer-mouse.test.ts`，用真实鼠标派发路径覆盖读入态与光标、独占高亮、打字落地、重复激活与两个选择器的 picker。验证：该文件 4 用例 / 33 断言，相邻 12 个套件 88 pass / 0 fail，`bunx tsc --noEmit` 干净，`bun run check .` 仅 3 条既有 `assets.ts` warning；回退矩阵（整份 / 去护栏 / 选择器不走 focusField）逐条给出一致的红项。
+Mouse activation in the composer now shares the single `focusField` / `readInput` transition with keyboard navigation: clicking any text field gives it sole highlight and the read state (visible cursor, characters landing immediately), re-clicking the active Title keeps accepting input, and clicking Status / Priority opens the existing picker and hands focus back to the clicked selector on confirm. The load-bearing detail is the click handler's `return false` bubbling cut - without it blessed's ancestor-chain autofocus focuses the same widget twice, self-blurs it through the `screen.focused` setter's `old.emit("blur")`, and the freshly established read state is cancelled at once (measured to make a later Escape throw a TypeError inside blessed). New `src/test/tui-task-composer-mouse.test.ts` covers the read state and cursor, sole highlight, typed input landing, repeated activation and both selectors' pickers through the real mouse dispatch path. Verification: 4 cases / 33 assertions in that file, 88 pass / 0 fail across the 12 neighbouring suites, `bunx tsc --noEmit` clean, `bun run check .` reporting only the 3 pre-existing `assets.ts` warnings, and a rollback matrix (whole change / guard removed / selector bypassing focusField) producing consistent red items.
 <!-- SECTION:FINAL_SUMMARY:END -->

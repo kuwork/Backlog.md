@@ -119,7 +119,7 @@ Web: added 'Clear comments' text button to the right of the Comments section hea
 author: @kimi
 created: 2026-09-08 16:39
 ---
-Label tweak: Clear-comments header button text is now short label (en 'Clear', zh '清空', ja '全削除') via new clearCommentsLabel locale key; the descriptive clearComments string is kept as the hover tooltip. dist rebuilt.
+Label tweak: the clear-comments header button now prints a short label in every locale (through the new clearCommentsLabel key), while the descriptive clearComments string is kept as the hover tooltip. dist rebuilt.
 ---
 
 author: @kimi

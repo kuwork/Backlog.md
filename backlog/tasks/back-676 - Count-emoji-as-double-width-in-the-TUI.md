@@ -43,8 +43,8 @@ The regression test is what survives the bump: it is what stops the widths from 
 - [x] #3 `bun.lock` pins `neo-neo-bblessed@1.0.10` with the published sha512, and `bun.nix` carries the matching version key, tarball URL and hash, so the manifest, the lockfile and the generated Nix expression agree on one source of truth.
 - [x] #4 The installed dependency measures default-emoji-presentation codepoints as 2 cells, which is what terminals draw: rocket, grinning face, lady beetle, sparkles, check mark, wrench, magnifier, ladybug and star.
 - [x] #5 VS16 emoji sequences measure 2 cells (`⚠️`, `❤️`), and a redundant VS16 after an already-wide emoji (`✅️`) still measures 2 rather than 3.
-- [x] #6 Text-presentation characters keep their single-cell width and ASCII and CJK are unchanged: `⚠` and `🌡` measure 1, `A` measures 1, `hello` measures 5, `中` measures 2.
-- [x] #7 The layout regex the renderer uses to classify wide cells marks emoji (`🚀`, `✅`) and CJK (`中`) as wide, and leaves ASCII (`A`) unmatched.
+- [x] #6 Text-presentation characters keep their single-cell width and ASCII and CJK are unchanged: `⚠` and `🌡` measure 1, `A` measures 1, `hello` measures 5, and a CJK ideograph measures 2.
+- [x] #7 The layout regex the renderer uses to classify wide cells marks emoji (`🚀`, `✅`) and a CJK ideograph as wide, and leaves ASCII (`A`) unmatched.
 - [x] #8 A TUI emoji-width regression test covers those four surfaces and passes against the installed dependency.
 - [x] #9 The repository keeps no local patch directory and no in-tree width table for the rendering library, so the emoji widths come from the dependency alone.
 <!-- AC:END -->

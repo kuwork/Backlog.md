@@ -64,7 +64,7 @@ Implemented preview-mode comment add in TaskDetailsModal:
 - Comment form now renders whenever the task is locally editable (!isFromOtherBranch), including preview mode (previously edit mode only).
 - Simplification: removed the preserveEditModeAfterCommentRefresh ref (legacy from BACK-470); mode preservation on refresh now relies solely on modeRef, which also fixes the edge case where canceling edit after adding a comment forced the modal back into edit mode.
 - Comment author input: added missing placeholder-gray-400 dark:placeholder-gray-500 classes (was rendering white-ish in dark mode).
-- i18n: zh-CN/zh-TW placeholderCommentAuthor changed from 作者/作者 to 评论人/評論人; en/ja unchanged.
+- i18n: the zh-CN / zh-TW placeholderCommentAuthor value changed to the term the UI uses for a commenter, in both scripts; en/ja unchanged.
 - Tests: updated preview assertions in web-task-details-modal-final-summary.test.tsx and added a preview-mode add test verifying the modal stays in preview after submit.
 
 Full verification: bun test (2176 tests across 237 files) passed with 0 failures; an earlier run showed 2 flaky failures (git blob temporarily unavailable) that did not reproduce.
@@ -79,7 +79,7 @@ Changes:
 - TaskDetailsModal: comment form renders for every locally editable task (removed the edit-mode-only condition); cross-branch read-only tasks still hide the form.
 - Removed the redundant preserveEditModeAfterCommentRefresh ref; mode across refreshes is handled by modeRef alone.
 - Comment author input placeholder styled with placeholder-gray-400 dark:placeholder-gray-500 (was unreadable white in dark mode).
-- i18n: zh-CN/zh-TW author placeholder is now 评论人/評論人.
+- i18n: the zh-CN / zh-TW author placeholder now reads as the UI's term for a commenter.
 
 Verification:
 - bunx tsc --noEmit
