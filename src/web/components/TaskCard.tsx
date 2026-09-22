@@ -16,7 +16,47 @@ interface TaskCardProps {
   laneId?: string;
   terminalStatus?: string | null;
   labelColors?: Record<string, string>;
+  isSelected?: boolean;
+  selectionCount?: number;
+  onSelect?: (event: { shiftKey: boolean }) => void;
+  isSelectionDragging?: boolean;
+  onSelectionDragChange?: (active: boolean) => void;
 }
+
+// Dragging a selected card moves the whole selection, so the drag image has to show it. Stacking
+// empty cards (up to two) behind a copy of the dragged one, plus the count of every task that will
+// move, keeps the board's own card styling.
+const buildSelectionDragImage = (source: HTMLElement, count: number): HTMLElement => {
+  const width = source.offsetWidth;
+  const height = source.offsetHeight;
+  const layer = (offset: number) => `position:absolute;top:${offset}px;left:${offset}px;width:${width}px;height:${height}px;margin:0;`;
+
+  const behind = Math.min(count - 1, 2);
+  const spread = 6 * behind;
+  const ghost = document.createElement('div');
+  ghost.style.cssText = `position:fixed;top:-1000px;left:-1000px;width:${width + spread}px;height:${height + spread}px;pointer-events:none;`;
+
+  for (let depth = behind; depth >= 1; depth -= 1) {
+    const shell = document.createElement('div');
+    shell.className = source.className;
+    shell.style.cssText = layer(6 * depth);
+    ghost.appendChild(shell);
+  }
+
+  const front = source.cloneNode(true) as HTMLElement;
+  front.style.cssText = layer(0);
+  ghost.appendChild(front);
+
+  const badge = document.createElement('div');
+  badge.textContent = String(count);
+  badge.style.cssText =
+    'position:absolute;top:-8px;right:-8px;min-width:24px;height:24px;padding:0 6px;border-radius:9999px;' +
+    'background:#3b82f6;color:#ffffff;font-size:12px;font-weight:600;line-height:24px;text-align:center;' +
+    'box-shadow:0 1px 3px rgba(0,0,0,0.3);';
+  ghost.appendChild(badge);
+
+  return ghost;
+};
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -147,7 +187,21 @@ const WidthAwareLabels: React.FC<WidthAwareLabelsProps> = ({ labels, labelColors
   );
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEnd, status, laneId, terminalStatus, labelColors }) => {
+const TaskCard: React.FC<TaskCardProps> = ({
+  task,
+  onEdit,
+  onDragStart,
+  onDragEnd,
+  status,
+  laneId,
+  terminalStatus,
+  labelColors,
+  isSelected = false,
+  selectionCount = 0,
+  onSelect,
+  isSelectionDragging = false,
+  onSelectionDragChange,
+}) => {
   const { t } = useI18n();
   const [isDragging, setIsDragging] = React.useState(false);
   const [showBranchTooltip, setShowBranchTooltip] = React.useState(false);
@@ -186,12 +240,34 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
       e.dataTransfer.setData('text/lane', laneId);
     }
     e.dataTransfer.effectAllowed = 'move';
+
+    // A modifier-press that turns straight into a drag never completes the click, so the selection
+    // would miss the very card being dragged and both the badge and the drop would come up one
+    // short. Joining the selection here keeps them in agreement with what the user grabbed.
+    const joinsSelection = !isSelected && selectionCount > 0 && (e.ctrlKey || e.metaKey) && Boolean(onSelect);
+    if (joinsSelection) onSelect?.({ shiftKey: false });
+    const batchCount = isSelected ? selectionCount : joinsSelection ? selectionCount + 1 : 1;
+
+    if (batchCount > 1) {
+      // The whole selection moves with this drag, so every selected card on the board carries the
+      // same dragging treatment as the grabbed one.
+      onSelectionDragChange?.(true);
+      if (typeof e.dataTransfer.setDragImage === 'function') {
+        const ghost = buildSelectionDragImage(e.currentTarget as HTMLElement, batchCount);
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, 16, 16);
+        // The browser snapshots the element during setDragImage, so it only has to survive this tick.
+        setTimeout(() => ghost.remove(), 0);
+      }
+    }
+
     setIsDragging(true);
     onDragStart?.();
   };
 
   const handleDragEnd = () => {
     setIsDragging(false);
+    onSelectionDragChange?.(false);
     onDragEnd?.();
   };
 
@@ -225,12 +301,26 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDragStart, onDragEn
             ? 'opacity-75 cursor-not-allowed border-dashed' 
             : 'cursor-pointer hover:shadow-md dark:hover:shadow-lg hover:border-stone-500 dark:hover:border-stone-400'
         } ${getPriorityClass(task.priority)} ${dueDateRiskClass} ${
-          isDragging ? 'opacity-50 transform rotate-2 scale-105' : ''
+          isDragging || (isSelected && isSelectionDragging) ? 'opacity-50 transform rotate-2 scale-105' : ''
+        } ${
+          isSelected
+            ? 'ring-2 ring-blue-500 dark:ring-blue-400 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30'
+            : ''
         }`}
+        data-selected={isSelected ? 'true' : 'false'}
         draggable={!isFromOtherBranch && !isFromCompletedCorpus}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onClick={() => onEdit(task)}
+        onClick={(event) => {
+          // Ctrl/Cmd and Shift belong to the board selection, so they must not open the editor.
+          if (onSelect && !isFromOtherBranch && !isFromCompletedCorpus && (event.ctrlKey || event.metaKey || event.shiftKey)) {
+            event.preventDefault();
+            event.stopPropagation();
+            onSelect({ shiftKey: event.shiftKey });
+            return;
+          }
+          onEdit(task);
+        }}
       >
         {/* Cross-branch indicator banner */}
         {isFromOtherBranch && (

@@ -169,6 +169,15 @@ export const zhTW: TranslationDict = {
 		milestoneSwimlanes: "里程碑泳道",
 		noMilestonesHint: "沒有任務關聯里程碑。請先將任務分配給里程碑。",
 		groupByMilestone: "按里程碑分組",
+		selectionToolbar: "任務多選",
+		selectionCount: (count: number) => `已選擇 ${count} 項`,
+		moveSelectedTasksTo: "將選中任務移動到",
+		batchMovePlaceholder: "移動到…",
+		batchMoveAction: "移動",
+		clearSelection: "清除選擇",
+		batchMoveFailed: (failed: number, total: number, details: string) =>
+			`${total} 個任務中有 ${failed} 個未能移動。${details}`,
+		batchMoveError: "移動任務失敗",
 	},
 
 	taskList: {

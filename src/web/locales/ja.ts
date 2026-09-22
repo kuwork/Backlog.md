@@ -169,6 +169,15 @@ export const ja: TranslationDict = {
 		milestoneSwimlanes: "マイルストーンスイムレーン",
 		noMilestonesHint: "マイルストーンが設定されたタスクがありません。タスクにマイルストーンを割り当ててください。",
 		groupByMilestone: "マイルストーンでグループ化",
+		selectionToolbar: "タスクの複数選択",
+		selectionCount: (count: number) => `${count} 件を選択中`,
+		moveSelectedTasksTo: "選択したタスクの移動先",
+		batchMovePlaceholder: "移動先…",
+		batchMoveAction: "移動",
+		clearSelection: "選択を解除",
+		batchMoveFailed: (failed: number, total: number, details: string) =>
+			`${total} 件のうち ${failed} 件を移動できませんでした。${details}`,
+		batchMoveError: "タスクを移動できませんでした",
 	},
 
 	taskList: {

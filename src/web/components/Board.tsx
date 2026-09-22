@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../hooks/useI18n';
 import { type Milestone, type Task } from '../../types';
 import { apiClient, type ReorderTaskPayload } from '../lib/api';
-import { buildLanes, DEFAULT_LANE_KEY, groupTasksByLaneAndStatus, type LaneMode } from '../lib/lanes';
+import { buildLanes, DEFAULT_LANE_KEY, groupTasksByLaneAndStatus, type LaneMode, sortTasksForStatus } from '../lib/lanes';
 import { collectAvailableLabels, labelsToLower } from '../../utils/label-filter';
 import { collectArchivedMilestoneKeys, milestoneKey } from '../utils/milestones';
 import { getTerminalStatus } from '../../utils/terminal-status';
@@ -79,6 +79,12 @@ const Board: React.FC<BoardProps> = ({
     { label: t.common.low, value: 'low' },
   ] as const;
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null);
+  // True while a drag that moves the whole selection is in flight, so every selected card can
+  // carry the same dragging treatment as the grabbed one.
+  const [isSelectionDragging, setIsSelectionDragging] = useState(false);
+  const [batchMoveStatus, setBatchMoveStatus] = useState<string>('');
   const [dragSourceStatus, setDragSourceStatus] = useState<string | null>(null);
   const [dragSourceLane, setDragSourceLane] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -282,6 +288,105 @@ const Board: React.FC<BoardProps> = ({
       }
     }
   }, [highlightTaskId, tasks, onEditTask]);
+
+  const clearSelection = React.useCallback(() => {
+    setSelectedTaskIds([]);
+    setSelectionAnchorId(null);
+    // A completed batch drop can unmount the grabbed card before its dragend fires, so the
+    // selection-drag state resets here rather than trusting that event.
+    setIsSelectionDragging(false);
+  }, []);
+
+  const toggleTaskSelection = React.useCallback((taskId: string) => {
+    setSelectedTaskIds((previous) =>
+      previous.includes(taskId) ? previous.filter((id) => id !== taskId) : [...previous, taskId]
+    );
+    setSelectionAnchorId(taskId);
+  }, []);
+
+  // A range only adds to the selection, so leaving the anchor on the first clicked card reaches the
+  // same union a moved anchor would. The anchor moves on ctrl-click, where it does change the range.
+  const selectTaskRange = React.useCallback((taskIds: string[]) => {
+    setSelectedTaskIds((previous) => {
+      const next = [...previous];
+      for (const taskId of taskIds) {
+        if (!next.includes(taskId)) next.push(taskId);
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selectedTaskIds.length === 0) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearSelection();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTaskIds.length, clearSelection]);
+
+  // targetMilestone is only supplied by a drop into a milestone lane; the toolbar moves the
+  // selection between columns and leaves every task's milestone alone. A drop also names the order
+  // it previewed, which is what lands the batch at the dropped position instead of the column end.
+  const handleBatchMove = async (targetStatus: string, targetMilestone?: string | null, orderedTaskIds?: string[]) => {
+    if (selectedTaskIds.length === 0 || !targetStatus) return;
+    const resolutions = selectedTaskIds.map((taskId) => ({
+      taskId,
+      task: tasks.find((candidate) => candidate.id === taskId),
+    }));
+    const selectedTasks = resolutions
+      .map((resolution) => resolution.task)
+      .filter((task): task is Task => task !== undefined);
+
+    // Cards the board cannot place (a task gone since it was selected) still travel in the request
+    // so the server can report them per task, and they close the named order rather than break it.
+    const unplaceableIds = resolutions.filter(({ task }) => !task).map(({ taskId }) => taskId);
+    const taskIds = [...selectionOrderIds, ...unplaceableIds];
+    const namedOrder = orderedTaskIds ? [...orderedTaskIds, ...unplaceableIds] : undefined;
+
+    // Dropping the selection back where it already sits changes nothing, so it stays a pure no-op:
+    // no request, no refresh, and the selection survives so the drag can be retried. A drop that
+    // names an order has already established that it moves, so it skips this test.
+    const landsWhereItAlreadyIs =
+      !namedOrder &&
+      selectedTasks.length === taskIds.length &&
+      selectedTasks.every(
+        (task) =>
+          task.status === targetStatus &&
+          (targetMilestone === undefined ||
+            canonicalizeMilestone(task.milestone) === canonicalizeMilestone(targetMilestone))
+      );
+    if (landsWhereItAlreadyIs) return;
+
+    const requestTask = selectedTasks[0];
+    clearSelection();
+    setBatchMoveStatus('');
+    try {
+      const result = await apiClient.moveTasks({
+        taskIds,
+        targetStatus,
+        ...(targetMilestone !== undefined ? { targetMilestone } : {}),
+        ...(namedOrder ? { orderedTaskIds: namedOrder } : {}),
+      });
+      setUpdateError(
+        result.failures.length > 0
+          ? t.board.batchMoveFailed(
+              result.failures.length,
+              taskIds.length,
+              result.failures.map((failure) => `${failure.taskId}: ${failure.reason}`).join(' ')
+            )
+          : null
+      );
+      // Feed the moved tasks back through the board's own store update, exactly as a single-card
+      // reorder does. Reloading every board resource instead remounts the whole view.
+      const movedTasks = result.changedTasks ?? result.tasks;
+      if (requestTask && onTasksUpdated && movedTasks.length > 0) {
+        onTasksUpdated(movedTasks, requestTask);
+      } else if (onRefreshData) await onRefreshData();
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : t.board.batchMoveError);
+    }
+  };
 
   const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
     try {
@@ -490,13 +595,62 @@ const Board: React.FC<BoardProps> = ({
     }));
   };
 
+  // A card hidden by a filter or a collapsed lane is no longer part of what the user sees, so it
+  // must not ride along in a batch move. Pruning here keeps the selection equal to the visible cards.
+  useEffect(() => {
+    const visibleIds = new Set(filteredTasks.map((task) => task.id));
+    if (laneMode === 'milestone') {
+      for (const lane of lanes) {
+        if (!isLaneCollapsed(lane.key, lane.milestone)) continue;
+        const statusMap = displayTasksByLane.get(lane.key);
+        if (!statusMap) continue;
+        for (const laneTasks of statusMap.values()) {
+          for (const task of laneTasks) visibleIds.delete(task.id);
+        }
+      }
+    }
+    setSelectedTaskIds((previous) => {
+      const next = previous.filter((taskId) => visibleIds.has(taskId));
+      return next.length === previous.length ? previous : next;
+    });
+    setSelectionAnchorId((previous) => (previous && visibleIds.has(previous) ? previous : null));
+    // biome-ignore lint/correctness/useExhaustiveDependencies: isLaneCollapsed is a plain render-scope helper; its inputs are listed.
+  }, [filteredTasks, laneMode, lanes, displayTasksByLane, collapsedLanes, milestoneFilter, canonicalMilestoneFilter]);
+
+  // The selection keeps the order it reads in on the board, so a batch lands in that order instead
+  // of the order the cards happened to be clicked.
+  const selectionOrderIds = React.useMemo(() => {
+    const selected = new Set(selectedTaskIds);
+    const picked = tasks.filter((task) => selected.has(task.id));
+    return statuses
+      .flatMap((status) => sortTasksForStatus(picked.filter((task) => task.status === status), status))
+      .map((task) => task.id);
+  }, [selectedTaskIds, statuses, tasks]);
+
+  const selectionProps = {
+    selectedTaskIds,
+    selectionAnchorId,
+    selectionOrderIds,
+    onToggleTaskSelection: toggleTaskSelection,
+    onSelectTaskRange: selectTaskRange,
+    onBatchMove: handleBatchMove,
+    isSelectionDragging,
+    onSelectionDragChange: setIsSelectionDragging,
+  };
+
   // Dynamic layout using flexbox:
   // - Columns are flex items with equal growth (flex-1) to divide space evenly
   // - A minimum width keeps columns readable; beyond available space, container scrolls horizontally
   // - Works uniformly for any number of columns without per-count conditionals
 
   return (
-    <div className="w-full">
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape already clears the selection for keyboard users.
+    <div
+      className="w-full"
+      onClick={(event) => {
+        if (selectedTaskIds.length > 0 && event.target === event.currentTarget) clearSelection();
+      }}
+    >
       {updateError && (
         <div className="mb-4 rounded-md bg-red-100 px-4 py-3 text-sm text-red-700 dark:bg-red-900/40 dark:text-red-200 transition-colors duration-200">
           {updateError}
@@ -597,6 +751,45 @@ const Board: React.FC<BoardProps> = ({
         </button>
       </div>
 
+      {selectedTaskIds.length > 0 && (
+        <div
+          className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 transition-colors duration-200"
+          role="toolbar"
+          aria-label={t.board.selectionToolbar}
+        >
+          <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+            {t.board.selectionCount(selectedTaskIds.length)}
+          </span>
+          <label className="sr-only" htmlFor="batch-move-status">
+            {t.board.moveSelectedTasksTo}
+          </label>
+          <select
+            id="batch-move-status"
+            className={BOARD_FILTER_SELECT_CLASS}
+            value={batchMoveStatus}
+            onChange={(event) => setBatchMoveStatus(event.target.value)}
+          >
+            <option value="">{t.board.batchMovePlaceholder}</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={BOARD_FILTER_BUTTON_CLASS}
+            disabled={!batchMoveStatus}
+            onClick={() => handleBatchMove(batchMoveStatus)}
+          >
+            {t.board.batchMoveAction}
+          </button>
+          <button type="button" className={BOARD_FILTER_BUTTON_CLASS} onClick={clearSelection}>
+            {t.board.clearSelection}
+          </button>
+        </div>
+      )}
+
       {loadError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-6 py-10 text-center dark:border-red-800 dark:bg-red-900/20" role="alert">
           <p className="font-medium text-red-700 dark:text-red-300">{t.common.failedToLoad}</p>
@@ -683,6 +876,7 @@ const Board: React.FC<BoardProps> = ({
                             onCleanup={status === terminalStatus ? () => setShowCleanupModal(true) : undefined}
                             terminalStatus={terminalStatus}
                             labelColors={labelColors}
+                            {...selectionProps}
                           />
                         </div>
                       ))}
@@ -713,6 +907,7 @@ const Board: React.FC<BoardProps> = ({
                   onCleanup={status === terminalStatus ? () => setShowCleanupModal(true) : undefined}
                   terminalStatus={terminalStatus}
                   labelColors={labelColors}
+                  {...selectionProps}
                 />
               </div>
             ))}

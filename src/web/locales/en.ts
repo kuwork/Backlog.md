@@ -167,6 +167,15 @@ export const en = {
 		milestoneSwimlanes: "Milestone swimlanes",
 		noMilestonesHint: "No tasks have milestones. Assign milestones to tasks first.",
 		groupByMilestone: "Group tasks by milestone",
+		selectionToolbar: "Task selection",
+		selectionCount: (count: number) => `${count} selected`,
+		moveSelectedTasksTo: "Move selected tasks to",
+		batchMovePlaceholder: "Move to...",
+		batchMoveAction: "Move",
+		clearSelection: "Clear",
+		batchMoveFailed: (failed: number, total: number, details: string) =>
+			`Could not move ${failed} of ${total} tasks. ${details}`,
+		batchMoveError: "Failed to move tasks",
 	},
 
 	taskList: {

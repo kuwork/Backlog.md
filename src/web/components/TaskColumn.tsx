@@ -22,6 +22,15 @@ interface TaskColumnProps {
   targetMilestone?: string | null;
   terminalStatus?: string | null;
   labelColors?: Record<string, string>;
+  selectedTaskIds?: string[];
+  selectionAnchorId?: string | null;
+  /** The selected cards in the order they read on the board, which is the order a batch lands in. */
+  selectionOrderIds?: string[];
+  onToggleTaskSelection?: (taskId: string) => void;
+  onSelectTaskRange?: (taskIds: string[]) => void;
+  onBatchMove?: (targetStatus: string, targetMilestone?: string | null, orderedTaskIds?: string[]) => void;
+  isSelectionDragging?: boolean;
+  onSelectionDragChange?: (active: boolean) => void;
 }
 
 const TaskColumn: React.FC<TaskColumnProps> = ({
@@ -40,10 +49,18 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   targetMilestone,
   terminalStatus,
   labelColors,
+  selectedTaskIds,
+  selectionAnchorId,
+  selectionOrderIds,
+  onToggleTaskSelection,
+  onSelectTaskRange,
+  onBatchMove,
+  isSelectionDragging,
+  onSelectionDragChange,
 }) => {
   const { t } = useI18n();
   const [isDragOver, setIsDragOver] = React.useState(false);
-  const [dropPosition, setDropPosition] = React.useState<{ index: number; position: 'before' | 'after' } | null>(null);
+  const [dropPosition, setDropPosition] = React.useState<{ index: number; position: 'before' | 'after' | 'self' } | null>(null);
   const [showMenu, setShowMenu] = React.useState(false);
   const [columnSort, setColumnSort] = React.useState<{ field: "id" | "title" | "priority" | "createdDate"; direction: "asc" | "desc" } | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -64,13 +81,19 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   }, [showMenu]);
 
   const getDisplayTasks = () => {
-    if (!columnSort) return tasks;
+    // A drag from another column is picking a position here, and the order the drop writes back is
+    // this column's default one, so the reader's sort stands down while that drag is over the
+    // column: the indicator then sits where the card lands, and nothing shuffles at the release.
+    // Standing down is a visit rather than a retirement, so a drag that only flies over on its way
+    // elsewhere - or one that is cancelled - leaves the reader the sort they chose.
+    const sort = isDragOver && !isDragFromSameColumn ? null : columnSort;
+    if (!sort) return tasks;
 
-    if (columnSort.field === "id") {
+    if (sort.field === "id") {
       const sorted = [...tasks].sort((a, b) => {
         const result = compareTaskIds(a.id, b.id);
         if (result !== 0) {
-          return columnSort.direction === "asc" ? result : -result;
+          return sort.direction === "asc" ? result : -result;
         }
         return compareTaskIds(a.id, b.id);
       });
@@ -78,13 +101,13 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
         sorted,
         (a, b) => compareTaskIds(a.id, b.id),
         undefined,
-        columnSort.direction,
+        sort.direction,
       );
     }
 
     return [...tasks].sort((a, b) => {
       let result = 0;
-      switch (columnSort.field) {
+      switch (sort.field) {
         case "title": {
           result = a.title.localeCompare(b.title, undefined, { sensitivity: "base", numeric: true });
           break;
@@ -110,7 +133,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
         }
       }
       if (result !== 0) {
-        return columnSort.direction === "asc" ? result : -result;
+        return sort.direction === "asc" ? result : -result;
       }
       return compareTaskIds(a.id, b.id);
     });
@@ -173,43 +196,103 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     return 'bg-stone-100 dark:bg-stone-900 text-stone-800 dark:text-stone-200 transition-colors duration-200';
   };
 
+  // A drag that grabs one card of a selection lifts the whole selection, so both the preview and
+  // the drop treat every selected card as leaving. The board draws one column per lane and status,
+  // so the lane is part of the column's identity.
+  const isDragFromSameColumn = dragSourceStatus === title && (dragSourceLane ?? null) === (laneId ?? null);
+
+  const draggingIds = React.useMemo(() => {
+    if (!draggedTaskId) return null;
+    const dragsSelection = Boolean(
+      onBatchMove && selectedTaskIds && selectedTaskIds.length > 1 && selectedTaskIds.includes(draggedTaskId),
+    );
+    return new Set(dragsSelection && selectedTaskIds ? selectedTaskIds : [draggedTaskId]);
+  }, [draggedTaskId, onBatchMove, selectedTaskIds]);
+
+  /**
+   * Resolves a drop into the index the lifted cards take in the display order without them: hovering
+   * a card anchors on that card, and every lifted card ahead of the anchor shifts the index back by
+   * one. Hovering empty column space appends.
+   */
+  const resolveInsertion = (
+    displayTasks: Task[],
+    liftedIds: ReadonlySet<string>,
+    drop: { index: number; position: 'before' | 'after' | 'self' } | null,
+  ) => {
+    const baseIds = displayTasks.filter((task) => !liftedIds.has(task.id)).map((task) => task.id);
+    if (!drop) return { baseIds, insertIndex: baseIds.length };
+    const anchor = drop.position === 'after' ? drop.index + 1 : drop.index;
+    const liftedAhead = displayTasks.slice(0, anchor).filter((task) => liftedIds.has(task.id)).length;
+    return { baseIds, insertIndex: Math.max(0, Math.min(anchor - liftedAhead, baseIds.length)) };
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     setDropPosition(null);
-    
+
     const droppedTaskId = e.dataTransfer.getData('text/plain');
     const sourceStatus = e.dataTransfer.getData('text/status');
-    
+    const sourceLane = e.dataTransfer.getData('text/lane') || dragSourceLane || null;
+    const isSameColumn = sourceStatus === title && sourceLane === (laneId ?? null);
+
     if (!droppedTaskId) return;
-    
+
+    const dragsSelection = Boolean(
+      onBatchMove && selectedTaskIds && selectedTaskIds.length > 1 && selectedTaskIds.includes(droppedTaskId),
+    );
+    const liftedIds = new Set(dragsSelection && selectedTaskIds ? selectedTaskIds : [droppedTaskId]);
+
+    // Dragging one card of a selection moves the whole selection. The lane travels with the column
+    // exactly as it does for the single-card drop below, so a batch dropped into a milestone lane
+    // lands in that milestone too.
+    if (dragsSelection && onBatchMove) {
+      const displayTasks = getDisplayTasks();
+
+      // Without the order the selection reads in there is nothing to place, so the drop keeps the
+      // append behaviour and only a column change leaves a manual sort to retire.
+      if (!selectionOrderIds || selectionOrderIds.length === 0) {
+        if (!isSameColumn) setColumnSort(null);
+        onBatchMove(title, targetMilestone);
+        return;
+      }
+
+      const { baseIds, insertIndex } = resolveInsertion(displayTasks, liftedIds, dropPosition);
+      // Cards already in this column keep the order the reader sees them in; the ones joining from
+      // elsewhere follow in the order they read on the board.
+      const liftedInColumn = displayTasks.filter((task) => liftedIds.has(task.id)).map((task) => task.id);
+      const inColumnIds = new Set(liftedInColumn);
+      const block = [...liftedInColumn, ...selectionOrderIds.filter((taskId) => !inColumnIds.has(taskId))];
+      const orderedTaskIds = [...baseIds.slice(0, insertIndex), ...block, ...baseIds.slice(insertIndex)];
+
+      // Releasing the selection where it already sits changes nothing, so it stays a pure no-op and
+      // the column keeps the sort its reader chose.
+      const orderUnchanged =
+        isSameColumn &&
+        orderedTaskIds.length === displayTasks.length &&
+        orderedTaskIds.every((taskId, index) => taskId === displayTasks[index]?.id);
+      if (orderUnchanged) {
+        return;
+      }
+
+      // The order just written is the order the column has to show, so a manual sort retires rather
+      // than re-sorting the cards away from where they were dropped.
+      setColumnSort(null);
+      onBatchMove(title, targetMilestone, orderedTaskIds);
+      return;
+    }
+
     if (!onTaskReorder) {
       return;
     }
 
     // Use visual order (respecting any active column sort) to compute drop position
     const displayTasks = getDisplayTasks();
-    const columnWithoutDropped = displayTasks.filter((task) => task.id !== droppedTaskId);
+    const { baseIds, insertIndex } = resolveInsertion(displayTasks, liftedIds, dropPosition);
+    const orderedTaskIds = [...baseIds.slice(0, insertIndex), droppedTaskId, ...baseIds.slice(insertIndex)];
 
-    let insertIndex = columnWithoutDropped.length;
-    if (dropPosition) {
-      const { index, position } = dropPosition;
-      const baseIndex = position === 'before' ? index : index + 1;
-      const droppedVisualIndex = displayTasks.findIndex((t) => t.id === droppedTaskId);
-
-      if (droppedVisualIndex === -1) {
-        insertIndex = Math.min(baseIndex, columnWithoutDropped.length);
-      } else if (droppedVisualIndex < baseIndex) {
-        insertIndex = Math.max(0, baseIndex - 1);
-      } else {
-        insertIndex = baseIndex;
-      }
-    }
-
-    const orderedTaskIds = columnWithoutDropped.map((task) => task.id);
-    orderedTaskIds.splice(insertIndex, 0, droppedTaskId);
-
-    const isSameColumn = sourceStatus === title;
+    // 'self' resolves to the card's own spot, so releasing a lifted card in place stays a no-op
+    // instead of appending it to the end of the column.
     const isOrderUnchanged =
       isSameColumn &&
       orderedTaskIds.length === displayTasks.length &&
@@ -219,12 +302,9 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
       return;
     }
 
-    // When dropping into a different column, clear the target column's manual
-    // sort so the default (ordinal-based) ordering takes effect. The new task's
-    // ordinal has already been set to reflect the visual drop position.
-    if (!isSameColumn) {
-      setColumnSort(null);
-    }
+    // Any drop that rewrites the column's order retires its manual sort, so the default
+    // (ordinal-based) ordering takes over and the cards show up where the drop put them.
+    setColumnSort(null);
 
     onTaskReorder({
       taskId: droppedTaskId,
@@ -264,7 +344,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
       className={`rounded-lg p-4 transition-colors duration-200 h-full ${
         isEmpty ? 'min-h-24' : 'min-h-96'
       } ${
-        isDragOver && (dragSourceStatus !== title || (dragSourceLane ?? null) !== (laneId ?? null))
+        isDragOver && !isDragFromSameColumn
           ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600 border-dashed'
           : isEmpty
             ? 'bg-gray-50/50 dark:bg-gray-800/30 border border-gray-200/50 dark:border-gray-700/50'
@@ -370,8 +450,16 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
             key={task.id} 
             className="relative"
             onDragOver={(e) => {
-              if (!onTaskReorder || !draggedTaskId || draggedTaskId === task.id) return;
-              
+              if (!draggedTaskId || (!onTaskReorder && !onBatchMove)) return;
+
+              // Hovering a card that is leaving anyway previews "stay in place" for the whole
+              // selection: no indicator, and the drop resolves to where it already sits.
+              if (draggingIds?.has(task.id)) {
+                e.preventDefault();
+                setDropPosition({ index, position: 'self' });
+                return;
+              }
+
               e.preventDefault();
               const rect = e.currentTarget.getBoundingClientRect();
               const y = e.clientY - rect.top;
@@ -394,6 +482,32 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
               task={task}
               onUpdate={onTaskUpdate}
               onEdit={onEditTask}
+              isSelected={selectedTaskIds?.includes(task.id) ?? false}
+              selectionCount={selectedTaskIds?.length ?? 0}
+              isSelectionDragging={isSelectionDragging}
+              onSelectionDragChange={onSelectionDragChange}
+              onSelect={
+                onToggleTaskSelection
+                  ? ({ shiftKey }) => {
+                      const anchorIndex = selectionAnchorId
+                        ? getDisplayTasks().findIndex((candidate) => candidate.id === selectionAnchorId)
+                        : -1;
+                      if (shiftKey && onSelectTaskRange && anchorIndex !== -1) {
+                        const [from, to] = anchorIndex < index ? [anchorIndex, index] : [index, anchorIndex];
+                        // Read-only cross-branch cards cannot move, so the range skips them the same
+                        // way a direct click on one does.
+                        onSelectTaskRange(
+                          getDisplayTasks()
+                            .slice(from, to + 1)
+                            .filter((candidate) => !candidate.branch)
+                            .map((candidate) => candidate.id)
+                        );
+                        return;
+                      }
+                      onToggleTaskSelection(task.id);
+                    }
+                  : undefined
+              }
               onDragStart={() => {
                 onDragStart?.({ status: title, laneId: laneId ?? null, taskId: task.id });
               }}
@@ -415,7 +529,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
         ))}
         
         {/* Drop zone indicator - only show in different columns */}
-        {isDragOver && dragSourceStatus !== title && (
+        {isDragOver && !isDragFromSameColumn && (
           <div className="border-2 border-green-400 dark:border-green-500 border-dashed rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-center transition-colors duration-200">
             <div className="text-green-600 dark:text-green-400 text-sm font-medium transition-colors duration-200">
               {t.taskColumn.dropToChangeStatus}
@@ -425,7 +539,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
         
         {isEmpty && !isDragOver && (
           <div className="text-center py-2 text-gray-400 dark:text-gray-500 text-xs transition-colors duration-200">
-            {dragSourceStatus && dragSourceStatus !== title
+            {dragSourceStatus && !isDragFromSameColumn
               ? t.taskColumn.dropToMove
               : t.taskColumn.empty}
           </div>
