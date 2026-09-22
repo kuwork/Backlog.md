@@ -33,7 +33,7 @@ function fitToScreen(value: string | number, total: number): string | number {
 	return resolveDimension(value, total) > total ? total : value;
 }
 
-function resolveDimension(value: string | number, total: number): number {
+export function resolveDimension(value: string | number, total: number): number {
 	if (typeof value === "number") {
 		return value;
 	}
@@ -47,7 +47,7 @@ function resolveDimension(value: string | number, total: number): number {
 	return Number.isNaN(parsed) ? total : parsed;
 }
 
-function resolvePosition(value: string | number, total: number, size: number): number {
+export function resolvePosition(value: string | number, total: number, size: number): number {
 	if (typeof value === "number") {
 		return value;
 	}

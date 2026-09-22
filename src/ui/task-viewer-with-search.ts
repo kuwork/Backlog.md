@@ -40,7 +40,12 @@ import {
 	type FilterHeader,
 	type FilterState,
 } from "./components/filter-header.ts";
-import { openMultiSelectFilterPopup, openSingleSelectFilterPopup } from "./components/filter-popup.ts";
+import {
+	openMultiSelectFilterPopup,
+	openSingleSelectFilterPopup,
+	resolveDimension,
+	resolvePosition,
+} from "./components/filter-popup.ts";
 import { type BoundaryNavigationKey, createGenericList, type GenericList } from "./components/generic-list.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
 import { formatFooterContent, TASK_LIST_FOOTER_CONTENT } from "./footer-content.ts";
@@ -1663,16 +1668,40 @@ export async function createTaskPopup(
 
 	const background = box({
 		parent: screen,
-		top: Number(popup.top ?? 0) - 1,
-		left: Number(popup.left ?? 0) - 2,
-		width: Number(popup.width ?? 0) + 4,
-		height: Number(popup.height ?? 0) + 2,
+		top: 0,
+		left: 0,
+		width: 1,
+		height: 1,
 		style: {
 			bg: "black",
 		},
 	});
 
-	popup.setFront?.();
+	// The popup centers itself with top/left "center", which the renderer re-resolves at draw
+	// time, but the backdrop is placed with absolute coordinates, so both must be recomputed
+	// from the live terminal size on open and on every resize.
+	const applyLayout = () => {
+		const screenWidth = typeof screen.width === "number" ? screen.width : 120;
+		const screenHeight = typeof screen.height === "number" ? screen.height : 40;
+		const popupWidth = resolveDimension("85%", screenWidth);
+		const popupHeight = resolveDimension("80%", screenHeight);
+		const popupTop = resolvePosition("center", screenHeight, popupHeight);
+		const popupLeft = resolvePosition("center", screenWidth, popupWidth);
+		background.top = Math.max(0, popupTop - 1);
+		background.left = Math.max(0, popupLeft - 2);
+		background.width = Math.min(screenWidth, popupWidth + 4);
+		background.height = Math.min(screenHeight, popupHeight + 2);
+		popup.setFront?.();
+		screen.render();
+	};
+
+	let settled = false;
+	const onResize = () => {
+		if (!settled) applyLayout();
+	};
+
+	applyLayout();
+	screen.on("resize", onResize);
 
 	const { headerContent, bodyContent } = generateDetailContent(task, resolveMilestoneLabel);
 
@@ -1735,6 +1764,12 @@ export async function createTaskPopup(
 	});
 
 	const closePopup = () => {
+		settled = true;
+		(
+			screen as ScreenInterface & {
+				removeListener(event: string, listener: (...args: unknown[]) => void): void;
+			}
+		).removeListener("resize", onResize);
 		popup.destroy();
 		background.destroy();
 		screen.render();
