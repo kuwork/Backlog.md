@@ -2954,9 +2954,9 @@
     binaries = {
       "neo-neo-bblessed" = "../neo-neo-bblessed/bin/tput.ts";
     };
-    name = "neo-neo-bblessed@1.0.9";
-    url = "https://registry.npmjs.org/neo-neo-bblessed/-/neo-neo-bblessed-1.0.9.tgz";
-    hash = "sha512-QiHsh4BZnjV9PLzxW8ZvfBuGgkyUNYPSdk/NgT1a9xq3a6WdCOAWLjBRpbkKAukgDXQROGLfIKj/bpvDhCBjRg==";
+    name = "neo-neo-bblessed@1.0.10";
+    url = "https://registry.npmjs.org/neo-neo-bblessed/-/neo-neo-bblessed-1.0.10.tgz";
+    hash = "sha512-yMRryiO0PCxlGhhB/zZ8KtRXJVIGfHwNuv66gNOltJRzjcSrH0xp7WYEFdCBD/mCJtg9gKkvdKTRGtCmPvjXoQ==";
   };
   "node-addon-api" = {
     out_path = "node-addon-api";
