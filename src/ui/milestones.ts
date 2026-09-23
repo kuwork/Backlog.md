@@ -22,6 +22,9 @@ import { formatDateForDisplay } from "../formatters/task-plain-text.ts";
 import type { Milestone, MilestoneBucket, Task } from "../types/index.ts";
 import { collectAvailableLabels } from "../utils/label-filter.ts";
 import { matchMilestoneSearchTaskIds } from "../utils/milestone-search.ts";
+import { milestoneContentSignature, watchMilestones } from "../utils/milestone-watcher.ts";
+import { taskIdsEqual } from "../utils/task-path.ts";
+import { watchTasks } from "../utils/task-watcher.ts";
 import { type BoardFilterState, type BoardHandle, filterBoardTasks, renderBoardTui } from "./board.ts";
 import { resolveDimension, resolvePosition } from "./components/filter-popup.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
@@ -92,14 +95,79 @@ function formatRowLabel(bucket: MilestoneBucket, shown: MilestoneBucket): string
  * (`due_date`, `planned_start`/`planned_end`, `actual_start`/`actual_end`) and the body of its
  * `## Description` section. `E` hands the description and the dates back to the form that wrote
  * them, which is why the popup resolves with the reason it went away.
+ *
+ * The record behind it can move while it is up — the CLI, the web UI or an editor writes the same
+ * file from another process — so the handle can re-render in place. In place, not by closing and
+ * reopening: the host awaits `closed` to decide whether to open that form, and gates its own keys
+ * on the popup being up, so a replacement popup would resolve the promise and drop the gate.
  */
 export type MilestonePopupOutcome = "close" | "edit";
+
+export type MilestonePopupHandle = {
+	close: (outcome?: MilestonePopupOutcome) => void;
+	closed: Promise<MilestonePopupOutcome>;
+	/** Re-render for the milestone as its file now says it is, and for its current task counts. */
+	update: (milestone: Milestone, bucket: MilestoneBucket | undefined) => void;
+	/**
+	 * Take the keyboard back. A repaint behind the popup - the board redrawing its columns - hands
+	 * focus to a column list, and blessed delivers a key to the focused widget alone, so the popup
+	 * would stop answering its own keys while it is still the modal one on screen.
+	 */
+	focus: () => void;
+};
+
+/** The header is always the identifier line over the progress line. */
+const POPUP_HEADER_HEIGHT = 2;
+
+/** Everything the popup shows, so opening it and refreshing it render the same thing. */
+function milestonePopupContent(
+	milestone: Milestone,
+	bucket: MilestoneBucket | undefined,
+): { header: string; body: string } {
+	const header = [
+		` {bold}{blue-fg}${milestone.id}{/blue-fg}{/bold} - ${milestone.title}`,
+		`{bold}Progress:{/bold} ${bucket ? `${bucket.doneCount}/${bucket.total} done (${bucket.progress}%)` : "no tasks"}`,
+	].join("\n");
+
+	const metadata: string[] = [];
+	const pushDate = (label: string, value?: string) => {
+		if (value) metadata.push(`{bold}${label}:{/bold} ${formatDateForDisplay(value)}`);
+	};
+	pushDate("Created", milestone.createdDate);
+	pushDate("Updated", milestone.updatedDate);
+	pushDate("Due", milestone.dueDate);
+	if (milestone.plannedStart || milestone.plannedEnd) {
+		metadata.push(
+			`{bold}Planned:{/bold} ${formatDateForDisplay(milestone.plannedStart ?? "") || "-"} → ${formatDateForDisplay(milestone.plannedEnd ?? "") || "-"}`,
+		);
+	}
+	if (milestone.actualStart || milestone.actualEnd) {
+		metadata.push(
+			`{bold}Actual:{/bold} ${formatDateForDisplay(milestone.actualStart ?? "") || "-"} → ${formatDateForDisplay(milestone.actualEnd ?? "") || "-"}`,
+		);
+	}
+
+	const body: string[] = [];
+	body.push(formatHeading("Details", 2));
+	body.push(metadata.length > 0 ? metadata.join("\n") : "{gray-fg}(no dates recorded){/}");
+	body.push("");
+	if (milestone.description.trim()) {
+		body.push(formatHeading("Description", 2));
+		body.push(milestone.description.trim());
+		body.push("");
+	}
+	if (milestone.documentation?.length) {
+		body.push(formatHeading("Documentation", 2));
+		for (const entry of milestone.documentation) body.push(` - ${entry}`);
+	}
+	return { header, body: body.join("\n") };
+}
 
 export async function createMilestonePopup(
 	screen: ScreenInterface,
 	milestone: Milestone,
 	bucket: MilestoneBucket | undefined,
-): Promise<{ close: () => void; closed: Promise<MilestonePopupOutcome> } | null> {
+): Promise<MilestonePopupHandle | null> {
 	if (output.isTTY === false) return null;
 
 	const popup = box({
@@ -151,21 +219,25 @@ export async function createMilestonePopup(
 	applyLayout();
 	screen.on("resize", onResize);
 
-	const headerLines = [
-		` {bold}{blue-fg}${milestone.id}{/blue-fg}{/bold} - ${milestone.title}`,
-		`{bold}Progress:{/bold} ${bucket ? `${bucket.doneCount}/${bucket.total} done (${bucket.progress}%)` : "no tasks"}`,
-	];
-	box({
+	const rendered = milestonePopupContent(milestone, bucket);
+	const headerBox = box({
 		parent: popup,
 		top: 0,
 		left: 1,
 		right: 1,
-		height: headerLines.length,
+		height: POPUP_HEADER_HEIGHT,
 		tags: true,
 		wrap: true,
-		content: headerLines.join("\n"),
+		content: rendered.header,
 	});
-	line({ parent: popup, top: headerLines.length, left: 1, right: 1, orientation: "horizontal", style: { fg: "gray" } });
+	line({
+		parent: popup,
+		top: POPUP_HEADER_HEIGHT,
+		left: 1,
+		right: 1,
+		orientation: "horizontal",
+		style: { fg: "gray" },
+	});
 	box({
 		parent: popup,
 		content: " Esc ",
@@ -185,41 +257,9 @@ export async function createMilestonePopup(
 		style: { inverse: true, bold: true },
 	});
 
-	const metadata: string[] = [];
-	const pushDate = (label: string, value?: string) => {
-		if (value) metadata.push(`{bold}${label}:{/bold} ${formatDateForDisplay(value)}`);
-	};
-	pushDate("Created", milestone.createdDate);
-	pushDate("Updated", milestone.updatedDate);
-	pushDate("Due", milestone.dueDate);
-	if (milestone.plannedStart || milestone.plannedEnd) {
-		metadata.push(
-			`{bold}Planned:{/bold} ${formatDateForDisplay(milestone.plannedStart ?? "") || "-"} → ${formatDateForDisplay(milestone.plannedEnd ?? "") || "-"}`,
-		);
-	}
-	if (milestone.actualStart || milestone.actualEnd) {
-		metadata.push(
-			`{bold}Actual:{/bold} ${formatDateForDisplay(milestone.actualStart ?? "") || "-"} → ${formatDateForDisplay(milestone.actualEnd ?? "") || "-"}`,
-		);
-	}
-
-	const body: string[] = [];
-	body.push(formatHeading("Details", 2));
-	body.push(metadata.length > 0 ? metadata.join("\n") : "{gray-fg}(no dates recorded){/}");
-	body.push("");
-	if (milestone.description.trim()) {
-		body.push(formatHeading("Description", 2));
-		body.push(milestone.description.trim());
-		body.push("");
-	}
-	if (milestone.documentation?.length) {
-		body.push(formatHeading("Documentation", 2));
-		for (const entry of milestone.documentation) body.push(` - ${entry}`);
-	}
-
 	const contentArea = scrollabletext({
 		parent: popup,
-		top: headerLines.length + 1,
+		top: POPUP_HEADER_HEIGHT + 1,
 		left: 1,
 		right: 1,
 		bottom: 1,
@@ -229,7 +269,7 @@ export async function createMilestonePopup(
 		tags: true,
 		wrap: true,
 		padding: { left: 1, right: 1 },
-		content: body.join("\n"),
+		content: rendered.body,
 	}) as ScrollableTextInterface;
 
 	let resolveClosed: (outcome: MilestonePopupOutcome) => void = () => {};
@@ -277,7 +317,23 @@ export async function createMilestonePopup(
 		screen.render();
 	});
 
-	return { close: closePopup, closed };
+	/**
+	 * Re-render for a record that moved behind the popup, and for the counts of the tasks it
+	 * carries. The screen is not repainted here: the host owns that, and it has just repainted.
+	 */
+	const update = (next: Milestone, nextBucket: MilestoneBucket | undefined) => {
+		if (settled) return;
+		const fresh = milestonePopupContent(next, nextBucket);
+		headerBox.setContent(fresh.header);
+		contentArea.setContent(fresh.body);
+	};
+
+	const focusPopup = () => {
+		if (settled) return;
+		contentArea.focus();
+	};
+
+	return { close: closePopup, closed, update, focus: focusPopup };
 }
 
 /**
@@ -296,15 +352,27 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 	let pushScope: ((tasks: Task[], statuses: string[]) => void) | null = null;
 	/**
 	 * The task data the list counts: the caller's snapshot, folded up to date from what the board
-	 * reports. The tasks the board shows are the only ones this view can edit.
+	 * reports and from what the task watcher publishes. The tasks the board shows are the only ones
+	 * this view can edit.
 	 */
 	let corpus: Task[] = options.tasks;
+	/** Re-read by the milestone watcher; the caller's snapshot to start. */
+	let archivedMilestones = options.archivedMilestones;
 	/** The board header's filters. They are global here, so every row's numbers follow them. */
 	let headerFilters: BoardFilterState | null = null;
 	/** `corpus` after those filters; the numbers beside each milestone are counted from these. */
 	let countedTasks: Task[] | null = null;
 	/** The row whose milestone the board is scoped to. The cursor moves without changing it. */
 	let appliedKey: string | null = null;
+	/**
+	 * The open detail popup, kept so a record that moves behind it can be followed: the row key that
+	 * identifies it in the list, the signature of what it is showing, and how to close or re-render
+	 * it. See `syncOpenPopup`.
+	 */
+	let openPopup: { key: string; id: string; signature: string; handle: MilestonePopupHandle } | null = null;
+	/** The folder feeds this session shows; both are stopped with the screen. */
+	let taskWatcher: { stop: () => void } | null = null;
+	let milestoneWatcher: { stop: () => void } | null = null;
 	/** A board that dies takes the host with it; the error is rethrown once the screen is down. */
 	let boardFailure: unknown = null;
 
@@ -315,6 +383,8 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 			if (closed) return;
 			closed = true;
 			if (hintTimer) clearTimeout(hintTimer);
+			taskWatcher?.stop();
+			milestoneWatcher?.stop();
 			// The screen shares blessed's process-wide program, and that program is what holds stdin
 			// in raw mode: only destroying it puts the terminal back, so the shell is not left
 			// hanging on a quit. This is the same teardown the other list viewers use.
@@ -327,7 +397,7 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 		const findEntity = (bucket: MilestoneBucket): Milestone | undefined => {
 			const key = bucket.milestone ? milestoneKey(bucket.milestone) : null;
 			if (!key) return undefined;
-			return [...milestones, ...options.archivedMilestones].find((entry) => milestoneKey(entry.id) === key);
+			return [...milestones, ...archivedMilestones].find((entry) => milestoneKey(entry.id) === key);
 		};
 
 		/**
@@ -343,8 +413,8 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 		 * what scopes the board.
 		 */
 		const rebuildRows = () => {
-			const archivedMilestoneIds = collectArchivedMilestoneKeys(options.archivedMilestones, milestones);
-			const bucketOptions = { archivedMilestoneIds, archivedMilestones: options.archivedMilestones };
+			const archivedMilestoneIds = collectArchivedMilestoneKeys(archivedMilestones, milestones);
+			const bucketOptions = { archivedMilestoneIds, archivedMilestones };
 			const buckets = buildMilestoneBuckets(corpus, milestones, statuses, bucketOptions);
 			const counted = new Map(
 				buildMilestoneBuckets(countedTasks ?? corpus, milestones, statuses, bucketOptions).map((bucket) => [
@@ -504,6 +574,41 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 			if (!changed) return;
 			corpus = [...byId.values()];
 			refreshCounts();
+			syncOpenPopup();
+		};
+
+		/**
+		 * What the open popup is showing: the milestone's own record plus the two numbers it derives
+		 * from tasks. One definition for both the popup and the check, so "unchanged" means there is
+		 * nothing to repaint.
+		 */
+		const popupSignature = (milestone: Milestone, bucket: MilestoneBucket | undefined) =>
+			`${milestoneContentSignature(milestone)}|${bucket ? `${bucket.doneCount}/${bucket.total}` : "no tasks"}`;
+
+		/**
+		 * Keep the open popup in step with the record behind it: re-render when the milestone or the
+		 * task counts it shows moved, close it with a notice when the milestone is no longer in the
+		 * list, and do nothing when the signature is unchanged — the last of which is what makes the
+		 * echo of this view's own write a no-op instead of a flicker.
+		 */
+		const syncOpenPopup = () => {
+			const popup = openPopup;
+			if (!popup) return;
+			const row = rows.find((entry) => entry.key === popup.key);
+			if (!row?.milestone) {
+				openPopup = null;
+				popup.handle.close();
+				showHint(` {red-fg}Milestone ${popup.id} is no longer in the list.{/}`);
+				return;
+			}
+			const signature = popupSignature(row.milestone, row.bucket);
+			if (signature !== popup.signature) {
+				popup.signature = signature;
+				popup.handle.update(row.milestone, row.bucket);
+			}
+			// Whatever repainted, the modal popup is the one on screen, so it keeps the keyboard.
+			popup.handle.focus();
+			screen.render();
 		};
 
 		/**
@@ -542,21 +647,29 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 
 		const openDetail = async (row: SidebarRow | undefined) => {
 			if (!row || row.kind !== "milestone" || !row.milestone) return;
+			const key = row.key;
 			const milestone = row.milestone;
 			popupOpen = true;
 			let outcome: MilestonePopupOutcome = "close";
 			try {
 				const popup = await createMilestonePopup(screen, milestone, row.bucket);
 				if (!popup) return;
+				openPopup = { key, id: milestone.id, signature: popupSignature(milestone, row.bucket), handle: popup };
 				outcome = await popup.closed;
 			} finally {
+				// The one place the popup stops being the open one, whatever closed it: a key, a
+				// record that left the list, or the host going down.
+				openPopup = null;
 				popupOpen = false;
 				boardHandle?.syncChrome();
 				screen.render();
 			}
 			// `e` in the popup asks for the editor; it opens only once the popup is down, so the two
-			// modals never hold the keyboard at the same time.
-			if (outcome === "edit") await editMilestoneInteractive(milestone);
+			// modals never hold the keyboard at the same time. The row is resolved again because the
+			// popup may have been following a file that changed while it was up.
+			if (outcome === "edit") {
+				await editMilestoneInteractive(rows.find((entry) => entry.key === key)?.milestone ?? milestone);
+			}
 		};
 
 		const hostKeysActive = () => sideFocused && !popupOpen;
@@ -729,6 +842,50 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 		refreshSidebar(selectedIndex);
 		setSidebarFocusStyle(true);
 		getSidebar()?.focus();
+
+		/**
+		 * A task the watcher published: the file on disk is the truth for that one record, so fold
+		 * it in, re-count what the sidebar and the popup read, re-point the board at the scope it is
+		 * showing, then bring the popup up to date.
+		 */
+		const applyTaskChanges = (fresh: Task | null, removedTaskId?: string) => {
+			if (fresh) {
+				const byId = new Map(corpus.map((task) => [task.id, task]));
+				byId.set(fresh.id, fresh);
+				corpus = [...byId.values()];
+			} else if (removedTaskId) {
+				corpus = corpus.filter((task) => !taskIdsEqual(task.id, removedTaskId));
+			}
+			refreshCounts();
+			applyScope();
+			syncOpenPopup();
+		};
+
+		// This view is handed a snapshot and subscribes to nothing - only a task session starts a
+		// watcher - so without these two feeds the columns, the counts and the popup are a still
+		// picture that follows this view's own writes and nothing the CLI, the web UI or an editor
+		// does in its own process. The task files feed the counts, the milestone files the records.
+		taskWatcher = watchTasks(
+			core,
+			{
+				onTaskAdded: (task) => applyTaskChanges(task),
+				onTaskChanged: (task) => applyTaskChanges(task),
+				onTaskRemoved: (taskId) => applyTaskChanges(null, taskId),
+			},
+			corpus,
+		);
+		milestoneWatcher = watchMilestones(
+			core,
+			{
+				onMilestonesChanged: (fresh, freshArchived) => {
+					milestones = fresh;
+					archivedMilestones = freshArchived;
+					refreshCounts();
+					syncOpenPopup();
+				},
+			},
+			{ milestones, archivedMilestones },
+		);
 
 		// Up from the top row leaves the list for the filter bar above it, the way its own keys do:
 		// the scope is what the user set with Space, so passing through must not change it.

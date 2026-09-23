@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ScreenInterface } from "neo-neo-bblessed";
 import { Core } from "../core/backlog.ts";
+import { serializeMilestone } from "../markdown/serializer.ts";
 import type { Milestone, Task } from "../types/index.ts";
 import { renderBoardTui } from "../ui/board.ts";
 import {
@@ -222,6 +223,21 @@ function hasBackdrop(root: TreeWidget): boolean {
 	return found;
 }
 
+/**
+ * The scrolled body of the milestone detail popup, by reference. The popup refreshes in place when
+ * the record behind it changes, so the same widget has to survive the refresh - comparing the
+ * content area itself is what tells an in-place refresh from a close-and-reopen.
+ */
+function popupBody(root: TreeWidget): TreeWidget | undefined {
+	let found: TreeWidget | undefined;
+	const visit = (node: TreeWidget) => {
+		if (typeof node.content === "string" && node.content.includes("Details")) found = node;
+		for (const child of node.children ?? []) visit(child);
+	};
+	visit(root);
+	return found;
+}
+
 let TEST_DIR: string;
 let core: Core;
 let alpha: Milestone;
@@ -249,6 +265,25 @@ beforeEach(async () => {
 afterEach(async () => {
 	await safeCleanup(TEST_DIR);
 });
+
+/** A milestone's file, so a case can rewrite it the way another process would. */
+async function milestoneFilePath(id: string): Promise<string> {
+	const path = await core.filesystem.getMilestoneFilePath(id);
+	if (!path) throw new Error(`Expected a file for milestone ${id}`);
+	return path;
+}
+
+/** A milestone file as the serializer writes it, with the body a later write can change. */
+function milestoneSource(description: string, dueDate: string): string {
+	return serializeMilestone({
+		id: alpha.id,
+		title: alpha.title,
+		description,
+		rawContent: "",
+		createdDate: "2026-09-23 10:00",
+		dueDate,
+	});
+}
 
 async function withMilestonesTui(
 	run: (context: {
@@ -786,6 +821,92 @@ describe("milestones TUI", () => {
 			pressKey(screen, "escape");
 			await waitUntil(() => !isInputCapturing(screen), "the form to release the keyboard", 2000);
 			expect(await core.filesystem.listMilestones()).toHaveLength(3);
+
+			await quit();
+		});
+	});
+
+	it("refreshes an open detail popup when the milestone is rewritten on disk", async () => {
+		await withMilestonesTui(async ({ screen, text, selectRow, quit }) => {
+			selectRow("Alpha rollout");
+			await Bun.sleep(0);
+			pressKey(screen, "enter");
+			await Bun.sleep(0);
+			expect(text()).toContain("Progress:");
+			// The fixture milestone carries the description its create wrote, and no due date.
+			expect(text()).toContain("Milestone: Alpha rollout");
+			expect(text()).not.toContain("Due:");
+			const body = popupBody(screen as unknown as TreeWidget);
+
+			// Another process - the CLI, the web UI, an editor - writes the milestone file.
+			await writeFile(await milestoneFilePath(alpha.id), milestoneSource("Body from elsewhere", "2026-12-31"), "utf8");
+			await waitUntil(() => text().includes("Body from elsewhere"), "the popup to follow the file", 3000);
+
+			// The dates follow too, and the refresh happened in place: replacing the popup would have
+			// resolved the closed promise the host awaits and dropped its own popupOpen gate.
+			expect(text()).toContain("Due:");
+			expect(text()).not.toContain("Milestone: Alpha rollout");
+			expect(popupBody(screen as unknown as TreeWidget)).toBe(body);
+
+			pressKey(screen, "escape");
+			await Bun.sleep(0);
+			await quit();
+		});
+	});
+
+	it("follows a task rewritten elsewhere while the detail popup is open", async () => {
+		await withMilestonesTui(async ({ screen, text, selectRow, quit }) => {
+			selectRow("Alpha rollout");
+			await Bun.sleep(0);
+			pressKey(screen, "enter");
+			await Bun.sleep(0);
+			// Alpha's two tasks are open, and the counts the popup shows come from the tasks.
+			expect(text()).toContain("0/2 done");
+
+			const tasksDir = core.filesystem.tasksDir;
+			const file = (await readdir(tasksDir)).find((name) => name.startsWith("task-2 "));
+			expect(file).toBeDefined();
+			const path = join(tasksDir, file as string);
+			const source = await readFile(path, "utf8");
+			await writeFile(path, source.replace("status: In Progress", "status: Done"), "utf8");
+
+			await waitUntil(() => text().includes("1/2 done"), "the popup progress to follow the task", 3000);
+			expect(text()).not.toContain("0/2 done");
+
+			pressKey(screen, "escape");
+			await Bun.sleep(0);
+			await quit();
+		});
+	});
+
+	it("closes the detail popup when the milestone leaves the list", async () => {
+		await withMilestonesTui(async ({ screen, text, footer, selectRow, quit }) => {
+			selectRow("Alpha rollout");
+			await Bun.sleep(0);
+			pressKey(screen, "enter");
+			await Bun.sleep(0);
+			expect(text()).toContain("Progress:");
+
+			await rm(await milestoneFilePath(alpha.id));
+			await waitUntil(() => !text().includes("Progress:"), "the popup to close", 3000);
+
+			expect(hasBackdrop(screen as unknown as TreeWidget)).toBe(false);
+			expect(footer()).toContain(`Milestone ${alpha.id} is no longer in the list.`);
+
+			await quit();
+		});
+	});
+
+	it("shows a milestone created elsewhere without a keypress", async () => {
+		await withMilestonesTui(async ({ sidebar, quit }) => {
+			expect(sidebar().some((row) => row.includes("Delta"))).toBe(false);
+
+			await core.filesystem.createMilestone("Delta follow-up");
+			await waitUntil(
+				() => sidebar().some((row) => row.includes("Delta follow-up")),
+				"the new milestone to appear",
+				4000,
+			);
 
 			await quit();
 		});
