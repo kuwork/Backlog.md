@@ -18,11 +18,25 @@ import {
 	type FilterPopupChoice,
 	openSingleSelectFilterPopup,
 } from "./filter-popup.ts";
+import { isValidMilestoneDate } from "./milestone-form.ts";
 
 const DRAFT_STATUS = "Draft";
 
+/** The task dates, in the order the composer asks for them — the same five the milestone form keeps. */
+export const TASK_DATE_FIELDS = ["dueDate", "plannedStart", "plannedEnd", "actualStart", "actualEnd"] as const;
+
+export type TaskComposerDateField = (typeof TASK_DATE_FIELDS)[number];
+
+export const DATE_FIELD_LABELS: Record<TaskComposerDateField, string> = {
+	dueDate: "Due",
+	plannedStart: "Planned from",
+	plannedEnd: "Planned to",
+	actualStart: "Actual from",
+	actualEnd: "Actual to",
+};
+
 /** Tab order, matching the top-to-bottom reading order of the composer. */
-const FIELD_ORDER = ["title", "description", "status", "priority", "create", "cancel"] as const;
+const FIELD_ORDER = ["title", "description", "status", "priority", ...TASK_DATE_FIELDS, "create", "cancel"] as const;
 
 /** The widget's wrapped lines (`real`), the logical lines they belong to, and how many there are. */
 export type CaretLines = {
@@ -141,7 +155,7 @@ export type TaskComposerValues = {
 	description: string;
 	status: string;
 	priority: string;
-};
+} & Record<TaskComposerDateField, string>;
 
 export type TaskComposerLayout = {
 	compact: boolean;
@@ -150,6 +164,8 @@ export type TaskComposerLayout = {
 	descriptionHeight: number;
 	detailsTop: number;
 	detailsHeight: number;
+	datesTop: number;
+	datesHeight: number;
 	actionsTop: number;
 	contentHeight: number;
 };
@@ -167,6 +183,10 @@ const NORMAL_SELECTOR_WIDTH_RATIO = 0.3;
 const EXPANDED_DESCRIPTION_HEIGHT = 6;
 const EXPANDED_DETAILS_HEIGHT = 3;
 const EXPANDED_ACTIONS_HEIGHT = 2;
+/** The five date rows (Due, Planned from/to, Actual from/to) stack between details and actions. */
+const EXPANDED_DATES_HEIGHT = TASK_DATE_FIELDS.length;
+/** Full expanded form plus chrome; taller screens grow no further. */
+const EXPANDED_POPUP_HEIGHT = 24;
 
 export type TaskComposerLayoutOptions = {
 	statuses?: readonly string[];
@@ -206,23 +226,33 @@ export function getTaskComposerLayout(
 	// room for the popup chrome and one complete bordered input, or the focused field's
 	// editable row and its cursor are clipped.
 	const popupHeight = Math.min(
-		20,
+		EXPANDED_POPUP_HEIGHT,
 		screenHeight,
-		Math.max(screenHeight - 2, POPUP_FORM_VERTICAL_CHROME + TEXT_INPUT_HEIGHT),
+		// The two-row margin is a short-screen guard: once the terminal fits the expanded form,
+		// shaving it would force the compact layout for no benefit.
+		screenHeight >= EXPANDED_POPUP_HEIGHT
+			? screenHeight
+			: Math.max(screenHeight - 2, POPUP_FORM_VERTICAL_CHROME + TEXT_INPUT_HEIGHT),
 	);
 	const normalSelectorWidth = Math.floor(
 		Math.max(0, popupWidth - POPUP_FORM_HORIZONTAL_CHROME) * NORMAL_SELECTOR_WIDTH_RATIO,
 	);
 	const visibleFormHeight = Math.max(0, popupHeight - POPUP_FORM_VERTICAL_CHROME);
 	const expandedContentHeight =
-		TEXT_INPUT_HEIGHT + EXPANDED_DESCRIPTION_HEIGHT + EXPANDED_DETAILS_HEIGHT + EXPANDED_ACTIONS_HEIGHT;
+		TEXT_INPUT_HEIGHT +
+		EXPANDED_DESCRIPTION_HEIGHT +
+		EXPANDED_DETAILS_HEIGHT +
+		EXPANDED_DATES_HEIGHT +
+		EXPANDED_ACTIONS_HEIGHT;
 	// Compact is the layout that stacks both selectors on their own full-width rows, so it
 	// engages whenever a normal column would clip its content or the expanded form no longer fits.
 	const compact = normalSelectorWidth < longestSelectorWidth || visibleFormHeight < expandedContentHeight;
 	const descriptionHeight = compact ? 3 : EXPANDED_DESCRIPTION_HEIGHT;
 	const detailsTop = TEXT_INPUT_HEIGHT + descriptionHeight;
 	const detailsHeight = compact ? 4 : EXPANDED_DETAILS_HEIGHT;
-	const actionsTop = detailsTop + detailsHeight;
+	const datesTop = detailsTop + detailsHeight;
+	const datesHeight = EXPANDED_DATES_HEIGHT;
+	const actionsTop = datesTop + datesHeight;
 	return {
 		compact,
 		popupWidth,
@@ -230,6 +260,8 @@ export function getTaskComposerLayout(
 		descriptionHeight,
 		detailsTop,
 		detailsHeight,
+		datesTop,
+		datesHeight,
 		actionsTop,
 		// Compact hides the "Actions" caption, so the buttons are the last row instead of the second-last.
 		contentHeight: actionsTop + (compact ? 1 : 2),
@@ -247,7 +279,21 @@ function getTaskComposerHelpText(screenWidth: number, compact: boolean): string 
 	return " {cyan-fg}[↑↓/←→/Tab]{/} Navigate | {cyan-fg}[Enter/Space]{/} Choose | {cyan-fg}[Esc]{/} Cancel";
 }
 
-type TaskComposerField = "title" | "description" | "status" | "priority" | "create" | "cancel";
+type TaskComposerField = "title" | "description" | "status" | "priority" | TaskComposerDateField | "create" | "cancel";
+
+/** Text-input fields own the keyboard through readInput; the rest are selectors and actions. */
+const TEXT_INPUT_FIELDS: readonly TaskComposerField[] = ["title", "description", ...TASK_DATE_FIELDS];
+
+/** Up/down traversal order: the visual stack from title to the action row. */
+const VERTICAL_ORDER: readonly TaskComposerField[] = [
+	"title",
+	"description",
+	"status",
+	"priority",
+	...TASK_DATE_FIELDS,
+	"create",
+	"cancel",
+];
 
 function uniqueChoices(values: readonly string[], excludedValue?: string): string[] {
 	const choices: string[] = [];
@@ -289,6 +335,11 @@ export function createTaskComposerValues(statuses: readonly string[]): TaskCompo
 		description: "",
 		status: getTaskComposerWorkflowStatuses(statuses)[0] ?? "To Do",
 		priority: "",
+		dueDate: "",
+		plannedStart: "",
+		plannedEnd: "",
+		actualStart: "",
+		actualEnd: "",
 	};
 }
 
@@ -297,11 +348,21 @@ export function toTaskCreateInput(values: TaskComposerValues): TaskCreateInput {
 	if (!title) throw new Error("Title is required.");
 	const description = values.description.trim();
 	const priority = values.priority.trim();
+	for (const field of TASK_DATE_FIELDS) {
+		const value = values[field].trim();
+		if (value && !isValidMilestoneDate(value)) {
+			throw new Error(`${DATE_FIELD_LABELS[field]} must be YYYY-MM-DD (or YYYY-MM-DD HH:mm).`);
+		}
+	}
+	const dateEntries = TASK_DATE_FIELDS.map((field) => [field, values[field].trim()] as const).filter(([, value]) =>
+		Boolean(value),
+	);
 	return {
 		title,
 		status: values.status,
 		...(description && { description }),
 		...(priority && { priority: priority as "high" | "medium" | "low" }),
+		...Object.fromEntries(dateEntries),
 	};
 }
 
@@ -433,6 +494,38 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 		const statusField = createSelector("Status", controller.values.status);
 		const priorityField = createSelector("Priority", controller.values.priority);
 
+		// The date fields mirror the milestone form: a caption plus a single-row input. They sit
+		// between the details frame and the actions, like the milestone form stacks its five dates.
+		const DATE_LABEL_WIDTH = 14;
+		const dateInputs = {} as Record<TaskComposerDateField, TextboxInterface>;
+		const dateLabels = {} as Record<TaskComposerDateField, BoxInterface>;
+		TASK_DATE_FIELDS.forEach((field, index) => {
+			const top = layout.datesTop + index;
+			dateLabels[field] = box({
+				parent: form,
+				top,
+				left: 1,
+				width: DATE_LABEL_WIDTH,
+				height: 1,
+				tags: true,
+				content: `${DATE_FIELD_LABELS[field]}:`,
+			});
+			dateInputs[field] = textbox({
+				parent: form,
+				top,
+				left: DATE_LABEL_WIDTH + 1,
+				right: 1,
+				height: 1,
+				inputOnFocus: false,
+				mouse: true,
+				keys: true,
+				// The single-row inputs inherit scroll keys from their scrollable base; they are
+				// bound to field movement here instead.
+				ignoreKeys: true,
+				style: { focus: { inverse: true, bold: true } },
+			});
+		});
+
 		const actionsLabel = box({
 			parent: form,
 			top: layout.actionsTop,
@@ -481,20 +574,23 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			description: descriptionInput,
 			status: statusField,
 			priority: priorityField,
+			...dateInputs,
 			create: createAction,
 			cancel: cancelAction,
 		};
 		/** Row of each field inside the scrollable viewport; selectors sit inside the details frame. */
 		const getFieldTops = (): Record<TaskComposerField, number> => {
 			const actionsRow = layout.actionsTop + (layout.compact ? 0 : 1);
-			return {
+			const tops = {
 				title: 0,
 				description: 3,
 				status: layout.detailsTop + 1,
 				priority: layout.detailsTop + (layout.compact ? 2 : 1),
 				create: actionsRow,
 				cancel: actionsRow,
-			};
+			} as Record<TaskComposerField, number>;
+			for (const [index, field] of TASK_DATE_FIELDS.entries()) tops[field] = layout.datesTop + index;
+			return tops;
 		};
 		const getFieldTop = (field: TaskComposerField): number => getFieldTops()[field];
 		const setFieldGeometry = (
@@ -507,10 +603,17 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			if (geometry.height !== undefined) widget.height = geometry.height;
 		};
 
+		const isTextInputWidget = (widget: BoxInterface | TextboxInterface): boolean =>
+			widget === titleInput ||
+			widget === descriptionInput ||
+			Object.values(dateInputs).includes(widget as TextboxInterface);
+
 		const setBorder = (widget: BoxInterface | TextboxInterface, active: boolean) => {
 			const style = (widget.style ?? {}) as { border?: { fg?: string }; inverse?: boolean; bold?: boolean };
-			const isTextInput = widget === titleInput || widget === descriptionInput;
-			if (isTextInput) {
+			const isTextInput = isTextInputWidget(widget);
+			// The date inputs are borderless: their focus style marks them, so only the two
+			// bordered inputs need a border-color change.
+			if (widget === titleInput || widget === descriptionInput) {
 				style.border ??= {};
 				style.border.fg = active ? "yellow" : "gray";
 			}
@@ -522,6 +625,7 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 		const syncInputs = () => {
 			controller.values.title = titleInput.getValue();
 			controller.values.description = descriptionInput.getValue();
+			for (const field of TASK_DATE_FIELDS) controller.values[field] = dateInputs[field].getValue();
 		};
 		const cancelInputIfReading = (input: TextboxInterface) => {
 			if ((input as TextboxInterface & { _reading?: boolean })._reading) input.cancel();
@@ -557,11 +661,15 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			}
 			statusField.setContent(selectorContent("Status", controller.values.status));
 			priorityField.setContent(selectorContent("Priority", controller.values.priority));
+			for (const field of TASK_DATE_FIELDS) {
+				dateLabels[field].top = layout.datesTop + TASK_DATE_FIELDS.indexOf(field);
+				dateInputs[field].top = layout.datesTop + TASK_DATE_FIELDS.indexOf(field);
+			}
 			scrollFieldIntoView(activeField);
 		};
 
 		const focusField = (field: TaskComposerField) => {
-			if (activeField === "title" || activeField === "description") {
+			if (TEXT_INPUT_FIELDS.includes(activeField)) {
 				syncInputs();
 				cancelInputIfReading(widgets[activeField] as TextboxInterface);
 			}
@@ -573,7 +681,7 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			}
 			const widget = widgets[field];
 			widget.focus();
-			if (field === "title" || field === "description") {
+			if (TEXT_INPUT_FIELDS.includes(field)) {
 				(widget as TextboxInterface).readInput();
 			}
 			// blessed scrolls a focused widget into view using its offset within its immediate
@@ -584,20 +692,13 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 
 		const navigate = (direction: "up" | "down" | "left" | "right") => {
 			let next = activeField;
-			if (layout.compact) {
-				if (activeField === "status" && direction === "up") next = "description";
-				if (activeField === "status" && direction === "down") next = "priority";
-				if (activeField === "priority" && direction === "up") next = "status";
-				if (activeField === "priority" && direction === "down") next = "create";
-				if (activeField === "create" && direction === "up") next = "priority";
-				if (activeField === "cancel" && direction === "up") next = "priority";
-			} else {
-				if (["status", "priority"].includes(activeField)) {
-					if (direction === "up") next = "description";
-					if (direction === "down") next = activeField === "priority" ? "cancel" : "create";
-				}
-				if (activeField === "create" && direction === "up") next = "status";
-				if (activeField === "cancel" && direction === "up") next = "priority";
+			// Vertical movement follows the stacked field order; status and priority share a row,
+			// so moving up from either one lands on the description above them.
+			if (["status", "priority"].includes(activeField) && direction === "up") next = "description";
+			else if (direction === "up" || direction === "down") {
+				const index = VERTICAL_ORDER.indexOf(activeField);
+				const neighbor = VERTICAL_ORDER[index + (direction === "down" ? 1 : -1)];
+				if (neighbor) next = neighbor;
 			}
 			if (activeField === "status" && direction === "right" && !layout.compact) next = "priority";
 			if (activeField === "priority" && direction === "left" && !layout.compact) next = "status";
@@ -637,8 +738,9 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			for (const widget of Object.values(widgets)) {
 				unkeyEscape(widget);
 			}
-			cancelInputIfReading(titleInput);
-			cancelInputIfReading(descriptionInput);
+			for (const field of TEXT_INPUT_FIELDS) {
+				cancelInputIfReading(widgets[field] as TextboxInterface);
+			}
 			close();
 			resolve(task);
 		};
@@ -660,7 +762,13 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			}
 			showError();
 			if (!controller.values.title.trim()) focusField("title");
-			else focusField("create");
+			else {
+				// A bad date is the one mistake worth walking back to; the rest stay put.
+				const invalidDate = TASK_DATE_FIELDS.find(
+					(field) => controller.values[field].trim() && !isValidMilestoneDate(controller.values[field].trim()),
+				);
+				focusField(invalidDate ?? "create");
+			}
 		};
 
 		const openPicker = async (field: "status" | "priority") => {
@@ -793,10 +901,12 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 		};
 		ownInputKeys(titleInput as ComposerInput);
 		ownInputKeys(descriptionInput as ComposerInput);
+		for (const field of TASK_DATE_FIELDS) ownInputKeys(dateInputs[field] as ComposerInput);
 
 		let cursorBeforeKey: { y: number; lines: number } | null = null;
-		for (const input of [titleInput, descriptionInput] as ComposerInput[]) {
+		for (const input of [titleInput, descriptionInput, ...Object.values(dateInputs)] as ComposerInput[]) {
 			input.on("keypress", () => {
+				// Single-row inputs have no wrapped lines to track; only the description does.
 				cursorBeforeKey = {
 					y: input.getCursor?.().y ?? 0,
 					lines: Math.max(1, input._clines?.length ?? input.getValue().split("\n").length),
@@ -831,6 +941,22 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			if (cursorBeforeKey?.y === 0) focusField("status");
 			return false;
 		});
+		// Enter on a date row submits, like the milestone form; ↑↓ walk the field stack.
+		for (const field of TASK_DATE_FIELDS) {
+			const input = dateInputs[field] as ComposerInput;
+			input.key(["enter"], () => {
+				void submit();
+				return false;
+			});
+			input.key(["up"], () => {
+				navigate("up");
+				return false;
+			});
+			input.key(["down"], () => {
+				navigate("down");
+				return false;
+			});
+		}
 
 		for (const field of ["status", "priority"] as const) {
 			widgets[field].key(["enter", "space"], () => {
@@ -841,7 +967,7 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 
 		// Pointer activation reuses the keyboard transition, so a clicked text field enters read
 		// mode with a caret and every field has one source of truth for focus styling and scrolling.
-		for (const field of ["title", "description", "status", "priority"] as const) {
+		for (const field of ["title", "description", "status", "priority", ...TASK_DATE_FIELDS] as const) {
 			widgets[field].on("click", () => {
 				focusField(field);
 				if (field === "status" || field === "priority") void openPicker(field);

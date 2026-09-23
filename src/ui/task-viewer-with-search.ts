@@ -1439,6 +1439,19 @@ export function generateDetailContent(
 	if (task.updatedDate && task.updatedDate !== task.createdDate) {
 		metadata.push(`{bold}Updated:{/bold} ${formatDateForDisplay(task.updatedDate)}`);
 	}
+	if (task.dueDate) {
+		metadata.push(`{bold}Due:{/bold} ${formatDateForDisplay(task.dueDate)}`);
+	}
+	if (task.plannedStart || task.plannedEnd) {
+		metadata.push(
+			`{bold}Planned:{/bold} ${formatDateForDisplay(task.plannedStart ?? "") || "-"} → ${formatDateForDisplay(task.plannedEnd ?? "") || "-"}`,
+		);
+	}
+	if (task.actualStart || task.actualEnd) {
+		metadata.push(
+			`{bold}Actual:{/bold} ${formatDateForDisplay(task.actualStart ?? "") || "-"} → ${formatDateForDisplay(task.actualEnd ?? "") || "-"}`,
+		);
+	}
 	if (task.priority) {
 		const priorityDisplay = getPriorityDisplay(task.priority);
 		const priorityText = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);

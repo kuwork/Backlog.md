@@ -59,37 +59,90 @@ describe("TUI task composer model", () => {
 				description: "Line one\nLine two",
 				status: "Review",
 				priority: "high",
+				dueDate: "2026-10-01",
+				plannedStart: "2026-09-20",
+				plannedEnd: "2026-09-30",
+				actualStart: "",
+				actualEnd: "",
 			}),
 		).toEqual({
 			title: "Capture intent",
 			description: "Line one\nLine two",
 			status: "Review",
 			priority: "high",
+			dueDate: "2026-10-01",
+			plannedStart: "2026-09-20",
+			plannedEnd: "2026-09-30",
 		});
 
-		expect(toTaskCreateInput({ title: "Minimal", description: "", status: "To Do", priority: "" })).toEqual({
+		expect(
+			toTaskCreateInput({
+				title: "Minimal",
+				description: "",
+				status: "To Do",
+				priority: "",
+				dueDate: "",
+				plannedStart: "",
+				plannedEnd: "",
+				actualStart: "",
+				actualEnd: "",
+			}),
+		).toEqual({
 			title: "Minimal",
 			status: "To Do",
 		});
 	});
 
+	it("refuses malformed dates and names the field", () => {
+		expect(() =>
+			toTaskCreateInput({
+				title: "Dated",
+				description: "",
+				status: "To Do",
+				priority: "",
+				dueDate: "tomorrow",
+				plannedStart: "",
+				plannedEnd: "",
+				actualStart: "",
+				actualEnd: "",
+			}),
+		).toThrow("Due must be YYYY-MM-DD (or YYYY-MM-DD HH:mm).");
+
+		expect(() =>
+			toTaskCreateInput({
+				title: "Dated",
+				description: "",
+				status: "To Do",
+				priority: "",
+				dueDate: "2026-10-01 09:30",
+				plannedStart: "",
+				plannedEnd: "",
+				actualStart: "",
+				actualEnd: "",
+			}),
+		).not.toThrow();
+	});
+
 	it("keeps the normal layout at 100x30 and 80x24, then stacks details at 50x18", () => {
 		expect(getTaskComposerLayout(100, 30)).toMatchObject({
 			compact: false,
-			popupHeight: 20,
+			popupHeight: 24,
 			descriptionHeight: 6,
 			detailsTop: 9,
 			detailsHeight: 3,
-			actionsTop: 12,
+			datesTop: 12,
+			datesHeight: 5,
+			actionsTop: 17,
 		});
-		expect(getTaskComposerLayout(80, 24)).toMatchObject({ compact: false, popupHeight: 20, actionsTop: 12 });
+		expect(getTaskComposerLayout(80, 24)).toMatchObject({ compact: false, popupHeight: 24, actionsTop: 17 });
 		expect(getTaskComposerLayout(50, 18)).toMatchObject({
 			compact: true,
 			popupHeight: 16,
 			descriptionHeight: 3,
 			detailsTop: 6,
 			detailsHeight: 4,
-			actionsTop: 10,
+			datesTop: 10,
+			actionsTop: 15,
 		});
 	});
 
@@ -180,6 +233,11 @@ describe("TUI task composer model", () => {
 			description: "Keep this description",
 			status: "Review",
 			priority: "",
+			dueDate: "",
+			plannedStart: "",
+			plannedEnd: "",
+			actualStart: "",
+			actualEnd: "",
 		});
 	});
 });
