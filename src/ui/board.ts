@@ -18,6 +18,7 @@ import {
 } from "../utils/milestone-filter.ts";
 import { applySharedTaskFilters, createTaskSearchIndex, type LabelMatchMode } from "../utils/task-search.ts";
 import { compareTaskIds } from "../utils/task-sorting.ts";
+import { taskContentSignature } from "../utils/task-watcher.ts";
 import { formatAcceptanceCriteriaProgress } from "./acceptance-criteria-progress.ts";
 import { openConfirmPopup } from "./components/confirm-popup.ts";
 import {
@@ -510,6 +511,11 @@ export async function renderBoardTui(
 				return await operation();
 			} finally {
 				modalOpen = false;
+				// A popup refresh that arrived under the dialog is applied now the keyboard is free.
+				if (popupSyncPending) {
+					popupSyncPending = false;
+					syncOpenPopup();
+				}
 			}
 		};
 		let configuredLabels = collectAvailableLabels(initialTasks, options?.availableLabels ?? []);
@@ -866,6 +872,167 @@ export async function renderBoardTui(
 			}
 			const safeIndex = Math.min(columns.length - 1, Math.max(0, currentCol));
 			focusColumn(safeIndex, undefined, activate);
+		};
+
+		/**
+		 * The popup that is open right now, tracked so live task updates can keep it honest.
+		 *
+		 * Its content is rendered once, from the record it was opened with, so without this the
+		 * popup keeps showing a title and body the file no longer has while the columns behind it
+		 * move on - and its complete/archive keys act on the record captured back then.
+		 */
+		let openPopup: { taskId: string; signature: string; close: () => void } | null = null;
+		/** A popup refresh that arrived while another modal owned the keyboard, applied afterwards. */
+		let popupSyncPending = false;
+		const popupNoun = () => entityNoun(options?.draftSession ? "draft" : "task");
+
+		const closeOpenPopup = () => {
+			const popup = openPopup;
+			openPopup = null;
+			popupOpen = false;
+			popup?.close();
+		};
+
+		const openTaskPopup = async (task: Task): Promise<void> => {
+			popupOpen = true;
+			const popup = await createTaskPopup(screen, task, resolveMilestoneLabel);
+			if (!popup) {
+				popupOpen = false;
+				return;
+			}
+
+			const { contentArea, close } = popup;
+			openPopup = { taskId: task.id, signature: taskContentSignature(task), close };
+
+			contentArea.key(["escape", "q"], () => {
+				closeOpenPopup();
+				// An external update may have moved the record to another lane while it was open.
+				restoreSelection(task.id);
+			});
+
+			contentArea.key(["e", "E", "S-e"], async () => {
+				await openTaskEditor(task);
+			});
+
+			contentArea.key(["y", "Y"], async () => {
+				const success = await copyToClipboard(task.id);
+				if (success) {
+					showTransientFooter(` {green-fg}Copied ${task.id} to clipboard{/}`);
+				} else {
+					showTransientFooter(" {red-fg}Failed to copy to clipboard{/}");
+				}
+			});
+
+			contentArea.key(["c", "C"], async () => {
+				if (task.branch) {
+					showTransientFooter(` {red-fg}Cannot complete task from branch "${task.branch}".{/}`);
+					return;
+				}
+
+				const confirmed = await runWithModalGuard(() =>
+					openConfirmPopup({
+						screen,
+						title: "Complete Task",
+						message: `Mark task {bold}${task.id}{/bold} as completed?\n{gray-fg}${task.title}{/}`,
+					}),
+				);
+
+				if (confirmed) {
+					try {
+						const core = await getCore();
+						const config = await core.fs.loadConfig();
+						const success = await core.completeTask(task.id, config?.autoCommit ?? false);
+
+						if (success) {
+							currentTasks = currentTasks.filter((t) => t.id !== task.id);
+							showTransientFooter(` {green-fg}Completed ${task.id}{/}`);
+							closeOpenPopup();
+							renderView();
+						} else {
+							showTransientFooter(` {red-fg}Failed to complete ${task.id}{/}`);
+						}
+					} catch (error) {
+						showTransientFooter(
+							` {red-fg}Error completing task: ${error instanceof Error ? error.message : "Unknown error"}{/}`,
+						);
+					}
+				}
+			});
+
+			contentArea.key(["a", "A"], async () => {
+				if (task.branch) {
+					showTransientFooter(` {red-fg}Cannot archive task from branch "${task.branch}".{/}`);
+					return;
+				}
+
+				const confirmed = await runWithModalGuard(() =>
+					openConfirmPopup({
+						screen,
+						title: "Archive Task",
+						message: `Archive task {bold}${task.id}{/bold}?\n{gray-fg}${task.title}{/}`,
+					}),
+				);
+
+				if (confirmed) {
+					try {
+						const core = await getCore();
+						const config = await core.fs.loadConfig();
+						let cleanedTaskIds: string[] = [];
+						const success = await core.archiveTask(task.id, config?.autoCommit ?? false, {
+							onVacatedIdCleanup: (ids) => {
+								cleanedTaskIds = ids;
+							},
+						});
+
+						if (success) {
+							currentTasks = currentTasks.filter((t) => t.id !== task.id);
+							let footer = ` {green-fg}Archived ${task.id}{/}`;
+							if (cleanedTaskIds.length > 0) {
+								footer += ` {gray-fg}Removed references from ${cleanedTaskIds.join(", ")}{/}`;
+							}
+							showTransientFooter(footer);
+							closeOpenPopup();
+							renderView();
+						} else {
+							showTransientFooter(` {red-fg}Failed to archive ${task.id}{/}`);
+						}
+					} catch (error) {
+						showTransientFooter(
+							` {red-fg}Error archiving task: ${error instanceof Error ? error.message : "Unknown error"}{/}`,
+						);
+					}
+				}
+			});
+
+			screen.render();
+		};
+
+		/**
+		 * Keep the open popup in step with the record behind it: rebuild it when the content
+		 * changed, close it with a notice when the record is gone, and do nothing when the
+		 * signature is unchanged - which is what makes the watcher echo after an in-popup edit a
+		 * no-op instead of a rebuild that flickers.
+		 */
+		const syncOpenPopup = () => {
+			if (!openPopup) return;
+			// The composer and the confirm dialogs own the keyboard while they are up; rebuilding
+			// the popup under them would take the focus they need, so it waits for them to close.
+			if (modalOpen) {
+				popupSyncPending = true;
+				return;
+			}
+
+			const popup = openPopup;
+			const next = currentTasks.find((task) => task.id === popup.taskId);
+			if (!next) {
+				closeOpenPopup();
+				showTransientFooter(` {red-fg}${popupNoun().titled} ${popup.taskId} is no longer on the board.{/}`);
+				return;
+			}
+			if (taskContentSignature(next) === popup.signature) return;
+
+			closeOpenPopup();
+			void openTaskPopup(next);
 		};
 
 		const applyColumnData = (data: ColumnData[], selectedTaskId?: string) => {
@@ -1281,6 +1448,9 @@ export async function renderBoardTui(
 				]),
 			).sort((a, b) => a.localeCompare(b));
 
+			// The popup is a snapshot of the record it was opened with, so it has to be told what
+			// changed before the columns are redrawn from the same list.
+			syncOpenPopup();
 			renderView();
 		};
 
@@ -1509,19 +1679,21 @@ export async function renderBoardTui(
 					return;
 				}
 
-				if (result.task) {
-					currentTasks = currentTasks.map((existingTask) =>
-						existingTask.id === task.id ? result.task || existingTask : existingTask,
-					);
-				}
+				const editedTasks = result.task
+					? currentTasks.map((existingTask) =>
+							existingTask.id === task.id ? result.task || existingTask : existingTask,
+						)
+					: currentTasks;
+
+				// Feed the reconciled list through the board's own update funnel: the popup is open
+				// right now, and this is the one path that tells it the record it rendered has changed.
+				updateBoard(editedTasks, []);
 
 				if (result.changed) {
-					renderView();
 					showTransientFooter(` {green-fg}${noun.titled} ${result.task?.id ?? task.id} marked modified.{/}`);
 					return;
 				}
 
-				renderView();
 				showTransientFooter(` {gray-fg}No changes detected for ${result.task?.id ?? task.id}.{/}`);
 			} catch (_error) {
 				showTransientFooter(" {red-fg}Failed to open editor.{/}");
@@ -1543,118 +1715,7 @@ export async function renderBoardTui(
 			if (idx < 0 || idx >= column.tasks.length) return;
 			const task = column.tasks[idx];
 			if (!task) return;
-			popupOpen = true;
-
-			const popup = await createTaskPopup(screen, task, resolveMilestoneLabel);
-			if (!popup) {
-				popupOpen = false;
-				return;
-			}
-
-			const { contentArea, close } = popup;
-			contentArea.key(["escape", "q"], () => {
-				popupOpen = false;
-				close();
-				focusColumn(currentCol);
-			});
-
-			contentArea.key(["e", "E", "S-e"], async () => {
-				await openTaskEditor(task);
-			});
-
-			contentArea.key(["y", "Y"], async () => {
-				const success = await copyToClipboard(task.id);
-				if (success) {
-					showTransientFooter(` {green-fg}Copied ${task.id} to clipboard{/}`);
-				} else {
-					showTransientFooter(" {red-fg}Failed to copy to clipboard{/}");
-				}
-			});
-
-			contentArea.key(["c", "C"], async () => {
-				if (task.branch) {
-					showTransientFooter(` {red-fg}Cannot complete task from branch "${task.branch}".{/}`);
-					return;
-				}
-
-				const confirmed = await runWithModalGuard(() =>
-					openConfirmPopup({
-						screen,
-						title: "Complete Task",
-						message: `Mark task {bold}${task.id}{/bold} as completed?\n{gray-fg}${task.title}{/}`,
-					}),
-				);
-
-				if (confirmed) {
-					try {
-						const core = await getCore();
-						const config = await core.fs.loadConfig();
-						const success = await core.completeTask(task.id, config?.autoCommit ?? false);
-
-						if (success) {
-							currentTasks = currentTasks.filter((t) => t.id !== task.id);
-							showTransientFooter(` {green-fg}Completed ${task.id}{/}`);
-							close();
-							popupOpen = false;
-							renderView();
-						} else {
-							showTransientFooter(` {red-fg}Failed to complete ${task.id}{/}`);
-						}
-					} catch (error) {
-						showTransientFooter(
-							` {red-fg}Error completing task: ${error instanceof Error ? error.message : "Unknown error"}{/}`,
-						);
-					}
-				}
-			});
-
-			contentArea.key(["a", "A"], async () => {
-				if (task.branch) {
-					showTransientFooter(` {red-fg}Cannot archive task from branch "${task.branch}".{/}`);
-					return;
-				}
-
-				const confirmed = await runWithModalGuard(() =>
-					openConfirmPopup({
-						screen,
-						title: "Archive Task",
-						message: `Archive task {bold}${task.id}{/bold}?\n{gray-fg}${task.title}{/}`,
-					}),
-				);
-
-				if (confirmed) {
-					try {
-						const core = await getCore();
-						const config = await core.fs.loadConfig();
-						let cleanedTaskIds: string[] = [];
-						const success = await core.archiveTask(task.id, config?.autoCommit ?? false, {
-							onVacatedIdCleanup: (ids) => {
-								cleanedTaskIds = ids;
-							},
-						});
-
-						if (success) {
-							currentTasks = currentTasks.filter((t) => t.id !== task.id);
-							let footer = ` {green-fg}Archived ${task.id}{/}`;
-							if (cleanedTaskIds.length > 0) {
-								footer += ` {gray-fg}Removed references from ${cleanedTaskIds.join(", ")}{/}`;
-							}
-							showTransientFooter(footer);
-							close();
-							popupOpen = false;
-							renderView();
-						} else {
-							showTransientFooter(` {red-fg}Failed to archive ${task.id}{/}`);
-						}
-					} catch (error) {
-						showTransientFooter(
-							` {red-fg}Error archiving task: ${error instanceof Error ? error.message : "Unknown error"}{/}`,
-						);
-					}
-				}
-			});
-
-			screen.render();
+			await openTaskPopup(task);
 		});
 
 		screen.key(["e", "E", "S-e"], async () => {

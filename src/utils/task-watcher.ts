@@ -36,7 +36,13 @@ function isUsableTask(task: Task | null, taskId: string): task is Task {
 	return Boolean(task && taskIdsEqual(task.id, taskId) && task.title.trim() && task.status.trim());
 }
 
-function taskSignature(task: Task): string {
+/**
+ * What counts as a content change for a task: everything except the fields that describe where the
+ * record came from rather than what it says. Exported because the board compares the same signature
+ * when it decides whether an open popup still matches the task behind it - one definition, so the
+ * echo the watcher publishes after an in-popup edit compares equal instead of forcing a rebuild.
+ */
+export function taskContentSignature(task: Task): string {
 	const { branch: _branch, filePath: _filePath, lastModified: _lastModified, source: _source, ...content } = task;
 	return JSON.stringify(content);
 }
@@ -47,7 +53,7 @@ function createReconciliation(initialTask?: Task): TaskReconciliation {
 		processing: false,
 		pending: false,
 		hasPublishedState: initialTask !== undefined,
-		lastPublishedSignature: initialTask ? taskSignature(initialTask) : null,
+		lastPublishedSignature: initialTask ? taskContentSignature(initialTask) : null,
 	};
 }
 
@@ -118,7 +124,7 @@ export function watchTasks(
 				return;
 			}
 
-			const signature = taskSignature(task);
+			const signature = taskContentSignature(task);
 			if (signature !== previousCandidateSignature) {
 				previousCandidateSignature = signature;
 				continue;
@@ -186,7 +192,9 @@ export function watchTasks(
 					const taskId = normalizeTaskId(task.id);
 					visibleTaskIds.add(taskId);
 					const state = reconciliations.get(taskId);
-					if (!state?.hasPublishedState || state.lastPublishedSignature !== taskSignature(task)) schedule(taskId);
+					if (!state?.hasPublishedState || state.lastPublishedSignature !== taskContentSignature(task)) {
+						schedule(taskId);
+					}
 				}
 			}
 
