@@ -1,7 +1,7 @@
 import type { ScreenInterface } from "neo-neo-bblessed";
 import { createPopupChrome, createScrollableViewport } from "./filter-popup.ts";
 
-export type HelpPopupContext = "board" | "task-list" | "decision-list" | "document-list" | "milestones";
+export type HelpPopupContext = "board" | "draft-board" | "task-list" | "decision-list" | "document-list" | "milestones";
 
 type Shortcut = {
 	key: string;
@@ -10,9 +10,12 @@ type Shortcut = {
 
 // Letters are uppercase key indicators, matching the footer: `P` means "press the P key",
 // not Shift+P. The bound key is the lowercase letter.
-const BOARD_SHORTCUTS: Shortcut[] = [
+//
+// A drafts session runs the same board, so it shares this list and differs only in what its own
+// create key makes.
+const boardShortcuts = (createDescription: string): Shortcut[] => [
 	{ key: "Tab", desc: "Switch View (Kanban/List)" },
-	{ key: "N", desc: "Create task" },
+	{ key: "N", desc: createDescription },
 	{ key: "/", desc: "Search tasks" },
 	{ key: "P", desc: "Filter by Priority" },
 	{ key: "I", desc: "Filter by Milestone" },
@@ -29,6 +32,9 @@ const BOARD_SHORTCUTS: Shortcut[] = [
 	{ key: "?", desc: "Show this help menu" },
 	{ key: "q/Esc", desc: "Quit / Close" },
 ];
+
+const BOARD_SHORTCUTS: Shortcut[] = boardShortcuts("Create task");
+const DRAFT_BOARD_SHORTCUTS: Shortcut[] = boardShortcuts("Create draft");
 
 const TASK_LIST_SHORTCUTS: Shortcut[] = [
 	{ key: "Tab", desc: "Switch View (Kanban/List)" },
@@ -84,6 +90,8 @@ const MILESTONES_SHORTCUTS: Shortcut[] = [
 
 export function getHelpShortcuts(context: HelpPopupContext = "board"): Shortcut[] {
 	switch (context) {
+		case "draft-board":
+			return DRAFT_BOARD_SHORTCUTS;
 		case "task-list":
 			return TASK_LIST_SHORTCUTS;
 		case "decision-list":

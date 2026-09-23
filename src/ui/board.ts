@@ -29,12 +29,12 @@ import {
 import { openMultiSelectFilterPopup, openSingleSelectFilterPopup } from "./components/filter-popup.ts";
 import type { BoundaryNavigationKey } from "./components/generic-list.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
-import { openTaskComposer, type TaskComposerOptions } from "./components/task-composer.ts";
+import { DRAFT_STATUS, openTaskComposer, type TaskComposerOptions } from "./components/task-composer.ts";
+import { entityNoun } from "./entity-noun.ts";
 import { BOARD_FOOTER_CONTENT, formatFooterContent } from "./footer-content.ts";
 import { getStatusIcon } from "./status-icon.ts";
 import {
 	createTaskPopup,
-	editTargetNoun,
 	resolveListBoundaryNavigation,
 	resolveSearchExitTargetIndex,
 } from "./task-viewer-with-search.ts";
@@ -250,8 +250,9 @@ export function upsertBoardTask(tasks: readonly Task[], task: Task): Task[] {
 export function getCreatedTaskBoardOutcome(
 	task: Task,
 	visible: boolean,
+	draftSession = false,
 ): { focusTaskId?: string; message: string; tone: "green" | "yellow" } {
-	if (task.status.trim().toLowerCase() === "draft") {
+	if (!draftSession && task.status.trim().toLowerCase() === "draft") {
 		return {
 			message: `Created ${task.id} as a draft. Drafts are not shown on the task board.`,
 			tone: "yellow",
@@ -397,6 +398,8 @@ export async function renderBoardTui(
 		projectName?: string;
 		createTask?: (input: TaskCreateInput) => Promise<Task>;
 		taskComposer?: (options: TaskComposerOptions) => Promise<Task | null>;
+		/** A drafts session: its create key makes a draft and the created draft joins the session. */
+		draftSession?: boolean;
 		priorities?: readonly string[];
 		/** Filter controls to render in the header. Hosts that offer their own milestone picker drop it here. */
 		visibleFilters?: FilterControlId[];
@@ -1312,7 +1315,14 @@ export async function renderBoardTui(
 				task = await runWithModalGuard(() =>
 					(options?.taskComposer ?? openTaskComposer)({
 						screen,
-						statuses: configuredWorkflowStatuses,
+						// Neither session creates from the row under the cursor: both let the window's
+						// status field decide the column the record lands in, and focus that record
+						// afterwards. The one difference is the choice itself - a drafts session pins it
+						// to the single status that belongs to this session, so the draft it makes lands
+						// in the Draft column, while a task session keeps the configured workflow
+						// statuses and opens on the first of them.
+						statuses: options?.draftSession ? [DRAFT_STATUS] : configuredWorkflowStatuses,
+						entity: options?.draftSession ? "draft" : "task",
 						priorities: options?.priorities,
 						persist: async (input) => {
 							if (options?.createTask) return options.createTask(input);
@@ -1343,10 +1353,14 @@ export async function renderBoardTui(
 				return;
 			}
 
-			const draft = task.status.trim().toLowerCase() === "draft";
-			if (!draft) currentTasks = upsertBoardTask(currentTasks, task);
-			const visible = !draft && getFilteredTasks().some((candidate) => candidate.id === task.id);
-			const outcome = getCreatedTaskBoardOutcome(task, visible);
+			// A task session has no room for a draft, so a draft made there is reported as a record the
+			// board does not hold. A drafts session is the opposite one: the draft it just created is
+			// exactly what belongs in it, so it joins the session and takes the ordinary notice.
+			const isDraftRecord = task.status.trim().toLowerCase() === DRAFT_STATUS.toLowerCase();
+			const joinsSession = !isDraftRecord || options?.draftSession === true;
+			if (joinsSession) currentTasks = upsertBoardTask(currentTasks, task);
+			const visible = joinsSession && getFilteredTasks().some((candidate) => candidate.id === task.id);
+			const outcome = getCreatedTaskBoardOutcome(task, visible, options?.draftSession === true);
 			showTransientFooter(` {${outcome.tone}-fg}${outcome.message}{/}`, 6000);
 			renderView(outcome.focusTaskId);
 		});
@@ -1474,7 +1488,7 @@ export async function renderBoardTui(
 				const result = await core.editTaskInTui(task.id, screen, task);
 				// A `draft list` session can switch to the board, so the row the edit key opened is not
 				// necessarily a task: name it for what the session resolved.
-				const noun = editTargetNoun(result.entity);
+				const noun = entityNoun(result.entity);
 				if (result.reason === "read_only") {
 					const branchInfo = result.task?.branch ? ` from branch "${result.task.branch}"` : "";
 					showTransientFooter(` {red-fg}Cannot edit ${noun.plain}${branchInfo}.{/}`);
@@ -2009,7 +2023,7 @@ export async function renderBoardTui(
 
 		screen.key(["?"], async () => {
 			if (!keysActive() || moveOp) return;
-			await runWithModalGuard(() => openHelpPopup(screen));
+			await runWithModalGuard(() => openHelpPopup(screen, options?.draftSession ? "draft-board" : "board"));
 		});
 
 		screen.key(["y", "Y"], async () => {

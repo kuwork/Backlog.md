@@ -57,6 +57,7 @@ import {
 	type SearchResult,
 	type SearchResultType,
 	type Task,
+	type TaskCreateInput,
 	type TaskListFilter,
 	type TaskSearchResult,
 } from "./types/index.ts";
@@ -2008,13 +2009,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 				acceptanceCriteria: criteria.map((text) => ({ text, checked: false })),
 				definitionOfDoneAdd: toStringArray(options.dod),
 				disableDefinitionOfDoneDefaults: options.dodDefaults === false,
-				dueDate: typeof options.dueDate === "string" ? options.dueDate.trim() : undefined,
-				plannedStart: typeof options.plannedStart === "string" ? options.plannedStart.trim() : undefined,
-				plannedEnd: typeof options.plannedEnd === "string" ? options.plannedEnd.trim() : undefined,
-				actualStart:
-					typeof options.actualStart === "string" ? localDateTimeToStoredUtc(options.actualStart.trim()) : undefined,
-				actualEnd:
-					typeof options.actualEnd === "string" ? localDateTimeToStoredUtc(options.actualEnd.trim()) : undefined,
+				...buildCreateDateFields(options),
 			});
 			if (usePlainOutput) {
 				console.log(formatTaskPlainText(task, { filePathOverride: filePath }));
@@ -3047,6 +3042,30 @@ const draftEditHelpOptions: HelpField[] = editFieldHelpOptions.map((option) =>
  * Registers the shared edit field options. `task edit` and `draft edit` both read this one list,
  * so a flag cannot end up working on one command and missing from the other.
  */
+/**
+ * The create-time date fields every create command feeds into its create input: trimmed as typed,
+ * except actual start and end, which are converted to the stored UTC form. One list, so a create
+ * command cannot drift from the others on either rule.
+ */
+function buildCreateDateFields(options: {
+	dueDate?: unknown;
+	plannedStart?: unknown;
+	plannedEnd?: unknown;
+	actualStart?: unknown;
+	actualEnd?: unknown;
+}): Pick<TaskCreateInput, "dueDate" | "plannedStart" | "plannedEnd" | "actualStart" | "actualEnd"> {
+	const trimmed = (value: unknown) => (typeof value === "string" ? value.trim() : undefined);
+	const asStoredUtc = (value: unknown) =>
+		typeof value === "string" ? localDateTimeToStoredUtc(value.trim()) : undefined;
+	return {
+		dueDate: trimmed(options.dueDate),
+		plannedStart: trimmed(options.plannedStart),
+		plannedEnd: trimmed(options.plannedEnd),
+		actualStart: asStoredUtc(options.actualStart),
+		actualEnd: asStoredUtc(options.actualEnd),
+	};
+}
+
 function addEditFieldOptions(command: Command): Command {
 	return command
 		.option("-t, --title <title>")
@@ -4065,6 +4084,9 @@ draftCmd
 					filterDescription: "All Drafts",
 				},
 				title: "Drafts",
+				// This session is about drafts, so its create key makes a draft and the created draft
+				// joins the session instead of being reported as a record the board does not hold.
+				draftSession: true,
 			});
 		}
 	});
@@ -4084,6 +4106,11 @@ draftCmd
 	.option("--unassign", "create the draft unassigned (cannot combine with -a/--assignee)")
 	.option("-s, --status <status>")
 	.option("-l, --labels <labels>")
+	.option("--due-date <date>", "due date (YYYY-MM-DD)")
+	.option("--planned-start <date>", "planned start date (YYYY-MM-DD)")
+	.option("--planned-end <date>", "planned end date (YYYY-MM-DD)")
+	.option("--actual-start <date>", "actual start date (YYYY-MM-DD HH:MM)")
+	.option("--actual-end <date>", "actual end date (YYYY-MM-DD HH:MM)")
 	.action(async (title: string, options) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
@@ -4109,6 +4136,7 @@ draftCmd
 				status: "Draft",
 				assignee: options.unassign ? [] : parseDelimitedStringList(options.assignee),
 				labels: parseDelimitedStringList(options.labels),
+				...buildCreateDateFields(options),
 			});
 			console.log(`Created draft ${task.id}`);
 			console.log(`File: ${filePath}`);

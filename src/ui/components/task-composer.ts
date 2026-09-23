@@ -12,6 +12,7 @@ const textareaWidget = (
 	}
 ).textarea;
 
+import { type EntityNounKind, entityNoun } from "../entity-noun.ts";
 import {
 	createPopupChrome,
 	createScrollableViewport,
@@ -20,7 +21,7 @@ import {
 } from "./filter-popup.ts";
 import { isValidMilestoneDate } from "./milestone-form.ts";
 
-const DRAFT_STATUS = "Draft";
+export const DRAFT_STATUS = "Draft";
 
 /** The task dates, in the order the composer asks for them — the same five the milestone form keeps. */
 export const TASK_DATE_FIELDS = ["dueDate", "plannedStart", "plannedEnd", "actualStart", "actualEnd"] as const;
@@ -368,11 +369,13 @@ export function toTaskCreateInput(values: TaskComposerValues): TaskCreateInput {
 
 export class TaskComposerController {
 	readonly values: TaskComposerValues;
+	private readonly noun: { plain: string; titled: string };
 	error = "";
 	submitting = false;
 
-	constructor(statuses: readonly string[]) {
+	constructor(statuses: readonly string[], entity?: EntityNounKind) {
 		this.values = createTaskComposerValues(statuses);
+		this.noun = entityNoun(entity);
 	}
 
 	async create(persist: (input: TaskCreateInput) => Promise<Task>): Promise<Task | null> {
@@ -382,7 +385,7 @@ export class TaskComposerController {
 		try {
 			input = toTaskCreateInput(this.values);
 		} catch (error) {
-			this.error = error instanceof Error ? error.message : "Task creation failed.";
+			this.error = error instanceof Error ? error.message : `${this.noun.titled} creation failed.`;
 			return null;
 		}
 
@@ -390,7 +393,7 @@ export class TaskComposerController {
 		try {
 			return await persist(input);
 		} catch (error) {
-			this.error = error instanceof Error ? error.message : "Task creation failed.";
+			this.error = error instanceof Error ? error.message : `${this.noun.titled} creation failed.`;
 			return null;
 		} finally {
 			this.submitting = false;
@@ -405,20 +408,22 @@ function displayChoice(value: string): string {
 export type TaskComposerOptions = {
 	screen: ScreenInterface;
 	statuses: readonly string[];
+	/** What this window creates; the drafts session makes drafts, everything else makes tasks. */
+	entity?: EntityNounKind;
 	priorities?: readonly string[];
 	persist: (input: TaskCreateInput) => Promise<Task>;
 };
 
 export async function openTaskComposer(options: TaskComposerOptions): Promise<Task | null> {
 	return new Promise<Task | null>((resolve) => {
-		const controller = new TaskComposerController(options.statuses);
+		const controller = new TaskComposerController(options.statuses, options.entity);
 		let settled = false;
 		let pickerOpen = false;
 		let activeField: TaskComposerField = "title";
 		let layout = getTaskComposerLayout(options.screen.width, options.screen.height, options);
 		const { popup, close, reflow } = createPopupChrome({
 			screen: options.screen,
-			title: "Create Task",
+			title: `Create ${entityNoun(options.entity).titled}`,
 			helpText: getTaskComposerHelpText(options.screen.width, layout.compact),
 			width: layout.popupWidth,
 			height: layout.popupHeight,
@@ -541,7 +546,7 @@ export async function openTaskComposer(options: TaskComposerOptions): Promise<Ta
 			width: 18,
 			height: 1,
 			align: "center",
-			content: "Create task",
+			content: `Create ${entityNoun(options.entity).plain}`,
 			keys: true,
 			mouse: true,
 			style: { fg: "green" },

@@ -46,6 +46,8 @@ export interface UnifiedViewOptions {
 	};
 	milestoneMode?: boolean;
 	milestoneEntities?: Milestone[];
+	/** A drafts session: the board's create key makes a draft and the created draft joins it. */
+	draftSession?: boolean;
 }
 
 type LoadingScreen = {
@@ -79,10 +81,13 @@ export async function createTaskFromBoard(
 	core: Core,
 	input: TaskCreateInput,
 	onCreated?: (task: Task) => Promise<void> | void,
+	draftSession?: boolean,
 ): Promise<Task> {
 	const config = await core.filesystem.loadConfig();
 	const task = (await core.createTaskFromInput(input, config?.autoCommit ?? false)).task;
-	if (task.status.trim().toLowerCase() !== "draft") await onCreated?.(task);
+	// A task session publishes only what belongs to it, so a draft made there stays out. A drafts
+	// session is the one that wants the draft it just created.
+	if (draftSession === true || task.status.trim().toLowerCase() !== "draft") await onCreated?.(task);
 	return task;
 }
 
@@ -492,7 +497,9 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 					milestoneEntities,
 					hideEmptyColumns: config?.hideEmptyColumns ?? false,
 					projectName: config?.projectName,
-					createTask: async (input) => createTaskFromBoard(options.core, input, taskUpdateCallbacks.onTaskAdded),
+					draftSession: options.draftSession,
+					createTask: async (input) =>
+						createTaskFromBoard(options.core, input, taskUpdateCallbacks.onTaskAdded, options.draftSession),
 				}).then(() => {
 					// If user wants to exit, do it immediately
 					if (result === "exit") {

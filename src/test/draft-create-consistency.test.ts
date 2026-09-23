@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, readdir, rm } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../index.ts";
@@ -97,5 +97,63 @@ describe("Draft creation consistency", () => {
 		const core = new Core(TEST_DIR);
 		const draft = await core.filesystem.loadDraft("draft-1");
 		expect(draft?.assignee).toEqual(["@alice", "@bob"]);
+	});
+
+	it("writes the due, planned and actual dates onto a created draft", async () => {
+		// A created draft keeps its status while carrying the same date fields a task does. The
+		// actual range is pinned through a child-process timezone so the stored-UTC conversion is
+		// observable regardless of the machine's own zone: 09:00 in Tokyo is midnight UTC.
+		const result =
+			await $`bun ${CLI_PATH} draft create "Dated Draft" --due-date 2026-10-01 --planned-start 2026-09-01 --planned-end 2026-09-30 --actual-start "2026-09-02 09:00" --actual-end "2026-09-20 18:00" --plain`
+				.cwd(TEST_DIR)
+				.env({ ...process.env, TZ: "Asia/Tokyo" })
+				.quiet();
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Created draft DRAFT-1");
+
+		const core = new Core(TEST_DIR);
+		const draft = await core.filesystem.loadDraft("draft-1");
+		expect(draft?.status).toBe("Draft");
+		expect(draft?.dueDate).toBe("2026-10-01");
+		expect(draft?.plannedStart).toBe("2026-09-01");
+		expect(draft?.plannedEnd).toBe("2026-09-30");
+		expect(draft?.actualStart).toBe("2026-09-02 00:00");
+		expect(draft?.actualEnd).toBe("2026-09-20 09:00");
+
+		if (!draft?.filePath) throw new Error("Expected the created draft to carry its file path");
+		const file = await readFile(draft.filePath, "utf8");
+		expect(file).toContain("status: Draft");
+		expect(file).toContain("due_date: '2026-10-01'");
+		expect(file).toContain("actual_start: '2026-09-02 00:00'");
+	});
+
+	it("writes no date field when draft create is given none", async () => {
+		const result = await $`bun ${CLI_PATH} draft create "Undated Draft" --plain`.cwd(TEST_DIR).quiet();
+		expect(result.exitCode).toBe(0);
+
+		const core = new Core(TEST_DIR);
+		const draft = await core.filesystem.loadDraft("draft-1");
+		expect(draft?.dueDate).toBeUndefined();
+		expect(draft?.plannedStart).toBeUndefined();
+		expect(draft?.plannedEnd).toBeUndefined();
+		expect(draft?.actualStart).toBeUndefined();
+		expect(draft?.actualEnd).toBeUndefined();
+
+		if (!draft?.filePath) throw new Error("Expected the created draft to carry its file path");
+		const file = await readFile(draft.filePath, "utf8");
+		expect(file).not.toContain("due_date");
+		expect(file).not.toContain("planned_start");
+		expect(file).not.toContain("actual_start");
+	});
+
+	it("advertises the five date flags on both create commands", async () => {
+		const flags = ["--due-date", "--planned-start", "--planned-end", "--actual-start", "--actual-end"];
+		const draftHelp = (await $`bun ${CLI_PATH} draft create --help`.cwd(TEST_DIR).quiet()).stdout.toString();
+		const taskHelp = (await $`bun ${CLI_PATH} task create --help`.cwd(TEST_DIR).quiet()).stdout.toString();
+
+		for (const flag of flags) {
+			expect(draftHelp).toContain(flag);
+			expect(taskHelp).toContain(flag);
+		}
 	});
 });

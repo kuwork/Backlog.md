@@ -3,7 +3,7 @@
 import { stdout as output } from "node:process";
 import type { BoxInterface, LineInterface, ScreenInterface, ScrollableTextInterface } from "neo-neo-bblessed";
 import { box, line, scrollabletext } from "neo-neo-bblessed";
-import { type Core, createRuntimeCore, type TuiTaskEditEntity } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/backlog.ts";
 import {
 	buildAcceptanceCriteriaItems,
 	buildDefinitionOfDoneItems,
@@ -47,23 +47,12 @@ import {
 } from "./components/filter-popup.ts";
 import { type BoundaryNavigationKey, createGenericList, type GenericList } from "./components/generic-list.ts";
 import { openHelpPopup } from "./components/help-popup.ts";
+import { entityNoun } from "./entity-noun.ts";
 import { formatFooterContent, TASK_LIST_FOOTER_CONTENT } from "./footer-content.ts";
 import { formatHeading } from "./heading.ts";
 import { createLoadingScreen } from "./loading.ts";
 import { formatStatusWithIcon, getStatusColor, wrapStatusColor } from "./status-icon.ts";
 import { createScreen, formatTuiTitle } from "./tui.ts";
-
-/**
- * How the edit key's notices name the row the session opened: a draft is not a task, and both the
- * task list and the drafts list drive the same edit key. The titled form starts a sentence, the
- * plain form sits inside one.
- */
-export function editTargetNoun(entity: TuiTaskEditEntity | undefined): { plain: string; titled: string } {
-	if (entity === "draft") {
-		return { plain: "draft", titled: "Draft" };
-	}
-	return { plain: "task", titled: "Task" };
-}
 
 function getPriorityDisplay(priority?: "high" | "medium" | "low"): string {
 	switch (priority) {
@@ -1110,7 +1099,7 @@ export async function viewTaskEnhanced(
 			const result = await core.editTaskInTui(selectedTask.id, screen, selectedTask);
 			// The session resolved the row in one store or the other; the notices say which, because a
 			// draft the drafts list handed over is not a task and must not be reported as one.
-			const noun = editTargetNoun(result.entity);
+			const noun = entityNoun(result.entity);
 			if (result.reason === "read_only") {
 				const branchInfo = result.task?.branch ? ` in branch ${result.task.branch}` : "";
 				showTransientHelp(` {red-fg}${noun.titled} is read-only${branchInfo}.{/}`);

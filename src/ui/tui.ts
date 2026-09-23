@@ -111,6 +111,21 @@ export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterf
 
 	const screen = blessedScreen({ smartCSR: true, program: sharedProgram, fullUnicode: true, ...options });
 
+	// blessed's Screen constructor binds a program-level "resize" fan-out of its own
+	// (`program.on("resize", () => { screen.alloc(); screen.render(); emit("resize") })`) and
+	// screen.destroy never takes it off. A destroyed screen therefore keeps answering every later
+	// terminal resize, re-emitting "resize" into the listeners the view registered on that dead
+	// screen: the view rebuilds its filter header and blessed refuses to insert the new element
+	// into a container that belongs to the destroyed screen ("Cannot switch a node's screen." -
+	// left the drafts list with Tab, opened a detail popup, changed the terminal height). The
+	// program gains this screen's handler while the screen is constructed, so it is the last one
+	// registered for "resize"; remember it here and drop it on teardown.
+	const programWithResize = sharedProgram as unknown as {
+		listeners?(event: string): Array<(...args: unknown[]) => void>;
+		removeListener?(event: string, listener: (...args: unknown[]) => void): void;
+	};
+	const ownResizeFanOut = programWithResize.listeners?.("resize")?.at(-1);
+
 	// screen.key registers listeners on the shared program's EventEmitter. A destroyed
 	// screen leaves those listeners behind, so a later screen's identical key press
 	// (e.g. the down arrow after Tab-switching back to the board) fires the stale
@@ -160,6 +175,12 @@ export function createScreen(options: Partial<ScreenOptions> = {}): ScreenInterf
 		// blessed can invoke destroy twice per screen; only the first call may strip,
 		// or a late second call would wipe the listeners a live screen just re-bound.
 		if (firstDestroy) {
+			// Input listeners are the shared program's, so they come off by event name; the resize
+			// fan-out above is this screen's own handler and comes off by reference. Either way the
+			// next screen binds its own.
+			if (ownResizeFanOut) {
+				programWithResize.removeListener?.("resize", ownResizeFanOut);
+			}
 			const programEvents = (sharedProgram as unknown as { _events?: Record<string, unknown[]> })._events;
 			if (programEvents) {
 				for (const eventName of Object.keys(programEvents)) {

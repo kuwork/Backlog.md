@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { BacklogConfig, Task } from "../types/index.ts";
-import { editTargetNoun } from "../ui/task-viewer-with-search.ts";
+import { entityNoun } from "../ui/entity-noun.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 // Spawn a real editor subprocess; cold starts can exceed the 5s default under full-suite load.
@@ -428,10 +428,10 @@ process.exit(0);
 	});
 });
 
-describe("editTargetNoun", () => {
+describe("entityNoun", () => {
 	it("names a draft row a draft, and anything else a task", () => {
-		expect(editTargetNoun("draft")).toEqual({ plain: "draft", titled: "Draft" });
-		expect(editTargetNoun("task")).toEqual({ plain: "task", titled: "Task" });
-		expect(editTargetNoun(undefined)).toEqual({ plain: "task", titled: "Task" });
+		expect(entityNoun("draft")).toEqual({ plain: "draft", titled: "Draft" });
+		expect(entityNoun("task")).toEqual({ plain: "task", titled: "Task" });
+		expect(entityNoun(undefined)).toEqual({ plain: "task", titled: "Task" });
 	});
 });

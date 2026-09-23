@@ -35,6 +35,11 @@ backlog task create "Spike GraphQL resolver" --draft \
 - `-u, --unassign` — create the draft with no assignee, even when a `defaultAssignee` is configured; mutually exclusive with `-a`
 - `-s, --status <status>` — status (defaults to `Draft`)
 - `-l, --labels <labels>` — comma-separated labels
+- `--due-date <date>` — due date (`YYYY-MM-DD`)
+- `--planned-start <date>` — planned start date (`YYYY-MM-DD`)
+- `--planned-end <date>` — planned end date (`YYYY-MM-DD`)
+- `--actual-start <date>` — actual start date (`YYYY-MM-DD HH:MM`), stored in UTC like every other actual date
+- `--actual-end <date>` — actual end date (`YYYY-MM-DD HH:MM`), stored in UTC
 
 > **Note:** empty values such as `-a ""` are rejected. Use `--unassign` when you want to leave the assignee empty.
 
@@ -116,6 +121,6 @@ backlog draft archive DRAFT-5
 
 - Draft files live under `backlog/drafts/`. Promoting moves them to `backlog/tasks/` with a new task ID; demoting moves them back to `backlog/drafts/` with a new draft ID.
 - `backlog draft promote` and `backlog task demote` output the new ID without its prefix. Use the bare number or the full prefixed ID in the next command.
-- Prefer `backlog draft create` for quick captures. Use `backlog task create --draft` when you want to attach rich metadata (acceptance criteria, references, priority, etc.) at creation time.
+- Prefer `backlog draft create` for quick captures. Use `backlog task create --draft` when you want to attach rich metadata (acceptance criteria, references, priority, etc.) at creation time. The due, planned and actual dates are on both commands, so a quick capture can still carry a schedule.
 - A draft keeps the `Draft` status. `backlog draft edit` refuses any other `--status`; promote the draft when it is ready to become a task.
 - Do not edit draft markdown files directly. Use the `backlog draft` and `backlog task` commands so metadata and file naming stay consistent.
