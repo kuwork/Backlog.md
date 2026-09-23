@@ -163,11 +163,17 @@ interface ActiveBranchSnapshot {
 
 export type TuiTaskEditFailureReason = "not_found" | "read_only" | "editor_failed" | "ambiguous";
 
+/** Which store the edit session resolved, so the surface can call a draft a draft in its notices. */
+export type TuiTaskEditEntity = "task" | "draft";
+
 export interface TuiTaskEditResult {
 	changed: boolean;
 	task?: Task;
 	reason?: TuiTaskEditFailureReason;
+	entity?: TuiTaskEditEntity;
 }
+
+const editEntityName = (isDraft: boolean): TuiTaskEditEntity => (isDraft ? "draft" : "task");
 
 /** Draft rows reach the TUI through `draft list`; the board never shows them. */
 function isDraftTask(task: Task | null | undefined): boolean {
@@ -3707,32 +3713,49 @@ export class Core {
 	async editTaskInTui(taskId: string, screen: BlessedScreen, selectedTask?: Task): Promise<TuiTaskEditResult> {
 		const contextualTask = selectedTask && taskIdsEqual(selectedTask.id, taskId) ? selectedTask : undefined;
 
+		// A row handed over by a list carries its own file, and the directory that file sits in says
+		// which store owns the row: the drafts list enumerates the drafts directory and the task list
+		// enumerates the tasks directory. Reading the store off the record's status instead misroutes
+		// a draft whose frontmatter status drifted away from Draft into the task store, whose path
+		// lookup then finds no task file for a DRAFT- id and reports the row missing. Drift is
+		// ordinary rather than corruption: demoting a task moves the file and keeps its status, and
+		// the imported draft records carry the statuses they arrived with. The status stays as the
+		// fallback for a row that carries no path, and for a bare id the task store is tried first
+		// and the drafts store second. A draft whose numeric identity is shared by two files fails
+		// closed below exactly as it does in the draft commands, rather than editing one of the twins.
+		const contextFilePath = contextualTask?.filePath;
+		const rowIsDraft =
+			contextFilePath === undefined
+				? undefined
+				: relative(await this.fs.getDraftsDir(), dirname(contextFilePath)) === "";
+
 		if (contextualTask && (!isLocalEditableTask(contextualTask) || contextualTask.branch)) {
-			return { changed: false, task: contextualTask, reason: "read_only" };
+			return {
+				changed: false,
+				task: contextualTask,
+				reason: "read_only",
+				entity: editEntityName(rowIsDraft ?? isDraftTask(contextualTask)),
+			};
 		}
 
-		// The list that `draft list` opens hands its rows straight to this editor, so an id the task
-		// store does not know is tried against the drafts store before it is called missing. A draft
-		// whose numeric identity is shared by two files fails closed here exactly as it does in the
-		// draft commands, rather than editing one of the twins.
 		let resolvedTask = contextualTask ?? (await this.getTask(taskId));
-		let isDraft = isDraftTask(resolvedTask);
+		let isDraft = rowIsDraft ?? isDraftTask(resolvedTask);
 		if (!resolvedTask) {
 			try {
 				resolvedTask = await this.fs.loadDraft(taskId);
 			} catch (error) {
 				if (isAmbiguousIdError(error)) {
-					return { changed: false, reason: "ambiguous" };
+					return { changed: false, reason: "ambiguous", entity: editEntityName(isDraft) };
 				}
 				throw error;
 			}
 			isDraft = resolvedTask !== null;
 		}
 		if (!resolvedTask) {
-			return { changed: false, reason: "not_found" };
+			return { changed: false, reason: "not_found", entity: editEntityName(isDraft) };
 		}
 		if (!isLocalEditableTask(resolvedTask) || resolvedTask.branch) {
-			return { changed: false, task: resolvedTask, reason: "read_only" };
+			return { changed: false, task: resolvedTask, reason: "read_only", entity: editEntityName(isDraft) };
 		}
 
 		// A draft binds to the file its id resolves to: that resolution is what fails closed when two
@@ -3746,12 +3769,12 @@ export class Core {
 				filePath = await this.fs.resolveDraftFilePath(resolvedTask.id);
 			} catch (error) {
 				if (isAmbiguousIdError(error)) {
-					return { changed: false, task: resolvedTask, reason: "ambiguous" };
+					return { changed: false, task: resolvedTask, reason: "ambiguous", entity: editEntityName(isDraft) };
 				}
 				throw error;
 			}
 			if (!filePath) {
-				return { changed: false, task: resolvedTask, reason: "not_found" };
+				return { changed: false, task: resolvedTask, reason: "not_found", entity: editEntityName(isDraft) };
 			}
 			const draftPath = filePath;
 			editableTask = (await this.fs.loadDraftFromFile(draftPath)) ?? resolvedTask;
@@ -3764,31 +3787,31 @@ export class Core {
 			reload = () => this.fs.loadTask(taskId);
 		}
 		if (!filePath) {
-			return { changed: false, task: editableTask, reason: "not_found" };
+			return { changed: false, task: editableTask, reason: "not_found", entity: editEntityName(isDraft) };
 		}
 
 		let beforeContent: string;
 		try {
 			beforeContent = await Bun.file(filePath).text();
 		} catch {
-			return { changed: false, task: editableTask, reason: "not_found" };
+			return { changed: false, task: editableTask, reason: "not_found", entity: editEntityName(isDraft) };
 		}
 
 		const opened = await this.openEditor(filePath, screen);
 		if (!opened) {
-			return { changed: false, task: editableTask, reason: "editor_failed" };
+			return { changed: false, task: editableTask, reason: "editor_failed", entity: editEntityName(isDraft) };
 		}
 
 		let afterContent: string;
 		try {
 			afterContent = await Bun.file(filePath).text();
 		} catch {
-			return { changed: false, task: editableTask, reason: "not_found" };
+			return { changed: false, task: editableTask, reason: "not_found", entity: editEntityName(isDraft) };
 		}
 
 		if (afterContent === beforeContent) {
 			const refreshedTask = await reload();
-			return { changed: false, task: refreshedTask ?? editableTask };
+			return { changed: false, task: refreshedTask ?? editableTask, entity: editEntityName(isDraft) };
 		}
 
 		const now = new Date().toISOString().slice(0, 16).replace("T", " ");
@@ -3804,6 +3827,7 @@ export class Core {
 		return {
 			changed: true,
 			task: refreshedTask ?? { ...editableTask, updatedDate: now },
+			entity: editEntityName(isDraft),
 		};
 	}
 

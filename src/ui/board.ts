@@ -34,6 +34,7 @@ import { BOARD_FOOTER_CONTENT, formatFooterContent } from "./footer-content.ts";
 import { getStatusIcon } from "./status-icon.ts";
 import {
 	createTaskPopup,
+	editTargetNoun,
 	resolveListBoundaryNavigation,
 	resolveSearchExitTargetIndex,
 } from "./task-viewer-with-search.ts";
@@ -1471,17 +1472,26 @@ export async function renderBoardTui(
 			try {
 				const core = await getCore();
 				const result = await core.editTaskInTui(task.id, screen, task);
+				// A `draft list` session can switch to the board, so the row the edit key opened is not
+				// necessarily a task: name it for what the session resolved.
+				const noun = editTargetNoun(result.entity);
 				if (result.reason === "read_only") {
 					const branchInfo = result.task?.branch ? ` from branch "${result.task.branch}"` : "";
-					showTransientFooter(` {red-fg}Cannot edit task${branchInfo}.{/}`);
+					showTransientFooter(` {red-fg}Cannot edit ${noun.plain}${branchInfo}.{/}`);
 					return;
 				}
 				if (result.reason === "editor_failed") {
-					showTransientFooter(" {red-fg}Editor exited with an error; task was not modified.{/}");
+					showTransientFooter(` {red-fg}Editor exited with an error; ${noun.plain} was not modified.{/}`);
 					return;
 				}
 				if (result.reason === "not_found") {
-					showTransientFooter(` {red-fg}Task ${task.id} not found on this branch.{/}`);
+					showTransientFooter(` {red-fg}${noun.titled} ${task.id} not found on this branch.{/}`);
+					return;
+				}
+				if (result.reason === "ambiguous") {
+					showTransientFooter(
+						` {red-fg}${task.id} is shared by more than one file; rename one so their ids are distinct, then retry.{/}`,
+					);
 					return;
 				}
 
@@ -1493,7 +1503,7 @@ export async function renderBoardTui(
 
 				if (result.changed) {
 					renderView();
-					showTransientFooter(` {green-fg}Task ${result.task?.id ?? task.id} marked modified.{/}`);
+					showTransientFooter(` {green-fg}${noun.titled} ${result.task?.id ?? task.id} marked modified.{/}`);
 					return;
 				}
 
