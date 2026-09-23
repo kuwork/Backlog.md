@@ -158,6 +158,7 @@ Milestones are managed through milestone files. Use CLI commands instead of edit
 | Action | Example |
 |--------|---------|
 | List milestones | `backlog milestone list --plain` |
+| Browse milestones | `backlog milestone list` (interactive UI; `N` adds a milestone, `E` in the detail popup edits its description and dates) |
 | List completed milestones too | `backlog milestone list --show-completed --plain` |
 | Add milestone | `backlog milestone add "Release 1.0"` |
 | Add with description | `backlog milestone add "Beta" --description "Beta scope"` |

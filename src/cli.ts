@@ -4266,14 +4266,15 @@ addHelpSchema(milestoneCmd.command("list"), {
 	reads: "Milestone files and local task milestone values",
 	required: [],
 	optional: [
-		{ name: "show-completed", type: "Boolean", description: "Include completed milestones" },
+		{ name: "show-completed", type: "Boolean", description: "List completed milestones in the plain text output" },
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 	],
-	output: "Milestone list with completion status and created/updated dates",
+	output:
+		"Interactive milestone list with a kanban board for the highlighted milestone (every milestone is listed, completed ones marked), or the text summary with --plain",
 	examples: ["backlog milestone list --plain"],
 })
 	.description("list milestones with completion status")
-	.option("--show-completed", "show completed milestones")
+	.option("--show-completed", "show completed milestones in plain text output")
 	.option("--plain", "use plain text output")
 	.action(async (options: { showCompleted?: boolean; plain?: boolean }) => {
 		const cwd = await requireProjectRoot();
@@ -4286,6 +4287,24 @@ addHelpSchema(milestoneCmd.command("list"), {
 			core.filesystem.loadConfig(),
 		]);
 		const statuses = config?.statuses ?? ["To Do", "In Progress", "Done"];
+
+		if (!isPlainRequested(options) && !shouldAutoPlain) {
+			const { renderMilestonesTui } = await import("./ui/milestones.ts");
+			await renderMilestonesTui({
+				core,
+				tasks,
+				milestones,
+				archivedMilestones,
+				statuses,
+				layout: "horizontal",
+				maxColumnWidth: config?.maxColumnWidth || 20,
+				projectName: config?.projectName,
+				hideEmptyColumns: config?.hideEmptyColumns ?? false,
+			});
+			return;
+		}
+
+		const showCompleted = Boolean(options.showCompleted || process.argv.includes("--show-completed"));
 		const archivedMilestoneIds = collectArchivedMilestoneKeys(archivedMilestones, milestones);
 		const buckets = buildMilestoneBuckets(tasks, milestones, statuses, { archivedMilestoneIds, archivedMilestones });
 		const active = buckets.filter((bucket) => !bucket.isNoMilestone && !bucket.isCompleted);
@@ -4314,7 +4333,7 @@ addHelpSchema(milestoneCmd.command("list"), {
 		console.log(`\nCompleted milestones (${completed.length}):`);
 		if (completed.length === 0) {
 			console.log("  (none)");
-		} else if (options.showCompleted || process.argv.includes("--show-completed")) {
+		} else if (showCompleted) {
 			for (const bucket of completed) {
 				console.log(formatBucket(bucket));
 			}

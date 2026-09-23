@@ -27,6 +27,8 @@ export interface FilterHeaderOptions {
 	visibleFilters?: FilterControlId[];
 	onFilterChange: (filters: FilterState) => void;
 	onFilterPickerOpen: (filterId: Exclude<FilterControlId, "search">) => void;
+	/** Right-aligned text on the header's own title line, e.g. a task count. */
+	summary?: string;
 }
 
 interface FilterItem {
@@ -133,6 +135,7 @@ export class FilterHeader {
 	private priorityButton: BoxInterface | null = null;
 	private milestoneButton: BoxInterface | null = null;
 	private labelsButton: BoxInterface | null = null;
+	private summaryBox: BoxInterface | null = null;
 	private elements: (BoxInterface | TextboxInterface)[] = [];
 
 	// Focus tracking
@@ -167,6 +170,19 @@ export class FilterHeader {
 			style: { border: { fg: "cyan" } },
 			label: "\u00A0Filters\u00A0",
 		});
+
+		// Sits on the container's own title line, right-aligned, the way blessed draws a label.
+		if (options.summary !== undefined) {
+			this.summaryBox = box({
+				parent: this.container,
+				top: -1,
+				right: 2,
+				height: 1,
+				shrink: true,
+				tags: true,
+				content: `{gray-fg}${options.summary}{/}`,
+			});
+		}
 
 		this.buildElements();
 	}
@@ -260,6 +276,11 @@ export class FilterHeader {
 	setBorderColor(color: string): void {
 		const style = this.container.style as { border?: { fg?: string } };
 		style.border = { ...(style.border ?? {}), fg: color };
+	}
+
+	/** Replace the right-aligned summary on the title line; no-op when none was configured. */
+	setSummary(text: string): void {
+		this.summaryBox?.setContent(`{gray-fg}${text}{/}`);
 	}
 
 	getContainer(): BoxInterface {

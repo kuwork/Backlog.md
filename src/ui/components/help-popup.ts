@@ -1,7 +1,7 @@
 import type { ScreenInterface } from "neo-neo-bblessed";
 import { createPopupChrome, createScrollableViewport } from "./filter-popup.ts";
 
-export type HelpPopupContext = "board" | "task-list" | "decision-list" | "document-list";
+export type HelpPopupContext = "board" | "task-list" | "decision-list" | "document-list" | "milestones";
 
 type Shortcut = {
 	key: string;
@@ -68,6 +68,20 @@ const DOCUMENT_LIST_SHORTCUTS: Shortcut[] = [
 	{ key: "q/Esc", desc: "Quit / Close" },
 ];
 
+const MILESTONES_SHORTCUTS: Shortcut[] = [
+	{ key: "↑↓", desc: "Move the milestone cursor" },
+	{ key: "j/k", desc: "Move the milestone cursor" },
+	{ key: "Space", desc: "Show the highlighted milestone on the board" },
+	{ key: "↑", desc: "Leave the list upward for the filter bar (top row)" },
+	{ key: "→/l", desc: "Move focus to the board" },
+	{ key: "←/h", desc: "Back to the milestone list (from column 1)" },
+	{ key: "Enter", desc: "Milestone details" },
+	{ key: "E", desc: "Edit the description and dates (in the detail popup)" },
+	{ key: "N", desc: "New milestone" },
+	{ key: "?", desc: "Show this help menu" },
+	{ key: "q/Esc", desc: "Quit / Close" },
+];
+
 export function getHelpShortcuts(context: HelpPopupContext = "board"): Shortcut[] {
 	switch (context) {
 		case "task-list":
@@ -76,6 +90,8 @@ export function getHelpShortcuts(context: HelpPopupContext = "board"): Shortcut[
 			return DECISION_LIST_SHORTCUTS;
 		case "document-list":
 			return DOCUMENT_LIST_SHORTCUTS;
+		case "milestones":
+			return MILESTONES_SHORTCUTS;
 		default:
 			return BOARD_SHORTCUTS;
 	}

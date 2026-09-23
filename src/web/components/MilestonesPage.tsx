@@ -6,16 +6,11 @@ import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, mile
 import { parseStoredUtcDate } from "../utils/date-display";
 import { type Milestone, type MilestoneBucket, type Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
-import { createTaskSearchIndex } from "../../utils/task-search";
+import { matchMilestoneSearchTaskIds } from "../../utils/milestone-search";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import MilestoneAddModal from "./MilestoneAddModal";
 import Modal from "./Modal";
 import StoredDate from "./StoredDate";
-
-interface MilestoneSearchEntry {
-	id: string;
-	title: string;
-}
 
 type RemoveTaskHandling = "clear" | "reassign";
 
@@ -112,11 +107,6 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 	);
 	const searchQueryTrimmed = searchQuery.trim();
 	const isSearchActive = searchQueryTrimmed.length > 0;
-	// The shared task index, so a query means here what it means in the CLI, the TUI, and MCP.
-	const searchIndex = useMemo(
-		() => createTaskSearchIndex(buckets.flatMap((bucket) => bucket.tasks)),
-		[buckets],
-	);
 	const defaultExpandedByBucketKey = useMemo(() => {
 		const map: Record<string, boolean> = {};
 		for (const bucket of buckets) {
@@ -129,32 +119,16 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			return buckets;
 		}
 
-		const searchableTasks: MilestoneSearchEntry[] = buckets.flatMap((bucket) =>
-			bucket.tasks.map((task) => ({
-				id: task.id,
-				title: task.title,
-			})),
+		const matchedTaskIds = matchMilestoneSearchTaskIds(
+			buckets.flatMap((bucket) => bucket.tasks),
+			searchQueryTrimmed,
 		);
-		if (searchableTasks.length === 0) {
-			return buckets.map((bucket) => rebuildFilteredBucket(bucket, [], statuses));
-		}
-		const normalizedQuery = searchQueryTrimmed.toLowerCase();
-		const exactIdMatches = searchableTasks.filter((task) => task.id.toLowerCase() === normalizedQuery);
-		const substringMatches = searchableTasks.filter(
-			(task) => task.id.toLowerCase().includes(normalizedQuery) || task.title.toLowerCase().includes(normalizedQuery),
-		);
-		const matchedTaskIds =
-			exactIdMatches.length > 0
-				? new Set(exactIdMatches.map((task) => task.id))
-				: substringMatches.length > 0
-					? new Set(substringMatches.map((task) => task.id))
-					: new Set(searchIndex.search({ query: searchQueryTrimmed }).map((task) => task.id));
 
 		return buckets.map((bucket) => {
 			const filteredTasks = bucket.tasks.filter((task) => matchedTaskIds.has(task.id));
 			return rebuildFilteredBucket(bucket, filteredTasks, statuses);
 		});
-	}, [buckets, isSearchActive, searchIndex, searchQueryTrimmed, statuses]);
+	}, [buckets, isSearchActive, searchQueryTrimmed, statuses]);
 
 	// Separate buckets into categories and sort by ID descending
 	const { unassignedBucket, activeMilestones, completedMilestones } = useMemo(() => {

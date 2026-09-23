@@ -30,7 +30,6 @@ import { canonicalTaskId } from "../utils/task-id.ts";
 import { taskIdsEqual } from "../utils/task-path.ts";
 import { applyTaskFilters, createTaskSearchIndex, type LabelMatchMode } from "../utils/task-search.ts";
 import { attachSubtaskSummaries } from "../utils/task-subtasks.ts";
-import { formatAcceptanceCriteriaProgress } from "./acceptance-criteria-progress.ts";
 import { formatChecklistItem } from "./checklist.ts";
 import { transformCodePaths } from "./code-path.ts";
 import { openConfirmPopup } from "./components/confirm-popup.ts";
@@ -1110,6 +1109,14 @@ export async function viewTaskEnhanced(
 				showTransientHelp(` {red-fg}Task ${selectedTask.id} was not found on this branch.{/}`);
 				return;
 			}
+			if (result.reason === "ambiguous") {
+				// The drafts store can hold two files with one numeric identity, and editing either of
+				// them would be a guess, so the session refuses until the files are renamed.
+				showTransientHelp(
+					` {red-fg}${selectedTask.id} is shared by more than one file; rename one so their ids are distinct, then retry.{/}`,
+				);
+				return;
+			}
 
 			if (result.task) {
 				const index = allTasks.findIndex((taskItem) => taskItem.id === selectedTask.id);
@@ -1514,11 +1521,6 @@ export function generateDetailContent(
 	}
 
 	bodyContent.push(formatHeading("Acceptance Criteria", 2));
-	const progressLine = formatAcceptanceCriteriaProgress(task);
-	if (progressLine) {
-		bodyContent.push(progressLine);
-		bodyContent.push("");
-	}
 	const checklistItems = buildAcceptanceCriteriaItems(task);
 	if (checklistItems.length > 0) {
 		const formattedCriteria = checklistItems.map((item) =>
