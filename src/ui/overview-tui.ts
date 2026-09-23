@@ -7,9 +7,12 @@ function rule(char: string, width: number): string {
 	return char.repeat(Math.max(0, width));
 }
 
-function formatDateForStats(dateStr: string): string {
+// A date-only value is a calendar day (like a due date): parse it as local midnight so the
+// rendered day is the day as written, never shifted by a timezone conversion. Values that
+// carry a time are stored UTC timestamps (created/updated) and keep the UTC parse.
+export function formatDateForStats(dateStr: string): string {
 	const hasTime = dateStr.includes(" ") || dateStr.includes("T");
-	const normalized = `${dateStr.replace(" ", "T")}${hasTime ? ":00Z" : "T00:00:00Z"}`;
+	const normalized = `${dateStr.replace(" ", "T")}${hasTime ? ":00Z" : "T00:00:00"}`;
 	const date = new Date(normalized);
 	return date.toLocaleDateString();
 }
