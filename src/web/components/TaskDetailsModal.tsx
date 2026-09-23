@@ -738,8 +738,10 @@ export const TaskDetailsModal: React.FC<Props> = ({
       formBaselineRef.current = nextFormState;
       setError(null);
       // Preload tasks for dependency picker
-      apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
-      apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
+      if (isOpen) {
+        apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
+        apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
+      }
       return;
     }
 
@@ -774,9 +776,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
     previousIsOpen.current = isOpen;
     formBaselineRef.current = nextFormState;
     setError(null);
-    // Preload tasks for dependency picker
-    apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
-    apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
+    // Preload tasks for dependency picker. Only while the modal is open: this effect also runs for a
+    // closed modal on every data change, and the picker's options are not read before it opens.
+    if (isOpen) {
+      apiClient.fetchTasks().then(setAvailableTasks).catch(() => setAvailableTasks([]));
+      apiClient.fetchDrafts().then(setAvailableDrafts).catch(() => setAvailableDrafts([]));
+    }
   }, [task, isOpen, isCreateMode, isDraftMode, availableStatuses, defaultDefinitionOfDone]);
 
   const refreshAfterCommentChange = useCallback(() => {

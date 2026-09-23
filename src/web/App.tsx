@@ -45,6 +45,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { apiClient } from "./lib/api";
 import { isValidLocale } from "./locales";
 import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from "./utils/milestones";
+import { reconcileById } from "./utils/reconcile";
 import { sanitizeUrlTitle } from "./utils/urlHelpers";
 import { getWebVersion } from "./utils/version";
 
@@ -251,6 +252,23 @@ function AppContent() {
 	const [decisions, setDecisions] = useState<Decision[]>([]);
 	const [wikiTree, setWikiTree] = useState<WikiTreeNode[]>([]);
 	const [docsTree, setDocsTree] = useState<DocsTreeNode[]>([]);
+	// Mirrors of the store lists, so a refresh can reconcile in place without resubscribing the
+	// WebSocket effect to every state change. Every writer of these lists goes through the ref.
+	const tasksRef = useRef<Task[]>([]);
+	const docsRef = useRef<Document[]>([]);
+	const decisionsRef = useRef<Decision[]>([]);
+	const milestoneEntitiesRef = useRef<Milestone[]>([]);
+	const archivedMilestonesRef = useRef<Milestone[]>([]);
+	const loadErrorRef = useRef<Error | null>(null);
+	const duplicatePlanRef = useRef<DuplicateRepairPlan | null>(null);
+	/**
+	 * The id of the newest data request, full load or incremental refresh, plus the scope of the one
+	 * in flight: 0 tasks, 1 with milestones, 2 a full load. A narrower refresh that supersedes an
+	 * in-flight request through this id has to adopt at least its scope, or the wider data is lost.
+	 */
+	const dataRequestRef = useRef(0);
+	const pendingDataRequestRef = useRef<number | null>(null);
+	const pendingScopeRankRef = useRef(0);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<Error | null>(null);
@@ -335,14 +353,40 @@ function AppContent() {
 			const docsList = documentResults.map((result) => result.document);
 			const decisionsList = decisionResults.map((result) => result.decision);
 
-			setTasks(normalizedTasks);
-			setDocs(docsList);
-			setDecisions(decisionsList);
+			// Reconcile instead of replacing: unchanged records keep their identity, so views
+			// re-render only for real changes and a refresh that echoes an already-applied update
+			// (the echo of a surgical drag) is a state no-op.
+			const nextTasks = reconcileById(tasksRef.current, normalizedTasks);
+			tasksRef.current = nextTasks;
+			setTasks(nextTasks);
+			const nextDocs = reconcileById(docsRef.current, docsList);
+			docsRef.current = nextDocs;
+			setDocs(nextDocs);
+			const nextDecisions = reconcileById(decisionsRef.current, decisionsList);
+			decisionsRef.current = nextDecisions;
+			setDecisions(nextDecisions);
 
-			return { tasks: normalizedTasks, docs: docsList, decisions: decisionsList };
+			return { tasks: nextTasks };
 		},
 		[],
 	);
+
+	/** Identity-preserving setters: an unchanged value must not re-render its consumers. */
+	const applyMilestoneIds = useCallback((next: string[]) => {
+		setMilestones((current) =>
+			next.length === current.length && next.every((id, index) => id === current[index]) ? current : next,
+		);
+	}, []);
+
+	const applyLoadError = useCallback((error: Error | null) => {
+		loadErrorRef.current = error;
+		setLoadError(error);
+	}, []);
+
+	const applyDuplicatePlan = useCallback((plan: DuplicateRepairPlan | null) => {
+		duplicatePlanRef.current = plan;
+		setDuplicatePlan(plan);
+	}, []);
 
 	const hasLoadedRef = useRef(false);
 	// Content is on screen once the first load has succeeded; from then on a mid-session
@@ -354,6 +398,9 @@ function AppContent() {
 
 	const loadAllData = useCallback(async () => {
 		const isFirstLoad = !hasLoadedRef.current;
+		const requestId = ++dataRequestRef.current;
+		pendingDataRequestRef.current = requestId;
+		pendingScopeRankRef.current = 2;
 		try {
 			if (isFirstLoad) {
 				setIsLoading(true);
@@ -382,6 +429,10 @@ function AppContent() {
 			const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
 			const { tasks: tasksList } = applySearchResults(searchResults, archivedKeys, milestoneAliases);
 			hasLoadedDataRef.current = true;
+			// A load that read the whole store just replaced whatever the failure left behind, so the
+			// error clears here: otherwise the incremental refresh would keep falling back to this
+			// loader forever.
+			applyLoadError(null);
 
 			setStatuses(statusesData);
 			setProjectName(configData.projectName);
@@ -390,9 +441,11 @@ function AppContent() {
 			if (isFirstLoad && configData.locale && isValidLocale(configData.locale)) {
 				setLocale(configData.locale);
 			}
+			milestoneEntitiesRef.current = milestonesData;
+			archivedMilestonesRef.current = archivedMilestonesData;
 			setMilestoneEntities(milestonesData);
 			setArchivedMilestones(archivedMilestonesData);
-			setMilestones(
+			applyMilestoneIds(
 				collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
 					(milestone) => !archivedKeys.has(milestoneKey(milestone)),
 				),
@@ -403,21 +456,111 @@ function AppContent() {
 
 			try {
 				const duplicatePreview = await apiClient.getDuplicateTaskIdsPreview();
-				setDuplicatePlan(duplicatePreview);
+				if (dataRequestRef.current === requestId) applyDuplicatePlan(duplicatePreview);
 			} catch (error) {
 				console.error("Failed to load duplicate task ID preview:", error);
-				setDuplicatePlan(null);
+				if (dataRequestRef.current === requestId) applyDuplicatePlan(null);
 			}
 		} catch (error) {
 			console.error("Failed to load data:", error);
+			// A failed full load leaves a store the incremental refresh cannot patch, so it records
+			// the failure for that check. It is not surfaced: a background reload failing must not
+			// replace the content the user is looking at.
+			if (dataRequestRef.current === requestId) {
+				loadErrorRef.current = error instanceof Error ? error : new Error("Failed to load data");
+			}
 		} finally {
+			if (pendingDataRequestRef.current === requestId) {
+				pendingDataRequestRef.current = null;
+			}
 			if (isFirstLoad) {
 				setIsLoading(false);
 				hasLoadedRef.current = true;
 				setHasCompletedFirstLoad(true);
 			}
 		}
-	}, [applySearchResults]);
+	}, [applySearchResults, applyMilestoneIds, applyDuplicatePlan]);
+
+	/**
+	 * Incremental refresh: the surgical update the single-card reorder path already applied, made
+	 * the standard one. It refetches only the search corpus, plus the milestone entities when the
+	 * change was milestone-scoped, and reconciles the result into the store in place. Statuses and
+	 * config have their own broadcast, and the duplicate repair plan is a filesystem rescan behind
+	 * the scenes, so that one is refetched only when the set of task ids can have changed. Anything
+	 * that cannot be applied incrementally falls back to the full load.
+	 */
+	const refreshTasksData = useCallback(
+		async (includeMilestones: boolean) => {
+			// A store that never finished loading, or whose last load failed, holds resources an
+			// incremental refresh would never request again, so both go through the full loader.
+			if (!hasLoadedDataRef.current || loadErrorRef.current) {
+				await loadAllData();
+				return;
+			}
+			// Superseding an in-flight request discards its responses through the shared id, so this
+			// refresh has to adopt at least that request's scope or the wider data is lost.
+			const supersededRank = pendingDataRequestRef.current !== null ? pendingScopeRankRef.current : -1;
+			if (supersededRank >= 2) {
+				await loadAllData();
+				return;
+			}
+			const withMilestones = includeMilestones || supersededRank >= 1;
+			const requestId = ++dataRequestRef.current;
+			pendingDataRequestRef.current = requestId;
+			pendingScopeRankRef.current = withMilestones ? 1 : 0;
+			try {
+				const [milestonesData, archivedMilestonesData, searchResults] = await Promise.all([
+					withMilestones ? apiClient.fetchMilestones() : milestoneEntitiesRef.current,
+					withMilestones ? apiClient.fetchArchivedMilestones() : archivedMilestonesRef.current,
+					apiClient.search(),
+				]);
+				if (dataRequestRef.current !== requestId) return;
+
+				if (withMilestones) {
+					milestoneEntitiesRef.current = milestonesData;
+					archivedMilestonesRef.current = archivedMilestonesData;
+					setMilestoneEntities(milestonesData);
+					setArchivedMilestones(archivedMilestonesData);
+				}
+				const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestonesData, milestonesData));
+				const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
+				const idSignature = (list: Task[]) =>
+					list
+						.map((task) => task.id)
+						.sort()
+						.join("\n");
+				const previousIdSignature = idSignature(tasksRef.current);
+				const { tasks: tasksList } = applySearchResults(searchResults, archivedKeys, milestoneAliases);
+				applyMilestoneIds(
+					collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
+						(milestone) => !archivedKeys.has(milestoneKey(milestone)),
+					),
+				);
+				// In the healthy steady state (an empty plan on record) duplicate ids can only appear
+				// when the set of ids changes, so edits and reorders skip the rescan behind the plan.
+				// While duplicates exist the plan keeps refreshing, and a plan that is still null means
+				// the initial read has not landed yet, so that one does too.
+				const plan = duplicatePlanRef.current;
+				const planUnsettled = plan === null || plan.groups.length > 0;
+				if (planUnsettled || idSignature(tasksList) !== previousIdSignature) {
+					void apiClient
+						.getDuplicateTaskIdsPreview()
+						.then((duplicatePreview) => {
+							if (dataRequestRef.current === requestId) applyDuplicatePlan(duplicatePreview);
+						})
+						.catch(() => {});
+				}
+			} catch {
+				if (dataRequestRef.current !== requestId) return;
+				await loadAllData();
+			} finally {
+				if (pendingDataRequestRef.current === requestId) {
+					pendingDataRequestRef.current = null;
+				}
+			}
+		},
+		[applySearchResults, applyMilestoneIds, applyDuplicatePlan, loadAllData],
+	);
 
 	React.useEffect(() => {
 		// Only load data when initialized
@@ -426,42 +569,14 @@ function AppContent() {
 		}
 	}, [loadAllData, isInitialized]);
 
-	// Reload data when connection is restored
+	// Reload data when connection is restored. The incremental entry point fetches exactly what this
+	// path used to fetch by hand - the corpus plus the milestone entities - and going through it keeps
+	// the store refs the refresh path relies on in step.
 	React.useEffect(() => {
 		if (isOnline && previousOnlineRef.current === false) {
-			// Connection restored, reload data
-			const loadData = async () => {
-				try {
-					const [results, milestonesData, archivedMilestonesData] = await Promise.all([
-						apiClient.search(),
-						apiClient.fetchMilestones(),
-						apiClient.fetchArchivedMilestones(),
-					]);
-					const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestonesData, milestonesData));
-					const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
-					const { tasks: tasksList } = applySearchResults(results, archivedKeys, milestoneAliases);
-					setMilestoneEntities(milestonesData);
-					setArchivedMilestones(archivedMilestonesData);
-					setMilestones(
-						collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
-							(milestone) => !archivedKeys.has(milestoneKey(milestone)),
-						),
-					);
-
-					try {
-						const duplicatePreview = await apiClient.getDuplicateTaskIdsPreview();
-						setDuplicatePlan(duplicatePreview);
-					} catch (error) {
-						console.error("Failed to reload duplicate task ID preview:", error);
-						setDuplicatePlan(null);
-					}
-				} catch (error) {
-					console.error("Failed to reload data:", error);
-				}
-			};
-			loadData();
+			void refreshTasksData(true);
 		}
-	}, [applySearchResults, isOnline]);
+	}, [refreshTasksData, isOnline]);
 
 	// Update document title when project name changes
 	React.useEffect(() => {
@@ -720,11 +835,21 @@ function AppContent() {
 	}, [navigate, state]);
 
 	const refreshData = useCallback(async () => {
-		await loadAllData();
-		// Drafts are loaded by the drafts page, not by loadAllData, and creating, editing, promoting or
-		// demoting a task can change them, so tell that page to reload whenever the rest of the data does.
+		await refreshTasksData(false);
+		// Drafts are loaded by the drafts page, not by this refresh, and creating, editing, promoting
+		// or demoting a task can change them, so tell that page to reload whenever the rest does.
 		window.dispatchEvent(new Event("drafts-updated"));
-	}, [loadAllData]);
+	}, [refreshTasksData]);
+
+	/** A milestone change also moves the milestone entities, so that scope is refetched with it. */
+	const refreshMilestoneData = useCallback(async () => {
+		await refreshTasksData(true);
+		window.dispatchEvent(new Event("drafts-updated"));
+	}, [refreshTasksData]);
+
+	// There is deliberately no full-refresh wrapper beside these two: the paths that need the whole
+	// shell (the first load and a config change) call loadAllData directly, and everything else moves
+	// in place. The full load also stays the fallback inside refreshTasksData.
 
 	// Sync editingTask with refreshed tasks data to prevent stale state
 	useEffect(() => {
@@ -741,10 +866,12 @@ function AppContent() {
 		const ws = new WebSocket(`${protocol}//${window.location.host}`);
 		ws.onmessage = (event) => {
 			if (event.data === "tasks-updated") {
-				refreshData();
+				void refreshData();
+			} else if (event.data === "milestones-updated") {
+				void refreshMilestoneData();
 			} else if (event.data === "config-updated") {
-				// Reload statuses when config changes
-				loadAllData();
+				// Statuses and labels genuinely changed, which only a full load re-reads.
+				void loadAllData();
 			} else {
 				const loadingState = parseBrowserLoadingState(event.data);
 			if (loadingState?.type === "loading") {
@@ -753,7 +880,7 @@ function AppContent() {
 				// loading attempt always clears a stale terminal error, so a passive client
 				// shows its cached content instead of the obsolete failure.
 				if (!hasLoadedDataRef.current) setIsLoading(true);
-				setLoadError(null);
+				applyLoadError(null);
 				setLoadingMessage(loadingState.message);
 			} else if (loadingState?.type === "loaded") {
 				setIsLoading(false);
@@ -761,12 +888,12 @@ function AppContent() {
 			} else if (loadingState?.type === "error") {
 				setIsLoading(false);
 				setLoadingMessage(null);
-				setLoadError(new Error(loadingState.message));
+				applyLoadError(new Error(loadingState.message));
 			}
 			}
 		};
 		return () => ws.close();
-	}, [refreshData, loadAllData]);
+	}, [refreshData, refreshMilestoneData, loadAllData, applyLoadError]);
 
 	const handleSubmitTask = async (taskData: Partial<Task>) => {
 		// Don't catch errors here - let TaskDetailsModal handle them
@@ -800,12 +927,15 @@ function AppContent() {
 	};
 
 	const applyReorderedTasks = useCallback((updatedTasks: Task[], requestTask: Task) => {
-		setTasks((current) => {
-			const currentRequest = current.find((task) => task.id === requestTask.id);
-			if (currentRequest !== requestTask) return current;
-			const updatesById = new Map(updatedTasks.map((task) => [task.id, task]));
-			return current.map((task) => updatesById.get(task.id) ?? task);
-		});
+		// Through the ref, like every other writer: an incremental refresh reconciles against this
+		// list, so a surgical update that skipped the ref would be reconciled away again.
+		const current = tasksRef.current;
+		const currentRequest = current.find((task) => task.id === requestTask.id);
+		if (currentRequest !== requestTask) return;
+		const updatesById = new Map(updatedTasks.map((task) => [task.id, task]));
+		const next = current.map((task) => updatesById.get(task.id) ?? task);
+		tasksRef.current = next;
+		setTasks(next);
 	}, []);
 
 	const layoutProps = {
@@ -921,7 +1051,7 @@ function AppContent() {
 								milestoneEntities={milestoneEntities}
 								archivedMilestones={archivedMilestones}
 								onEditTask={handleOpenTask}
-								onRefreshData={refreshData}
+								onRefreshData={refreshMilestoneData}
 							/>
 						}
 					/>
@@ -983,7 +1113,7 @@ function AppContent() {
 								milestoneEntities={milestoneEntities}
 								archivedMilestones={archivedMilestones}
 								onEditTask={handleOpenTask}
-								onRefreshData={refreshData}
+								onRefreshData={refreshMilestoneData}
 							/>
 						}
 					/>
