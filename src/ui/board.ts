@@ -1602,11 +1602,20 @@ export async function renderBoardTui(
 					try {
 						const core = await getCore();
 						const config = await core.fs.loadConfig();
-						const success = await core.archiveTask(task.id, config?.autoCommit ?? false);
+						let cleanedTaskIds: string[] = [];
+						const success = await core.archiveTask(task.id, config?.autoCommit ?? false, {
+							onVacatedIdCleanup: (ids) => {
+								cleanedTaskIds = ids;
+							},
+						});
 
 						if (success) {
 							currentTasks = currentTasks.filter((t) => t.id !== task.id);
-							showTransientFooter(` {green-fg}Archived ${task.id}{/}`);
+							let footer = ` {green-fg}Archived ${task.id}{/}`;
+							if (cleanedTaskIds.length > 0) {
+								footer += ` {gray-fg}Removed references from ${cleanedTaskIds.join(", ")}{/}`;
+							}
+							showTransientFooter(footer);
 							close();
 							popupOpen = false;
 							renderView();
@@ -2076,11 +2085,20 @@ export async function renderBoardTui(
 				try {
 					const core = await getCore();
 					const config = await core.fs.loadConfig();
-					const success = await core.archiveTask(task.id, config?.autoCommit ?? false);
+					let cleanedTaskIds: string[] = [];
+					const success = await core.archiveTask(task.id, config?.autoCommit ?? false, {
+						onVacatedIdCleanup: (ids) => {
+							cleanedTaskIds = ids;
+						},
+					});
 
 					if (success) {
 						currentTasks = currentTasks.filter((t) => t.id !== task.id);
-						showTransientFooter(` {green-fg}Archived ${task.id}{/}`);
+						let footer = ` {green-fg}Archived ${task.id}{/}`;
+						if (cleanedTaskIds.length > 0) {
+							footer += ` {gray-fg}Removed references from ${cleanedTaskIds.join(", ")}{/}`;
+						}
+						showTransientFooter(footer);
 						renderView();
 					} else {
 						showTransientFooter(` {red-fg}Failed to archive ${task.id}{/}`);

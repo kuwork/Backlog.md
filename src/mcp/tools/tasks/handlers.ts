@@ -459,13 +459,20 @@ export class TaskHandlers {
 			);
 		}
 
-		const success = await this.core.archiveTask(task.id);
+		let cleanedTaskIds: string[] = [];
+		const success = await this.core.archiveTask(task.id, undefined, {
+			onVacatedIdCleanup: (ids) => {
+				cleanedTaskIds = ids;
+			},
+		});
 		if (!success) {
 			throw new BacklogToolError(`Failed to archive task: ${args.id}`, "OPERATION_FAILED");
 		}
 
 		const refreshed = (await this.core.getTask(task.id)) ?? task;
-		return await formatTaskCallResult(refreshed);
+		const extraLines =
+			cleanedTaskIds.length > 0 ? [`Removed references to ${task.id} from ${cleanedTaskIds.join(", ")}`] : [];
+		return await formatTaskCallResult(refreshed, extraLines);
 	}
 
 	async completeTask(args: { id: string }): Promise<CallToolResult> {
@@ -500,8 +507,13 @@ export class TaskHandlers {
 	async demoteTask(args: { id: string }): Promise<CallToolResult> {
 		const task = await this.loadTaskOrThrow(args.id);
 		let newDraftId: string | null;
+		let cleanedTaskIds: string[] = [];
 		try {
-			newDraftId = await this.core.demoteTask(task.id, false);
+			newDraftId = await this.core.demoteTask(task.id, false, {
+				onVacatedIdCleanup: (ids) => {
+					cleanedTaskIds = ids;
+				},
+			});
 		} catch (error) {
 			if (isCreateLockError(error)) {
 				throw new BacklogToolError(error.message, "OPERATION_FAILED");
@@ -513,7 +525,9 @@ export class TaskHandlers {
 		}
 
 		const refreshed = await this.core.filesystem.loadDraft(newDraftId);
-		return await formatTaskCallResult(refreshed ?? task);
+		const extraLines =
+			cleanedTaskIds.length > 0 ? [`Removed references to ${args.id} from ${cleanedTaskIds.join(", ")}`] : [];
+		return await formatTaskCallResult(refreshed ?? task, extraLines);
 	}
 
 	async editTask(args: TaskEditRequest): Promise<CallToolResult> {

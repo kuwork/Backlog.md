@@ -1342,11 +1342,16 @@ export class BacklogServer {
 	}
 
 	private async handleDeleteTask(taskId: string): Promise<Response> {
-		const success = await this.core.archiveTask(taskId);
+		let cleanedTaskIds: string[] = [];
+		const success = await this.core.archiveTask(taskId, undefined, {
+			onVacatedIdCleanup: (ids) => {
+				cleanedTaskIds = ids;
+			},
+		});
 		if (!success) {
 			return Response.json({ error: "Task not found" }, { status: 404 });
 		}
-		return Response.json({ success: true });
+		return Response.json({ success: true, cleanedTaskIds });
 	}
 
 	private async handleCompleteTask(taskId: string): Promise<Response> {
@@ -1389,7 +1394,12 @@ export class BacklogServer {
 				return Response.json({ error: "Task not found" }, { status: 404 });
 			}
 
-			const newDraftId = await this.core.demoteTask(taskId);
+			let cleanedTaskIds: string[] = [];
+			const newDraftId = await this.core.demoteTask(taskId, undefined, {
+				onVacatedIdCleanup: (ids) => {
+					cleanedTaskIds = ids;
+				},
+			});
 			if (!newDraftId) {
 				return Response.json({ error: "Failed to demote task" }, { status: 500 });
 			}
@@ -1397,7 +1407,7 @@ export class BacklogServer {
 			// Notify listeners to refresh both tasks and drafts lists
 			this.broadcastTasksUpdated();
 			this.broadcastDraftsUpdated();
-			return Response.json({ success: true, draftId: newDraftId });
+			return Response.json({ success: true, draftId: newDraftId, cleanedTaskIds });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to demote task";
 			console.error("Error demoting task:", error);

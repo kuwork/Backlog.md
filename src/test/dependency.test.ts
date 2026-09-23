@@ -228,7 +228,7 @@ describe("Task Dependencies", () => {
 		expect(loadedTask?.dependencies).toEqual([]);
 	});
 
-	test("should sanitize archived task dependencies on active tasks only", async () => {
+	test("should sanitize archived task dependencies on active tasks and in the completed corpus", async () => {
 		const archivedTarget: Task = {
 			id: "task-1",
 			title: "Archive target",
@@ -291,7 +291,7 @@ describe("Task Dependencies", () => {
 		expect(updatedActive?.dependencies).toEqual([]);
 		expect(updatedChild?.dependencies).toEqual([]);
 		expect(updatedChild?.parentTaskId).toBe("TASK-1");
-		expect(completed?.dependencies).toEqual(["task-1"]);
+		expect(completed?.dependencies).toEqual([]);
 	});
 
 	test("should sanitize archive links when archiving by numeric id with custom task prefix", async () => {

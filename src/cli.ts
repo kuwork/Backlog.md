@@ -3818,15 +3818,16 @@ addHelpSchema(taskCmd.command("archive <taskId>"), {
 	.action(async (taskId: string) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const task = await core.loadTaskById(taskId);
-		if (!task) {
-			console.error(`Task ${taskId} not found.`);
+		let task: Task | null = null;
+		try {
+			task = await core.loadTaskById(taskId, { includeCrossBranch: false });
+		} catch (error) {
+			console.error(error instanceof Error ? error.message : String(error));
 			process.exitCode = 1;
 			return;
 		}
-
-		if (!isLocalEditableTask(task)) {
-			console.error(`Cannot archive task from another branch: ${task.id}`);
+		if (!task) {
+			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;
 			return;
 		}
@@ -3842,9 +3843,18 @@ addHelpSchema(taskCmd.command("archive <taskId>"), {
 			return;
 		}
 
-		const success = await core.archiveTask(task.id);
+		let cleanedTaskIds: string[] = [];
+		const success = await core.archiveTask(task.id, undefined, {
+			includeCrossBranch: false,
+			onVacatedIdCleanup: (ids) => {
+				cleanedTaskIds = ids;
+			},
+		});
 		if (success) {
 			console.log(`Archived task ${task.id}`);
+			if (cleanedTaskIds.length > 0) {
+				console.log(`Removed references to ${task.id} from ${cleanedTaskIds.join(", ")}`);
+			}
 		} else {
 			console.error(`Failed to archive task: ${task.id}`);
 			process.exitCode = 1;
@@ -3873,15 +3883,16 @@ addHelpSchema(taskCmd.command("complete <taskId>"), {
 	.action(async (taskId: string) => {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const task = await core.loadTaskById(taskId);
-		if (!task) {
-			console.error(`Task ${taskId} not found.`);
+		let task: Task | null = null;
+		try {
+			task = await core.loadTaskById(taskId, { includeCrossBranch: false });
+		} catch (error) {
+			console.error(error instanceof Error ? error.message : String(error));
 			process.exitCode = 1;
 			return;
 		}
-
-		if (!isLocalEditableTask(task)) {
-			console.error(`Cannot complete task from another branch: ${task.id}`);
+		if (!task) {
+			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;
 			return;
 		}
@@ -3918,9 +3929,18 @@ taskCmd
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		try {
-			const newDraftId = await core.demoteTask(taskId);
+			let cleanedTaskIds: string[] = [];
+			const newDraftId = await core.demoteTask(taskId, undefined, {
+				includeCrossBranch: false,
+				onVacatedIdCleanup: (ids) => {
+					cleanedTaskIds = ids;
+				},
+			});
 			if (newDraftId) {
 				console.log(`Demoted task ${taskId} to draft ${newDraftId.replace(/^[a-zA-Z]+-/i, "")}`);
+				if (cleanedTaskIds.length > 0) {
+					console.log(`Removed references to ${taskId} from ${cleanedTaskIds.join(", ")}`);
+				}
 			} else {
 				console.error(`Task ${taskId} not found.`);
 			}

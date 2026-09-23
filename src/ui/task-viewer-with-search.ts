@@ -1199,10 +1199,15 @@ export async function viewTaskEnhanced(
 
 		try {
 			const config = await core.fs.loadConfig();
+			let cleanedTaskIds: string[] = [];
 			const success =
 				action === "complete"
 					? await core.completeTask(task.id, config?.autoCommit ?? false)
-					: await core.archiveTask(task.id, config?.autoCommit ?? false);
+					: await core.archiveTask(task.id, config?.autoCommit ?? false, {
+							onVacatedIdCleanup: (ids) => {
+								cleanedTaskIds = ids;
+							},
+						});
 
 			if (success) {
 				// The record just left the active corpus, so drop it from the readiness graph. A
@@ -1214,7 +1219,11 @@ export async function viewTaskEnhanced(
 				}
 				removeTaskFromCurrentView(task.id);
 				const label = action === "complete" ? "Completed" : "Archived";
-				showTransientHelp(` {green-fg}${label} ${task.id}{/}`);
+				let message = ` {green-fg}${label} ${task.id}{/}`;
+				if (cleanedTaskIds.length > 0) {
+					message += ` {gray-fg}Removed references from ${cleanedTaskIds.join(", ")}{/}`;
+				}
+				showTransientHelp(message);
 			} else {
 				const verb = action === "complete" ? "complete" : "archive";
 				showTransientHelp(` {red-fg}Failed to ${verb} ${task.id}{/}`);

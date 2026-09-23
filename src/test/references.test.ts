@@ -155,7 +155,7 @@ describe("Task References", () => {
 	});
 
 	describe("Archive cleanup", () => {
-		it("removes only exact-ID references from active tasks when archiving", async () => {
+		it("removes only exact-ID references from active tasks and the completed corpus when archiving", async () => {
 			const { task: archiveTarget } = await core.createTaskFromInput({
 				title: "Archive target",
 			});
@@ -196,7 +196,7 @@ describe("Task References", () => {
 				"JIRA-1",
 				"task-12",
 			]);
-			expect(updatedCompleted?.references).toEqual(["task-1", "https://example.com/tasks/task-1"]);
+			expect(updatedCompleted?.references).toEqual(["https://example.com/tasks/task-1"]);
 		});
 	});
 });
