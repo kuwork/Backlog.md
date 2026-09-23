@@ -348,4 +348,126 @@ describe("task watcher reconciliation", () => {
 		const task = await withTimeout(changed, "real atomic CLI edit", getPlatformTimeout(2000));
 		expect(task.status).toBe("In Progress");
 	});
+	it("watches the drafts folder for a drafts session and publishes a draft edit", async () => {
+		await mkdir(core.filesystem.draftsDir, { recursive: true });
+		const fileName = "draft-1 - Draft-one.md";
+		const filePath = join(core.filesystem.draftsDir, fileName);
+		await Bun.write(filePath, serializeTask(sampleTask("draft-1", "Draft one", "Draft")));
+		const initial = await core.filesystem.loadDraft("draft-1");
+		if (!initial) throw new Error("Expected initial draft");
+
+		let resolveChanged: ((task: Task) => void) | undefined;
+		const changed = new Promise<Task>((resolve) => {
+			resolveChanged = resolve;
+		});
+		const handle = watchTasks(
+			core,
+			{
+				onTaskChanged(task) {
+					resolveChanged?.(task);
+				},
+			},
+			[initial],
+			{ drafts: true },
+		);
+		stopWatcher = handle.stop;
+
+		// The session scope decides the folder, not the shape of the event.
+		expect(watchSpy.mock.calls.at(-1)?.[0]).toBe(core.filesystem.draftsDir);
+
+		await Bun.write(filePath, "---\nid: draft-1\n");
+		watcherCallback("change", fileName);
+		setTimeout(() => void Bun.write(filePath, serializeTask(sampleTask("draft-1", "Draft one edited", "Draft"))), 90);
+
+		const draft = await withTimeout(changed, "draft edit publication", getPlatformTimeout(1200));
+		expect(draft.title).toBe("Draft one edited");
+	});
+
+	it("publishes a draft removal from a drafts session when the draft leaves the folder", async () => {
+		await mkdir(core.filesystem.draftsDir, { recursive: true });
+		const fileName = "draft-2 - Draft-two.md";
+		const filePath = join(core.filesystem.draftsDir, fileName);
+		await Bun.write(filePath, serializeTask(sampleTask("draft-2", "Draft two", "Draft")));
+		const initial = await core.filesystem.loadDraft("draft-2");
+		if (!initial) throw new Error("Expected initial draft");
+
+		const removed: string[] = [];
+		let resolveRemoved: (() => void) | undefined;
+		const publication = new Promise<void>((resolve) => {
+			resolveRemoved = resolve;
+		});
+		const handle = watchTasks(
+			core,
+			{
+				onTaskRemoved(taskId) {
+					removed.push(taskId);
+					resolveRemoved?.();
+				},
+			},
+			[initial],
+			{ drafts: true },
+		);
+		stopWatcher = handle.stop;
+
+		// A promotion moves the file out of the drafts folder; the event is the same one a delete makes.
+		await unlink(filePath);
+		watcherCallback("rename", fileName);
+
+		await withTimeout(publication, "draft removal publication", getPlatformTimeout(1200));
+		expect(removed).toEqual(["DRAFT-2"]);
+	});
+
+	it("keeps a tasks session on the tasks folder and blind to draft files", async () => {
+		await mkdir(core.filesystem.draftsDir, { recursive: true });
+		await Bun.write(
+			join(core.filesystem.draftsDir, "draft-3 - Draft-three.md"),
+			serializeTask(sampleTask("draft-3", "Draft three", "Draft")),
+		);
+
+		const published: Task[] = [];
+		const handle = watchTasks(core, {
+			onTaskAdded(task) {
+				published.push(task);
+			},
+			onTaskChanged(task) {
+				published.push(task);
+			},
+		});
+		stopWatcher = handle.stop;
+
+		expect(watchSpy.mock.calls.at(-1)?.[0]).toBe(core.filesystem.tasksDir);
+
+		// A directory-level event re-lists the watched folder; a draft must not turn up in a task session.
+		watcherCallback("rename", "unrelated-atomic-write");
+		await sleep(400);
+		expect(published).toEqual([]);
+	});
+	it("does not remove a draft whose file is malformed but still in the drafts folder", async () => {
+		await mkdir(core.filesystem.draftsDir, { recursive: true });
+		const fileName = "draft-4 - Draft-four.md";
+		const filePath = join(core.filesystem.draftsDir, fileName);
+		await Bun.write(filePath, serializeTask(sampleTask("draft-4", "Draft four", "Draft")));
+		const initial = await core.filesystem.loadDraft("draft-4");
+		if (!initial) throw new Error("Expected initial draft");
+
+		const removed: string[] = [];
+		const handle = watchTasks(
+			core,
+			{
+				onTaskRemoved(taskId) {
+					removed.push(taskId);
+				},
+			},
+			[initial],
+			{ drafts: true },
+		);
+		stopWatcher = handle.stop;
+
+		// The folder still holds the file, so an unreadable draft is not an absent one.
+		await Bun.write(filePath, "---\nid: draft-4\ntitle: [unterminated\n---\n");
+		watcherCallback("change", fileName);
+		await sleep(500);
+
+		expect(removed).toEqual([]);
+	});
 });

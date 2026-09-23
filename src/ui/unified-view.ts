@@ -356,7 +356,11 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 			core: options.core,
 			initialState,
 		});
-		const watcher = watchTasks(options.core, taskUpdateCallbacks, baseTasks);
+		// A drafts session lives on the same views as a task session, so it watches the folder its
+		// records are in; a task session must keep ignoring drafts, which belong to another session.
+		const watcher = watchTasks(options.core, taskUpdateCallbacks, baseTasks, {
+			drafts: options.draftSession === true,
+		});
 		process.on("exit", () => watcher.stop());
 
 		const configWatcher = watchConfig(options.core, {

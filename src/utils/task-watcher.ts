@@ -2,7 +2,7 @@ import { type FSWatcher, watch } from "node:fs";
 import { stat } from "node:fs/promises";
 import type { Core } from "../core/backlog.ts";
 import type { Task } from "../types/index.ts";
-import { hasAnyPrefix } from "./prefix-config.ts";
+import { extractAnyPrefix, hasAnyPrefix } from "./prefix-config.ts";
 import { extractTaskIdFromFilename, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "./task-path.ts";
 
 export interface TaskWatcherCallbacks {
@@ -57,15 +57,25 @@ function createReconciliation(initialTask?: Task): TaskReconciliation {
 	};
 }
 
-async function readTaskFileSnapshot(tasksDir: string): Promise<TaskFileSnapshot> {
+/**
+ * Which ids a folder currently holds, by filename. The prefix is read off each filename rather than
+ * assumed, because the folder being watched is the drafts one in a drafts session and a project can
+ * configure its own task prefix (this repository uses "back", not the default "task").
+ */
+function taskIdFromFilename(filename: string): string | null {
+	const prefix = extractAnyPrefix(filename);
+	return prefix ? extractTaskIdFromFilename(filename, prefix) : null;
+}
+
+async function readTaskFileSnapshot(dir: string): Promise<TaskFileSnapshot> {
 	try {
-		const directory = await stat(tasksDir);
+		const directory = await stat(dir);
 		if (!directory.isDirectory()) return { state: "incomplete" };
-		const files = await Array.fromAsync(new Bun.Glob("*.md").scan({ cwd: tasksDir, followSymlinks: true }));
-		await stat(tasksDir);
+		const files = await Array.fromAsync(new Bun.Glob("*.md").scan({ cwd: dir, followSymlinks: true }));
+		await stat(dir);
 		const taskIds = new Set<string>();
 		for (const file of files) {
-			const taskId = extractTaskIdFromFilename(file);
+			const taskId = taskIdFromFilename(file);
 			if (taskId) taskIds.add(normalizeTaskId(taskId));
 		}
 		return { state: "complete", taskIds };
@@ -75,7 +85,14 @@ async function readTaskFileSnapshot(tasksDir: string): Promise<TaskFileSnapshot>
 }
 
 /**
- * Watch the current checkout's backlog/tasks directory and emit incremental updates.
+ * Watch a folder of records and emit incremental updates.
+ *
+ * Defaults to the checkout's tasks; a drafts session passes `{ drafts: true }` and gets the same
+ * behaviour over the drafts folder, so the views behind it (the board, the list detail pane, the
+ * task popup) follow a draft the CLI, the web UI or an editor writes - exactly as they follow a
+ * task. Only the folder and the store that reads it change; the settle/retry budget, the content
+ * signature, the directory reconciliation and the removal confirmation are shared.
+ *
  * A single filesystem event is reconciled until task content is stable or absence is
  * confirmed, because atomic writes can make the event visible before the file is.
  */
@@ -83,8 +100,13 @@ export function watchTasks(
 	core: Core,
 	callbacks: TaskWatcherCallbacks,
 	initialTasks: readonly Task[] = [],
+	options: { drafts?: boolean } = {},
 ): { stop: () => void } {
-	const tasksDir = core.filesystem.tasksDir;
+	const watchDrafts = options.drafts === true;
+	const dir = watchDrafts ? core.filesystem.draftsDir : core.filesystem.tasksDir;
+	const loadRecord = (recordId: string) =>
+		watchDrafts ? core.filesystem.loadDraft(recordId) : core.filesystem.loadTask(recordId);
+	const listRecords = () => (watchDrafts ? core.filesystem.listDrafts() : core.filesystem.listTasks());
 	const reconciliations = new Map(
 		initialTasks.filter((task) => !task.branch).map((task) => [normalizeTaskId(task.id), createReconciliation(task)]),
 	);
@@ -100,7 +122,7 @@ export function watchTasks(
 
 			let task: Task | null = null;
 			try {
-				task = await core.filesystem.loadTask(taskId);
+				task = await loadRecord(taskId);
 			} catch {
 				continue;
 			}
@@ -109,7 +131,7 @@ export function watchTasks(
 				previousCandidateSignature = task === null ? null : undefined;
 				if (attempt < TASK_READ_ATTEMPTS - 1) continue;
 
-				const fileSnapshot = await readTaskFileSnapshot(tasksDir);
+				const fileSnapshot = await readTaskFileSnapshot(dir);
 				const isConfirmedAbsent =
 					task === null && fileSnapshot.state === "complete" && !fileSnapshot.taskIds.has(normalizeTaskId(taskId));
 				if (isConfirmedAbsent && (!state.hasPublishedState || state.lastPublishedSignature !== null)) {
@@ -177,11 +199,11 @@ export function watchTasks(
 				await delay(attempt === 0 ? TASK_SETTLE_DELAY_MS : TASK_RETRY_DELAY_MS);
 				if (stopped || eventGeneration !== directoryGeneration) return;
 
-				const fileSnapshot = await readTaskFileSnapshot(tasksDir);
+				const fileSnapshot = await readTaskFileSnapshot(dir);
 				if (fileSnapshot.state === "incomplete") continue;
 				let tasks: Task[];
 				try {
-					tasks = await core.filesystem.listTasks();
+					tasks = await listRecords();
 				} catch {
 					continue;
 				}
@@ -205,7 +227,7 @@ export function watchTasks(
 		})().catch(() => {});
 	};
 
-	const watcher: FSWatcher = watch(tasksDir, { recursive: false }, (eventType, filename) => {
+	const watcher: FSWatcher = watch(dir, { recursive: false }, (eventType, filename) => {
 		if (eventType !== "change" && eventType !== "rename") return;
 
 		const rawFilename: unknown = filename;

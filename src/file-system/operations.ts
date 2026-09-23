@@ -211,6 +211,9 @@ export class FileSystem {
 	get tasksDir(): string {
 		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.TASKS);
 	}
+	get draftsDir(): string {
+		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.DRAFTS);
+	}
 	get completedDir(): string {
 		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.COMPLETED);
 	}
@@ -318,8 +321,7 @@ export class FileSystem {
 	}
 
 	async getDraftsDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.DRAFTS);
+		return this.draftsDir;
 	}
 
 	async getArchiveTasksDir(): Promise<string> {

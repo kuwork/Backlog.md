@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ScreenInterface } from "neo-neo-bblessed";
@@ -105,8 +105,16 @@ async function withBoard(
 		focused: () => EmittingWidget | undefined;
 		update: (nextTasks: Task[]) => void;
 	}) => Promise<void>,
-	options: { tasks: Task[]; core?: Core; watch?: boolean },
+	options: {
+		tasks: Task[];
+		core?: Core;
+		/** Start the real watcher for the given session: tasks, or drafts for a drafts session. */
+		watch?: "tasks" | "drafts";
+		draftSession?: boolean;
+		statuses?: string[];
+	},
 ): Promise<void> {
+	const statuses = options.statuses ?? STATUSES;
 	const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
 	Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: true });
 	const screen = createScreen({ smartCSR: false }) as ScreenInterface & EmittingWidget;
@@ -114,9 +122,10 @@ async function withBoard(
 	let watcher: { stop: () => void } | null = null;
 	let closed = false;
 
-	const boardPromise = renderBoardTui(options.tasks, STATUSES, "horizontal", 20, {
+	const boardPromise = renderBoardTui(options.tasks, statuses, "horizontal", 20, {
 		screen,
 		core: options.core ?? stubCore(),
+		draftSession: options.draftSession,
 		subscribeUpdates: (updateFn) => {
 			pushUpdate = updateFn;
 			if (!options.watch || !options.core) return;
@@ -126,14 +135,15 @@ async function withBoard(
 			watcher = watchTasks(
 				options.core,
 				{
-					onTaskChanged: (task) => updateFn(replace(task), STATUSES),
+					onTaskChanged: (task) => updateFn(replace(task), statuses),
 					onTaskRemoved: (taskId) =>
 						updateFn(
 							options.tasks.filter((task) => task.id !== taskId),
-							STATUSES,
+							statuses,
 						),
 				},
 				options.tasks,
+				{ drafts: options.watch === "drafts" },
 			);
 		},
 	});
@@ -162,7 +172,7 @@ async function withBoard(
 		text: () => screenText(screen as unknown as Widget),
 		footer: () => footerText(screen as unknown as Widget),
 		focused: () => (screen as unknown as { focused?: EmittingWidget }).focused,
-		update: (nextTasks: Task[]) => pushUpdate?.(nextTasks, STATUSES),
+		update: (nextTasks: Task[]) => pushUpdate?.(nextTasks, statuses),
 	});
 	await quit();
 }
@@ -316,7 +326,41 @@ describe("board popup sync", () => {
 					await waitFor(() => text().includes("MARKER-EDITED"), "the watcher to refresh the popup", 200);
 					expect(text()).not.toContain("MARKER-OPENED");
 				},
-				{ tasks: [first, second], core, watch: true },
+				{ tasks: [first, second], core, watch: "tasks" },
+			);
+		} finally {
+			await safeCleanup(dir);
+		}
+	});
+	it("follows a draft rewritten outside the session and closes the popup when it is promoted", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "board-popup-drafts-"));
+		const core = new Core(dir);
+		await initializeTestProject(core, "Board Popup Drafts");
+		await mkdir(core.filesystem.draftsDir, { recursive: true });
+		const draftPath = join(core.filesystem.draftsDir, "draft-1 - Draft-one.md");
+		const draftSource = (marker: string) =>
+			`---\nid: draft-1\ntitle: Draft one\nstatus: Draft\ncreated_date: '2026-09-23 11:00'\n---\n\n## Description\n\n${marker}\n`;
+		await writeFile(draftPath, draftSource("MARKER-OPENED"), "utf8");
+		const seeded = await core.filesystem.loadDraft("draft-1");
+		if (!seeded) throw new Error("Expected the seeded draft");
+
+		try {
+			await withBoard(
+				async ({ screen, text, footer }) => {
+					await openPopupOnFirstRow(screen, "MARKER-OPENED");
+
+					// Another process (CLI, web UI, editor) rewrites the draft on disk.
+					await writeFile(draftPath, draftSource("MARKER-EDITED"), "utf8");
+					await waitFor(() => text().includes("MARKER-EDITED"), "the drafts watcher to refresh the popup", 200);
+					expect(text()).not.toContain("MARKER-OPENED");
+
+					// A promotion moves the file out of the drafts folder: the popup has to go with it.
+					await core.promoteDraft("draft-1", false);
+					await waitFor(() => footer().includes("is no longer on the board"), "the popup to close on promote", 200);
+					expect(footer()).toContain("Draft DRAFT-1 is no longer on the board.");
+					expect(text()).not.toContain("MARKER-EDITED");
+				},
+				{ tasks: [seeded], statuses: ["Draft"], draftSession: true, core, watch: "drafts" },
 			);
 		} finally {
 			await safeCleanup(dir);
