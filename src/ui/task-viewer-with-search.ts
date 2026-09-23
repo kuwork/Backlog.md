@@ -10,9 +10,9 @@ import {
 	formatDateForDisplay,
 	formatTaskPlainText,
 } from "../formatters/task-plain-text.ts";
-import type { Milestone, Task, TaskSearchResult } from "../types/index.ts";
+import type { Milestone, Task } from "../types/index.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
-import { areLabelSelectionsEqual, collectAvailableLabels, labelsToLower } from "../utils/label-filter.ts";
+import { areLabelSelectionsEqual, collectAvailableLabels } from "../utils/label-filter.ts";
 import {
 	createMilestoneFilterValueResolver,
 	type MilestoneFilterValueResolver,
@@ -205,7 +205,6 @@ export async function viewTaskEnhanced(
 	let availableLabels: string[] = [];
 	// When tasks are provided, use in-memory search; otherwise use ContentStore-backed search
 	let taskSearchIndex: ReturnType<typeof createTaskSearchIndex> | null = null;
-	let searchService: Awaited<ReturnType<typeof core.getSearchService>> | null = null;
 	let contentStore: Awaited<ReturnType<typeof core.getContentStore>> | null = null;
 	// Completed tasks are loaded alongside the milestone metadata so dependency readiness can
 	// resolve dependencies that already left the active corpus, without a second full task load.
@@ -241,7 +240,6 @@ export async function viewTaskEnhanced(
 
 			loadingScreen?.update("Loading tasks from branches...");
 			contentStore = await core.getContentStore();
-			searchService = await core.getSearchService();
 
 			loadingScreen?.update("Preparing task list...");
 			const tasks = await core.queryTasks();
@@ -250,6 +248,8 @@ export async function viewTaskEnhanced(
 			await loadingScreen?.close();
 		}
 	}
+	// One shared index resolves every filter, whichever loading mode produced the corpus.
+	taskSearchIndex ??= createTaskSearchIndex(allTasks);
 
 	// Collect available labels from config, tasks, and CLI-provided filters.
 	availableLabels = collectAvailableLabels(allTasks, [...labels, ...(options.labelFilter ?? [])]);
@@ -661,42 +661,6 @@ export async function viewTaskEnhanced(
 				},
 				taskSearchIndex,
 			);
-		} else if (searchService) {
-			const searchResults = searchService.search({
-				query: searchQuery,
-				filters: {
-					status: statusFilter.length > 0 ? statusFilter : undefined,
-					statusExcluded: statusExcludedFilter,
-					priority: priorityFilter as "high" | "medium" | "low" | undefined,
-					labels: labelFilter.length > 0 ? labelFilter : undefined,
-				},
-				types: ["task"],
-			});
-			nextFilteredTasks = searchResults
-				.filter((r): r is TaskSearchResult => r.type === "task")
-				.filter((r) => r.score === null || r.score === undefined || r.score <= 0.45)
-				.map((r) => r.task);
-			if (milestoneFilter) {
-				nextFilteredTasks = nextFilteredTasks.filter((task) => {
-					if (milestoneFilter === NO_MILESTONE_FILTER_VALUE) {
-						return !task.milestone?.trim();
-					}
-					if (!task.milestone) return false;
-					const taskMilestoneTitle = resolveMilestoneLabel(task.milestone);
-					return taskMilestoneTitle.toLowerCase() === milestoneFilter.toLowerCase();
-				});
-			}
-			if (labelMatch === "all" && labelFilter.length > 0) {
-				const requiredLabels = labelsToLower(labelFilter);
-				nextFilteredTasks = nextFilteredTasks.filter((task) => {
-					const taskLabels = new Set(labelsToLower(task.labels ?? []));
-					return requiredLabels.every((label) => taskLabels.has(label));
-				});
-			}
-			if (options.readyFilter) {
-				const graph = buildReadinessGraph();
-				nextFilteredTasks = nextFilteredTasks.filter((task) => getTaskReadiness(task, graph).isReady);
-			}
 		} else {
 			nextFilteredTasks = [...allTasks];
 		}
@@ -1347,7 +1311,6 @@ export async function viewTaskEnhanced(
 			}
 		} else {
 			// If already in task list, quit
-			searchService?.dispose();
 			contentStore?.dispose();
 			filterHeader.destroy();
 			screen.destroy();
@@ -1364,7 +1327,6 @@ export async function viewTaskEnhanced(
 			}
 			if (currentFocus === "list" || currentFocus === "detail") {
 				// Cleanup before switching
-				searchService?.dispose();
 				contentStore?.dispose();
 				filterHeader.destroy();
 				screen.destroy();
@@ -1378,7 +1340,6 @@ export async function viewTaskEnhanced(
 		if (modalOpen || filterPopupOpen) {
 			return;
 		}
-		searchService?.dispose();
 		contentStore?.dispose();
 		filterHeader.destroy();
 		screen.destroy();
@@ -1436,7 +1397,6 @@ export async function viewTaskEnhanced(
 				clearTimeout(helpRestoreTimer);
 				helpRestoreTimer = null;
 			}
-			searchService?.dispose();
 			contentStore?.dispose();
 			resolve();
 		});

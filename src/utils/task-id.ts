@@ -66,3 +66,40 @@ export function extractTaskBody(value: string, prefix: string = DEFAULT_TASK_PRE
 	const match = trimmed.match(prefixPattern);
 	return match?.[1] ?? null;
 }
+
+/**
+ * Compares two task IDs for equality.
+ * Handles numeric comparison to treat "task-1" and "task-01" as equal.
+ * Automatically detects prefix from either ID when comparing numeric-only input.
+ *
+ * @param left - First ID to compare
+ * @param right - Second ID to compare
+ * @param prefix - The prefix both IDs should have (default: "task")
+ * @returns true if IDs are equivalent
+ *
+ * @example
+ * taskIdsEqual("task-123", "TASK-123") // => true
+ * taskIdsEqual("task-1", "task-01") // => true (numeric comparison)
+ * taskIdsEqual("task-1.2", "task-1.2") // => true
+ * taskIdsEqual("358", "BACK-358") // => true (detects prefix from right)
+ */
+export function taskIdsEqual(left: string, right: string, prefix: string = DEFAULT_TASK_PREFIX): boolean {
+	// Detect actual prefix from either ID - if one has a prefix, use it
+	const leftPrefix = extractAnyPrefix(left);
+	const rightPrefix = extractAnyPrefix(right);
+	const effectivePrefix = leftPrefix ?? rightPrefix ?? prefix;
+
+	const leftBody = extractTaskBody(left, effectivePrefix);
+	const rightBody = extractTaskBody(right, effectivePrefix);
+
+	if (leftBody && rightBody) {
+		const leftSegs = leftBody.split(".").map((seg) => Number.parseInt(seg, 10));
+		const rightSegs = rightBody.split(".").map((seg) => Number.parseInt(seg, 10));
+		if (leftSegs.length !== rightSegs.length) {
+			return false;
+		}
+		return leftSegs.every((value, index) => value === rightSegs[index]);
+	}
+
+	return normalizeTaskId(left, effectivePrefix).toLowerCase() === normalizeTaskId(right, effectivePrefix).toLowerCase();
+}

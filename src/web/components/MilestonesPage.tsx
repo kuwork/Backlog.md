@@ -1,12 +1,12 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import Fuse from "fuse.js";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
 import { parseStoredUtcDate } from "../utils/date-display";
 import { type Milestone, type MilestoneBucket, type Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
+import { createTaskSearchIndex } from "../../utils/task-search";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import MilestoneAddModal from "./MilestoneAddModal";
 import Modal from "./Modal";
@@ -112,6 +112,11 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 	);
 	const searchQueryTrimmed = searchQuery.trim();
 	const isSearchActive = searchQueryTrimmed.length > 0;
+	// The shared task index, so a query means here what it means in the CLI, the TUI, and MCP.
+	const searchIndex = useMemo(
+		() => createTaskSearchIndex(buckets.flatMap((bucket) => bucket.tasks)),
+		[buckets],
+	);
 	const defaultExpandedByBucketKey = useMemo(() => {
 		const map: Record<string, boolean> = {};
 		for (const bucket of buckets) {
@@ -143,25 +148,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 				? new Set(exactIdMatches.map((task) => task.id))
 				: substringMatches.length > 0
 					? new Set(substringMatches.map((task) => task.id))
-					: (() => {
-							const fuse = new Fuse(searchableTasks, {
-								threshold: 0.35,
-								ignoreLocation: true,
-								minMatchCharLength: 2,
-								keys: [
-									{ name: 'title', weight: 0.55 },
-									{ name: 'id', weight: 0.45 },
-								],
-							});
-							const matches = fuse.search(searchQueryTrimmed);
-							return new Set(matches.map((match) => match.item.id));
-						})();
+					: new Set(searchIndex.search({ query: searchQueryTrimmed }).map((task) => task.id));
 
 		return buckets.map((bucket) => {
 			const filteredTasks = bucket.tasks.filter((task) => matchedTaskIds.has(task.id));
 			return rebuildFilteredBucket(bucket, filteredTasks, statuses);
 		});
-	}, [buckets, isSearchActive, searchQueryTrimmed, statuses]);
+	}, [buckets, isSearchActive, searchIndex, searchQueryTrimmed, statuses]);
 
 	// Separate buckets into categories and sort by ID descending
 	const { unassignedBucket, activeMilestones, completedMilestones } = useMemo(() => {

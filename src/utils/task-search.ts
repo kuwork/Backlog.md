@@ -18,7 +18,7 @@ import {
 import { matchesModifiedFileFilters, normalizeModifiedFileFilters } from "./modified-files.ts";
 import { getTaskReadiness, type ReadinessGraph } from "./readiness.ts";
 import { normalizeStatusSet, statusMatchesSet } from "./status-filter.ts";
-import { taskIdsEqual } from "./task-path.ts";
+import { taskIdsEqual } from "./task-id.ts";
 
 export type LabelMatchMode = "any" | "all";
 
