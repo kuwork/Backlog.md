@@ -5,6 +5,7 @@ import { stdin as input } from "node:process";
 import { createInterface } from "node:readline/promises";
 import * as clack from "@clack/prompts";
 import { Command, type OptionValues } from "commander";
+import { generateMilestoneGroupedBoard } from "./board.ts";
 import { runAdvancedConfigWizard } from "./commands/advanced-config-wizard.ts";
 import { type CompletionInstallResult, installCompletion, registerCompletionCommand } from "./commands/completion.ts";
 import { configureAdvancedSettings } from "./commands/configure-advanced-settings.ts";
@@ -17,7 +18,7 @@ import { formatInstallResult, installWikiSkill } from "./commands/wiki-install.t
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
 import { findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
 import { initializeProject } from "./core/init.ts";
-import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "./core/milestones.ts";
+import { foldArchivedMilestoneTasks } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
 import {
 	decisionListJson,
@@ -52,7 +53,6 @@ import {
 	type Document as DocType,
 	type DocumentSearchResult,
 	isLocalEditableTask,
-	type Milestone,
 	type SearchPriorityFilter,
 	type SearchResult,
 	type SearchResultType,
@@ -4287,6 +4287,7 @@ addHelpSchema(milestoneCmd.command("list"), {
 			core.filesystem.loadConfig(),
 		]);
 		const statuses = config?.statuses ?? ["To Do", "In Progress", "Done"];
+		const showCompleted = Boolean(options.showCompleted || process.argv.includes("--show-completed"));
 
 		if (!isPlainRequested(options) && !shouldAutoPlain) {
 			const { renderMilestonesTui } = await import("./ui/milestones.ts");
@@ -4304,42 +4305,16 @@ addHelpSchema(milestoneCmd.command("list"), {
 			return;
 		}
 
-		const showCompleted = Boolean(options.showCompleted || process.argv.includes("--show-completed"));
-		const archivedMilestoneIds = collectArchivedMilestoneKeys(archivedMilestones, milestones);
-		const buckets = buildMilestoneBuckets(tasks, milestones, statuses, { archivedMilestoneIds, archivedMilestones });
-		const active = buckets.filter((bucket) => !bucket.isNoMilestone && !bucket.isCompleted);
-		const completed = buckets.filter((bucket) => !bucket.isNoMilestone && bucket.isCompleted);
-		const formatBucket = (bucket: (typeof buckets)[number]) => {
-			const id = bucket.milestone ?? bucket.label;
-			const label = bucket.label;
-			const milestoneEntity = [...milestones, ...archivedMilestones].find(
-				(milestone) => milestoneKey(milestone.id) === milestoneKey(id),
-			);
-			const date = milestoneEntity?.updatedDate ?? milestoneEntity?.createdDate;
-			const dateLabel = milestoneEntity?.updatedDate ? "updated" : "created";
-			const dateSuffix = date ? `, ${dateLabel} ${date}` : "";
-			return `  ${id}: ${label} (${bucket.doneCount}/${bucket.total} done${dateSuffix})`;
-		};
-
-		console.log(`Active milestones (${active.length}):`);
-		if (active.length === 0) {
-			console.log("  (none)");
-		} else {
-			for (const bucket of active) {
-				console.log(formatBucket(bucket));
-			}
-		}
-
-		console.log(`\nCompleted milestones (${completed.length}):`);
-		if (completed.length === 0) {
-			console.log("  (none)");
-		} else if (showCompleted) {
-			for (const bucket of completed) {
-				console.log(formatBucket(bucket));
-			}
-		} else {
-			console.log("  (collapsed, use --show-completed to list)");
-		}
+		const plainTasks = showCompleted
+			? await core.queryTasks({ includeCrossBranch: false, includeCompleted: true })
+			: tasks;
+		const groupedTasks = foldArchivedMilestoneTasks(plainTasks, milestones, archivedMilestones);
+		const { filterVisibleColumns, prepareBoardColumns } = await import("./ui/board.ts");
+		const visibleStatuses = config?.hideEmptyColumns
+			? filterVisibleColumns(prepareBoardColumns(groupedTasks, statuses), true, false).map((column) => column.status)
+			: statuses;
+		const projectName = config?.projectName?.trim() || "Project";
+		console.log(generateMilestoneGroupedBoard(groupedTasks, visibleStatuses, milestones, projectName));
 	});
 
 addHelpSchema(milestoneCmd.command("edit <name>"), {
@@ -4596,99 +4571,7 @@ async function handleBoardView(options: { layout?: string; vertical?: boolean; m
 				core.filesystem.listMilestones(),
 				core.filesystem.listArchivedMilestones(),
 			]);
-			const resolveMilestoneAlias = (value?: string): string => {
-				const normalized = (value ?? "").trim();
-				if (!normalized) {
-					return "";
-				}
-				const key = normalized.toLowerCase();
-				const looksLikeMilestoneId = /^\d+$/.test(normalized) || /^m-\d+$/i.test(normalized);
-				const canonicalInputId = looksLikeMilestoneId
-					? `m-${String(Number.parseInt(normalized.replace(/^m-/i, ""), 10))}`
-					: null;
-				const aliasKeys = new Set<string>([key]);
-				if (/^\d+$/.test(normalized)) {
-					const numericAlias = String(Number.parseInt(normalized, 10));
-					aliasKeys.add(numericAlias);
-					aliasKeys.add(`m-${numericAlias}`);
-				} else {
-					const idMatch = normalized.match(/^m-(\d+)$/i);
-					if (idMatch?.[1]) {
-						const numericAlias = String(Number.parseInt(idMatch[1], 10));
-						aliasKeys.add(numericAlias);
-						aliasKeys.add(`m-${numericAlias}`);
-					}
-				}
-				const idMatchesAlias = (milestoneId: string): boolean => {
-					const idKey = milestoneId.trim().toLowerCase();
-					if (aliasKeys.has(idKey)) {
-						return true;
-					}
-					const idMatch = milestoneId.trim().match(/^m-(\d+)$/i);
-					if (!idMatch?.[1]) {
-						return false;
-					}
-					const numericAlias = String(Number.parseInt(idMatch[1], 10));
-					return aliasKeys.has(numericAlias) || aliasKeys.has(`m-${numericAlias}`);
-				};
-				const findIdMatch = (milestones: Milestone[]): Milestone | undefined => {
-					const rawExactMatch = milestones.find((milestone) => milestone.id.trim().toLowerCase() === key);
-					if (rawExactMatch) {
-						return rawExactMatch;
-					}
-					if (canonicalInputId) {
-						const canonicalRawMatch = milestones.find(
-							(milestone) => milestone.id.trim().toLowerCase() === canonicalInputId,
-						);
-						if (canonicalRawMatch) {
-							return canonicalRawMatch;
-						}
-					}
-					return milestones.find((milestone) => idMatchesAlias(milestone.id));
-				};
-
-				const activeIdMatch = findIdMatch(milestoneEntities);
-				if (activeIdMatch) {
-					return activeIdMatch.id;
-				}
-				if (looksLikeMilestoneId) {
-					const archivedIdMatch = findIdMatch(archivedMilestones);
-					if (archivedIdMatch) {
-						return archivedIdMatch.id;
-					}
-				}
-				const activeTitleMatches = milestoneEntities.filter(
-					(milestone) => milestone.title.trim().toLowerCase() === key,
-				);
-				if (activeTitleMatches.length === 1) {
-					return activeTitleMatches[0]?.id ?? normalized;
-				}
-				if (activeTitleMatches.length > 1) {
-					return normalized;
-				}
-				const archivedIdMatch = findIdMatch(archivedMilestones);
-				if (archivedIdMatch) {
-					return archivedIdMatch.id;
-				}
-				const archivedTitleMatches = archivedMilestones.filter(
-					(milestone) => milestone.title.trim().toLowerCase() === key,
-				);
-				if (archivedTitleMatches.length === 1) {
-					return archivedTitleMatches[0]?.id ?? normalized;
-				}
-				return normalized;
-			};
-			const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestones, milestoneEntities));
-			const normalizedTasks =
-				archivedKeys.size > 0
-					? tasks.map((task) => {
-							const key = milestoneKey(resolveMilestoneAlias(task.milestone));
-							if (!key || !archivedKeys.has(key)) {
-								return task;
-							}
-							return { ...task, milestone: undefined };
-						})
-					: tasks;
+			const normalizedTasks = foldArchivedMilestoneTasks(tasks, milestoneEntities, archivedMilestones);
 			return {
 				tasks: normalizedTasks.map((t) => ({ ...t, status: t.status || "" })),
 				statuses,

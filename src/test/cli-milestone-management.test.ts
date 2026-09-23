@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../index.ts";
@@ -366,45 +366,84 @@ describe("CLI milestone management", () => {
 		expect(missingTarget.stderr.toString()).toContain("reassignTo is required when taskHandling is reassign.");
 	});
 
-	it("lists milestone created date and prefers updated date after edits", async () => {
-		const core = new Core(TEST_DIR);
-
-		await $`bun ${cliPath} milestone add "Dated Release"`.cwd(TEST_DIR).quiet();
-
-		const createdMilestone = (await core.filesystem.listMilestones())[0];
-		expect(createdMilestone?.createdDate).toBeDefined();
-		expect(createdMilestone?.updatedDate).toBeUndefined();
-
-		const initialList = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
-		expect(initialList.exitCode).toBe(0);
-		expect(initialList.stdout.toString()).toContain(
-			`m-0: Dated Release (0/0 done, created ${createdMilestone?.createdDate})`,
-		);
-
-		await $`bun ${cliPath} milestone edit "Dated Release" --description "Updated scope"`.cwd(TEST_DIR).quiet();
-
-		const updatedMilestone = (await core.filesystem.listMilestones())[0];
-		expect(updatedMilestone?.updatedDate).toBeDefined();
-
-		const updatedList = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
-		const updatedOutput = updatedList.stdout.toString();
-		expect(updatedOutput).toContain(`m-0: Dated Release (0/0 done, updated ${updatedMilestone?.updatedDate})`);
-		expect(updatedOutput).not.toContain(`created ${createdMilestone?.createdDate}`);
-	});
-
-	it("omits dates for legacy milestones without created/updated fields", async () => {
-		const milestonesDir = join(TEST_DIR, "backlog", "milestones");
-		await mkdir(milestonesDir, { recursive: true });
-		await writeFile(
-			join(milestonesDir, "m-0 - legacy.md"),
-			'---\nid: m-0\ntitle: "Legacy Release"\n---\n\n## Description\n\nLegacy milestone\n',
-		);
+	it("lists tasks grouped by milestone in plain output", async () => {
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} milestone add "Release B"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task B" --milestone "Release B" --plain`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Unassigned" --plain`.cwd(TEST_DIR).quiet();
 
 		const list = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
 		expect(list.exitCode).toBe(0);
 		const output = list.stdout.toString();
-		expect(output).toContain("m-0: Legacy Release (0/0 done)");
-		expect(output).not.toMatch(/done, (created|updated)/);
+		expect(output).toContain("# Kanban Board by Milestone");
+		expect(output).toContain("### To Do (1)");
+		expect(output).toContain("- **TASK-1** - Task A");
+		expect(output).toContain("- **TASK-2** - Task B");
+		expect(output).toContain("- **TASK-3** - Unassigned");
+
+		const noMilestoneIndex = output.indexOf("## No Milestone (1 tasks)");
+		const releaseAIndex = output.indexOf("## Release A (1 tasks)");
+		const releaseBIndex = output.indexOf("## Release B (1 tasks)");
+		expect(noMilestoneIndex).toBeGreaterThan(-1);
+		expect(releaseAIndex).toBeGreaterThan(-1);
+		expect(releaseBIndex).toBeGreaterThan(-1);
+		expect(noMilestoneIndex).toBeLessThan(releaseAIndex);
+		expect(releaseAIndex).toBeLessThan(releaseBIndex);
+	});
+
+	it("falls back to the grouped plain output without --plain when stdout is not a TTY", async () => {
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
+
+		const list = await $`bun ${cliPath} milestone list`.cwd(TEST_DIR).quiet();
+		expect(list.exitCode).toBe(0);
+		const output = list.stdout.toString();
+		expect(output).toContain("## Release A (1 tasks)");
+		expect(output).toContain("### To Do (1)");
+		expect(output).toContain("- **TASK-1** - Task A");
+	});
+
+	it("excludes completed tasks by default and lists them with --show-completed", async () => {
+		const core = new Core(TEST_DIR);
+
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
+
+		const activeList = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		expect(activeList.stdout.toString()).toContain("## Release A (1 tasks)");
+
+		await core.editTask("task-1", { status: "Done" }, false);
+		const success = await core.completeTask("task-1", false);
+		expect(success).toBe(true);
+
+		const withoutCompleted = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		const withoutOutput = withoutCompleted.stdout.toString();
+		expect(withoutOutput).not.toContain("## Release A");
+		expect(withoutOutput).not.toContain("TASK-1");
+
+		const withCompleted = await $`bun ${cliPath} milestone list --plain --show-completed`.cwd(TEST_DIR).quiet();
+		const withOutput = withCompleted.stdout.toString();
+		expect(withOutput).toContain("## Release A (1 tasks)");
+		expect(withOutput).toContain("### Done (1)");
+		expect(withOutput).toContain("- **TASK-1** - Task A");
+	});
+
+	it("folds tasks of archived milestones into the No Milestone section", async () => {
+		await $`bun ${cliPath} milestone add "Release A"`.cwd(TEST_DIR).quiet();
+		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
+
+		const beforeArchive = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		expect(beforeArchive.stdout.toString()).toContain("## Release A (1 tasks)");
+
+		const archive = await $`bun ${cliPath} milestone archive "Release A"`.cwd(TEST_DIR).quiet();
+		expect(archive.exitCode).toBe(0);
+
+		const list = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		const output = list.stdout.toString();
+		expect(output).toContain("## No Milestone (1 tasks)");
+		expect(output).toContain("- **TASK-1** - Task A");
+		expect(output).not.toContain("## Release A");
 	});
 
 	it("documents milestone command schemas in help output", async () => {

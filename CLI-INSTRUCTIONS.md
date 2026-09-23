@@ -157,9 +157,9 @@ Milestones are managed through milestone files. Use CLI commands instead of edit
 
 | Action | Example |
 |--------|---------|
-| List milestones | `backlog milestone list --plain` |
-| Browse milestones | `backlog milestone list` (interactive UI; `N` adds a milestone, `E` in the detail popup edits its description and dates) |
-| List completed milestones too | `backlog milestone list --show-completed --plain` |
+| Grouped task board by milestone (plain) | `backlog milestones list --plain` |
+| Browse milestones | `backlog milestones list` (interactive UI; `N` adds a milestone, `E` in the detail popup edits its description and dates) |
+| Include completed-folder tasks too | `backlog milestones list --show-completed --plain` |
 | Add milestone | `backlog milestone add "Release 1.0"` |
 | Add with description | `backlog milestone add "Beta" --description "Beta scope"` |
 | Edit title and update tasks | `backlog milestone edit "Release 1.0" --title "Release 2.0"` |
@@ -172,6 +172,8 @@ Milestones are managed through milestone files. Use CLI commands instead of edit
 | Archive milestone | `backlog milestone archive m-1` |
 
 `milestone remove` task handling modes are `clear` (default), `keep`, and `reassign`. `--reassign-to` is required when using `--task-handling reassign`, and the target must be an active milestone file.
+
+`milestones list --plain` prints a milestone-grouped kanban board in markdown: a `No Milestone` section first, then one section per milestone, each with its tasks listed under `### <Status> (count)` headings. It uses the same rendering as `backlog board -m`. Non-TTY stdout (piping or redirect) automatically falls back to this plain output even without `--plain`. The plain output reads only the `tasks/` folder; `--show-completed` additionally loads the `completed/` folder so finished milestones get their own sections. Tasks whose status is the terminal status (e.g. `Done`) but that still live in `tasks/` are included either way.
 
 ## Search
 

@@ -38,6 +38,108 @@ export function collectArchivedMilestoneKeys(archivedMilestones: Milestone[], ac
 }
 
 /**
+ * Fold tasks whose milestone resolves to an archived milestone into the "No Milestone" group
+ * by clearing their milestone value, matching how the board groups archived milestones away.
+ */
+export function foldArchivedMilestoneTasks(
+	tasks: Task[],
+	activeMilestones: Milestone[],
+	archivedMilestones: Milestone[],
+): Task[] {
+	const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestones, activeMilestones));
+	if (archivedKeys.size === 0) {
+		return tasks;
+	}
+
+	const resolveMilestoneAlias = (value?: string): string => {
+		const normalized = (value ?? "").trim();
+		if (!normalized) {
+			return "";
+		}
+		const key = normalized.toLowerCase();
+		const looksLikeMilestoneId = /^\d+$/.test(normalized) || /^m-\d+$/i.test(normalized);
+		const canonicalInputId = looksLikeMilestoneId
+			? `m-${String(Number.parseInt(normalized.replace(/^m-/i, ""), 10))}`
+			: null;
+		const aliasKeys = new Set<string>([key]);
+		if (/^\d+$/.test(normalized)) {
+			const numericAlias = String(Number.parseInt(normalized, 10));
+			aliasKeys.add(numericAlias);
+			aliasKeys.add(`m-${numericAlias}`);
+		} else {
+			const idMatch = normalized.match(/^m-(\d+)$/i);
+			if (idMatch?.[1]) {
+				const numericAlias = String(Number.parseInt(idMatch[1], 10));
+				aliasKeys.add(numericAlias);
+				aliasKeys.add(`m-${numericAlias}`);
+			}
+		}
+		const idMatchesAlias = (milestoneId: string): boolean => {
+			const idKey = milestoneId.trim().toLowerCase();
+			if (aliasKeys.has(idKey)) {
+				return true;
+			}
+			const idMatch = milestoneId.trim().match(/^m-(\d+)$/i);
+			if (!idMatch?.[1]) {
+				return false;
+			}
+			const numericAlias = String(Number.parseInt(idMatch[1], 10));
+			return aliasKeys.has(numericAlias) || aliasKeys.has(`m-${numericAlias}`);
+		};
+		const findIdMatch = (milestones: Milestone[]): Milestone | undefined => {
+			const rawExactMatch = milestones.find((milestone) => milestone.id.trim().toLowerCase() === key);
+			if (rawExactMatch) {
+				return rawExactMatch;
+			}
+			if (canonicalInputId) {
+				const canonicalRawMatch = milestones.find(
+					(milestone) => milestone.id.trim().toLowerCase() === canonicalInputId,
+				);
+				if (canonicalRawMatch) {
+					return canonicalRawMatch;
+				}
+			}
+			return milestones.find((milestone) => idMatchesAlias(milestone.id));
+		};
+
+		const activeIdMatch = findIdMatch(activeMilestones);
+		if (activeIdMatch) {
+			return activeIdMatch.id;
+		}
+		if (looksLikeMilestoneId) {
+			const archivedIdMatch = findIdMatch(archivedMilestones);
+			if (archivedIdMatch) {
+				return archivedIdMatch.id;
+			}
+		}
+		const activeTitleMatches = activeMilestones.filter((milestone) => milestone.title.trim().toLowerCase() === key);
+		if (activeTitleMatches.length === 1) {
+			return activeTitleMatches[0]?.id ?? normalized;
+		}
+		if (activeTitleMatches.length > 1) {
+			return normalized;
+		}
+		const archivedIdMatch = findIdMatch(archivedMilestones);
+		if (archivedIdMatch) {
+			return archivedIdMatch.id;
+		}
+		const archivedTitleMatches = archivedMilestones.filter((milestone) => milestone.title.trim().toLowerCase() === key);
+		if (archivedTitleMatches.length === 1) {
+			return archivedTitleMatches[0]?.id ?? normalized;
+		}
+		return normalized;
+	};
+
+	return tasks.map((task) => {
+		const key = milestoneKey(resolveMilestoneAlias(task.milestone));
+		if (!key || !archivedKeys.has(key)) {
+			return task;
+		}
+		return { ...task, milestone: undefined };
+	});
+}
+
+/**
  * Validate a milestone name for creation
  */
 export function validateMilestoneName(name: string, existingMilestones: string[]): string | null {
