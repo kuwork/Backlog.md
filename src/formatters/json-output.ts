@@ -24,6 +24,8 @@ type TaskSummaryJson = {
 	parentTaskId: string | null;
 	acceptanceCriteriaCompleted: number;
 	acceptanceCriteriaCount: number;
+	references: string[];
+	modifiedFiles: string[];
 	ordinal: number | null;
 	createdAt: string | null;
 	updatedAt: string | null;
@@ -63,9 +65,7 @@ type TaskDetailsJson = TaskSummaryJson & {
 	dependencies: string[];
 	/** Why the `isReady` above reads the way it does, from the same derivation. */
 	readiness: TaskReadiness;
-	references: string[];
 	documentation: string[];
-	modifiedFiles: string[];
 	subtasks: Array<{ id: string; title: string }>;
 	acceptanceCriteria: ChecklistItemJson[];
 	definitionOfDone: ChecklistItemJson[];
@@ -157,6 +157,8 @@ function toTaskSummaryJson(task: TaskListItem): TaskSummaryJson {
 		parentTaskId: nullable(task.parentTaskId),
 		acceptanceCriteriaCompleted: acceptanceCriteria.filter((criterion) => criterion.checked).length,
 		acceptanceCriteriaCount: acceptanceCriteria.length,
+		references: task.references ?? [],
+		modifiedFiles: task.modifiedFiles ?? [],
 		ordinal: task.ordinal ?? null,
 		createdAt: normalizePublicDate(task.createdDate),
 		updatedAt: normalizePublicDate(task.updatedDate),
@@ -190,9 +192,7 @@ function toTaskDetailsJson(task: TaskDetail, projectRoot: string): TaskDetailsJs
 		description: nullableDescription(task.description),
 		dependencies: task.dependencies ?? [],
 		readiness: task.readiness,
-		references: task.references ?? [],
 		documentation: task.documentation ?? [],
-		modifiedFiles: task.modifiedFiles ?? [],
 		subtasks: sortByTaskId(task.subtaskSummaries ?? []),
 		acceptanceCriteria: toChecklistJson(task.acceptanceCriteriaItems),
 		definitionOfDone: toChecklistJson(task.definitionOfDoneItems),

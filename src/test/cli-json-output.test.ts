@@ -106,6 +106,8 @@ describe("CLI JSON output", () => {
 					parentTaskId: null,
 					acceptanceCriteriaCompleted: 1,
 					acceptanceCriteriaCount: 1,
+					references: ["https://example.com/issue"],
+					modifiedFiles: ["src/cli.ts"],
 					ordinal: 1000,
 					createdAt: "2026-07-14T09:30:00Z",
 					updatedAt: "2026-07-14T10:45:00Z",
@@ -116,11 +118,35 @@ describe("CLI JSON output", () => {
 					actualEnd: null,
 					// TASK-1's only dependency does not exist, and an unresolvable dependency fails closed.
 					isReady: false,
+					source: null,
 				},
 			],
 		});
 		expect(result.stdout.toString()).not.toContain("rawContent");
 		expect(result.stdout.toString()).not.toContain("onStatusChange");
+	});
+
+	it("emits empty reference and modified-file arrays for a task without them", async () => {
+		const core = new Core(TEST_DIR);
+		await core.createTask(
+			{
+				id: "task-3",
+				title: "Bare task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-07-15 08:00",
+				labels: [],
+				dependencies: [],
+				rawContent: "",
+			},
+			false,
+		);
+
+		const result = await runCli(["task", "list", "--json"]);
+		expect(result.exitCode).toBe(0);
+		const bare = JSON.parse(result.stdout.toString()).tasks.find((task: { id: string }) => task.id === "TASK-3");
+		expect(bare.references).toEqual([]);
+		expect(bare.modifiedFiles).toEqual([]);
 	});
 
 	it("returns curated task details for view and shorthand", async () => {
@@ -147,6 +173,9 @@ describe("CLI JSON output", () => {
 			});
 			expect(output.task.acceptanceCriteriaCompleted).toBe(1);
 			expect(output.task.acceptanceCriteriaCount).toBe(1);
+			// The detail payload keeps both arrays: they now arrive through the shared summary type.
+			expect(output.task.references).toEqual(["https://example.com/issue"]);
+			expect(output.task.modifiedFiles).toEqual(["src/cli.ts"]);
 			expect(output.task.acceptanceCriteria).toEqual([{ index: 1, text: "Produces JSON", checked: true }]);
 			expect(output.task.definitionOfDone).toEqual([{ index: 1, text: "Tests pass", checked: false }]);
 			expect(output.task.comments).toEqual([
@@ -209,6 +238,9 @@ describe("CLI JSON output", () => {
 		expect(output.results[1].data.dueDate).toBe("2026-07-20");
 		expect(output.results[1].data.acceptanceCriteriaCompleted).toBe(1);
 		expect(output.results[1].data.acceptanceCriteriaCount).toBe(1);
+		// A search row is a summary row, so it carries the same references and modified files.
+		expect(output.results[1].data.references).toEqual(["https://example.com/issue"]);
+		expect(output.results[1].data.modifiedFiles).toEqual(["src/cli.ts"]);
 		// A search result carries the same verdict the task list publishes for the same record.
 		expect(output.results[1].data.isReady).toBe(false);
 		expect(output.results[2].data).toEqual({
