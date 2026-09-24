@@ -2,10 +2,10 @@
  * Graph store abstraction for the Kuzu task graph (doc-014 §1.2).
  *
  * Two backends implement the same interface:
- * - KuzuGraphStore: the real embedded Kuzu database (backlog/graph.kuzu). The native binding
- *   segfaults when loaded from Bun on this machine (doc-014 §5 anticipated Windows packaging
- *   issues), so it is only activated when explicitly requested - e.g. a host process running on
- *   Node - or via BACKLOG_GRAPH_BACKEND=kuzu.
+ * - KuzuGraphStore: the real embedded Kuzu database (a hashed cache file, see graph/paths.ts). The
+ *   native binding segfaults when loaded from Bun on this machine (doc-014 §5 anticipated Windows
+ *   packaging issues), so it is only activated when explicitly requested - e.g. a host process
+ *   running on Node - or via BACKLOG_GRAPH_BACKEND=kuzu.
  * - MemoryGraphStore: a pure-JS in-memory fallback (the doc's ":memory:" degraded mode). Always
  *   available, used by default so a crash in the native module can never take the CLI/Web down.
  *   Durability is delegated to the fingerprint cache: a rebuilt graph is identical by construction.
@@ -453,20 +453,22 @@ export interface OpenGraphStoreOptions {
 const memoryStores = new Map<string, MemoryGraphStore>();
 
 /**
- * Open a graph store for the project. The native kuzu backend is opt-in (BACKLOG_GRAPH_BACKEND=kuzu
- * or an explicit option) because loading the binding inside Bun segfaults on this machine; the
- * default is the in-memory degraded mode sanctioned by doc-014 §5. Memory stores are process
- * singletons keyed by project root so the cold-start fast path reuses an already-built graph
- * within the same process (a resident Graph Service keeps it warm across reconciliations).
+ * Open a graph store at the given database path (see graph/paths.ts - one database per project and
+ * instance slot, kept in the cache directory). The native kuzu backend is opt-in
+ * (BACKLOG_GRAPH_BACKEND=kuzu or an explicit option) because loading the binding inside Bun
+ * segfaults on this machine; the default is the in-memory degraded mode sanctioned by doc-014 §5.
+ * Memory stores are process singletons keyed by that same path so the cold-start fast path reuses
+ * an already-built graph within the same process (a resident Graph Service keeps it warm across
+ * reconciliations).
  */
-export async function openGraphStore(projectRoot: string, options: OpenGraphStoreOptions = {}): Promise<GraphStore> {
-	const { join, resolve } = await import("node:path");
+export async function openGraphStore(dbPath: string, options: OpenGraphStoreOptions = {}): Promise<GraphStore> {
 	if (isKuzuRequested(options.backend)) {
-		const store = new KuzuGraphStore(join(projectRoot, "backlog", "graph.kuzu"));
+		const store = new KuzuGraphStore(dbPath);
 		await store.init();
 		return store;
 	}
-	const key = resolve(projectRoot);
+	const { resolve } = await import("node:path");
+	const key = resolve(dbPath);
 	let store = memoryStores.get(key);
 	if (!store) {
 		store = new MemoryGraphStore();

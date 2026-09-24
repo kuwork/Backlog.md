@@ -69,7 +69,9 @@ test-benchmark-report.json
 Backlog.md.zip
 backlog/wiki/usermanual/_book/
 
-# Kuzu task graph derived cache (rebuilt from markdown at runtime)
+# Kuzu task graph derived cache: it now lives in the OS cache directory under a hashed name
+# (src/graph/paths.ts), so nothing graph-related belongs in the repository. These patterns only
+# keep leftovers from the previous in-repo layout (backlog/graph.kuzu*) out of commits.
 backlog/graph.kuzu
 backlog/graph.kuzu.meta.json
 backlog/graph.kuzu.lock

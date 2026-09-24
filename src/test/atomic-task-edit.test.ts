@@ -8,7 +8,14 @@ import { McpServer } from "../mcp/server.ts";
 import { TaskHandlers } from "../mcp/tools/tasks/handlers.ts";
 import { BacklogServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
-import { createUniqueTestDir, initializeTestProject, retry, safeCleanup, withTimeout } from "./test-utils.ts";
+import {
+	createUniqueTestDir,
+	initializeTestProject,
+	installCloseConnectionFetch,
+	retry,
+	safeCleanup,
+	withTimeout,
+} from "./test-utils.ts";
 
 const CLI_PATH = join(process.cwd(), "src/cli.ts");
 const CONTENDED_ID = "TASK-1";
@@ -29,6 +36,10 @@ function createDeferred<T>(): Deferred<T> {
 	});
 	return { promise, resolve, reject };
 }
+
+// The 409 case drives two requests over one keep-alive connection - exactly what Bun 1.3.14 on
+// Windows misroutes - so this suite installs the shared one-connection-per-request workaround.
+installCloseConnectionFetch();
 
 describe("atomic task editing", () => {
 	let testDir: string;

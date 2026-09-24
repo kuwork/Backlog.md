@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { MetaCache } from "./fingerprint";
 import {
 	computeAggregateFingerprint,
@@ -11,6 +10,8 @@ import {
 import { fullImport } from "./import";
 import type { ParsedRecord } from "./parser";
 import { parseTaskFile } from "./parser";
+import type { GraphSlot } from "./paths";
+import { graphPaths } from "./paths";
 import type { RelationResolution } from "./relations";
 import { resolveRelations } from "./relations";
 import type { ScannedFile, WhitelistDirs } from "./scanner";
@@ -53,10 +54,8 @@ export interface ColdStartOptions {
 	/** Force the native kuzu backend; default is the in-memory degraded mode (see store.ts). */
 	backend?: "kuzu" | "memory";
 	dirs?: WhitelistDirs;
-}
-
-export function defaultMetaPath(projectRoot: string): string {
-	return join(projectRoot, "backlog", "graph.kuzu.meta.json");
+	/** Instance slot that picks the cache entry; see paths.ts. */
+	slot?: GraphSlot;
 }
 
 /** One shared implementation used by both the cold start and (later) hot-update reconciliation. */
@@ -77,8 +76,9 @@ export async function buildGraphFromFiles(
 }
 
 export async function coldStart(projectRoot: string, options: ColdStartOptions = {}): Promise<ColdStartResult> {
-	const store = await openGraphStore(projectRoot, options.backend ? { backend: options.backend } : {});
-	const metaPath = defaultMetaPath(projectRoot);
+	const paths = graphPaths(projectRoot, options.slot);
+	const store = await openGraphStore(paths.dbPath, options.backend ? { backend: options.backend } : {});
+	const metaPath = paths.metaPath;
 	const dirs = options.dirs ?? DEFAULT_WHITELIST;
 
 	try {
@@ -108,14 +108,20 @@ export async function coldStart(projectRoot: string, options: ColdStartOptions =
 
 		if (cacheUsable) {
 			const nodeCount = await store.countNodes();
-			return {
-				backend: store.backend,
-				reused: true,
-				nodeCount,
-				scannedFiles: scanned.length,
-				reports: { invalidRelations: [], missingDependencies: [], ambiguousIds: [], warnings: [] },
-				store,
-			};
+			// A warm cache alone is not enough to reuse: the in-memory backend starts empty in
+			// every new process, so a "reused" empty store would serve an empty graph after a
+			// restart. The fast path only applies when the store already holds the graph (kuzu
+			// persists it to disk; a warm memory singleton does after an in-process rebuild).
+			if (nodeCount > 0) {
+				return {
+					backend: store.backend,
+					reused: true,
+					nodeCount,
+					scannedFiles: scanned.length,
+					reports: { invalidRelations: [], missingDependencies: [], ambiguousIds: [], warnings: [] },
+					store,
+				};
+			}
 		}
 
 		// Rebuild path (also rewrites the cache afterwards).

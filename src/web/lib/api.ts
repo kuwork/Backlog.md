@@ -38,6 +38,33 @@ async function throwResponseError(response: Response, fallback: string): Promise
 
 const API_BASE = "/api";
 
+// Task graph (doc-014): the /api/graph payload as served by the Web server.
+export type GraphNodeKind = "task" | "draft" | "milestone";
+
+export type GraphEdgeType = "ParentOf" | "BelongsToMilestone" | "DependsOn";
+
+export interface GraphNodeDto {
+	id: string;
+	title: string;
+	kind: GraphNodeKind;
+	status: string;
+	filePath: string;
+}
+
+export interface GraphEdgeDto {
+	type: GraphEdgeType;
+	from: string;
+	to: string;
+}
+
+export interface GraphPayload {
+	status: "building" | "ready";
+	backend: "kuzu" | "memory";
+	nodes: GraphNodeDto[];
+	edges: GraphEdgeDto[];
+	nodeCount: number;
+}
+
 export interface ReorderTaskPayload {
 	taskId: string;
 	targetStatus: string;
@@ -492,6 +519,18 @@ export class ApiClient {
 		});
 		if (!response.ok) {
 			throw new Error("Failed to update config");
+		}
+		return response.json();
+	}
+
+	async getGraph(): Promise<GraphPayload> {
+		const response = await fetch(`${API_BASE}/graph`);
+		if (!response.ok) {
+			// 503 means the graph is held by another process (single-holder lock),
+			// which the caller surfaces as a distinct, non-fatal state.
+			const error = new Error("Failed to fetch graph") as Error & { status?: number };
+			error.status = response.status;
+			throw error;
 		}
 		return response.json();
 	}

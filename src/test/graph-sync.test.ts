@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileSystem } from "../file-system/operations";
-import { defaultMetaPath } from "../graph/cold-start";
 import { computeFileHash, loadMetaCache, saveMetaCache } from "../graph/fingerprint";
 import { computeChangeSet, RecordCache } from "../graph/incremental";
-import { GraphService } from "../graph/service";
+import { graphPaths, portSlot, TUI_SLOT } from "../graph/paths";
+import { type GraphLockInfo, GraphService } from "../graph/service";
 import { MemoryGraphStore } from "../graph/store";
 import { computeRecordReadiness, findDependencyCycles, validateCounts } from "../graph/validation";
 
@@ -168,6 +169,100 @@ describe("GraphService hot update", () => {
 		await second.stop();
 	});
 
+	test("one database per slot: a TUI and a Web UI session never contend", async () => {
+		const web = new GraphService(root, { backend: "memory", slot: portSlot(6478), reconcileMs: 3_600_000 });
+		const tui = new GraphService(root, { backend: "memory", slot: TUI_SLOT, reconcileMs: 3_600_000 });
+		expect(await web.start()).toBe(true);
+		expect(await tui.start()).toBe(true); // a different slot means a different cache entry
+
+		// Only a second process claiming the *same* slot is turned away.
+		const sameSession = new GraphService(root, { backend: "memory", slot: portSlot(6478), reconcileMs: 3_600_000 });
+		expect(await sameSession.start()).toBe(false);
+
+		// Nothing is written into the project: the database, sidecar and lock are cache artifacts.
+		expect(existsSync(join(root, "backlog", "graph.kuzu.lock"))).toBe(false);
+		expect(graphPaths(root, portSlot(6478)).lockPath).not.toBe(graphPaths(root, TUI_SLOT).lockPath);
+
+		await web.stop();
+		await sameSession.stop();
+		await tui.stop();
+	});
+
+	test("a lock left behind by a dead process is recycled without a handler", async () => {
+		const { dir, lockPath } = graphPaths(root, portSlot(6478));
+		await mkdir(dir, { recursive: true });
+		await writeFile(lockPath, "999999999\n", "utf8"); // a pid no OS hands out
+		const service = new GraphService(root, { backend: "memory", slot: portSlot(6478), reconcileMs: 3_600_000 });
+		expect(await service.start()).toBe(true);
+		await service.stop();
+	});
+
+	test("a conflicted lock goes to the host, which decides whether to take it over", async () => {
+		const { dir, lockPath } = graphPaths(root, portSlot(6479));
+		await mkdir(dir, { recursive: true });
+		const calls: Array<{ info: GraphLockInfo; conflict: string }> = [];
+		const onLockConflict = (info: GraphLockInfo, conflict: "blocked" | "still-held") => {
+			calls.push({ info, conflict });
+			return !info.holderRunning; // recycle only what is clearly gone
+		};
+		const options = { backend: "memory" as const, slot: portSlot(6479), reconcileMs: 3_600_000, onLockConflict };
+
+		// Someone alive holds it (a real pid that is not ours): refused, and the lock survives.
+		await writeFile(lockPath, `${process.ppid}\n`, "utf8");
+		expect(await new GraphService(root, options).start()).toBe(false);
+		expect(calls).toEqual([
+			{ info: expect.objectContaining({ pid: process.ppid, holderRunning: true }), conflict: "blocked" },
+		]);
+		expect(existsSync(lockPath)).toBe(true);
+
+		// The leftover of a hard kill: the host agrees, the service takes the lock over.
+		await writeFile(lockPath, "999999999\n", "utf8");
+		const service = new GraphService(root, options);
+		expect(await service.start()).toBe(true);
+		expect(calls[1]).toEqual({
+			info: expect.objectContaining({ pid: 999999999, holderRunning: false }),
+			conflict: "blocked",
+		});
+		await service.stop();
+	});
+
+	test("a lock that cannot be deleted is reported once more instead of retried forever", async () => {
+		const { lockPath } = graphPaths(root, portSlot(6480));
+		await mkdir(lockPath, { recursive: true }); // a directory: unlink cannot remove it
+		const conflicts: string[] = [];
+		const service = new GraphService(root, {
+			backend: "memory",
+			slot: portSlot(6480),
+			reconcileMs: 3_600_000,
+			onLockConflict: (_info, conflict) => {
+				conflicts.push(conflict);
+				return true; // "yes, delete it" - which is exactly what fails here
+			},
+		});
+		expect(await service.start()).toBe(false);
+		expect(conflicts).toEqual(["blocked", "still-held"]);
+		await rm(lockPath, { recursive: true, force: true });
+	});
+
+	test("a lock this process wrote is never taken over, even when the host says yes", async () => {
+		const { dir, lockPath } = graphPaths(root, portSlot(6481));
+		await mkdir(dir, { recursive: true });
+		await writeFile(lockPath, `${process.pid}\n`, "utf8");
+		let asked = false;
+		const service = new GraphService(root, {
+			backend: "memory",
+			slot: portSlot(6481),
+			reconcileMs: 3_600_000,
+			onLockConflict: () => {
+				asked = true;
+				return true;
+			},
+		});
+		expect(await service.start()).toBe(false);
+		expect(asked).toBe(false); // two services of one process must never share a database
+		await rm(lockPath, { force: true });
+	});
+
 	test("cold start fires one start phase before the build and one complete phase after", async () => {
 		const phases: string[] = [];
 		const service = new GraphService(root, { backend: "memory", reconcileMs: 3_600_000 });
@@ -272,7 +367,7 @@ describe("GraphService hot update", () => {
 		);
 
 		// Sidecar cache was rewritten and matches the aggregate of what is on disk.
-		const sidecar = JSON.parse(await readFile(defaultMetaPath(root), "utf8")) as {
+		const sidecar = JSON.parse(await readFile(graphPaths(root).metaPath, "utf8")) as {
 			fingerprint: string;
 			files: Record<string, unknown>;
 		};
@@ -287,12 +382,12 @@ describe("GraphService hot update", () => {
 		await service.start();
 		await service.stop();
 
-		await writeFile(defaultMetaPath(root), "{corrupt json", "utf8");
+		await writeFile(graphPaths(root).metaPath, "{corrupt json", "utf8");
 		const second = new GraphService(root, { backend: "memory", debounceMs: 30, reconcileMs: 3_600_000 });
 		await second.start();
 		const payload = await second.getPayload();
 		expect(payload.nodeCount).toBe(1);
-		const sidecar = loadMetaCache(defaultMetaPath(root));
+		const sidecar = loadMetaCache(graphPaths(root).metaPath);
 		expect(sidecar).not.toBeNull();
 		await second.stop();
 	});
@@ -348,7 +443,7 @@ describe("core notify hook", () => {
 	});
 
 	test("saveMetaCache round-trips through loadMetaCache", () => {
-		const sidecar = join(root, "backlog", "graph.kuzu.meta.json");
+		const sidecar = graphPaths(root).metaPath;
 		saveMetaCache(sidecar, {
 			parserVersion: 1,
 			backend: "memory",
