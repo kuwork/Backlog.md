@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { BacklogServer } from "../server/index.ts";
 import type { Decision, Document, Milestone, Task } from "../types/index.ts";
-import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
+import { createUniqueTestDir, installCloseConnectionFetch, retry, safeCleanup } from "./test-utils.ts";
+
+installCloseConnectionFetch();
 
 let TEST_DIR: string;
 let server: BacklogServer | null = null;

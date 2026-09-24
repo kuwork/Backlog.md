@@ -3,7 +3,9 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { BacklogServer } from "../server/index.ts";
-import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
+import { createUniqueTestDir, installCloseConnectionFetch, retry, safeCleanup } from "./test-utils.ts";
+
+installCloseConnectionFetch();
 
 let TEST_DIR: string;
 let server: BacklogServer | null = null;

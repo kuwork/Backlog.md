@@ -15,6 +15,51 @@ import { FileSystem } from "../file-system/operations.ts";
 import type { Task } from "../types/index.ts";
 
 /**
+ * Every request opens its own connection. Bun 1.3.14 on Windows answers only the first request of a
+ * keep-alive connection with a route: the second goes to the fallback (404) even though the path is
+ * the same one that just matched. A real client - curl and the browser included - is unaffected, and
+ * on a healthy runtime this only gives up connection reuse.
+ *
+ * Installing this wraps the process-global fetch so that every request injects "Connection: close",
+ * covering helpers and inline call sites alike. The wrapper is idempotent within the process (bun
+ * test executes every file in one process), so files can install it unconditionally.
+ */
+export function installCloseConnectionFetch(): void {
+	type PatchableFetch = typeof globalThis.fetch & { __closeConnectionPatched?: boolean };
+	const current = globalThis.fetch as PatchableFetch;
+	if (current.__closeConnectionPatched) {
+		return;
+	}
+	const withCloseConnection: PatchableFetch = ((input, init) => {
+		return current(input, {
+			...init,
+			headers: { ...normalizeHeaders(init?.headers), Connection: "close" },
+		});
+	}) as PatchableFetch;
+	withCloseConnection.__closeConnectionPatched = true;
+	globalThis.fetch = withCloseConnection;
+}
+
+function normalizeHeaders(headers: HeadersInit | undefined): Record<string, string> {
+	const result: Record<string, string> = {};
+	if (!headers) {
+		return result;
+	}
+	if (headers instanceof Headers) {
+		headers.forEach((value, key) => {
+			result[key] = value;
+		});
+	} else if (Array.isArray(headers)) {
+		for (const [key, value] of headers) {
+			result[key] = value;
+		}
+	} else {
+		Object.assign(result, headers);
+	}
+	return result;
+}
+
+/**
  * Creates a unique test directory name to avoid conflicts in parallel execution
  * All test directories are created under tmp/ to keep the root directory clean
  */
