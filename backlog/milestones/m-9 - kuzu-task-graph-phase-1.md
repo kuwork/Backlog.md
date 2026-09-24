@@ -1,9 +1,10 @@
 ---
 id: m-9
-title: 'Kuzu Task Graph Phase 1: Cold-Start Validation & Hot Update'
+title: 'Kuzu Task Graph Phase 1'
 created_date: '2026-09-24 06:37'
-updated_date: '2026-09-24 07:01'
+updated_date: '2026-09-24 21:44'
 actual_start: '2026-09-24 07:01'
+actual_end: '2026-09-24 21:44'
 documentation:
   - backlog/docs/BRDS/doc-014 - Kuzu-任务图谱：冷启动校验与热更新设计.md
 ---

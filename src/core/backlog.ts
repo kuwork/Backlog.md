@@ -1730,7 +1730,13 @@ export class Core {
 					if (isTerminalStatus(newStatus, statuses) && !isTerminalStatus(oldStatus, statuses) && !milestone.actualEnd) {
 						const allTasks = await this.fs.listTasks();
 						const milestoneTasks = allTasks.filter((t) => milestoneKey(t.milestone) === taskMilestoneKey);
-						const allTerminal = milestoneTasks.every((t) => isTerminalStatus(t.status, statuses));
+						// listTasks() still reads the flipped task off disk with its pre-save status
+						// (saveTask runs below), and that status is non-terminal by the guard above, so
+						// without this substitution the milestone's own last task would never count as
+						// terminal and this branch could never fire.
+						const allTerminal = milestoneTasks.every((t) =>
+							isTerminalStatus(t.id.toLowerCase() === task.id.toLowerCase() ? newStatus : t.status, statuses),
+						);
 						if (allTerminal) {
 							await this.fs.updateMilestone(milestone.id, milestone.title, { actualEnd: now });
 						}

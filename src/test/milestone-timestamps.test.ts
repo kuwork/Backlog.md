@@ -178,4 +178,45 @@ Text.`);
 		expect(reloaded?.createdDate).toBeUndefined();
 		expect(reloaded?.updatedDate).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
 	});
+
+	it("stamps actual_end once the milestone's last task reaches a terminal status", async () => {
+		const stamp = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+		const core = new Core(TEST_DIR);
+		const milestone = await core.filesystem.createMilestone("Closing Milestone");
+		const first = await core.createTaskFromInput({ title: "First", milestone: milestone.id });
+		const second = await core.createTaskFromInput({ title: "Second", milestone: milestone.id });
+
+		await core.updateTaskFromInput(first.task.id, { status: "In Progress" }, false);
+		await core.updateTaskFromInput(first.task.id, { status: "Done" }, false);
+		let reloaded = await core.filesystem.loadMilestone(milestone.id);
+		expect(reloaded?.actualStart).toMatch(stamp);
+		// The second task is still open, so the milestone is not finished yet.
+		expect(reloaded?.actualEnd).toBeUndefined();
+
+		await core.updateTaskFromInput(second.task.id, { status: "In Progress" }, false);
+		await core.updateTaskFromInput(second.task.id, { status: "Done" }, false);
+		reloaded = await core.filesystem.loadMilestone(milestone.id);
+		expect(reloaded?.actualEnd).toMatch(stamp);
+	});
+
+	it("keeps a milestone actual_end that is already set and ignores non-closing transitions", async () => {
+		const core = new Core(TEST_DIR);
+		const milestone = await core.filesystem.createMilestone("Settled Milestone");
+		const only = await core.createTaskFromInput({ title: "Only", milestone: milestone.id });
+		const pinned = await core.filesystem.updateMilestone(milestone.id, milestone.title, {
+			actualEnd: "2020-01-01 00:00",
+		});
+		expect(pinned.success).toBe(true);
+
+		await core.updateTaskFromInput(only.task.id, { status: "In Progress" }, false);
+		await core.updateTaskFromInput(only.task.id, { status: "Done" }, false);
+		let reloaded = await core.filesystem.loadMilestone(milestone.id);
+		expect(reloaded?.actualEnd).toBe("2020-01-01 00:00");
+
+		// Reopening and re-closing must not restamp it either.
+		await core.updateTaskFromInput(only.task.id, { status: "In Progress" }, false);
+		await core.updateTaskFromInput(only.task.id, { status: "Done" }, false);
+		reloaded = await core.filesystem.loadMilestone(milestone.id);
+		expect(reloaded?.actualEnd).toBe("2020-01-01 00:00");
+	});
 });
