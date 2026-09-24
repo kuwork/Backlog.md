@@ -5,8 +5,9 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-09-24 09:07'
-updated_date: '2026-09-24 20:57'
+updated_date: '2026-09-24 21:51'
 labels: []
+milestone: m-9
 dependencies:
   - BACK-703
 modified_files:
