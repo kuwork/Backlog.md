@@ -45,7 +45,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { apiClient } from "./lib/api";
 import { isValidLocale } from "./locales";
 import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from "./utils/milestones";
-import { reconcileById } from "./utils/reconcile";
+import { deepEqual, reconcileById } from "./utils/reconcile";
 import { sanitizeUrlTitle } from "./utils/urlHelpers";
 import { getWebVersion } from "./utils/version";
 
@@ -847,6 +847,63 @@ function AppContent() {
 		window.dispatchEvent(new Event("drafts-updated"));
 	}, [refreshTasksData]);
 
+	/**
+	 * Content-entity refreshes: each one refetches only the list its broadcast names, so a doc
+	 * edit never touches tasks and vice versa. They run beside the tasks/milestone machinery
+	 * (no shared request id): the fetches are idempotent GETs and the reconcile below turns an
+	 * unchanged response into a state no-op.
+	 */
+	const refreshDocumentsData = useCallback(async () => {
+		if (!hasLoadedDataRef.current || loadErrorRef.current) {
+			await loadAllData();
+			return;
+		}
+		try {
+			const [searchResults, docsTreeData] = await Promise.all([
+				apiClient.search({ types: ["document"] }),
+				apiClient.fetchDocsTree(),
+			]);
+			const documentResults = searchResults.filter((result): result is DocumentSearchResult => result.type === "document");
+			const nextDocs = reconcileById(docsRef.current, documentResults.map((result) => result.document));
+			docsRef.current = nextDocs;
+			setDocs(nextDocs);
+			setDocsTree((current) => (deepEqual(current, docsTreeData) ? current : docsTreeData));
+		} catch (error) {
+			console.error("Failed to refresh documentation data:", error);
+			await loadAllData();
+		}
+	}, [loadAllData]);
+
+	const refreshDecisionsData = useCallback(async () => {
+		if (!hasLoadedDataRef.current || loadErrorRef.current) {
+			await loadAllData();
+			return;
+		}
+		try {
+			const decisionsData = await apiClient.fetchDecisions();
+			const nextDecisions = reconcileById(decisionsRef.current, decisionsData);
+			decisionsRef.current = nextDecisions;
+			setDecisions(nextDecisions);
+		} catch (error) {
+			console.error("Failed to refresh decisions data:", error);
+			await loadAllData();
+		}
+	}, [loadAllData]);
+
+	const refreshWikisData = useCallback(async () => {
+		if (!hasLoadedDataRef.current || loadErrorRef.current) {
+			await loadAllData();
+			return;
+		}
+		try {
+			const wikiTreeData = await apiClient.fetchWikiTree();
+			setWikiTree((current) => (deepEqual(current, wikiTreeData) ? current : wikiTreeData));
+		} catch (error) {
+			console.error("Failed to refresh wiki data:", error);
+			await loadAllData();
+		}
+	}, [loadAllData]);
+
 	// There is deliberately no full-refresh wrapper beside these two: the paths that need the whole
 	// shell (the first load and a config change) call loadAllData directly, and everything else moves
 	// in place. The full load also stays the fallback inside refreshTasksData.
@@ -869,6 +926,12 @@ function AppContent() {
 				void refreshData();
 			} else if (event.data === "milestones-updated") {
 				void refreshMilestoneData();
+			} else if (event.data === "documents-updated") {
+				void refreshDocumentsData();
+			} else if (event.data === "decisions-updated") {
+				void refreshDecisionsData();
+			} else if (event.data === "wikis-updated") {
+				void refreshWikisData();
 			} else if (event.data === "config-updated") {
 				// Statuses and labels genuinely changed, which only a full load re-reads.
 				void loadAllData();
@@ -893,7 +956,7 @@ function AppContent() {
 			}
 		};
 		return () => ws.close();
-	}, [refreshData, refreshMilestoneData, loadAllData, applyLoadError]);
+	}, [refreshData, refreshMilestoneData, refreshDocumentsData, refreshDecisionsData, refreshWikisData, loadAllData, applyLoadError]);
 
 	const handleSubmitTask = async (taskData: Partial<Task>) => {
 		// Don't catch errors here - let TaskDetailsModal handle them

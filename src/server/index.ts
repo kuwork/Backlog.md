@@ -44,6 +44,14 @@ const DEFAULT_PREFIX = "task-";
 const DOCUMENT_TYPES = new Set<Document["type"]>(DOCUMENT_TYPE_VALUES);
 
 /**
+ * Data scopes a client can be told to refetch. Tasks and milestones share a
+ * merged message (milestones-updated implies a task refetch on the client);
+ * documents, decisions and wikis each get their own message so a client only
+ * refetches the entity list that actually changed.
+ */
+type DataUpdatedScope = "tasks" | "milestones" | "documents" | "decisions" | "wikis";
+
+/**
  * The task routes serve drafts too, so only an explicit DRAFT- id addresses a draft.
  * A prefix-less id such as "2" keeps naming a task, which is what the task store resolves it to.
  */
@@ -193,7 +201,9 @@ export class BacklogServer {
 	private unsubscribeContentStore?: () => void;
 	private storeReadyBroadcasted = false;
 	private taskBroadcastTimer?: ReturnType<typeof setTimeout>;
-	private pendingDataBroadcastScope: "tasks" | "milestones" = "tasks";
+	// Content-entity scopes (documents/decisions/wikis) are independent: each pending scope is
+	// delivered as its own message, while tasks/milestones keep their merge-to-widest semantics.
+	private pendingDataBroadcastScopes = new Set<DataUpdatedScope>();
 	private configWatcher: { stop: () => void } | null = null;
 	// Statistics cache
 	private cachedStatisticsResponse: string | null = null;
@@ -254,9 +264,10 @@ export class BacklogServer {
 					return;
 				}
 
-				// Broadcast for tasks/documents/decisions/wikis so clients refresh caches/search
+				// Broadcast per entity type so clients refetch only what changed:
+				// tasks merge with milestones, documents/decisions/wikis carry their own scope.
 				this.storeReadyBroadcasted = true;
-				this.broadcastDataUpdated();
+				this.broadcastDataUpdated(event.type);
 				this.invalidateStatistics();
 			});
 		}
@@ -296,19 +307,33 @@ export class BacklogServer {
 		return this.server?.port ?? null;
 	}
 
-	private broadcastDataUpdated(scope: "tasks" | "milestones" = "tasks") {
-		// A milestone change widens the message so clients also refetch milestone entities;
-		// the debounce keeps the widest scope seen in the window.
-		if (scope === "milestones") this.pendingDataBroadcastScope = "milestones";
+	private broadcastDataUpdated(scope: DataUpdatedScope = "tasks") {
+		// Tasks and milestones keep the merge-to-widest semantics: a milestone change
+		// implies a task refetch, so the two share one message. The three content-entity
+		// scopes are independent: each pending scope is delivered as its own message so
+		// a mixed window (e.g. a task edit and a doc edit) sends both messages instead
+		// of one swallowing the other.
+		this.pendingDataBroadcastScopes.add(scope);
 		clearTimeout(this.taskBroadcastTimer);
 		this.taskBroadcastTimer = setTimeout(() => {
 			this.taskBroadcastTimer = undefined;
-			const message = this.pendingDataBroadcastScope === "milestones" ? "milestones-updated" : "tasks-updated";
-			this.pendingDataBroadcastScope = "tasks";
-			for (const ws of this.sockets) {
-				try {
-					ws.send(message);
-				} catch {}
+			const pending = this.pendingDataBroadcastScopes;
+			this.pendingDataBroadcastScopes = new Set();
+			const messages = new Set<string>();
+			if (pending.has("milestones")) {
+				messages.add("milestones-updated");
+			} else if (pending.has("tasks")) {
+				messages.add("tasks-updated");
+			}
+			if (pending.has("documents")) messages.add("documents-updated");
+			if (pending.has("decisions")) messages.add("decisions-updated");
+			if (pending.has("wikis")) messages.add("wikis-updated");
+			for (const message of messages) {
+				for (const ws of this.sockets) {
+					try {
+						ws.send(message);
+					} catch {}
+				}
 			}
 		}, 75);
 	}
@@ -758,6 +783,7 @@ export class BacklogServer {
 
 		if (this.taskBroadcastTimer) clearTimeout(this.taskBroadcastTimer);
 		this.taskBroadcastTimer = undefined;
+		this.pendingDataBroadcastScopes.clear();
 
 		// Stop filesystem watcher first to reduce churn
 		try {
