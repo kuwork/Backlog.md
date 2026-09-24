@@ -27,6 +27,8 @@ export interface TaskCorpusSnapshot {
 }
 
 type TaskLoaderResult = Task[] | TaskCorpusSnapshot;
+/** publish: false requests a load whose result must not be installed as shared cross-branch state. */
+type TaskLoaderOptions = { publish?: boolean };
 
 interface ContentSnapshot {
 	tasks: Task[];
@@ -150,7 +152,10 @@ export class ContentStore {
 
 	constructor(
 		private readonly filesystem: FileSystem,
-		private readonly taskLoader?: (progressCallback?: (message: string) => void) => Promise<TaskLoaderResult>,
+		private readonly taskLoader?: (
+			progressCallback?: (message: string) => void,
+			options?: TaskLoaderOptions,
+		) => Promise<TaskLoaderResult>,
 		private readonly enableWatchers = false,
 	) {
 		this.publishedRoot = this.currentRoot();
@@ -1079,8 +1084,10 @@ export class ContentStore {
 							);
 							if (local.state !== "absent" || !this.taskLoader) return local;
 							try {
-								const matches = (await this.loadTasksWithLoader()).activeTasks.filter((task) =>
-									taskIdsEqual(task.id, normalizedTaskId),
+								// This load exists only to resolve one task's identity and is discarded
+								// afterward, so it must not publish shared cross-branch freshness state.
+								const matches = (await this.loadTasksWithLoader(undefined, { publish: false })).activeTasks.filter(
+									(task) => taskIdsEqual(task.id, normalizedTaskId),
 								);
 								if (matches.length === 0) return { state: "absent" };
 								if (matches.length !== 1) return { state: "incomplete" };
@@ -2178,10 +2185,13 @@ export class ContentStore {
 		await new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
-	private async loadTasksWithLoader(progressCallback?: (message: string) => void): Promise<TaskCorpusSnapshot> {
+	private async loadTasksWithLoader(
+		progressCallback?: (message: string) => void,
+		options?: TaskLoaderOptions,
+	): Promise<TaskCorpusSnapshot> {
 		let corpus: TaskCorpusSnapshot;
 		if (this.taskLoader) {
-			const loaded = await this.taskLoader(progressCallback);
+			const loaded = await this.taskLoader(progressCallback, options);
 			corpus = Array.isArray(loaded) ? this.asTaskCorpus(loaded) : loaded;
 		} else {
 			corpus = this.asTaskCorpus(await this.filesystem.listTasks());

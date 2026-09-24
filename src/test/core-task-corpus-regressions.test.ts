@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
+import type { ContentStore } from "../core/content-store.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
-import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
+import { createUniqueTestDir, getPlatformTimeout, safeCleanup, sleep, waitUntil } from "./test-utils.ts";
 
 let testDir: string;
 let core: Core;
@@ -67,6 +68,27 @@ async function commit(message: string, date: string): Promise<void> {
 
 function recentCommitDate(minutesAgo: number): string {
 	return new Date(Date.now() - minutesAgo * 60_000).toISOString();
+}
+
+/**
+ * Waits out the config stable read a store performs right after binding its watchers. That read
+ * publishes a fresh corpus, so letting it run across a branch-tip move hides the effect of every
+ * other load in that window. Bounded: a store that already published its config has nothing left
+ * to wait for.
+ */
+async function settleInitialContentReload(store: ContentStore): Promise<void> {
+	let published = false;
+	const unsubscribe = store.subscribe((event) => {
+		if (event.type === "config") published = true;
+	});
+	try {
+		const deadline = Date.now() + getPlatformTimeout(3000);
+		while (!published && Date.now() < deadline) {
+			await sleep(25);
+		}
+	} finally {
+		unsubscribe();
+	}
 }
 
 beforeEach(async () => {
@@ -257,6 +279,77 @@ describe("Core shared task corpus regressions", () => {
 		expect(await watcherCore.generateNextId()).toBe("TASK-2");
 
 		expect((await watcherCore.getTask("TASK-1"))?.title).toBe("After ref move");
+	});
+
+	it("keeps serving fresh branch state after a rename fallback that never installed a corpus", async () => {
+		const watcherCore = trackCore(new Core(testDir, { enableWatchers: true }));
+		await $`git switch -c feature-stale`.cwd(testDir).quiet();
+		await writeTask(watcherCore.filesystem.tasksDir, "task-1 - Branch.md", task("TASK-1", "Before ref move"));
+		await commit("Add branch task", recentCommitDate(2));
+		await $`git switch main`.cwd(testDir).quiet();
+
+		const deletedTaskPath = await writeTask(
+			watcherCore.filesystem.tasksDir,
+			"task-2 - Local only.md",
+			task("TASK-2", "Local only task"),
+		);
+
+		// Warms the shared corpus at the current branch tips, then waits out the config
+		// stable read the store runs right after binding its watchers. That reload installs
+		// a fresh corpus too, so letting it straddle the tip move below would hide whatever
+		// the fallback load did with the refs.
+		expect((await watcherCore.getTask("TASK-1"))?.title).toBe("Before ref move");
+		const store = await watcherCore.getContentStore();
+		await settleInitialContentReload(store);
+
+		// Moving the tip from a second worktree leaves this project's watched
+		// directories untouched, so only ref-fingerprint comparison can notice it.
+		const worktreeDir = trackDir("worktree");
+		await $`git worktree add ${worktreeDir} feature-stale`.cwd(testDir).quiet();
+		const worktreeTaskPath = join(worktreeDir, "backlog", "tasks", "task-1 - Branch.md");
+		await Bun.write(worktreeTaskPath, serializeTask(task("TASK-1", "After ref move")));
+		await $`git add -A`.cwd(worktreeDir).quiet();
+		await $`git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Move branch tip"`
+			.cwd(worktreeDir)
+			.quiet();
+
+		// Deleting a local-only task with no branch-side copy sends the rename watcher
+		// through findIdentity's fallback: it loads the full corpus purely to confirm the
+		// task is gone, and that throwaway load must not claim the moved refs on behalf
+		// of the store.
+		await unlink(deletedTaskPath);
+		await waitUntil(
+			() => store.resolveTaskForRead("TASK-2").status === "not-found",
+			"watched deletion with no branch-side copy",
+			getPlatformTimeout(3000),
+		);
+
+		expect((await watcherCore.getTask("TASK-1"))?.title).toBe("After ref move");
+	});
+
+	it("reuses the warm store across reads instead of reloading the corpus every time", async () => {
+		await writeTask(core.filesystem.tasksDir, "task-1 - Local.md", task("TASK-1", "Local task"));
+		await commit("Add local task", recentCommitDate(2));
+
+		// The first read installs the corpus into the store.
+		expect((await core.getTask("TASK-1"))?.title).toBe("Local task");
+
+		const store = await core.getContentStore();
+		const originalRefresh = store.refreshTasks.bind(store);
+		let refreshes = 0;
+		store.refreshTasks = async () => {
+			refreshes += 1;
+			await originalRefresh();
+		};
+		try {
+			expect((await core.getTask("TASK-1"))?.title).toBe("Local task");
+		} finally {
+			store.refreshTasks = originalRefresh;
+		}
+
+		// Installing the corpus is what lets the next read match the refs and skip the reload;
+		// a store whose own loads stopped publishing would reload on every read.
+		expect(refreshes).toBe(0);
 	});
 
 	it("allocates past a remote task pushed inside the read refresh window", async () => {
