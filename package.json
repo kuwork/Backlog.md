@@ -98,9 +98,11 @@
   "license": "MIT",
   "trustedDependencies": [
     "@biomejs/biome",
+    "kuzu",
     "node-pty"
   ],
   "dependencies": {
-    "get-port": "^7.2.0"
+    "get-port": "^7.2.0",
+    "kuzu": "^0.11.3"
   }
 }
