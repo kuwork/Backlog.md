@@ -174,6 +174,19 @@ function recordUnreadableDirectory(error: unknown, unreadable?: string[]): void 
 }
 
 export class FileSystem {
+	/**
+	 * Injectable change notification (doc-014 §3.1): called with the paths of every file the
+	 * mutation layer wrote/moved/removed. The Graph Service injects its notify implementation;
+	 * the default (null) is a no-op so CLI/TUI/Web/MCP entry points need zero changes. Batch
+	 * operations report every changed path because each underlying write emits individually -
+	 * the consumer dedupes into one sync.
+	 */
+	onFilesChanged: ((paths: string[]) => void) | null = null;
+
+	private notifyFilesChanged(paths: string[]): void {
+		if (paths.length > 0) this.onFilesChanged?.(paths);
+	}
+
 	private resolvedBacklogDir: string;
 	private resolvedBacklogDirName: string;
 	private resolvedConfigPath: string;
@@ -584,6 +597,7 @@ export class FileSystem {
 				const existingPath = await getTaskPath(taskId, core as TaskPathContext);
 				if (existingPath && !existingPath.endsWith(filename)) {
 					await unlink(existingPath);
+					this.notifyFilesChanged([existingPath]);
 				}
 			} catch {
 				// Ignore errors if no existing files found
@@ -592,6 +606,7 @@ export class FileSystem {
 
 		await this.ensureDirectoryExists(dirname(filepath));
 		await Bun.write(filepath, content);
+		this.notifyFilesChanged([filepath]);
 		return filepath;
 	}
 
@@ -856,6 +871,7 @@ export class FileSystem {
 
 			// Use rename for proper Git move detection
 			await rename(sourcePath, targetPath);
+			this.notifyFilesChanged([sourcePath, targetPath]);
 
 			return true;
 		} catch (_error) {
@@ -880,6 +896,7 @@ export class FileSystem {
 
 			// Use rename for proper Git move detection
 			await rename(sourcePath, targetPath);
+			this.notifyFilesChanged([sourcePath, targetPath]);
 
 			return true;
 		} catch (_error) {
@@ -905,6 +922,7 @@ export class FileSystem {
 			await Bun.write(targetPath, content);
 
 			await unlink(sourcePath);
+			this.notifyFilesChanged([sourcePath, targetPath]);
 
 			return { sourcePath, targetPath };
 		});
@@ -956,6 +974,7 @@ export class FileSystem {
 
 						// Delete old draft file
 						await unlink(draft.filePath);
+						this.notifyFilesChanged([draft.filePath]);
 
 						// Load the saved task to get the full object with filePath
 						const savedTask = await this.loadTask(newTaskId);
@@ -1001,6 +1020,7 @@ export class FileSystem {
 
 				// Delete old task file
 				await unlink(task.filePath);
+				this.notifyFilesChanged([task.filePath]);
 
 				return newDraftId;
 			});
@@ -1052,6 +1072,7 @@ export class FileSystem {
 
 		await this.ensureDirectoryExists(dirname(filepath));
 		await Bun.write(filepath, content);
+		this.notifyFilesChanged([filepath]);
 		return filepath;
 	}
 
@@ -1621,6 +1642,7 @@ export class FileSystem {
 
 			const filepath = join(milestonesDir, filename);
 			await Bun.write(filepath, content);
+			this.notifyFilesChanged([filepath]);
 
 			return parseMilestone(content);
 		});
@@ -1700,6 +1722,7 @@ export class FileSystem {
 				movedFile = true;
 			}
 			await Bun.write(targetPath, updatedContent);
+			this.notifyFilesChanged(movedFile ? [sourcePath, targetPath] : [targetPath]);
 
 			return {
 				success: true,
@@ -1749,6 +1772,7 @@ export class FileSystem {
 			const targetPath = join(archiveDir, milestoneMatch.file);
 			await this.ensureDirectoryExists(dirname(targetPath));
 			await rename(milestoneMatch.filepath, targetPath);
+			this.notifyFilesChanged([milestoneMatch.filepath, targetPath]);
 
 			return {
 				success: true,

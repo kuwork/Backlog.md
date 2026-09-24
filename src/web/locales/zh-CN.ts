@@ -865,5 +865,7 @@ export const zhCN: TranslationDict = {
 		foundLocalTasks: "在其他本地分支中发现 {1} 个唯一任务",
 		hydratingLocalTasks: "正在从其他本地分支水合 {1} 个任务...",
 		loadedLocalTasks: "已从其他本地分支加载 {1} 个任务",
+		buildingTaskGraph: "正在构建任务图谱...",
+		taskGraphReady: "任务图谱已就绪",
 	},
 };

@@ -16,6 +16,7 @@ import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
+import { attachToCore, GraphService } from "../graph/service";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import {
@@ -209,9 +210,45 @@ export class BacklogServer {
 	private cachedStatisticsResponse: string | null = null;
 	private statisticsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private statisticsDirty = false;
+	// Graph Service (doc-014 §3.3): hosted in-process with the Web UI; null when the
+	// single-holder lock is held elsewhere (Phase 2 turns holders into IPC clients).
+	private graphService: GraphService | null = null;
 
 	constructor(projectPath: string) {
 		this.core = new Core(projectPath, { enableWatchers: true });
+	}
+
+	/**
+	 * Lazily start the Graph Service: inject the FileSystem notify hook, arm the watcher +
+	 * reconciliation loop, and wire graphChanged broadcasts to the WebSocket clients. If the
+	 * single-holder lock is held by another process this resolves to null and the UI simply
+	 * has no /api/graph (cold-start reconciliation stays with the lock holder).
+	 */
+	private async getGraphService(): Promise<GraphService | null> {
+		if (this.graphService) return this.graphService;
+		const service = new GraphService(this.core.filesystem.rootDir);
+		attachToCore(service, this.core);
+		service.onGraphChanged = () => {
+			this.sendToSockets("graph-updated");
+		};
+		// Startup messages run in parallel with the normal browser loading flow: one line when
+		// the cold start begins, one when the graph is ready (doc-014 §3.3).
+		service.onColdStart = (phase) => {
+			if (phase === "start") this.sendToSockets("graph-started");
+			else if (phase === "complete") this.sendToSockets("graph-ready");
+			else this.sendToSockets("graph-failed");
+		};
+		if (!(await service.start())) return null;
+		this.graphService = service;
+		return service;
+	}
+
+	private sendToSockets(message: string): void {
+		for (const ws of this.sockets) {
+			try {
+				ws.send(message);
+			} catch {}
+		}
 	}
 
 	private async resolveMilestoneInput(milestone: string): Promise<string> {
@@ -430,6 +467,11 @@ export class BacklogServer {
 			},
 		});
 
+		// Start the Graph Service eagerly (doc-014 §3.3): it cold-starts the task graph in this
+		// process while the server boots, so /api/graph is warm on the first request. Failure to
+		// acquire the lock just leaves it null - never blocks the server.
+		void this.getGraphService().catch(() => {});
+
 		let bindPort: number;
 
 		if (autoPortEnabled) {
@@ -633,6 +675,9 @@ export class BacklogServer {
 					"/api/statistics": {
 						GET: async () => await this.handleGetStatistics(),
 					},
+					"/api/graph": {
+						GET: async () => await this.handleGetGraph(),
+					},
 					"/api/status": {
 						GET: async () => await this.handleGetStatus(),
 					},
@@ -795,6 +840,12 @@ export class BacklogServer {
 		try {
 			this.configWatcher?.stop();
 			this.configWatcher = null;
+		} catch {}
+
+		// Stop the Graph Service (releases the single-holder lock)
+		try {
+			await this.graphService?.stop();
+			this.graphService = null;
 		} catch {}
 
 		this.core.disposeSearchService();
@@ -2166,6 +2217,22 @@ export class BacklogServer {
 			console.error("Error archiving milestone:", error);
 			return Response.json({ error: message }, { status: 500 });
 		}
+	}
+
+	/**
+	 * GET /api/graph - nodes + edges + parse reports (doc-014 §3.3/§4). Responds with a
+	 * building status while the first full import of a large repository is still running.
+	 */
+	private async handleGetGraph(): Promise<Response> {
+		const service = await this.getGraphService();
+		if (!service) {
+			return new Response(JSON.stringify({ error: "graph service unavailable" }), {
+				status: 503,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+		const payload = await service.getPayload();
+		return new Response(JSON.stringify(payload), { headers: { "Content-Type": "application/json" } });
 	}
 
 	private async handleGetVersion(): Promise<Response> {

@@ -881,5 +881,7 @@ export const ja: TranslationDict = {
 		foundLocalTasks: "他のローカルブランチで {1} 件の一意なタスクを発見しました",
 		hydratingLocalTasks: "他のローカルブランチから {1} 件のタスクを具体化中...",
 		loadedLocalTasks: "他のローカルブランチから {1} 件のタスクを読み込みました",
+		buildingTaskGraph: "タスクグラフを構築中...",
+		taskGraphReady: "タスクグラフの準備ができました",
 	},
 } as const;

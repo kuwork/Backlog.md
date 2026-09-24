@@ -101,7 +101,10 @@ export async function coldStart(projectRoot: string, options: ColdStartOptions =
 		// content rehashes to the same aggregate and still takes the fast path.
 		const aggregate = computeAggregateFingerprint(nextFiles);
 		const cacheUsable =
-			cached !== null && cached.parserVersion === PARSER_VERSION && cached.backend === store.backend && cached.fingerprint === aggregate;
+			cached !== null &&
+			cached.parserVersion === PARSER_VERSION &&
+			cached.backend === store.backend &&
+			cached.fingerprint === aggregate;
 
 		if (cacheUsable) {
 			const nodeCount = await store.countNodes();

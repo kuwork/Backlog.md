@@ -78,9 +78,7 @@ export function resolveRelations(records: ParsedRecord[]): RelationResolution {
 		if (record.milestone && record.kind !== "milestone") {
 			const idBucket = recordsById.get(record.milestone);
 			const byMilestoneId =
-				idBucket && idBucket.length === 1 && idBucket[0] && idBucket[0].kind === "milestone"
-					? idBucket[0]
-					: undefined;
+				idBucket && idBucket.length === 1 && idBucket[0] && idBucket[0].kind === "milestone" ? idBucket[0] : undefined;
 			const milestones = milestonesByTitle.get(record.milestone);
 			const byMilestoneTitle = milestones && milestones.length === 1 ? milestones[0] : undefined;
 			const target = byMilestoneId ?? byMilestoneTitle;
