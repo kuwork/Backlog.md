@@ -40,8 +40,17 @@ async function writeSeed(relativePath: string, content: string): Promise<string>
 	return filePath;
 }
 
+/**
+ * Every request opens its own connection. Bun 1.3.14 on Windows answers only the first request of a
+ * keep-alive connection with a route: the second goes to the fallback (404) even though the path is
+ * the same one that just matched. A real client - curl and the browser included - is unaffected, and
+ * on a healthy runtime this only gives up connection reuse.
+ */
 async function fetchJson(path: string, init?: RequestInit): Promise<{ status: number; body: Record<string, unknown> }> {
-	const response = await fetch(`http://127.0.0.1:${serverPort}${path}`, init);
+	const response = await fetch(`http://127.0.0.1:${serverPort}${path}`, {
+		...init,
+		headers: { ...(init?.headers as Record<string, string> | undefined), Connection: "close" },
+	});
 	let body: Record<string, unknown> = {};
 	try {
 		body = (await response.json()) as Record<string, unknown>;

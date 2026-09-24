@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { FileSystem } from "../file-system/operations.ts";
 import { BacklogServer } from "../server/index.ts";
-import { createUniqueTestDir, safeCleanup, sleep } from "./test-utils.ts";
+import { createUniqueTestDir, installCloseConnectionFetch, safeCleanup, sleep } from "./test-utils.ts";
+
+installCloseConnectionFetch();
 
 let TEST_DIR: string;
 let server: BacklogServer | null = null;

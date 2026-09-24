@@ -11,6 +11,7 @@ const makeDoc = (id: string, title: string): Document => ({
 	id,
 	title,
 	type: "other",
+	createdDate: "2026-09-24",
 	rawContent: `${title} body`,
 	contentHash: `hash-${id}`,
 });
