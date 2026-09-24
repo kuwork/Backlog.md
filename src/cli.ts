@@ -31,6 +31,7 @@ import {
 	taskViewJson,
 } from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
+import type { GraphLockInfo } from "./graph/service.ts";
 import {
 	type AgentInstructionFile,
 	addAgentInstructions,
@@ -6075,6 +6076,41 @@ addHelpSchema(program.command("doctor"), {
 		}
 	});
 
+/**
+ * The task graph database is named after the bound port and guarded by a lock file, so a hard kill
+ * (taskkill, a crash, a power loss) can leave that file behind naming a pid that has since been
+ * reused by an unrelated process - which makes a dead lock look alive. Nothing can tell the two
+ * apart, so ask the user: confirming deletes the lock and races for it once more; if it comes back
+ * first we only warn and carry on without the graph.
+ */
+async function confirmGraphLockTakeover(info: GraphLockInfo, conflict: "blocked" | "still-held"): Promise<boolean> {
+	if (conflict === "still-held") {
+		console.warn("⚠️  Another process took the task graph lock again - continuing without the Graph page.\n");
+		return false;
+	}
+	if (info.pid === null) {
+		console.warn(`\n⚠️  Task graph lock file is unreadable: ${info.lockPath}`);
+	} else if (info.holderRunning) {
+		console.warn(`\n⚠️  Task graph database is locked by pid ${info.pid} (still running)`);
+		console.warn(`    ${info.lockPath}`);
+		console.warn("    Either another Backlog.md session owns it, or a hard kill left it behind.");
+		if (!input.isTTY) return false; // nobody to ask: leave it alone
+		const rl = createInterface({ input });
+		try {
+			const answer = await rl.question("    Delete the lock file and take over? (y/N): ");
+			if (!answer.toLowerCase().startsWith("y")) return false;
+		} finally {
+			rl.close();
+		}
+		return true;
+	} else {
+		console.warn(`\n⚠️  Recycled a task graph lock left behind by pid ${info.pid} (no longer running)`);
+		console.warn(`    ${info.lockPath}`);
+	}
+	// A dead holder, or an unreadable file, is exactly the hard-kill leftover: take it over.
+	return true;
+}
+
 // Browser command for web UI
 program
 	.command("browser")
@@ -6088,7 +6124,7 @@ program
 		try {
 			const cwd = await requireProjectRoot();
 			const { BacklogServer } = await import("./server/index.ts");
-			const server = new BacklogServer(cwd);
+			const server = new BacklogServer(cwd, confirmGraphLockTakeover);
 			// Load config to get default port
 			const core = new Core(cwd);
 			const config = await core.filesystem.loadConfig();

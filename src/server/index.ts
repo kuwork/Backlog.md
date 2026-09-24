@@ -16,7 +16,8 @@ import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
-import { attachToCore, GraphService } from "../graph/service";
+import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
+import { type GraphLockConflictHandler, type GraphService, startGraphService } from "../graph/service";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import {
@@ -210,35 +211,47 @@ export class BacklogServer {
 	private cachedStatisticsResponse: string | null = null;
 	private statisticsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private statisticsDirty = false;
-	// Graph Service (doc-014 §3.3): hosted in-process with the Web UI; null when the
-	// single-holder lock is held elsewhere (Phase 2 turns holders into IPC clients).
+	// Graph Service (doc-014 §3.3): hosted in-process with the Web UI; null when another process
+	// holds this slot's database, or before the port - and therefore the slot - is known.
 	private graphService: GraphService | null = null;
+	private graphSlot: GraphSlot = DEFAULT_SLOT;
+	private graphAttempt: Promise<GraphService | null> | null = null;
 
-	constructor(projectPath: string) {
+	constructor(
+		projectPath: string,
+		/** Lock-conflict hook: the CLI puts a stale lock in front of the user, see graph/service.ts. */
+		private readonly onGraphLockConflict?: GraphLockConflictHandler,
+	) {
 		this.core = new Core(projectPath, { enableWatchers: true });
 	}
 
 	/**
-	 * Lazily start the Graph Service: inject the FileSystem notify hook, arm the watcher +
-	 * reconciliation loop, and wire graphChanged broadcasts to the WebSocket clients. If the
-	 * single-holder lock is held by another process this resolves to null and the UI simply
-	 * has no /api/graph (cold-start reconciliation stays with the lock holder).
+	 * The Graph Service, started at most once through the shared host entry (see graph/service.ts).
+	 * The graph cache is keyed by the bound port, so several Web UI sessions on one project - and
+	 * the TUI - each own their database instead of contending for one lock.
+	 *
+	 * One attempt per server, deliberately: a conflict can be put in front of the user, and asking
+	 * again on every /api/graph poll would nag (or, with a lock that never frees, prompt forever).
 	 */
-	private async getGraphService(): Promise<GraphService | null> {
-		if (this.graphService) return this.graphService;
-		const service = new GraphService(this.core.filesystem.rootDir);
-		attachToCore(service, this.core);
-		service.onGraphChanged = () => {
-			this.sendToSockets("graph-updated");
-		};
-		// Startup messages run in parallel with the normal browser loading flow: one line when
-		// the cold start begins, one when the graph is ready (doc-014 §3.3).
-		service.onColdStart = (phase) => {
-			if (phase === "start") this.sendToSockets("graph-started");
-			else if (phase === "complete") this.sendToSockets("graph-ready");
-			else this.sendToSockets("graph-failed");
-		};
-		if (!(await service.start())) return null;
+	private getGraphService(): Promise<GraphService | null> {
+		if (!this.graphAttempt) this.graphAttempt = this.launchGraphService();
+		return this.graphAttempt;
+	}
+
+	private async launchGraphService(): Promise<GraphService | null> {
+		const service = await startGraphService(this.core, {
+			slot: this.graphSlot,
+			onLockConflict: this.onGraphLockConflict,
+			onChanged: () => this.sendToSockets("graph-updated"),
+			// Startup messages run in parallel with the normal browser loading flow: one line when
+			// the cold start begins, one when the graph is ready (doc-014 §3.3).
+			onColdStart: (phase) => {
+				if (phase === "start") this.sendToSockets("graph-started");
+				else if (phase === "complete") this.sendToSockets("graph-ready");
+				else this.sendToSockets("graph-failed");
+			},
+		});
+		if (!service) return null;
 		this.graphService = service;
 		return service;
 	}
@@ -467,11 +480,6 @@ export class BacklogServer {
 			},
 		});
 
-		// Start the Graph Service eagerly (doc-014 §3.3): it cold-starts the task graph in this
-		// process while the server boots, so /api/graph is warm on the first request. Failure to
-		// acquire the lock just leaves it null - never blocks the server.
-		void this.getGraphService().catch(() => {});
-
 		let bindPort: number;
 
 		if (autoPortEnabled) {
@@ -506,6 +514,13 @@ export class BacklogServer {
 			bindPort = preferredPort;
 		}
 
+		// Start the Graph Service eagerly (doc-014 §3.3): it cold-starts the task graph in this
+		// process while the server boots, so /api/graph is warm on the first request. The port is
+		// only known now, and it is what names this session's cache entry. Failing to take the
+		// database just leaves the service null - it never blocks the server.
+		this.graphSlot = portSlot(bindPort);
+		void this.getGraphService().catch(() => {});
+
 		try {
 			void this.cleanupTempAssets();
 			const serveOptions = {
@@ -525,6 +540,7 @@ export class BacklogServer {
 					"/wiki": spaIndexHtml,
 					"/wiki/*": spaIndexHtml,
 					"/statistics": spaIndexHtml,
+					"/graph": spaIndexHtml,
 					"/settings": spaIndexHtml,
 					"/task/:id": spaIndexHtml,
 					"/task/:id/*": spaIndexHtml,
@@ -846,6 +862,7 @@ export class BacklogServer {
 		try {
 			await this.graphService?.stop();
 			this.graphService = null;
+			this.graphAttempt = null;
 		} catch {}
 
 		this.core.disposeSearchService();

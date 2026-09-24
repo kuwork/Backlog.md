@@ -181,6 +181,15 @@ export const Icons = {
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
 		</svg>
 	),
+	Graph: () => (
+		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<circle cx="6" cy="6" r="2.5" strokeWidth={2} />
+			<circle cx="18" cy="6" r="2.5" strokeWidth={2} />
+			<circle cx="6" cy="18" r="2.5" strokeWidth={2} />
+			<circle cx="18" cy="18" r="2.5" strokeWidth={2} fill="currentColor" stroke="none" />
+			<path strokeLinecap="round" strokeWidth={2} d="M8.5 6h7M6 8.5v7m12-7v7M8.5 18h7" />
+		</svg>
+	),
 	Milestone: () => (
 		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<circle cx="12" cy="12" r="9" strokeWidth={2} />
@@ -1304,6 +1313,21 @@ const SideNavigation = memo(function SideNavigation({
 							<Icons.Statistics />
 							<span className="ml-3 text-sm font-medium">{t.nav.statistics}</span>
 						</NavLink>
+
+						{/* Graph Navigation */}
+						<NavLink
+							to="/graph"
+							className={({ isActive }) =>
+								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+									isActive
+										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
+										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+								}`
+							}
+						>
+							<Icons.Graph />
+							<span className="ml-3 text-sm font-medium">{t.nav.graph}</span>
+						</NavLink>
 					</div>
 				)}
 
@@ -1574,6 +1598,23 @@ const SideNavigation = memo(function SideNavigation({
 						>
 							<div className="w-6 h-6 flex items-center justify-center">
 								<Icons.Statistics />
+							</div>
+						</NavLink>
+						{/* Graph Navigation */}
+						<NavLink
+							to="/graph"
+							data-tooltip-id="sidebar-tooltip"
+							data-tooltip-content={t.nav.graph}
+							className={({ isActive }) =>
+								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+									isActive
+										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
+										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+								}`
+							}
+						>
+							<div className="w-6 h-6 flex items-center justify-center">
+								<Icons.Graph />
 							</div>
 						</NavLink>
 						<button

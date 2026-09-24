@@ -2,10 +2,11 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, sep } from "node:path";
-import { coldStart, defaultMetaPath } from "../graph/cold-start";
+import { join, resolve, sep } from "node:path";
+import { coldStart } from "../graph/cold-start";
 import { computeAggregateFingerprint, computeFileHash, loadMetaCache, saveMetaCache } from "../graph/fingerprint";
 import { parseTaskFile } from "../graph/parser";
+import { graphCacheDir, graphPaths, portSlot, TUI_SLOT } from "../graph/paths";
 import { resolveRelations } from "../graph/relations";
 import { scanWhitelistedDirs } from "../graph/scanner";
 import { MemoryGraphStore } from "../graph/store";
@@ -310,12 +311,12 @@ describe("cold start", () => {
 		try {
 			await seedProjectAt(dir, { "tasks/back-1 - A.md": taskMd({ id: "back-1" }) });
 			await coldStart(dir, { backend: "memory" });
-			await rm(defaultMetaPath(dir));
+			await rm(graphPaths(dir).metaPath);
 			const result = await coldStart(dir, { backend: "memory" });
 			expect(result.reused).toBe(false);
 			expect(result.nodeCount).toBe(1);
 
-			await Bun.write(defaultMetaPath(dir), "corrupt{");
+			await Bun.write(graphPaths(dir).metaPath, "corrupt{");
 			const corrupt = await coldStart(dir, { backend: "memory" });
 			expect(corrupt.reused).toBe(false);
 		} finally {
@@ -355,6 +356,44 @@ describe("cold start", () => {
 	});
 });
 
+describe("graph cache layout", () => {
+	test("one hashed cache entry per project and slot, outside the repository", () => {
+		const project = join(root, "cache-layout-project");
+		const web = graphPaths(project, portSlot(6478));
+		expect(web.dbPath).toMatch(/backlog-graph-[0-9a-f]{16}\.kuzu$/);
+		expect(web.dbPath.startsWith(project)).toBe(false); // never inside the project tree
+		// The sidecar and the lock belong to the same entry, so one cleanup removes all three.
+		expect(web.metaPath).toBe(`${web.dbPath}.meta.json`);
+		expect(web.lockPath).toBe(`${web.dbPath}.lock`);
+
+		// Same project and slot -> same entry: a restarted session reuses its own cache.
+		expect(graphPaths(project, portSlot(6478))).toEqual(web);
+
+		// Different slot (the TUI beside a browser) and different project -> different entries.
+		expect(graphPaths(project, TUI_SLOT).dbPath).not.toBe(web.dbPath);
+		expect(graphPaths(join(root, "cache-layout-other"), portSlot(6478)).dbPath).not.toBe(web.dbPath);
+		expect(graphPaths(project, portSlot(6479)).dbPath).not.toBe(web.dbPath);
+
+		if (sep === "\\") {
+			// Windows paths are case-insensitive: one project, one entry.
+			expect(graphPaths(project.toUpperCase(), portSlot(6478)).dbPath).toBe(web.dbPath);
+		}
+	});
+
+	test("the cache directory can be redirected, default is the OS cache directory", () => {
+		const override = join(root, "cache-override");
+		expect(graphCacheDir(override)).toBe(resolve(override));
+
+		const saved = process.env.BACKLOG_GRAPH_CACHE_DIR;
+		process.env.BACKLOG_GRAPH_CACHE_DIR = "";
+		try {
+			expect(graphCacheDir()).toContain("backlog.md");
+		} finally {
+			process.env.BACKLOG_GRAPH_CACHE_DIR = saved;
+		}
+	});
+});
+
 async function seedProjectAt(dir: string, files: Record<string, string>): Promise<void> {
 	for (const [relPath, content] of Object.entries(files)) {
 		const abs = join(dir, "backlog", relPath);
@@ -364,5 +403,5 @@ async function seedProjectAt(dir: string, files: Record<string, string>): Promis
 }
 
 async function readSidecarAt(dir: string): Promise<Record<string, unknown>> {
-	return JSON.parse(await readFile(defaultMetaPath(dir), "utf8")) as Record<string, unknown>;
+	return JSON.parse(await readFile(graphPaths(dir).metaPath, "utf8")) as Record<string, unknown>;
 }

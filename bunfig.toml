@@ -5,6 +5,9 @@ timeout = "10s"
 # Reduce memory usage during test runs to prevent WSL2 crashes
 smol = true
 
+# Redirect the graph cache into a throwaway directory (see src/test/preload.ts)
+preload = ["./src/test/preload.ts"]
+
 # Reduce concurrency to help with Windows file system contention
 # Note: This is a future-proofing setting as Bun may add concurrency controls
 

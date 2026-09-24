@@ -21,6 +21,7 @@ import DecisionDetail from "./components/DecisionDetail";
 import DocumentationDetail from "./components/DocumentationDetail";
 import DraftsList from "./components/DraftsList";
 import GanttView from "./components/GanttView";
+import GraphView from "./components/GraphView";
 import InitializationScreen from "./components/InitializationScreen";
 import Layout from "./components/Layout";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -273,6 +274,8 @@ function AppContent() {
 	const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 	// Task graph cold start (doc-014): driven by its own WS messages, parallel to loadingMessage.
 	const [graphStatus, setGraphStatus] = useState<"building" | "ready" | null>(null);
+	// Bumped on every graph-updated broadcast so the graph view refetches in place.
+	const [graphVersion, setGraphVersion] = useState(0);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 	const [duplicatePlan, setDuplicatePlan] = useState<DuplicateRepairPlan | null>(null);
 	const [showDuplicateRepairModal, setShowDuplicateRepairModal] = useState(false);
@@ -830,10 +833,14 @@ function AppContent() {
 	}, [milestoneIdFromUrl, milestoneEntities, archivedMilestones]);
 
 	const handleCloseMilestoneModal = useCallback(() => {
-		const backgroundPath = state?.backgroundLocation
-			? `${state.backgroundLocation.pathname}${state.backgroundLocation.search}`
-			: "/milestones";
-		navigate(backgroundPath, { replace: true });
+		if (state?.backgroundLocation) {
+			// The modal entry was pushed on top of the background location, so popping it both
+			// closes the modal and lands back on the view it was opened from (graph, milestones,
+			// ...) without leaving a duplicate entry behind - the same rule as the task modal.
+			navigate(-1);
+			return;
+		}
+		navigate("/milestones", { replace: true });
 	}, [navigate, state]);
 
 	const refreshData = useCallback(async () => {
@@ -941,6 +948,8 @@ function AppContent() {
 				setGraphStatus("building");
 			} else if (event.data === "graph-ready") {
 				setGraphStatus("ready");
+			} else if (event.data === "graph-updated") {
+				setGraphVersion((version) => version + 1);
 			} else if (event.data === "graph-failed") {
 				// No retry signal exists yet; dropping the chip beats a spinner that never ends.
 				setGraphStatus(null);
@@ -1161,6 +1170,7 @@ function AppContent() {
 							<Statistics tasks={tasks} isLoading={isLoading} onEditTask={handleOpenTask} projectName={projectName} />
 						}
 					/>
+					<Route path="graph" element={<GraphView graphVersion={graphVersion} onEditTask={handleOpenTask} />} />
 					<Route path="settings" element={<Settings />} />
 					<Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleOpenTask} />} />
 				</Route>
