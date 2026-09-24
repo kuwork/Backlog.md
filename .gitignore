@@ -68,3 +68,7 @@ test-benchmark-report.json
 .conductor
 Backlog.md.zip
 backlog/wiki/usermanual/_book/
+
+# Kuzu task graph derived cache (rebuilt from markdown at runtime)
+backlog/graph.kuzu
+backlog/graph.kuzu.meta.json
