@@ -40,10 +40,23 @@ export interface GraphStore {
 	clear(): Promise<void>;
 	/** Batch upsert nodes; existing ids are replaced and their edges detached. */
 	upsertNodes(nodes: GraphNode[]): Promise<void>;
+	/**
+	 * Batch update node properties in place (same-id path change / status change, doc-014 §3.5):
+	 * edges touching the node are preserved, unlike upsertNodes' detach semantics.
+	 */
+	updateNodes(nodes: GraphNode[]): Promise<void>;
 	/** Batch remove nodes together with all their edges (DETACH DELETE semantics). */
 	deleteNodes(ids: string[]): Promise<void>;
+	/** Remove nodes whose filePath matches one of the given paths (renamed/removed files). */
+	deleteNodesByFilePath(filePaths: string[]): Promise<void>;
 	/** Batch insert edges; duplicates are ignored. */
 	upsertEdges(edges: GraphEdge[]): Promise<void>;
+	/** Remove every edge with an endpoint in `ids` - used to rebuild only affected edges. */
+	deleteEdgesTouching(ids: string[]): Promise<void>;
+	/** All nodes, for the /api/graph payload. */
+	getAllNodes(): Promise<GraphNode[]>;
+	/** All edges, for the /api/graph payload. */
+	getAllEdges(): Promise<GraphEdge[]>;
 	countNodes(): Promise<number>;
 	countEdges(type: GraphEdgeType): Promise<number>;
 	hasNode(id: string): Promise<boolean>;
@@ -87,6 +100,14 @@ export class MemoryGraphStore implements GraphStore {
 		}
 	}
 
+	async updateNodes(nodes: GraphNode[]): Promise<void> {
+		// In-place property update: existing edges survive (same-id rename/completion keeps edges).
+		for (const node of nodes) {
+			const existing = this.nodes.get(node.id);
+			if (existing) this.nodes.set(node.id, { ...existing, ...node, id: existing.id });
+		}
+	}
+
 	async deleteNodes(ids: string[]): Promise<void> {
 		const doomed = new Set(ids);
 		for (const id of doomed) this.nodes.delete(id);
@@ -96,11 +117,33 @@ export class MemoryGraphStore implements GraphStore {
 		}
 	}
 
+	async deleteNodesByFilePath(filePaths: string[]): Promise<void> {
+		const doomed = new Set(filePaths);
+		const ids = [...this.nodes.values()].filter((n) => doomed.has(n.filePath)).map((n) => n.id);
+		await this.deleteNodes(ids);
+	}
+
 	async upsertEdges(edges: GraphEdge[]): Promise<void> {
 		for (const edge of edges) {
 			if (!this.nodes.has(edge.from) || !this.nodes.has(edge.to)) continue;
 			this.edges.set(edgeKey(edge.type, edge.from, edge.to), { ...edge });
 		}
+	}
+
+	async deleteEdgesTouching(ids: string[]): Promise<void> {
+		const doomed = new Set(ids);
+		for (const key of [...this.edges.keys()]) {
+			const edge = this.edges.get(key);
+			if (edge && (doomed.has(edge.from) || doomed.has(edge.to))) this.edges.delete(key);
+		}
+	}
+
+	async getAllNodes(): Promise<GraphNode[]> {
+		return [...this.nodes.values()].map((n) => ({ ...n }));
+	}
+
+	async getAllEdges(): Promise<GraphEdge[]> {
+		return [...this.edges.values()].map((e) => ({ ...e }));
 	}
 
 	async countNodes(): Promise<number> {
@@ -236,6 +279,56 @@ export class KuzuGraphStore implements GraphStore {
 	async deleteNodes(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
 		await this.executePrepared("MATCH (n:Task) WHERE n.id IN $ids DETACH DELETE n", { ids });
+	}
+
+	async deleteNodesByFilePath(filePaths: string[]): Promise<void> {
+		if (filePaths.length === 0) return;
+		await this.executePrepared("MATCH (n:Task) WHERE n.filePath IN $paths DETACH DELETE n", { paths: filePaths });
+	}
+
+	async updateNodes(nodes: GraphNode[]): Promise<void> {
+		// In-place property update: existing edges survive (same-id rename/completion keeps edges).
+		for (const node of nodes) {
+			await this.executePrepared(
+				"MATCH (n:Task {id: $id}) SET n.title = $title, n.kind = $kind, n.status = $status, n.filePath = $filePath",
+				{ id: node.id, title: node.title, kind: node.kind, status: node.status, filePath: node.filePath },
+			);
+		}
+	}
+
+	async deleteEdgesTouching(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+		for (const type of ["ParentOf", "BelongsToMilestone", "DependsOn"] as const) {
+			await this.executePrepared(`MATCH (a:Task)-[r:${type}]->(b:Task) WHERE a.id IN $ids OR b.id IN $ids DELETE r`, {
+				ids,
+			});
+		}
+	}
+
+	async getAllNodes(): Promise<GraphNode[]> {
+		const result = await this.query(
+			"MATCH (n:Task) RETURN n.id AS id, n.title AS title, n.kind AS kind, n.status AS status, n.filePath AS filePath",
+		);
+		const rows = await result.getAll();
+		await this.closeResult(result);
+		return rows.map((row) => ({
+			id: String(row.id),
+			title: String(row.title ?? ""),
+			kind: String(row.kind ?? "task") as GraphKind,
+			status: String(row.status ?? ""),
+			filePath: String(row.filePath ?? ""),
+		}));
+	}
+
+	async getAllEdges(): Promise<GraphEdge[]> {
+		const edges: GraphEdge[] = [];
+		for (const type of ["ParentOf", "BelongsToMilestone", "DependsOn"] as const) {
+			const result = await this.query(`MATCH (a:Task)-[r:${type}]->(b:Task) RETURN a.id AS from, b.id AS to`);
+			const rows = await result.getAll();
+			await this.closeResult(result);
+			for (const row of rows) edges.push({ type, from: String(row.from), to: String(row.to) });
+		}
+		return edges;
 	}
 
 	async upsertEdges(edges: GraphEdge[]): Promise<void> {

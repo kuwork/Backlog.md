@@ -865,5 +865,7 @@ export const zhTW: TranslationDict = {
 		foundLocalTasks: "在其他本機分支中找到 {1} 個唯一任務",
 		hydratingLocalTasks: "正在從其他本機分支具體化 {1} 個任務...",
 		loadedLocalTasks: "已從其他本機分支載入 {1} 個任務",
+		buildingTaskGraph: "正在建構任務圖譜...",
+		taskGraphReady: "任務圖譜已就緒",
 	},
 };

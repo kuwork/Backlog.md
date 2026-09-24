@@ -887,5 +887,7 @@ export const en = {
 		foundLocalTasks: "Found {1} unique tasks in other local branches",
 		hydratingLocalTasks: "Hydrating {1} tasks from other local branches...",
 		loadedLocalTasks: "Loaded {1} tasks from other local branches",
+		buildingTaskGraph: "Building task graph...",
+		taskGraphReady: "Task graph ready",
 	},
 } as const;

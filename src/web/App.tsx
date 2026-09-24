@@ -271,6 +271,8 @@ function AppContent() {
 	const pendingScopeRankRef = useRef(0);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+	// Task graph cold start (doc-014): driven by its own WS messages, parallel to loadingMessage.
+	const [graphStatus, setGraphStatus] = useState<"building" | "ready" | null>(null);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 	const [duplicatePlan, setDuplicatePlan] = useState<DuplicateRepairPlan | null>(null);
 	const [showDuplicateRepairModal, setShowDuplicateRepairModal] = useState(false);
@@ -935,6 +937,13 @@ function AppContent() {
 			} else if (event.data === "config-updated") {
 				// Statuses and labels genuinely changed, which only a full load re-reads.
 				void loadAllData();
+			} else if (event.data === "graph-started") {
+				setGraphStatus("building");
+			} else if (event.data === "graph-ready") {
+				setGraphStatus("ready");
+			} else if (event.data === "graph-failed") {
+				// No retry signal exists yet; dropping the chip beats a spinner that never ends.
+				setGraphStatus(null);
 			} else {
 				const loadingState = parseBrowserLoadingState(event.data);
 			if (loadingState?.type === "loading") {
@@ -1012,6 +1021,7 @@ function AppContent() {
 		docsTree,
 		isLoading,
 		loadingMessage,
+		graphStatus,
 		loadError,
 		onRefreshData: refreshData,
 	};
