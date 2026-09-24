@@ -871,12 +871,7 @@ export default function GraphView({ graphVersion, onEditTask }: GraphViewProps) 
 						className="absolute top-3 left-3 z-10 grid grid-cols-3 items-center gap-1.5 rounded-lg border border-gray-200 bg-white/90 p-1.5 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/90"
 						onPointerDown={(event) => event.stopPropagation()}
 					>
-						<CtrlButton
-							onClick={fitOverview}
-							label={<FitIcon />}
-							title={`${t.graphView.fitOverview} (Ctrl+0)`}
-							accent
-						/>
+						<CtrlButton onClick={fitOverview} label={<FitIcon />} title={`${t.graphView.fitOverview} (Ctrl+0)`} />
 						<CtrlButton onClick={() => panBy(0, 120)} label="↑" title={`${t.graphView.panUp} (↑)`} />
 						<span aria-hidden="true" />
 						<CtrlButton onClick={() => panBy(120, 0)} label="←" title={`${t.graphView.panLeft} (←)`} />
@@ -937,29 +932,14 @@ function LegendDot({
 	);
 }
 
-function CtrlButton({
-	onClick,
-	label,
-	title,
-	accent = false,
-}: {
-	onClick: () => void;
-	label: ReactNode;
-	title: string;
-	/** Tinted variant, so a camera-level action is not confused with a neighbour's button. */
-	accent?: boolean;
-}) {
+function CtrlButton({ onClick, label, title }: { onClick: () => void; label: ReactNode; title: string }) {
 	return (
 		<button
 			type="button"
 			onClick={onClick}
 			title={title}
 			aria-label={title}
-			className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm font-medium transition-colors ${
-				accent
-					? "border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-500/50 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25"
-					: "border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-			}`}
+			className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
 		>
 			{label}
 		</button>
