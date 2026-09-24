@@ -3,7 +3,7 @@ id: doc-9
 title: Upstream v1.49.3 to v1.50.1 Migration Diff Classification
 type: guide
 created_date: '2026-08-14'
-updated_date: '2026-09-12 17:05'
+updated_date: '2026-09-23 17:55'
 ---
 # 上游变更差异分类（v1.49.3 .. v1.50.1）
 
@@ -43,7 +43,7 @@ updated_date: '2026-09-12 17:05'
 | B14 | **BACK-622 JSON 输出 AC 进度** | `task list/view --json` 增加 acceptanceCriteriaCompleted/Count。 | fork 已有 AC 进度工具；字段名用 acceptanceCriteriaItems | 低 | B | ①直接复用 | [BACK-625](/task/625) Done | [doc-10 CLI-8](/documentation/10:184-200) |
 | B15 | **BACK-598 Dependabot 修复** | mermaid 11.16.0→11.16.1 等依赖升级。 | fork mermaid 11.15.0，安全升级 | 低 | B | ①直接复用 | [BACK-626](/task/626) Done | [doc-10 CLI-9](/documentation/10:204-218) |
 | B16 | **BACK-623 CLI 跨分支本地优先 + BACK-624 跨分支增量加载** | 623：CLI 命令避免跨分支工作（本地优先读取），已由 [BACK-600](/task/600) 落地。624：跨分支加载增量缓存；需先由 [BACK-601](/task/601) 补全上游 BACK-559（fork BACK-568 的轻量移植缺 publication-owner / batchTaskUpdates / transitionTask），再由 [BACK-602](/task/602) 移植完整 BACK-624（含 tip 快照、共享缓存、bounded fetch、ref 租约、MCP search 本地路径）。 | 上游 BACK-559→BACK-624 是同一架构演进；fork BACK-568 是上游 559 的轻量移植，缺 publication-owner 地基。先做 [BACK-601](/task/601) 补全 559，再做 [BACK-602](/task/602) 完整 624，整体可达 headline ≤3 Git 指标。 | 高（BACK-624 依赖 559 补全） | **A**（按方案 1：BACK-601 补全 559 地基，BACK-602 移植完整 BACK-624） | ②参考重写（BACK-601 补全 559）+ ②参考重写（BACK-602 完整 BACK-624） | [BACK-600](/task/600) Done；[BACK-601](/task/601)；[BACK-602](/task/602)（均已 Done） | [doc-10 CLI-10](/documentation/10:222-246) |
-| B22 | **BACK-603 create/draft 标志与 edit 对齐** | `task create`/`draft create` 重复 `-l` 丢值、`--dep`/`--depends-on` 合并、`\|` quirk 对齐 edit。 | fork create 同款 bug（cli.ts:1658/1742） | 低 | **A**（升） | ①直接复用 | [DRAFT#108](/draft/108) | [doc-10 CLI-11](/documentation/10:250-268) |
+| B22 | **BACK-603 create/draft 标志与 edit 对齐** | `task create`/`draft create` 重复 `-l` 丢值、`--dep`/`--depends-on` 合并、`\|` quirk 对齐 edit。 | fork create 同款 bug（cli.ts:1658/1742） | 低 | **A**（升） | ①直接复用 | ~~[DRAFT#108](/draft/108)~~（草稿已删；fork 按该草稿直接落地——create 路径复用 edit 的 validateTaskListFlags/createMultiValueAccumulator，未单开 BACK 任务，2026-09-23 复核补记） | [doc-10 CLI-11](/documentation/10:250-268) |
 | B23 | **BACK-608 gray-matter 缓存投毒** | 共享 no-cache parse 包装，移除缓存投毒类陈旧数据。 | fork 6 处直接 matter()（含 fork 特有 wiki-install.ts） | 低 | B | ①直接复用 | [BACK-599](/task/599) | [doc-10 CLI-12](/documentation/10:272-288) |
 | B26 | **BACK-576/574 create 多 assignee + 清空 defaultEditor** | task create 多 assignee（-a "@a,@b" 存字面值是数据 bug）；允许清空 defaultEditor。 | fork 三处 `[String(options.assignee)]`；defaultEditor 空值被拒 | 低 | **A**（升） | ①直接复用 | [BACK-585](/task/585) [BACK-586](/task/586) | [doc-10 CLI-13](/documentation/10:292-313) |
 
@@ -88,7 +88,7 @@ updated_date: '2026-09-12 17:05'
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 优先级 | 迁移建议 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|--------|----------|----------|----------|
-| B24 | **BACK-585 ubuntu CI epoll 抖动** | ubuntu-latest test-runner epoll_ctl flake 诊断与修复。 | fork 无 preload/run-ci-tests 两个前提，机制上不受困 | 低 | **C**（降） | ③忽略 | [DRAFT#102](/draft/102) | [doc-10 CI-1](/documentation/10:691-711) |
+| B24 | **BACK-585 ubuntu CI epoll 抖动** | ubuntu-latest test-runner epoll_ctl flake 诊断与修复。 | 定性与事实不符（2026-09-23 复核修正）：fork 当时即受困（bunfig preload + run-ci-tests 体系俱在）且已修复，修复经 PR #869 贡献上游（upstream BACK-585，commit `0065f43c` 落 upstream/main）；fork 侧定案不另迁移 | 低 | **C**（降） | ③忽略 | ~~[DRAFT#102](/draft/102)~~（草稿已删） | [doc-10 CI-1](/documentation/10:691-711) |
 
 ---
 
@@ -152,3 +152,4 @@ updated_date: '2026-09-12 17:05'
 | [BACK-615](/task/615) | B8 | Done |
 | [BACK-625](/task/625) | B14 | Done |
 | [BACK-626](/task/626) | B15 | Done |
+| ~~[DRAFT#108](/draft/108)~~（按草稿直接落地，未单开 BACK 任务；草稿已删） | B22 | Done |

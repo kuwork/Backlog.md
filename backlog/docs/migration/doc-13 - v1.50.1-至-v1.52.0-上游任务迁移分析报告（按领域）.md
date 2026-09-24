@@ -3,7 +3,7 @@ id: doc-13
 title: v1.50.1 至 v1.52.0 上游任务迁移分析报告（按领域）
 type: guide
 created_date: '2026-09-15 05:49'
-updated_date: '2026-09-15 05:55'
+updated_date: '2026-09-24 00:27'
 ---
 # 上游任务迁移分析报告（v1.50.1 .. v1.52.0，按领域）
 
@@ -67,7 +67,7 @@ updated_date: '2026-09-15 05:55'
 | **适合迁移的内容** | 为 `archiveTask`/`completeTask`/`demoteTask` 增加 `options` 形参并将 `includeCrossBranch: false` 透传到 `loadTaskForMutation`；CLI 调用处加本地查找提示。 |
 | **需要排除/调整的内容** | 直接用上游 diff 行号覆盖 `backlog.ts` 会失败（fork 方法体已含日期字段/级联逻辑）；须按 fork 的 `loadTaskForMutation` 实参形态改动。无排除清单节号适用。 |
 | **迁移优先级** | 初判 AB → 深度分析 B类。理由：属行为修正（local-first），有益但非新能力，且需对齐 fork 既有读取路径，工作量可控。 |
-| **迁移建议** | ②参考重写。在 fork 三个生命周期方法中加 `options` 形参并下传 local-first 开关，CLI 调用补提示。 |
+| **迁移建议** | ②参考重写。在 fork 三个生命周期方法中加 `options` 形参并下传 local-first 开关，CLI 调用补提示。 **已落地（2026-09-22，[BACK-691](/task/691)，与 CORE-32 合并）**：CLI archive/complete 预检改 `loadTaskById(taskId, {includeCrossBranch:false})` 并移除不可达的跨分支守卫（branch-only 与 view 同为 not-found）；core 三方法加 `TaskMutationOptions`，local-only 时经 `loadWorkingCopyTask`（工作副本索引、歧义 fail-closed）。上游的 LOCAL_TASK_LOOKUP_HINT 未引入——fork 的 local-first 解析直接复用 view 的 not-found 文案，语义等价。 |
 
 ---
 
@@ -91,11 +91,11 @@ updated_date: '2026-09-15 05:55'
 |----------|------|
 | **任务核心目的** | 修复 `ContentStore.findIdentity` 的 rename 回退路径：仅为解析单个任务身份而加载语料时，不应把该加载发布为共享跨分支新鲜度状态。 |
 | **变更内容摘要** | `src/core/backlog.ts` 的 `loadContentStoreCorpus` 增加 `options?: { publish?: boolean }`，默认 `publishSharedState: options?.publish ?? true`；`src/core/content-store.ts` 的 `taskLoader` 类型加 `TaskLoaderOptions { publish? }`，`findIdentity` 回退改为 `loadTasksWithLoader(undefined, { publish: false })`。 |
-| **与当前定制代码的交集风险** | 中 — fork 的 `loadContentStoreCorpus`（`src/core/backlog.ts:3460`）当前仅收 `progressCallback`、内部写死 `publishSharedState: true`（`:3483`、`:3607`），与上游签名不同；`content-store.ts` 的 `findIdentity` 回退路径在 fork 中形态需核对。 |
+| **与当前定制代码的交集风险** | 中 — fork 的 `loadContentStoreCorpus`（`src/core/backlog.ts:3460`）当前仅收 `progressCallback`、内部写死 `publishSharedState: true`（`:3483`、`:3607`），与上游签名不同；`content-store.ts` 的 `findIdentity` 回退路径在 fork 中形态需核对。**该风险已消除（2026-09-24，[BACK-699](/task/699)）**：核对结果 —— fork 的回退路径（现 `content-store.ts:1089`）与 loader 闭包（现 `backlog.ts:358`）与上游改前完全同形，仅行号不同（loader 现于 `backlog.ts:3944`，末行 `:3970`），故已按上游形接入。 |
 | **适合迁移的内容** | 给 fork 的 corpus loader 增加「throwaway load」（`publish: false`）语义，并在 `findIdentity` 之类的单身份解析回退中传入，避免污染共享状态。 |
 | **需要排除/调整的内容** | 按 fork 的 `loadContentStoreCorpus` 形参与 `content-store.ts` 现有 `taskLoader` 定义接入，不套用上游行号上下文。无排除清单节号适用。 |
 | **迁移优先级** | 初判 AB → 深度分析 B类。理由：上游正确性修复，fork 存在可承载的同名方法，改动小且价值高。 |
-| **迁移建议** | ②参考重写。为 fork corpus loader 增加 `publish` 选项并应用于身份解析回退。 |
+| **迁移建议** | ②参考重写。为 fork corpus loader 增加 `publish` 选项并应用于身份解析回退。**落地（2026-09-24，[BACK-699](/task/699)）**：新增 `TaskLoaderOptions { publish?: boolean }`（`content-store.ts:31`）、构造参数（`:157`）、`loadTasksWithLoader`（`:2188`）、`taskLoader` 调用（`:2194`）；rename 回退改 `loadTasksWithLoader(undefined, { publish: false })`（`:1089`）；`loadContentStoreCorpus` 末行改 `publishSharedState: options?.publish ?? true`（`backlog.ts:3970`），故 `loadCurrentContent`/`refreshTasksFromDisk` 仍默认发布。两条回归用例覆盖两个方向（回退不得占用已移动的 ref；安装方必须仍安装），5 变体回退矩阵各只红其因果负责的用例。**复现插曲**：首版用例在未修复代码上竟为绿 —— store 绑定 watcher 后会自行跑一次 config 稳定读并发布，把回退的指纹副作用盖掉；改成等待 store 自身 `config` 事件（`store.subscribe`）而非 sleep 后才稳定变红。 |
 
 ---
 
@@ -165,7 +165,7 @@ updated_date: '2026-09-15 05:55'
 | **适合迁移的内容** | `draft edit` 命令与 TUI 草稿编辑能力、`withDraftLock` 锁区间、草稿身份的 fail-closed 解析与「绑定到所选文件」的编辑语义。 |
 | **需要排除/调整的内容** | 上游 `cli.ts` 大段不得整段套用；须保留 fork 的 `--ref/--doc/--depends-on` set 语义与 `--add-*`/`--remove-*`/`--clear-*` 体系（**排除清单 §5**），以及 `date-utc.ts` 的 UTC 转换接线。上游 `task-path.ts` 重写需对照 fork 同名文件适配。 |
 | **迁移优先级** | 初判 AB → 深度分析 B类。理由：fork 缺失「从 CLI/TUI 编辑草稿」这一能力（真空白），应合入；但集成成本最高。 （口径校正：草稿可编辑是新能力，由 A 类归入 B 类评估。） |
-| **迁移建议** | ②参考重写。以 fork `operations.ts`/`backlog.ts` 草稿方法为基础重建 `draft edit` 与 TUI 编辑，严格保留 §5 的 set/add/remove/clear 语义与 §2 的日期处理。 |
+| **迁移建议** | ②参考重写。以 fork `operations.ts`/`backlog.ts` 草稿方法为基础重建 `draft edit` 与 TUI 编辑，严格保留 §5 的 set/add/remove/clear 语义与 §2 的日期处理。**已落地（2026-09-22，[BACK-683](/task/683)）**：CLI 的 `draft edit` 与 TUI 的编辑键共用任务编辑的字段选项链与 `editTaskInTui` 路径（草稿身份经 `resolveDraftFilePath` fail-closed，歧义时拒绝编辑、原文件不动），未整段套用上游 `cli.ts`。 |
 
 ---
 
@@ -335,12 +335,12 @@ draft 不导入，C 类
 | 分析维度 | 内容 |
 |----------|------|
 | **任务核心目的** | 将任务搜索配置与过滤逻辑统一到 core 单一来源（`task-search.ts` + `search-service.ts`），消除 `Core.applyTaskFilters` 与 `SearchService` 中重复的状态/优先级/标签/项目匹配实现。 |
-| **变更内容摘要** | 删除 `src/core/backlog.ts` 私有 `applyTaskFilters`（约 -68 行），改为调用 `task-search.ts` 的 `applyTaskFilters`；`src/utils/task-search.ts` 重写（约 390 行）：新增 `buildTaskSearchFields`、`createTaskFilterMatcher`、`TASK_SEARCH_FUSE_OPTIONS`，并承担 `createTaskSearchIndex`/`applyTaskFilters`；`src/core/search-service.ts` 改用 `buildTaskSearchFields` 构建索引、`createTaskFilterMatcher` 过滤，删除内部 `NormalizedFilters` 与多份 `matchesXxx` 逻辑；`src/types/index.ts` 增搜索类型；`mcp/handlers.ts`、`ui/*` 少量调整。 |
-| **与当前定制代码的交集风险** | 高 — fork 的 `src/utils/task-search.ts` 是**自研**搜索（328 行：`createTaskSearchIndex:158`、`applyTaskFilters:272`、`applySharedTaskFilters:308`），且 `Core` 中很可能也有过滤实现；上游把过滤逻辑整体迁入 `task-search.ts`，与 fork 自研搜索的字段名/匹配策略（如 fork 的 AC 字段 `acceptanceCriteriaItems`）不同，直接替换会丢失 fork 行为。 |
-| **适合迁移的内容** | 「搜索配置/过滤单一来源」的架构方向；`createTaskFilterMatcher`/`buildTaskSearchFields` 中可复用的状态/优先级/标签/项目匹配器（须对齐 fork 字段）。 |
-| **需要排除/调整的内容** | 不得用上游 `task-search.ts` 整文件替换 fork 自研搜索；须保留 fork 的 `applySharedTaskFilters` 与自研匹配行为，将上游匹配器以「参考重写」方式并入。适用**排除清单 §6 通用原则（自研能力优先参考重写）**。 |
-| **迁移优先级** | 初判 AB → 深度分析 B类。理由：架构方向可取，但 fork 已有自研搜索实现，属重构对齐而非净新增，冲突高，需谨慎合入。 |
-| **迁移建议** | ②参考重写。采纳单一来源架构，但把过滤匹配器按 fork 字段（含 `acceptanceCriteriaItems`）重写进 fork `task-search.ts`，不整体采用上游文件。 |
+| **变更内容摘要** | `23403d5b` 单 commit（窗口内首版）：`task-search.ts` 重写为唯一属主（新增 `buildTaskSearchBodyText`/`buildTaskSearchFields`/`TASK_SEARCH_FUSE_OPTIONS`/`createTaskFilterMatcher`）；删除 `Core.applyTaskFilters`（backlog.ts −81 行）；`SearchService` 消费共享构建器并删除内部 `NormalizedFilters`（−283 行级）；MCP handlers −85 行；`applySharedTaskFilters` 整体删除（board/unified-view 改调 `applyTaskFilters`）；新增 `task-search-parity.test.ts`（276 行）。**窗口内后续提交（2026-09-21 追认）**：`task-search.ts` 又被 `7f9eabcd`（BACK-643 给共享匹配器加 project 谓词）、`05fbbdd3`（BACK-638 多状态并入）、`f1c14f6a`（BACK-672）触碰——v1.52.0 终版含 project 匹配，fork 落地应以首版为基准、剔除 project 部分。 |
+| **与当前定制代码的交集风险** | 高 — **实测补齐（2026-09-21）**：fork 过滤实现共五份且语义漂移——`Core.applyTaskFilters`（backlog.ts:621，labels any-only 且忽略 labelMatch）、`SearchService` 两份（search-service.ts:392 `applyTaskFilters` + `matchesTaskFilters`，any-only）、utils `applyTaskFilters`/`applySharedTaskFilters`（labelMatch any\|all）、MCP 本地 all+大小写敏感（handlers.ts:199-205, 272-278）、CLI 本地 all（cli.ts:272,2742）——labels 语义六处分歧；bodyText 构建漂移：utils（task-search.ts:148-149）含 labels/assignee、`SearchService`（search-service.ts:592-622）不含（探针实测：query `infrastructure` / `@morgan` 本地索引命中、SearchService 空）；Fuse 配置两处逐字重复，fork 侧多 `fileName:0.25` 键（BACK-481 wiki 搜索自研，上游共享配置无）；且 fork 搜索集合含 wiki 实体（search-service.ts:301-309），上游 v1.52.0 搜索集合不含 wiki（2026-09-22 实测，grep 0 命中）。fork 已先行统一状态匹配（`src/utils/status-filter.ts` 四方共用），方向与上游一致。 |
+| **适合迁移的内容** | 单一来源架构四件套（`buildTaskSearchBodyText`/`buildTaskSearchFields`/`TASK_SEARCH_FUSE_OPTIONS`/`createTaskFilterMatcher`）；「labels/assignee 全表面可搜」方向——探针实测 fork 复现该缺陷；上游 `task-search-parity.test.ts` 适配后作现成回归套件（其 import 的 `buildTaskSearchBodyText` fork 尚不存在，适配即补齐单一属主）。 |
+| **需要排除/调整的内容** | ① 以 `23403d5b` 首版为基准，剔除 project 谓词（fork 无 project 字段，CORE-12 未迁移）；② 保留 fork `SearchService` 的 `fileName:0.25` 键、`fileName` 实体字段与 **wiki 语料**（BACK-481 自研，上游搜索集合无 wiki），落地形态为扩展共享配置（`{...TASK_SEARCH_FUSE_OPTIONS, keys: [...TASK_SEARCH_FUSE_OPTIONS.keys, { name: 'fileName', weight: 0.25 }]}`）而非替换；回归用 BACK-481 的 AC 加一条「wiki 页按文件名可搜到」用例；③ 保留 fork 过滤面（statusExcluded/parentTaskId），按 fork `TaskListFilter` 对齐共享谓词签名；④ `applySharedTaskFilters` 不宜照搬上游删除——fork 有消费者（board.ts:389、unified-view.ts:172，board 调用面带 fork 定制），改薄包装或迁移调用点；⑤ MCP labels 大小写敏感缺陷随统一顺手对齐为不敏感。适用**排除清单 §6 通用原则（参考重写）**。 |
+| **迁移优先级** | 初判 AB → 深度分析 B类（维持，2026-09-21 重分析实测加固）。理由：非数据丢失/安全/核心路径不可用，按分类口径不入 A；但 fork 缺陷已探针量化（跨表面同一查询结果不同、labels 六处分歧），迁移价值确凿。 **已落地（2026-09-22，[BACK-685](/task/685)）**：单一来源四件套收敛进 fork task-search.ts（谓词语义 = 五份实现并集，labelMatch 默认 any）；parity 套件 14 例全绿，变异回退矩阵（语料/接线/fileName 键三变体 × 精确红名单）验证判别力；tsc/check 干净。 |
+| **迁移建议** | ②参考重写。以首版为基准把过滤谓词收敛进 fork `task-search.ts`（保留 fileName/statusExcluded/parentTaskId 与 `applySharedTaskFilters` 消费者），`SearchService`/`Core`/`MCP` 三处改消费共享谓词；parity 套件适配为回归；为 CORE-21 的硬前置。 **落地说明（2026-09-22，[BACK-685](/task/685)）**：wiki 语料与 fileName:0.25 键按保留项落地（服务侧 Fuse = 共享 options + 扩展键，wiki 断言钉在「命中必须来自 fileName 键」）；MCP labels 大小写敏感缺陷顺带修复；scoreThreshold 与 fork ID 变体算法原样保留，board/unified-view 消费者零改动。 |
 
 ---
 
@@ -349,12 +349,12 @@ draft 不导入，C 类
 | 分析维度 | 内容 |
 |----------|------|
 | **任务核心目的** | 让 TUI 任务查看器与里程碑页的任务搜索也走与 CLI/Web 相同的 core 共享搜索，保证各表面结果一致。 |
-| **变更内容摘要** | `src/ui/task-viewer-with-search.ts` 简化：不再区分「已给任务用内存索引 / 否则用 ContentStore 搜索」两条路径，改为对加载到的语料统一 `createTaskSearchIndex(allTasks)` + `applyTaskFilters`（约 -115 行）；`src/web/components/MilestonesPage.tsx` 的里程碑内任务搜索改为路由到 core 共享搜索（约 -41 行）；新增 `task-search-parity.test.ts`、`web-milestones-page-search.test.tsx`。 |
-| **与当前定制代码的交集风险** | 中 — fork 的 `src/ui/task-viewer-with-search.ts` 已用自研 `applyTaskFilters`/`createTaskSearchIndex`（`src/ui/task-viewer-with-search.ts:31`），`src/web/components/MilestonesPage.tsx` 也有自有 `searchQuery` 状态与内存过滤（`:101-113`）；上游「统一到 core 搜索」与 fork 自研搜索重叠，且上游假设 `core.queryTasks()` 等 fork 可能不同的接口。 |
-| **适合迁移的内容** | 「TUI/里程碑页与 CLI/Web 共用同一搜索索引」的一致性原则，以及去除 TUI 双路径分支的简化思路。 |
-| **需要排除/调整的内容** | 须走 fork 的 `task-search.ts`（自研，见 CORE-20 交集），而非上游 `core.getSearchService()` 调用形态；`MilestonesPage` 的搜索改路由时保留 fork 弹窗/日期指示器定制。适用**排除清单 §6 通用原则**。 |
-| **迁移优先级** | 初判 AB → 深度分析 B类。理由：与 fork 自研搜索重叠，属对齐增强；价值在于结果一致性，非净新增能力。 |
-| **迁移建议** | ②参考重写。将 TUI/里程碑页搜索收敛到 fork 自研 `task-search.ts` 的同一索引，去除双路径分支。 |
+| **变更内容摘要** | `9a42e89b` 单 commit（显式承接 BACK-649 Stage 2）：`task-viewer-with-search.ts` −115 行（SearchService 回退分支与手写 post-filter 折叠进共享索引路径）；`MilestonesPage.tsx` −41 行（私有 Fuse 删除，改浏览器端 import 共享 `createTaskSearchIndex` 在桶内任务上检索）；`task-search-parity.test.ts` +64 行、新增 `web-milestones-page-search.test.tsx`。**窗口内后续提交（2026-09-21 追认）**：`b2616cab`（BACK-670 撤销，净零）、`f1c14f6a`（BACK-672）、`53bbf721`（BACK-678）触碰 viewer，但属其他条目域。 |
+| **与当前定制代码的交集风险** | 中 — **实测补齐（2026-09-21）**：fork viewer 双路径原样在——task-viewer-with-search.ts:206-243 建双引擎、:640-695 双分支，回退分支带 ~50 行手写 post-filter（里程碑过滤用标题相等比较 :668-677，与共享侧 `createMilestoneFilterMatcher`（milestone-filter.ts:110）的 NO_MILESTONE/ID 解析语义不同；ready 过滤重复实现 :687-690；阈值 0.45 硬编码两处 :656,662）；fork web 里程碑页私有 Fuse（MilestonesPage.tsx:147-156，键仅 title/id + exact-id/substring 预匹配），查 label/body/assignee 恒空。fork TUI 无任何里程碑分组交互面——`board --milestones` 的 `milestoneMode` 仅在非 TTY 管道分支生效（board.ts:266-287，输出静态 Markdown），交互 TUI 恒按状态分列，上游 v1.52.0 逐字同构（2026-09-22 实测校正）；本条目 TUI 半仅涉任务查看器。 |
+| **适合迁移的内容** | 双路径折叠思路（fork 待删块与上游删除块形状逐行对应）；里程碑页共享索引路由（上游为浏览器端直接 import 共享索引，不经 API）；ready 过滤收敛到单条管线；上游 `web-milestones-page-search.test.tsx` 可作回归参照。 |
+| **需要排除/调整的内容** | ① CORE-20 先落地（共享谓词是前提，须串行）；② fork readiness 引擎保留（与 fork 已落地的「readiness 只做 JSON 发布、不收敛 core」决策一致），折叠后 ready 过滤仍走 fork `buildReadinessGraph`/`getTaskReadiness`；③ 里程碑页 exact-id/substring 预匹配行为在共享索引路由后消失，去留需定夺（建议保留为前置短路以维持交互惯性）；④ fork viewer 定制渲染（AC 条形等）不动。适用**排除清单 §6 通用原则**。 |
+| **迁移优先级** | 初判 AB → 深度分析 B类（维持，2026-09-21 重分析实测加固）。理由：一致性增强而非净新增，fork 缺陷实测存在但非关键缺陷口径。 **已落地（2026-09-22，[BACK-686](/task/686)）**：viewer 双路径折叠为单条共享路径（手写 post-filter 全移除）；MilestonesPage 私有 Fuse 删除、路由共享索引（label/body 可达）；web 套件 6 例 + 变异矩阵（2 变体 × 精确红名单）验证。 |
+| **迁移建议** | ②参考重写。与 CORE-20 同波次串行（第四波排序不变）；TUI 半折叠 fork viewer 双路径，web 半路由 fork `MilestonesPage` 到共享索引（预匹配去留按用户定夺）。 **落地说明（2026-09-22，[BACK-686](/task/686)）**：预匹配短路按建议保留为前置短路；随之暴露并修复客户端 bundle 污染（taskIdsEqual 迁入纯模块 task-id.ts，服务端核心出 web 图，浏览器实测恢复）；TUI viewer 无自动化脚手架属既有缺口，接线由 tsc 兜底、语义由 parity 套件钉住。 |
 
 ---
 
@@ -390,13 +390,13 @@ draft 不导入，C 类
 
 | 分析维度 | 内容 |
 |----------|------|
-| **任务核心目的** | 让 `validateDependencies` 把依赖目标解析范围扩展到已完成（`backlog/completed`）与已归档（archive）记录，使“依赖一个已完成任务是正常的”可编辑、不被拒绝。 |
-| **变更内容摘要** | 上游 `133108417` 仅改 `src/utils/task-builders.ts`：`validateDependencies` 的 corpus 由 `[tasks, drafts]` 扩为 `[tasks, drafts, completed, archived]`（`src/utils/task-builders.ts:50-58` 附近），并补 `core.loadTaskById(resolved, ...)` 歧义检查；纯校验扩展，不影响 readiness/图语义。 |
-| **与当前定制代码的交集风险** | 中 — fork `src/utils/task-builders.ts:50` 为 `const [tasks, drafts] = await Promise.all([core.queryTasks(), core.filesystem.listDrafts()]);`，即只查 tasks+drafts，故 fork 存在上游描述的 #942 bug：依赖已完成/归档任务会被拒、且 replace 语义下无法再编辑该依赖列表。该改动与 CORE-23 共改同一函数，需合并处理。 |
-| **适合迁移的内容** | 在 fork `src/utils/task-builders.ts:50` 的 corpus 中加入 `core.filesystem.listCompletedTasks()` 与 `core.filesystem.listArchivedTasks()`，并把 `known` 扩展为四者并集；保留 fork 的 `listDrafts()` 局部可见性语义。 |
-| **需要排除/调整的内容** | 此改动必须与 CORE-23 对 `validateDependencies` 的重写合并，避免重复/冲突修改同一函数。注意 fork 的 `core.queryTasks()` 默认参数可能与上游 `{ includeCrossBranch: false }` 不同，需确认是否显式传入以免引入跨分支差异（排除清单 §6）。 |
-| **迁移优先级** | A类（必须合入）— 初判 AB → 深度分析 A类：改动小、收益明确（修复 fork 已知 bug）、不回退任何定制，但实现上依附 CORE-23 的函数重写。 |
-| **迁移建议** | ②参考重写：作为 CORE-23 移植 `validateDependencies` 的一部分一并落地（非独立摘樱桃），确保 completed/archived 进入 corpus。 |
+| **任务核心目的** | 让 `validateDependencies` 把依赖目标解析范围从「工作副本 + 草稿」扩到**已完成**与**归档**记录（`backlog/completed/`、`backlog/archive/`），使「依赖一个已完成任务是正常的」能被创建/编辑、依赖列表可再编辑；配套打通 web 依赖输入的可解析与可下钻。 |
+| **变更内容摘要** | 上游 `133108417`（closes #942）的源码改动只有 `src/utils/task-builders.ts`（另加两组测试）：corpus 由 `[tasks, drafts]` 扩为 `[tasks, drafts, completed, archived]`，并保留既有 `core.loadTaskById(resolved, …)` 工作副本歧义检查；纯校验扩展，不影响 readiness/图语义，上游 commit 自述「nothing here overlaps the planned self/cycle checks (BACK-656)」。fork 侧已由 [BACK-664](/task/664) 落地（`src/utils/task-builders.ts:83-88`），并额外覆盖 web 依赖输入的解析与下钻。 |
+| **与当前定制代码的交集风险** | 中 → 已消解。**实测补齐（2026-09-19）**：本行原记「corpus 只查 tasks+drafts，故依赖已完成会被拒」——该症状现不存在：`src/utils/task-builders.ts:83-88` 的 corpus 为 `queryTasks() + listDrafts() + listCompletedTasks()`，已完成目标在 CLI / MCP / web 的 create 与 edit 上均被接受（`src/test/dependency.test.ts:365`、`:378` 固化）。另一处结论同时更正：fork 的 `resolveUniqueDependency`（`src/utils/task-builders.ts:44-61`）先于本次改动即存在，故本条目**不依附 CORE-23**、可独立落地（上游 commit 亦自述与 BACK-656 无重叠）。 |
+| **适合迁移的内容** | 已完成。corpus 扩到 completed、`known` 扩为三源并集（`src/utils/task-builders.ts:83-88`）；同一身份被多条记录认领时 fail-closed 抛 `AmbiguousTaskIdError`（`resolveUniqueDependency`:44-61），同一任务的不同写法不再重复持久化（`:102-105`）。web 侧：下拉按 BACK-662 的 `completed=true` 提供已完成候选、chip 解析出标题并可点击、点击以只读弹窗打开（BACK-663 语义）。 |
+| **需要排除/调整的内容** | 两处与上游的**有意分歧**，均已由测试固化：①**归档排除** —— fork 的 ID 分配器只数 active ∪ completed，归档会**释放** ID，故把归档记录留在 corpus 会让「依赖复用了该 ID 的新任务」变成歧义、该 ID 不可作目标；`rejects a dependency on an archived task`（`src/test/dependency.test.ts:396`）与 `resolves an archived id to the task that reused it`（`:412`）是设计要求，不是缺口。②**保留上游第二道闸**（`src/utils/task-builders.ts:98-101`）—— `queryTasks()` 把一个身份坍缩为一条记录，看不到 `backlog/tasks/` 内两份同身份文件，只有工作副本查找能 fail-closed；`fails closed when several working-copy files claim one identity`（`:460`）覆盖该形状，跨 store 重身份另由语料层拦截（`:442`）。`core.queryTasks()` 的跨分支可见性按 fork 配置决定，本次未改动该语义（排除清单 §6 未触发）。 |
+| **迁移优先级** | A类（必须合入）— 已落地：[BACK-664](/task/664)（Done）。**（口径校正：原记「实现上依附 CORE-23 的函数重写」不成立 —— fork 的 `validateDependencies` 早已有 `resolveUniqueDependency` 收敛，本次只是扩 corpus 并保留第二道闸；CORE-23 的自引用/环检测仍是净空白，与本次同函数但无依赖关系，可分头落地。）** |
+| **迁移建议** | ②参考重写 → **已落地**：[BACK-664](/task/664)。实际形态与上游差一处（归档不纳入）、同上游一处（不改 `loadTaskById` 调用本身，只保留其歧义检查作用）；守卫改为 fail-closed 后，原先静默「取第一条」的输入变成硬报错，属有意收紧，须与任务记录一并登记。 |
 
 ---
 
@@ -438,7 +438,7 @@ draft 不导入，C 类
 | **适合迁移的内容** | 在 fork `TaskSummaryJson` 增加 `references: string[]` 与 `modifiedFiles: string[]`，并在 `toTaskSummaryJson` 填充；保持 `TaskDetailsJson` 现状（其已含 `references`）。 |
 | **需要排除/调整的内容** | 无排除项。注意保持 fork 已有的额外摘要字段（`dueDate`/`plannedStart`/`actualStart`/`actualEnd` 等，`src/formatters/json-output.ts:21-25`）不被动。 |
 | **迁移优先级** | B类（必须合入）— 初判 AB → 深度分析 A类：纯增量、schemaVersion 1 内可加、与 fork 定制零冲突。 （口径校正：JSON 契约扩展属增量能力，由 A 类归入 B 类评估。） |
-| **迁移建议** | ①直接复用：对照上游 `src/formatters/json-output.ts` 在 fork 同类型同函数补两个字段。 |
+| **迁移建议** | ①直接复用：对照上游 `src/formatters/json-output.ts` 在 fork 同类型同函数补两个字段。**落地（2026-09-23，[BACK-697](/task/697)）**：同形落地 —— `TaskSummaryJson` 增 `references` / `modifiedFiles`、`toTaskSummaryJson` 由记录填充（缺省空数组）、`TaskDetailsJson` 去掉重复声明（详情载荷内容不变，两字段经共享摘要类型继续带出）；上游改的那句 `CLI-INSTRUCTIONS.md` 紧凑字段清单在 fork 无对应物（本仓没有任何 shipped 面枚举摘要字段），故未改任何文档，与同域先例一致；用例补「无 references / modifiedFiles 的任务返回空数组」一条，并把 search 行与 view 载荷一并钉住。 |
 
 ---
 
@@ -508,7 +508,7 @@ draft 不导入，C 类
 | **适合迁移的内容** | 核心修复：在 fork `archiveTask`/`demoteTask`/`demoteTaskWithUpdates` 中扫描 active **与** completed corpus 里指向被释放 ID 的依赖/引用并写回；`demoteTask` 增加引用清理（fork 当前缺失）。清理文案可本地实现等价提示。 |
 | **需要排除/调整的内容** | 不要直接采用上游“返回值改为 `{success, cleanedTaskIds}`”的破坏性签名变更，否则需同步改动上述全部调用方；建议保留 fork 现有布尔/`string或null` 返回，另以副作用返回或日志输出清理信息。引入 `formatDependencyCleanupMessage` 需先有 `dependency-graph.ts`（见 CORE-23）；若暂不入图模块，可用 fork 本地等价提示替代，避免引入缺失模块依赖。 |
 | **迁移优先级** | B类（评估合入）— 初判 AB → 深度分析 B类：修复 fork 真实存在的 demote 不清引用缺陷，价值高，但改动面大（返回类型 + 缺失模块依赖 + 多调用方），须参考重写并保护现有接口。 |
-| **迁移建议** | ②参考重写：在 fork `src/core/backlog.ts` 的 `archiveTask`/`demoteTask` 内补“扫描 completed + active 依赖并写回”的逻辑，保留现有返回类型；清理提示本地实现，避免强依赖 `dependency-graph.ts`/`task-links.ts`。 |
+| **迁移建议** | ②参考重写：在 fork `src/core/backlog.ts` 的 `archiveTask`/`demoteTask` 内补“扫描 completed + active 依赖并写回”的逻辑，保留现有返回类型；清理提示本地实现，避免强依赖 `dependency-graph.ts`/`task-links.ts`。 **已落地（2026-09-22，[BACK-691](/task/691)，与 CORE-3 合并）**：按本行建议保留布尔/string 返回，清理经 `collectVacatedIdCleanup`（active + completed 双语料）落地，completed 记录 `fs.saveTask` 原地写回（store 经 saveTask patch 自动发布，无需上游的 refreshCompletedTask）；上报走 `onVacatedIdCleanup` 回调（CLI/MCP 一行、server 响应附加 cleanedTaskIds、TUI footer 拼接），未改 15 处调用方；`demoteTaskWithUpdates`（task edit -s Draft）同锁段清理且降级草稿自引用一并清洗；task complete 不清理；ID 复用策略未动。上游的 withVacatedIdCleanup 锁内重扫/失败标签（archiveState/demotionState）未移植，残留窗口与上游一致（创建后引用不锁、ID 复用前显示为 unknown task ID）。 |
 
 ---
 
@@ -536,7 +536,7 @@ draft 不导入，C 类
 | **适合迁移的内容** | 仅增量：上游 `normalizeDueDate` 对“遗留带时间 due_date 只保留日”的容忍处理（`src/utils/due-date.ts` 可参考引入为独立小工具，不影响 actuals）；以及 web `type="date"` 输入、CLI `--due-date` 帮助文案等 fork 可能仍带 `(UTC)` 后缀处的清理。 |
 | **需要排除/调整的内容** | 排除清单 §2：严禁移除/改写 fork 的 `src/utils/date-utc.ts` 与 `localDateTimeToStoredUtc`，不得把 `actualStart`/`actualEnd` 的 UTC date-time 语义改为 date-only；不得移除 Markdown 解析中对 `due_date`/`planned_start`/`planned_end` 的支持；保持“存储 UTC、展示本地时区”策略。上游 `utc-datetime.ts` 在 fork 不存在，对应删除动作不适用。 |
 | **迁移优先级** | B类（评估合入）— 初判 AB → 深度分析 B类：核心语义 fork 已满足，主要工作是确认无回退 + 选择性补强；须以排除清单 §2 为硬约束，避免误伤 actuals。 |
-| **迁移建议** | ②参考重写：核对 fork 各 surface 是否仍对 dueDate 显示 `(UTC)` 或 datetime 输入，若有则对齐为 date-only；引入 `normalizeDueDate` 仅用于 dueDate，绝不触及 `date-utc.ts`/`localDateTimeToStoredUtc`（actualStart/actualEnd）。 |
+| **迁移建议** | ②参考重写：核对 fork 各 surface 是否仍对 dueDate 显示 `(UTC)` 或 datetime 输入，若有则对齐为 date-only；引入 `normalizeDueDate` 仅用于 dueDate，绝不触及 `date-utc.ts`/`localDateTimeToStoredUtc`（actualStart/actualEnd）。 **已落地（2026-09-22，[BACK-690](/task/690)）**：核对结论 = 核心 fork 已满足（存储 / CLI / Web / TUI viewer 全线 date-only，dueDate 不经 localDateTimeToStoredUtc），唯一残留是 overview 的 `formatDateForStats` 把 date-only 拼成 `T00:00:00Z` 再按本地时区渲染、西半球提前一天；修复 = date-only 分支改本地午夜解析（去 Z），带时间的 UTC 时间戳分支不动，TZ 钉定子进程用例（America/Los_Angeles -8 / Pacific/Kiritimati +14）验证判别（回退态恰好 -8 一条红）。`normalizeDueDate` 未引入：fork `normalizeDate` 已保 date-only 基线，对遗留带时间 due_date 的「只保留日」容忍差异未处理（极老数据才触发，web `type="date"` 输入会显示为空），留待遇到真实数据再议。 |
 
 ---
 
@@ -666,7 +666,7 @@ draft 不导入，C 类
 |----------|------|
 | CORE-22 BACK-651 | 初判 AB → A类：纯重构，fork 已具备被调函数，直接复用 |
 | CORE-23 BACK-656 | 初判 AB → B类：真空能力，须整体引入 dependency-graph 模块 |
-| CORE-24 BACK-658 | 初判 AB → A类：小改动修复 fork 已知 bug，依附 CORE-23 |
+| CORE-24 BACK-658 | 初判 AB → A类：已完成目标不再被拒，已由 [BACK-664](/task/664) 落地；不依附 CORE-23，归档按设计排除 |
 | CORE-25 BACK-659 | 初判 AB → A类：board 孙级缺失 bug，封闭修复 |
 | CORE-26 BACK-660 | 初判 AB → B类：真实缺陷，structured-sections 近乎重写，参考移植 |
 | CORE-27 BACK-662 | 初判 AB → A类：JSON 摘要增量字段，零冲突 |
@@ -696,12 +696,12 @@ draft 不导入，C 类
 | 分析维度 | 内容 |
 |----------|------|
 | **任务核心目的** | 在 TUI 任务摘要（看板卡片行、任务列表行）显示由 acceptance criteria 实时推导的完成进度条（10/5 格）。 |
-| **变更内容摘要** | 新增 `src/ui/acceptance-criteria-progress.ts:1-23`（`formatAcceptanceCriteriaProgress`，isInProgress 过滤 + 10/5 格）；`src/ui/board.ts:122-141` 的 `formatTaskListItem` 接入进度前缀、`buildRenderedTaskListItems:143-153` 增加 `availableWidth`；`src/ui/status-icon.ts:13-25` 的 `getStatusStyle` 改为小写键 + `.trim().toLowerCase()` 归一化；`src/ui/task-viewer-with-search.ts:65-88` 新增导出 `formatTaskViewerListItem` 并接入列表 itemRenderer，resize 时 `taskList?.updateItems()`。 |
-| **与当前定制代码的交集风险** | 低。fork 已自研 `src/ui/acceptance-criteria-progress.ts`（几乎逐字一致，仅 `WIDE_PROGRESS_MIN_WIDTH=32` 见 `acceptance-criteria-progress.ts:4`，上游为 40）；`board.ts:122-141` 的 `formatTaskListItem` 已接入进度条（`board.ts:129-130`）。唯一缺口：`task-viewer-with-search.ts:843-867` 仍用内联 renderer（无 `formatTaskViewerListItem` 导出，grep 确认不存在），进度条未出现在任务列表汇总行；`status-icon.ts:13-25` 用精确大小写键，缺 `.toLowerCase()` 归一化。 |
-| **适合迁移的内容** | `formatTaskViewerListItem` 接入任务列表汇总行；`getStatusStyle` 的大小写归一化（仅此一行健壮化）。 |
-| **需要排除/调整的内容** | 保留 fork 的 `WIDE_PROGRESS_MIN_WIDTH=32`（`acceptance-criteria-progress.ts:4`），不要回退为上游 40；保留 fork 已自研的 `formatTaskListItem`/board 接入，不要整体覆盖。 |
-| **迁移优先级** | 初判 AB → 深度分析 B类（评估合入）。核心 formatter 与 board 集成 fork 已实现；仅任务列表汇总行与 status 大小写归一化属增量增强，非必须。 |
-| **迁移建议** | ②参考重写：把 `task-viewer-with-search.ts:843-867` 的内联 renderer 改为调用进度感知逻辑（`getStatusIcon`+`formatAcceptanceCriteriaProgress`），并给 `getStatusStyle` 加 `.trim().toLowerCase()`。 |
+| **变更内容摘要** | 新增 `src/ui/acceptance-criteria-progress.ts:1-23`（`formatAcceptanceCriteriaProgress`，isInProgress 过滤 + 10/5 格）；**实测补齐（2026-09-20）该文件在本迁移窗口内被后续三次提交覆盖，本条只是首版**：`371132106`（BACK-657，08-30）把 `█`/`░` 方块字形换成纯 ASCII `#`/`-`（Block Elements 在缺字形终端会渲染成空白或 `?`），`508e96692`（BACK-666，08-31）压成 5/3 格并给填充段上色（green/yellow/red，见 `completionColor`），`5d727d61b`（BACK-642，08-30）另加 CLI / MCP 的 `(ac: x/y)` 后缀；故 **v1.52.0 的实际形态是 `[####-] 4/5`（5/3 格 ASCII + 彩色），而非首版的 10/5 格方块**，三者的关系见 TUI-7 / TUI-9 / SRV-2。`src/ui/board.ts:122-141` 的 `formatTaskListItem` 接入进度前缀、`buildRenderedTaskListItems:143-153` 增加 `availableWidth`；`src/ui/status-icon.ts:13-25` 的 `getStatusStyle` 改为小写键 + `.trim().toLowerCase()` 归一化；`src/ui/task-viewer-with-search.ts:65-88` 新增导出 `formatTaskViewerListItem` 并接入列表 itemRenderer，resize 时 `taskList?.updateItems()`。 |
+| **与当前定制代码的交集风险** | 低。**实测补齐（2026-09-20）**：详情页的 AC **计数**并非本轮新增——`TaskDetailsModal` 的段标题早就写成 `${acceptanceCriteria} (${checkedCount}/${totalCount})`（`TaskDetailsModal.tsx:1722`，`src/web/locales/zh-CN.ts:221` 渲染为「验收标准」，该计数可追溯至 `c13a14d14`，2025-09-07，早于本迁移窗口），BACK-569 并未改动该文件。故 fork 的详情页里「标题计数」与「进度条」是**并存的两层**，fork 早已自行落地同能力（BACK-569，`src/ui/acceptance-criteria-progress.ts` 与上游逐字等价，此前唯一差异为 `WIDE_PROGRESS_MIN_WIDTH` 见 `:9`（fork 32 / 上游 40），落地 [BACK-675](/task/675) 时已对齐为 40）；`board.ts:122-140` 的 `formatTaskListItem` 已接入进度前缀、`board.ts:493-494` 按列宽算 `availableWidth`。**两侧插入点原为恰好相反（2026-09-20 实测复核）**：~~fork **详情页有**进度行（`task-viewer-with-search.ts:1551-1556`，位于 `generateDetailContent` 内）而**列表行没有**（`:853-867` 仍是内联 renderer）；上游则**列表行有**（`formatTaskViewerListItem`，`:85` 调用）而**详情页没有**（v1.52.0 的 AC 段直接从 `formatHeading` 接 `buildAcceptanceCriteriaItems`，无 `progressLine` 一行）~~——**后续修正（2026-09-20，用户实测后定案）**：详情页不绘制进度条，`generateDetailContent` 的 AC 段回到「标题 + 清单」，该插入点差异随之消失，两侧形态一致（条形只在行上），自研的宽度管线一并还原。`status-icon.ts:13-25` 确实未加 `.trim().toLowerCase()`，但进度判断在 formatter 内自带归一化，功能不受影响。 |
+| **适合迁移的内容** | 无。fork 的 board 卡片行已显示实时进度（~~详情页摘要区亦并列显示~~，**后续修正（2026-09-20）**已移除该进度行）；上游有、fork 无的那一处是「task view 左侧列表行」，属两种形态的取舍，非缺失；上游另有的 `status-icon.ts` 大小写归一化在 fork 无独立价值（见「需要排除/调整的内容」）。 |
+| **需要排除/调整的内容** | **实测补齐（2026-09-20）**：① 不得照搬上游对 `status-icon.ts` 映射键的英文状态名重写——fork 的 status 集合可配置，且进度判断已自带归一化；② 上游 AC #8「CLI and MCP output remain unchanged」与 fork 现状相反，fork 的 `formatAcceptanceCriteriaSummarySuffix`（`acceptance-criteria-progress.ts:13`）已由 `src/cli.ts:2597`、`src/cli.ts:2630`、`src/mcp/tools/tasks/handlers.ts:99` 消费，CLI/MCP 列表主动输出 `(ac: x/y)`，属 fork 自研扩展，照上游重写会与之对撞；③ ~~保留 `WIDE_PROGRESS_MIN_WIDTH=32`，不要回退为上游 40~~——**后续修正（2026-09-20）**：[BACK-675](/task/675) 实测该阈值是两侧唯一可变项（宽度公式两侧逐字相同），分歧集中在特定窗口（看板 3 列 = 终端 108–131 列，同为 36 列宽时 fork 显示 5 格而上游 3 格），故**改为对齐上游 40**。 |
+| **迁移优先级** | 初判 AB → 深度分析 B类 → **并入 BACK-675（2026-09-20 定案）**：fork 的 BACK-569 早于上游 BACK-551 落地，board 卡片与详情页已覆盖上游 AC 的实质（就能力而言可判「已满足」）；但上游该文件在窗口内连续演进三次（ASCII → 紧凑彩色 → CLI/MCP 后缀），故本条不再作为独立的「已满足」条目结案，而与 TUI-7 / TUI-9 合并为 [BACK-675](/task/675) 一次性落到最终形态。 |
+| **迁移建议** | **定案修正（2026-09-20，用户决定）**：本条不再单列。它与 TUI-7 / TUI-9 同属 `src/ui/acceptance-criteria-progress.ts` 的连续演进，三者已合并为一个任务 [BACK-675](/task/675)，直接落到上游最终形态（ASCII `#`/`-` + 彩色 + 5/3 格 + clamp 取整），不做分步。原先的「已满足 / 不迁移」判定只针对「fork 是否已有等价能力」，该结论仍成立（board 卡片行可显示进度，见「交集风险」行；~~详情页进度行~~ **后续修正（2026-09-20）**已移除）；但既然 TUI-7 / TUI-9 要做，把 TUI-1 的首版形态一并收敛到最终版更省事，故升回 B 类并入 BACK-675。需登记的剩余缺口仅 Testing：上游 AC #9 要求「TUI rendering tests cover partial / none / all-checked / both widths」，fork 的 `src/test/tui-acceptance-criteria-progress.test.ts` 原为 5 pass / 0 fail 且断言全部打在纯函数层，`formatTaskListItem`（`src/test/strip-tags.test.ts:38-60` 用 `status: "To Do"` 的 fixture）无含 AC 的任务行断言。**后续修正（2026-09-20）**：测试扩至 18 pass，补上 board 行（含看板自算列宽 36 的窄列场景）与「详情段不出现条形」两面。该草稿已删除、未升级。 **已落地（2026-09-20）**。 |
 
 ---
 
@@ -711,11 +711,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 帮助弹窗在终端尺寸变化 / 行被换行包裹时重新排版、按实际渲染行数推导滚动边界并 clamp 偏移，关闭时移除 resize 监听。 |
 | **变更内容摘要** | `src/ui/components/help-popup.ts:56-131` 新增 `HELP_POPUP_WIDTH`、`getHelpText()`、`getMaxScrollOffset()`、`applyLayout()`、`onResize()`，并在 `setImmediate` 调 `applyLayout`、注册 `screen.on("resize", onResize)`、`finish` 时 `removeListener("resize", onResize)`；`src/ui/components/filter-popup.ts:18` 的 `ScrollableViewport` 类型增加 `getScrollHeight(): number`。 |
-| **与当前定制代码的交集风险** | 低。fork 的 `createPopupChrome` 已具备 `reflow`（`filter-popup.ts:128-147`），但 fork 的 `openHelpPopup`（`help-popup.ts:91-147`）**无** resize 处理：无 `onResize`/`applyLayout`/`getMaxScrollOffset`/`getScrollHeight`，`maxScrollOffset` 在 `help-popup.ts:134` 静态计算，且 `finish`（`help-popup.ts:121-127`）未移除 resize 监听。fork 自研帮助弹窗共享同一缺陷。 |
-| **适合迁移的内容** | `applyLayout`+`onResize` 重排逻辑、`getScrollHeight` 类型补充、`removeListener` 清理。 |
+| **与当前定制代码的交集风险** | 低。fork 的 `createPopupChrome` 已具备 `reflow`（`filter-popup.ts:128-147`），但 fork 的 `openHelpPopup`（`help-popup.ts:91-147`）**无** resize 处理：无 `onResize`/`applyLayout`/`getMaxScrollOffset`/`getScrollHeight`，`maxScrollOffset` 在 `help-popup.ts:134` 静态计算，且 `finish`（`help-popup.ts:121-127`）未移除 resize 监听。fork 自研帮助弹窗共享同一缺陷。 **已落地（2026-09-20，[BACK-677](/task/677)）**：真实根因是弹窗用 `top: "center"`（blessed 在**绘制时**才解析，resize 后弹窗自己就重新居中了），而 backdrop 是**绝对坐标**（创建时算一次）→ 窗口变矮时弹窗上移/越界、灰底留在原地。真机式探针：80x24 → 80x12 旧实现灰带比弹窗多出 7 行；修复后 `popup top=1 h=10` / `backdrop 0..12`。 |
+| **适合迁移的内容** | `applyLayout`+`onResize` 重排逻辑、`getScrollHeight` 类型补充、`removeListener` 清理。 **已落地（2026-09-20，[BACK-677](/task/677)）**：接入 `createPopupChrome` 早已返回的 `reflow`，新增 `getMaxScrollOffset`/`applyLayout`/`onResize`，并给 `filter-popup.ts` 的 `ScrollableViewport` 补 `getScrollHeight`。 |
 | **需要排除/调整的内容** | 无排除清单冲突（纯 TUI 弹窗）。保留 fork 的快捷键集合（`help-popup.ts:129` 的 `escape/q/Q/?`）。 |
-| **迁移优先级** | 初判 AB → 深度分析 B类（必须合入）。fork 确受影响，缺陷代码在 `help-popup.ts:91-147` 缺 resize 分支。 （口径校正：帮助弹窗鲁棒性属体验补丁，由 A 类归入 B 类评估。） |
-| **迁移建议** | ②参考重写：将上游 `applyLayout/onResize/getMaxScrollOffset` 接入 fork `openHelpPopup`，并给 `ScrollableViewport` 类型补 `getScrollHeight`；关闭时 `removeListener`。 |
+| **迁移优先级** | 初判 AB → 深度分析 B类（必须合入）。fork 确受影响，缺陷代码在 `help-popup.ts:91-147` 缺 resize 分支。 （口径校正：帮助弹窗鲁棒性属体验补丁，由 A 类归入 B 类评估。） **已落地（2026-09-20，[BACK-677](/task/677)）**：`help-popup.test.ts` 8 用例 / 48 断言通过；回退验证只注掉 backdrop 那 4 行即恰好 1 条红（只注 top 一行会假绿——stale 值 0 与正确值 0 相等），证明断言可判别。 |
+| **迁移建议** | ②参考重写：将上游 `applyLayout/onResize/getMaxScrollOffset` 接入 fork `openHelpPopup`，并给 `ScrollableViewport` 类型补 `getScrollHeight`；关闭时 `removeListener`。 **落地说明（2026-09-20，[BACK-677](/task/677)）**：另加 `getHelpPopupHeight` 的 `Math.min(screen.height, preferred)` 上限、`scrollBy` 改读当前 bound、`finish` 里 `removeListener`；探针定位 backdrop 用 `screen.children.find(c => c !== popup && c.type === "box")`。 |
 
 ---
 
@@ -725,11 +725,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 依据选择器实际显示宽度推导 composer 几何，在极端高度下保留完整可编辑行与可见光标；内容放不下时纵向堆叠选择器而非依赖固定断点。 |
 | **变更内容摘要** | `src/ui/components/task-composer.ts` 重写 `getTaskComposerLayout`（`getTaskComposerLayout` + `TaskComposerLayoutOptions` + `getSelectorContentWidths` 用 `Bun.stringWidth`、`stackSelectors` 字段、`PREFERRED_POPUP_WIDTH=72` 等）；`openTaskComposer` 中 `applyLayout`、`setFieldGeometry`、字段导航按 `stackSelectors` 分支；新增 `import { DEFAULT_STATUSES }`。 |
-| **与当前定制代码的交集风险** | 中。fork 的 `getTaskComposerLayout`（`task-composer.ts:108-126`）使用固定断点：`compact = screenWidth < 64 或 screenHeight < 20`、`popupWidth: screenWidth < 76 ? "96%" : 72`，无 `stackSelectors`/`getSelectorContentWidths`/`Bun.stringWidth`（grep 确认无这些符号），即上游改进的动态堆叠在 fork 缺失。改动局限于 composer 自身，不触及排除清单领域。 |
-| **适合迁移的内容** | 动态 `stackSelectors` 推导与字段几何分支、`getSelectorContentWidths` 宽度计算。 |
+| **与当前定制代码的交集风险** | 中。fork 的 `getTaskComposerLayout`（`task-composer.ts:108-126`）使用固定断点：`compact = screenWidth < 64 或 screenHeight < 20`、`popupWidth: screenWidth < 76 ? "96%" : 72`，无 `stackSelectors`/`getSelectorContentWidths`/`Bun.stringWidth`（grep 确认无这些符号），即上游改进的动态堆叠在 fork 缺失。改动局限于 composer 自身，不触及排除清单领域。 **已落地（2026-09-20，[BACK-678](/task/678)）**：实测 80x8 时 form 视口只剩 1 行（3 行带框文本输入只画出顶边框，无编辑行、无光标）；80 列时状态选择器 20 格 < `Status: In Progress ▼` 需要的 21 格 → 尾部 ▼ 被裁。 |
+| **适合迁移的内容** | 动态 `stackSelectors` 推导与字段几何分支、`getSelectorContentWidths` 宽度计算。 **已落地（2026-09-20，[BACK-678](/task/678)），但 fork 未移植 `stackSelectors`**：fork 无 Type 选择器，且 fork 的 compact 本来就已把两个选择器各自铺满一行，该字段在 fork 恒为死状态；实际落地的是 `popupHeight`/`popupWidth` 几何重算，以及把 `compact` 改由「选择器内容宽度 / 可见表单高度」推导。 |
 | **需要排除/调整的内容** | 保留 fork 自研的 composer 其余结构（帮助文本、字段集）；不要覆盖 fork 已有的 compact 模式语义。 |
-| **迁移优先级** | 初判 AB → 深度分析 B类（评估合入）。fork 已有 compact 兜底，非崩溃级缺陷；属极端尺寸可用性增强。 |
-| **迁移建议** | ②参考重写：把上游 `stackSelectors` 推导与几何分支并入 fork `getTaskComposerLayout`/`applyLayout`/导航逻辑。 |
+| **迁移优先级** | 初判 AB → 深度分析 B类（评估合入）。fork 已有 compact 兜底，非崩溃级缺陷；属极端尺寸可用性增强。 **已落地（2026-09-20，[BACK-678](/task/678)）**：新增 `tui-task-composer-layout.test.ts`（4 用例 / 72 断言）+ 既有 `tui-task-composer.test.ts` 2 条；回退整份实现恰好 6 条新断言红。证据边界：win32 下 `createScreen` 传 `mouse: false`、`screen.lines` 在非 TTY 下为空，故只能停在 widget 几何层。 |
+| **迁移建议** | ②参考重写：把上游 `stackSelectors` 推导与几何分支并入 fork `getTaskComposerLayout`/`applyLayout`/导航逻辑。 **落地说明（2026-09-20，[BACK-678](/task/678)）**：实现按 fork 自定——常量 `TEXT_INPUT_HEIGHT`/`POPUP_*_CHROME`/`PREFERRED_POPUP_WIDTH` + `getLongestSelectorWidth`（用 `Bun.stringWidth` 量**所有**选项，含 Draft/None），不搬上游的 `stackSelectors` 字段与 `getSelectorContentWidths` 命名，`TaskComposerLayoutOptions` 只带 `statuses/priorities`。 |
 
 ---
 
@@ -739,11 +739,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 让所有字段的指针点击走统一的 focus 过渡（文本字段进入输入态、选择器打开 picker），统一焦点样式与滚动来源。 |
 | **变更内容摘要** | `src/ui/components/task-composer.ts:705-718` 将原本每个 selector 的 `widget.on("click", () => void openPicker(field))` 改为遍历 `["title","description","status","type","priority"]` 调 `focusField(field)`，并对 status/type/priority 额外 `openPicker`，返回 `false` 阻止冒泡自动聚焦。 |
-| **与当前定制代码的交集风险** | 低。fork 已有 `focusField`（`task-composer.ts:454`）。fork 仅在 `task-composer.ts:695-702` 对 `status/priority` 绑 `widget.on("click", () => void openPicker(field))`；文本字段（title/description）点击**无** focus，type picker 点击**未**接入（fork `openPicker` 仅接受 `status/priority`，见 `task-composer.ts:557`）。 |
-| **适合迁移的内容** | 文本字段点击 → `focusField`；type 选择器点击 → `openPicker`（需扩 fork `openPicker` 签名到 `status/type/priority`）。 |
-| **需要排除/调整的内容** | 无排除清单冲突。保留 fork 的 `focusField` 实现。 |
-| **迁移优先级** | 初判 AB → 深度分析 B类（评估合入）。选择器点击已可用，仅文本/type 点击增强。 |
-| **迁移建议** | ②参考重写：在 fork `openTaskComposer` 增加文本字段 click→focusField、type 点击→openPicker，并放宽 `openPicker` 形参类型。 |
+| **与当前定制代码的交集风险** | 低 → **已落地（2026-09-20，[BACK-679](/task/679)）**：fork 已有 `focusField`。缺陷比「未接入」更深——两个文本框根本没绑 `click`（`inputOnFocus: false`），选择器的 `click` 既不先走 `focusField` 也不返回值，于是 blessed 祖先链 `element click` 把同一 widget 二次聚焦，而 `screen.focused` setter 的 `_focus(el, old)` **无条件** `old.emit("blur")` → 自 blur → `readInput` 刚建立的读态立刻被 `_done` 翻回 false（随后按 Escape 落到 `done(null, null)` 抛 `TypeError: done is not a function`）；真机 100x30 复现为「点描述后 `screen.focused` 确是 description，但 `_reading=undefined`、边框仍灰、Title 仍黄，输入落不进去」。 |
+| **适合迁移的内容** | 文本字段点击 → `focusField`。**实测补齐（2026-09-20）**：上游遍历里的 type 选择器**不在 fork surface**（fork 无 Type 选择器，composer 字段只有 Title / Description / Status / Priority），故「type 点击 → `openPicker` 并放宽 `openPicker` 形参」不适用，未移植。 |
+| **需要排除/调整的内容** | 无排除清单冲突。保留 fork 的 `focusField` 实现与自研选择器；上游的 type 分支整体剪掉，`openPicker` 签名不放宽。 |
+| **迁移优先级** | 初判 AB → 深度分析 B类（评估合入）→ **已落地（2026-09-20，[BACK-679](/task/679)）**：选择器点击原本已可用，文本点击属体验增强、自包含。 |
+| **迁移建议** | ②参考重写，**实现按 fork 自定（2026-09-20）**：四类字段的 `click` 统一汇入 `focusField`（文本复用 `readInput`、选择器调 `openPicker`），handler `return false` 阻断冒泡；回归用例走真实鼠标派发路径（`program.emit("mouse", ...)`，坐标取渲染后 `lpos` 中心）。 |
 
 ---
 
@@ -771,7 +771,7 @@ draft 不导入，C 类
 | **适合迁移的内容** | 升 `neo-neo-bblessed` 至 `1.0.10`（package.json/bun.lock/bun.nix 三处），并补 `src/test/tui-emoji-width.test.ts` 回归测试。 |
 | **需要排除/调整的内容** | 无排除清单冲突。若 fork 后续有其它对 1.0.9 的依赖假设需一并验证。 |
 | **迁移优先级** | 初判 AB → 深度分析 B类（必须合入）。fork 确认处于 1.0.9 且无补丁，缺陷真实；升级是纯依赖变更、风险低。 （口径校正：emoji 双宽属渲染修正，不损坏数据，由 A 类归入 B 类评估。） |
-| **迁移建议** | ①直接复用：在三处清单将版本改为 `1.0.10`（保持 sha512 与上游一致），新增回归测试；执行 `bun install` 后在 Windows 终端验证 emoji 双宽。 |
+| **迁移建议** | ①直接复用：在三处清单将版本改为 `1.0.10`（保持 sha512 与上游一致），新增回归测试；执行 `bun install` 后在 Windows 终端验证 emoji 双宽。**已落地（2026-09-20）**：[BACK-676](/task/676) 在三处清单把版本升到 `1.0.10`、补上 sha512 与 Nix hash，并新增 `src/test/tui-emoji-width.test.ts` —— 本地无 `patches/` 目录，升级即全部改动；新用例 4 pass／0 fail，仓库外对照 `1.0.9` 时 emoji 与 layout regex 三条变红、未变宽度的一条仍绿。 |
 
 ---
 
@@ -783,9 +783,9 @@ draft 不导入，C 类
 | **变更内容摘要** | `src/ui/acceptance-criteria-progress.ts:9-13` 新增 `FILLED_CELL="#"`/`EMPTY_CELL="-"`，`formatAcceptanceCriteriaProgress` 末行由 `█`/`░` 改为 `FILLED_CELL`/`EMPTY_CELL`；并加说明注释（blessed 仅保证 DEC Special Graphics 回退，ASCII 低于 `~` 绕过所有字符集翻译）。 |
 | **与当前定制代码的交集风险** | 低（Windows 相关需核实）。fork 的 `acceptance-criteria-progress.ts:21` 仍用 `█`.repeat/`░`.repeat（Block Element 字形），**无** ASCII 降级 → 在中文 Windows 旧控制台（代码页 GBK/非 UTF-8 locale）或缺失字形的字体下会渲染为 `?`/空。 |
 | **适合迁移的内容** | 将填充/空白字形改为 `#`/`-`（含常量抽取）。 |
-| **需要排除/调整的内容** | 注意与 TUI-9 合并实施（TUI-9 在 ASCII 基础上加颜色与压缩格数，是最终形态）；保留 fork 的 `WIDE_PROGRESS_MIN_WIDTH=32` 若沿用上游最终版函数。 |
+| **需要排除/调整的内容** | 注意与 TUI-9 合并实施（TUI-9 在 ASCII 基础上加颜色与压缩格数，是最终形态）；阈值取上游的 `WIDE_PROGRESS_MIN_WIDTH=40`（**后续修正（2026-09-20）**：原拟保留 fork 的 32，见 TUI-1 行的后续修正）。 |
 | **迁移优先级** | 初判 AB → 深度分析 B类（必须合入）。fork 确用 Block Element 字形且无降级，缺陷在 `acceptance-criteria-progress.ts:21`，对 Windows 非 UTF-8 环境确为真实风险。 （口径校正：字形降级属兼容性补丁，由 A 类归入 B 类评估。） |
-| **迁移建议** | ②参考重写：建议与 TUI-9 一并实施，直接采用上游最终 ASCII+彩色+压缩格版（见 TUI-9）。 |
+| **迁移建议** | ②参考重写：**已与 TUI-1 / TUI-9 合并为单一任务 [BACK-675](/task/675)**（2026-09-20 定案）。三者同属 `src/ui/acceptance-criteria-progress.ts` 的连续演进，分步实施会中途留下「ASCII 但格数未压缩」的中间态，故一次性重写 `formatAcceptanceCriteriaProgress` 到上游最终形态：`FILLED_CELL="#"` / `EMPTY_CELL="-"` + 5/3 格 + `completionColor` 上色 + clamp 取整。阈值对齐上游的 `WIDE_PROGRESS_MIN_WIDTH=40`（**后续修正（2026-09-20）**：原拟保留 fork 32，实测会在 108–131 列窗口与上游分歧）。 **已落地（2026-09-20）**。 |
 
 ---
 
@@ -811,9 +811,9 @@ draft 不导入，C 类
 | **变更内容摘要** | `src/ui/acceptance-criteria-progress.ts` 引入 `import { wrapStatusColor }`、`WIDE_PROGRESS_CELLS=5`/`COMPACT_PROGRESS_CELLS=3`、`completionColor()`，重写 `formatAcceptanceCriteriaProgress` 产出 `[{red-fg}#{/}----] 1/7` 形式并 clamp。依赖 TUI-7 的 `FILLED_CELL`/`EMPTY_CELL`。 |
 | **与当前定制代码的交集风险** | 低。fork 当前既无 ASCII（见 TUI-7）也无颜色/压缩（10/5 格、Block 字形）。上游此提交是 TUI-7 之后对同文件的最终演进，fork 可直接采用该最终形态，避免分步回退。 |
 | **适合迁移的内容** | 最终的 `formatAcceptanceCriteriaProgress`（ASCII+彩色+5/3 格+clamp 取整）。 |
-| **需要排除/调整的内容** | 不要保留 fork 旧 `█`/`░` 与 10/5 格（会被此提交覆盖）；可选择保留 fork 的 `WIDE_PROGRESS_MIN_WIDTH=32`（上游为 40），不影响颜色/字形语义。 |
+| **需要排除/调整的内容** | 不要保留 fork 旧 `█`/`░` 与 10/5 格（会被此提交覆盖）；阈值取上游的 `WIDE_PROGRESS_MIN_WIDTH=40`（**后续修正（2026-09-20）**：原拟保留 fork 32，见 TUI-1 行）；该选择不影响颜色/字形语义。 |
 | **迁移优先级** | 初判 AB → 深度分析 B类（必须合入）。与 TUI-7 共同补齐 fork 既缺失的降级与可读性；属上游同范围最终形态，应一并合入。 （口径校正：彩色进度条属展示优化，由 A 类归入 B 类评估。） |
-| **迁移建议** | ②参考重写：以本提交为准重写 `acceptance-criteria-progress.ts` 的 `formatAcceptanceCriteriaProgress`（叠加 TUI-7 的 ASCII 常量），并保留 fork 的 `WIDE_PROGRESS_MIN_WIDTH=32`。 |
+| **迁移建议** | ②参考重写：**已与 TUI-1 / TUI-7 合并为单一任务 [BACK-675](/task/675)**（2026-09-20 定案），以本提交的最终形态为准重写 `formatAcceptanceCriteriaProgress`（叠加 TUI-7 的 ASCII 常量），阈值对齐上游的 `WIDE_PROGRESS_MIN_WIDTH=40`（**后续修正（2026-09-20）**）。**fork 侧另需补一处上游没有的活**：~~详情页调用 `formatAcceptanceCriteriaProgress(task)` 时未传宽度（`task-viewer-with-search.ts:1552`），恒走宽格路径，故窄屏下详情页不会退到 3 格——需把详情页内宽传进去并在 resize 时重绘；这是「还考虑了窄屏幕」的落地重点~~——**后续修正（2026-09-20，用户实测后定案）**：该处不是补宽度而是**移除条形本身**，详情页不再绘制进度条（宽度管线一并还原），「窄屏幕」只落在 board 行。 **已落地（2026-09-20）**。 |
 
 ---
 
@@ -927,11 +927,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 在 Web 任务卡与任务列表上展示验收标准进度（checked/total）。 |
 | **变更内容摘要** | `src/web/components/AcceptanceCriteriaProgress.tsx`（bd5108d70）：新增 `getAcceptanceCriteriaProgressCounts` 与 SVG 组件；`TaskCard.tsx`、`TaskList.tsx` 引用。 |
-| **与当前定制代码的交集风险** | 低 — fork 已有自研 `AcceptanceCriteriaProgress`（variant cells/bar），且在 `TaskCard.tsx:246`（`variant="bar"`）与 `TaskList.tsx:813`（`cells={10}`）均已展示进度。能力覆盖。 |
+| **与当前定制代码的交集风险** | 低 — fork 已有自研 `AcceptanceCriteriaProgress`（variant cells/bar），且在 `TaskCard.tsx:251` 与 `TaskList.tsx:856`（**均已是 `variant="bar"`**）均已展示进度。能力覆盖。**实测补齐（2026-09-19）**：列表侧原先的 `cells={10}` 已由 [BACK-645](/task/645) 的定宽条重构改为 bar。 |
 | **适合迁移的内容** | 上游的 `getAcceptanceCriteriaProgressCounts` 纯函数（仅 In Progress 且含 criteria 才计数）语义可对照；fork 现用内联 `checked/total` 计算。 |
-| **需要排除/调整的内容** | 排除上游组件整体替换（fork 用 `variant` API，上游用 `density` API；且 fork 列表用 `cells` 变体，上游改用 SVG ring，见 WEB-10）。 |
+| **需要排除/调整的内容** | 排除上游组件整体替换（fork 用 `variant` API，上游用 `density` API；fork 两处调用点均为 `bar`，上游改用 SVG ring，见 WEB-10 定案）。 |
 | **迁移优先级** | C类（跳过）— 初判 A → 深度分析 C：AC 进度已在卡片与列表展示，无净增量。 |
-| **迁移建议** | ③忽略；视觉升级见 WEB-10。 |
+| **迁移建议** | ③忽略（视觉升级见 WEB-10，已定案不做）。 |
 
 ---
 
@@ -940,12 +940,12 @@ draft 不导入，C 类
 | 分析维度 | 内容 |
 |----------|------|
 | **任务核心目的** | 依赖选择器自动补全只建议本地可解析任务，服务端把缺失依赖的 CLI 提示改写为 Web 友好文案。 |
-| **变更内容摘要** | `DependencyInput.tsx`（2eb7d5e82）：新增 `suggestableTasks?` prop，建议源改 `suggestionSource`；`TaskDetailsModal.tsx` 打开时 `apiClient.fetchTasks({ crossBranch: false })` 取本地列表；`server/index.ts` 新增 `LOCAL_TASK_LOOKUP_HINT`/`WEB_TASK_LOOKUP_HINT` 与 `formatErrorForWeb` 改写 create/update 错误。 |
-| **与当前定制代码的交集风险** | 中 — fork 的 `DependencyInput.tsx` 自研，建议源为 `availableTasks`（全量语料），未区分本地/跨分支；服务端无 `LOCAL_TASK_LOOKUP_HINT`。跨分支任务被建议后保存可能因上游校验失败而报错（与上游修复前缺陷同源）。 |
-| **适合迁移的内容** | ① `suggestableTasks` prop + 本地建议过滤逻辑；② 服务端 `formatErrorForWeb` 把 CLI「backlog browser」提示改写为 Web 文案。 |
-| **需要排除/调整的内容** | 排除对 `DependencyInput` 既有 chip 解析（fork 用 `onTaskClick`，见 WEB-13）的覆盖；`fetchTasks({ crossBranch:false })` 需确认 fork 的 `apiClient.fetchTasks` 支持该参数（fork 搜索走 `apiClient.search`，需适配）。 |
-| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B：避免跨分支依赖误选的体验改进，fork 当前可能仍有该缺陷，值得合入但需对接 fork 的 `availableTasks`/搜索 API。 |
-| **迁移建议** | ②参考重写：在 fork `DependencyInput.tsx` 加 `suggestableTasks` 并改 `suggestionSource`；服务端错误文案改写独立于 fork 日期/状态体系，可直接借鉴。 |
+| **变更内容摘要** | 上游 `2eb7d5e82`（closes #927）：`DependencyInput.tsx` 新增 `suggestableTasks?` prop 与 `const suggestionSource = suggestableTasks ?? availableTasks`，只作用于补全过滤（chip 仍走全量 `availableTasks`）；`TaskDetailsModal.tsx` 以 `useMemo` 从 `availableTasks.filter(isLocalEditableTask)` 得本地列表，再经 `buildTaskIdIndex`/`resolveTaskReference` 剔掉「规范 ID 已被别的文件认领」的候选；`server/index.ts` 新增 `WEB_TASK_LOOKUP_HINT` 与 `formatErrorForWeb`，把既有常量 `LOCAL_TASK_LOOKUP_HINT`（上游 `src/utils/task-path.ts:42`）换成本地口径，套在 create 与 update 两个 handler 上。**注：上游 commit 自述里写的 `apiClient.fetchTasks({ crossBranch: false })` 与其实际 diff 不符 —— 真实实现走客户端过滤、并未调用 `fetchTasks`（以 `git show 2eb7d5e82` 为准）。** |
+| **与当前定制代码的交集风险** | 中 → 已消解。**实测补齐（2026-09-19）**：本行原记「fork 未区分本地/跨分支，跨分支任务被建议后保存可能因校验失败而报错（与上游修复前缺陷同源）」——该症状在 fork 不存在：校验语料是 `core.queryTasks()`（`src/utils/task-builders.ts:83-88`），`includeCrossBranch` 默认 `true`（`src/core/backlog.ts:723`），仅显式传 `false` 时 `filterLocalEditableTasks` 才生效（`:735-737`），故跨分支目标是**合法**依赖；web 侧 `availableTasks` 与校验同源（`src/web/App.tsx:1011`），「建议了却存不下」这条链断在校验一侧。探针 `tmp/probe-web5.ts`（仓库外工程造一条只存在于另一分支的任务）：`queryTasks()` → `TASK-9:local-branch`，`queryTasks({includeCrossBranch:false})` → 空，`createTaskFromInput(deps: ['TASK-9'])` → ACCEPTED，`deps: ['TASK-404']` → 仍拒。**口径校正（2026-09-19，依赖选择专项核查）**：该探针工程用的是默认前缀 `task`；本仓库 `task_prefix: "back"`，而 `src/core/task-loader.ts:51-56` 的 `extractConfiguredTaskId` 漏传该前缀（落回默认 `task`）→ `back-*.md` 分支索引恒空且不告警，实测 `queryTasks()` 352 条**全部** `source=local`、0 条跨分支（`tmp/probe-sources.ts`）；另有 `remote_operations: false` 跳过全部 `origin/*`（`src/core/task-loader.ts:491`）。故上一句「跨分支目标是合法依赖」是**设计层**口径（由 `includeCrossBranch` 默认 `true` 保证），与「本仓库当前是否看得到跨分支记录」是两件事：本仓库依赖选择器的候选集实际只有本地工作副本 + 草稿 + 已完成，WEB-5 的错配链在 picker 侧与校验侧都**没有对象**。前缀缺陷修复并开启远程后结论不变（语料与校验仍同源）；也正因此，上游那层 `isLocalEditableTask` 过滤现在照搬近乎空操作、待前缀修复后便开始误剔，仍不应照搬。 |
+| **适合迁移的内容** | 已满足，无需迁移。①「picker 只建议可保存的目标」在 fork 由校验与语料同源天然成立（见上一行实测）；②服务端改写 Web 文案**无对象** —— fork 全仓没有 `LOCAL_TASK_LOOKUP_HINT`/`formatErrorForWeb`，缺依赖文案本就是纯事实陈述「The following dependencies do not exist: … Please create these tasks first or verify the IDs.」（`src/core/backlog.ts:1538`、`:1908`、`:1922`），不含 `backlog browser`（该短语在 fork 只出现在服务端绑定/端口提示 `src/server/index.ts:698`/`:725`、CLI 帮助文案与 `src/guidelines/**` 文档里）。 |
+| **需要排除/调整的内容** | 两处**不能照搬**：①不可移植上游的 `availableTasks.filter(isLocalEditableTask)` —— fork 的 `isLocalEditableTask`（`src/types/index.ts:104-106`）把 `local-branch`/`remote` 判为「非本地可编辑」，照抄会把**实际能保存**的跨分支目标从建议里剔掉，反向制造上游缺陷的镜像；②上游那套客户端去歧义在 fork 不生效 —— 它靠 `indexByCanonicalId`（上游同名，fork 对应 `src/web/utils/task-id-links.ts:51-66`）在**同一规范 ID 出现两次**时删除该条目来 fail-closed，而 fork 的 web 语料已被 `queryTasks()` 把同一身份坍缩成一条记录，索引永远看不到那次碰撞，过滤后仍会留下那条注定存不下的建议。另：`DependencyInput` 的 chip 解析路径（BACK-662 已完成候选、BACK-663 只读下钻、BACK-664/665 的共享 `CompletedBadge`）不得被本次覆盖。 |
+| **迁移优先级** | C类（跳过）— 初判 A → 深度分析 B → **核查改判 C（已满足）**：缺陷链在 fork 不成立，且「有意不照搬上游过滤」是正确选择而非欠账。 |
+| **迁移建议** | ③忽略；**不建立迁移任务**（原拟由 DRAFT#159 承接，该草稿已删除、未升级）。唯一真残余属边缘、且非本条目可解：`backlog/tasks/` 内两份文件同身份（只有 `backlog doctor` 能修的损坏态）时语料只回一行，picker 会照常建议该 ID、保存被 BACK-664 第二道闸 fail-closed 成 `AmbiguousTaskIdError`（`src/test/dependency.test.ts:460`，探针实测提示 `Run 'backlog doctor' to preview a safe repair.`）；要挡住它需把 `/api/tasks/duplicate-ids` 的信息接进 picker 或改服务端语料，不宜伪造一层「本地可解析」过滤。 |
 
 ---
 
@@ -955,11 +955,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 在任务弹窗展示并编辑该任务修改过的文件列表（`modifiedFiles`）。 |
 | **变更内容摘要** | `src/web/components/TaskDetailsModal.tsx`（d0d41ccfb）：新增 `modifiedFiles` 区块（只读展示 + 编辑），含测试 `web-task-details-modal-modified-files.test.tsx`。 |
-| **与当前定制代码的交集风险** | 低 — fork `TaskDetailsModal.tsx` 无 `modifiedFiles` 区块（grep 无命中），属真空白；不触碰 fork 自研的日期/AC/层级区，独立新增。 |
-| **适合迁移的内容** | 整个 `modifiedFiles` 区块（展示 + 编辑输入 + `onSaved` 回写）。 |
-| **需要排除/调整的内容** | 确认 fork 的 `Task` 类型含 `modifiedFiles` 字段（上游随任务引入）；若 fork 类型无该字段需先补类型，不强行覆盖其它字段。 |
-| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B：自包含新增能力，无回退风险，但是否纳入 fork 范围需评估（字段可能未定义）。 |
-| **迁移建议** | ②参考重写：在 fork `TaskDetailsModal.tsx` 侧栏元数据中新增 `modifiedFiles` 小节，对齐 fork 的 `SectionHeader` 风格与 `onInlineMetaUpdate` 机制。 |
+| **与当前定制代码的交集风险** | 低 → **已落地（2026-09-19，[BACK-666](/task/666)）**：fork 原无 `modifiedFiles` 区块，属真空白；本次按 fork 自己的布局落地（三页签面板，见「迁移建议」行），未照搬上游的独立第三节。 |
+| **适合迁移的内容** | 整个 `modifiedFiles` 的展示与编辑能力（列表、新增、删除、经既有 update 接口回写）。**实测补齐（2026-09-19）**：能力整体落地，界面形态改为三页签面板；回写沿用 fork 的 `handleInlineMetaUpdate`。 |
+| **需要排除/调整的内容** | **实测补齐（2026-09-19）**：`Task` 类型与 web 语料都已带 `modifiedFiles`（`src/types/index.ts`），原「可能要先补类型」的顾虑不成立。上游那节有三处**不照搬**：①独立第三节 → fork 与 References/Documentation 合并为页签面板；②硬编码英文字串 → fork 走 i18n（新增 `section.modifiedFiles`/`noModifiedFiles`/`removeModifiedFile`/`metadataTabsLabel`，en/zh-CN/zh-TW/ja 四语言同加）；③`max-h-64` 列表上限 → fork 的 References 列表本就不设上限，只给 Modified 加会让同一面板内两个列表行为不一致，故未采纳（真要加应三个列表同加）。另：上游把 `modifiedFiles` 排除在保存载荷之外，fork 与 `references`/`documentation` 一致地随保存提交，否则创建态新增的路径会丢。 |
+| **迁移优先级** | B类 → **已落地（2026-09-19，[BACK-666](/task/666)）**：字段在 fork 早已定义且已进入 web 语料，原「字段可能未定义」的顾虑不成立；能力自包含，无回退风险。 |
+| **迁移建议** | ②参考重写，**实现方式按 fork 自定（2026-09-19）**：`modifiedFiles` 不做独立小节，而与 References/Documentation 合成一个页签面板（标题栏即页签条，只有当前页签的内容在 DOM 里）；Modified 的行渲染复用 References 的路径 chip（点击开文件预览）但去掉 URL 分支，输入复用 `PathAutocomplete` 且提交时拒绝 `scheme://`；默认页签随状态（`To Do` → References，其余状态在列表非空时 → Modified），点击可覆盖。 |
 
 ---
 
@@ -977,17 +977,17 @@ draft 不导入，C 类
 
 ---
 
-## WEB-8：BACK-644 Keep the board task popup in sync with live task state
+## TUI-14（原 WEB-8）：BACK-644 Keep the board task popup in sync with live task state
 
 | 分析维度 | 内容 |
 |----------|------|
 | **任务核心目的** | 让看板任务弹窗随实时任务状态刷新/关闭（外部或 agent 编辑驱动）。 |
 | **变更内容摘要** | `src/ui/board.ts`（11836ada8，TUI 看板）：`openPopup`/`syncOpenPopup`/`restoreColumnFocus` 由 watcher 漏斗驱动重建/关闭；`src/utils/task-watcher.ts` 新增 `taskContentSignature`；测试 `board-popup-sync.test.ts`。 |
-| **与当前定制代码的交集风险** | 低 — 上游代码全在 **TUI** `src/ui/board.ts`（终端看板弹窗），并非 Web 看板。fork 的 Web 看板是自研 `src/web/components/Board.tsx`（React），不共享 TUI 弹窗逻辑；唯一共有文件 `task-watcher.ts` fork 已存在。 |
-| **适合迁移的内容** | 若 fork 仍需 TUI 看板弹窗同步，可参考 `taskContentSignature` 防回声机制；但不在 Web 迁移范围。 |
-| **需要排除/调整的内容** | 排除把 TUI `board.ts` 改动套用到 fork Web `Board.tsx`；二者架构不同，强行套用会回退自研泳道。 |
-| **迁移优先级** | C类（跳过）— 初判 A → 深度分析 C：实为 TUI 特性，与 Web 自研看板无交集。 |
-| **迁移建议** | ③忽略。补充核实：`0c7d04f8a`（"fix(web): stop the task modal spinning on default empty props"，将 `availableStatuses/availableTasks` 默认提为模块级 `EMPTY_STATUSES`/`EMPTY_TASKS` 常量防无限重渲染）**不属于 BACK-644**，它属于 BACK-222.1 层级切片触发的 Web 弹窗修复，作者/时间均与 BACK-644 不同；该 fix 是否需单独迁移视 fork `TaskDetailsModal.tsx` 是否仍有默认 `= []` 引起的重渲染风险而定（fork 默认参数在 `:179` 附近，建议另行评估，不在本 19 条任务内）。 |
+| **与当前定制代码的交集风险** | **中（2026-09-23 域修正：原判「低」是按 Web 面核的）** — 上游代码确实全在 **TUI** `src/ui/board.ts`（终端看板弹窗）与 `src/utils/task-watcher.ts`，fork 的 **Web** 看板是自研 `src/web/components/Board.tsx`（React）也确实不共享；但原判漏掉了 fork 自己就有一块**同样架构的 TUI 看板**（同一个 `src/ui/board.ts`，已被 BACK-681 多选移动 / BACK-684 弹窗 backdrop / BACK-693 草稿创建窗口连续改过），缺陷可在 fork 复现，落地必须并入这些自研结构。 |
+| **适合迁移的内容** | **三条行为 AC 在 fork 均未满足（2026-09-23 实测）**：① 弹窗内容在打开时快照（`board.ts:1544-1563` 捕获 `task`，`task-viewer-with-search.ts:1694` 的 `generateDetailContent(task)` 只跑一次），弹窗内 E 编辑或 watcher 抓到的进程外 CLI 编辑之后仍显示旧标题 / 旧正文；② 弹窗所指向的任务被外部完成 / 归档 / 删除后，弹窗既不关闭也不提示，确认类操作会打到已消失的记录上；③ 弹窗刷新没走 `updateBoard` 漏斗（`board.ts:1258-1285` 只重绘列、无弹窗分支），旧实现里 `openTaskEditor`（`:1485-1529`）也只回写 `currentTasks` 而不重建弹窗。可一并借鉴：把 `taskSignature` 导出为 `taskContentSignature` 让看板与 watcher 共用一份「内容是否变化」判据（fork `task-watcher.ts:39` 语义已一致、仅未导出），并用该签名吞掉 watcher 回声。 |
+| **需要排除/调整的内容** | ① 仍不要把 TUI `board.ts` 的改动套到 fork Web `Board.tsx`（架构不同，会回退自研泳道）；② 落地须与 fork 自研弹窗合并 —— BACK-684 的 backdrop `applyLayout` / `onResize`、BACK-693 的草稿会话（`entityNoun` / `draftSession`），不能按上游那 127 行原样打；③ 上游两条 review follow-up 属真实缺陷，应一并带上：确认框打开期间延后同步（否则弹窗重建会抢走对话框焦点），以及 `restoreColumnFocus` 的列索引 clamp（`hideEmptyColumns` 下列消失时焦点会静默丢失）。 |
+| **迁移优先级** | **B类（评估合入）— 2026-09-23 域修正：原判「C类（跳过）」不成立。** 原结论的前提（「实为 TUI 特性、与 fork 无交集」）把 fork 的 TUI 看板整个漏掉了：fork 的 `src/ui/board.ts` 就是同一文件、同一弹窗，缺陷在 fork 可复现（探针 `tmp/probe-board-popup-stale.ts`：外部编辑后仍显示旧标题旧正文；任务被移除后弹窗不关也不提示）。初判 A → 深度分析 C → 域修正回 B，条目改列 TUI-14。 |
+| **迁移建议** | **已落地（2026-09-23，[BACK-694](/task/694)，依赖 BACK-684 / BACK-693）**：照上游思路在 fork `src/ui/board.ts` 落成 `openTaskPopup(task)` 可重建 + `syncOpenPopup()` 由 `updateBoard` 漏斗驱动 + `taskContentSignature` 由 `src/utils/task-watcher.ts` 导出共用，E 路径结果改走 `updateBoard`；补了确认框期间延后同步与关窗后焦点回落到有效列两条守卫，新增 6 条用例（含「进程外改写任务文件、真 watcher 驱动刷新」的端到端一条），回退矩阵 3 变体 x 6 用例逐条钉住各子句。原 ③忽略 作废。②参考重写：照上游 `11836ada8` 的思路在 fork `src/ui/board.ts` 落「`openTaskPopup(task)` 可重建 + `syncOpenPopup()` 由 `updateBoard` 漏斗驱动 + 用已导出的 `taskContentSignature` 吞回声」，E 路径经 `updateBoard` 回灌而不是本地改 `currentTasks`。补充核实（结论不变）：`0c7d04f8a`（"fix(web): stop the task modal spinning on default empty props"，将 `availableStatuses/availableTasks` 默认提为模块级 `EMPTY_STATUSES`/`EMPTY_TASKS` 常量防无限重渲染）**不属于 BACK-644**，它属于 BACK-222.1 层级切片触发的 Web 弹窗修复，作者/时间均与 BACK-644 不同；该 fix 是否需单独迁移视 fork `TaskDetailsModal.tsx` 是否仍有默认 `= []` 引起的重渲染风险而定（fork 默认参数在 `:179` 附近，建议另行评估，不在本 19 条任务内）。 |
 
 ---
 
@@ -997,11 +997,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | Web 看板支持 Ctrl/Cmd 点击多选、Shift 范围选、拖拽/工具条批量改状态（服务端 `POST /api/tasks/move` + `Core.moveTasksToStatus`）。 |
 | **变更内容摘要** | `src/web/components/Board.tsx`（8ad6cc6）：`selectedTaskIds`/`selectionAnchorId`/`toggleTaskSelection`/`selectTaskRange`/`handleBatchMove`；`TaskCard.tsx` 加选中态 props；`TaskColumn.tsx` 范围选；`api.ts` 加 `moveTasks`；`server/index.ts` 加 `POST /api/tasks/move`；`core/backlog.ts` 加 `moveTasksToStatus`（322 行）。注意 worklist 仅列记录 commit（bf5106cf2/327dc9ca9），真实实现为 8ad6cc6（#945）。 |
-| **与当前定制代码的交集风险** | 高 — fork 完全缺失该能力：`TaskCard.tsx` 无 `selected`/选区（grep 无命中），`server/index.ts` 无 `/api/tasks/move`，`core/backlog.ts` 无 `moveTasksToStatus`，`api.ts` 无 `moveTasks`；且 fork 看板是**自研泳道**，多选/拖拽须与 `Board.tsx`/`TaskColumn.tsx` 自研结构对接。好消息：fork `lanes.ts:205` 已有 `sortTasksForStatus`，可复用。 |
-| **适合迁移的内容** | ① 服务端 `POST /api/tasks/move` + `Core.moveTasksToStatus`（批量尾部追加、按任务返回失败项）；② `api.ts` `moveTasks`；③ `lanes.ts:205` 已存在 `sortTasksForStatus` 直接复用；④ 选区交互逻辑（参考而非照搬，需接入 fork `Board`/`TaskColumn`）。 |
-| **需要排除/调整的内容** | 排除直接覆盖 fork `Board.tsx`/`TaskCard.tsx`/`TaskColumn.tsx`（自研泳道+卡片头部）；CLI 批量 `task edit ID1 ID2 -s`（8ad6cc6 的 CLI 部分）涉及 `--ref/--doc/--dep` 语义，须对照排除清单 §5 的 set/add/remove 语义，勿改 fork 现状。 |
-| **迁移优先级** | B类（必须合入）— 初判 A → 深度分析 A：净真空白能力，但集成成本高，须参考重写接入自研看板。 （口径校正：多选批量改状态是新交互能力，由 A 类归入 B 类评估。） |
-| **迁移建议** | ②参考重写：先落地服务端 `moveTasksToStatus`+`/api/tasks/move`+`api.moveTasks`（与 fork 无关，安全）；再在 fork `Board`/`TaskColumn`/`TaskCard` 上加选区态与批量拖拽/工具条，复用 `lanes.ts` 的 `sortTasksForStatus`。 |
+| **与当前定制代码的交集风险** | 高 — fork 完全缺失该能力：`TaskCard.tsx` 无 `selected`/选区（grep 无命中），`server/index.ts` 无 `/api/tasks/move`，`core/backlog.ts` 无 `moveTasksToStatus`，`api.ts` 无 `moveTasks`；且 fork 看板是**自研泳道**，多选/拖拽须与 `Board.tsx`/`TaskColumn.tsx` 自研结构对接。好消息：fork `lanes.ts:205` 已有 `sortTasksForStatus`，可复用。 **已落地（2026-09-21，[BACK-680](/task/680)）**：fork 侧补齐 `Core.moveTasksToStatus`（共享 `reorderTask` 的解析/跨分支守卫）与 `POST /api/tasks/move`；看板加多选（Ctrl/Cmd + Shift 范围）、选区工具条与批量拖拽。TUI 多选按维护者判定拆为后续任务，TUI 仍是单任务 mover（仅保留一条双击 Enter 守卫）。 |
+| **适合迁移的内容** | ① 服务端 `POST /api/tasks/move` + `Core.moveTasksToStatus`（批量尾部追加、按任务返回失败项）；② `api.ts` `moveTasks`；③ `lanes.ts:205` 已存在 `sortTasksForStatus` 直接复用；④ 选区交互逻辑（参考而非照搬，需接入 fork `Board`/`TaskColumn`）。 **已落地（2026-09-21，[BACK-680](/task/680)）**：`sortTasksForStatus` 复用成立；批量请求按**看板顺序**构造（非点击顺序），跨分支卡片只参与排序、从不写入本地，同一身份被多条记录认领时 fail-closed 记为该任务的失败项。 |
+| **需要排除/调整的内容** | 排除直接覆盖 fork `Board.tsx`/`TaskCard.tsx`/`TaskColumn.tsx`（自研泳道+卡片头部）；CLI 批量 `task edit ID1 ID2 -s`（8ad6cc6 的 CLI 部分）涉及 `--ref/--doc/--dep` 语义，须对照排除清单 §5 的 set/add/remove 语义，勿改 fork 现状。 **已落地（2026-09-21，[BACK-680](/task/680)）**：CLI 批量编辑按 fork 语义落地——多 ID 只接共享字段 flag，per-task-only flag（`-t`/`--plan`/`--notes`/`--comment`/`--ordinal`/`--modified-file`/清单索引/`--clear-final-summary` 等）在批量下报错拒绝；`--ref/--doc/--dep` 的 set/add/remove 语义未改。 |
+| **迁移优先级** | B类（必须合入）— 初判 A → 深度分析 A：净真空白能力，但集成成本高，须参考重写接入自研看板。 （口径校正：多选批量改状态是新交互能力，由 A 类归入 B 类评估。） **已落地（2026-09-21，[BACK-680](/task/680)）**：75 用例通过（CLI 15 / 看板 31 / core+server 29），回退矩阵 A-F 逐项变红验证每条行为都有测试守护，真机 CDP 拖拽验到「两张卡一次请求、原地释放零请求」。 |
+| **迁移建议** | ②参考重写：先落地服务端 `moveTasksToStatus`+`/api/tasks/move`+`api.moveTasks`（与 fork 无关，安全）；再在 fork `Board`/`TaskColumn`/`TaskCard` 上加选区态与批量拖拽/工具条，复用 `lanes.ts` 的 `sortTasksForStatus`。 **落地说明（2026-09-21，[BACK-680](/task/680)）**：分层与初判一致（core 共享原语 → server endpoint → web 视图）；原地释放的 no-op 由 TaskColumn 的 `dropPosition='self'` 映射回卡片当前位置、再触发既有 `isOrderUnchanged` 守卫实现；批量拖拽期间不渲染插入指示器（批量不兑现卡片级位置承诺）。 |
 
 ---
 
@@ -1011,11 +1011,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 用 SVG 进度环替换任务摘要上的 ASCII 风格 `[██░░]` 进度条。 |
 | **变更内容摘要** | `AcceptanceCriteriaProgress.tsx`（2c23d1c91）：`density` prop，SVG ring 替代 `cells` 文本条；`TaskCard.tsx`/`TaskList.tsx` 改用 `density`。 |
-| **与当前定制代码的交集风险** | 中 — fork 组件 API 不同：`variant` 为 `"cells"` 或 `"bar"`（非上游 `density`）。fork 卡片已用 web 原生 `variant="bar"`（TaskCard.tsx:246），但**列表仍用 `cells={10}` 的 ASCII 风格块**（TaskList.tsx:813），即上游已废弃的样式在 fork 列表仍存在。 |
-| **适合迁移的内容** | 上游 SVG ring 视觉（更精致）可替换 fork 列表处的 `cells` 变体；`density` 概念对应 fork `variant`。 |
-| **需要排除/调整的内容** | 不要整体替换 fork `AcceptanceCriteriaProgress`（API 不同）；仅把列表处的 `cells` 改为 ring/bar 风格，保留 fork 的 `bar` 卡片用法与 `data-acceptance-criteria-progress` 属性。 |
-| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B：卡片已 web 原生，仅列表 ASCII 条待升级，视觉增量、低风险。 |
-| **迁移建议** | ②参考重写：在 fork `AcceptanceCriteriaProgress.tsx` 增一个 SVG ring 变体（或复用 `bar`），把 `TaskList.tsx:813` 的 `cells={10}` 换成该变体。 |
+| **与当前定制代码的交集风险** | 低 — fork 组件已是自研实现（`variant` 取 `cells` 或 `bar`，非上游 `density`），且**两处调用点都已是 web 原生 bar**：`TaskCard.tsx:251`、`TaskList.tsx:856`（列表侧自 [BACK-645](/task/645) 的定宽条重构起）。ASCII `cells` 变体只剩组件默认值与单测覆盖，UI 已无调用点。**实测补齐（2026-09-19）**：上游 SVG ring 相对 fork 现有 bar 仅剩形状差异，无功能/信息缺口 —— 两者都带 x/y 分数文本、`role="progressbar"` 与 `data-acceptance-criteria-progress` 钩子。 |
+| **适合迁移的内容** | 无净增量。上游 SVG ring 的几何与调色板（2px 描边、track 圆 + 由 checked/total 推出的 `strokeDasharray` 圆弧）可作视觉参考，但 fork 的 `bar` 变体已在卡片与列表统一呈现同一信息，替换属纯视觉偏好。 |
+| **需要排除/调整的内容** | 不要整体替换 fork `AcceptanceCriteriaProgress`（API 不同：fork 用 `variant`/`cells`，上游用 `density`）；不得改动 `data-acceptance-criteria-progress`、`role`/`aria-*` 与 `title` 文案，也不得改动 `TaskCard.tsx:251`、`TaskList.tsx:856` 两处调用点的变体选择。 |
+| **迁移优先级** | C类（跳过）— 初判 A → 深度分析 B → **定案 C（不升级）**：AC 进度在卡片与列表已是 web 原生渲染（自研 `bar`，[BACK-645](/task/645)），上游 SVG ring 只剩形状差异；**用户定案不做视觉升级（2026-09-19）**。 |
+| **迁移建议** | ③忽略；**不建立迁移任务**（原拟由 DRAFT#163 承接，该草稿已删除、未升级）。若日后要换 ring，只需在 fork 组件内加一个 ring 变体并改两处调用点，不必移植上游 `density` API 与整组件重写。 |
 
 ---
 
@@ -1025,11 +1025,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 收到 `tasks-updated` 广播时改为原地增量刷新（仅 `/api/search`  reconcile），不再每播全量 `loadAllData()` 6 请求突袭。 |
 | **变更内容摘要** | `server/index.ts`（4c04760fa）：`broadcastTasksUpdated` 泛化为 `broadcastDataUpdated(scope)`，任务走 `tasks-updated`、里程碑走 `milestones-updated`；`App.tsx`（191 行）新增 `refreshTasksData` 增量路径；新增 `src/web/utils/reconcile.ts`（`reconcileById`/`deepEqual` 保对象/数组 identity）；`web-in-place-refresh.test.tsx`。 |
-| **与当前定制代码的交集风险** | 高 — **fork 仍有该性能缺陷**：`App.tsx:709` 收到 `event.data === "tasks-updated"` 后直接 `loadAllData()`（`:713`），每次广播全量重拉。fork 还有甘特图、`/overview`+`statistics-updated` WebSocket 等额外表面，重构刷新链路须保全这些。 |
+| **与当前定制代码的交集风险** | 高 — **fork 仍有该性能缺陷**：`App.tsx:709` 收到 `event.data === "tasks-updated"` 后直接 `loadAllData()`（`:713`），每次广播全量重拉。**该缺陷已消除（2026-09-23，[BACK-698](/task/698)）**：fork 的 `tasks-updated` 改走增量 `refreshTasksData`，全量只作回退。fork 还有甘特图、`/overview`+`statistics-updated` WebSocket 等额外表面，重构刷新链路须保全这些。 |
 | **适合迁移的内容** | ① 新增 `src/web/utils/reconcile.ts`（fork 缺失，直接加）；② `refreshTasksData` 增量刷新模式；③ 服务端 `broadcastDataUpdated(scope)`+`milestones-updated`。 |
 | **需要排除/调整的内容** | 排除清单 §4：保留 fork `/overview` 统计缓存与 `statistics-updated` 推送，勿用上游里程碑广播覆盖；保留 fork 甘特图刷新；全量 `loadAllData` 仍须保留于初始加载、`config-updated`、跨分支索引完成、socket 重连（fork 已有跨分支索引逻辑）。 |
 | **迁移优先级** | B类（必须合入）— 初判 A → 深度分析 A：真实性能问题 fork 仍存在，价值高；但须参考重写接入 fork 自研 App。 （口径校正：原地更新属性能优化，未达「严重性能瓶颈」，由 A 类归入 B 类评估。） |
-| **迁移建议** | ②参考重写：引入 `reconcile.ts`，在 fork `App.tsx:709` 的 `tasks-updated` 处理中改为增量 `refreshTasksData`（reconcile 后写 store），保留全量回退分支与甘特/统计刷新钩子。 |
+| **迁移建议** | ②参考重写：引入 `reconcile.ts`，在 fork `App.tsx:709` 的 `tasks-updated` 处理中改为增量 `refreshTasksData`（reconcile 后写 store），保留全量回退分支与甘特/统计刷新钩子。**落地（2026-09-23，[BACK-698](/task/698)）**：新增 `src/web/utils/reconcile.ts`、`refreshTasksData` / `refreshMilestoneData` 两个增量入口（`refreshData` 发草稿事件），服务端 `broadcastTasksUpdated` 泛化为 `broadcastDataUpdated(scope)` 并补齐里程碑 create 的广播；顺带修掉同一广播路径上的两处自研噪音（`TaskDetailsModal` 依赖选择器预载只在弹窗打开时发、全量载入成功清错误状态）。甘特与统计钩子未动。 |
 
 ---
 
@@ -1039,11 +1039,11 @@ draft 不导入，C 类
 |----------|------|
 | **任务核心目的** | 跨分支索引加载时在头部显示精致状态指示（chip + 底部扫光条），延迟出现/淡出。 |
 | **变更内容摘要** | 新增 `src/web/components/BranchIndexingIndicator.tsx`（f52b190c6）；`App.tsx` 引入并用 `<BranchIndexingIndicator message={loadingMessage} />`；`Navigation.tsx`/`SideNavigation.tsx`/`Layout.tsx`/`source.css` 透传 `loadingMessage` 与扫光动画。 |
-| **与当前定制代码的交集风险** | 低 — fork 无 `BranchIndexingIndicator.tsx`（grep 无 Indexing 引用）；但 fork `App.tsx:254` 已有 `loadingMessage` state 并在 `:789`/`:819` 透传，说明 fork 已有等效 loading 管道，仅组件形态不同。 |
-| **适合迁移的内容** | 新增 `BranchIndexingIndicator.tsx` 组件（自包含）+ `source.css` 的 `indexing-sweep` 动画；挂到 fork 现有 `loadingMessage`。 |
-| **需要排除/调整的内容** | 排除对 fork `Navigation`/`SideNavigation`/`Layout` 结构的覆盖，仅把新组件接入 fork 已有的 `loadingMessage` 透传点；`source.css` 仅追加动画类。 |
-| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B：fork 已有 loadingMessage 管道，新增指示组件为增量增强，低风险。 |
-| **迁移建议** | ①直接复用 / ②参考重写：新增 `BranchIndexingIndicator.tsx` 并接入 fork `App.tsx` 的 `loadingMessage`（`:789`/`:819` 处），不改现有结构。 |
+| **与当前定制代码的交集风险** | 低 → **已落地（2026-09-20，[BACK-668](/task/668)）**：fork 无 `BranchIndexingIndicator.tsx`（真空白），但已有等效 `loadingMessage` 管道；**真机实测**（源码服务 + headless Chrome，冷启动）确认进度帧在首次建 store 期间到达（页头显示「正在索引 3 个其他本地分支...」，宽 195px 未截断、未溢出页头），加载完成后指示器自动卸载、页面文本不再含该句；亮/暗两套配色与扫光动画均已在真机核过。 |
+| **适合迁移的内容** | 新增 `BranchIndexingIndicator.tsx` 组件（自包含）+ `source.css` 的 `indexing-sweep` 动画；挂到 fork 现有 `loadingMessage`。**实测补齐（2026-09-20）**：两部分均整体落地——`source.css` 追加块与上游**字节一致**（blob 同为 `207bdc42f`，无 fork 分歧）；组件唯一分歧在可见文案（见下一行）。 |
+| **需要排除/调整的内容** | 未覆盖 fork `Navigation`/`SideNavigation`/`Layout` 结构，只在 fork 已有透传点接线：`Layout.tsx` 下传 `loadingMessage` 给 `Navigation.tsx`，`SideNavigation.tsx` 移除该 prop 与其 3 处句子占位（改为纯骨架）。两处**不照搬上游**：①上游 chip 的可见标签是硬编码英文短标签 "Indexing branches"、真实进度句仅作 `title` + `sr-only` → fork 改为 **chip 直接显示 `translateLoadingMessage` 后的真实进度句**（复用既有 `loadingPhrases`，语言包零改动；长句 `max-w-[16rem] truncate`），保住 fork 原有「加载时看得见分支加载情况」的可读性；②`App.tsx` 的 `isLoading(true)` 门控——服务端进度帧目前只在初始建 store 时广播（`content-store.ts:604-612` 带 progressCallback，刷新路径 `:752` 不带），故 `hasLoadedDataRef` 属防御性守卫，由伪造帧的单测覆盖。 |
+| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B → **已落地（2026-09-20，[BACK-668](/task/668)）**：fork 已有 `loadingMessage` 管道，新增指示组件为增量增强，低风险。 |
+| **迁移建议** | ①直接复用 / ②参考重写，**实现按 fork 自定（2026-09-20）**：新增 `BranchIndexingIndicator.tsx` 并接入 fork `App.tsx` 的 `loadingMessage`，不改现有结构；chip 文案走 `translateLoadingMessage` 显示真实进度句，延迟出现/淡出参数保留为 props（默认 250ms/200ms）。 |
 
 ---
 
@@ -1066,12 +1066,12 @@ draft 不导入，C 类
 | 分析维度 | 内容 |
 |----------|------|
 | **任务核心目的** | 看板首屏加载用骨架占位（ghost 列），避免内容跳动。 |
-| **变更内容摘要** | 新增 `src/web/components/BoardLoadingSkeleton.tsx`（65e9371c5）：按配置状态数渲染 ghost 列 + 居中 spinner；`Board.tsx` 首屏改用骨架；`App.tsx`/ `LoadingSpinner.tsx` 微调。 |
-| **与当前定制代码的交集风险** | 低 — fork `Board.tsx:23`/`56`/`606` 已有 `isLoading` 分支（基础加载态），但无 `BoardLoadingSkeleton`；新组件为增量、不触碰自研泳道布局。 |
-| **适合迁移的内容** | 新增 `BoardLoadingSkeleton.tsx` 并在 fork `Board.tsx:606` 的 `isLoading` 分支改用骨架。 |
-| **需要排除/调整的内容** | 排除对 fork `Board.tsx` 列布局的覆盖，仅替换 `isLoading` 渲染内容；`columnCount` 用 fork 配置状态数（与 fork `StatusFilterDropdown` 一致）。 |
-| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B：首屏骨架为体验增强，低风险、自包含。 |
-| **迁移建议** | ①直接复用 / ②参考重写：新增 `BoardLoadingSkeleton.tsx`，把 fork `Board.tsx:606` 的 `isLoading` 分支从当前占位换成骨架（按 fork 状态数）。 |
+| **变更内容摘要** | 新增 `src/web/components/BoardLoadingSkeleton.tsx`（65e9371c5；bd1be48ab 再按配置状态数定列）：按配置状态数渲染 ghost 列 + 居中圆环；`Board.tsx` 首屏改用骨架；`App.tsx` 初始化前屏幕换成共享 `LoadingSpinner` 圆环；`LoadingSpinner.tsx` 补 `motion-reduce:animate-none`。 |
+| **与当前定制代码的交集风险** | 低 → **已落地（2026-09-20，[BACK-669](/task/669)）**：fork 首屏分支为自绘灰面板（dead `rounded-full` 方块 spinner + 3 个 `h-24` 灰块，与真实列几何不符），无 `BoardLoadingSkeleton`；**真机实测**（源码服务 + headless Chrome 冷启动，`/api/status`+`/api/search` 用 Fetch 域扣住以逐态抓取）：加载路径 0 处 `rounded-full`、圆环 `border-radius: 9999px`、ghost 列自 x=336 起、宽 333、高 96（= 真实空列 `min-h-24` 地板），未触碰自研泳道网格分支。 |
+| **适合迁移的内容** | 新增 `BoardLoadingSkeleton.tsx` 并把 fork `Board.tsx` 的 `isLoading` 分支换成骨架；`App.tsx` 初始化前屏幕用共享 `LoadingSpinner`；`LoadingSpinner.tsx` 加 `motion-reduce:animate-none`。**实测补齐（2026-09-20）**：三处均落地；ghost 列类名与 fork 默认（无泳道）列布局逐字一致（`overflow-x-auto > flex flex-row flex-nowrap gap-4` + 每列 `flex-1 min-w-[16rem]`，卡片 `rounded-lg p-4 min-h-24`）。 |
+| **需要排除/调整的内容** | 排除对 fork 列布局（泳道网格分支）的覆盖，仅替换 `isLoading` 渲染内容；`columnCount` 用 fork 配置状态数（`statuses.length`），状态未知时 3 列兜底。**fork 分歧（2026-09-20）**：骨架不带 `message`、不渲染进度句——BACK-668 起页头 chip 已是唯一进度句来源，避免同屏重复；`aria-label`/`sr-only` 走 i18n `t.board.loading`、初始化前屏幕用 `t.nav.projectLoading`（上游为硬编码英文）；顺带删掉 BACK-668 遗留的 `loadingMessage` 死 prop（Board/BoardPage）与 `translateLoadingMessage`/`locale` 残留。 |
+| **迁移优先级** | B类（评估合入）— 初判 A → 深度分析 B → **已落地（2026-09-20，[BACK-669](/task/669)）**：首屏骨架为体验增强，低风险、自包含。 |
+| **迁移建议** | ①直接复用 / ②参考重写，**实现按 fork 自定（2026-09-20）**：新增 `BoardLoadingSkeleton.tsx` 并把 fork `Board.tsx` 首屏分支换成骨架（列数走 fork 配置状态数），`App.tsx` 初始化前屏幕换共享圆环；6 条新用例 + BoardPage/深链用例更新，7 项回退探针全红，亮/暗两色真机截图通过。**后续修正（2026-09-20）**：[BACK-670](/task/670) 移除本条目引入的 `motion-reduce` 抑制，reduce 主机（RDP/VM）上圆环/骨架/扫光恢复动效。 |
 
 ---
 
@@ -1139,11 +1139,11 @@ draft 不导入，C 类
 
 ## 重分类与关键发现汇总
 
-- 初判 → 深度分析重分类：WEB-1 A→C、WEB-2 A→B、WEB-3 A→C、WEB-4 A→C、WEB-5 A→B、WEB-7 A→A（确认缺陷存在）、WEB-8 A→C、WEB-10 A→B、WEB-11 A→A、WEB-12 A→B、WEB-13 A→C、WEB-14 A→B、WEB-15 A→B、WEB-16 A→C、WEB-19 A→C。
+- 初判 → 深度分析重分类：WEB-1 A→C、WEB-2 A→B、WEB-3 A→C、WEB-4 A→C、WEB-5 A→B→已满足、WEB-6 A→B→已落地（[BACK-666](/task/666)）、WEB-7 A→A（确认缺陷存在）、TUI-1 A→B（与 TUI-7/TUI-9 合并为 [BACK-675](/task/675)）、WEB-8 A→C→B（2026-09-23 域修正：实为 TUI 项，改列 TUI-14，已建 [BACK-694](/task/694)）、WEB-10 A→B→C（定案不升级）、WEB-11 A→A→已落地（[BACK-698](/task/698)）、WEB-12 A→B→已落地（[BACK-668](/task/668)）、WEB-13 A→C、WEB-14 A→B→已落地（[BACK-669](/task/669)）、WEB-15 A→B、WEB-16 A→C、WEB-19 A→C。
 - 最关键的冲突/空白：WEB-7 草稿保存缺陷 fork 确实存在（`api.ts:updateTask` 直 PUT `/api/tasks/DRAFT-x` 未路由，server `handleUpdateTask` 调 `updateTaskFromInput` 而非 `editTaskOrDraft`），但 fork 已具备 `core/editTaskOrDraft`（backlog.ts:2391），改动小；WEB-9 多选批量移动是净真空白（fork 无选区/无 `/api/tasks/move`/无 `moveTasksToStatus`，但 `lanes.ts:205` 已有 `sortTasksForStatus` 可复用）；WEB-11 增量刷新是真实性能债（fork `App.tsx:709-713` 仍全量 `loadAllData`）。
-- 已被 fork 覆盖（C 类）：WEB-1（自研 TaskHierarchySection）、WEB-3（多选状态 string[] + StatusFilterDropdown）、WEB-4（AC 进度已展示）、WEB-13（onTaskClick chip 导航）、WEB-16（AC 进度已在卡片头部）、WEB-19（自研 SearchDialog 无 score 截断）。
+- 已被 fork 覆盖（C 类）：WEB-1（自研 TaskHierarchySection）、WEB-3（多选状态 string[] + StatusFilterDropdown）、WEB-4（AC 进度已展示）、WEB-10（卡片与列表均已是自研 bar，定案不升级）、WEB-13（onTaskClick chip 导航）、WEB-16（AC 进度已在卡片头部）、WEB-19（自研 SearchDialog 无 score 截断）。
 - BACK-677（WEB-15）：**已被 fork 覆盖核心**——`date-display.ts` 的 `formatStoredUtcDateForDisplay` 已用 `toLocaleString`/`toLocaleDateString` 做本地时区渲染（排除清单 §2 方向一致），仅缺悬停 UTC 的 `title` 与 `StoredDate` 封装，故降为 B 类增量。
-- 0c7d04f8a 核实：**不属于 BACK-644**——它是 BACK-222.1 层级切片导致的 Web 弹窗无限重渲染修复（提模块级 `EMPTY_STATUSES`/`EMPTY_TASKS`），与 TUI 看板弹窗同步（BACK-644 实指 `src/ui/board.ts`）无关，建议另行评估而非并入 WEB-8。
+- 0c7d04f8a 核实：**不属于 BACK-644**——它是 BACK-222.1 层级切片导致的 Web 弹窗无限重渲染修复（提模块级 `EMPTY_STATUSES`/`EMPTY_TASKS`），与 TUI 看板弹窗同步（BACK-644 实指 `src/ui/board.ts`）无关，建议另行评估而非并入 WEB-8。**域修正（2026-09-23）**：WEB-8 本身也确认为 TUI 项（fork 同文件同缺陷，探针 `tmp/probe-board-popup-stale.ts` 复现），已由 C 回 B 并改列 TUI-14。
 - WEB-17/WEB-18 为记录类（无上游代码），分别判 C（纯样式）/ B（方向可取但需参考重写，受排除清单 §2 约束）。
 
 *draft 不导入，C 类。*
