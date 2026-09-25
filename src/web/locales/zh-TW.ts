@@ -258,7 +258,7 @@ export const zhTW: TranslationDict = {
 		metadataTabsLabel: "任務元資料",
 		dependencyGraphTitle: "關聯關係圖",
 		dependencyGraphToggle: "顯示關聯關係圖",
-		dependencyGraphClose: "關閉關係圖 (Esc)",
+		dependencyGraphBack: "返回任務詳情 (Esc)",
 		closureWaitsFor: "等待",
 		closureWaitedOnBy: "後繼",
 		closureCycle: "循環依賴",

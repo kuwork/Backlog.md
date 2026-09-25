@@ -257,7 +257,7 @@ export const en = {
 		metadataTabsLabel: "Task metadata",
 		dependencyGraphTitle: "Relationship graph",
 		dependencyGraphToggle: "Show relationship graph",
-		dependencyGraphClose: "Close graph (Esc)",
+		dependencyGraphBack: "Back to task details (Esc)",
 		closureWaitsFor: "Waits for",
 		closureWaitedOnBy: "Waited on by",
 		closureCycle: "Cycle",

@@ -258,7 +258,7 @@ export const zhCN: TranslationDict = {
 		metadataTabsLabel: "任务元数据",
 		dependencyGraphTitle: "关联关系图",
 		dependencyGraphToggle: "显示关联关系图",
-		dependencyGraphClose: "关闭关系图 (Esc)",
+		dependencyGraphBack: "返回任务详情 (Esc)",
 		closureWaitsFor: "等待",
 		closureWaitedOnBy: "后继",
 		closureCycle: "循环依赖",
