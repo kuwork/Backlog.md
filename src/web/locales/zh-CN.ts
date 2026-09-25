@@ -259,6 +259,21 @@ export const zhCN: TranslationDict = {
 		dependencyGraphTitle: "关联关系图",
 		dependencyGraphToggle: "显示关联关系图",
 		dependencyGraphClose: "关闭关系图 (Esc)",
+		closureWaitsFor: "等待",
+		closureWaitedOnBy: "后继",
+		closureCycle: "循环依赖",
+		closureUnresolved: "未解析引用",
+		closureUnavailable: "依赖闭包不可用。",
+		closureTruncated: "…更多层级未显示。",
+		closureHops: (hops: number) => `${hops} 跳`,
+		closureRootBlockerTitle: "根阻塞：未完成且自己已无可等待项",
+		closureCompletedTitle: "已完成",
+		dependencyErrorCycle: (chain: string) => `该依赖会形成循环：${chain}。请先移除其中一条依赖边。`,
+		dependencyErrorSelf: (id: string) => `${id} 不能依赖自身，请将它从自己的依赖列表中移除。`,
+		dependencyErrorTargetDraft: (dependency: string) =>
+			`${dependency} 不能作为依赖目标：草稿不是有效目标。请依赖任务本身，或先将草稿转为任务。`,
+		dependencyErrorTargetMilestone: (dependency: string) =>
+			`${dependency} 不能作为依赖目标：里程碑不是任务。请在里程碑字段中设置关联。`,
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;

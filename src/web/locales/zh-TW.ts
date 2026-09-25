@@ -259,6 +259,21 @@ export const zhTW: TranslationDict = {
 		dependencyGraphTitle: "關聯關係圖",
 		dependencyGraphToggle: "顯示關聯關係圖",
 		dependencyGraphClose: "關閉關係圖 (Esc)",
+		closureWaitsFor: "等待",
+		closureWaitedOnBy: "後繼",
+		closureCycle: "循環依賴",
+		closureUnresolved: "未解析參照",
+		closureUnavailable: "依賴閉包不可用。",
+		closureTruncated: "…更多層級未顯示。",
+		closureHops: (hops: number) => `${hops} 跳`,
+		closureRootBlockerTitle: "根阻塞：未完成且自己已無可等待項",
+		closureCompletedTitle: "已完成",
+		dependencyErrorCycle: (chain: string) => `該依賴會形成循環：${chain}。請先移除其中一條依賴邊。`,
+		dependencyErrorSelf: (id: string) => `${id} 不能依賴自身，請將它從自己的依賴列表中移除。`,
+		dependencyErrorTargetDraft: (dependency: string) =>
+			`${dependency} 不能作為依賴目標：草稿不是有效目標。請依賴任務本身，或先將草稿轉為任務。`,
+		dependencyErrorTargetMilestone: (dependency: string) =>
+			`${dependency} 不能作為依賴目標：里程碑不是任務。請在里程碑欄位中設定關聯。`,
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;

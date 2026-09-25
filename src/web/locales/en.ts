@@ -258,6 +258,22 @@ export const en = {
 		dependencyGraphTitle: "Relationship graph",
 		dependencyGraphToggle: "Show relationship graph",
 		dependencyGraphClose: "Close graph (Esc)",
+		closureWaitsFor: "Waits for",
+		closureWaitedOnBy: "Waited on by",
+		closureCycle: "Cycle",
+		closureUnresolved: "Unresolved references",
+		closureUnavailable: "Dependency closure unavailable.",
+		closureTruncated: "…more hops not shown.",
+		closureHops: (hops: number) => (hops === 1 ? "1 hop" : `${hops} hops`),
+		closureRootBlockerTitle: "Root blocker: unfinished with nothing left to wait for",
+		closureCompletedTitle: "Completed",
+		dependencyErrorCycle: (chain: string) =>
+			`This dependency would close a cycle: ${chain}. Remove one of these edges first.`,
+		dependencyErrorSelf: (id: string) => `${id} cannot depend on itself. Remove it from its own dependencies.`,
+		dependencyErrorTargetDraft: (dependency: string) =>
+			`${dependency} cannot be a dependency target: a draft is never a valid target. Depend on a task instead, or promote the draft first.`,
+		dependencyErrorTargetMilestone: (dependency: string) =>
+			`${dependency} cannot be a dependency target: a milestone is not a task. Keep the milestone association in the milestone field instead.`,
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "High", medium: "Medium", low: "Low" };
 			return map[level] ?? level;

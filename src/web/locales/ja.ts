@@ -260,6 +260,22 @@ export const ja: TranslationDict = {
 		dependencyGraphTitle: "関連関係図",
 		dependencyGraphToggle: "関連関係図を表示",
 		dependencyGraphClose: "グラフを閉じる (Esc)",
+		closureWaitsFor: "依存先",
+		closureWaitedOnBy: "依存元",
+		closureCycle: "循環依存",
+		closureUnresolved: "未解決の参照",
+		closureUnavailable: "依存クロージャを利用できません。",
+		closureTruncated: "…残りのホップは省略。",
+		closureHops: (hops: number) => `${hops} ホップ`,
+		closureRootBlockerTitle: "ルートブロッカー: 未完了で待ち対象がない",
+		closureCompletedTitle: "完了",
+		dependencyErrorCycle: (chain: string) =>
+			`この依存関係は循環を形成します: ${chain}。まずいずれかの辺を削除してください。`,
+		dependencyErrorSelf: (id: string) => `${id} は自分自身に依存できません。依存リストから削除してください。`,
+		dependencyErrorTargetDraft: (dependency: string) =>
+			`${dependency} は依存先にできません: ドラフトは有効な対象ではありません。タスクを依存先にするか、先にドラフトをタスクに昇格してください。`,
+		dependencyErrorTargetMilestone: (dependency: string) =>
+			`${dependency} は依存先にできません: マイルストーンはタスクではありません。マイルストーン欄で設定してください。`,
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;

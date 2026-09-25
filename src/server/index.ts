@@ -33,9 +33,15 @@ import {
 import { launchBrowser } from "../utils/browser-launch.ts";
 import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
+import { DependencyQuery } from "../utils/dependency-query.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
+import {
+	DependencyCycleError,
+	IneligibleDependencyTargetError,
+	SelfDependentTaskError,
+} from "../utils/task-builders.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { getVersion } from "../utils/version.ts";
 import { withWikiPageTitles } from "../utils/wiki-titles.ts";
@@ -643,6 +649,9 @@ export class BacklogServer {
 					},
 					"/api/drafts/:id/promote": {
 						POST: async (req: Request & { params: { id: string } }) => await this.handlePromoteDraft(req.params.id),
+					},
+					"/api/task/:id/dependencies": {
+						GET: async (req: Request & { params: { id: string } }) => await this.handleDependencyClosure(req),
 					},
 					"/api/milestones": {
 						GET: async () => await this.handleListMilestones(),
@@ -1447,7 +1456,28 @@ export class BacklogServer {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to update task";
 			const conflict = error instanceof AmbiguousTaskIdError || isAmbiguousIdError(error) || isTaskLockError(error);
-			return Response.json({ error: message }, { status: conflict ? 409 : 400 });
+			// Machine-readable code + structured detail alongside the English text: the web client
+			// renders the gate's rejections in the user's locale from these, and falls back to the
+			// raw message for anything it does not recognize.
+			const code =
+				error instanceof DependencyCycleError
+					? "dependency_cycle"
+					: error instanceof SelfDependentTaskError
+						? "self_dependent"
+						: error instanceof IneligibleDependencyTargetError
+							? "ineligible_target"
+							: undefined;
+			const detail =
+				error instanceof DependencyCycleError
+					? { chain: error.chain }
+					: error instanceof SelfDependentTaskError
+						? { taskId: error.taskId }
+						: error instanceof IneligibleDependencyTargetError
+							? { dependency: error.dependency, kind: error.kind }
+							: undefined;
+			return Response.json(code ? { error: message, code, detail } : { error: message }, {
+				status: conflict ? 409 : 400,
+			});
 		}
 	}
 
@@ -1954,6 +1984,73 @@ export class BacklogServer {
 	private handleError(error: Error): Response {
 		console.error("Server Error:", error);
 		return new Response("Internal Server Error", { status: 500 });
+	}
+
+	/**
+	 * The dependency closure around one record, answered from the local corpus.
+	 *
+	 * Its own endpoint rather than part of /api/graph: that one serves the visualization payload from
+	 * the graph service, while this answers a question about the records themselves - what the record
+	 * transitively waits for and how far off each of those is, what waits on it, which unfinished task
+	 * is the real blocker, whether it sits on a cycle, and which of its references resolve to nothing.
+	 * Both directions come back in this one response, so a popup needs one request per open and the
+	 * client never has to poll.
+	 */
+	private async handleDependencyClosure(req: Request & { params: { id: string } }): Promise<Response> {
+		const url = new URL(req.url);
+		const rawMaxHops = url.searchParams.get("maxHops");
+		const maxHops = rawMaxHops === null ? undefined : Number.parseInt(rawMaxHops, 10);
+		if (maxHops !== undefined && (!Number.isFinite(maxHops) || maxHops < 1)) {
+			return Response.json({ error: "maxHops must be a positive integer" }, { status: 400 });
+		}
+		const direction = url.searchParams.get("direction");
+
+		try {
+			// A draft is only a legitimate subject once its own edges are walked, so opening the popup on
+			// one implies drafts; a caller can also ask for them explicitly to have the drafts that wait on
+			// a task listed among its dependents.
+			let includeDrafts = url.searchParams.get("includeDrafts") === "true";
+			if (!includeDrafts) {
+				try {
+					includeDrafts = (await this.core.filesystem.loadDraft(req.params.id)) !== null;
+				} catch {
+					includeDrafts = false;
+				}
+			}
+
+			const query = await this.buildDependencyQuery(includeDrafts);
+			if (direction === "dependencies" || direction === "dependents") {
+				const one = query.answer(req.params.id, { direction, maxHops });
+				return one ? Response.json(one) : Response.json({ error: "Task not found" }, { status: 404 });
+			}
+
+			const both = query.answerBoth(req.params.id, { maxHops });
+			return both ? Response.json(both) : Response.json({ error: "Task not found" }, { status: 404 });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to answer the dependency query";
+			return Response.json({ error: message }, { status: 400 });
+		}
+	}
+
+	/** One prepared query per request: the corpus is read here and answers once, for one popup. */
+	private async buildDependencyQuery(includeDrafts: boolean): Promise<DependencyQuery> {
+		const [tasks, completed, drafts, milestones, released, config] = await Promise.all([
+			this.core.queryTasks(),
+			this.core.filesystem.listCompletedTasks(),
+			this.core.filesystem.listDrafts(),
+			this.core.filesystem.listMilestones(),
+			this.core.filesystem.listArchivedTasks(),
+			this.core.filesystem.loadConfig(),
+		]);
+		return new DependencyQuery({
+			tasks,
+			completed,
+			drafts,
+			milestones,
+			released,
+			statuses: config?.statuses ?? DEFAULT_STATUSES,
+			includeDrafts,
+		});
 	}
 
 	// Draft handlers
