@@ -250,6 +250,20 @@ function parsePositiveIntegerOption(value: unknown, optionName: string, helpComm
 	return Number.parseInt(rawValue, 10);
 }
 
+/**
+ * Reports the dependency IDs a write carried over unresolved: already on disk, so written through
+ * as typed rather than refused. Printed on stderr so a plain or machine-readable body on stdout
+ * stays intact, and printed at all because the alternative is silence - the read paths hint at one
+ * dangling reference per task and never at corpus level.
+ */
+function warnToleratedDependencies(ids: string[], taskId: string): void {
+	if (ids.length === 0) return;
+	console.warn(
+		`Kept unresolvable dependencies on ${taskId} as written: ${ids.join(", ")}. ` +
+			"Run 'backlog doctor' to see every unresolvable reference in the corpus.",
+	);
+}
+
 function formatTaskEditError(error: unknown, taskId: string): string {
 	const message = error instanceof Error ? error.message : String(error);
 	if (
@@ -3689,7 +3703,9 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 			}
 
 			try {
-				const updatedTask = await core.editTask(existingTaskForWizard.id, wizardInput);
+				const updatedTask = await core.editTask(existingTaskForWizard.id, wizardInput, undefined, {
+					onToleratedDependencies: (ids) => warnToleratedDependencies(ids, existingTaskForWizard.id),
+				});
 				console.log(`Updated task ${updatedTask.id}`);
 			} catch (error) {
 				console.error(formatTaskEditError(error, existingTaskForWizard.id));
@@ -3741,7 +3757,9 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 			let updatedTask: Task;
 			try {
 				const updateInput = buildTaskUpdateInput(editArgs);
-				updatedTask = await core.editTask(existingTask.id, updateInput);
+				updatedTask = await core.editTask(existingTask.id, updateInput, undefined, {
+					onToleratedDependencies: (ids) => warnToleratedDependencies(ids, existingTask.id),
+				});
 			} catch (error) {
 				console.error(formatTaskEditError(error, existingTask.id));
 				process.exitCode = 1;
@@ -3763,7 +3781,9 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 		// rather than repeating a full task body for every ID.
 		for (const task of resolvedTasks) {
 			try {
-				const updated = await core.editTask(task.id, buildTaskUpdateInput(editArgs));
+				const updated = await core.editTask(task.id, buildTaskUpdateInput(editArgs), undefined, {
+					onToleratedDependencies: (ids) => warnToleratedDependencies(ids, task.id),
+				});
 				console.log(`Updated task ${updated.id}`);
 			} catch (error) {
 				editFailures.push({ taskId: task.id, message: formatTaskEditError(error, task.id) });
@@ -4213,7 +4233,9 @@ addHelpSchema(addEditFieldOptions(draftCmd.command("edit [taskIds...]")), {
 		}
 
 		try {
-			const updated = await core.updateDraftFromInput(draft.id, buildTaskUpdateInput(editArgs));
+			const updated = await core.updateDraftFromInput(draft.id, buildTaskUpdateInput(editArgs), undefined, {
+				onToleratedDependencies: (ids) => warnToleratedDependencies(ids, draft.id),
+			});
 			if (isPlainRequested(options)) {
 				console.log(formatTaskPlainText(updated));
 				return;

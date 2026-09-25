@@ -142,6 +142,16 @@ interface TaskMutationOptions extends TaskReadOptions {
 	onVacatedIdCleanup?: (cleanedTaskIds: string[]) => void;
 }
 
+/**
+ * Options for edit mutations. `onToleratedDependencies` reports the dependency IDs a write carried
+ * over unresolved - already on disk, so written through as typed instead of refused - so the host
+ * can surface them. Reported as data rather than printed here, because Core has no opinion about
+ * whether the caller has a terminal to print to; this mirrors onVacatedIdCleanup above.
+ */
+interface TaskUpdateOptions {
+	onToleratedDependencies?: (toleratedDependencyIds: string[]) => void;
+}
+
 interface TaskCorpusLoadOptions {
 	progressCallback?: (msg: string) => void;
 	abortSignal?: AbortSignal;
@@ -1773,6 +1783,7 @@ export class Core {
 		task: Task,
 		input: TaskUpdateInput,
 		statusResolver: (status: string) => Promise<string>,
+		options?: TaskUpdateOptions,
 	): Promise<{ task: Task; mutated: boolean }> {
 		assertSectionInputsSafe(input);
 		let mutated = false;
@@ -1947,15 +1958,24 @@ export class Core {
 
 		const resolveDependencies = async (): Promise<void> => {
 			let currentDependencies = [...(task.dependencies ?? [])];
+			const carriedOver: string[] = [];
 
+			// The subject is the record on disk, which is where the introduced/carried-over split gets
+			// its baseline, and where the self-reference and cycle checks get the ID being written. The
+			// stored list passed in is the live one, so a replace followed by an add in the same call is
+			// judged against what the earlier branch just established.
 			if (input.dependencies !== undefined) {
 				const normalized = normalizeDependencies(input.dependencies);
-				const { valid, invalid } = await validateDependencies(normalized, this);
+				const { valid, invalid, tolerated } = await validateDependencies(normalized, this, {
+					id: task.id,
+					storedDependencies: currentDependencies,
+				});
 				if (invalid.length > 0) {
 					throw new Error(
 						`The following dependencies do not exist: ${invalid.join(", ")}. Please create these tasks first or verify the IDs.`,
 					);
 				}
+				carriedOver.push(...tolerated);
 				if (!stringArraysEqual(valid, currentDependencies)) {
 					currentDependencies = valid;
 					mutated = true;
@@ -1964,12 +1984,16 @@ export class Core {
 
 			if (input.addDependencies && input.addDependencies.length > 0) {
 				const additions = normalizeDependencies(input.addDependencies);
-				const { valid, invalid } = await validateDependencies(additions, this);
+				const { valid, invalid, tolerated } = await validateDependencies(additions, this, {
+					id: task.id,
+					storedDependencies: currentDependencies,
+				});
 				if (invalid.length > 0) {
 					throw new Error(
 						`The following dependencies do not exist: ${invalid.join(", ")}. Please create these tasks first or verify the IDs.`,
 					);
 				}
+				carriedOver.push(...tolerated);
 				const depSet = new Set(currentDependencies);
 				for (const dep of valid) {
 					if (!depSet.has(dep)) {
@@ -1990,6 +2014,9 @@ export class Core {
 			}
 
 			task.dependencies = currentDependencies;
+			if (carriedOver.length > 0) {
+				options?.onToleratedDependencies?.([...new Set(carriedOver)]);
+			}
 		};
 
 		await resolveDependencies();
@@ -2420,7 +2447,12 @@ export class Core {
 		return { task, mutated };
 	}
 
-	async updateTaskFromInput(taskId: string, input: TaskUpdateInput, autoCommit?: boolean): Promise<Task> {
+	async updateTaskFromInput(
+		taskId: string,
+		input: TaskUpdateInput,
+		autoCommit?: boolean,
+		options?: TaskUpdateOptions,
+	): Promise<Task> {
 		const task = await this.fs.loadTask(taskId);
 		if (!task) {
 			throw new Error(`Task not found: ${taskId}`);
@@ -2429,7 +2461,7 @@ export class Core {
 		const requestedStatus = input.status?.trim().toLowerCase();
 		if (requestedStatus === "draft") {
 			// demoteTaskWithUpdates takes the task lock itself, so it must not be nested here.
-			return await this.demoteTaskWithUpdates(task, input, autoCommit);
+			return await this.demoteTaskWithUpdates(task, input, autoCommit, options);
 		}
 
 		// Fail fast when another process is mid-edit, and re-read inside the lock so the whole
@@ -2442,8 +2474,11 @@ export class Core {
 				throw new Error(`Task not found: ${taskId}`);
 			}
 
-			const { mutated } = await this.applyTaskUpdateInput(current, input, async (status) =>
-				this.requireCanonicalStatus(status),
+			const { mutated } = await this.applyTaskUpdateInput(
+				current,
+				input,
+				async (status) => this.requireCanonicalStatus(status),
+				options,
 			);
 
 			if (!mutated) {
@@ -2470,18 +2505,28 @@ export class Core {
 		}
 	}
 
-	async updateDraftFromInput(draftId: string, input: TaskUpdateInput, autoCommit?: boolean): Promise<Task> {
+	async updateDraftFromInput(
+		draftId: string,
+		input: TaskUpdateInput,
+		autoCommit?: boolean,
+		options?: TaskUpdateOptions,
+	): Promise<Task> {
 		const draft = await this.fs.loadDraft(draftId);
 		if (!draft) {
 			throw new Error(`Draft not found: ${draftId}`);
 		}
 
-		const { mutated } = await this.applyTaskUpdateInput(draft, input, async (status) => {
-			if (status.trim().toLowerCase() !== "draft") {
-				throw new Error("Drafts must use status Draft.");
-			}
-			return "Draft";
-		});
+		const { mutated } = await this.applyTaskUpdateInput(
+			draft,
+			input,
+			async (status) => {
+				if (status.trim().toLowerCase() !== "draft") {
+					throw new Error("Drafts must use status Draft.");
+				}
+				return "Draft";
+			},
+			options,
+		);
 
 		if (!mutated) {
 			return draft;
@@ -2492,34 +2537,49 @@ export class Core {
 		return refreshed ?? draft;
 	}
 
-	async editTaskOrDraft(taskId: string, input: TaskUpdateInput, autoCommit?: boolean): Promise<Task> {
+	async editTaskOrDraft(
+		taskId: string,
+		input: TaskUpdateInput,
+		autoCommit?: boolean,
+		options?: TaskUpdateOptions,
+	): Promise<Task> {
 		const draft = await this.fs.loadDraft(taskId);
 		if (draft) {
 			const requestedStatus = input.status?.trim();
 			const wantsDraft = requestedStatus?.toLowerCase() === "draft";
 			if (requestedStatus && !wantsDraft) {
-				return await this.promoteDraftWithUpdates(draft, input, autoCommit);
+				return await this.promoteDraftWithUpdates(draft, input, autoCommit, options);
 			}
-			return await this.updateDraftFromInput(draft.id, input, autoCommit);
+			return await this.updateDraftFromInput(draft.id, input, autoCommit, options);
 		}
 
 		// updateTaskFromInput already demotes when the requested status is Draft, resolves the id
 		// against the task store (so ambiguous ids still fail closed) and reports a missing task.
-		return await this.updateTaskFromInput(taskId, input, autoCommit);
+		return await this.updateTaskFromInput(taskId, input, autoCommit, options);
 	}
 
-	private async promoteDraftWithUpdates(draft: Task, input: TaskUpdateInput, autoCommit?: boolean): Promise<Task> {
+	private async promoteDraftWithUpdates(
+		draft: Task,
+		input: TaskUpdateInput,
+		autoCommit?: boolean,
+		options?: TaskUpdateOptions,
+	): Promise<Task> {
 		const targetStatus = input.status?.trim();
 		if (!targetStatus || targetStatus.toLowerCase() === "draft") {
 			throw new Error("Promoting a draft requires a non-draft status.");
 		}
 
-		const { mutated } = await this.applyTaskUpdateInput(draft, { ...input, status: undefined }, async (status) => {
-			if (status.trim().toLowerCase() !== "draft") {
-				throw new Error("Drafts must use status Draft.");
-			}
-			return "Draft";
-		});
+		const { mutated } = await this.applyTaskUpdateInput(
+			draft,
+			{ ...input, status: undefined },
+			async (status) => {
+				if (status.trim().toLowerCase() !== "draft") {
+					throw new Error("Drafts must use status Draft.");
+				}
+				return "Draft";
+			},
+			options,
+		);
 
 		const canonicalStatus = await this.requireCanonicalStatus(targetStatus);
 
@@ -2568,19 +2628,29 @@ export class Core {
 	// and editTaskOrDraft, so it takes the task lock here rather than at each caller. Waiting on
 	// the create lock below happens while the task lock is held; the order is always task lock
 	// then create lock, never the reverse, so the two cannot deadlock.
-	private async demoteTaskWithUpdates(task: Task, input: TaskUpdateInput, autoCommit?: boolean): Promise<Task> {
+	private async demoteTaskWithUpdates(
+		task: Task,
+		input: TaskUpdateInput,
+		autoCommit?: boolean,
+		options?: TaskUpdateOptions,
+	): Promise<Task> {
 		return await this.fs.withTaskLock(task, async () => {
 			const current = await this.fs.loadTask(task.id);
 			if (!current) {
 				throw new Error(`Task not found: ${task.id}`);
 			}
 
-			const { mutated } = await this.applyTaskUpdateInput(current, { ...input, status: undefined }, async (status) => {
-				if (status.trim().toLowerCase() === "draft") {
-					return "Draft";
-				}
-				return this.requireCanonicalStatus(status);
-			});
+			const { mutated } = await this.applyTaskUpdateInput(
+				current,
+				{ ...input, status: undefined },
+				async (status) => {
+					if (status.trim().toLowerCase() === "draft") {
+						return "Draft";
+					}
+					return this.requireCanonicalStatus(status);
+				},
+				options,
+			);
 
 			const { demotedDraft: unsanitizedDraft, savedPath } = await this.withCreateLock(async () => {
 				const newDraftId = await this.generateNextId(EntityType.Draft);
@@ -2671,8 +2741,13 @@ export class Core {
 		}
 	}
 
-	async editTask(taskId: string, input: TaskUpdateInput, autoCommit?: boolean): Promise<Task> {
-		return await this.updateTaskFromInput(taskId, input, autoCommit);
+	async editTask(
+		taskId: string,
+		input: TaskUpdateInput,
+		autoCommit?: boolean,
+		options?: TaskUpdateOptions,
+	): Promise<Task> {
+		return await this.updateTaskFromInput(taskId, input, autoCommit, options);
 	}
 
 	async updateTasksBulk(tasks: Task[], commitMessage?: string, autoCommit?: boolean): Promise<void> {

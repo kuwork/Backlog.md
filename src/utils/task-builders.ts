@@ -1,5 +1,6 @@
 import type { Core } from "../core/backlog.ts";
 import type { AcceptanceCriterion, Task } from "../types/index.ts";
+import { DependencyClosure, dependencyEdges } from "./dependency-closure.ts";
 import { AmbiguousIdError } from "./entity-id.ts";
 import { AmbiguousTaskIdError, canonicalTaskId, normalizeTaskId, taskIdsEqual } from "./task-path.ts";
 
@@ -61,50 +62,197 @@ function resolveUniqueDependency(dependency: string, matches: Task[]): string | 
 }
 
 /**
- * Validate that all dependencies exist in the current project
- * Returns arrays of valid and invalid dependency IDs
+ * Raised when a record names itself as its own predecessor. A one-line cycle, refused before any
+ * walk because the answer is known without looking at the corpus.
+ */
+export class SelfDependentTaskError extends Error {
+	readonly taskId: string;
+
+	constructor(taskId: string) {
+		super(`${taskId} cannot depend on itself. Remove it from its own dependencies.`);
+		this.name = "SelfDependentTaskError";
+		this.taskId = taskId;
+	}
+}
+
+/**
+ * Raised when a dependency would close a cycle. Carries the chain so the message can name it -
+ * a bare "invalid dependency" leaves the reader to find the loop by hand.
+ */
+export class DependencyCycleError extends Error {
+	readonly chain: string[];
+
+	constructor(chain: string[]) {
+		super(`This dependency would close a cycle: ${chain.join(" -> ")}. Remove one of these edges first.`);
+		this.name = "DependencyCycleError";
+		this.chain = chain;
+	}
+}
+
+/**
+ * Raised when a dependency names a record that exists but can never be a target: a draft, or a
+ * milestone. Worded apart from the "resolves to nothing" refusal on purpose, because "the ID is
+ * real and is still not eligible" is a different answer from "nothing claims this ID".
+ */
+export class IneligibleDependencyTargetError extends Error {
+	readonly dependency: string;
+	readonly kind: "draft" | "milestone";
+
+	constructor(dependency: string, kind: "draft" | "milestone") {
+		super(
+			kind === "draft"
+				? `${dependency} cannot be a dependency target: a draft is never a valid target, because it can be abandoned while its dependents stay. Depend on a task instead, or promote the draft first.`
+				: `${dependency} cannot be a dependency target: a milestone is not a task. Keep the milestone association in the milestone field instead.`,
+		);
+		this.name = "IneligibleDependencyTargetError";
+		this.dependency = dependency;
+		this.kind = kind;
+	}
+}
+
+/**
+ * The record a dependency list is being written for.
+ *
+ * Both fields are optional because the create path has neither: it allocates its ID after this gate
+ * has run (src/core/backlog.ts:1627 versus the call at :1574), and it has no stored record to
+ * compare against. Supplying no subject is not a hole in the checks, it is the rule - "when
+ * creating, it has to exist" - and it is also why a create can never trip the cycle check: nothing
+ * can already depend on an ID that did not exist.
+ */
+export interface DependencySubject {
+	/** The identity being written, for the self-reference and reachability checks. */
+	id?: string | undefined;
+	/** The dependency list currently on disk, for the introduced/carried-over split. */
+	storedDependencies?: string[] | undefined;
+}
+
+export interface DependencyValidation {
+	/**
+	 * IDs to persist, in the caller's order. A resolved reference is canonicalised to the identity
+	 * that claimed it; a tolerated one keeps the spelling the stored record already holds, so a
+	 * re-submit does not silently rewrite a historical spelling into a modern one.
+	 */
+	valid: string[];
+	/** Unresolvable and introduced by this write: the caller refuses. */
+	invalid: string[];
+	/** Unresolvable but already stored: persisted as typed, and reported as a warning. */
+	tolerated: string[];
+}
+
+/**
+ * Validate a dependency list against the corpus, and answer three ways.
+ *
+ * Resolved references pass. References that resolve to nothing are split by who introduced them: one
+ * the stored record already carries is tolerated - written through as typed and reported - while one
+ * this write introduces is refused, on a create and on an edit alike. A write that carries a stale
+ * ID over while adding a good one is the normal case, which is why the judgement is per candidate
+ * rather than a comparison of the two lists as wholes.
+ *
+ * The subject also enables the structural checks: a candidate that reaches the record being written
+ * - itself, or through a chain - is refused with the chain named.
  */
 export async function validateDependencies(
 	dependencies: string[],
 	core: Core,
-): Promise<{ valid: string[]; invalid: string[] }> {
+	subject?: DependencySubject,
+): Promise<DependencyValidation> {
 	const valid: string[] = [];
 	const invalid: string[] = [];
+	const tolerated: string[] = [];
 	if (dependencies.length === 0) {
-		return { valid, invalid };
+		return { valid, invalid, tolerated };
 	}
-	// Task dependencies should honor cross-branch visibility when enabled in config,
-	// while draft dependencies remain local-only. Completed records belong in the corpus too: Done is
-	// the normal end state of a predecessor, so a target that has left the working copy must stay a
-	// valid, editable dependency. Archived records are deliberately left out: archiving releases the
-	// ID (the allocator counts active and completed records only), so keeping an archived file here
-	// would make an ordinary dependency on the task that later claims that identity ambiguous and
-	// the ID unusable as a target.
-	const [tasks, drafts, completed] = await Promise.all([
+
+	// The resolvable pool is tasks + completed, which is also the pool readiness reads back, so the
+	// write path and the read path now agree instead of disagreeing about drafts. Task dependencies
+	// honour cross-branch visibility when it is enabled in config, while draft dependencies stay
+	// local-only. Completed records belong here: Done is the normal end state of a predecessor, so a
+	// target that has left the working copy must stay a valid, editable dependency.
+	//
+	// Drafts and milestones are loaded for a different role - they are what lets a refusal say
+	// "this ID exists and is still not eligible" rather than "nothing claims this ID". Keeping drafts
+	// out of the pool is also what keeps a draft's own dependencies legal: they resolve against this
+	// same corpus, so draft -> task works by construction while task -> draft stops being possible,
+	// and the gate never needs to know the subject's own kind. Archived records are deliberately
+	// absent from both lists: archiving releases the ID (the allocator counts active and completed
+	// records only), so keeping an archived file here would make an ordinary dependency on the task
+	// that later claims that identity ambiguous.
+	const [tasks, completed, drafts, milestones] = await Promise.all([
 		core.queryTasks(),
-		core.filesystem.listDrafts(),
 		core.filesystem.listCompletedTasks(),
+		core.filesystem.listDrafts(),
+		core.filesystem.listMilestones(),
 	]);
-	const known = [...tasks, ...drafts, ...completed];
-	for (const dependency of dependencies) {
-		const resolved = resolveUniqueDependency(
-			dependency,
-			known.filter((candidate) => taskIdsEqual(dependency, candidate.id)),
+	const known = [...tasks, ...completed];
+	const matchesOf = (id: string): Task[] => known.filter((candidate) => taskIdsEqual(id, candidate.id));
+
+	// Exact-identity comparison, deliberately unlike taskIdsEqual: a bare "1" is an alias of TASK-1
+	// (and of BACK-1), but it is not a way of naming M-1 or DRAFT-1, and reading it as one would tell
+	// the user their milestone is not a task when they meant a task at all.
+	const namesExactly = (corpus: readonly { id: string }[], dependency: string): boolean => {
+		const canonical = canonicalTaskId(dependency);
+		return corpus.some((candidate) => canonicalTaskId(candidate.id) === canonical);
+	};
+
+	const storedDependencies = subject?.storedDependencies;
+	// Compared on the normalised forms, because normalizeDependencies has already run normalizeTaskId
+	// over the candidates: an un-normalised stored list would make the caller's own unchanged spelling
+	// look freshly introduced and the tolerance would never fire.
+	const storedSpellingOf = (dependency: string): string | undefined =>
+		(storedDependencies ?? []).find((stored) => taskIdsEqual(dependency, normalizeTaskId(stored)));
+
+	const subjectId = subject?.id;
+	// Built on first use: a write that names no dependency, or a create with no subject, never pays
+	// for an adjacency over the whole corpus.
+	let closure: DependencyClosure | undefined;
+	const reachability = (): DependencyClosure => {
+		closure ??= new DependencyClosure(
+			dependencyEdges(known, (dependency) => matchesOf(dependency).map((match) => canonicalTaskId(match.id))),
 		);
+		return closure;
+	};
+
+	for (const dependency of dependencies) {
+		const resolved = resolveUniqueDependency(dependency, matchesOf(dependency));
 		if (!resolved) {
+			if (namesExactly(drafts, dependency)) {
+				throw new IneligibleDependencyTargetError(dependency, "draft");
+			}
+			if (namesExactly(milestones, dependency)) {
+				throw new IneligibleDependencyTargetError(dependency, "milestone");
+			}
+			const stored = storedSpellingOf(dependency);
+			if (stored !== undefined) {
+				// Already on disk: written through in the spelling the record holds, and reported.
+				if (!tolerated.includes(stored)) tolerated.push(stored);
+				if (!valid.some((existing) => taskIdsEqual(existing, stored))) valid.push(stored);
+				continue;
+			}
 			invalid.push(dependency);
 			continue;
 		}
 		// Called for its ambiguity check: it raises AmbiguousTaskIdError when several working-copy
 		// files (active or completed) claim this ID, which queryTasks() hides by collapsing one
-		// identity to a single record. Drafts and archived records resolve to null here.
+		// identity to a single record.
 		await core.loadTaskById(resolved, { includeCrossBranch: false });
+		if (subjectId !== undefined) {
+			if (taskIdsEqual(resolved, subjectId)) {
+				throw new SelfDependentTaskError(resolved);
+			}
+			// The walk stops at its first arrival, so the subject's own outgoing edges - the ones this
+			// write is about to replace - are never traversed. Only the other records' edges matter,
+			// and those are already on disk.
+			const chain = reachability().pathTo(canonicalTaskId(resolved), canonicalTaskId(subjectId));
+			if (chain) {
+				throw new DependencyCycleError([canonicalTaskId(subjectId), ...chain]);
+			}
+		}
 		// Equivalent spellings of one task (1 and BACK-1) must not persist twice.
 		if (!valid.some((existing) => taskIdsEqual(existing, resolved))) {
 			valid.push(resolved);
 		}
 	}
-	return { valid, invalid };
+	return { valid, invalid, tolerated };
 }
 
 /**
