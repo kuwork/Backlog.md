@@ -21,6 +21,16 @@ import type { Task } from "../../types";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, type GraphEdgeDto, type GraphNodeDto, type GraphNodeKind, type GraphPayload } from "../lib/api";
+import {
+	EDGE_DASH,
+	EDGE_STROKE,
+	LegendDot,
+	LegendLine,
+	NODE_FILL,
+	NODE_STROKE,
+	type NodeStyle,
+	nodeStyle,
+} from "./GraphLegend";
 
 interface GraphViewProps {
 	/** Bumped by the shell on every graph-updated WebSocket message; drives an in-place refetch. */
@@ -45,30 +55,6 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
 	type: GraphEdgeDto["type"];
 }
 
-type NodeStyle = "task" | "completed" | "draft" | "milestone";
-
-const NODE_FILL: Record<NodeStyle, string> = {
-	task: "#3b82f6",
-	completed: "#10b981",
-	draft: "#f59e0b",
-	milestone: "#a855f7",
-};
-
-/** Light tint of each fill, so nodes read as tiles instead of flat dots (Neo4j-style). */
-const NODE_STROKE: Record<NodeStyle, string> = {
-	task: "#93c5fd",
-	completed: "#6ee7b7",
-	draft: "#fcd34d",
-	milestone: "#d8b4fe",
-};
-
-const EDGE_STROKE = "#94a3b8";
-const EDGE_DASH: Record<GraphEdgeDto["type"], string | null> = {
-	// DependsOn is the semantic backbone: solid with an arrowhead. The structural relations are dashed.
-	DependsOn: null,
-	ParentOf: "6 3",
-	BelongsToMilestone: "2 3",
-};
 /** Screen-space length of the edge arrowhead; kept constant by rescaling on zoom. */
 const ARROW_SIZE = 7;
 /** Screen-space gap between the arrowhead tip and the target node's rim. */
@@ -97,12 +83,6 @@ const easeInOutCubic = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2
 
 /** Opacity kept by everything that is neither the focused node nor one of its neighbours. */
 const FOCUS_FADE = 0.18;
-
-const nodeStyle = (node: GraphNodeDto): NodeStyle => {
-	if (node.kind === "milestone") return "milestone";
-	if (node.kind === "draft") return "draft";
-	return node.filePath.startsWith("completed/") ? "completed" : "task";
-};
 
 /**
  * Task graph view (doc-014 §4): a D3 force-directed rendering of /api/graph. The layout is
@@ -900,38 +880,6 @@ export default function GraphView({ graphVersion, onEditTask }: GraphViewProps) 
 	);
 }
 
-function LegendDot({
-	color,
-	label,
-	count,
-	active,
-	onToggle,
-	hint,
-}: {
-	color: string;
-	label: string;
-	count: number;
-	active: boolean;
-	onToggle: () => void;
-	hint: string;
-}) {
-	return (
-		<button
-			type="button"
-			onClick={onToggle}
-			title={hint}
-			aria-pressed={active}
-			className={`flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-opacity hover:bg-gray-100 dark:hover:bg-gray-800 ${
-				active ? "" : "opacity-40"
-			}`}
-		>
-			<span className="h-2.5 w-2.5 rounded-circle" style={{ backgroundColor: color }} aria-hidden="true" />
-			<span className={active ? "" : "line-through"}>{label}</span>
-			<span className="text-gray-400 dark:text-gray-500">{count}</span>
-		</button>
-	);
-}
-
 function CtrlButton({ onClick, label, title }: { onClick: () => void; label: ReactNode; title: string }) {
 	return (
 		<button
@@ -964,16 +912,5 @@ function FitIcon() {
 			<path d="M6 2H2v4" />
 			<path d="M10 14h4v-4" />
 		</svg>
-	);
-}
-
-function LegendLine({ dash, label }: { dash: string | null; label: string }) {
-	return (
-		<span className="flex items-center gap-1.5">
-			<svg width="22" height="6" aria-hidden="true">
-				<line x1="0" y1="3" x2="22" y2="3" stroke={EDGE_STROKE} strokeWidth="1" strokeDasharray={dash ?? undefined} />
-			</svg>
-			{label}
-		</span>
 	);
 }

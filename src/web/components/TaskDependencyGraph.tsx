@@ -20,51 +20,50 @@ import { apiClient, type GraphEdgeDto, type GraphNodeDto } from "../lib/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { buildRelationshipSubgraph } from "../utils/task-subgraph";
+import {
+	EDGE_DASH,
+	EDGE_STROKE,
+	LegendDot,
+	LegendLine,
+	NODE_FILL,
+	NODE_STROKE,
+	type NodeStyle,
+	nodeStyle,
+} from "./GraphLegend";
+
+/** Where each task's graph viewport was left (`d3-zoom` transform), keyed by task id. */
+export type GraphViewports = Map<string, ZoomTransform>;
 
 interface Props {
 	/** Canonical id of the open task; the subgraph is centered on it. */
 	focusId: string;
 	/** Bumped by the app when the server graph changes (graph-updated WebSocket); triggers a refetch. */
 	graphVersion?: number;
+	/**
+	 * Per-task reading state, owned by the modal. This component is unmounted while a drilled-into
+	 * neighbour shows its detail view, so anything that has to survive the round trip - how a task
+	 * was being read, where its viewport was left, which kinds were hidden - lives one level up.
+	 */
+	viewports: GraphViewports;
+	hiddenStyles?: ReadonlySet<NodeStyle>;
+	onHiddenStylesChange: (next: ReadonlySet<NodeStyle>) => void;
 	onTaskClick: (taskId: string) => void;
-	onClose: () => void;
 }
 
-type NodeStyle = "task" | "completed" | "draft" | "milestone";
-
-// Same palette family as GraphView: blue for open work, amber for drafts, green for
-// completed, purple for milestones.
-const NODE_FILL: Record<NodeStyle, string> = {
-	task: "#3b82f6",
-	completed: "#10b981",
-	draft: "#f59e0b",
-	milestone: "#a855f7",
-};
-const NODE_STROKE: Record<NodeStyle, string> = {
-	task: "#93c5fd",
-	completed: "#6ee7b7",
-	draft: "#fcd34d",
-	milestone: "#d8b4fe",
-};
-const EDGE_STROKE = "#94a3b8";
-const EDGE_DASH: Record<GraphEdgeDto["type"], string | null> = {
-	// DependsOn is the semantic backbone: solid with an arrowhead. The structural relations are dashed.
-	DependsOn: null,
-	ParentOf: "6 3",
-	BelongsToMilestone: "2 3",
-};
 const ARROW_SIZE = 7;
 const ARROW_GAP = 2;
 const NODE_RADIUS = 14;
 const ROOT_RADIUS = 18;
 const PRECOMPUTE_TICKS = 200;
 const EDGE_LABEL_FONT = 10;
-
-const nodeStyle = (node: GraphNodeDto): NodeStyle => {
-	if (node.kind === "milestone") return "milestone";
-	if (node.kind === "draft") return "draft";
-	return node.filePath.startsWith("completed/") ? "completed" : "task";
-};
+/** No kind hidden - the set a task the modal holds no filters for falls back to, so it stays stable. */
+const NO_FILTERS: ReadonlySet<NodeStyle> = new Set<NodeStyle>();
+/**
+ * Canvas height: as tall as the modal can show without scrolling (the modal tops out at 94vh;
+ * header, padding, title row and legend claim ~9.5rem). The width is the modal's own, so the
+ * neighborhood gets the whole reading area instead of a small square floating in it.
+ */
+const CANVAS_HEIGHT = "min(calc(94vh - 9.5rem), 44rem)";
 
 interface SimNode extends SimulationNodeDatum {
 	id: string;
@@ -86,18 +85,25 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
  * the same edge styles and labels as the full graph view. The layout is precomputed with a
  * fixed tick budget and stays interactive through zoom and drag.
  */
-export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskClick, onClose }) => {
+export const TaskDependencyGraph: FC<Props> = ({
+	focusId,
+	graphVersion,
+	viewports,
+	hiddenStyles,
+	onHiddenStylesChange,
+	onTaskClick,
+}) => {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const [payload, setPayload] = useState<Awaited<ReturnType<typeof apiClient.getGraph>> | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [hiddenStyles, setHiddenStyles] = useState<ReadonlySet<NodeStyle>>(() => new Set<NodeStyle>());
 	const svgRef = useRef<SVGSVGElement | null>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const onTaskClickRef = useRef(onTaskClick);
 	useEffect(() => {
 		onTaskClickRef.current = onTaskClick;
 	}, [onTaskClick]);
+	const filters = hiddenStyles ?? NO_FILTERS;
 
 	useEffect(() => {
 		let cancelled = false;
@@ -125,31 +131,26 @@ export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskCl
 	// Legend filters: hidden kinds drop their nodes and every edge touching them.
 	const visibleSubgraph = useMemo(() => {
 		if (!subgraph) return null;
-		if (hiddenStyles.size === 0) return subgraph;
+		if (filters.size === 0) return subgraph;
 		const visible = new Set(
-			subgraph.nodes.filter((node) => node.isRoot || !hiddenStyles.has(nodeStyle(node))).map((node) => node.id),
+			subgraph.nodes.filter((node) => node.isRoot || !filters.has(nodeStyle(node))).map((node) => node.id),
 		);
 		return {
 			nodes: subgraph.nodes.filter((node) => visible.has(node.id)),
 			edges: subgraph.edges.filter((edge) => visible.has(edge.from) && visible.has(edge.to)),
 		};
-	}, [subgraph, hiddenStyles]);
+	}, [subgraph, filters]);
 
-	const toggleStyle = useCallback((style: NodeStyle) => {
-		setHiddenStyles((previous) => {
-			const next = new Set(previous);
+	// A toggle only ever applies to the task being read; the modal keeps one filter set per task.
+	const toggleStyle = useCallback(
+		(style: NodeStyle) => {
+			const next = new Set(filters);
 			if (next.has(style)) next.delete(style);
 			else next.add(style);
-			return next;
-		});
-	}, []);
-
-	const LEGEND: Array<{ style: NodeStyle; label: string }> = [
-		{ style: "task", label: t.graphView.legendTask },
-		{ style: "completed", label: t.graphView.legendCompleted },
-		{ style: "draft", label: t.graphView.legendDraft },
-		{ style: "milestone", label: t.graphView.legendMilestone },
-	];
+			onHiddenStylesChange(next);
+		},
+		[filters, onHiddenStylesChange],
+	);
 
 	useEffect(() => {
 		const svgEl = svgRef.current;
@@ -330,6 +331,8 @@ export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskCl
 			.duration(0)
 			.on("zoom", (event) => {
 				g.attr("transform", event.transform.toString());
+				// Remember the viewport on this task; a drill-down round trip comes back to it.
+				viewports.set(focusId, event.transform);
 				const k = event.transform.k;
 				currentK = k;
 				nodeSel
@@ -364,14 +367,23 @@ export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskCl
 			});
 		svg.call(zoomBehavior);
 
-		// Fit: frame the whole subgraph, centered in the viewport.
+		// Fit: frame the whole subgraph, centered in the viewport. No upper bound on the zoom - a
+		// neighborhood is a handful of nodes, so filling the canvas is the point; the /graph page's
+		// 1.5x cap exists because it frames a whole corpus and would only ever be reached by mistake.
 		const fitToView = () => {
+			// A task with no relations is a subgraph of one: there is no extent to frame, and scaling
+			// to the canvas would zoom in on nothing - far enough that the radius clamp draws the lone
+			// node oversized. Center it at 1:1 instead.
+			if (nodes.length < 2) {
+				svg.call(zoomBehavior.transform, zoomIdentity.translate(width / 2, height / 2));
+				return;
+			}
 			const pad = 24;
 			const xs = nodes.map((n) => n.x ?? 0);
 			const ys = nodes.map((n) => n.y ?? 0);
 			const dx = Math.max(1, Math.max(...xs) - Math.min(...xs));
 			const dy = Math.max(1, Math.max(...ys) - Math.min(...ys));
-			const scale = Math.min(1.5, Math.max(0.2, Math.min(width / (dx + 2 * pad), height / (dy + 2 * pad))));
+			const scale = Math.max(0.2, Math.min(width / (dx + 2 * pad), height / (dy + 2 * pad)));
 			const transform: ZoomTransform = zoomIdentity
 				.translate(
 					width / 2 - scale * ((Math.min(...xs) + Math.max(...xs)) / 2),
@@ -380,7 +392,11 @@ export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskCl
 				.scale(scale);
 			svg.call(zoomBehavior.transform, transform);
 		};
-		fitToView();
+		// Returning to a task the user already inspected (the drill-down round trip) restores the
+		// viewport they left there; a first visit frames the whole subgraph.
+		const savedTransform = viewports.get(focusId);
+		if (savedTransform) svg.call(zoomBehavior.transform, savedTransform);
+		else fitToView();
 
 		nodeSel.call(
 			d3Drag<SVGGElement, SimNode>()
@@ -408,55 +424,62 @@ export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskCl
 			simulation.stop();
 			svg.on("click", null);
 		};
-	}, [visibleSubgraph, theme, t.graphView.edgeDependsOn, t.graphView.edgeParentOf, t.graphView.edgeMilestone]);
+	}, [visibleSubgraph, viewports, focusId, theme, t.graphView.edgeDependsOn, t.graphView.edgeParentOf, t.graphView.edgeMilestone]);
 
 	const loading = !payload;
 	const building = payload?.status === "building";
 	const empty = !!visibleSubgraph && visibleSubgraph.nodes.length === 0;
 	const ready = !!visibleSubgraph && visibleSubgraph.nodes.length > 0;
 
+	// Legend: one toggle per node style, with the count the subgraph holds - the same legend the
+	// /graph page shows, on this task's neighborhood instead of the whole corpus.
+	const counts = useMemo(() => {
+		const out: Partial<Record<NodeStyle, number>> = {};
+		for (const node of subgraph?.nodes ?? []) {
+			const style = nodeStyle(node);
+			out[style] = (out[style] ?? 0) + 1;
+		}
+		return out;
+	}, [subgraph]);
+	const legendEntries: Array<{ style: NodeStyle; label: string }> = [
+		{ style: "task", label: t.graphView.legendTask },
+		{ style: "completed", label: t.graphView.legendCompleted },
+		{ style: "draft", label: t.graphView.legendDraft },
+		{ style: "milestone", label: t.graphView.legendMilestone },
+	];
+
 	return (
 		<div>
-			<div className="flex items-center justify-between mb-2">
+			{/* No close control here: the modal header carries the arrow that leaves this view, in the
+			    same slot a drill-down uses, so there is one way out instead of a second, easy-to-miss one. */}
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
 				<h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
 					{t.taskDetails.dependencyGraphTitle}
 				</h3>
-				<button
-					type="button"
-					onClick={onClose}
-					title={t.taskDetails.dependencyGraphClose}
-					aria-label={t.taskDetails.dependencyGraphClose}
-					className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200 leading-none w-7 h-7 flex items-center justify-center"
-				>
-					×
-				</button>
-			</div>
-			<div className="flex flex-wrap items-center gap-1.5 mb-2">
-				{LEGEND.map(({ style, label }) => {
-					const hidden = hiddenStyles.has(style);
-					return (
-						<button
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+					{legendEntries.map(({ style, label }) => (
+						<LegendDot
 							key={style}
-							type="button"
-							onClick={() => toggleStyle(style)}
-							aria-pressed={!hidden}
-							title={t.graphView.filterToggle}
-							className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition-colors duration-200 ${
-								hidden
-									? "border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 line-through"
-									: "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-							}`}
-						>
-							<span
-								className="w-2.5 h-2.5 rounded-full"
-								style={{ backgroundColor: NODE_FILL[style], opacity: hidden ? 0.3 : 1 }}
-							/>
-							{label}
-						</button>
-					);
-				})}
+							color={NODE_FILL[style]}
+							label={label}
+							count={counts[style] ?? 0}
+							active={!filters.has(style)}
+							onToggle={() => toggleStyle(style)}
+							hint={t.graphView.filterToggle}
+						/>
+					))}
+					<LegendLine dash={EDGE_DASH.DependsOn} label={t.graphView.edgeDependsOn} />
+					<LegendLine dash={EDGE_DASH.ParentOf} label={t.graphView.edgeParentOf} />
+					<LegendLine dash={EDGE_DASH.BelongsToMilestone} label={t.graphView.edgeMilestone} />
+				</div>
 			</div>
-			<div ref={containerRef} className="relative text-gray-700 dark:text-gray-300">
+			{/* The canvas takes the whole modal body: a wide reading area lets the neighborhood spread
+			    out instead of bunching inside a small square with empty space on either side. */}
+			<div
+				ref={containerRef}
+				className="relative w-full text-gray-700 dark:text-gray-300"
+				style={{ height: CANVAS_HEIGHT }}
+			>
 				{error ? (
 					<div className="absolute inset-0 flex items-center justify-center">
 						<p className="text-sm text-red-500 dark:text-red-400">{error}</p>
@@ -477,7 +500,7 @@ export const TaskDependencyGraph: FC<Props> = ({ focusId, graphVersion, onTaskCl
 				<svg
 					ref={svgRef}
 					width="100%"
-					height={440}
+					height="100%"
 					className={ready ? "" : "invisible"}
 					role="img"
 					aria-label={t.taskDetails.dependencyGraphTitle}

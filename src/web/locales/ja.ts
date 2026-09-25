@@ -259,7 +259,7 @@ export const ja: TranslationDict = {
 		metadataTabsLabel: "タスクのメタデータ",
 		dependencyGraphTitle: "関連関係図",
 		dependencyGraphToggle: "関連関係図を表示",
-		dependencyGraphClose: "グラフを閉じる (Esc)",
+		dependencyGraphBack: "タスク詳細に戻る (Esc)",
 		closureWaitsFor: "依存先",
 		closureWaitedOnBy: "依存元",
 		closureCycle: "循環依存",

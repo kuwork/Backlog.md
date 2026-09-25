@@ -27,7 +27,8 @@ import { commands } from "@uiw/react-md-editor";
 import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness } from "../../utils/readiness";
 import { canonicalTaskId, taskIdsEqual } from "../../utils/task-id";
 import type { DependencyDirectionAnswer, DependencyQueryAnswer } from "../../utils/dependency-query";
-import TaskDependencyGraph from "./TaskDependencyGraph";
+import TaskDependencyGraph, { type GraphViewports } from "./TaskDependencyGraph";
+import type { NodeStyle } from "./GraphLegend";
 
 interface Props {
   task?: Task; // Optional for create mode
@@ -56,6 +57,24 @@ interface Props {
 }
 
 type Mode = "preview" | "edit" | "create";
+
+/**
+ * The one way out of a step that is not a separate screen: leaving a drilled-into task and leaving
+ * the relationship graph are the same move, so they share the arrow in the same slot - left of the
+ * modal title, where a drill-down already puts it.
+ */
+const HeaderBackButton: React.FC<{ onClick: () => void; label: string }> = ({ onClick, label }) => (
+  <button
+    onClick={onClick}
+    className="inline-flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200"
+    title={label}
+    aria-label={label}
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+  </button>
+);
 
 type TaskUpdatePayload = Partial<Task> & {
   definitionOfDoneAdd?: string[];
@@ -241,7 +260,24 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const isCompletedCorpus = task?.source === "completed";
   const isReadOnly = isFromOtherBranch || isCompletedCorpus;
   const [mode, setMode] = useState<Mode>(isCreateMode ? "create" : "preview");
-  const [showGraph, setShowGraph] = useState(false);
+  // Reading a neighborhood as a graph is a state of the task being read, not a modal-wide mode: the
+  // graph opens per task, so drilling into a neighbour lands on that task's own state - the detail
+  // view, unless it was left open as a graph - and coming back restores the mode, the viewport and
+  // the legend filters this task was left in. It is kept here rather than inside the graph component
+  // because that component unmounts while the neighbour's detail view is on screen.
+  const [graphOpenByTask, setGraphOpenByTask] = useState<ReadonlyMap<string, boolean>>(() => new Map());
+  const [graphHiddenStyles, setGraphHiddenStyles] = useState<ReadonlyMap<string, ReadonlySet<NodeStyle>>>(
+    () => new Map(),
+  );
+  const graphViewportsRef = useRef<GraphViewports>(new Map());
+  const openTaskId = task?.id ?? "";
+  const showGraph = graphOpenByTask.get(openTaskId) ?? false;
+  const setShowGraph = useCallback(
+    (open: boolean) => {
+      setGraphOpenByTask((previous) => new Map(previous).set(openTaskId, open));
+    },
+    [openTaskId],
+  );
   const modeRef = useRef(mode);
   const previousTaskId = useRef(task?.id ?? "");
   const previousIsOpen = useRef(isOpen);
@@ -752,8 +788,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
     // Opening the modal on another task drops a pinned tab so the default follows the new task.
     if (nextTaskId !== previousTaskId.current || !isOpen || !previousIsOpen.current) {
       setMetadataTab(null);
-      setShowGraph(false);
       setDependencySaveError(null);
+    }
+
+    // Every task opens in the detail view; the per-task graph state (mode, viewport, filters) lives
+    // as long as the modal does, so a drill-down round trip still finds each task where it was left.
+    if (!isOpen || !previousIsOpen.current) {
+      setGraphOpenByTask(new Map());
+      setGraphHiddenStyles(new Map());
+      graphViewportsRef.current.clear();
     }
 
     if (sameOpenModalRefresh && previousFormState) {
@@ -1445,17 +1488,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
       maxWidthClass="max-w-5xl"
       disableEscapeClose={mode === "edit" || mode === "create" || demoting || showGraph}
       leftActions={
-        onBack ? (
-          <button
-            onClick={onBack}
-            className="inline-flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200"
-            title={t.common.back}
-            aria-label={t.common.back}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-          </button>
+        // The graph is a step into this task, so the arrow that leaves it sits where a drill-down
+        // already puts one and does what the graph's own close used to: back to the detail view.
+        showGraph ? (
+          <HeaderBackButton
+            onClick={() => setShowGraph(false)}
+            label={t.taskDetails.dependencyGraphBack}
+          />
+        ) : onBack ? (
+          <HeaderBackButton onClick={onBack} label={t.common.back} />
         ) : undefined
       }
       actions={
@@ -1536,8 +1577,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
         <TaskDependencyGraph
           focusId={task.id}
           graphVersion={graphVersion}
+          viewports={graphViewportsRef.current}
+          hiddenStyles={graphHiddenStyles.get(task.id)}
+          onHiddenStylesChange={(next) => {
+            setGraphHiddenStyles((previous) => new Map(previous).set(task.id, next));
+          }}
           onTaskClick={handleGraphTaskClick}
-          onClose={() => setShowGraph(false)}
         />
       ) : (
       <>
