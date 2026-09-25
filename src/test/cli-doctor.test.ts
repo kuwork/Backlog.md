@@ -257,4 +257,153 @@ describe("backlog doctor command", () => {
 			expect((result.stdout.toString() + result.stderr.toString()).length).toBeGreaterThan(0);
 		});
 	});
+
+	describe("dependency defect diagnosis", () => {
+		/**
+		 * A task file in the shape the writer produces: a block list for dependencies, which is what
+		 * the parser reads back and what every measurement in BACK-708 was taken against.
+		 */
+		function taskFile(id: string, title: string, dependencies: string[] = [], status = "To Do"): string {
+			const dependenciesBlock =
+				dependencies.length > 0
+					? `dependencies:\n${dependencies.map((dependency) => `  - ${dependency}`).join("\n")}\n`
+					: "dependencies: []\n";
+			return `---\nid: ${id}\ntitle: ${title}\nstatus: ${status}\nassignee: []\ncreated_date: '2026-08-03'\nlabels: []\n${dependenciesBlock}---\n\nBody.\n`;
+		}
+
+		async function runDoctor(...args: string[]): Promise<{ exitCode: number; output: string }> {
+			const result = await $`bun ${CLI_PATH} doctor ${args}`.cwd(TEST_DIR).nothrow().quiet();
+			return { exitCode: result.exitCode, output: result.stdout.toString() + result.stderr.toString() };
+		}
+
+		it("reports a dependency cycle with its ids in order, as a warning", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Cyclic A.md", taskFile("TASK-1", "Cyclic A", ["TASK-2"]));
+			await writeTaskFile("backlog/tasks/task-2 - Cyclic B.md", taskFile("TASK-2", "Cyclic B", ["TASK-1"]));
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("Dependency defects (warnings");
+			expect(output).toContain("TASK-1 -> TASK-2 -> TASK-1");
+			expect(output).toContain("this command still succeeds");
+			expect(output).not.toContain("No duplicate task IDs found.");
+			// A warning rather than a failure: a standing condition of the corpus does not fail the
+			// command whose job is to diagnose it.
+			expect(exitCode).toBe(0);
+		});
+
+		it("reports a self-loop as a cycle", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Self.md", taskFile("TASK-1", "Self", ["TASK-1"]));
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("TASK-1 -> TASK-1");
+			expect(exitCode).toBe(0);
+		});
+
+		it("reports a reference that resolves to nothing, on an open task and on a completed one", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Carrier.md", taskFile("TASK-1", "Carrier", ["TASK-9"]));
+			// The completed case is the one nothing else can see: readiness skips terminal records.
+			await writeTaskFile(
+				"backlog/completed/task-2 - Finished carrier.md",
+				taskFile("TASK-2", "Finished carrier", ["TASK-8"], "Done"),
+			);
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("References that resolve to nothing (2):");
+			expect(output).toContain("TASK-1 -> TASK-9");
+			expect(output).toContain("TASK-2 -> TASK-8");
+			expect(exitCode).toBe(0);
+		});
+
+		it("words a draft target as a forbidden direction rather than a missing id", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/drafts/draft-1 - Abandonable.md", taskFile("DRAFT-1", "Abandonable", [], "Draft"));
+			await writeTaskFile("backlog/tasks/task-1 - Carrier.md", taskFile("TASK-1", "Carrier", ["DRAFT-1"]));
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("may not be depended on (1):");
+			expect(output).toContain("TASK-1 -> DRAFT-1 (a draft is never a valid target");
+			expect(output).not.toContain("References that resolve to nothing");
+			expect(exitCode).toBe(0);
+		});
+
+		it("names an archived-only target as a released id", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/archive/tasks/task-7 - Shelved.md", taskFile("TASK-7", "Shelved", [], "Done"));
+			await writeTaskFile("backlog/tasks/task-1 - Carrier.md", taskFile("TASK-1", "Carrier", ["TASK-7"]));
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("References naming a released id (1):");
+			expect(output).toContain("TASK-1 -> TASK-7");
+			expect(output).toContain("would silently re-bind these references to the new holder");
+			// Not folded into the plain missing-id count: the id is real and free, not a typo.
+			expect(output).not.toContain("References that resolve to nothing");
+			expect(exitCode).toBe(0);
+		});
+
+		it("reports a reference claimed by more than one record as ambiguous", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Holder.md", taskFile("TASK-1", "Holder"));
+			// A completed record claiming the same identity: queryTasks() collapses the working copy to
+			// one record per identity, so only a cross-pool count can see this pair.
+			await writeTaskFile(
+				"backlog/completed/task-1 - Second holder.md",
+				taskFile("TASK-1", "Second holder", [], "Done"),
+			);
+			await writeTaskFile("backlog/tasks/task-2 - Carrier.md", taskFile("TASK-2", "Carrier", ["TASK-1"]));
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("References claimed by more than one record (1):");
+			expect(output).toContain("TASK-2 -> TASK-1 (claimed by 2 records)");
+			expect(output).not.toContain("References that resolve to nothing");
+			expect(exitCode).toBe(0);
+		});
+
+		it("still reports a clean corpus as clean and exits 0", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Root.md", taskFile("TASK-1", "Root"));
+			await writeTaskFile("backlog/tasks/task-2 - Leaf.md", taskFile("TASK-2", "Leaf", ["TASK-1"]));
+
+			const { exitCode, output } = await runDoctor();
+
+			expect(output).toContain("No duplicate task IDs found.");
+			expect(output).not.toContain("Dependency defects");
+			expect(exitCode).toBe(0);
+		});
+
+		it("prints the dependency section under --fix, warns without failing and never prompts", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Carrier.md", taskFile("TASK-1", "Carrier", ["TASK-9"]));
+
+			// No --yes: if the run reached the confirmation prompt it would report a cancelled repair.
+			const { exitCode, output } = await runDoctor("--fix");
+
+			expect(output).toContain("TASK-1 -> TASK-9");
+			expect(output).toContain("Dependency defects are warnings, so this command still succeeds");
+			expect(output).not.toContain("Repair cancelled.");
+			expect(output).not.toContain("Repaired ");
+			expect(exitCode).toBe(0);
+		});
+
+		it("repairs a duplicate and still reports the dependency defect", async () => {
+			await setupProject();
+			await writeTaskFile("backlog/tasks/task-1 - Keep.md", taskFile("TASK-1", "Keep"));
+			await writeTaskFile("backlog/tasks/task-01 - Rename.md", taskFile("TASK-01", "Rename", ["TASK-9"]));
+
+			const { exitCode, output } = await runDoctor("--fix", "--yes");
+
+			expect(output).toContain("Repaired 1 duplicate file(s).");
+			expect(output).toContain("Dependency defects are warnings and still require manual resolution.");
+			// The repaired file kept its dangling reference: the repair touches ids, nothing else.
+			expect(await Bun.file(join(TEST_DIR, "backlog/tasks/task-2 - Rename.md")).text()).toContain("TASK-9");
+			expect(exitCode).toBe(0);
+		});
+	});
 });
