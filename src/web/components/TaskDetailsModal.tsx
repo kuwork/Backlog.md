@@ -4,7 +4,8 @@ import { stripAnyPrefix } from "../../utils/prefix-config";
 import type { AcceptanceCriterion, Milestone, Task, TaskComment } from "../../types";
 import Modal from "./Modal";
 import TaskHierarchySection from "./TaskHierarchySection";
-import { apiClient, NetworkError } from "../lib/api";
+import { apiClient, ApiError, NetworkError } from "../lib/api";
+import type { TranslationDict } from "../locales/types";
 import { useTheme } from "../contexts/ThemeContext";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
@@ -25,6 +26,7 @@ import { encodeWikiPath } from "../utils/urlHelpers";
 import { commands } from "@uiw/react-md-editor";
 import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness } from "../../utils/readiness";
 import { canonicalTaskId, taskIdsEqual } from "../../utils/task-id";
+import type { DependencyDirectionAnswer, DependencyQueryAnswer } from "../../utils/dependency-query";
 import TaskDependencyGraph from "./TaskDependencyGraph";
 
 interface Props {
@@ -37,6 +39,8 @@ interface Props {
   onPromoted?: (task: Task) => void; // For opening a newly promoted task
   availableStatuses?: string[]; // Available statuses for new tasks
   availableTasks?: Task[]; // Task corpus for hierarchy display and dependency picker
+  /** Bumped by the app whenever the task corpus is refreshed (broadcast or own writes). */
+  tasksVersion?: number;
   isDraftMode?: boolean; // Whether creating a draft
   availableMilestones?: string[];
   milestoneEntities?: Milestone[];
@@ -213,6 +217,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   onPromoted,
   availableStatuses,
   availableTasks: initialAvailableTasks,
+  tasksVersion = 0,
   availableMilestones: _availableMilestones,
   milestoneEntities,
   archivedMilestoneEntities,
@@ -406,6 +411,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const [labels, setLabels] = useState<string[]>(task?.labels || []);
   const [priority, setPriority] = useState<string>(task?.priority || "");
   const [dependencies, setDependencies] = useState<string[]>(task?.dependencies || []);
+  // Server rejection message for a dependency-list write (cycle, missing target, lock), shown
+  // next to the input instead of the top banner so it is visible where the user is typing.
+  // It dismisses itself after a few seconds so a stale failure never lingers.
+  const [dependencySaveError, setDependencySaveError] = useState<string | null>(null);
+  useEffect(() => {
+    if (dependencySaveError === null) return;
+    const timer = window.setTimeout(() => setDependencySaveError(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [dependencySaveError]);
   const [references, setReferences] = useState<string[]>(task?.references || []);
   const [documentation, setDocumentation] = useState<string[]>(task?.documentation || []);
   const [modifiedFiles, setModifiedFiles] = useState<string[]>(task?.modifiedFiles || []);
@@ -517,6 +531,55 @@ export const TaskDetailsModal: React.FC<Props> = ({
     () => [...availableTasks, ...offBoardDependencies],
     [availableTasks, offBoardDependencies],
   );
+
+  // BACK-709 AC #9: the closure endpoint answers both directions in one request per popup open -
+  // what the record transitively waits for and what waits on it, each with hop counts, plus root
+  // blockers, cycles and references that resolve to nothing. Refetched when an inline edit has
+  // settled on the server and when the app broadcasts a corpus refresh (an external editor changed
+  // a file while this popup is open), never on the optimistic state and never on a timer: a
+  // refetch fired at removal time would read the pre-write corpus and re-report the very cycle
+  // that was just removed.
+  const [closure, setClosure] = useState<DependencyQueryAnswer | null>(null);
+  const [closureFailed, setClosureFailed] = useState(false);
+  const [closureRefreshTick, setClosureRefreshTick] = useState(0);
+  const closureSubjectId = task?.id ?? null;
+  useEffect(() => {
+    if (!isOpen || isCreateMode || closureSubjectId === null) {
+      setClosure((current) => (current === null ? current : null));
+      setClosureFailed(false);
+      return;
+    }
+    let cancelled = false;
+    // A refetch for the same record keeps the previous answer on screen until the new one arrives;
+    // opening a different record starts empty instead of showing the other record's closure.
+    setClosure((current) => (current !== null && current.subject.id !== closureSubjectId ? null : current));
+    setClosureFailed(false);
+    apiClient
+      .fetchDependencyClosure(closureSubjectId)
+      .then((answer) => {
+        if (cancelled) return;
+        // A stubbed or misbehaving endpoint can resolve with anything (test doubles answer every
+        // URL with an empty array). Only a real both-direction answer may reach the render.
+        const validated = isDependencyQueryAnswer(answer) ? answer : null;
+        setClosure(validated);
+        setClosureFailed(validated === null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setClosure(null);
+        setClosureFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isCreateMode, closureSubjectId, closureRefreshTick, tasksVersion]);
+  const hasClosureContent =
+    closureFailed ||
+    (closure !== null &&
+      (closure.dependencies.rows.length > 0 ||
+        closure.dependents.rows.length > 0 ||
+        closure.dependencies.cycle.length > 0 ||
+        closure.unresolved.length > 0));
 
   // Completed records are the one thing the board corpus cannot answer, and BACK-662's completed
   // corpus makes the search service the surface that can.
@@ -690,6 +753,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     if (nextTaskId !== previousTaskId.current || !isOpen || !previousIsOpen.current) {
       setMetadataTab(null);
       setShowGraph(false);
+      setDependencySaveError(null);
     }
 
     if (sameOpenModalRefresh && previousFormState) {
@@ -1105,16 +1169,49 @@ export const TaskDetailsModal: React.FC<Props> = ({
     // Don't allow updates for off-board records
     if (isReadOnly) return;
 
+    // The server write happens after the optimistic set below, so remember what was on screen:
+    // a rejected update (dependency gate, lock conflict) must roll back, otherwise a chip or a
+    // status sits there as if it had been saved when the file says otherwise.
+    const previous: Record<string, unknown> = {};
+
     // Optimistic UI
-    if (updates.status !== undefined) setStatus(String(updates.status));
-    if (updates.assignee !== undefined) setAssignee(updates.assignee as string[]);
-    if (updates.labels !== undefined) setLabels(updates.labels as string[]);
-    if (updates.priority !== undefined) setPriority(String(updates.priority));
-    if (updates.dependencies !== undefined) setDependencies(updates.dependencies as string[]);
-    if (updates.references !== undefined) setReferences(updates.references as string[]);
-    if (updates.documentation !== undefined) setDocumentation(updates.documentation as string[]);
-    if (updates.modifiedFiles !== undefined) setModifiedFiles(updates.modifiedFiles as string[]);
-    if (updates.milestone !== undefined) setMilestone((updates.milestone ?? "") as string);
+    if (updates.status !== undefined) {
+      previous.status = status;
+      setStatus(String(updates.status));
+    }
+    if (updates.assignee !== undefined) {
+      previous.assignee = assignee;
+      setAssignee(updates.assignee as string[]);
+    }
+    if (updates.labels !== undefined) {
+      previous.labels = labels;
+      setLabels(updates.labels as string[]);
+    }
+    if (updates.priority !== undefined) {
+      previous.priority = priority;
+      setPriority(String(updates.priority));
+    }
+    if (updates.dependencies !== undefined) {
+      previous.dependencies = dependencies;
+      setDependencies(updates.dependencies as string[]);
+      setDependencySaveError(null);
+    }
+    if (updates.references !== undefined) {
+      previous.references = references;
+      setReferences(updates.references as string[]);
+    }
+    if (updates.documentation !== undefined) {
+      previous.documentation = documentation;
+      setDocumentation(updates.documentation as string[]);
+    }
+    if (updates.modifiedFiles !== undefined) {
+      previous.modifiedFiles = modifiedFiles;
+      setModifiedFiles(updates.modifiedFiles as string[]);
+    }
+    if (updates.milestone !== undefined) {
+      previous.milestone = milestone;
+      setMilestone((updates.milestone ?? "") as string);
+    }
 
     // Only update server if editing existing task
     if (task) {
@@ -1122,8 +1219,26 @@ export const TaskDetailsModal: React.FC<Props> = ({
         await apiClient.updateTask(task.id, updates);
         if (onSaved) await onSaved();
       } catch (err) {
-        console.error(t.common.failedToSave, err);
-        // No rollback for simplicity; caller can refresh
+        // Put the pre-edit values back: the file does not hold the optimistic ones, and the
+        // dirty-preserve refresh would otherwise keep the rejected value on screen forever.
+        if (previous.status !== undefined) setStatus(String(previous.status));
+        if (previous.assignee !== undefined) setAssignee(previous.assignee as string[]);
+        if (previous.labels !== undefined) setLabels(previous.labels as string[]);
+        if (previous.priority !== undefined) setPriority(String(previous.priority));
+        if (previous.dependencies !== undefined) setDependencies(previous.dependencies as string[]);
+        if (previous.references !== undefined) setReferences(previous.references as string[]);
+        if (previous.documentation !== undefined) setDocumentation(previous.documentation as string[]);
+        if (previous.modifiedFiles !== undefined) setModifiedFiles(previous.modifiedFiles as string[]);
+        if (previous.milestone !== undefined) setMilestone((previous.milestone ?? "") as string);
+        const message = localizeDependencySaveError(err, t);
+        // A dependency rejection surfaces next to the input the user was typing in; everything
+        // else keeps using the banner at the top of the popup.
+        if (updates.dependencies !== undefined) setDependencySaveError(message);
+        else setError(message);
+      } finally {
+        // Refetch the closure only once the write has settled, success or not: on failure the
+        // refetch re-syncs the display with what the file actually says.
+        setClosureRefreshTick((tick) => tick + 1);
       }
     }
   };
@@ -2129,6 +2244,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
                 }
               }}
             />
+            {dependencySaveError && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                <span aria-hidden="true">⚠</span>
+                <span>{dependencySaveError}</span>
+              </div>
+            )}
             {readiness && (
               <div
                 className={`mt-2 flex items-start gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium ${
@@ -2139,6 +2260,43 @@ export const TaskDetailsModal: React.FC<Props> = ({
               >
                 <span aria-hidden="true">{readiness.isReady ? '✓' : '⏳'}</span>
                 <span>{readiness.isReady ? 'Ready to start' : formatReadinessBlockers(readiness)}</span>
+              </div>
+            )}
+            {hasClosureContent && (
+              <div className="mt-2 space-y-1.5 text-xs">
+                {closureFailed && (
+                  <div className="rounded-md bg-gray-100 px-2 py-1.5 text-gray-400 dark:bg-gray-900/40 dark:text-gray-500">
+                    {t.taskDetails.closureUnavailable}
+                  </div>
+                )}
+                {closure && (
+                  <>
+                    <ClosureDirectionList icon="↑" label={t.taskDetails.closureWaitsFor} answer={closure.dependencies} />
+                    <ClosureDirectionList icon="↓" label={t.taskDetails.closureWaitedOnBy} answer={closure.dependents} />
+                    {closure.dependencies.cycle.length > 0 && (
+                      <div className="flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        <span aria-hidden="true">↻</span>
+                        <span>
+                          {t.taskDetails.closureCycle}: {closure.dependencies.cycle.join(' → ')}
+                        </span>
+                      </div>
+                    )}
+                    {closure.dependencies.truncated && (
+                      <div className="px-2 text-gray-400 dark:text-gray-500">{t.taskDetails.closureTruncated}</div>
+                    )}
+                    {closure.unresolved.length > 0 && (
+                      <div className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                        <span aria-hidden="true">⚠</span>
+                        <span>
+                          {t.taskDetails.closureUnresolved}:{' '}
+                          {closure.unresolved
+                            .map((defect) => `${defect.source} → ${defect.reference}`)
+                            .join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -2295,6 +2453,99 @@ const StatusSelect: React.FC<{ current: string; onChange: (v: string) => void; d
         <option key={s} value={s}>{s}</option>
       ))}
     </select>
+  );
+};
+
+/**
+ * Runtime shape check for the closure endpoint's answer: the fetch layer is typed, but a stubbed or
+ * otherwise misbehaving backend can still resolve with anything, and rendering that crashes.
+ */
+const isDependencyQueryAnswer = (value: unknown): value is DependencyQueryAnswer => {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Partial<DependencyQueryAnswer>;
+	return (
+		typeof candidate.subject === "object" &&
+		candidate.subject !== null &&
+		typeof candidate.dependencies === "object" &&
+		candidate.dependencies !== null &&
+		Array.isArray(candidate.dependencies.rows) &&
+		typeof candidate.dependents === "object" &&
+		candidate.dependents !== null &&
+		Array.isArray(candidate.dependents.rows) &&
+		Array.isArray(candidate.unresolved)
+	);
+};
+
+/**
+ * A gate rejection reaches the client as an ApiError carrying { code, detail } alongside the
+ * English text. Render the known codes in the user's locale; anything else falls back to the
+ * raw server message, which stays correct even when a new gate error has no translation yet.
+ */
+const localizeDependencySaveError = (err: unknown, t: TranslationDict): string => {
+  if (err instanceof ApiError && err.data !== null && typeof err.data === "object") {
+    const data = err.data as {
+      code?: string;
+      detail?: { chain?: string[]; taskId?: string; dependency?: string; kind?: string };
+    };
+    if (data.code === "dependency_cycle" && data.detail?.chain && data.detail.chain.length > 0) {
+      return t.taskDetails.dependencyErrorCycle(data.detail.chain.join(" → "));
+    }
+    if (data.code === "self_dependent" && data.detail?.taskId) {
+      return t.taskDetails.dependencyErrorSelf(data.detail.taskId);
+    }
+    if (data.code === "ineligible_target" && data.detail?.dependency) {
+      return data.detail.kind === "milestone"
+        ? t.taskDetails.dependencyErrorTargetMilestone(data.detail.dependency)
+        : t.taskDetails.dependencyErrorTargetDraft(data.detail.dependency);
+    }
+  }
+  return err instanceof Error && err.message.trim().length > 0 ? err.message : t.common.failedToSave;
+};
+
+/**
+ * One closure direction as a badge block matching the readiness line above it: icon, localized
+ * label, then the id list with hop counts. Root blockers (unfinished, nothing of their own left to
+ * wait for) are highlighted; completed records are dimmed.
+ */
+const ClosureDirectionList: React.FC<{ icon: string; label: string; answer: DependencyDirectionAnswer }> = ({
+  icon,
+  label,
+  answer,
+}) => {
+  const { t } = useI18n();
+  if (answer.rows.length === 0) return null;
+  const blockers = new Set(answer.blockers.map((row) => row.id));
+  return (
+    <div className="flex items-start gap-1.5 rounded-md bg-gray-50 px-2 py-1.5 font-medium text-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+      <span aria-hidden="true">{icon}</span>
+      <span>
+        <span className="text-gray-500 dark:text-gray-400">{label}: </span>
+        {answer.rows.map((row, index) => (
+          <span key={row.id}>
+            {index > 0 && ', '}
+            <span
+              className={
+                blockers.has(row.id)
+                  ? 'text-amber-700 dark:text-amber-400'
+                  : row.terminal
+                    ? 'text-gray-400 dark:text-gray-500'
+                    : undefined
+              }
+              title={
+                blockers.has(row.id)
+                  ? t.taskDetails.closureRootBlockerTitle
+                  : row.terminal
+                    ? t.taskDetails.closureCompletedTitle
+                    : undefined
+              }
+            >
+              {row.id}
+            </span>{' '}
+            <span className="text-gray-400 dark:text-gray-500">({t.taskDetails.closureHops(row.hops)})</span>
+          </span>
+        ))}
+      </span>
+    </div>
   );
 };
 

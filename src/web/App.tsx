@@ -927,6 +927,14 @@ function AppContent() {
 		}
 	}, [tasks, editingTask, showModal]);
 
+	// Bumped every time the task corpus is replaced - by a broadcast-driven refresh (an external
+	// editor changed a file) or by this client's own writes. Surfaces that cache an answer keyed to
+	// the corpus, like the popup's dependency closure, use it to refetch.
+	const [tasksVersion, setTasksVersion] = useState(0);
+	useEffect(() => {
+		setTasksVersion((version) => version + 1);
+	}, [tasks]);
+
 	useEffect(() => {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		const ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -1231,6 +1239,7 @@ function AppContent() {
 				onBack={taskHistory.length > 0 ? handleBack : undefined}
 				availableStatuses={isDraftMode ? ["Draft", ...statuses] : statuses}
 				availableTasks={tasks}
+				tasksVersion={tasksVersion}
 				availableMilestones={milestones}
 				milestoneEntities={milestoneEntities}
 				archivedMilestoneEntities={archivedMilestones}

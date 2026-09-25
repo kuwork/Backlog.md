@@ -23,6 +23,10 @@ import { canonicalTaskId, taskIdsEqual } from "./task-id.ts";
 export interface DependencyRecordLike {
 	id: string;
 	dependencies?: string[] | undefined;
+	/** Optional, for a caller that wants to describe a row: the traversal itself reads neither. */
+	title?: string | undefined;
+	/** Optional status, for the terminal check BACK-709's root blockers need. */
+	status?: string | undefined;
 }
 
 /** One DependsOn edge; both ends are already canonical. */
@@ -30,6 +34,42 @@ export interface DependencyEdge {
 	from: string;
 	to: string;
 }
+
+/**
+ * Which way a walk travels: along DependsOn ("what does this depend on"), or against it ("what
+ * depends on this"). The edges are the same; only the direction the caller asks in changes.
+ */
+export type DependencyDirection = "dependencies" | "dependents";
+
+/** One reached task and how far away it is, in hops along the walked direction. */
+export interface DependencyClosureRow {
+	id: string;
+	hops: number;
+}
+
+export interface DependencyClosureResult {
+	/**
+	 * One row per reached task, never the subject itself, ordered by hop count and then by id, so
+	 * identical input gives identical output.
+	 *
+	 * A task reachable by several routes appears exactly once, at its *shortest* distance: with
+	 * A -> B, A -> C and B -> C, C is one hop away, not two. The longest distance is a different
+	 * question, and answering it would make the row order depend on which path the walk happened
+	 * to take first.
+	 */
+	rows: DependencyClosureRow[];
+	/** The shortest chain from the subject back to itself when it sits on a cycle; empty otherwise. */
+	cycle: string[];
+	/** True when the walk stopped at the hop bound with more still to reach. */
+	truncated: boolean;
+}
+
+/**
+ * How far a closure walks before giving up. The visited set is what actually guarantees
+ * termination on a cyclic corpus; this is a second, explicit bound so a caller can cap an answer
+ * and so a pathological corpus cannot produce an unbounded one.
+ */
+export const DEFAULT_MAX_HOPS = 50;
 
 /**
  * Resolve one stored reference to the canonical identities it names. An empty list means the
@@ -74,23 +114,30 @@ function chainTo(parent: Map<string, string>, arrival: string, target: string): 
  */
 export class DependencyClosure {
 	private readonly adjacency = new Map<string, string[]>();
+	private readonly reverse = new Map<string, string[]>();
 
 	constructor(edges: Iterable<DependencyEdge>) {
 		for (const { from, to } of edges) {
-			const targets = this.adjacency.get(from);
-			if (!targets) {
-				this.adjacency.set(from, [to]);
-				continue;
-			}
-			if (!targets.includes(to)) {
-				targets.push(to);
-			}
+			pushUnique(this.adjacency, from, to);
+			// The reverse index is what makes "who depends on this" answerable at all: the records
+			// carry one direction, so the other one has to be derived here rather than read.
+			pushUnique(this.reverse, to, from);
 		}
 	}
 
 	/** The identities `id` depends on directly. */
 	dependenciesOf(id: string): readonly string[] {
 		return this.adjacency.get(id) ?? [];
+	}
+
+	/** The identities that depend on `id` directly: the same edges read the other way. */
+	dependentsOf(id: string): readonly string[] {
+		return this.reverse.get(id) ?? [];
+	}
+
+	/** One step in the direction the caller asked for. */
+	private step(id: string, direction: DependencyDirection): readonly string[] {
+		return direction === "dependencies" ? this.dependenciesOf(id) : this.dependentsOf(id);
 	}
 
 	/**
@@ -101,7 +148,8 @@ export class DependencyClosure {
 	 * Breadth-first, so the chain a refusal prints is the shortest one it could find rather than
 	 * whichever deep path the edge order happened to suggest.
 	 */
-	pathTo(from: string, target: string): string[] | null {
+	pathTo(from: string, target: string, options?: { direction?: DependencyDirection }): string[] | null {
+		const direction = options?.direction ?? "dependencies";
 		if (from === target) {
 			return [from];
 		}
@@ -110,7 +158,7 @@ export class DependencyClosure {
 		const queue: string[] = [from];
 		for (let index = 0; index < queue.length; index += 1) {
 			const current = queue[index] as string;
-			for (const next of this.dependenciesOf(current)) {
+			for (const next of this.step(current, direction)) {
 				if (seen.has(next)) continue;
 				seen.add(next);
 				parent.set(next, current);
@@ -124,8 +172,74 @@ export class DependencyClosure {
 	}
 
 	/** Whether `from` can reach `target`, the endpoints included. */
-	reaches(from: string, target: string): boolean {
-		return this.pathTo(from, target) !== null;
+	reaches(from: string, target: string, options?: { direction?: DependencyDirection }): boolean {
+		return this.pathTo(from, target, options) !== null;
+	}
+
+	/**
+	 * The closure around one subject: every task reachable from it in the asked direction, with the
+	 * shortest hop count of each, plus the cycle it sits on when there is one.
+	 *
+	 * A visited set keeps a cyclic corpus terminating through both mechanisms the task asks for: the
+	 * walk never re-enters a node, and a node already seen is not queued again, so the frontier
+	 * shrinks to nothing instead of enumerating paths. A subject that can be reached back from one of
+	 * its own neighbours sits on a cycle, and that is worth reporting rather than hiding - the corpus
+	 * arriving from a hand edit, a merge or a `git rm` can still hold one even though the write gate
+	 * now refuses to create it (BACK-707).
+	 */
+	closureFrom(id: string, options?: { direction?: DependencyDirection; maxHops?: number }): DependencyClosureResult {
+		const direction = options?.direction ?? "dependencies";
+		const maxHops = options?.maxHops ?? DEFAULT_MAX_HOPS;
+
+		const rows: DependencyClosureRow[] = [];
+		const seen = new Set<string>([id]);
+		let frontier: string[] = [id];
+		let truncated = false;
+		for (let hops = 1; frontier.length > 0; hops += 1) {
+			if (hops > maxHops) {
+				truncated = true;
+				break;
+			}
+			const next: string[] = [];
+			for (const node of frontier) {
+				for (const neighbour of this.step(node, direction)) {
+					if (seen.has(neighbour)) continue;
+					seen.add(neighbour);
+					rows.push({ id: neighbour, hops });
+					next.push(neighbour);
+				}
+			}
+			frontier = next;
+		}
+		// Sorted by (hops, id) rather than left in walk order: the frontier order follows the edge
+		// insertion order, which follows the filesystem's, so leaving it unsorted would make the same
+		// corpus answer differently depending on how the scan enumerated it.
+		rows.sort((left, right) => left.hops - right.hops || left.id.localeCompare(right.id));
+
+		return { rows, cycle: this.cycleThrough(id, direction), truncated };
+	}
+
+	/** The shortest chain from `id` back to itself when one of its own neighbours reaches it. */
+	cycleThrough(id: string, direction: DependencyDirection = "dependencies"): string[] {
+		for (const neighbour of this.step(id, direction)) {
+			const chain = this.pathTo(neighbour, id, { direction });
+			if (chain) {
+				return [id, ...chain];
+			}
+		}
+		return [];
+	}
+}
+
+/** Add `to` to `key`'s list, once, keeping first-seen order. */
+function pushUnique(index: Map<string, string[]>, key: string, value: string): void {
+	const existing = index.get(key);
+	if (!existing) {
+		index.set(key, [value]);
+		return;
+	}
+	if (!existing.includes(value)) {
+		existing.push(value);
 	}
 }
 
@@ -207,6 +321,12 @@ export class DependencyCorpus {
 		this.drafts = pools.drafts ?? [];
 		this.milestones = pools.milestones ?? [];
 		this.released = pools.released ?? [];
+	}
+
+	/** The record claiming an identity, or null when nothing in the pool does. */
+	recordOf(id: string): DependencyRecordLike | null {
+		const canonical = canonicalTaskId(id);
+		return this.targets.find((record) => canonicalTaskId(record.id) === canonical) ?? null;
 	}
 
 	/** What this corpus makes of one stored reference. */

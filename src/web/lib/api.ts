@@ -13,6 +13,7 @@ import type {
 	WikiPage,
 	WikiTreeNode,
 } from "../../types/index.ts";
+import type { DependencyQueryAnswer } from "../../utils/dependency-query.ts";
 import { encodeWikiPath } from "../utils/urlHelpers.ts";
 
 export function isAmbiguousIdConflict(error: unknown): error is ApiError {
@@ -529,6 +530,17 @@ export class ApiClient {
 			// 503 means the graph is held by another process (single-holder lock),
 			// which the caller surfaces as a distinct, non-fatal state.
 			const error = new Error("Failed to fetch graph") as Error & { status?: number };
+			error.status = response.status;
+			throw error;
+		}
+		return response.json();
+	}
+
+	/** The dependency closure around one record: both directions, blockers, cycles, unresolved refs. */
+	async fetchDependencyClosure(id: string): Promise<DependencyQueryAnswer> {
+		const response = await fetch(`${API_BASE}/task/${encodeURIComponent(id)}/dependencies`);
+		if (!response.ok) {
+			const error = new Error("Failed to fetch dependency closure") as Error & { status?: number };
 			error.status = response.status;
 			throw error;
 		}
