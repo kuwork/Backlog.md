@@ -1430,10 +1430,20 @@ export class BacklogServer {
 
 		try {
 			// editTaskOrDraft keeps a draft a draft, or promotes it when a real status is requested.
+			let toleratedDependencies: string[] = [];
+			const collectTolerated = (ids: string[]): void => {
+				toleratedDependencies = ids;
+			};
 			const updatedTask = draftId
-				? await this.core.editTaskOrDraft(taskId, updateInput)
-				: await this.core.updateTaskFromInput(taskId, updateInput);
-			return Response.json(updatedTask);
+				? await this.core.editTaskOrDraft(taskId, updateInput, undefined, {
+						onToleratedDependencies: collectTolerated,
+					})
+				: await this.core.updateTaskFromInput(taskId, updateInput, undefined, {
+						onToleratedDependencies: collectTolerated,
+					});
+			// Carried as data, not only written to a log: a host with no stderr would otherwise never
+			// learn that the record it just saved still holds a reference nothing claims.
+			return Response.json(toleratedDependencies.length > 0 ? { ...updatedTask, toleratedDependencies } : updatedTask);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to update task";
 			const conflict = error instanceof AmbiguousTaskIdError || isAmbiguousIdError(error) || isTaskLockError(error);

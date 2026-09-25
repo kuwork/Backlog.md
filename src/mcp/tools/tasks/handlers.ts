@@ -569,8 +569,17 @@ export class TaskHandlers {
 			if (typeof updateInput.milestone === "string") {
 				updateInput.milestone = await this.resolveMilestoneInput(updateInput.milestone);
 			}
-			const updatedTask = await this.core.editTaskOrDraft(args.id, updateInput);
-			return await formatTaskCallResult(updatedTask);
+			let toleratedDependencies: string[] = [];
+			const updatedTask = await this.core.editTaskOrDraft(args.id, updateInput, undefined, {
+				onToleratedDependencies: (ids) => {
+					toleratedDependencies = ids;
+				},
+			});
+			const extraLines =
+				toleratedDependencies.length > 0
+					? [`Kept unresolvable dependencies as written: ${toleratedDependencies.join(", ")}`]
+					: [];
+			return await formatTaskCallResult(updatedTask, extraLines);
 		} catch (error) {
 			if (isTaskLockError(error)) {
 				throw new BacklogToolError(error.message, "OPERATION_FAILED");

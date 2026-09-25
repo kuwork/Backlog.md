@@ -5,6 +5,7 @@ import { basename, join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
 import type { Task } from "../types/index.ts";
+import { DependencyCycleError, IneligibleDependencyTargetError } from "../utils/task-builders.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 
 describe("Task Dependencies", () => {
@@ -476,6 +477,243 @@ describe("Task Dependencies", () => {
 					false,
 				),
 			).rejects.toThrow(AmbiguousTaskIdError);
+		});
+
+		describe("cycles, targets and the existence split", () => {
+			// Each write gets a fresh Core, so the corpus it walks is the one on disk rather than a snapshot
+			// taken before the previous write.
+			const freshCore = () => new Core(tempDir);
+
+			/** Write a record straight to disk, which is the only way to plant a reference the gate refuses. */
+			const plant = async (id: string, dependencies: string[], title = "Planted"): Promise<void> => {
+				await freshCore().createTask(
+					{
+						id,
+						title,
+						status: "To Do",
+						assignee: [],
+						createdDate: "2024-01-01",
+						labels: [],
+						dependencies,
+					},
+					false,
+				);
+			};
+
+			/** root <- middle <- tail, all three written through the gate. */
+			async function seedChain(): Promise<void> {
+				await freshCore().createTaskFromInput({ title: "Root", description: "No predecessors" }, false);
+				await freshCore().createTaskFromInput(
+					{ title: "Middle", description: "Depends on the root", dependencies: ["TASK-1"] },
+					false,
+				);
+				await freshCore().createTaskFromInput(
+					{ title: "Tail", description: "Depends on the middle", dependencies: ["TASK-2"] },
+					false,
+				);
+			}
+
+			test("refuses a dependency list that names the task itself", async () => {
+				const created = await freshCore().createTaskFromInput({ title: "Self", description: "Alone" }, false);
+
+				await expect(
+					freshCore().updateTaskFromInput(created.task.id, { dependencies: [created.task.id] }, false),
+				).rejects.toThrow(/cannot depend on itself/i);
+
+				const onDisk = await freshCore().filesystem.loadTask(created.task.id);
+				expect(onDisk?.dependencies ?? []).toEqual([]);
+			});
+
+			test("refuses a dependency that closes a two-node cycle and names the chain", async () => {
+				await seedChain();
+
+				const refusal = await freshCore()
+					.updateTaskFromInput("TASK-1", { dependencies: ["TASK-2"] }, false)
+					.then(
+						() => null,
+						(error: unknown) => error,
+					);
+
+				expect(refusal).toBeInstanceOf(DependencyCycleError);
+				expect((refusal as Error).message).toContain("TASK-1 -> TASK-2 -> TASK-1");
+				const onDisk = await freshCore().filesystem.loadTask("TASK-1");
+				expect(onDisk?.dependencies ?? []).toEqual([]);
+			});
+
+			test("refuses a dependency that closes a three-node cycle", async () => {
+				await seedChain();
+
+				const refusal = await freshCore()
+					.updateTaskFromInput("TASK-1", { dependencies: ["TASK-3"] }, false)
+					.then(
+						() => null,
+						(error: unknown) => error,
+					);
+
+				expect(refusal).toBeInstanceOf(DependencyCycleError);
+				expect((refusal as Error).message).toContain("TASK-1 -> TASK-3 -> TASK-2 -> TASK-1");
+			});
+
+			test("accepts a shared predecessor and a diamond", async () => {
+				const setup = freshCore();
+				await setup.createTaskFromInput({ title: "Root", description: "Shared" }, false);
+				await freshCore().createTaskFromInput(
+					{ title: "Left", description: "Depends on the root", dependencies: ["TASK-1"] },
+					false,
+				);
+				await freshCore().createTaskFromInput(
+					{ title: "Right", description: "Depends on the root", dependencies: ["TASK-1"] },
+					false,
+				);
+
+				// Left joins Right over the shared root: both branches converge, which is not a cycle.
+				const merged = await freshCore().updateTaskFromInput("TASK-2", { dependencies: ["TASK-1", "TASK-3"] }, false);
+
+				expect(merged.dependencies).toEqual(["TASK-1", "TASK-3"]);
+				// Re-submitting the list it now holds is still accepted.
+				const again = await freshCore().updateTaskFromInput("TASK-2", { dependencies: ["TASK-1", "TASK-3"] }, false);
+				expect(again.dependencies).toEqual(["TASK-1", "TASK-3"]);
+			});
+
+			test("accepts a replacement list that drops the edge closing a stored cycle", async () => {
+				// A cycle can only reach the disk by bypassing the gate, which is what createTask does.
+				await plant("TASK-1", ["TASK-2"], "Cyclic A");
+				await plant("TASK-2", ["TASK-1"], "Cyclic B");
+
+				// The replacement is judged as a whole, so the cycle is breakable rather than a dead end.
+				const updated = await freshCore().updateTaskFromInput("TASK-1", { dependencies: [] }, false);
+
+				expect(updated.dependencies ?? []).toEqual([]);
+				const onDisk = await freshCore().filesystem.loadTask("TASK-1");
+				expect(onDisk?.dependencies ?? []).toEqual([]);
+			});
+
+			test("refuses a dependency on a draft on the create path and on both edit branches", async () => {
+				const setup = freshCore();
+				const draft = await setup.createTaskFromInput(
+					{ title: "Abandonable", description: "Still a draft", status: "Draft" },
+					false,
+				);
+				await freshCore().createTaskFromInput({ title: "Carrier", description: "Holds dependencies" }, false);
+
+				await expect(
+					freshCore().createTaskFromInput(
+						{ title: "Successor", description: "Depends on a draft", dependencies: [draft.task.id] },
+						false,
+					),
+				).rejects.toThrow(IneligibleDependencyTargetError);
+
+				await expect(
+					freshCore().updateTaskFromInput("TASK-1", { dependencies: [draft.task.id] }, false),
+				).rejects.toThrow(IneligibleDependencyTargetError);
+
+				await expect(
+					freshCore().updateTaskFromInput("TASK-1", { addDependencies: [draft.task.id] }, false),
+				).rejects.toThrow(IneligibleDependencyTargetError);
+			});
+
+			test("accepts a draft depending on a task, on the create path and on an edit", async () => {
+				await freshCore().createTaskFromInput({ title: "Real task", description: "An eligible target" }, false);
+
+				const draft = await freshCore().createTaskFromInput(
+					{ title: "Planned work", description: "Depends on a task", status: "Draft", dependencies: ["TASK-1"] },
+					false,
+				);
+				expect(draft.task.dependencies).toEqual(["TASK-1"]);
+
+				const again = await freshCore().updateDraftFromInput(draft.task.id, { dependencies: ["TASK-1"] }, false);
+				expect(again.dependencies).toEqual(["TASK-1"]);
+			});
+
+			test("still refuses a milestone as a dependency target", async () => {
+				const setup = freshCore();
+				const milestone = await setup.filesystem.createMilestone("Phase One");
+
+				await expect(
+					freshCore().createTaskFromInput(
+						{ title: "Successor", description: "Depends on a milestone", dependencies: [milestone.id] },
+						false,
+					),
+				).rejects.toThrow(IneligibleDependencyTargetError);
+			});
+
+			test("refuses an edit that introduces an unresolvable dependency", async () => {
+				await freshCore().createTaskFromInput({ title: "Carrier", description: "Holds dependencies" }, false);
+
+				await expect(freshCore().updateTaskFromInput("TASK-1", { dependencies: ["TASK-999"] }, false)).rejects.toThrow(
+					/do not exist/,
+				);
+				await expect(
+					freshCore().updateTaskFromInput("TASK-1", { addDependencies: ["TASK-999"] }, false),
+				).rejects.toThrow(/do not exist/);
+			});
+
+			test("carries a stored unresolvable dependency through as written, and reports it", async () => {
+				// The BACK-200/217/218 shape: the record already holds a spelling with nothing behind it.
+				await plant("TASK-1", ["task-404"], "Carrier");
+				const reported: string[][] = [];
+
+				const updated = await freshCore().updateTaskFromInput(
+					"TASK-1",
+					{ title: "Carrier renamed", dependencies: ["task-404"] },
+					false,
+					{ onToleratedDependencies: (ids) => reported.push(ids) },
+				);
+
+				expect(reported).toEqual([["task-404"]]);
+				expect(updated.title).toBe("Carrier renamed");
+				// The spelling the record held survives the rewrite instead of being normalised to TASK-404.
+				const onDisk = await freshCore().filesystem.loadTask("TASK-1");
+				expect(onDisk?.dependencies).toEqual(["task-404"]);
+			});
+
+			test("refuses an edit that rewrites a stored dependency into an unresolvable spelling", async () => {
+				await plant("TASK-1", ["TASK-404"], "Carrier");
+
+				// A different spelling of a different id is a new mistake even though the slot was already bad.
+				await expect(freshCore().updateTaskFromInput("TASK-1", { dependencies: ["BACK-404"] }, false)).rejects.toThrow(
+					/do not exist/,
+				);
+			});
+
+			test("accepts dropping a stored unresolvable dependency", async () => {
+				await plant("TASK-1", ["TASK-404"], "Carrier");
+
+				const cleaned = await freshCore().updateTaskFromInput("TASK-1", { dependencies: [] }, false);
+
+				expect(cleaned.dependencies ?? []).toEqual([]);
+			});
+
+			test("splits an archive-only target the same way: refused when introduced, carried over when stored", async () => {
+				const setup = freshCore();
+				await setup.createTaskFromInput({ title: "Shelved", description: "About to be archived" }, false);
+				await setup.createTaskFromInput({ title: "Peer", description: "Keeps the allocator busy" }, false);
+				await setup.archiveTask("TASK-1", false);
+
+				// Archiving releases the ID, so naming it fresh is still refused.
+				await expect(
+					freshCore().createTaskFromInput(
+						{ title: "Successor", description: "Depends on an archived task", dependencies: ["TASK-1"] },
+						false,
+					),
+				).rejects.toThrow(/do not exist/);
+
+				// A record that already carries it keeps working, and the reference is still reported.
+				await plant("TASK-3", ["TASK-1"], "Carrier");
+				const reported: string[][] = [];
+
+				const updated = await freshCore().updateTaskFromInput(
+					"TASK-3",
+					{ title: "Carrier renamed", dependencies: ["TASK-1"] },
+					false,
+					{ onToleratedDependencies: (ids) => reported.push(ids) },
+				);
+
+				expect(reported).toEqual([["TASK-1"]]);
+				expect(updated.title).toBe("Carrier renamed");
+				const onDisk = await freshCore().filesystem.loadTask("TASK-3");
+				expect(onDisk?.dependencies).toEqual(["TASK-1"]);
+			});
 		});
 	});
 });

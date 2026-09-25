@@ -190,7 +190,7 @@ describe("CLI Dependency Support", () => {
 		expect(task?.dependencies).toEqual(["TASK-1", "TASK-2", "TASK-3"]);
 	});
 
-	test("should handle dependencies on draft tasks", async () => {
+	test("should refuse a dependency on a draft", async () => {
 		// Create draft task first using platform-aware helper
 		// Drafts now get DRAFT-X ids
 		const result1 = await createTaskPlatformAware(
@@ -203,7 +203,9 @@ describe("CLI Dependency Support", () => {
 		expect(result1.exitCode).toBe(0);
 		expect(result1.stdout).toContain("Created draft DRAFT-1");
 
-		// Create task that depends on draft
+		// A draft is never a valid target: it can be abandoned while its dependents stay, so the
+		// direction is refused instead of being written and read back as an unknown id. A draft may
+		// depend on a task, which is the direction that makes promotion safe.
 		// Note: Tasks and drafts have separate ID sequences now
 		const result2 = await createTaskPlatformAware(
 			{
@@ -212,13 +214,12 @@ describe("CLI Dependency Support", () => {
 			},
 			TEST_DIR,
 		);
-		expect(result2.exitCode).toBe(0);
+		expect(result2.exitCode).toBe(1);
+		expect(result2.stderr).toContain("a draft is never a valid target");
 
-		// Verify dependency on draft was set
-		// First non-draft task will be TASK-1
+		// Nothing was written, so the first non-draft task is still unallocated.
 		const task = await core.filesystem.loadTask("task-1");
-		expect(task).not.toBeNull();
-		expect(task?.dependencies).toEqual(["DRAFT-1"]);
+		expect(task).toBeNull();
 	});
 
 	test("should display dependencies in plain text view", async () => {
