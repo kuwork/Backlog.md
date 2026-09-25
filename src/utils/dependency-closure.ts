@@ -1,4 +1,4 @@
-import { canonicalTaskId } from "./task-id.ts";
+import { canonicalTaskId, taskIdsEqual } from "./task-id.ts";
 
 /**
  * Store-free dependency traversal, shared so that the write gate (src/utils/task-builders.ts),
@@ -126,5 +126,114 @@ export class DependencyClosure {
 	/** Whether `from` can reach `target`, the endpoints included. */
 	reaches(from: string, target: string): boolean {
 		return this.pathTo(from, target) !== null;
+	}
+}
+
+/** A record that can be named by a reference; only its identity matters here. */
+export interface DependencyIdentity {
+	id: string;
+}
+
+/**
+ * What the corpus makes of one stored reference. The write gate and the doctor report share this
+ * vocabulary so the two cannot drift into different answers about the same edge - which is exactly
+ * the failure this module exists to prevent: the gate once accepted a draft target while readiness
+ * read the same edge back as unknown, because each had its own idea of the corpus.
+ */
+export type DependencyReferenceKind =
+	/** Exactly one record in the target pool claims it. */
+	| "resolved"
+	/** Several records in the target pool claim it. */
+	| "ambiguous"
+	/** The record claiming it is a draft, which may never be a target. */
+	| "draft"
+	/** The record claiming it is a milestone, which is not a task. */
+	| "milestone"
+	/** Nothing in the pool claims it, but a record under backlog/archive carries the id. */
+	| "released"
+	/** Nothing anywhere claims it. */
+	| "unresolvable";
+
+export interface DependencyReferenceVerdict {
+	kind: DependencyReferenceKind;
+	/** The canonical identities the target pool matched, for a resolved or ambiguous reference. */
+	matches: string[];
+}
+
+/** The pools a reference is judged against. Only `targets` contributes edges. */
+export interface DependencyCorpusPools {
+	/** Records whose dependencies are the edges: tasks + completed. */
+	targets: readonly DependencyRecordLike[];
+	/** Records that exist but may never be a target. */
+	drafts?: readonly DependencyIdentity[];
+	/** Records that exist but are not tasks. */
+	milestones?: readonly DependencyIdentity[];
+	/** Records that left the pool entirely, so their ids are free to be claimed again. */
+	released?: readonly DependencyIdentity[];
+}
+
+/**
+ * Records in `pool` claiming `reference`, by the identity rules every other path uses. This is the
+ * one place a reference is matched, so the gate's pool and the report's pool answer alike.
+ */
+export function matchRecords<T extends DependencyIdentity>(pool: readonly T[], reference: string): T[] {
+	return pool.filter((candidate) => taskIdsEqual(reference, candidate.id));
+}
+
+/**
+ * Whether `reference` names one of these identities *exactly*. Deliberately stricter than
+ * matchRecords, which treats a bare number as an alias of any prefix: a bare "1" is a way of naming
+ * TASK-1, but it is not a way of naming M-1 or DRAFT-1, and reading it as one would tell a user
+ * their milestone is not a task when they meant a task at all.
+ */
+export function namesIdentity(pool: readonly DependencyIdentity[], reference: string): boolean {
+	const canonical = canonicalTaskId(reference);
+	return pool.some((candidate) => canonicalTaskId(candidate.id) === canonical);
+}
+
+/**
+ * The corpus a dependency question is asked of: the target pool plus the pools that decide how a
+ * reference that resolves to nothing is worded. Build it from records the caller already has - it
+ * reads nothing itself, starts no service, and needs no GraphStore.
+ */
+export class DependencyCorpus {
+	private readonly targets: readonly DependencyRecordLike[];
+	private readonly drafts: readonly DependencyIdentity[];
+	private readonly milestones: readonly DependencyIdentity[];
+	private readonly released: readonly DependencyIdentity[];
+
+	constructor(pools: DependencyCorpusPools) {
+		this.targets = pools.targets;
+		this.drafts = pools.drafts ?? [];
+		this.milestones = pools.milestones ?? [];
+		this.released = pools.released ?? [];
+	}
+
+	/** What this corpus makes of one stored reference. */
+	classify(reference: string): DependencyReferenceVerdict {
+		const matched = matchRecords(this.targets, reference);
+		const [only] = matched;
+		if (only && matched.length === 1) {
+			return { kind: "resolved", matches: [canonicalTaskId(only.id)] };
+		}
+		if (matched.length > 1) {
+			return { kind: "ambiguous", matches: matched.map((record) => canonicalTaskId(record.id)) };
+		}
+		if (namesIdentity(this.drafts, reference)) return { kind: "draft", matches: [] };
+		if (namesIdentity(this.milestones, reference)) return { kind: "milestone", matches: [] };
+		if (namesIdentity(this.released, reference)) return { kind: "released", matches: [] };
+		return { kind: "unresolvable", matches: [] };
+	}
+
+	/** The DependsOn edges the target pool implies; a reference that resolves to nothing adds none. */
+	edges(): DependencyEdge[] {
+		return dependencyEdges(this.targets, (reference) =>
+			matchRecords(this.targets, reference).map((record) => canonicalTaskId(record.id)),
+		);
+	}
+
+	/** The closure over those edges. Built per call, so ask once and keep it. */
+	closure(): DependencyClosure {
+		return new DependencyClosure(this.edges());
 	}
 }

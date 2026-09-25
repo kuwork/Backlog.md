@@ -73,6 +73,12 @@ import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-s
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
+import { DependencyCorpus } from "./utils/dependency-closure.ts";
+import {
+	collectDependencyDefects,
+	type DependencyDefectReport,
+	hasDependencyDefects,
+} from "./utils/dependency-defects.ts";
 import { documentReferenceSuggestions } from "./utils/document-id.ts";
 import {
 	type DraftIdentityFindings,
@@ -5962,9 +5968,94 @@ function printDraftIdentityReport(findings: DraftIdentityFindings): void {
 	}
 }
 
+/**
+ * Loads the corpus the dependency report is judged against: the same target pool the write gate
+ * enforces (tasks + completed), plus the pools that only decide how an unresolvable reference is
+ * worded - drafts and milestones are records that exist and may not be depended on, and archived
+ * records are ones that left the pool, so their ids are free to be claimed again.
+ *
+ * The sources are wider than the target pool on purpose: a draft's own references are validated by
+ * the same gate, and drafts are one of the places a historical misspelling survives.
+ */
+async function loadDependencyDefectReport(core: Core): Promise<DependencyDefectReport> {
+	const [tasks, completed, drafts, milestones, released] = await Promise.all([
+		core.queryTasks(),
+		core.filesystem.listCompletedTasks(),
+		core.filesystem.listDrafts(),
+		core.filesystem.listMilestones(),
+		core.filesystem.listArchivedTasks(),
+	]);
+	const corpus = new DependencyCorpus({ targets: [...tasks, ...completed], drafts, milestones, released });
+	return collectDependencyDefects(corpus, [...tasks, ...completed, ...drafts]);
+}
+
+/**
+ * The closing line of every diagnostic-only path, worded from the findings that actually exist: a
+ * corpus whose only defect is a dependency one must not be told that its drafts are the problem,
+ * nor that the command failed.
+ */
+function diagnosticOnlyClosingNote(draftIdentityBroken: boolean, dependencyDefectsFound: boolean): string {
+	if (draftIdentityBroken && dependencyDefectsFound) {
+		return "\nDraft identity findings fail this command and dependency defects are warnings; resolve both by hand.";
+	}
+	if (dependencyDefectsFound) {
+		return "\nDependency defects are warnings, so this command still succeeds; resolve them by hand.";
+	}
+	return "\nDraft identity findings are diagnostic only; resolve them by hand.";
+}
+
+/**
+ * Reports dependency defects as warnings. Nothing here is repaired automatically, and unlike the
+ * draft-identity findings they do not fail the command either: a non-zero exit after a report that
+ * ran to completion reads as an interrupted run, and a command whose whole job is to diagnose
+ * should not report a standing condition of the corpus as a failure. The other findings keep their
+ * exit codes - duplicates have a repair path, draft identity and the reserved prefix are
+ * configuration faults - so a run that succeeds still means "nothing else is wrong".
+ */
+function printDependencyDefectReport(report: DependencyDefectReport): void {
+	if (!hasDependencyDefects(report)) return;
+
+	console.log("\nDependency defects (warnings; nothing below is repaired automatically):");
+	if (report.cycles.length > 0) {
+		console.log(`\n  Cycles (${report.cycles.length}):`);
+		for (const cycle of report.cycles) console.log(`    ${cycle.join(" -> ")}`);
+		console.log("  Remove one edge from each cycle; a cycle has no canonical edge to repair.");
+	}
+	if (report.dangling.length > 0) {
+		console.log(`\n  References that resolve to nothing (${report.dangling.length}):`);
+		for (const defect of report.dangling) console.log(`    ${defect.source} -> ${defect.reference}`);
+		console.log("  The write path tolerates a reference it already finds on disk, so nothing else");
+		console.log("  reports these: they arrived by hand edit, merge or a removed target.");
+	}
+	if (report.ineligible.length > 0) {
+		console.log(`\n  References whose target exists and may not be depended on (${report.ineligible.length}):`);
+		for (const defect of report.ineligible) {
+			const why =
+				defect.kind === "draft"
+					? "a draft is never a valid target: it can be abandoned while its dependents stay"
+					: "a milestone is not a task";
+			console.log(`    ${defect.source} -> ${defect.reference} (${why})`);
+		}
+	}
+	if (report.released.length > 0) {
+		console.log(`\n  References naming a released id (${report.released.length}):`);
+		for (const defect of report.released) console.log(`    ${defect.source} -> ${defect.reference}`);
+		console.log("  The only record left sits under backlog/archive, so the id is free: claiming it");
+		console.log("  again would silently re-bind these references to the new holder.");
+	}
+	if (report.ambiguous.length > 0) {
+		console.log(`\n  References claimed by more than one record (${report.ambiguous.length}):`);
+		for (const defect of report.ambiguous) {
+			console.log(`    ${defect.source} -> ${defect.reference} (claimed by ${defect.matches.length} records)`);
+		}
+		console.log("  The identity stays under-specified until one of the claiming records is renamed;");
+		console.log("  the duplicate-ID repair covers the working copy, not a completed record claiming it too.");
+	}
+}
+
 // Doctor command for duplicate task ID diagnosis and repair
 addHelpSchema(program.command("doctor"), {
-	reads: "Active and completed task files plus Backlog Markdown references",
+	reads: "Active, completed, draft and archived task files, milestones, and Backlog Markdown references",
 	required: [],
 	optional: [
 		{ name: "--fix", type: "Boolean", description: "Apply the displayed duplicate task ID repair after confirmation" },
@@ -5974,7 +6065,8 @@ addHelpSchema(program.command("doctor"), {
 	],
 	writes:
 		"With --fix, atomically renames duplicate task files and updates only their frontmatter IDs; --commit removes retained backups; --rollback restores original files",
-	output: "Duplicate-ID diagnosis for tasks and drafts, deterministic repair preview, and lifecycle reminders",
+	output:
+		"Duplicate-ID diagnosis for tasks and drafts, deterministic repair preview, lifecycle reminders, and dependency defects (cycles, unresolvable, ineligible and ambiguous references) reported as warnings - --fix does not repair those, and they do not fail the command",
 	examples: [
 		"backlog doctor",
 		"backlog doctor --fix",
@@ -6037,7 +6129,9 @@ addHelpSchema(program.command("doctor"), {
 			const plan = await previewDuplicateTaskIdRepair(core);
 			const draftIdentity = await core.filesystem.diagnoseDraftIdentity();
 			const draftIdentityBroken = hasDraftIdentityFindings(draftIdentity);
-			if (plan.groups.length === 0 && !draftIdentityBroken) {
+			const dependencyDefects = await loadDependencyDefectReport(core);
+			const dependencyDefectsFound = hasDependencyDefects(dependencyDefects);
+			if (plan.groups.length === 0 && !draftIdentityBroken && !dependencyDefectsFound) {
 				if (!reservedTaskPrefixCollision) {
 					console.log("No duplicate task IDs found.");
 				}
@@ -6048,10 +6142,12 @@ addHelpSchema(program.command("doctor"), {
 				printDuplicateRepairPlan(plan);
 			}
 			printDraftIdentityReport(draftIdentity);
+			printDependencyDefectReport(dependencyDefects);
 
 			if (plan.groups.length === 0) {
-				console.log("\nDraft identity findings are diagnostic only; resolve them by hand.");
-				process.exitCode = 1;
+				console.log(diagnosticOnlyClosingNote(draftIdentityBroken, dependencyDefectsFound));
+				// A dependency defect is a warning, so it does not set the exit code; draft identity does.
+				if (draftIdentityBroken) process.exitCode = 1;
 				return;
 			}
 			if (!plan.repairable) {
@@ -6091,6 +6187,10 @@ addHelpSchema(program.command("doctor"), {
 			if (draftIdentityBroken) {
 				console.log("Draft identity findings remain diagnostic-only and still require manual resolution.");
 				process.exitCode = 1;
+			}
+			if (dependencyDefectsFound) {
+				// Reported above and left as a warning: the repair that just ran touched ids, not edges.
+				console.log("Dependency defects are warnings and still require manual resolution.");
 			}
 		} catch (err) {
 			console.error("Failed to run doctor", err);

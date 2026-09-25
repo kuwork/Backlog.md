@@ -1,6 +1,6 @@
 import type { Core } from "../core/backlog.ts";
 import type { AcceptanceCriterion, Task } from "../types/index.ts";
-import { DependencyClosure, dependencyEdges } from "./dependency-closure.ts";
+import { type DependencyClosure, DependencyCorpus, matchRecords, namesIdentity } from "./dependency-closure.ts";
 import { AmbiguousIdError } from "./entity-id.ts";
 import { AmbiguousTaskIdError, canonicalTaskId, normalizeTaskId, taskIdsEqual } from "./task-path.ts";
 
@@ -184,15 +184,11 @@ export async function validateDependencies(
 		core.filesystem.listMilestones(),
 	]);
 	const known = [...tasks, ...completed];
-	const matchesOf = (id: string): Task[] => known.filter((candidate) => taskIdsEqual(id, candidate.id));
-
-	// Exact-identity comparison, deliberately unlike taskIdsEqual: a bare "1" is an alias of TASK-1
-	// (and of BACK-1), but it is not a way of naming M-1 or DRAFT-1, and reading it as one would tell
-	// the user their milestone is not a task when they meant a task at all.
-	const namesExactly = (corpus: readonly { id: string }[], dependency: string): boolean => {
-		const canonical = canonicalTaskId(dependency);
-		return corpus.some((candidate) => canonicalTaskId(candidate.id) === canonical);
-	};
+	// One corpus object answers both questions this gate asks - what a reference resolves to, and
+	// which edges exist - and it is the same object the doctor report builds (BACK-708). Neither
+	// writes its own matching rule, which is what keeps the two from drifting apart.
+	const corpus = new DependencyCorpus({ targets: known, drafts, milestones });
+	const matchesOf = (id: string): Task[] => matchRecords(known, id);
 
 	const storedDependencies = subject?.storedDependencies;
 	// Compared on the normalised forms, because normalizeDependencies has already run normalizeTaskId
@@ -205,20 +201,15 @@ export async function validateDependencies(
 	// Built on first use: a write that names no dependency, or a create with no subject, never pays
 	// for an adjacency over the whole corpus.
 	let closure: DependencyClosure | undefined;
-	const reachability = (): DependencyClosure => {
-		closure ??= new DependencyClosure(
-			dependencyEdges(known, (dependency) => matchesOf(dependency).map((match) => canonicalTaskId(match.id))),
-		);
-		return closure;
-	};
+	const reachability = (): DependencyClosure => (closure ??= corpus.closure());
 
 	for (const dependency of dependencies) {
 		const resolved = resolveUniqueDependency(dependency, matchesOf(dependency));
 		if (!resolved) {
-			if (namesExactly(drafts, dependency)) {
+			if (namesIdentity(drafts, dependency)) {
 				throw new IneligibleDependencyTargetError(dependency, "draft");
 			}
-			if (namesExactly(milestones, dependency)) {
+			if (namesIdentity(milestones, dependency)) {
 				throw new IneligibleDependencyTargetError(dependency, "milestone");
 			}
 			const stored = storedSpellingOf(dependency);
