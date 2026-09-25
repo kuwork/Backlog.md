@@ -256,6 +256,9 @@ export const zhCN: TranslationDict = {
 		removeDocumentation: "移除文档",
 		removeModifiedFile: "移除该文件记录",
 		metadataTabsLabel: "任务元数据",
+		dependencyGraphTitle: "关联关系图",
+		dependencyGraphToggle: "显示关联关系图",
+		dependencyGraphClose: "关闭关系图 (Esc)",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;

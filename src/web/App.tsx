@@ -1239,6 +1239,7 @@ function AppContent() {
 				defaultAssignee={config?.defaultAssignee ?? []}
 				availableAssignees={availableAssignees}
 				availableLabels={collectAvailableLabels(tasks, availableLabels)}
+				graphVersion={graphVersion}
 			/>
 
 			<DuplicateTaskRepairModal

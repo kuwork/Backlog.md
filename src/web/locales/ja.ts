@@ -257,6 +257,9 @@ export const ja: TranslationDict = {
 		removeDocumentation: "ドキュメントを削除",
 		removeModifiedFile: "変更ファイルを削除",
 		metadataTabsLabel: "タスクのメタデータ",
+		dependencyGraphTitle: "関連関係図",
+		dependencyGraphToggle: "関連関係図を表示",
+		dependencyGraphClose: "グラフを閉じる (Esc)",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
 			return map[level] ?? level;

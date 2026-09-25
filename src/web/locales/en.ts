@@ -255,6 +255,9 @@ export const en = {
 		removeDocumentation: "Remove document",
 		removeModifiedFile: "Remove modified file",
 		metadataTabsLabel: "Task metadata",
+		dependencyGraphTitle: "Relationship graph",
+		dependencyGraphToggle: "Show relationship graph",
+		dependencyGraphClose: "Close graph (Esc)",
 		priorityLabel: (level: string) => {
 			const map: Record<string, string> = { high: "High", medium: "Medium", low: "Low" };
 			return map[level] ?? level;

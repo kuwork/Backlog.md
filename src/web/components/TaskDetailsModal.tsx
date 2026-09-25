@@ -24,7 +24,8 @@ import { useI18n } from "../hooks/useI18n";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import { commands } from "@uiw/react-md-editor";
 import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness } from "../../utils/readiness";
-import { canonicalTaskId } from "../../utils/task-id";
+import { canonicalTaskId, taskIdsEqual } from "../../utils/task-id";
+import TaskDependencyGraph from "./TaskDependencyGraph";
 
 interface Props {
   task?: Task; // Optional for create mode
@@ -44,6 +45,8 @@ interface Props {
   defaultAssignee?: string[];
   availableAssignees?: string[];
   availableLabels?: string[];
+  /** Bumped whenever the server graph changes; the relationship view refetches on change. */
+  graphVersion?: number;
   onDrillDown?: (task: Task) => void; // Navigate into a dependency task
   onBack?: () => void; // Navigate back to parent task
 }
@@ -218,6 +221,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   defaultAssignee,
   availableAssignees,
   availableLabels,
+  graphVersion,
   onDrillDown,
   onBack,
 }) => {
@@ -232,6 +236,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   const isCompletedCorpus = task?.source === "completed";
   const isReadOnly = isFromOtherBranch || isCompletedCorpus;
   const [mode, setMode] = useState<Mode>(isCreateMode ? "create" : "preview");
+  const [showGraph, setShowGraph] = useState(false);
   const modeRef = useRef(mode);
   const previousTaskId = useRef(task?.id ?? "");
   const previousIsOpen = useRef(isOpen);
@@ -515,6 +520,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
   // Completed records are the one thing the board corpus cannot answer, and BACK-662's completed
   // corpus makes the search service the surface that can.
+  const handleGraphTaskClick = useCallback((taskId: string) => {
+    const targetTask = dependencyCorpus.find((entry) => taskIdsEqual(entry.id, taskId));
+    if (targetTask && onDrillDown) {
+      onDrillDown(targetTask);
+    }
+  }, [dependencyCorpus, onDrillDown]);
+
   const searchCompletedDependencies = useCallback(async (query: string): Promise<Task[]> => {
     const results = await apiClient.search({ query, types: ["task"], completed: true, limit: 8 });
     return results.flatMap((result) => (result.type === "task" ? [result.task] : []));
@@ -609,6 +621,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
   // Intercept Escape to cancel edit (not close modal) when in edit mode
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The dependency graph owns Escape while it fills the modal: collapse it instead of closing.
+      if (showGraph && e.key === "Escape" && !isTypingTarget(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowGraph(false);
+        return;
+      }
       if (mode === "edit" && (e.key === "Escape")) {
         e.preventDefault();
         e.stopPropagation();
@@ -648,7 +667,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true } as any);
-  }, [mode, title, description, plan, notes, finalSummary, criteria, definitionOfDone, status, isDraftTask, demoting]);
+  }, [mode, title, description, plan, notes, finalSummary, criteria, definitionOfDone, status, isDraftTask, demoting, showGraph]);
 
   // Reset local state when task changes or modal opens
   useEffect(() => {
@@ -670,6 +689,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
     // Opening the modal on another task drops a pinned tab so the default follows the new task.
     if (nextTaskId !== previousTaskId.current || !isOpen || !previousIsOpen.current) {
       setMetadataTab(null);
+      setShowGraph(false);
     }
 
     if (sameOpenModalRefresh && previousFormState) {
@@ -1308,7 +1328,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
       }}
       title={isCreateMode ? (isDraftMode ? t.taskDetails.createDraft : t.taskDetails.createTask) : `${displayId} — ${task.title}`}
       maxWidthClass="max-w-5xl"
-      disableEscapeClose={mode === "edit" || mode === "create" || demoting}
+      disableEscapeClose={mode === "edit" || mode === "create" || demoting || showGraph}
       leftActions={
         onBack ? (
           <button
@@ -1397,6 +1417,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
         </div>
       }
     >
+      {showGraph && task ? (
+        <TaskDependencyGraph
+          focusId={task.id}
+          graphVersion={graphVersion}
+          onTaskClick={handleGraphTaskClick}
+          onClose={() => setShowGraph(false)}
+        />
+      ) : (
+      <>
       {error && (
         <div className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</div>
       )}
@@ -2063,7 +2092,28 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
           {/* Dependencies */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
-            <SectionHeader title={t.taskDetails.section.dependencies} />
+            <SectionHeader
+              title={t.taskDetails.section.dependencies}
+              right={
+                task && !isCreateMode ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowGraph(true)}
+                    title={t.taskDetails.dependencyGraphToggle}
+                    aria-label={t.taskDetails.dependencyGraphToggle}
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="6" cy="6" r="2.5" strokeWidth={2} />
+                      <circle cx="18" cy="6" r="2.5" strokeWidth={2} />
+                      <circle cx="6" cy="18" r="2.5" strokeWidth={2} />
+                      <circle cx="18" cy="18" r="2.5" strokeWidth={2} fill="currentColor" stroke="none" />
+                      <path strokeLinecap="round" strokeWidth={2} d="M8.5 6h7M6 8.5v7m12-7v7M8.5 18h7" />
+                    </svg>
+                  </button>
+                ) : undefined
+              }
+            />
             <DependencyInput
               value={dependencies}
               onChange={(value) => handleInlineMetaUpdate({ dependencies: value })}
@@ -2206,6 +2256,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
           )}
         </div>
       </div>
+      </>
+      )}
     </Modal>
     {previewTarget?.kind === "file" && (
       <FilePreviewModal
