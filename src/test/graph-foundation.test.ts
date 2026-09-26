@@ -9,7 +9,7 @@ import { parseTaskFile } from "../graph/parser";
 import { graphCacheDir, graphPaths, portSlot, TUI_SLOT } from "../graph/paths";
 import { resolveRelations } from "../graph/relations";
 import { scanWhitelistedDirs } from "../graph/scanner";
-import { MemoryGraphStore } from "../graph/store";
+import { type GraphNode, isCurrentSchema, MemoryGraphStore, SCHEMA_VERSION, SCHEMA_VERSION_KEY } from "../graph/store";
 
 let root: string;
 
@@ -24,6 +24,11 @@ function taskMd(overrides: Record<string, unknown> = {}, body = ""): string {
 	return `---\n${Object.entries(data)
 		.map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
 		.join("\n")}\n---\n${body}\n`;
+}
+
+/** A FileNode: the path is the identity, the id is just a property (doc-014 §1.2). */
+function node(path: string, id: string, overrides: Partial<GraphNode> = {}): GraphNode {
+	return { path, id, type: "task", title: id, status: "To Do", updatedDate: "", ...overrides };
 }
 
 beforeAll(async () => {
@@ -71,7 +76,13 @@ describe("graph parser", () => {
 		const path = join(root, "parser-ok.md");
 		writeFileSync(
 			path,
-			taskMd({ id: "back-9", dependencies: ["back-1", "back-2"], parentTaskId: "back-1", milestone: "M1" }),
+			taskMd({
+				id: "back-9",
+				dependencies: ["back-1", "back-2"],
+				parentTaskId: "back-1",
+				milestone: "M1",
+				updated_date: "2026-09-26 06:31",
+			}),
 		);
 		const parsed = parseTaskFile(path, "tasks/back-9.md", "task");
 		expect(parsed.warning).toBeUndefined();
@@ -83,6 +94,13 @@ describe("graph parser", () => {
 		expect(record.parentTaskId).toBe("back-1");
 		expect(record.milestone).toBe("M1");
 		expect(record.filePath).toBe("tasks/back-9.md");
+		expect(record.updatedDate).toBe("2026-09-26 06:31");
+	});
+
+	test("a file without a frontmatter updated_date carries an empty updatedDate", () => {
+		const path = join(root, "parser-nodate.md");
+		writeFileSync(path, taskMd({ id: "back-12" }));
+		expect(parseTaskFile(path, "tasks/back-12.md", "task").record?.updatedDate).toBe("");
 	});
 
 	test("comma-separated dependency strings are split", () => {
@@ -123,11 +141,14 @@ describe("fail-closed relation resolution", () => {
 	function rec(
 		partial: Partial<import("../graph/parser").ParsedRecord> & { id: string },
 	): import("../graph/parser").ParsedRecord {
+		const kind = partial.kind ?? "task";
+		const dir = kind === "milestone" ? "milestones" : kind === "draft" ? "drafts" : "tasks";
 		return {
 			title: partial.id,
-			kind: "task",
+			kind,
 			status: "To Do",
-			filePath: `tasks/${partial.id}.md`,
+			filePath: `${dir}/${partial.id}.md`,
+			updatedDate: "",
 			parentTaskId: null,
 			milestone: null,
 			dependencies: [],
@@ -151,11 +172,19 @@ describe("fail-closed relation resolution", () => {
 			rec({ id: "draft-2", kind: "draft", parentTaskId: "back-1", dependencies: ["back-1"] }),
 		]);
 		expect(result.edges.map((e) => [e.type, e.from, e.to])).toEqual([
-			["ParentOf", "draft-2", "back-1"],
-			["DependsOn", "draft-2", "back-1"],
+			["ParentOf", "drafts/draft-2.md", "tasks/back-1.md"],
+			["DependsOn", "drafts/draft-2.md", "tasks/back-1.md"],
 		]);
 		expect(result.invalidRelations).toEqual([]);
 		expect(result.missingDependencies).toEqual([]);
+	});
+
+	test("edge endpoints are file paths (the FileNode primary key), never task ids", () => {
+		const result = resolveRelations([
+			rec({ id: "back-1" }),
+			rec({ id: "back-2", filePath: "completed/back-2 - B.md", dependencies: ["back-1"] }),
+		]);
+		expect(result.edges).toEqual([{ type: "DependsOn", from: "completed/back-2 - B.md", to: "tasks/back-1.md" }]);
 	});
 
 	test("duplicate ids are ambiguous: no DependsOn or ParentOf edges from them", () => {
@@ -191,7 +220,9 @@ describe("fail-closed relation resolution", () => {
 			rec({ id: "back-1", milestone: "m-1" }),
 			rec({ id: "m-1", kind: "milestone", title: "M one" }),
 		]);
-		expect(byId.edges.map((e) => [e.type, e.from, e.to])).toEqual([["BelongsToMilestone", "back-1", "m-1"]]);
+		expect(byId.edges.map((e) => [e.type, e.from, e.to])).toEqual([
+			["BelongsToMilestone", "tasks/back-1.md", "milestones/m-1.md"],
+		]);
 
 		const noMatch = resolveRelations([
 			rec({ id: "back-1", milestone: "m-404" }),
@@ -324,6 +355,28 @@ describe("cold start", () => {
 		}
 	});
 
+	test("a cache written by an older parser version is not reused (schema upgrades rebuild)", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "backlog-cold-"));
+		try {
+			await seedProjectAt(dir, { "tasks/back-1 - A.md": taskMd({ id: "back-1" }) });
+			const first = await coldStart(dir, { backend: "memory" });
+			expect(first.reused).toBe(false);
+			const current = loadMetaCache(graphPaths(dir).metaPath);
+			if (!current) throw new Error("expected a sidecar after the first build");
+			expect(current.parserVersion).toBe(2); // the FileNode schema bump
+
+			// Same project, same content, same fingerprint - only the parser version differs, which
+			// must be enough on its own to force the rebuild.
+			saveMetaCache(graphPaths(dir).metaPath, { ...current, parserVersion: current.parserVersion - 1 });
+			const upgraded = await coldStart(dir, { backend: "memory" });
+			expect(upgraded.reused).toBe(false);
+			expect(upgraded.nodeCount).toBe(1);
+			expect(loadMetaCache(graphPaths(dir).metaPath)?.parserVersion).toBe(2);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
 	test("the fast path never parses files (reuse carries no parse warnings)", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "backlog-cold-"));
 		try {
@@ -344,15 +397,90 @@ describe("cold start", () => {
 		const store = new MemoryGraphStore();
 		await store.init();
 		await store.upsertNodes([
-			{ id: "a", title: "A", kind: "task", status: "", filePath: "tasks/a.md" },
-			{ id: "b", title: "B", kind: "task", status: "", filePath: "tasks/b.md" },
+			node("tasks/a.md", "a"),
+			node("tasks/b.md", "b", { type: "draft", updatedDate: "2026-09-26 00:00" }),
 		]);
-		await store.upsertEdges([{ type: "DependsOn", from: "a", to: "b" }]);
+		await store.upsertEdges([{ type: "DependsOn", from: "tasks/a.md", to: "tasks/b.md" }]);
 		expect(await store.countEdges("DependsOn")).toBe(1);
-		await store.deleteNodes(["a"]);
+		expect(await store.getNode("tasks/b.md")).toMatchObject({
+			path: "tasks/b.md",
+			id: "b",
+			type: "draft",
+			updatedDate: "2026-09-26 00:00",
+		});
+		await store.deleteNodes(["tasks/a.md"]);
 		expect(await store.countNodes()).toBe(1);
 		expect(await store.countEdges("DependsOn")).toBe(0); // edges die with their endpoints
 		await store.close();
+	});
+});
+
+describe("FileNode identity", () => {
+	test("the path is the node: one id under two paths is two nodes, and lookups are by path", async () => {
+		const store = new MemoryGraphStore();
+		await store.init();
+		await store.upsertNodes([node("tasks/a.md", "back-1"), node("completed/a.md", "back-1")]);
+		expect(await store.countNodes()).toBe(2);
+		expect(await store.hasNode("tasks/a.md")).toBe(true);
+		expect(await store.getNode("back-1")).toBeNull(); // a node is never looked up by task id
+		await store.close();
+	});
+
+	test("a same-id migration is delete-old-path + create-new-path; peers' edges follow the path", async () => {
+		const store = new MemoryGraphStore();
+		await store.init();
+		await store.upsertNodes([node("tasks/a.md", "back-1"), node("tasks/b.md", "back-2")]);
+		await store.upsertEdges([{ type: "DependsOn", from: "tasks/b.md", to: "tasks/a.md" }]);
+		expect(await store.countEdges("DependsOn")).toBe(1);
+
+		// back-1 completes: same id, new path. The old node goes, the new one arrives, and the edge
+		// is re-created against the new path (the caller rebuilds it - see applyChangeSet).
+		await store.deleteNodes(["tasks/a.md"]);
+		await store.upsertNodes([node("completed/a.md", "back-1", { status: "Done" })]);
+		expect(await store.countEdges("DependsOn")).toBe(0); // the edge died with its old endpoint
+		await store.upsertEdges([{ type: "DependsOn", from: "tasks/b.md", to: "completed/a.md" }]);
+		expect(await store.countNodes()).toBe(2);
+		expect(await store.hasNode("tasks/a.md")).toBe(false);
+		expect(await store.getNode("completed/a.md")).toMatchObject({ id: "back-1", status: "Done" });
+		expect(await store.countEdges("DependsOn")).toBe(1);
+		await store.close();
+	});
+
+	test("upserting an existing path replaces the node and detaches its edges", async () => {
+		const store = new MemoryGraphStore();
+		await store.init();
+		await store.upsertNodes([node("tasks/a.md", "back-1"), node("tasks/b.md", "back-2")]);
+		await store.upsertEdges([{ type: "DependsOn", from: "tasks/a.md", to: "tasks/b.md" }]);
+		expect(await store.countEdges("DependsOn")).toBe(1);
+
+		await store.upsertNodes([node("tasks/a.md", "back-1", { status: "Done" })]);
+		expect(await store.countNodes()).toBe(2);
+		expect(await store.getNode("tasks/a.md")).toMatchObject({ status: "Done" });
+		expect(await store.countEdges("DependsOn")).toBe(0); // replacement semantics: the caller rebuilds edges
+		await store.close();
+	});
+});
+
+describe("graph schema version", () => {
+	// The kuzu store cannot be driven from Bun at all (the native binding segfaults here - see
+	// store.ts), so what is tested in-process is the decision rule the recorded version drives. The
+	// statement sequence that rule triggers was verified against the real binding under Node by
+	// importing this module compiled with `bun build src/graph/store.ts --target=node --external
+	// kuzu`, then, per case (no version row / current version / a later version / a fresh file),
+	// asserting through a second raw connection that a stale file is wiped and a current one is
+	// reused with its rows intact. Re-run that when the DDL or the version rule changes.
+	test("a cache file is reusable only when it records this build's schema", () => {
+		expect(isCurrentSchema(String(SCHEMA_VERSION))).toBe(true);
+		// No version row at all: an empty file, or one written before this mechanism existed (i.e.
+		// the Task(id) shape). Both must be rebuilt rather than reused.
+		expect(isCurrentSchema(null)).toBe(false);
+		expect(isCurrentSchema(String(SCHEMA_VERSION - 1))).toBe(false);
+		expect(isCurrentSchema(String(SCHEMA_VERSION + 1))).toBe(false); // a file from a later build
+	});
+
+	test("the version is recorded in the graph's own Meta table", () => {
+		expect(SCHEMA_VERSION_KEY).toBe("schemaVersion");
+		expect(Number.isInteger(SCHEMA_VERSION)).toBe(true);
 	});
 });
 

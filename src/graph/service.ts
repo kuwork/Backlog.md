@@ -15,7 +15,7 @@ import type { GraphPaths, GraphSlot } from "./paths";
 import { DEFAULT_SLOT, graphPaths } from "./paths";
 import type { WhitelistDirs } from "./scanner";
 import { DEFAULT_WHITELIST, scanWhitelistedDirs } from "./scanner";
-import type { GraphEdge, GraphNode, GraphStore } from "./store";
+import type { GraphEdgeType, GraphKind, GraphStore } from "./store";
 import { openGraphStore } from "./store";
 
 /**
@@ -38,11 +38,30 @@ import { openGraphStore } from "./store";
 const SYNC_DEBOUNCE_MS = 150;
 const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
+/**
+ * The /api/graph contract, deliberately id-shaped: the Web UI and its subgraph helpers key nodes by
+ * task id, while the store's nodes are keyed by file path (doc-014 §1.2). `getPayload` is the one
+ * place that translates between the two, so the frontend keeps seeing exactly what it saw before.
+ */
+export interface GraphPayloadNode {
+	id: string;
+	title: string;
+	kind: GraphKind;
+	status: string;
+	filePath: string;
+}
+
+export interface GraphPayloadEdge {
+	type: GraphEdgeType;
+	from: string;
+	to: string;
+}
+
 export interface GraphPayload {
 	status: "building" | "ready";
 	backend: GraphStore["backend"];
-	nodes: GraphNode[];
-	edges: GraphEdge[];
+	nodes: GraphPayloadNode[];
+	edges: GraphPayloadEdge[];
 	reports: ParseReports;
 	nodeCount: number;
 }
@@ -308,11 +327,25 @@ export class GraphService {
 			};
 		}
 		const [nodes, edges] = await Promise.all([store.getAllNodes(), store.getAllEdges()]);
+		// Translate the store's path-keyed nodes and edges back into the id-keyed payload the Web UI
+		// expects. Ambiguous duplicate ids carry no edges (see relations.ts), so this map is exact
+		// for every endpoint that can appear in one.
+		const idByPath = new Map(nodes.map((node) => [node.path, node.id] as const));
 		return {
 			status: "ready",
 			backend: store.backend,
-			nodes,
-			edges,
+			nodes: nodes.map((node) => ({
+				id: node.id,
+				title: node.title,
+				kind: node.type,
+				status: node.status,
+				filePath: node.path,
+			})),
+			edges: edges.map((edge) => ({
+				type: edge.type,
+				from: idByPath.get(edge.from) ?? edge.from,
+				to: idByPath.get(edge.to) ?? edge.to,
+			})),
 			reports: this.reports,
 			nodeCount: nodes.length,
 		};

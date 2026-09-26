@@ -74,26 +74,18 @@ describe("graph change set", () => {
 
 	test("RecordCache maintains one record per relPath", () => {
 		const cache = new RecordCache();
-		cache.set({
+		const base = {
 			id: "back-1",
-			title: "t",
-			kind: "task",
+			kind: "task" as const,
 			status: "",
 			filePath: "tasks/a.md",
+			updatedDate: "",
 			parentTaskId: null,
 			milestone: null,
 			dependencies: [],
-		});
-		cache.set({
-			id: "back-1",
-			title: "t2",
-			kind: "task",
-			status: "",
-			filePath: "tasks/a.md",
-			parentTaskId: null,
-			milestone: null,
-			dependencies: [],
-		});
+		};
+		cache.set({ ...base, title: "t" });
+		cache.set({ ...base, title: "t2" });
 		expect(cache.size).toBe(1);
 		expect(cache.get("tasks/a.md")?.title).toBe("t2");
 	});
@@ -104,17 +96,17 @@ describe("graph validation", () => {
 		const store = new MemoryGraphStore();
 		await store.init();
 		await store.upsertNodes([
-			{ id: "a", title: "a", kind: "task", status: "", filePath: "tasks/a.md" },
-			{ id: "b", title: "b", kind: "task", status: "", filePath: "tasks/b.md" },
+			{ path: "tasks/a.md", id: "a", type: "task", title: "a", status: "", updatedDate: "" },
+			{ path: "tasks/b.md", id: "b", type: "task", title: "b", status: "", updatedDate: "" },
 		]);
 		await store.upsertEdges([
-			{ type: "DependsOn", from: "a", to: "b" },
-			{ type: "DependsOn", from: "b", to: "a" },
+			{ type: "DependsOn", from: "tasks/a.md", to: "tasks/b.md" },
+			{ type: "DependsOn", from: "tasks/b.md", to: "tasks/a.md" },
 		]);
 		const counts = await validateCounts(store, 2);
 		expect(counts.nodeCountMatches).toBe(true);
 		expect(counts.edgeCounts.DependsOn).toBe(2);
-		expect(await findDependencyCycles(store)).toEqual(["a", "b"]);
+		expect(await findDependencyCycles(store)).toEqual(["tasks/a.md", "tasks/b.md"]); // node paths
 	});
 
 	test("readiness is delegated to readiness.ts (no duplicated status logic)", () => {
@@ -125,6 +117,7 @@ describe("graph validation", () => {
 				kind: "task",
 				status: "To Do",
 				filePath: "tasks/a.md",
+				updatedDate: "",
 				parentTaskId: null,
 				milestone: null,
 				dependencies: ["b"],
@@ -134,7 +127,8 @@ describe("graph validation", () => {
 				title: "",
 				kind: "task",
 				status: "Done",
-				filePath: "tasks/b.md",
+				filePath: "completed/b.md",
+				updatedDate: "",
 				parentTaskId: null,
 				milestone: null,
 				dependencies: [],
@@ -372,6 +366,96 @@ describe("GraphService hot update", () => {
 			files: Record<string, unknown>;
 		};
 		expect(Object.keys(sidecar.files).length).toBeGreaterThanOrEqual(4);
+
+		await service.stop();
+	});
+
+	test("file identity migrations: rename, promote and archive each rebuild the edges they touch", async () => {
+		const service = new GraphService(root, { backend: "memory", debounceMs: 30, reconcileMs: 3_600_000 });
+		expect(await service.start()).toBe(true);
+
+		const edgeSet = (payload: { edges: { type: string; from: string; to: string }[] }) =>
+			payload.edges.map((e) => `${e.type}:${e.from}->${e.to}`).sort();
+		const waitFor = async (
+			predicate: (payload: Awaited<ReturnType<typeof service.getPayload>>) => boolean,
+			label: string,
+		) =>
+			retry(async () => {
+				const payload = await service.getPayload();
+				if (!predicate(payload)) throw new Error(`waiting for ${label}`);
+				return payload;
+			});
+
+		// Seed: a parent, a child that is parented/milestoned/dependent on it, and a draft on the child.
+		await writeFile(join(root, "backlog", "tasks", "back-10 - Parent.md"), taskMd({ id: "back-10" }), "utf8");
+		await writeFile(
+			join(root, "backlog", "tasks", "back-11 - Child.md"),
+			taskMd({ id: "back-11", parent_task_id: "back-10", milestone: "m-1", dependencies: ["back-10"] }),
+			"utf8",
+		);
+		await writeFile(join(root, "backlog", "milestones", "m-1 - M.md"), "---\nid: m-1\ntitle: M\n---\n", "utf8");
+		await writeFile(
+			join(root, "backlog", "drafts", "draft-3 - D.md"),
+			taskMd({ id: "draft-3", dependencies: ["back-11"] }),
+			"utf8",
+		);
+		service.notify(["seed"]);
+		const seeded = await waitFor((p) => p.nodeCount === 4, "seed import");
+		const seededEdges = [
+			"BelongsToMilestone:back-11->m-1",
+			"DependsOn:back-11->back-10",
+			"DependsOn:draft-3->back-11",
+			"ParentOf:back-11->back-10",
+		];
+		expect(edgeSet(seeded)).toEqual(seededEdges);
+
+		// 1. Rename in place: the id does not change, so the id-keyed payload must not change either -
+		// only the node's filePath does.
+		await rename(
+			join(root, "backlog", "tasks", "back-11 - Child.md"),
+			join(root, "backlog", "tasks", "back-11 - Child renamed.md"),
+		);
+		service.notify(["rename"]);
+		const renamed = await waitFor(
+			(p) => p.nodes.some((n) => n.id === "back-11" && n.filePath === "tasks/back-11 - Child renamed.md"),
+			"rename",
+		);
+		expect(renamed.nodeCount).toBe(4);
+		expect(edgeSet(renamed)).toEqual(seededEdges); // no edge lost, none duplicated
+
+		// 2. Promote a draft: the old draft path loses its node, the task path gains one under a new
+		// id, and the promoted file keeps the dependencies it had as a draft.
+		await rename(join(root, "backlog", "drafts", "draft-3 - D.md"), join(root, "backlog", "tasks", "back-12 - D.md"));
+		await writeFile(
+			join(root, "backlog", "tasks", "back-12 - D.md"),
+			taskMd({ id: "back-12", dependencies: ["back-11"] }),
+			"utf8",
+		);
+		service.notify(["promote"]);
+		const promoted = await waitFor((p) => p.nodes.some((n) => n.id === "back-12"), "promote");
+		expect(promoted.nodes.some((n) => n.id === "draft-3")).toBe(false);
+		expect(promoted.nodeCount).toBe(4);
+		expect(edgeSet(promoted)).toEqual([
+			"BelongsToMilestone:back-11->m-1",
+			"DependsOn:back-11->back-10",
+			"DependsOn:back-12->back-11",
+			"ParentOf:back-11->back-10",
+		]);
+
+		// 3. Archive the parent: the file leaves the whitelist, so its node and both of its edges go.
+		// Core normally cleans the references to a vacated id first; leaving them in place here asserts
+		// the fail-closed direction - the node still enters the graph, the edges do not.
+		await mkdir(join(root, "backlog", "archive"), { recursive: true });
+		await rename(
+			join(root, "backlog", "tasks", "back-10 - Parent.md"),
+			join(root, "backlog", "archive", "back-10 - Parent.md"),
+		);
+		service.notify(["archive"]);
+		const archived = await waitFor((p) => !p.nodes.some((n) => n.id === "back-10"), "archive");
+		expect(archived.nodeCount).toBe(3);
+		expect(edgeSet(archived)).toEqual(["BelongsToMilestone:back-11->m-1", "DependsOn:back-12->back-11"]);
+		expect(archived.reports.invalidRelations.some((r) => r.includes("back-10"))).toBe(true); // dangling parentTaskId
+		expect(archived.reports.missingDependencies.some((r) => r.includes("back-10"))).toBe(true); // dangling dependency
 
 		await service.stop();
 	});

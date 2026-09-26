@@ -36,8 +36,8 @@ export async function validateCounts(store: GraphStore, expectedNodes: number): 
 }
 
 /**
- * Lazy DependsOn cycle detection: `MATCH (a:Task)-[:DependsOn*1..]->(a)` semantics, computed
- * from the store's edge list. Returns every id that sits on a dependency cycle.
+ * Lazy DependsOn cycle detection: `MATCH (a:FileNode)-[:DependsOn*1..]->(a)` semantics, computed
+ * from the store's edge list. Returns the path of every node that sits on a dependency cycle.
  */
 export async function findDependencyCycles(store: GraphStore): Promise<string[]> {
 	const adjacency = new Map<string, string[]>();
@@ -50,21 +50,21 @@ export async function findDependencyCycles(store: GraphStore): Promise<string[]>
 
 	const state = new Map<string, 1 | 2>(); // 1 = on stack, 2 = done
 	const cyclic = new Set<string>();
-	const visit = (id: string, path: string[]): void => {
-		const mark = state.get(id);
+	const visit = (path: string, stack: string[]): void => {
+		const mark = state.get(path);
 		if (mark === 2) return;
 		if (mark === 1) {
-			// Everything from the first occurrence of id in the path up to here is on the cycle.
-			const start = path.indexOf(id);
-			for (const onCycle of path.slice(start === -1 ? 0 : start)) cyclic.add(onCycle);
-			cyclic.add(id);
+			// Everything from the first occurrence of `path` in the stack up to here is on the cycle.
+			const start = stack.indexOf(path);
+			for (const onCycle of stack.slice(start === -1 ? 0 : start)) cyclic.add(onCycle);
+			cyclic.add(path);
 			return;
 		}
-		state.set(id, 1);
-		for (const next of adjacency.get(id) ?? []) visit(next, [...path, id]);
-		state.set(id, 2);
+		state.set(path, 1);
+		for (const next of adjacency.get(path) ?? []) visit(next, [...stack, path]);
+		state.set(path, 2);
 	};
-	for (const id of adjacency.keys()) visit(id, []);
+	for (const path of adjacency.keys()) visit(path, []);
 	return [...cyclic].sort();
 }
 
