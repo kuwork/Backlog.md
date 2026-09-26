@@ -2,8 +2,8 @@
 title: BACK-529 doc update 多行与追加支持
 labels: [source, cli, mcp, doc]
 created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
-source_path: backlog/tasks/back-529 - Interpret-n-escape-sequences-in-doc-update-content.md
+updated_date: '2026-09-26 14:00'
+source_path: backlog/tasks/back-529 - Optimize-doc-update-content-with-multi-line-and-append-support.md
 ---
 
 # BACK-529 优化 doc update --content，支持多行与追加模式
