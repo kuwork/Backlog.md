@@ -2,8 +2,8 @@
 title: BACK-548 状态排除与多状态过滤
 labels: [source, cli, mcp, web-ui, tui, filtering]
 created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
-source_path: backlog/tasks/back-548 - Add-exclude-status-filtering-to-task-list-and-search.md
+updated_date: '2026-09-26 14:00'
+source_path: backlog/tasks/back-548 - Add-exclude-status-filtering-and-multi-status-selection-to-task-list-and-search.md
 ---
 
 # BACK-548 任务列表与搜索增加状态排除及多状态过滤

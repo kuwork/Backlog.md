@@ -2,7 +2,7 @@
 title: 内嵌 Skill 架构
 labels: [concept]
 created_date: 2026-05-12 00:00
-updated_date: '2026-06-27 21:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -53,6 +53,9 @@ export const LLM_WIKI_FOR_BACKLOG_SKILL: Record<string, string> = {
 
 **近期更新（BACK-525）**：同步了 wikilink 别名、属性块与媒体 wikilink 的文档说明，并修复了 `scripts/embed-wiki-skill.ts` 中 `$` 转义问题。
 
+**近期更新（BACK-712）**：SKILL.md 的 wiki lint 指引新增 source 回引独立校验——`wiki lint` 退出码干净不代表 `source_path` 可解析；代理必须独立于 lint 结果校验 `source_path` 解析、查重命名历史、只更新已证实路径、源已消失时保留 source 页、歧义标识升级而非猜测。canonical SKILL.md 与嵌入模块已同步，lint 命令行为不变（[[sources/back-712-wiki-lint-source-path-guidance]]）。
+
 ## Related Sources
 - [[sources/back-553-modernize-browser-bundling]] — BACK-553 构建现代化
 - [[sources/wiki-install-task]] — BACK-474 Wiki install
+- [[sources/back-712-wiki-lint-source-path-guidance]] — BACK-712 lint source_path 独立校验指引

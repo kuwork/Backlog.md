@@ -3,10 +3,13 @@ title: 配置文档与决策记录
 labels: [source]
 source_path: backlog/docs/ + backlog/decisions/
 created_date: 2026-05-06 00:00
+updated_date: '2026-09-26 14:00'
 ---
 
 
 # 配置与决策摘要
+
+> **溯源存疑（2026-09-26 lint）**：本页 `source_path` 为 `backlog/docs/ + backlog/decisions/`，是目录表达式而非具体文件路径，无法解析。该页实际聚合了 docs 与 decisions 两类来源，待人工指定具体指向后再改写；此处保留原值，不做猜测。
 
 ## 配置层次（高 → 低）
 

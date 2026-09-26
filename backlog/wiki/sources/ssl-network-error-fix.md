@@ -1,8 +1,9 @@
 ---
 title: BACK-487 修复 GitOperations.fetch SSL 网络错误未优雅处理
 labels: [source, bug, git, network, ssl, error-handling]
-source_path: backlog/tasks/back-487 - Fix-SSL-network-error-not-gracefully-handled-in-GitOperations-fetch.md
+source_path: backlog/tasks/back-487 - Fix-SSL-network-error-not-gracefully-handled-in-GitOperations.fetch.md
 created_date: 2026-05-25 00:45
+updated_date: '2026-09-26 14:00'
 ---
 
 # BACK-487 修复 GitOperations.fetch SSL 网络错误未优雅处理

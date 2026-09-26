@@ -2,7 +2,7 @@
 title: 里程碑管理
 labels: [concept, milestones, cli, mcp]
 created_date: '2026-07-14 11:20'
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 # 里程碑管理
@@ -106,6 +106,19 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 - **仅 remove 动任务文件**：`milestone remove` 才按 `--task-handling` 处理（清空/保留/重新分配）任务文件；`milestone archive` 只解除绑定并移动里程碑文件本身，不触碰任务文件内容
 - **对话框文案澄清**：Web 确认对话框明确写出两者对任务文件的差异后果，避免用户误以为 archive 会删除任务
 
+## actualEnd 自动盖章修复（BACK-706）
+
+里程碑 `actual_end` 自动填充分支此前是死代码：判定任务集合时翻转中的任务在磁盘上仍是保存前状态，`every(isTerminalStatus)` 永假。修复在 `updateTask` 的里程碑自动填充块中先把翻转任务按 ID 解析为新状态再判定；仅在里程碑下最后一个非终态任务落终态且 `actual_end` 为空时盖章，已设置值与非关闭性流转不受影响（[[sources/back-706-milestone-actual-end-stamp]]）。
+
+## 里程碑 board TUI 与 plain 分组输出（BACK-687/688）
+
+- **BACK-687**:`backlog milestone list` 从静态计数输出替换为双 pane 交互 TUI——左侧里程碑列表、右侧按所选里程碑 scope 的真实看板，共享顶部过滤栏;Space 切换 scope、Enter 打开仅元数据的里程碑弹窗、N 新建；内嵌看板经 `BoardEmbedOptions` / `BoardHandle` 由宿主 pane 持有键盘（[[sources/back-687-milestone-board-tui]]）。
+- **BACK-688**:`milestones list --plain`(及非 TTY stdout）复用看板渲染器 `generateMilestoneGroupedBoard` 输出按里程碑分组的 markdown(No Milestone 在前，里程碑按文件顺序，任务按状态分节），与 `board -m` 形状一致;`--show-completed` 加载 completed 目录，归档里程碑任务折叠进 No Milestone（[[sources/back-688-milestones-plain-grouped-output]]）。
+
+## 里程碑弹窗 live sync（BACK-696）
+
+里程碑会话此前无 watcher，弹窗/侧栏/列都是定格画面。新增 `watchMilestones`（监听 milestones 与 archive-milestones 目录，`milestoneContentSignature` 单一变更定义）配合既有 task watcher；弹窗经返回的 `update`/`focus` **原地**重渲染而非关闭重开（宿主 await `closed` 决定是否打开编辑表单），离表关闭并提示、签名变化即重渲染（[[sources/back-696-milestone-popup-live-sync]]）。
+
 ## Related Concepts
 
 - [[concepts/date-fields]] — 日期字段语义与格式
@@ -122,3 +135,7 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 - [[sources/back-618-milestone-created-updated-dates]] — BACK-618 里程碑创建/更新时间戳
 - [[sources/back-619-milestone-documentation-field]] — BACK-619 documentation 字段
 - [[sources/back-622-milestone-archive-remove-dialogs]] — BACK-622 archive/remove 语义与对话框
+- [[sources/back-706-milestone-actual-end-stamp]] — BACK-706 actualEnd 自动盖章修复
+- [[sources/back-687-milestone-board-tui]] — BACK-687 里程碑 board TUI
+- [[sources/back-688-milestones-plain-grouped-output]] — BACK-688 plain 分组输出
+- [[sources/back-696-milestone-popup-live-sync]] — BACK-696 里程碑弹窗 live sync

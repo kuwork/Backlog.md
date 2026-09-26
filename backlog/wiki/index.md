@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 15:10'
 ---
 
 
@@ -211,6 +211,104 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-626-dependabot-mermaid-bump]] | BACK-626 mermaid 安全升级解除 5 个 Dependabot 告警 | source, security, dependencies, build |
 | [[sources/back-627-back-arrow-history-fix]] | BACK-627 修复钻取后返回箭头留下过期历史条目 | source, web-ui, routing, bug |
 | [[sources/back-628-task-hierarchy-section]] | BACK-628 任务模态框显示父任务与子任务 | source, web-ui, task-hierarchy |
+| [[sources/back-630-board-card-ac-progress-restyle]] | BACK-630 看板卡片 AC 进度重排与样式重构 | source, web-ui |
+| [[sources/back-631-comment-rich-markdown-editor]] | BACK-631 Web 评论输入换成富 Markdown 编辑器 | source, web-ui, comments |
+| [[sources/back-632-decision-image-promotion]] | BACK-632 决策保存时 promote 粘贴图片 | source, web-ui, decisions |
+| [[sources/back-633-decision-editing-web-ui]] | BACK-633 Web UI 决策编辑 | source, web-ui, decisions |
+| [[sources/back-634-decision-creation-sidebar]] | BACK-634 Web 侧边栏创建决策 | source, web-ui, decisions |
+| [[sources/back-635-decision-status-editing]] | BACK-635 决策状态编辑跨 CLI/MCP/Web | source, decisions, cli, mcp, web-ui |
+| [[sources/back-636-decision-status-i18n]] | BACK-636 Web 决策状态标签本地化 | source, web-ui, decisions, i18n |
+| [[sources/back-637-hash-anchors-on-load]] | BACK-637 加载/重载/slug 归一化保持文档内锚点 | source, web-ui, markdown |
+| [[sources/back-638-header-outline-toc]] | BACK-638 文档/决策/wiki 页头部大纲浮动可折叠 TOC | source, web-ui |
+| [[sources/back-639-document-fingerprint-reload]] | BACK-639 文档体指纹变化时才重载打开文档 | source, web-ui |
+| [[sources/back-640-mermaid-rendering-fixes]] | BACK-640 Mermaid 渲染修复（fence 大小写、主题、预览面板） | source, web-ui, bug |
+| [[sources/back-641-sidebar-toggle-z-index]] | BACK-641 侧边栏折叠按钮被页头遮挡修复 | source, web-ui, bug |
+| [[sources/back-642-draft-identity-fail-closed]] | BACK-642 草稿身份歧义 fail-closed | source, drafts, bug |
+| [[sources/back-643-fence-aware-blank-line-collapse]] | BACK-643 notes 中围栏代码块内保留连续空行（issue 930） | source, markdown, bug |
+| [[sources/back-644-web-draft-editing-fix]] | BACK-644 Web UI 草稿编辑修复 | source, web-ui, drafts, bug |
+| [[sources/back-645-task-list-ac-progress-bar]] | BACK-645 任务列表定宽 AC 进度条重构 | source, web-ui |
+| [[sources/back-646-web-demote-resilience]] | BACK-646 Web UI 降级为草稿操作增强 | source, web-ui, drafts |
+| [[sources/back-647-reserved-task-prefixes]] | BACK-647 init 时保留 draft/doc/decision 前缀 | source, cli, init |
+| [[sources/back-648-tui-unicode-safe-insertion]] | BACK-648 TUI 文本插入 Unicode 安全 | source, tui, bug |
+| [[sources/back-649-shared-subtask-sorting]] | BACK-649 TUI 列表走共享任务 ID 比较器排序 | source, tui, sorting |
+| [[sources/back-650-untitled-filename-fallback]] | BACK-650 标点-only 标题回退占位文件名 | source, core, bug |
+| [[sources/back-651-line-reference-docs]] | BACK-651 agent 指南补充行号引用与行区间链接文档 | source, docs, agent-guidance |
+| [[sources/back-652-multi-status-filter]] | BACK-652 task list --status 支持多状态 | source, cli, filtering |
+| [[sources/back-653-readme-board-export-in-memory]] | BACK-653 README 看板导出移除临时文件往返 | source, cli, performance |
+| [[sources/back-654-board-export-grandchild-subtasks]] | BACK-654 看板导出分组含孙级子任务 | source, cli |
+| [[sources/back-655-section-marker-safety]] | BACK-655 拒绝嵌套章节标记并修复 append 截断 | source, markdown, bug |
+| [[sources/back-656-agent-guidance-overview-cadence]] | BACK-656 修正随发 agent 指南中 overview 节奏与任务描述 | source, docs, agent-guidance |
+| [[sources/back-657-task-list-json-watch]] | BACK-657 task list 复用 JSON 输出实现 watch | source, cli, json |
+| [[sources/back-658-json-readiness-publication]] | BACK-658 JSON 读取路径发布任务就绪度 | source, cli, json |
+| [[sources/back-659-ac-progress-mcp-plain-lists]] | BACK-659 MCP 与 plain 任务列表显示 AC 进度 | source, cli, mcp |
+| [[sources/back-660-forced-refresh-stale-fetch-race]] | BACK-660 强制刷新不再合并在途过期 fetch | source, core, concurrency, bug |
+| [[sources/back-661-deep-link-first-load-guard]] | BACK-661 首次加载前任务深链接不回退看板 | source, web-ui, routing, bug |
+| [[sources/back-662-completed-corpus-query-search]] | BACK-662 queryTasks 与 SearchService 增加 completed 语料选项 | source, core, search |
+| [[sources/back-663-completed-popup-read-only]] | BACK-663 completed 语料任务弹窗只读渲染 | source, web-ui |
+| [[sources/back-664-dependency-input-completed-predecessors]] | BACK-664 依赖输入接受已完成前驱并只读打开 | source, web-ui |
+| [[sources/back-665-completed-corpus-filter-checkbox]] | BACK-665 Web 看板/列表过滤栏增加 completed 语料复选框 | source, web-ui, filtering |
+| [[sources/back-666-modified-files-tabbed-panel]] | BACK-666 Web 任务模态框展示与编辑 modified files | source, web-ui |
+| [[sources/back-667-sidebar-docs-sort-toggles]] | BACK-667 Web 侧边栏文档树名称/ID 排序切换 | source, web-ui, sorting |
+| [[sources/back-668-branch-indexing-header-chip]] | BACK-668 Web UI 跨分支索引加载指示打磨 | source, web-ui, ux |
+| [[sources/back-669-initial-loading-skeleton]] | BACK-669 Web UI 初始加载态打磨 | source, web-ui, ux |
+| [[sources/back-670-loading-motion-reduce-removal]] | BACK-670 OS 关闭动画时加载指示仍保持动画 | source, web-ui, accessibility |
+| [[sources/back-672-wiki-tree-sort-toggles]] | BACK-672 Web 侧边栏 wiki 树标题/文件名排序切换 | source, web-ui, wiki, sorting |
+| [[sources/back-673-utc-hover-titles]] | BACK-673 Web UI 显示本地时间、hover 出 UTC | source, web-ui, dates |
+| [[sources/back-674-decisions-sort-toggles]] | BACK-674 文档排序标签改名 Title 并给决策加排序切换 | source, web-ui, sorting |
+| [[sources/back-675-tui-ac-bar-ascii]] | BACK-675 TUI AC 进度合并为单条 ASCII 彩色紧凑条 | source, tui |
+| [[sources/back-676-emoji-double-width-tui]] | BACK-676 TUI emoji 按双宽计算 | source, tui, bug |
+| [[sources/back-677-help-popup-resize-robustness]] | BACK-677 TUI 帮助弹窗抗 resize 与折行 | source, tui, bug |
+| [[sources/back-678-composer-extreme-terminal-sizes]] | BACK-678 composer 极端终端尺寸可用性 | source, tui |
+| [[sources/back-679-composer-mouse-clicks]] | BACK-679 TUI 任务 composer 支持鼠标点击 | source, tui |
+| [[sources/back-680-batch-status-move]] | BACK-680 多选任务一次动作跨状态移动 | source, tui, web-ui |
+| [[sources/back-681-tui-shift-arrow-multi-select]] | BACK-681 TUI shift+方向键多选移动 | source, tui |
+| [[sources/back-682-web-positional-batch-drop]] | BACK-682 Web 看板多选按选定位置插入 | source, web-ui |
+| [[sources/back-683-cli-draft-edit]] | BACK-683 CLI 草稿编辑，对齐 Web 看板草稿编辑 | source, cli, drafts |
+| [[sources/back-684-task-detail-popup-backdrop-resize]] | BACK-684 TUI 任务详情弹窗背板随 resize 跟踪 | source, tui, bug |
+| [[sources/back-685-single-source-task-search]] | BACK-685 任务搜索配置与过滤器单源化到 core | source, core, search |
+| [[sources/back-686-shared-search-consumers]] | BACK-686 TUI 与里程碑页搜索走共享 core 搜索 | source, tui, search |
+| [[sources/back-687-milestone-board-tui]] | BACK-687 TUI 里程碑列表换成交互式里程碑看板视图 | source, tui, milestones |
+| [[sources/back-688-milestones-plain-grouped-output]] | BACK-688 milestones list --plain 按里程碑分组输出 | source, cli, milestones |
+| [[sources/back-689-tui-task-composer-dates]] | BACK-689 TUI composer 与详情弹窗支持 planned/actual/due 日期 | source, tui, dates |
+| [[sources/back-690-overview-due-by-timezone-fix]] | BACK-690 overview Due By 西时区 date-only 渲染提前一天修复 | source, cli, dates, bug |
+| [[sources/back-691-local-first-lifecycle-vacated-refs]] | BACK-691 归档/完成/降级本地优先并清理腾空依赖引用 | source, core |
+| [[sources/back-692-tui-edit-file-location-routing]] | BACK-692 TUI 编辑键按文件位置而非状态路由目标 | source, tui |
+| [[sources/back-693-tui-draft-creation-window]] | BACK-693 TUI drafts 会话新增草稿创建窗口 | source, tui, drafts |
+| [[sources/back-694-board-popup-live-sync]] | BACK-694 看板任务弹窗与实时任务状态同步 | source, tui, live-sync |
+| [[sources/back-695-drafts-session-live-sync]] | BACK-695 drafts 会话与实时草稿变更同步 | source, tui, live-sync |
+| [[sources/back-696-milestone-popup-live-sync]] | BACK-696 里程碑弹窗与实时里程碑/任务状态同步 | source, tui, live-sync |
+| [[sources/back-697-json-summary-references-modified-files]] | BACK-697 task list --json 增加 references 与 modifiedFiles | source, cli, json |
+| [[sources/back-698-web-in-place-refresh]] | BACK-698 Web 视图数据变化原地刷新替代整页重载 | source, web-ui, live-sync |
+| [[sources/back-699-findidentity-nonpublishing-fallback]] | BACK-699 findIdentity rename 回退不发布 freshness | source, core, bug |
+| [[sources/back-700-content-entity-broadcast-refresh]] | BACK-700 内容实体（文档/决策/wiki）变更广播并原地刷新 | source, web-ui, live-sync |
+| [[sources/back-701-fix-server-test-keep-alive-misroute]] | BACK-701 本地 server 套件 Connection: close 假失败修复 | source, test, server |
+| [[sources/back-702-kuzu-graph-foundation]] | BACK-702 Kuzu 图谱地基：schema、fail-closed 解析器、指纹冷启动 | source, kuzu, graph, core |
+| [[sources/back-703-graph-incremental-sync]] | BACK-703 图谱增量重建与热更新同步（Graph Service） | source, kuzu, graph, core |
+| [[sources/back-704-graph-view-web-ui]] | BACK-704 Web UI D3.js 任务图谱可视化页 | source, kuzu, graph, web-ui |
+| [[sources/back-705-graph-control-cluster-styling]] | BACK-705 图谱控制簇样式统一 | source, web-ui, graph |
+| [[sources/back-706-milestone-actual-end-stamp]] | BACK-706 里程碑最后任务进入终态时打 actualEnd | source, milestones, core |
+| [[sources/back-707-dependency-gate-cycles]] | BACK-707 validateDependencies 拒绝环、容忍存量不可解析依赖 | source, core, dependencies |
+| [[sources/back-708-doctor-dependency-defects]] | BACK-708 backlog doctor 报告依赖缺陷 | source, cli, dependencies |
+| [[sources/back-709-dependency-closure-query]] | BACK-709 从任务语料回答依赖闭包与跳数 | source, core, dependencies |
+| [[sources/back-710-task-modal-relationship-graph]] | BACK-710 任务详情模态框增加关系图谱视图 | source, web-ui, graph |
+| [[sources/back-711-modal-graph-alignment]] | BACK-711 任务模态关系图谱与 /graph 页对齐 | source, web-ui, graph |
+| [[sources/back-712-wiki-lint-source-path-guidance]] | BACK-712 wiki lint 审查遗漏 source_path 问题修复 | source, wiki, docs |
+| [[sources/back-713-filenode-rename]] | BACK-713 图节点表 Task(id) 改名 FileNode(path PK) | source, kuzu, graph, core |
+| [[sources/back-714-knowledge-graph-ingest]] | BACK-714 wiki/docs/decisions 入图（FileNode 类型、tags、provenance、wikilinks） | source, kuzu, graph, wiki |
+| [[sources/doc-11-todo-tasks-vs-upstream-migration-cross-check]] | doc-11 To-Do 任务与上游迁移（v1.47.1-v1.50.1）对照分析 | source, doc, migration, backlog-hygiene |
+| [[sources/doc-12-upstream-v1-50-1-to-v1-52-0-migration-diff-classification]] | doc-12 上游 v1.50.1→v1.52.0 差异分类 | source, doc, migration, upstream |
+| [[sources/doc-13-upstream-v1-50-1-to-v1-52-0-migration-analysis-by-domain]] | doc-13 上游 v1.50.1→v1.52.0 按领域迁移分析 | source, doc, migration, upstream |
+| [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] | doc-14 Kuzu 任务图谱冷启动校验与热更新设计 | source, doc, kuzu, graph, design |
+| [[sources/doc-15-wiki-knowledge-graph-relation-design]] | doc-15 Wiki 知识图谱关系设计（doc-14 第三期） | source, doc, kuzu, graph, wiki, design |
+| [[sources/m-9-kuzu-task-graph-phase-1]] | m-9 Kuzu Task Graph Phase 1 里程碑 | source, milestone, kuzu, graph |
+| [[sources/doc-002-configuring-vim-neovim-default-editor]] | doc-002 配置 VIM/Neovim 为默认编辑器 | source, doc, config |
+| [[sources/doc-003-running-backlog-browser-as-a-service]] | doc-003 将 backlog browser 作为服务运行 | source, doc, ops |
+| [[sources/draft-121-bidirectional-dependency-graphs]] | draft-121 任务详情暴露双向依赖图 | source, draft, dependencies |
+| [[sources/draft-130-project-task-attribute-monorepo]] | draft-130 monorepo backlog 项目任务属性 | source, draft |
+| [[sources/draft-135-reject-self-referential-cyclic-dependencies]] | draft-135 拒绝自引用与循环任务依赖 | source, draft, dependencies |
+| [[sources/draft-140-dependency-graph-follow-ups]] | draft-140 BACK-548 评审的依赖图跟进项 | source, draft, dependencies |
+| [[sources/draft-142-residual-self-dependency-gaps]] | draft-142 BACK-656 评审遗留自依赖缺口 | source, draft, dependencies |
+| [[sources/draft-169-biome-check-ci]] | draft-169 CI 增加 biome check 并修复 task-composer 格式漂移 | source, draft, ci |
 
 ## Execution Notes
 
@@ -236,6 +334,10 @@ Read this file FIRST on any wiki operation.
 | [[execution/pre-existing-failure-triage]] | 预存测试失败分诊方法 | stash 探针 / 基线对照 / 计数对比 / 先红后绿 / JSDOM 钉桩 |
 | [[execution/modal-route-history-invariant]] | 模态路由历史栈不变式 | 历史栈与模态栈 1:1；push 打开、pop 关闭、背景条目只挂模态目标 |
 | [[execution/web-bundle-purity-guard]] | 浏览器 bundle 纯净性守卫 | Web 侧只导入纯模块，避免 Core 被打包导致白屏（BACK-628 案例） |
+| [[execution/bun-windows-test-toolkit]] | Bun on Windows 测试工具箱 | Windows 上 Bun 测试常见陷阱与规避手法集合 |
+| [[execution/revert-matrix-verification]] | 回退矩阵验证法（revert-probe / red-green matrix） | 通过回退探针与先红后绿矩阵定位并确认回归根因 |
+| [[execution/blessed-tui-test-harness]] | blessed TUI 真实屏幕测试模式 | 用真实 blessed screen 驱动 TUI 交互断言的测试搭建 |
+| [[execution/cdp-live-verification]] | headless Chrome CDP 实况验证 | 用 Chrome DevTools Protocol 对 Web UI 做端到端实况验证 |
 
 ## Decisions
 
@@ -296,6 +398,22 @@ Read this file FIRST on any wiki operation.
 | [[decisions/hand-rolled-virtual-list-over-dependency]] | 手写定高虚拟列表而非引入虚拟化库 | BACK-624 零新依赖，代价是行高必须恒定 |
 | [[decisions/mermaid-11-16-1-supply-chain-maturity]] | mermaid 选择 11.16.1 而非最新 11.17.2 | BACK-626 供应链验证成熟度优先于版本新度 |
 | [[decisions/pure-task-id-module-in-browser-bundle]] | 浏览器 bundle 只导入纯模块 | BACK-628 从 task-path 改 task-id 以避免 Core 入包白屏 |
+| [[decisions/memory-graph-store-default-backend]] | 图存储双后端抽象，默认 MemoryGraphStore | BACK-702 Kuzu 图谱默认内存后端，Kuzu 可选 |
+| [[decisions/filenode-path-primary-key]] | 图节点以文件路径为主键（FileNode）+ SCHEMA_VERSION 自描述 | BACK-713 Task(id) 改名 FileNode(path PK) |
+| [[decisions/doctor-dependency-defects-warning-exit-zero]] | doctor 依赖缺陷诊断为 warning，退出码保持 0 | BACK-708 缺陷报告不阻断 CI |
+| [[decisions/tolerate-history-not-new-mistakes]] | 依赖写门禁"容忍历史，不容忍新错误" | BACK-707 存量坏数据容忍、新写入拒绝环 |
+| [[decisions/local-corpus-closure-over-graph-service]] | 依赖闭包查询走本地语料，不走图服务 | BACK-709 闭包/跳数从任务语料直接计算 |
+| [[decisions/demote-removes-references-not-rewrites]] | demote 移除被腾空的引用，而非改写为新草稿身份 | BACK-691 生命周期本地优先的引用清理语义 |
+| [[decisions/milestone-popup-in-place-rerender]] | milestone 弹窗原地重渲染，而非关闭重开 | BACK-696 实时同步下的弹窗刷新策略 |
+| [[decisions/nonpublishing-rename-fallback-load]] | findIdentity rename 回退使用非发布加载 | BACK-699 回退路径不污染 freshness 发布 |
+| [[decisions/completed-popup-reuses-cross-branch-lockdown]] | completed 语料弹窗复用 cross-branch 只读锁定 | BACK-663 只读渲染复用既有锁定机制 |
+| [[decisions/empty-selection-means-no-filter]] | 空选择等于不过滤 | BACK-652/665 多状态过滤的零选择语义 |
+| [[decisions/sanitize-filename-untitled-fallback]] | 唯一 sanitizeFilename 内做 untitled 回退 | BACK-650 标点-only 标题统一回退入口 |
+| [[decisions/draft-prefix-routing-over-store-probing]] | 草稿路由按 DRAFT- 前缀判断，不探测 store | BACK-683 CLI 草稿编辑路由策略 |
+| [[decisions/cli-draft-edit-refuses-non-draft-status]] | CLI 拒绝草稿的非 Draft --status，提升保持显式步骤 | BACK-683 草稿编辑与 promote 边界 |
+| [[decisions/always-animate-loading-over-motion-reduce]] | 加载指示器始终动画，优先于 motion-reduce 抑制 | BACK-670 加载反馈的可感知性优先 |
+| [[decisions/toc-entries-from-rendered-dom]] | TOC 条目读渲染后 DOM，而非解析 markdown 源 | BACK-638 大纲与真实渲染保持一致 |
+| [[decisions/free-text-status-storage]] | 决策状态值自由文本存储，不做固定集校验 | BACK-635 状态可扩展性优先于枚举约束 |
 
 ## Concepts
 
@@ -334,6 +452,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/ci-platform-contracts]] | CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
 | [[concepts/task-locking]] | 任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
 | [[concepts/spotlight-search]] | 全局搜索对话框（Spotlight Search） | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
+| [[concepts/kuzu-graph]] | Kuzu 任务图谱 | FileNode 图模型、MemoryGraphStore 默认后端、冷启动指纹校验、/graph 与 /knowledge 视图、wiki LinksTo |
 
 ## Entities
 
@@ -401,6 +520,7 @@ _No comparisons created yet._
 | [[usermanual/40-Web界面/07-Wiki浏览与编辑]] | Wiki 浏览与编辑 | Web UI Wiki 文件树导航、页面浏览与编辑、实时同步 |
 | [[usermanual/40-Web界面/08-统计页面]] | 统计页面 | 项目健康度、状态概览、优先级分布、最近活动 |
 | [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、跟踪甘特图、五级粒度、依赖箭头、任务排序 |
+| [[usermanual/40-Web界面/10-全局搜索]] | 全局搜索 | Spotlight 搜索对话框、分组结果、键盘导航 |
 | [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |

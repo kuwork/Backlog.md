@@ -2,7 +2,7 @@
 title: CLI 与 TUI 界面
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -123,3 +123,60 @@ task → decision → doc 三类列表**三次复用同一交互模型**（双 p
 - 动态补全实际任务 ID
 - 动态补全配置中的状态值、标签、负责人
 - `backlog completion install` 一键安装
+
+## 任务创建器增强（BACK-689/679/678/648）
+
+- **日期字段**：TUI 任务创建器与任务详情弹窗支持 planned/actual/due 日期字段编辑（[[sources/back-689-tui-task-composer-dates|BACK-689]]）
+- **鼠标点击**：创建器支持鼠标点击定位/聚焦字段（[[sources/back-679-composer-mouse-clicks|BACK-679]]）
+- **极端终端尺寸**：创建器在极小/极大终端尺寸下保持可用（[[sources/back-678-composer-extreme-terminal-sizes|BACK-678]]）
+- **Unicode 安全插入**：文本字段插入按字素簇处理，避免截断代理对/组合字符（[[sources/back-648-tui-unicode-safe-insertion|BACK-648]]）
+
+## 弹窗稳健性与显示修正（BACK-677/684/675/676）
+
+- **help popup 重排**：帮助弹窗对 resize 与折行稳健（[[sources/back-677-help-popup-resize-robustness|BACK-677]]）
+- **backdrop 跟踪**：任务详情弹窗的背景遮罩在 resize 时跟随弹窗（[[sources/back-684-task-detail-popup-backdrop-resize|BACK-684]]）
+- **AC 进度条 ASCII 化**：验收标准进度条合并为单一 ASCII 着色紧凑条，消除块字符宽度问题（[[sources/back-675-tui-ac-bar-ascii|BACK-675]]）
+- **emoji 双宽**：TUI 宽度计算把 emoji 计为双宽（[[sources/back-676-emoji-double-width-tui|BACK-676]]）
+
+## 多选与批量移动（BACK-681）
+
+TUI 支持 Shift+方向键招募式多选，选中的多个任务可一次性跨状态移动（[[sources/back-681-tui-shift-arrow-multi-select|BACK-681]]；CLI 侧批量移动见 [[sources/back-680-batch-status-move|BACK-680]]）。
+
+## 里程碑看板 TUI（BACK-687）
+
+`backlog milestones list` 的交互模式被替换为里程碑看板视图，按里程碑分栏展示任务（[[sources/back-687-milestone-board-tui|BACK-687]]）。
+
+## watcher 驱动的弹窗实时同步（BACK-694/695/696）
+
+看板任务弹窗、drafts 会话、里程碑弹窗订阅 ContentStore 变更事件，在底层文件被外部修改时实时刷新显示状态，不再依赖关闭重开：
+- 看板任务弹窗 live sync（[[sources/back-694-board-popup-live-sync|BACK-694]]）
+- drafts 会话 live sync（[[sources/back-695-drafts-session-live-sync|BACK-695]]）
+- 里程碑弹窗 live sync（[[sources/back-696-milestone-popup-live-sync|BACK-696]]）
+
+## edit 键按文件位置路由（BACK-692）
+
+TUI 的 `E` 编辑键不再按任务状态推断目标路径，而是按文件实际位置路由到正确的编辑器目标（任务/草稿/已完成/归档），避免编辑错误副本（[[sources/back-692-tui-edit-file-location-routing|BACK-692]]）。
+
+## blessed 陷阱目录
+
+维护 TUI 时需规避的已知 blessed/bblessed 陷阱：
+- **`readInput` 残留 `grabKeys`**：输入结束后未释放会劫持后续按键
+- **shared-program teardown**：共享 `program` 的屏幕销毁必须配对清理 key/keypress 监听器，否则多次进入/退出后按键泄漏（`releaseSharedProgram` 已加固）
+- **resize 扇出**：resize 事件会广播到所有监听组件，弹窗/backdrop 需各自跟踪目标尺寸而非假设全屏
+
+## Related Sources
+
+- [[sources/back-648-tui-unicode-safe-insertion]] — BACK-648 Unicode 安全插入
+- [[sources/back-675-tui-ac-bar-ascii]] — BACK-675 AC 进度条 ASCII 化
+- [[sources/back-676-emoji-double-width-tui]] — BACK-676 emoji 双宽
+- [[sources/back-677-help-popup-resize-robustness]] — BACK-677 help popup 重排稳健性
+- [[sources/back-678-composer-extreme-terminal-sizes]] — BACK-678 创建器极端尺寸
+- [[sources/back-679-composer-mouse-clicks]] — BACK-679 创建器鼠标点击
+- [[sources/back-681-tui-shift-arrow-multi-select]] — BACK-681 shift-arrow 多选
+- [[sources/back-684-task-detail-popup-backdrop-resize]] — BACK-684 backdrop resize 跟踪
+- [[sources/back-687-milestone-board-tui]] — BACK-687 里程碑看板 TUI
+- [[sources/back-689-tui-task-composer-dates]] — BACK-689 创建器日期字段
+- [[sources/back-692-tui-edit-file-location-routing]] — BACK-692 edit 键文件位置路由
+- [[sources/back-694-board-popup-live-sync]] — BACK-694 看板弹窗 live sync
+- [[sources/back-695-drafts-session-live-sync]] — BACK-695 drafts 会话 live sync
+- [[sources/back-696-milestone-popup-live-sync]] — BACK-696 里程碑弹窗 live sync

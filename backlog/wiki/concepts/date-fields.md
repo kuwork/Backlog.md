@@ -2,7 +2,7 @@
 title: 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd）
 labels: [concept, dates, task, milestone]
 created_date: 2026-05-25 23:45
-updated_date: 2026-07-14 07:14
+updated_date: '2026-09-26 14:45'
 ---
 
 # 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd）
@@ -83,6 +83,18 @@ milestone edit M1 --actual-start "2026-05-25 09:00"
 - **基础甘特图**（BACK-491）：使用 `plannedStart` / `plannedEnd` 绘制单色条
 - **跟踪甘特图**（BACK-495）：双层渲染，底层 `actualStart`→`actualEnd` 实心条，上层 `plannedStart`→`plannedEnd` 斜线边框
 
+## 显示规则：date-only=本地午夜，datetime=UTC(BACK-690)
+
+概览健康列表曾把 date-only 值按 `T00:00:00Z`(UTC 午夜）解析再转本地时区，西半球时区会显示成前一天。现规则固定：**date-only 值解析为本地午夜**（补 `T00:00:00` 不带 `Z`),**携带时间的值保持 UTC 解析**（存储即为 UTC)。`formatDateForStats` 导出以便按固定 TZ 子进程测试（[[sources/back-690-overview-due-by-timezone-fix]]）。
+
+## UTC hover title 约定（BACK-673)
+
+Web 每个日期渲染经 `storedUtcHoverTitle`(`src/web/utils/date-display.ts`）在元素 `title` 属性上暴露存储的 UTC 原值并标注 `(UTC)`——原样引用存储字符串而非重排 `Date`，与 Markdown 记录及 CLI/TUI/MCP 输出逐字节一致；date-only、空值与不可解析值不带 title，避免 hover 声称记录中没有的时刻。显示文本不变（[[sources/back-673-utc-hover-titles]]）。
+
+## 创建期日期字段单源化（BACK-693)
+
+五个创建期日期映射被提取为共享 helper `buildCreateDateFields`,`task create` 与 `draft create` 共同调用——裁剪与 actual start/end 的 stored-UTC 转换只存在一处；`draft create` 由此获得全部五个日期 flag（[[sources/back-693-tui-draft-creation-window]]）。
+
 ## Related Concepts
 - [[concepts/task-lifecycle]] — 任务 frontmatter 完整字段说明
 - [[concepts/web-ui-features]] — Web UI 日期指示器与自动填充细节
@@ -97,3 +109,6 @@ milestone edit M1 --actual-start "2026-05-25 09:00"
 - [[sources/timezone-handling-fix]] — BACK-497 时区一致性修复
 - [[sources/back-506-cli-utc-conversion-fix]] — BACK-506 CLI UTC 转换修复
 - [[sources/back-528-web-task-detail-date-clear-persisting]] — BACK-528 Web 日期清除持久化
+- [[sources/back-690-overview-due-by-timezone-fix]] — BACK-690 date-only 本地午夜解析
+- [[sources/back-673-utc-hover-titles]] — BACK-673 UTC hover title
+- [[sources/back-693-tui-draft-creation-window]] — BACK-693 buildCreateDateFields 与 draft 日期 flag
