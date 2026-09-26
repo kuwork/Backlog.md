@@ -1,7 +1,7 @@
 ---
 title: 稳定 JSON 输出
 created_date: '2026-08-17 23:00'
-updated_date: '2026-08-17 23:00'
+updated_date: '2026-09-26 14:45'
 labels: [concept, cli, api-contract]
 ---
 
@@ -29,6 +29,19 @@ Backlog.md 为只读命令提供版本化的 `--json` 输出，便于脚本、AI
 - `--json` 与 `--plain` 冲突时返回非零
 - 非读取类 `task` 子命令拒绝 `--json`
 
+## Watch 流（BACK-657）
+
+`task list --json --watch` 复用现有 JSON 输出做持续监听：每次底层任务数据变化时重新发射一份完整 JSON 快照到 stdout，供 agent/脚本以流方式消费任务列表变化（[[sources/back-657-task-list-json-watch|BACK-657]]）。
+
+## Readiness 发布（BACK-658）
+
+JSON 读取路径暴露任务 readiness（`isReady`），将"任务是否可开始"（依赖是否满足）的判断以稳定字段形式发布给脚本消费者，而非让消费方自行解析依赖图（[[sources/back-658-json-readiness-publication|BACK-658]]）。
+
+## references / modifiedFiles 与 completed source（BACK-697/662）
+
+- `task list --json` 的任务摘要包含 `references` 与 `modifiedFiles` 字段，自动化可直接拿到任务关联的文件与链接（[[sources/back-697-json-summary-references-modified-files|BACK-697]]）
+- 启用 completed 语料搜索时，结果带 `source` 字段区分任务来自 active 还是 completed 语料（[[sources/back-662-completed-corpus-query-search|BACK-662]]）
+
 ## Fork 定制
 
 - 无 `task.type` 字段（fork Task 模型没有）
@@ -40,3 +53,7 @@ Backlog.md 为只读命令提供版本化的 `--json` 输出，便于脚本、AI
 
 - [[sources/back-562-stable-json-output]] — BACK-562 实现
 - [[sources/back-625-ac-progress-json-output]] — BACK-625 补齐验收标准进度字段
+- [[sources/back-657-task-list-json-watch]] — BACK-657 JSON watch 流
+- [[sources/back-658-json-readiness-publication]] — BACK-658 readiness 发布
+- [[sources/back-662-completed-corpus-query-search]] — BACK-662 completed source 字段
+- [[sources/back-697-json-summary-references-modified-files]] — BACK-697 references/modifiedFiles 字段
