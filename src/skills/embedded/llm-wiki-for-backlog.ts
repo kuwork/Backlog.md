@@ -815,7 +815,7 @@ Before building the wiki, verify that Backlog.md has been initialized in the pro
    - Skip build artifacts, generated files, and lockfiles unless semantically relevant
    - (skip discussion step in batch mode)
 
-5. **Run mini-lint** after all sources processed
+5. **Run mini-lint** after all sources processed — at minimum the source back-reference check (§4.1); ingest is the moment renames and deletions become visible
 
 6. **Pairing Memory Extraction (MUST NOT SKIP)** — After all sources are processed, check if any pairing-memory content should be generated or updated. This step is frequently missed; do not skip it even if the batch is small:
 
@@ -871,7 +871,7 @@ Before building the wiki, verify that Backlog.md has been initialized in the pro
 
 **Page conventions:**
 - Every page: YAML frontmatter with \`title\`, \`created_date\`, \`updated_date\` at minimum; \`labels\` as optional array of tags (e.g. \`source\`, \`concept\`, \`entity\`, \`comparison\`, \`pattern\`, \`decision\`, \`reasoning\`, \`execution\`, \`retrospective\`)
-- Source pages include \`source_path\` linking back to original backlog file
+- Source pages include \`source_path\` linking back to original backlog file — copy the real path from disk and verify it resolves; never reconstruct it from the page title
 - All cross-references: \`[[wikilinks]]\`
 - Filenames: lowercase-with-hyphens
 
@@ -902,6 +902,30 @@ Before building the wiki, verify that Backlog.md has been initialized in the pro
 - Missing cross-references that should exist
 - Data gaps fillable via web search
 - Potential new connections and questions to investigate
+- Broken \`source_path\` back-references in \`wiki/sources/\` frontmatter (see 4.1)
+
+#### 4.1 Source back-reference check
+
+Every \`wiki/sources/*.md\` carries a \`source_path\` in its frontmatter. It is the **only** pointer from a summary page back to the raw file it was compiled from — wikilinks in the page body resolve inside \`wiki/\` and never leave it. So when \`source_path\` stops resolving, the page silently becomes an orphan with no provenance: nothing errors, the link just stops working.
+
+**Detect** — for each \`wiki/sources/*.md\`, read \`source_path\` and test whether that path exists on disk.
+
+**Diagnose before concluding.** A non-resolving \`source_path\` is almost never a typo made at ingest time — the value was usually correct when written. Raw files get **renamed** (bulk "fix filenames" passes are a common cause) and nothing propagates the new name into the wiki, so a single rename commit can break many back-references at once. **Never classify a mismatch from its surface appearance** — do not conclude "the file was retitled" or "the path was hand-written wrong" just because the filename and the page title differ. Always check rename history first:
+
+\`\`\`bash
+git log -M --diff-filter=R --summary --all -- "*<slug-or-id>*"
+\`\`\`
+
+Rename history yields the exact old→new pair, so fixing from it is mechanical and needs no judgement. Only if rename history returns nothing, fall back to:
+1. Match by any stable identifier in the filename — backlog IDs in a backlog project (\`back-521\`, \`doc-11\`, \`draft-92\`), slug stems elsewhere — across the raw source directories;
+2. Broaden to a case-insensitive filename search.
+
+**Fix, by finding:**
+- **Resolved via rename or exact filename match** → rewrite \`source_path\` to the real path and bump \`updated_date\`. Apply these without asking; the evidence is conclusive.
+- **Source file genuinely gone** (e.g. a draft promoted then removed) → **do not delete the page**. Note in the body that the source no longer exists — the summary may be the only surviving record of it.
+- **\`source_path\` points at a directory, or at the wrong identifier** → surface it for a human decision on which file it should point at. Do not guess.
+
+**Never** write a \`source_path\` you have not verified to exist. Copy the path from the filesystem — do not reconstruct it from the page title. Filenames are slugified titles (spaces → hyphens, punctuation escaped), so the two are not interchangeable.
 
 **Output:** Report in \`wiki_output/reports/lint-{date}.md\`. Ask which issues to fix, then apply. Append to log.
 
