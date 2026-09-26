@@ -14,8 +14,9 @@ export interface ParsedRecord {
 	title: string;
 	kind: GraphKind;
 	status: string;
-	/** Path relative to the backlog directory (the doc's filePath). */
+	/** Path relative to the backlog directory (the doc's filePath) - the FileNode identity. */
 	filePath: string;
+	updatedDate: string;
 	parentTaskId: string | null;
 	milestone: string | null;
 	dependencies: string[];
@@ -58,6 +59,7 @@ export function parseTaskFile(absPath: string, relPath: string, kind: GraphKind)
 	const status = typeof data.status === "string" ? data.status : "";
 	// The project's on-disk field is parent_task_id (snake_case); doc-014 §1.3 calls it parentTaskId.
 	const parentRaw = data.parent_task_id ?? data.parentTaskId;
+	const updatedRaw = data.updated_date ?? data.updatedDate;
 	return {
 		record: {
 			id,
@@ -65,6 +67,7 @@ export function parseTaskFile(absPath: string, relPath: string, kind: GraphKind)
 			kind,
 			status,
 			filePath: relPath,
+			updatedDate: typeof updatedRaw === "string" ? updatedRaw : "",
 			parentTaskId: typeof parentRaw === "string" && parentRaw.trim().length > 0 ? parentRaw.trim() : null,
 			milestone: typeof data.milestone === "string" && data.milestone.trim().length > 0 ? data.milestone.trim() : null,
 			dependencies: toStringArray(data.dependencies),

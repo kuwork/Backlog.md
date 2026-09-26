@@ -10,10 +10,11 @@ import type { GraphNode, GraphStore } from "./store";
  * Incremental rebuild (doc-014 §2.2) and the §3.5 migration scenarios.
  *
  * The change set is derived from the per-file fingerprint cache; only added/changed files are
- * parsed. Same-id path changes (completion tasks/ -> completed/, renames) update the node in
- * place so its edges survive; demote/promote (id changes) delete the old node and rebuild its
- * edges under the new id. Edges touching affected ids are rebuilt only after every node is in
- * place, so cross-file references always resolve.
+ * parsed. Because a node is keyed by its path, every migration in §3.5 is the same two steps: the
+ * old path loses its node, the new path gains one, and the edges touching either are rebuilt at the
+ * end of the batch. No id comparison is needed - a rename, a demotion or a tasks/ -> completed/
+ * move shows up as `removed` + `added` in one change set by construction, since the fingerprint
+ * cache is keyed by path too.
  */
 
 export interface ChangeSet {
@@ -81,29 +82,26 @@ export class RecordCache {
 
 function toNode(record: ParsedRecord): GraphNode {
 	return {
+		path: record.filePath,
 		id: record.id,
+		type: record.kind,
 		title: record.title,
-		kind: record.kind,
 		status: record.status,
-		filePath: record.filePath,
+		updatedDate: record.updatedDate,
 	};
 }
 
 export interface ApplyChangeSetResult {
 	relations: RelationResolution;
-	affectedIds: string[];
-}
-
-interface AffectedOld {
-	/** The previous record's id, or null when the record cache had no entry for the path. */
-	id: string | null;
-	filePath: string;
+	/** Those paths' nodes and edges were rewritten; peers outside this set were left untouched. */
+	affectedPaths: string[];
 }
 
 /**
  * Apply a change set against the store. `scannedByPath` must cover the added/changed paths.
  * `warnings` collects parser skip warnings. The full relation set is re-resolved from the
- * (mostly cached) records, but only edges touching affected ids are rewritten in the store.
+ * (mostly cached) records, so the id -> path translation always sees every file, but only edges
+ * touching an affected path are rewritten in the store.
  */
 export async function applyChangeSet(
 	store: GraphStore,
@@ -112,11 +110,6 @@ export async function applyChangeSet(
 	scannedByPath: Map<string, ScannedFile>,
 	warnings: string[] = [],
 ): Promise<ApplyChangeSetResult> {
-	const affectedOldRecords: AffectedOld[] = [...changeSet.removed, ...changeSet.changed].map((relPath) => ({
-		id: recordCache.get(relPath)?.id ?? null,
-		filePath: relPath,
-	}));
-
 	// Parse the new/changed files (the only content reads in an incremental sync).
 	const freshRecords = new Map<string, ParsedRecord>();
 	for (const relPath of [...changeSet.added, ...changeSet.changed]) {
@@ -131,45 +124,19 @@ export async function applyChangeSet(
 	for (const relPath of changeSet.removed) recordCache.delete(relPath);
 	for (const record of freshRecords.values()) recordCache.set(record);
 
-	// Split affected old records: same-id path changes update in place, everything else deletes.
-	const freshById = new Map([...freshRecords.values()].map((r) => [r.id, r] as const));
-	const inPlaceUpdates: ParsedRecord[] = [];
-	const doomedIds: string[] = [];
-	const stalePaths: string[] = [];
-	for (const old of affectedOldRecords) {
-		if (old.id && freshById.has(old.id)) {
-			inPlaceUpdates.push(freshById.get(old.id) as ParsedRecord);
-		} else if (old.id) {
-			doomedIds.push(old.id);
-		} else {
-			stalePaths.push(old.filePath);
-		}
-	}
+	// Drop the node of every touched path first: a removed/renamed file takes its node away, and a
+	// changed or added file is recreated from its fresh content below.
+	const affectedPaths = [...new Set([...changeSet.added, ...changeSet.changed, ...changeSet.removed])];
+	await store.deleteNodes(affectedPaths);
 
-	if (doomedIds.length > 0) await store.deleteNodes(doomedIds);
-	// Unknown old records (record cache was cold) are unreachable by id; drop them by matching
-	// the old filePath so nodes of renamed/removed files cannot linger.
-	if (stalePaths.length > 0) await store.deleteNodesByFilePath(stalePaths);
-
-	// Nodes first: brand-new ids (added files + changed files whose id differs).
-	const inPlaceIds = new Set(inPlaceUpdates.map((r) => r.id));
-	const brandNew = [...freshRecords.values()].filter((r) => !inPlaceIds.has(r.id));
-	if (brandNew.length > 0) await store.upsertNodes(brandNew.map(toNode));
-	if (inPlaceUpdates.length > 0) await store.updateNodes(inPlaceUpdates.map(toNode));
-
-	// Edges last: rebuild every edge touching an affected id after all nodes are in place.
-	const affectedIds = [
-		...new Set([
-			...affectedOldRecords.filter((r): r is AffectedOld & { id: string } => r.id !== null).map((r) => r.id),
-			...[...freshRecords.values()].map((r) => r.id),
-		]),
-	];
+	// Nodes first, edges last: every edge touching an affected path is rebuilt after all nodes are
+	// in place, so a reference between two files that moved in the same batch still resolves.
+	if (freshRecords.size > 0) await store.upsertNodes([...freshRecords.values()].map(toNode));
+	const affected = new Set(affectedPaths);
 	const relations = resolveRelations(recordCache.all());
-	await store.deleteEdgesTouching(affectedIds);
-	await store.upsertEdges(
-		relations.edges.filter((edge) => affectedIds.includes(edge.from) || affectedIds.includes(edge.to)),
-	);
-	return { relations, affectedIds };
+	await store.deleteEdgesTouching(affectedPaths);
+	await store.upsertEdges(relations.edges.filter((edge) => affected.has(edge.from) || affected.has(edge.to)));
+	return { relations, affectedPaths };
 }
 
 /**

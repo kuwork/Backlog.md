@@ -3,8 +3,9 @@ import type { RelationResolution } from "./relations";
 import type { GraphNode, GraphStore } from "./store";
 
 /**
- * Full import (doc-014 §2.2 step 2/3): every node is inserted first in batches, and every edge is
- * created only after all nodes are in place so cross-file references always resolve.
+ * Full import (doc-014 §2.2 step 2/3): every file becomes a FileNode keyed by its path, and every
+ * edge is created only after all nodes are in place, because `resolveRelations` has already turned
+ * the frontmatter ids into the paths those edges connect.
  */
 export async function fullImport(
 	store: GraphStore,
@@ -15,11 +16,12 @@ export async function fullImport(
 	await store.upsertNodes(
 		records.map(
 			(record): GraphNode => ({
+				path: record.filePath,
 				id: record.id,
+				type: record.kind,
 				title: record.title,
-				kind: record.kind,
 				status: record.status,
-				filePath: record.filePath,
+				updatedDate: record.updatedDate,
 			}),
 		),
 	);

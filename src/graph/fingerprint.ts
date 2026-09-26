@@ -11,7 +11,22 @@ import { dirname } from "node:path";
  * null fingerprint and triggers a full rebuild.
  */
 
-export const PARSER_VERSION = 1;
+/**
+ * Bumped when a file's *parsed content* changes shape - a new frontmatter field, a different kind
+ * mapping - so every cached entry is rebuilt even though no file changed.
+ *
+ * Not to be confused with SCHEMA_VERSION (store.ts), which covers the other half: the shape of the
+ * graph itself. The two are independent and both are needed, because a stale artifact can disagree
+ * with the code in either half; bump the DDL's version for a table or column change, this one for a
+ * change in what a file parses into. A schema bump also forces a rebuild through the guards that
+ * require a non-empty store (cold-start's nodeCount, the service's first-reconcile state), since
+ * the outdated file wipes itself at open time.
+ *
+ * 2: node identity moved from Task(id) to FileNode(path) (doc-014 §1.2), plus updatedDate; a
+ * graph.kuzu built by version 1 has the wrong node table and must be rebuilt even though no file
+ * changed.
+ */
+export const PARSER_VERSION = 2;
 
 export interface FileFingerprint {
 	size: number;

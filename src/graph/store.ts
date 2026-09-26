@@ -1,6 +1,11 @@
 /**
  * Graph store abstraction for the Kuzu task graph (doc-014 §1.2).
  *
+ * One node table, FileNode, keyed by the file's path relative to the backlog directory: the
+ * Markdown file *is* the node, and the task id is merely a property of task files. Nothing else
+ * identifies a node, so a file move/rename/archive is one operation everywhere - remove the old
+ * path, create the new path, rebuild edges - with no second identity to keep in sync.
+ *
  * Two backends implement the same interface:
  * - KuzuGraphStore: the real embedded Kuzu database (a hashed cache file, see graph/paths.ts). The
  *   native binding segfaults when loaded from Bun on this machine (doc-014 §5 anticipated Windows
@@ -17,15 +22,20 @@
 export type GraphKind = "task" | "draft" | "milestone";
 
 export interface GraphNode {
+	/** Primary key: path relative to the backlog directory, e.g. "tasks/back-217 - Title.md". */
+	path: string;
+	/** The task id from frontmatter (back-217 / draft-N / m-1). A property, not an identity. */
 	id: string;
+	/** task | draft | milestone today; phase 3 (doc-15) widens it to wiki | decision | document. */
+	type: GraphKind;
 	title: string;
-	kind: GraphKind;
 	status: string;
-	filePath: string;
+	updatedDate: string;
 }
 
 export type GraphEdgeType = "ParentOf" | "BelongsToMilestone" | "DependsOn";
 
+/** Edge endpoints are node paths (the FileNode primary key), not task ids. */
 export interface GraphEdge {
 	type: GraphEdgeType;
 	from: string;
@@ -34,33 +44,33 @@ export interface GraphEdge {
 
 export interface GraphStore {
 	readonly backend: "kuzu" | "memory";
+	/**
+	 * Open the store. A persistent backend also verifies that the file it opens is at
+	 * SCHEMA_VERSION and rebuilds it from scratch when it is not - see KuzuGraphStore.init.
+	 */
 	init(): Promise<void>;
 	close(): Promise<void>;
-	/** Drop every node and edge - used by the rebuild path (fail-safe direction is always rebuild). */
-	clear(): Promise<void>;
-	/** Batch upsert nodes; existing ids are replaced and their edges detached. */
-	upsertNodes(nodes: GraphNode[]): Promise<void>;
 	/**
-	 * Batch update node properties in place (same-id path change / status change, doc-014 §3.5):
-	 * edges touching the node are preserved, unlike upsertNodes' detach semantics.
+	 * Empty the graph - used by the rebuild path (fail-safe direction is always rebuild). A
+	 * persistent backend also re-stamps the file with the current schema.
 	 */
-	updateNodes(nodes: GraphNode[]): Promise<void>;
-	/** Batch remove nodes together with all their edges (DETACH DELETE semantics). */
-	deleteNodes(ids: string[]): Promise<void>;
-	/** Remove nodes whose filePath matches one of the given paths (renamed/removed files). */
-	deleteNodesByFilePath(filePaths: string[]): Promise<void>;
-	/** Batch insert edges; duplicates are ignored. */
+	clear(): Promise<void>;
+	/** Batch upsert nodes by path; an existing path is replaced along with its edges. */
+	upsertNodes(nodes: GraphNode[]): Promise<void>;
+	/** Batch remove nodes by path together with all their edges (DETACH DELETE semantics). */
+	deleteNodes(paths: string[]): Promise<void>;
+	/** Batch insert edges; duplicates within the batch are ignored. */
 	upsertEdges(edges: GraphEdge[]): Promise<void>;
-	/** Remove every edge with an endpoint in `ids` - used to rebuild only affected edges. */
-	deleteEdgesTouching(ids: string[]): Promise<void>;
+	/** Remove every edge with an endpoint in `paths` - used to rebuild only affected edges. */
+	deleteEdgesTouching(paths: string[]): Promise<void>;
 	/** All nodes, for the /api/graph payload. */
 	getAllNodes(): Promise<GraphNode[]>;
 	/** All edges, for the /api/graph payload. */
 	getAllEdges(): Promise<GraphEdge[]>;
 	countNodes(): Promise<number>;
 	countEdges(type: GraphEdgeType): Promise<number>;
-	hasNode(id: string): Promise<boolean>;
-	getNode(id: string): Promise<GraphNode | null>;
+	hasNode(path: string): Promise<boolean>;
+	getNode(path: string): Promise<GraphNode | null>;
 	setMeta(key: string, value: string): Promise<void>;
 	getMeta(key: string): Promise<string | null>;
 }
@@ -91,36 +101,13 @@ export class MemoryGraphStore implements GraphStore {
 	}
 
 	async upsertNodes(nodes: GraphNode[]): Promise<void> {
-		for (const node of nodes) {
-			this.nodes.set(node.id, { ...node });
-			for (const key of [...this.edges.keys()]) {
-				const edge = this.edges.get(key);
-				if (edge && (edge.from === node.id || edge.to === node.id)) this.edges.delete(key);
-			}
-		}
+		for (const node of nodes) this.nodes.set(node.path, { ...node });
+		await this.deleteEdgesTouching(nodes.map((node) => node.path));
 	}
 
-	async updateNodes(nodes: GraphNode[]): Promise<void> {
-		// In-place property update: existing edges survive (same-id rename/completion keeps edges).
-		for (const node of nodes) {
-			const existing = this.nodes.get(node.id);
-			if (existing) this.nodes.set(node.id, { ...existing, ...node, id: existing.id });
-		}
-	}
-
-	async deleteNodes(ids: string[]): Promise<void> {
-		const doomed = new Set(ids);
-		for (const id of doomed) this.nodes.delete(id);
-		for (const key of [...this.edges.keys()]) {
-			const edge = this.edges.get(key);
-			if (edge && (doomed.has(edge.from) || doomed.has(edge.to))) this.edges.delete(key);
-		}
-	}
-
-	async deleteNodesByFilePath(filePaths: string[]): Promise<void> {
-		const doomed = new Set(filePaths);
-		const ids = [...this.nodes.values()].filter((n) => doomed.has(n.filePath)).map((n) => n.id);
-		await this.deleteNodes(ids);
+	async deleteNodes(paths: string[]): Promise<void> {
+		for (const path of paths) this.nodes.delete(path);
+		await this.deleteEdgesTouching(paths);
 	}
 
 	async upsertEdges(edges: GraphEdge[]): Promise<void> {
@@ -130,8 +117,8 @@ export class MemoryGraphStore implements GraphStore {
 		}
 	}
 
-	async deleteEdgesTouching(ids: string[]): Promise<void> {
-		const doomed = new Set(ids);
+	async deleteEdgesTouching(paths: string[]): Promise<void> {
+		const doomed = new Set(paths);
 		for (const key of [...this.edges.keys()]) {
 			const edge = this.edges.get(key);
 			if (edge && (doomed.has(edge.from) || doomed.has(edge.to))) this.edges.delete(key);
@@ -158,12 +145,12 @@ export class MemoryGraphStore implements GraphStore {
 		return count;
 	}
 
-	async hasNode(id: string): Promise<boolean> {
-		return this.nodes.has(id);
+	async hasNode(path: string): Promise<boolean> {
+		return this.nodes.has(path);
 	}
 
-	async getNode(id: string): Promise<GraphNode | null> {
-		const node = this.nodes.get(id);
+	async getNode(path: string): Promise<GraphNode | null> {
+		const node = this.nodes.get(path);
 		return node ? { ...node } : null;
 	}
 
@@ -176,29 +163,62 @@ export class MemoryGraphStore implements GraphStore {
 	}
 }
 
+/**
+ * The shape a cache file must have. Bump this whenever SCHEMA_DDL below changes - a renamed table,
+ * an added or removed column, a different primary key - and nothing else has to change: a file that
+ * records any other version is wiped and rebuilt at open time (see KuzuGraphStore.init).
+ *
+ * The value is written into the database's own Meta table, so a cache file describes its own
+ * schema. That matters because kuzu's `CREATE ... IF NOT EXISTS` is a silent no-op for a name that
+ * already exists: without a recorded version, a file built by an older release would keep its old
+ * table - with its relationship tables still bound to the old endpoints - and every later write
+ * would either fail on a missing column or land in a table nothing reads.
+ *
+ * 1: FileNode(path PRIMARY KEY, id, type, title, status, updatedDate), doc-014 §1.2. A file with no
+ *    version row is stale by definition - either empty, or written before this mechanism existed.
+ */
+export const SCHEMA_VERSION = 1;
+
+/** The Meta row holding SCHEMA_VERSION inside the database. Only the kuzu backend persists a file. */
+export const SCHEMA_VERSION_KEY = "schemaVersion";
+
+/** Whether a version read back from a database is the one this build writes. Missing = stale. */
+export function isCurrentSchema(stored: string | null): boolean {
+	return stored === String(SCHEMA_VERSION);
+}
+
 const SCHEMA_DDL = [
-	"CREATE NODE TABLE IF NOT EXISTS Task (id STRING PRIMARY KEY, title STRING, kind STRING, status STRING, filePath STRING)",
-	"CREATE REL TABLE IF NOT EXISTS ParentOf(FROM Task TO Task)",
-	"CREATE REL TABLE IF NOT EXISTS BelongsToMilestone(FROM Task TO Task)",
-	"CREATE REL TABLE IF NOT EXISTS DependsOn(FROM Task TO Task)",
+	"CREATE NODE TABLE IF NOT EXISTS FileNode (path STRING PRIMARY KEY, id STRING, type STRING, title STRING, status STRING, updatedDate STRING)",
+	"CREATE REL TABLE IF NOT EXISTS ParentOf(FROM FileNode TO FileNode)",
+	"CREATE REL TABLE IF NOT EXISTS BelongsToMilestone(FROM FileNode TO FileNode)",
+	"CREATE REL TABLE IF NOT EXISTS DependsOn(FROM FileNode TO FileNode)",
 	"CREATE NODE TABLE IF NOT EXISTS Meta (name STRING PRIMARY KEY, value STRING)",
 ] as const;
 
+const EDGE_TYPES = ["ParentOf", "BelongsToMilestone", "DependsOn"] as const;
+
 const NODE_BATCH_SIZE = 100;
 
-type KuzuModule = typeof import("kuzu");
+/**
+ * Edge-import CSV. Node paths are file names, so unlike ids they may well contain a comma, a quote
+ * or a newline - quote (and escape) anything that would otherwise split the row.
+ */
+function csvField(value: string): string {
+	return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
 
-/** Edge-import CSV: ids only, so no quoting is needed; ids never contain commas. */
 async function writeEdgeCsv(type: GraphEdgeType, edges: GraphEdge[]): Promise<string> {
 	const { join } = await import("node:path");
 	const { mkdtemp, writeFile } = await import("node:fs/promises");
 	const { tmpdir } = await import("node:os");
 	const dir = await mkdtemp(join(tmpdir(), "backlog-kuzu-"));
 	const csvPath = join(dir, `${type.toLowerCase()}.csv`);
-	const lines = ["from,to", ...edges.map((e) => `${e.from},${e.to}`)];
+	const lines = ["from,to", ...edges.map((e) => `${csvField(e.from)},${csvField(e.to)}`)];
 	await writeFile(csvPath, `${lines.join("\n")}\n`, "utf8");
 	return csvPath;
 }
+
+type KuzuModule = typeof import("kuzu");
 
 let kuzuModule: KuzuModule | null = null;
 
@@ -225,10 +245,13 @@ export class KuzuGraphStore implements GraphStore {
 		const kuzu = await loadKuzu();
 		this.db = new kuzu.Database(this.dbPath);
 		this.conn = new kuzu.Connection(this.db);
-		for (const ddl of SCHEMA_DDL) {
-			const result = await this.conn.query(ddl);
-			await this.closeResult(result);
+		// The file says which schema it was built with, so a reusable file is recognised without
+		// consulting anything outside it (the sidecar cache, the caller's expectations).
+		if (isCurrentSchema(await this.readSchemaVersion())) {
+			await this.createSchema(); // already there; the DDL pass is a no-op that also repairs
+			return;
 		}
+		await this.clear(); // older or unknown schema: wipe whatever is there, then start clean
 	}
 
 	async close(): Promise<void> {
@@ -242,21 +265,42 @@ export class KuzuGraphStore implements GraphStore {
 		}
 	}
 
+	/**
+	 * Empty the graph and stamp it with the current schema. The tables are enumerated rather than
+	 * named: a rename leaves a table this build has never heard of, and it has to go too. Rel tables
+	 * come first because kuzu refuses to drop a node table a relationship table still references.
+	 */
 	async clear(): Promise<void> {
-		// Rel tables must go first: they depend on Task.
-		for (const table of ["ParentOf", "BelongsToMilestone", "DependsOn", "Task", "Meta"]) {
-			const result = await this.query(`DROP TABLE IF EXISTS ${table}`);
-			await this.closeResult(result);
-		}
-		for (const ddl of SCHEMA_DDL) {
-			const result = await this.query(ddl);
-			await this.closeResult(result);
+		for (const table of await this.listTables()) await this.exec(`DROP TABLE IF EXISTS ${table}`);
+		await this.createSchema();
+	}
+
+	private async createSchema(): Promise<void> {
+		for (const ddl of SCHEMA_DDL) await this.exec(ddl);
+		await this.setMeta(SCHEMA_VERSION_KEY, String(SCHEMA_VERSION));
+	}
+
+	/** Table names in this file, relationship tables first so the node tables are droppable. */
+	private async listTables(): Promise<string[]> {
+		const result = await this.query("CALL show_tables() RETURN name, type");
+		const rows = await result.getAll();
+		await this.closeResult(result);
+		const tables = rows.map((row) => ({ name: String(row.name), rel: String(row.type) === "REL" }));
+		return [...tables.filter((t) => t.rel), ...tables.filter((t) => !t.rel)].map((t) => t.name);
+	}
+
+	/** A file whose Meta table or row is missing has no recorded schema - see SCHEMA_VERSION. */
+	private async readSchemaVersion(): Promise<string | null> {
+		try {
+			return await this.getMeta(SCHEMA_VERSION_KEY);
+		} catch {
+			return null; // "Binder exception: Table Meta does not exist" on a fresh file
 		}
 	}
 
 	async upsertNodes(nodes: GraphNode[]): Promise<void> {
 		if (nodes.length === 0) return;
-		await this.deleteNodes(nodes.map((n) => n.id));
+		await this.deleteNodes(nodes.map((n) => n.path)); // replace semantics, edges included
 		for (let start = 0; start < nodes.length; start += NODE_BATCH_SIZE) {
 			const batch = nodes.slice(start, start + NODE_BATCH_SIZE);
 			const patterns: string[] = [];
@@ -264,66 +308,49 @@ export class KuzuGraphStore implements GraphStore {
 			batch.forEach((node, i) => {
 				const p = `n${i}`;
 				patterns.push(
-					`(:Task {id: $${p}id, title: $${p}title, kind: $${p}kind, status: $${p}status, filePath: $${p}filePath})`,
+					`(:FileNode {path: $${p}path, id: $${p}id, type: $${p}type, title: $${p}title, status: $${p}status, updatedDate: $${p}updatedDate})`,
 				);
+				params[`${p}path`] = node.path;
 				params[`${p}id`] = node.id;
+				params[`${p}type`] = node.type;
 				params[`${p}title`] = node.title;
-				params[`${p}kind`] = node.kind;
 				params[`${p}status`] = node.status;
-				params[`${p}filePath`] = node.filePath;
+				params[`${p}updatedDate`] = node.updatedDate;
 			});
 			await this.executePrepared(`CREATE ${patterns.join(", ")}`, params);
 		}
 	}
 
-	async deleteNodes(ids: string[]): Promise<void> {
-		if (ids.length === 0) return;
-		await this.executePrepared("MATCH (n:Task) WHERE n.id IN $ids DETACH DELETE n", { ids });
+	async deleteNodes(paths: string[]): Promise<void> {
+		if (paths.length === 0) return;
+		await this.executePrepared("MATCH (n:FileNode) WHERE n.path IN $paths DETACH DELETE n", { paths });
 	}
 
-	async deleteNodesByFilePath(filePaths: string[]): Promise<void> {
-		if (filePaths.length === 0) return;
-		await this.executePrepared("MATCH (n:Task) WHERE n.filePath IN $paths DETACH DELETE n", { paths: filePaths });
-	}
-
-	async updateNodes(nodes: GraphNode[]): Promise<void> {
-		// In-place property update: existing edges survive (same-id rename/completion keeps edges).
-		for (const node of nodes) {
+	async deleteEdgesTouching(paths: string[]): Promise<void> {
+		if (paths.length === 0) return;
+		for (const type of EDGE_TYPES) {
 			await this.executePrepared(
-				"MATCH (n:Task {id: $id}) SET n.title = $title, n.kind = $kind, n.status = $status, n.filePath = $filePath",
-				{ id: node.id, title: node.title, kind: node.kind, status: node.status, filePath: node.filePath },
+				`MATCH (a:FileNode)-[r:${type}]->(b:FileNode) WHERE a.path IN $paths OR b.path IN $paths DELETE r`,
+				{ paths },
 			);
-		}
-	}
-
-	async deleteEdgesTouching(ids: string[]): Promise<void> {
-		if (ids.length === 0) return;
-		for (const type of ["ParentOf", "BelongsToMilestone", "DependsOn"] as const) {
-			await this.executePrepared(`MATCH (a:Task)-[r:${type}]->(b:Task) WHERE a.id IN $ids OR b.id IN $ids DELETE r`, {
-				ids,
-			});
 		}
 	}
 
 	async getAllNodes(): Promise<GraphNode[]> {
 		const result = await this.query(
-			"MATCH (n:Task) RETURN n.id AS id, n.title AS title, n.kind AS kind, n.status AS status, n.filePath AS filePath",
+			"MATCH (n:FileNode) RETURN n.path AS path, n.id AS id, n.type AS type, n.title AS title, n.status AS status, n.updatedDate AS updatedDate",
 		);
 		const rows = await result.getAll();
 		await this.closeResult(result);
-		return rows.map((row) => ({
-			id: String(row.id),
-			title: String(row.title ?? ""),
-			kind: String(row.kind ?? "task") as GraphKind,
-			status: String(row.status ?? ""),
-			filePath: String(row.filePath ?? ""),
-		}));
+		return rows.map(toGraphNode);
 	}
 
 	async getAllEdges(): Promise<GraphEdge[]> {
 		const edges: GraphEdge[] = [];
-		for (const type of ["ParentOf", "BelongsToMilestone", "DependsOn"] as const) {
-			const result = await this.query(`MATCH (a:Task)-[r:${type}]->(b:Task) RETURN a.id AS from, b.id AS to`);
+		for (const type of EDGE_TYPES) {
+			const result = await this.query(
+				`MATCH (a:FileNode)-[r:${type}]->(b:FileNode) RETURN a.path AS from, b.path AS to`,
+			);
 			const rows = await result.getAll();
 			await this.closeResult(result);
 			for (const row of rows) edges.push({ type, from: String(row.from), to: String(row.to) });
@@ -332,16 +359,15 @@ export class KuzuGraphStore implements GraphStore {
 	}
 
 	async upsertEdges(edges: GraphEdge[]): Promise<void> {
-		// Deduplicate - one edge per (type, from, to).
+		// Deduplicate - one edge per (type, from, to); kuzu's COPY would happily insert twice.
 		const unique = new Map<string, GraphEdge>();
 		for (const edge of edges) unique.set(edgeKey(edge.type, edge.from, edge.to), edge);
-		for (const type of ["ParentOf", "BelongsToMilestone", "DependsOn"] as const) {
+		for (const type of EDGE_TYPES) {
 			const selected = [...unique.values()].filter((e) => e.type === type);
 			if (selected.length === 0) continue;
 			const csvPath = await writeEdgeCsv(type, selected);
 			try {
-				const result = await this.query(`COPY ${type} FROM '${csvPath.replace(/\\/g, "/")}' (HEADER=true)`);
-				await this.closeResult(result);
+				await this.exec(`COPY ${type} FROM '${csvPath.replace(/\\/g, "/")}' (HEADER=true)`);
 			} finally {
 				const { unlink } = await import("node:fs/promises");
 				await unlink(csvPath).catch(() => {}); // temp file best-effort cleanup
@@ -350,39 +376,32 @@ export class KuzuGraphStore implements GraphStore {
 	}
 
 	async countNodes(): Promise<number> {
-		const result = await this.query("MATCH (n:Task) RETURN count(n) AS c");
+		const result = await this.query("MATCH (n:FileNode) RETURN count(n) AS c");
 		const rows = await result.getAll();
 		await this.closeResult(result);
 		return Number(rows[0]?.c ?? 0);
 	}
 
 	async countEdges(type: GraphEdgeType): Promise<number> {
-		const result = await this.query(`MATCH (:Task)-[r:${type}]->() RETURN count(r) AS c`);
+		const result = await this.query(`MATCH (:FileNode)-[r:${type}]->() RETURN count(r) AS c`);
 		const rows = await result.getAll();
 		await this.closeResult(result);
 		return Number(rows[0]?.c ?? 0);
 	}
 
-	async hasNode(id: string): Promise<boolean> {
-		return (await this.getNode(id)) !== null;
+	async hasNode(path: string): Promise<boolean> {
+		return (await this.getNode(path)) !== null;
 	}
 
-	async getNode(id: string): Promise<GraphNode | null> {
+	async getNode(path: string): Promise<GraphNode | null> {
 		const result = await this.queryWithParams(
-			"MATCH (n:Task {id: $id}) RETURN n.id AS id, n.title AS title, n.kind AS kind, n.status AS status, n.filePath AS filePath LIMIT 1",
-			{ id },
+			"MATCH (n:FileNode {path: $path}) RETURN n.path AS path, n.id AS id, n.type AS type, n.title AS title, n.status AS status, n.updatedDate AS updatedDate LIMIT 1",
+			{ path },
 		);
 		const rows = await result.getAll();
 		await this.closeResult(result);
 		const row = rows[0];
-		if (!row) return null;
-		return {
-			id: String(row.id),
-			title: String(row.title ?? ""),
-			kind: String(row.kind ?? "task") as GraphKind,
-			status: String(row.status ?? ""),
-			filePath: String(row.filePath ?? ""),
-		};
+		return row ? toGraphNode(row) : null;
 	}
 
 	async setMeta(key: string, value: string): Promise<void> {
@@ -433,6 +452,12 @@ export class KuzuGraphStore implements GraphStore {
 		return result;
 	}
 
+	/** Run a statement whose result nobody needs - DDL, DELETE, COPY. */
+	private async exec(statement: string): Promise<void> {
+		const result = await this.query(statement);
+		await this.closeResult(result);
+	}
+
 	private async executePrepared(statement: string, params: Record<string, unknown>) {
 		const result = await this.queryWithParams(statement, params);
 		await this.closeResult(result);
@@ -443,6 +468,17 @@ export class KuzuGraphStore implements GraphStore {
 			await r.close?.();
 		}
 	}
+}
+
+function toGraphNode(row: Record<string, unknown>): GraphNode {
+	return {
+		path: String(row.path ?? ""),
+		id: String(row.id ?? ""),
+		type: String(row.type ?? "task") as GraphKind,
+		title: String(row.title ?? ""),
+		status: String(row.status ?? ""),
+		updatedDate: String(row.updatedDate ?? ""),
+	};
 }
 
 export interface OpenGraphStoreOptions {

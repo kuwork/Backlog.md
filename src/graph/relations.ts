@@ -5,10 +5,14 @@ import { edgeKey } from "./store";
 /**
  * Fail-closed relation resolution (doc-014 §1.3/§1.4).
  *
+ * Node identity is the file path (FileNode.path). Frontmatter references are task *ids*, so this is
+ * where the two meet: the id -> record map built from every parsed file translates each reference
+ * into the target file's path, which is what an edge stores. A reference that resolves to nothing -
+ * unknown, duplicated, or an illegal kind - never silently drops: it is reported instead, and the
+ * node still enters the graph.
+ *
  * - Cross-kind ParentOf edges are legal: the file layer legitimately produces task -> draft
  *   parents (demotion keeps parentTaskId) and draft -> task parents.
- * - A dangling or ambiguous reference never silently drops an edge: it is reported instead, and
- *   the node still enters the graph.
  * - Milestone hierarchy is not supported in Phase 1: a milestone with a parentTaskId is reported
  *   as an invalid relation.
  */
@@ -31,7 +35,15 @@ export function resolveRelations(records: ParsedRecord[]): RelationResolution {
 	const ambiguousIds = [...recordsById.entries()].filter(([, bucket]) => bucket.length > 1).map(([id]) => id);
 	const ambiguous = new Set(ambiguousIds);
 
-	// Milestone nodes indexed by title for BelongsToMilestone matching.
+	/** The one record an id names, or undefined when it is unknown or ambiguous. */
+	const resolve = (id: string): ParsedRecord | undefined => {
+		const bucket = recordsById.get(id);
+		return bucket && bucket.length === 1 ? bucket[0] : undefined;
+	};
+	const matchCount = (id: string): number => recordsById.get(id)?.length ?? 0;
+
+	// Milestone nodes indexed by title for BelongsToMilestone matching (a duplicated title is
+	// ambiguous, never a silent first-match).
 	const milestonesByTitle = new Map<string, ParsedRecord[]>();
 	for (const record of records) {
 		if (record.kind !== "milestone") continue;
@@ -44,14 +56,10 @@ export function resolveRelations(records: ParsedRecord[]): RelationResolution {
 	const invalidRelations: string[] = [];
 	const missingDependencies: string[] = [];
 
-	const addEdge = (type: GraphEdgeType, from: ParsedRecord, toId: string) => {
-		if (ambiguous.has(from.id)) return false; // ambiguous source: no edges at all
-		if (ambiguous.has(toId)) return false;
-		const targets = recordsById.get(toId);
-		if (!targets || targets.length !== 1) return false;
-		const key = edgeKey(type, from.id, toId);
-		if (!edges.has(key)) edges.set(key, { type, from: from.id, to: toId });
-		return true;
+	const addEdge = (type: GraphEdgeType, from: ParsedRecord, to: ParsedRecord) => {
+		if (ambiguous.has(from.id)) return; // ambiguous source: no edges at all
+		const key = edgeKey(type, from.filePath, to.filePath);
+		if (!edges.has(key)) edges.set(key, { type, from: from.filePath, to: to.filePath });
 	};
 
 	for (const record of records) {
@@ -62,13 +70,13 @@ export function resolveRelations(records: ParsedRecord[]): RelationResolution {
 					`milestone '${record.id}' has parentTaskId '${record.parentTaskId}'; milestone hierarchy is not supported in Phase 1`,
 				);
 			} else {
-				const targets = recordsById.get(record.parentTaskId);
-				if (!targets || targets.length !== 1) {
+				const target = resolve(record.parentTaskId);
+				if (!target) {
 					invalidRelations.push(
-						`parentTaskId '${record.parentTaskId}' referenced by '${record.id}' resolves to ${targets ? targets.length : 0} records; edge not created`,
+						`parentTaskId '${record.parentTaskId}' referenced by '${record.id}' resolves to ${matchCount(record.parentTaskId)} records; edge not created`,
 					);
 				} else {
-					addEdge("ParentOf", record, record.parentTaskId);
+					addEdge("ParentOf", record, target);
 				}
 			}
 		}
@@ -76,32 +84,30 @@ export function resolveRelations(records: ParsedRecord[]): RelationResolution {
 		// BelongsToMilestone: project files store the milestone by id (milestone: m-9); doc-014
 		// §1.3 describes title matching, so both are accepted - id first, then unique title.
 		if (record.milestone && record.kind !== "milestone") {
-			const idBucket = recordsById.get(record.milestone);
-			const byMilestoneId =
-				idBucket && idBucket.length === 1 && idBucket[0] && idBucket[0].kind === "milestone" ? idBucket[0] : undefined;
-			const milestones = milestonesByTitle.get(record.milestone);
-			const byMilestoneTitle = milestones && milestones.length === 1 ? milestones[0] : undefined;
-			const target = byMilestoneId ?? byMilestoneTitle;
+			const byMilestoneId = resolve(record.milestone);
+			const titleBucket = milestonesByTitle.get(record.milestone);
+			const byMilestoneTitle = titleBucket && titleBucket.length === 1 ? titleBucket[0] : undefined;
+			const target =
+				byMilestoneId && byMilestoneId.kind === "milestone" ? byMilestoneId : (byMilestoneTitle ?? undefined);
 			if (!target) {
 				invalidRelations.push(
 					`milestone '${record.milestone}' referenced by '${record.id}' matches no unique milestone (by id or title); edge not created`,
 				);
 			} else {
-				addEdge("BelongsToMilestone", record, target.id);
+				addEdge("BelongsToMilestone", record, target);
 			}
 		}
 
 		// DependsOn: task/draft -> task/draft.
 		if (record.kind !== "milestone") {
 			for (const depId of record.dependencies) {
-				const targets = recordsById.get(depId);
-				const target = targets?.length === 1 ? targets[0] : undefined;
+				const target = resolve(depId);
 				if (!target || target.kind === "milestone") {
 					missingDependencies.push(
-						`dependency '${depId}' referenced by '${record.id}' resolves to ${targets ? targets.length : 0} valid records; edge not created`,
+						`dependency '${depId}' referenced by '${record.id}' resolves to ${matchCount(depId)} valid records; edge not created`,
 					);
 				} else {
-					addEdge("DependsOn", record, depId);
+					addEdge("DependsOn", record, target);
 				}
 			}
 		}
