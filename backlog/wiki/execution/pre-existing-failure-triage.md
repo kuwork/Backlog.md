@@ -1,7 +1,7 @@
 ---
 title: 预存测试失败分诊方法
 created_date: '2026-09-08 17:00'
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-09-26 14:45'
 labels: [execution, testing]
 extracted_from:
   - "[[sources/back-596-fail-closed-document-decision-identity]]"
@@ -11,6 +11,9 @@ extracted_from:
   - "[[sources/back-601-core-browser-publication-ownership]]"
   - "[[sources/back-602-incremental-cross-branch-task-loading]]"
   - "[[sources/back-612-content-store-test-stabilization]]"
+  - "[[sources/back-701-fix-server-test-keep-alive-misroute]]"
+  - "[[sources/back-687-milestone-board-tui]]"
+  - "[[sources/back-684-task-detail-popup-backdrop-resize]]"
 ---
 
 # 预存测试失败分诊方法
@@ -38,6 +41,13 @@ extracted_from:
 ### ⑤ JSDOM 全局泄漏钉桩
 
 JSDOM 环境下 `window.location.origin` 等全局值会被测试间泄漏污染。用 `beforeEach` 把 origin 钉到期望值，文件级 `afterEach` 恢复原始值，避免顺序依赖的偶发失败。
+
+## 本波（653–714）新实例
+
+- **BACK-701**：本地 server 套件 33 pass / 78 fail 看似大回归；用 stash 探针在干净 HEAD 复现同一失败集，确认为 Bun 1.3.14 keep-alive 路由的 pre-existing 平台问题，修在测试基础设施而非产品
+- **BACK-687**：`mcp-milestones` 在本工作区有一个 pre-existing 失败（`git branch --show-current` / not a git repository，缺 git worktree admin 目录），与改动无关，记录后放行
+- **BACK-684**：全量 `bun test` 的失败为 pre-existing 的 `tmp/` 孤儿与无关套件，判别靠"回退后恰好新用例红、邻近套件全绿"
+- 回退探针本身也可能暴露覆盖缺口而非仅验证——见 [[execution/revert-matrix-verification]]（BACK-699 变体 D 全绿后补用例）
 
 ## Related Concepts
 

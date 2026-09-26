@@ -2,6 +2,7 @@
 title: Wiki Operations Log
 labels: [log]
 created_date: 2026-05-06 00:00
+updated_date: 2026-09-26 14:55
 ---
 
 # Wiki Operations Log
@@ -38,12 +39,6 @@ Chronological, append-only record of all wiki operations.
 
 - 新 source 页面 5 个、新 concept 页面 3 个...
 
-## [2026-05-23 00:40:21] batch-ingest | 增量摄取 BACK-483 Web UI 侧边栏调整大小
-
-## [2026-05-23 00:40:21] lint | Wiki 健康检查：修复 3 个 dangling link、1 个 orphan、2 处 frontmatter
-
-## [2026-05-23 00:40:21] usermanual-update | 更新用户手册，添加 BACK-483 侧边栏调整大小、搜索类型下拉、Wiki URL 可读路径
-
 ## [2026-05-12 09:14:40] batch-ingest | 增量摄取 BACK-475 docx 上传与内嵌 skill 架构
 
 ## [2026-05-12 09:22:00] usermanual-update | 更新用户手册，添加 docx 粘贴上传与 Wiki Skill 安装章节
@@ -63,6 +58,12 @@ Chronological, append-only record of all wiki operations.
 ## [2026-05-22 02:15:00] source-ingest | 摄取 BACK-423 Web UI 文档文件夹分组
 
 ## [2026-05-22 10:00:00] batch-ingest | 增量摄取 BACK-481 Wiki 搜索支持、BACK-482 Wikilink 与 Markdown 相对链接预览修复
+
+## [2026-05-23 00:40:21] batch-ingest | 增量摄取 BACK-483 Web UI 侧边栏调整大小
+
+## [2026-05-23 00:40:21] lint | Wiki 健康检查：修复 3 个 dangling link、1 个 orphan、2 处 frontmatter
+
+## [2026-05-23 00:40:21] usermanual-update | 更新用户手册，添加 BACK-483 侧边栏调整大小、搜索类型下拉、Wiki URL 可读路径
 
 ## [2026-05-23 11:15:00] source-ingest | BACK-484 Web UI sort optimization
 
@@ -159,7 +160,6 @@ Chronological, append-only record of all wiki operations.
 - `10-任务管理/01-创建与编辑任务` — 扩展标签输入下拉框与模糊过滤说明
 - `40-Web界面/00-启动与访问` — 扩展侧边栏折叠按钮说明
 
-
 ## [2026-05-31 01:11:00] batch-ingest | 增量摄取 BACK-502~503 及相关源码
 
 **检测基线**: 2026-05-30 10:25:00（上次 batch-ingest）
@@ -200,16 +200,11 @@ Chronological, append-only record of all wiki operations.
 
 **更新导航**: `index.md`（Sources 48 条，Execution 9 条，Decisions 13 条）、`overview.md`
 
-## [2026-06-04 16:34:00] batch-ingest | 增量摄取 BACK-506~508
+## [2026-06-01 22:55:00] usermanual-update | 更新用户手册，添加依赖项钻取与看板拖拽修复
 
-**后续更正**: BACK-507、BACK-508 为非正式占位任务，已从 backlog/tasks/ 删除，对应 wiki source 页面已移除。
-
-## [2026-06-04 16:34:00] source-remove | 移除 BACK-507、BACK-508 非正式任务 source 页面
-
-- 删除 `wiki/sources/back-507-no-git-task.md`
-- 删除 `wiki/sources/back-508-example.md`
-- 更新 `index.md` Sources 统计：49 条
-- 更新 `overview.md` Sources 统计：49 条
+**更新页面**: 2 个
+- `10-任务管理/03-子任务与依赖` — 新增 Web UI 依赖项钻取导航说明（点击依赖标签、返回按钮、关闭堆栈）
+- `40-Web界面/01-看板视图` — 扩展拖拽行为细节（保持列排序、跨列精确放置、跨列后排序恢复）
 
 ## [2026-06-04 16:34:00] batch-ingest | 增量摄取 BACK-506~508
 
@@ -230,11 +225,16 @@ Chronological, append-only record of all wiki operations.
 
 **更新导航**: `index.md`（Sources 51 条）、`overview.md`
 
-## [2026-06-01 22:55:00] usermanual-update | 更新用户手册，添加依赖项钻取与看板拖拽修复
+## [2026-06-04 16:34:00] batch-ingest | 增量摄取 BACK-506~508（更正）
 
-**更新页面**: 2 个
-- `10-任务管理/03-子任务与依赖` — 新增 Web UI 依赖项钻取导航说明（点击依赖标签、返回按钮、关闭堆栈）
-- `40-Web界面/01-看板视图` — 扩展拖拽行为细节（保持列排序、跨列精确放置、跨列后排序恢复）
+**后续更正**: BACK-507、BACK-508 为非正式占位任务，已从 backlog/tasks/ 删除，对应 wiki source 页面已移除。
+
+## [2026-06-04 16:34:00] source-remove | 移除 BACK-507、BACK-508 非正式任务 source 页面
+
+- 删除 `wiki/sources/back-507-no-git-task.md`
+- 删除 `wiki/sources/back-508-example.md`
+- 更新 `index.md` Sources 统计：49 条
+- 更新 `overview.md` Sources 统计：49 条
 
 ## [2026-06-05 15:19:06] batch-ingest | 增量摄取 BACK-509~511
 
@@ -434,12 +434,10 @@ Chronological, append-only record of all wiki operations.
 
 **mini-lint**: 新页面 wikilink 交叉引用均已验证存在，无孤立页面。
 
-
 ## [2026-07-14 07:14:00] usermanual-update | 更新创建与编辑任务章节
 
 **更新页面**: 1 个
 - `10-任务管理/01-创建与编辑任务` — 扩展 `--plan`/`--notes`/`--final-summary` 的 `\n` 换行转义说明、Web UI 创建任务 references/documentation 支持、.backlog 路径自动补全、日期清除持久化行为
-
 
 ## [2026-07-14 11:20:27] batch-ingest | 增量摄取 BACK-521.2 / BACK-521.14 及相关指令指南源码
 
@@ -568,6 +566,23 @@ Chronological, append-only record of all wiki operations.
 
 **新增用户手册页面**: 0 个
 
+## [2026-08-17 22:06:00] usermanual-update | 更新用户手册，覆盖 BACK-410/554~569 功能
+
+**更新页面**: 11 个
+- `00-快速开始/02-AI集成设置` — Cursor AGENTS.md 清理说明
+- `10-任务管理/01-创建与编辑任务` — `--append-plan`、稳定 `--json` 输出
+- `10-任务管理/04-搜索与序列` — `backlog instructions overview` 序列速查、0.45 搜索分数阈值
+- `20-看板与可视化/00-TUI看板` — `N` 键 composer、主题自适应滚动、原子写入 live refresh、AC 进度
+- `30-文档与决策/02-里程碑管理` — 里程碑 ID 过滤任务列表
+- `40-Web界面/00-启动与访问` — 默认回环 + `--host`、BROWSER 环境变量
+- `40-Web界面/01-看板视图` — 内联字段快捷键保护、异步加载、AC 进度
+- `50-AI集成/01-支持的AI工具` — 补充 Cursor 的 MCP 与 AGENTS.md 双路径
+- `50-AI集成/02-代理指令文件` — Cursor 统一使用 AGENTS.md
+- `60-配置与运维/00-配置管理` — autoCommit 精确到触碰文件
+
+**新增用户手册页面**: 0 个
+
+**更新导航**: `index.md`（User Manual 章节日期刷新）
 
 ## [2026-08-17 23:00:00] batch-ingest | 增量摄取 BACK-410/554~569、doc-7/8、draft-89 及顶层文档
 
@@ -647,26 +662,6 @@ Chronological, append-only record of all wiki operations.
 **更新导航**: `index.md`（Sources 129 条，Concepts 31 条，Decisions 35 条，Execution 17 条）、`overview.md`
 
 **mini-lint**: 全 wiki wikilink 扫描无 dangling link；调整 2 处旧 wikilink 概念/源页面中的 `[[demo]]` 示例目标为真实页面 `[[concepts/wikilink|...]]`。
-
-
-## [2026-08-17 22:06:00] usermanual-update | 更新用户手册，覆盖 BACK-410/554~569 功能
-
-**更新页面**: 11 个
-- `00-快速开始/02-AI集成设置` — Cursor AGENTS.md 清理说明
-- `10-任务管理/01-创建与编辑任务` — `--append-plan`、稳定 `--json` 输出
-- `10-任务管理/04-搜索与序列` — `backlog instructions overview` 序列速查、0.45 搜索分数阈值
-- `20-看板与可视化/00-TUI看板` — `N` 键 composer、主题自适应滚动、原子写入 live refresh、AC 进度
-- `30-文档与决策/02-里程碑管理` — 里程碑 ID 过滤任务列表
-- `40-Web界面/00-启动与访问` — 默认回环 + `--host`、BROWSER 环境变量
-- `40-Web界面/01-看板视图` — 内联字段快捷键保护、异步加载、AC 进度
-- `50-AI集成/01-支持的AI工具` — 补充 Cursor 的 MCP 与 AGENTS.md 双路径
-- `50-AI集成/02-代理指令文件` — Cursor 统一使用 AGENTS.md
-- `60-配置与运维/00-配置管理` — autoCommit 精确到触碰文件
-
-**新增用户手册页面**: 0 个
-
-**更新导航**: `index.md`（User Manual 章节日期刷新）
-
 
 ## [2026-09-08 17:30:00] batch-ingest | 增量摄取 BACK-570~623（v1.50.1 迁移波次）、doc-9/10/16、m-6/m-8、draft-92/96/125
 
@@ -785,3 +780,71 @@ Chronological, append-only record of all wiki operations.
 **判定无需文档化**：纯内部实现（增量跨分支加载 BACK-601/602、queryTasks 本地快路径、gray-matter 无缓存包装、ContentStore watcher 重试、启动器包解析 BACK-621）、测试稳定化（BACK-603~612）、以及**行为纠正类修复**（空态提示互换 BACK-620、里程碑更新返回 BACK-515、任务列表宽度 BACK-613 的布局纠正）——后者恢复的是既有文档描述的行为，手册无需新增说明。`BACK-570` 的 CLI banner wiki 安装提示已由 `50-AI集成/03-Wiki Skill 安装` 覆盖。
 
 **重新生成**：`wiki_output/用户手册/manual.md`（merge.py；4557 行，较上一版 +346 行）。
+
+## [2026-09-26 14:00:00] lint | Wiki 健康检查与 source_path 修复
+
+**范围**：全量 360 个 wiki 页面 / 1666 条 wikilink / 196 条 `source_path` 回溯。
+
+**报告**：`wiki_output/reports/lint-2026-09-26.md`
+
+**扫描结果**：
+- 真实死链 **0**：1666 条 wikilink 中 11 条不解析，逐条复核后全部落在代码围栏或行内反引号内（`[[wikilinks]]`、`![[path|alt|WxH]]`、`path/to/page`、`target`、`...`），均为语法示例，无需修复。
+- `source_path` 失效 **20/196（10.2%）**，分三类处置：
+  - **重命名 14 条（已修）**：`back-508`、`back-521`、`back-526`、`back-529`、`back-538`、`back-548`、`back-578`、`back-580`、`back-590`、`back-601`、`back-475`(docx-upload-task)、`back-483`(sidebar-resize-search-task)、`back-487`(ssl-network-error-fix)、`back-496`(subtask-grouping-fix)。判定依据为对每个当前文件跑 `git log --follow --name-status` 均得到 `R100 old → new` 显式重命名记录，非标题相似性猜测。已改写 `source_path` 并 bump `updated_date`。
+  - **源已删除 4 条（本次未改）**：`draft-92`、`draft-96`（均 `d236aac6` V1.52.0 合并批次删除）、`draft-125`（`4a417d7a` 删除）、`doc-16`（`720d58ad` 升级分析删除）。按约定保留页面、不删除。
+  - **人工判定 2 条（已加正文标注，保留原值）**：`sources/config-docs` 的 `source_path` 是目录表达式 `backlog/docs/ + backlog/decisions/`，从未可解析；`sources/tracking-gantt-design-doc` 指向的 `doc-6 - 跟踪甘特图设计方案.md` 已不存在，现存唯一 `doc-6` 是 `migration/doc-6 - B类上游任务迁移分析报告（v1.47.1-..-v1.48.0）.md`，git 中 `doc-6` 从未有甘特图文件 → 判定为 **ID 被复用**，不自动改写。
+- **孤儿/不可达**：计入相对 Markdown 链接并剔除代码块后无入链的页面 4 个 —— `index`、`log`、`usermanual/SUMMARY` 属结构性页面；**`overview` 无任何入链且不在 `index.md`，是唯一真正不可达的高层综合页**（本次未修）。`usermanual/40-Web界面/10-全局搜索` 虽未入 index，但已被 `usermanual/SUMMARY.md` 与 `40-Web界面/02-任务列表.md` 引用，可达。
+- **frontmatter**：41 页缺 `updated_date`（多为 `usermanual/` 早期页面），`usermanual/SUMMARY.md` 完全无 frontmatter（本次未修）。
+- **约定偏差**：`index.md` / `overview.md` 中 9 处 `[[../wiki_output/reports/…]]` 逃逸 wiki 根指向 `wiki_output/`，文件确实存在可解析，但违反「wikilink 只在 `wiki/` 内解析」约定（本次维持）。
+
+**修复后复验**：`source_path` 失效由 20 降至 **6**（即上述 4 条源已删除 + 2 条人工判定，均为有意保留）；16 个被改页面行尾全部保持 LF。
+
+## [2026-09-26 14:50:00] batch-ingest | 增量摄取 BACK-630~714（v1.52.0 迁移波 + Kuzu 依赖图谱）、doc-11~15、doc-002/003、m-9、6 个草稿
+
+**检测基线**: 2026-09-13 01:12:00（上次 batch-ingest，BACK-624~628）
+**Git 变更文件**: 84 个新 backlog 任务（BACK-630~714，缺 629/671）+ 5 个文档（doc-11/12/13 迁移分析、doc-14/15 BRDS 图谱设计）+ doc-002/003 + 1 个里程碑（m-9）+ 6 个现存新草稿（draft-121/130/135/140/142/169）
+
+**新 source 页面**: 98 个（84 任务 + 8 文档 + 1 里程碑 + 6 草稿，含 doc-002 VIM/Neovim 编辑器配置、doc-003 browser 常驻服务补摄；doc-001 按 2026-06-24 用户要求继续排除）
+
+**新 concept 页面**: 1 个
+- `concepts/kuzu-graph` — FileNode(path PK) 模型、MemoryGraphStore 默认后端、指纹冷启动、热更新管道、/graph 与 /knowledge 双视图
+
+**更新 concept 页面**: 22 个
+- `web-ui-features`、`web-server`、`wikilink`、`browser-loading`、`web-ui-i18n`（图谱视图、内容实体广播、in-place refresh、completed-corpus、侧边栏排序、加载架构）
+- `cli-tui`、`cli-entry`、`cli-instructions`、`search-sequences`、`json-output`、`core-architecture`、`task-locking`、`markdown-pipeline`（composer/弹窗/多选/里程碑 board、draft edit、批量移动、JSON 契约扩展、搜索单源化、实体锁拆分、哨兵扫描）
+- `task-identity`、`task-lifecycle`、`milestones`、`date-fields`、`asset-management`、`mcp-server`、`upstream-migration`、`embedded-skills`（draftIdentityKey、vacated-ID 清理、actualEnd 盖章、v1.50.1→v1.52.0 第四波台账）
+
+**新 decision 页面**: 16 个
+- `memory-graph-store-default-backend`、`filenode-path-primary-key`、`doctor-dependency-defects-warning-exit-zero`、`tolerate-history-not-new-mistakes`、`local-corpus-closure-over-graph-service`、`demote-removes-references-not-rewrites`、`milestone-popup-in-place-rerender`、`nonpublishing-rename-fallback-load`、`completed-popup-reuses-cross-branch-lockdown`、`empty-selection-means-no-filter`、`sanitize-filename-untitled-fallback`、`draft-prefix-routing-over-store-probing`、`cli-draft-edit-refuses-non-draft-status`、`always-animate-loading-over-motion-reduce`、`toc-entries-from-rendered-dom`、`free-text-status-storage`
+
+**新 execution 页面**: 4 个（更新 2 个）
+- `bun-windows-test-toolkit`、`revert-matrix-verification`、`blessed-tui-test-harness`、`cdp-live-verification`
+- 更新 `image-promote-integration`（.temp promote 已复制到六个表面）、`pre-existing-failure-triage`（本波新实例）
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 提取 Bun Windows 测试工具箱、回退矩阵验证、blessed 测试基建、CDP 实检 4 个跨任务模式
+- [x] `wiki/decisions/` — 提取 16 个微决策
+- [ ] `wiki/reasoning/` — BACK-702~714 图谱系列由 doc-14/15 设计文档承载推理，无需另建
+- [ ] `wiki/patterns/` — 「上游移植 byte-identical + revert-check」已在 patterns/upstream-migration-wave 覆盖，本波未达新阈值
+- [ ] `wiki/retrospectives/` — v1.52.0 波次回顾待人工发起
+
+**更新导航**: `index.md`（Sources 294 条，Concepts 34 条，Decisions 71 条，Execution 24 条）、`overview.md`（新增第四波迁移、Kuzu 图谱、Web 实时化等段落）
+
+**数据异常记录**: BACK-629/671 不存在（ID 跳号）；`archive/tasks/` 两个 back-694 文件与 tasks/back-693/694 撞号（source 页已加 provenance 注记，建议 backlog doctor 核对）；m-9 frontmatter `documentation` 字段仍引用旧名 `doc-014`（磁盘已改名 doc-14，需经 backlog CLI 修正）；doc-13 实际文件名与常规编号格式不同（source_path 已用真实路径）；BACK-670/674/677~680 与上游迁移台账撞号（fork 保留编号，doc-12 有逐条警告）。
+
+## [2026-09-26 14:55:00] usermanual-update | 更新用户手册，覆盖 BACK-630~714（v1.52.0 波 + 图谱视图）
+
+**新建页面**: 1 个
+- `40-Web界面/11-图谱视图` — /graph 任务依赖图谱与 /knowledge 知识图谱完整指南（BACK-702~714），已登记 SUMMARY.md
+
+**更新页面**: 19 个
+- `40-Web界面/00-启动与访问`、`01-看板视图`、`02-任务列表`、`04-文档与决策`、`07-Wiki浏览与编辑`、`10-全局搜索` — 加载架构、AC 进度条、completed 语料、多选批量拖拽、关系图、排序开关、决策编辑、TOC/锚点、in-place 刷新等
+- `10-任务管理/01-创建与编辑任务`、`02-草稿管理`、`03-子任务与依赖`、`04-搜索与序列`、`05-归档与清理` — 批量编辑、draft edit、多状态过滤、--completed、JSON 新字段、依赖环治理、vacated-ID 清理
+- `20-看板与可视化/00-TUI看板`、`02-看板导出` — composer 日期/鼠标/Unicode、Shift 多选、里程碑 board、弹窗 live sync、孙任务导出
+- `30-文档与决策/01-决策记录`、`02-里程碑管理` — 决策状态三路径编辑、--plain 分组输出
+- `50-AI集成/02-代理指令文件` — overview 每会话一次、path:LINE 引用
+- `60-配置与运维/00-配置管理`、`02-项目概览`、`00-快速开始/01-安装与初始化` — 编辑器配置、常驻服务、保留前缀、时区修复
+
+**判定无需文档化**: 纯内部实现（BACK-701 测试基建、643/649/650/653/655/685/686/699 内部重构、712 wiki lint 指引）；行为纠正类修复（706 使实际行为与既有文档一致）。
+
+**重新生成**: `wiki_output/用户手册/manual.md`（merge.py；4557 → 4951 行）。
