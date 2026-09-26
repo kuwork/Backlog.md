@@ -2,8 +2,8 @@
 title: BACK-483 Web UI 侧边栏调整大小与搜索类型下拉
 labels: [source, web-ui, ux]
 created_date: 2026-05-23 00:40
-updated_date: 2026-05-23 00:40
-source_path: backlog/tasks/back-483 - Sidebar-resize-and-search-type-dropdown.md
+updated_date: '2026-09-26 14:00'
+source_path: backlog/tasks/back-483 - Web-UI-Sidebar-resize-and-search-type-dropdown.md
 ---
 
 # BACK-483 Web UI 侧边栏调整大小与搜索类型下拉

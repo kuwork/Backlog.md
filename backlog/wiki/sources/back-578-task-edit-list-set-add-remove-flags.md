@@ -1,13 +1,13 @@
 ---
 title: Unify task edit --ref/--doc/--dep as set and add --add-* / --remove-* flags
 created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
+updated_date: '2026-09-26 14:00'
 labels:
   - source
   - migration
   - cli
   - task-editing
-source_path: backlog/tasks/back-578 - Unify-task-edit-ref-doc-dep-as-set-and-add-add-and-remove-flags.md
+source_path: backlog/tasks/back-578 - Unify-task-edit-ref-doc-dep-as-set-and-add-add-remove-flags.md
 ---
 
 # Unify task edit --ref/--doc/--dep as set and add --add-* / --remove-* flags

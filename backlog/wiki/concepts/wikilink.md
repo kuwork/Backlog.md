@@ -2,7 +2,7 @@
 title: Wikilink
 labels: [concept]
 created_date: '2026-06-06 01:00'
-updated_date: '2026-08-17 23:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 # Wikilink
@@ -78,6 +78,10 @@ Obsidian 风格的媒体嵌入：
 
 Wiki 页面中的 `[[wikilinks]]` 在 Web UI 中被替换为可点击的内部链接（`/wiki/encodedPath`），点击后弹出模态框预览目标页面。别名与属性块通过 `src/web/utils/wikiLinks.ts` 解析并生成原始 `<a>` 标签；媒体 wikilink 生成 `<img>` / `<video>` / `<audio>` 并通过 `MermaidMarkdown` 注册组件渲染。
 
+### 知识图谱 LinksTo 边（BACK-714）
+
+正文 `[[wikilink]]` 被图谱解析为 `LinksTo` 引用边：相对 wiki 根与引用页双重解析，剥离 alias（`[[target|alias]]`）与 heading（`#anchor`）部分，**唯一命中才成边**（零或多个候选只记录到 `unresolvedLinks` 报告）。未链接的提及不是图谱事实；frontmatter `relations` 字段与语义边表按设计忽略（doc-15 延期）。详见 [[concepts/kuzu-graph]]。
+
 ## 与标准 Markdown 链接的区别
 
 | 特性 | Wikilink `[[...]]` | Markdown `[text](path.md)` |
@@ -95,3 +99,5 @@ Wiki 页面中的 `[[wikilinks]]` 在 Web UI 中被替换为可点击的内部�
 - [[sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs]] — BACK-523 别名与属性块
 - [[sources/back-524-add-media-wikilink-support-for-images-video-and-audio]] — BACK-524 媒体 wikilink
 - [[sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs]] — BACK-525 skill 文档同步
+- [[sources/doc-15-wiki-knowledge-graph-relation-design]] — doc-15 wikilink → LinksTo 边的解析规则
+- [[sources/back-714-knowledge-graph-ingest]] — BACK-714 LinksTo 边生成实现
