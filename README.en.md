@@ -1,19 +1,146 @@
 <h1 align="center">Backlog.md</h1>
-<p align="center">:cn: <a href="./README.md">中文</a></p>
-<p align="center">Markdown‑native Task Manager &amp; Kanban visualizer for any Git repository</p>
+<h1 align="center">
+  Let AI Agents work continuously in your code repository.
+</h2>
 
-<p align="center">
-<code>npm i -g @kuwork/backlog.md</code> or <code>bun add -g @kuwork/backlog.md</code> or <code>brew install backlog-md</code> (upstream) or <code>nix run github:MrLesk/Backlog.md</code> (upstream)
+<h2 align="center">Markdown Tasks · Git Native · Human Review · AI Memory</h3>  
+<p align="center">:cn: <a href="./README.md">中文</a></p>
+
+<p align="center">  
+<code>npm i -g @kuwork/backlog.md</code> or <code>bun add -g @kuwork/backlog.md</code> or <code>brew install backlog-md</code> (upstream) or <code>nix run github:MrLesk/Backlog.md</code> (upstream)  
 </p>
+
+---
+
+> **AI can write code, but who tells it what to do next?**
+>
+> Backlog.md keeps tasks, acceptance criteria, implementation plans, and execution records as Markdown files inside your repository.
+>
+> AI agents can start working from a task, humans can review and approve at key checkpoints, and the knowledge produced by every pairing session can keep crystallizing into the LLM Wiki.
+
+![Web Interface Screenshot](./.github/backlog-v1.52.0.gif)
 
 ![Backlog demo GIF using: backlog board](./.github/backlog-v1.40.gif)
 
+<p align="center">  
+  <em>From task planning, to AI execution, to project knowledge</em>  
+</p>
 
 ---
 
 > **Backlog.md** turns any folder with a Git repo into a **self‑contained project board**
 > powered by plain Markdown files and a zero‑config CLI.
 > Built for **spec‑driven AI development** — structure your tasks so AI agents deliver predictable results.
+
+## Why Backlog.md?
+
+AI coding is changing software development.
+
+The question is no longer just:
+
+> **"Can AI write code?"**
+
+but:
+
+> **"How do you get AI to work on a real project — continuously, controllably, and reviewably?"**
+
+Backlog.md solves this with one simple principle:
+
+```text
+Turn AI work into tasks that can be read, reviewed, and tracked.
+```
+
+### 🧠 AI Native
+
+Backlog.md provides structured workflows for Claude Code, Codex, Gemini CLI, Kiro, and other AI agents that support CLI / MCP.
+
+### 📝 Markdown Native
+
+Every task is a plain `.md` file.
+
+No proprietary database.
+
+No black box.
+
+Tasks can be read by humans, and tracked via Git diff, review, and commits.
+
+### 🔀 Git Native
+
+Backlog lives in the same project as your code.
+
+```text
+your-project/
+├── src/
+├── tests/
+├── backlog/
+│   ├── tasks/
+│   ├── docs/
+│   ├── decisions/
+│   └── wiki/
+└── ...
+```
+
+Tasks go into version control together with your code.
+
+### 🔒 Local & Offline First
+
+Data stays in your project.
+
+No forced cloud account, no subscription required.
+
+---
+
+# How does the AI Agent work?
+
+Backlog.md doesn't just "hand tasks to AI".
+
+It splits AI work into stages a human can inspect:
+
+```mermaid
+flowchart LR
+    A["💡 Idea<br/>What do I want to build?"] --> B["🤖 AI<br/>Break down tasks"]
+    B --> C["📋 Task Spec<br/>Description + acceptance criteria"]
+    C --> D{"👤 Review #1<br/>Is the task right?"}
+    D -->|Revise| B
+    D -->|Approve| E["🔎 AI Research<br/>Research the codebase"]
+    E --> F["📝 Implementation Plan<br/>Implementation plan"]
+    F --> G{"👤 Review #2<br/>Does the plan make sense?"}
+    G -->|Revise| E
+    G -->|Approve| H["⚙️ AI Implementation<br/>Start coding"]
+    H --> I["🧪 Test & Verify"]
+    I --> J{"👤 Review #3<br/>Does the result match?"}
+    J -->|Keep fixing| H
+    J -->|Done| K["🧠 Wiki<br/>Knowledge crystallizes"]
+```
+
+### Three key human review points
+
+**01 — Review the Spec**
+
+Before AI writes any code, review:
+
+- Task description
+- Acceptance criteria
+- Task boundaries
+
+**02 — Review the Plan**
+
+After AI researches the codebase, it writes an implementation plan into the task.
+
+You approve it before AI starts coding.
+
+**03 — Review the Result**
+
+After the code is done:
+
+- Review diff
+- Run tests
+- Check acceptance criteria
+- Verify the final result
+
+> **Humans own direction and judgment; AI owns decomposition and execution.**
+
+---
 
 ## Features
 
@@ -209,8 +336,6 @@ BROWSER="/path/to/browser" backlog browser
 - Task archiving with confirmation dialogs
 - Seamless CLI integration - all changes sync with markdown files
 
-![Web Interface Screenshot](./.github/web.jpeg)
-
 ### Gantt Chart View
 
 `backlog browser` includes a built-in Gantt chart view with five time granularities (day/week/month/quarter/year), implemented in pure React/CSS with zero external dependencies:
@@ -252,38 +377,42 @@ You can run `backlog init` (even if you already initialized Backlog.md) and choo
 ### Client guides
 
 <details>
-  <summary><strong>Claude Code</strong></summary>
 
-  ```bash
-  claude mcp add backlog --scope user -- backlog mcp start
-  ```
+<summary>  <strong>Claude Code</strong></summary>
 
-</details>
-
-<details>
-  <summary><strong>Codex</strong></summary>
-
-  ```bash
-  codex mcp add backlog -- backlog mcp start
-  ```
+```bash
+claude mcp add backlog --scope user -- backlog mcp start
+```
 
 </details>
 
 <details>
-  <summary><strong>Gemini CLI</strong></summary>
 
-  ```bash
-  gemini mcp add backlog -s user backlog mcp start
-  ```
+<summary>  <strong>Codex</strong></summary>
+
+```bash
+codex mcp add backlog -- backlog mcp start
+```
 
 </details>
 
 <details>
-  <summary><strong>Kiro</strong></summary>
 
-  ```bash
-  kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
-  ```
+<summary>  <strong>Gemini CLI</strong></summary>
+
+```bash
+gemini mcp add backlog -s user backlog mcp start
+```
+
+</details>
+
+<details>
+
+<summary>  <strong>Kiro</strong></summary>
+
+```bash
+kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
+```
 
 </details>
 
@@ -360,7 +489,7 @@ For filesystem-only projects, run `backlog init --no-git`. Backlog.md will not r
 
 Whenever you revisit `backlog init` or rerun `backlog config`, the wizard pre-populates prompts with your current values so you can adjust only what changed.
 
-### autoCommit notes
+### autoCommit
 
 When enabled (`backlog config set autoCommit true` or `autoCommit: true` in the config file), the following operations each produce **one Git commit per write**: task create/edit/bulk update, task archive/complete, draft promote/demote/archive, decision and document create **and update**, milestone archive/rename, and the AI instruction files written by `backlog init`.
 
@@ -396,9 +525,9 @@ For the full configuration reference (all options, commands, and detailed notes)
 
 ### Apple Silicon (macOS)
 
-On M-series Macs, `backlog` can fail with `illegal hardware instruction` or `Binary package not installed for darwin-...` when Node, Bun, or Homebrew run under Rosetta (x64 emulation) and install the Intel binary instead of the arm64 one — or the other way around. The launcher runs whichever darwin variant (arm64 or x64) is actually installed, but a clean native-arch install is the reliable fix.
+On M-series Macs, `backlog` can fail with `illegal hardware instruction` or `Binary package not installed for darwin-...` when Node, Bun, or Homebrew run under Rosetta (x64 emulation) and install the Intel binary instead of the arm64 one. The launcher runs whichever darwin variant (arm64 or x64) is actually installed, but a clean native-arch install is the reliable fix.
 
-Check what your tools report:
+First check what each tool reports:
 
 ```bash
 uname -m                            # arm64 = Apple Silicon hardware; x86_64 = Intel or a Rosetta shell
