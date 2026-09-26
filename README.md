@@ -1,51 +1,170 @@
-<h1 align="center">Backlog.md</h1>
+<h1 align="center">Backlog.md</h1>  
+<h1 align="center">
+  让 AI Agent 在你的代码仓库里持续工作。
+</h2>
+
+<h2 align="center">
+  Markdown Tasks · Git Native · Human Review · AI Memory
+</h3>  
 <p align="center">:us: <a href="./README.en.md">English</a></p>
-<p align="center">适用于任何 Git 仓库的本地 Markdown 任务管理器 &amp; 看板视图</p>
 
-<p align="center">
-<code>npm i -g @kuwork/backlog.md</code> 或 <code>bun add -g @kuwork/backlog.md</code> 或 <code>brew install backlog-md</code>（上游）或 <code>nix run github:MrLesk/Backlog.md</code>（上游）
+<p align="center">  
+<code>npm i -g @kuwork/backlog.md</code> 或 <code>bun add -g @kuwork/backlog.md</code> 或 <code>brew install backlog-md</code>（上游）或 <code>nix run github:MrLesk/Backlog.md</code>（上游）  
 </p>
-
-![Backlog demo GIF using: backlog board](./.github/backlog-v1.40.gif)
-
 
 ---
 
-> **Backlog.md** 让任何含 Git 仓库的文件夹都能成为**独立的项目看板**
-> 由纯 Markdown 文件和零配置 CLI 驱动。
+
+
+> **AI 会写代码，但谁告诉它下一步该做什么？**
+>
+> Backlog.md 把任务、验收标准、实施计划和执行记录保存为仓库里的 Markdown 文件。
+>
+> AI Agent 可以从任务开始工作，人类可以在关键节点审查和批准，而每一次结对执行产生的知识，还可以继续沉淀到 LLM Wiki。
+
+![Web Interface Screenshot](./.github/backlog-v1.52.0.gif)
+
+![Backlog demo GIF using: backlog board](./.github/backlog-v1.40.gif)
+
+<p align="center">  
+  <em>从任务规划，到 AI 执行，再到项目知识沉淀</em>  
+</p>
+
+---
+
+> **Backlog.md** 让任何含 Git 仓库的文件夹都能成为**独立的项目看板**  
+> 由纯 Markdown 文件和零配置 CLI 驱动。  
 > 为**规范驱动的 AI 开发**量身打造 —— 通过结构化任务让 AI 智能体产出可预期的结果。
+
+---
+
+## Why Backlog.md?
+
+AI 编程正在改变软件开发。
+
+问题已经不再只是：
+
+> **“AI 能不能写代码？”**
+
+而是：
+
+> **“如何让 AI 在一个真实项目里，持续、可控、可审查地工作？”**
+
+Backlog.md 用一个简单的原则解决这个问题：
+
+```text
+把 AI 的工作变成可以阅读、可以审查、可以追踪的任务。
+```
+
+### 🧠 AI Native
+
+Backlog.md 为 Claude Code、Codex、Gemini CLI、Kiro 以及其他支持 CLI / MCP 的 AI Agent 提供结构化工作流。
+
+### 📝 Markdown Native
+
+每一个任务都是普通的 `.md` 文件。
+
+没有专有数据库。
+
+没有黑盒。
+
+任务可以被人阅读，也可以被 Git diff、review、commit 和追踪。
+
+### 🔀 Git Native
+
+Backlog 和代码放在同一个项目里。
+
+```text
+your-project/
+├── src/
+├── tests/
+├── backlog/
+│   ├── tasks/
+│   ├── docs/
+│   ├── decisions/
+│   └── wiki/
+└── ...
+```
+
+任务与代码一起进入版本控制。
+
+### 🔒 Local & Offline First
+
+数据保存在项目本地。
+
+没有强制云端账号，没有订阅要求。
+
+---
+
+# AI Agent 是怎样工作的？
+
+Backlog.md 不只是让 AI “接任务”。
+
+它把 AI 工作拆成几个可以被人类检查的阶段：
+
+```mermaid
+flowchart LR
+    A["💡 Idea<br/>我想做什么"] --> B["🤖 AI<br/>拆解任务"]
+    B --> C["📋 Task Spec<br/>描述 + 验收标准"]
+    C --> D{"👤 Review #1<br/>任务是否正确？"}
+    D -->|修改| B
+    D -->|批准| E["🔎 AI Research<br/>研究代码库"]
+    E --> F["📝 Implementation Plan<br/>实施计划"]
+    F --> G{"👤 Review #2<br/>计划是否合理？"}
+    G -->|修改| E
+    G -->|批准| H["⚙️ AI Implementation<br/>开始编码"]
+    H --> I["🧪 Test & Verify"]
+    I --> J{"👤 Review #3<br/>结果是否符合预期？"}
+    J -->|继续修正| H
+    J -->|完成| K["🧠 Wiki<br/>知识沉淀"]
+```
+
+### 三个关键的人类审查点
+
+**01 — Review the Spec**
+
+AI 写代码之前，先审查：
+
+- 任务描述
+- 验收标准
+- 任务边界
+
+**02 — Review the Plan**
+
+AI 研究代码库之后，把实施计划写进任务。
+
+你批准之后，AI 才开始编码。
+
+**03 — Review the Result**
+
+代码完成之后：
+
+- Review diff
+- 运行测试
+- 检查验收标准
+- 验证最终结果
+
+> **人类负责方向和判断，AI 负责拆解和执行。**
+
+---
 
 ## 功能特性
 
-* 📝 **本地 Markdown 任务** —— 每个事项都是一份纯 `.md` 文件
-
-* 🤖 **为 AI 而生** —— 兼容 Claude Code、Gemini CLI、Codex、Kiro 及任何其他支持 MCP 或 CLI 的 AI 助手
-
-* 📊 **即时终端看板** —— `backlog board` 在终端中实时呈现看板
-
-* 🌐 **现代 Web 界面** —— `backlog browser` 启动精致的 Web UI，让任务管理一目了然
-
-* 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
-
-* 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
-
-* 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
-
-* 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
-
-* 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
-
-* 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
-* ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
-
-* 📤 **看板导出** —— `backlog board export` 创建可共享的 Markdown 报告
-
-* 🔒 **100% 隐私保护 &amp; 离线储存** —— backlog 完全存储在您的仓库内部，所有操作都在本地完成
-
-* 💻 **跨平台** —— 支持 macOS、Linux 和 Windows
-
-* 🆓 **MIT 许可证 &amp; 开源** —— 个人或商业用途均免费
-
+- 📝 **本地 Markdown 任务** —— 每个事项都是一份纯 `.md` 文件
+- 🤖 **为 AI 而生** —— 兼容 Claude Code、Gemini CLI、Codex、Kiro 及任何其他支持 MCP 或 CLI 的 AI 助手
+- 📊 **即时终端看板** —— `backlog board` 在终端中实时呈现看板
+- 🌐 **现代 Web 界面** —— `backlog browser` 启动精致的 Web UI，让任务管理一目了然
+- 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
+- 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
+- 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
+- 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
+- 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
+- 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
+- ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
+- 📤 **看板导出** —— `backlog board export` 创建可共享的 Markdown 报告
+- 🔒 **100% 隐私保护 & 离线储存** —— backlog 完全存储在您的仓库内部，所有操作都在本地完成
+- 💻 **跨平台** —— 支持 macOS、Linux 和 Windows
+- 🆓 **MIT 许可证 & 开源** —— 个人或商业用途均免费
 
 ---
 
@@ -61,11 +180,11 @@ Backlog.md 内置由 LLM 自动维护的 **Wiki 知识库**，让人类与 AI �
 头脑风暴 → doc → AI 规划 → tasks → 结对执行 → wiki
 ```
 
-| 层级 | 载体 | 内容 | 所有者 |
-|------|------|------|--------|
-| **规划层** | `backlog/docs/` | 开发策略、技术方案 | 人类主导，AI 辅助 |
+| 层级      | 载体               | 内容        | 所有者        |
+| ------- | ---------------- | --------- | ---------- |
+| **规划层** | `backlog/docs/`  | 开发策略、技术方案 | 人类主导，AI 辅助 |
 | **执行层** | `backlog/tasks/` | 具体任务、验收标准 | AI 创建，人类审核 |
-| **记忆层** | `backlog/wiki/` | 知识结晶、模式提取 | AI 维护，人类审阅 |
+| **记忆层** | `backlog/wiki/`  | 知识结晶、模式提取 | AI 维护，人类审阅 |
 
 ### 如何使用
 
@@ -85,12 +204,12 @@ backlog wiki install agents   # 通用 Agents 目录
 
 在对话中触发以下关键词，AI 即会接管：
 
-| 触发词 | 作用 |
-|--------|------|
-| `build wiki` / `init wiki` / `搭建知识库` | 初始化 Wiki 目录结构，注入工作流指引 |
-| `ingest` / `process source` / `摄取` | 将 backlog 源文件（tasks/docs/decisions 等）吸入 Wiki |
-| `wiki query` / `知识库查询` | 基于已积累的知识回答问题、生成报告 |
-| `lint wiki` / `health check` / `检查 wiki` | 扫描矛盾、孤儿页面和过时内容 |
+| 触发词                                      | 作用                                           |
+| ---------------------------------------- | -------------------------------------------- |
+| `build wiki` / `init wiki` / `搭建知识库`     | 初始化 Wiki 目录结构，注入工作流指引                        |
+| `ingest` / `process source` / `摄取`       | 将 backlog 源文件（tasks/docs/decisions 等）吸入 Wiki |
+| `wiki query` / `知识库查询`                   | 基于已积累的知识回答问题、生成报告                            |
+| `lint wiki` / `health check` / `检查 wiki` | 扫描矛盾、孤儿页面和过时内容                               |
 
 Wiki 遵循**非正式、轻量、AI 维护、可质疑**四大原则——它不是企业知识库，而是你和 AI 的"结对笔记本"。
 
@@ -114,6 +233,7 @@ backlog init "Personal Planning" --no-git
 ```
 
 初始化向导会询问您希望如何接入 AI 工具：
+
 - **CLI 指令**（推荐）—— 创建简短的指令文件，告诉智能体运行 `backlog instructions overview`。
 - **MCP 连接器** —— 如果您更偏好 MCP，可以自动配置 Claude Code、Codex、Gemini CLI、Kiro 或 Cursor。
 - **跳过** —— 不设置 AI；仅将 Backlog.md 作为任务管理器使用。
@@ -124,15 +244,16 @@ Backlog 数据存储在项目本地的 backlog 文件夹中，例如 `backlog/`�
 
 ### 与 AI 智能体协作
 
-这是针对 Claude Code、Codex、Gemini CLI、Kiro 及类似工具的推荐工作流 —— 遵循**规范驱动的 AI 开发**方法。
+这是针对 Claude Code、Codex、Gemini CLI、Kiro 及类似工具的推荐工作流 —— 遵循**规范驱动的 AI 开发**方法。  
 运行 `backlog init` 后，智能体应首先运行 `backlog instructions overview`，然后按以下循环工作：
 
 **步骤 1 —— 描述您的想法。** 告诉智能体您想构建什么，并要求它将工作拆分为小任务，附上清晰的描述和验收标准。
 
 **🤖 询问您的 AI 智能体：**
+
 > 我想为 Web 视图添加一个搜索功能，用于搜索任务、文档和决策。请将其分解为小的 Backlog.md 任务。
 
-> [!NOTE]
+> [!NOTE]  
 > **审查检查点 #1** —— 阅读任务描述和验收标准。
 
 **步骤 2 —— 一次一个任务。** 每个 AI 会话只处理一个任务，一个任务对应一个 PR。良好的任务拆分意味着每个会话可以独立工作、互不冲突。确保每个任务足够小，能在一次对话中完成，避免超出上下文窗口上限。
@@ -140,14 +261,15 @@ Backlog 数据存储在项目本地的 backlog 文件夹中，例如 `backlog/`�
 **步骤 3 —— 编码前先规划。** 要求智能体调研代码库，并在任务中编写实施计划。就在实施前执行这一步，确保计划反映代码库的当前状态。
 
 **🤖 询问您的 AI 智能体：**
+
 > 只处理 BACK-10。研究代码库并在任务中编写实施计划。在编码前等待我的批准。
 
-> [!NOTE]
+> [!NOTE]  
 > **审查检查点 #2** —— 阅读计划。方法是否合理？批准或要求智能体修正。
 
 **步骤 4 —— 实施和验证。** 让智能体实施任务。
 
-> [!NOTE]
+> [!NOTE]  
 > **审查检查点 #3** —— 审查代码、运行测试、检查代码规范，并验证结果是否符合您的预期。
 
 如果结果不理想：清除计划/备注/最终总结，完善任务描述和验收标准，然后在新的会话中重新处理该任务。
@@ -202,6 +324,7 @@ BROWSER="/path/to/browser" backlog browser
 ```
 
 **功能特性：**
+
 - 支持拖放的交互式看板
 - 带有丰富表单的任务创建和编辑
 - 带有检查清单的交互式验收标准编辑器
@@ -209,8 +332,6 @@ BROWSER="/path/to/browser" backlog browser
 - 支持桌面和移动设备的响应式设计
 - 带确认对话框的任务归档
 - 与 CLI 无缝集成 —— 所有更改与 Markdown 文件同步
-
-![Web Interface Screenshot](./.github/web.cn.jpeg)
 
 ### 甘特图视图
 
@@ -247,44 +368,48 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 
 ## 🔧 MCP 集成（Model Context Protocol）
 
-CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，Backlog.md 仍支持 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手。
+CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，Backlog.md 仍支持 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手。  
 您可以运行 `backlog init`（即使您已经初始化了 Backlog.md）并选择 MCP 集成，或按照以下手动步骤操作。
 
 ### 客户端指南
 
 <details>
-  <summary><strong>Claude Code</strong></summary>
 
-  ```bash
-  claude mcp add backlog --scope user -- backlog mcp start
-  ```
+<summary>  <strong>Claude Code</strong></summary>
 
-</details>
-
-<details>
-  <summary><strong>Codex</strong></summary>
-
-  ```bash
-  codex mcp add backlog -- backlog mcp start
-  ```
+```bash
+claude mcp add backlog --scope user -- backlog mcp start
+```
 
 </details>
 
 <details>
-  <summary><strong>Gemini CLI</strong></summary>
 
-  ```bash
-  gemini mcp add backlog -s user backlog mcp start
-  ```
+<summary>  <strong>Codex</strong></summary>
+
+```bash
+codex mcp add backlog -- backlog mcp start
+```
 
 </details>
 
 <details>
-  <summary><strong>Kiro</strong></summary>
 
-  ```bash
-  kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
-  ```
+<summary>  <strong>Gemini CLI</strong></summary>
+
+```bash
+gemini mcp add backlog -s user backlog mcp start
+```
+
+</details>
+
+<details>
+
+<summary>  <strong>Kiro</strong></summary>
+
+```bash
+kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
+```
 
 </details>
 
@@ -306,17 +431,18 @@ CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，B
 }
 ```
 
-设置 `BACKLOG_CWD` 可将服务器固定到单个项目并停止工作区跟随。当你始终想定位同一个 backlog，或客户端无法上报 MCP roots 时使用它。
+设置 `BACKLOG_CWD` 可将服务器固定到单个项目并停止工作区跟随。当你始终想定位同一个 backlog，或客户端无法上报 MCP roots 时使用它。  
 如果您的 IDE 支持自定义参数但不支持环境变量，您也可以使用 `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`。
 
-> [!IMPORTANT]
-> 手动添加 MCP 服务器时，建议在 CLAUDE.md/AGENTS.md 文件中补充简短说明，让智能体读取 `backlog://workflow/overview`。
-> 使用 `backlog init` 时无需此步骤，因为它会自动添加这些说明。
+> [!IMPORTANT]  
+> 手动添加 MCP 服务器时，建议在 CLAUDE.md/AGENTS.md 文件中补充简短说明，让智能体读取 `backlog://workflow/overview`。  
+> 使用 `backlog init` 时无需此步骤，因为它会自动添加这些说明。  
 > 基于 CLI 的 setup，请使用 `backlog instructions overview` 获取当前工作流指引。
 
-
-连接后，智能体可以通过 `backlog://workflow/overview` 读取 Backlog.md 工作流说明，详细指南位于 `backlog://workflow/task-creation`、`backlog://workflow/task-execution` 和 `backlog://workflow/task-finalization`。
+连接后，智能体可以通过 `backlog://workflow/overview` 读取 Backlog.md 工作流说明，详细指南位于 `backlog://workflow/task-creation`、`backlog://workflow/task-execution` 和 `backlog://workflow/task-finalization`。  
 在您的 AI 工具（Claude Code、Codex、Kiro）中使用 `/mcp` 命令验证连接是否正常工作。
+
+
 
 ---
 
