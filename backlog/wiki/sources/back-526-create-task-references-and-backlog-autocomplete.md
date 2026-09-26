@@ -2,8 +2,8 @@
 title: BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现
 labels: [source, bug, web-ui, cli, autocomplete]
 created_date: '2026-07-14 06:20'
-updated_date: '2026-07-14 06:20'
-source_path: backlog/tasks/back-526 - Fix-create-task-references-input-and-backlog-autocomplete-discovery.md
+updated_date: '2026-09-26 14:00'
+source_path: backlog/tasks/back-526 - Fix-create-task-references-input-and-.backlog-autocomplete-discovery.md
 ---
 
 # BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现

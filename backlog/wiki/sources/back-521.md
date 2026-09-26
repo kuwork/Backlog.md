@@ -1,9 +1,9 @@
 ---
 title: BACK-521 CLI-first agent workflow refactor and local instruction surface
 labels: [source, cli, agent-guidance, mcp]
-source_path: backlog/tasks/back-521- CLI-workflow-guidance-for-agents-and-humans.md
+source_path: backlog/tasks/back-521 - CLI-first-agent-workflow-refactor-and-local-instruction-surface.md
 created_date: '2026-06-13 14:12'
-updated_date: '2026-07-14 11:20'
+updated_date: '2026-09-26 14:00'
 ---
 
 # BACK-521 CLI-first agent workflow refactor and local instruction surface

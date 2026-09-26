@@ -2,7 +2,7 @@
 title: 在编辑器保存流程中集成图片 Promote
 labels: [execution]
 created_date: 2026-05-25 00:45
-updated_date: 2026-05-25 00:45
+updated_date: '2026-09-26 14:45'
 ---
 
 # 在编辑器保存流程中集成图片 Promote
@@ -48,6 +48,8 @@ updated_date: 2026-05-25 00:45
 - 文档编辑器 (`DocumentationDetail.tsx`)
 - Wiki 编辑器 (`WikiDetail.tsx`)
 
+该三段式（extractTempImageUrls → promoteAssets → replaceTempImageUrls）已复制到更多表面：milestone 添加弹窗（`MilestoneAddModal`，BACK-580，同时抽出了共享的 `src/web/utils/temp-assets.ts`）、任务评论编辑器（`handleAddComment`，BACK-631）、决策编辑器的更新与创建两个分支（`DecisionDetail.handleSave`，BACK-632/634）。复制已达六个表面——新增粘贴表面时应优先考虑走共享 helper 而非再抄一份，创建分支与更新分支都要覆盖（BACK-632 只补了更新分支，BACK-634 才补创建分支）。
+
 ## 关键原则
 
 - **无后端变更**：复用现有的 `/api/assets/promote` 端点和 `AssetManager.promote()` 方法
@@ -61,3 +63,7 @@ updated_date: 2026-05-25 00:45
 ## 提取来源
 - [[sources/paste-as-markdown-task]] — 原始机制设计
 - [[sources/wiki-pasted-images-promote-fix]] — Wiki 编辑器补齐 promote 的修复
+- [[sources/back-631-comment-rich-markdown-editor]] — 评论编辑器补齐 promote
+- [[sources/back-632-decision-image-promotion]] — 决策编辑器更新分支补齐 promote
+- [[sources/back-634-decision-creation-sidebar]] — 决策创建分支的 promote
+- [[sources/back-580-milestone-detail-view-edit-modal]] — milestone 弹窗与共享 temp-assets helper

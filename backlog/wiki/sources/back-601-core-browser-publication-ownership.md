@@ -1,14 +1,14 @@
 ---
 title: BACK-601 Complete Core browser boundary with publication ownership
 created_date: '2026-09-08 17:30'
-updated_date: '2026-09-08 17:30'
+updated_date: '2026-09-26 14:00'
 labels:
   - source
   - cli
   - server
   - web
   - core
-source_path: backlog/tasks/back-601 - Complete-BACK-568-publication-owner-foundation-and-port-BACK-624-c-incremental-loading.md
+source_path: backlog/tasks/back-601 - Complete-Core-browser-boundary-with-publication-ownership.md
 ---
 
 # BACK-601 Complete Core browser boundary with publication ownership

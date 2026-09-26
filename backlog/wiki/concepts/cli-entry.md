@@ -2,7 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-08-09 00:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 # CLI 入口与命令体系
@@ -177,6 +177,23 @@ backlog overview --plain # 纯文本输出
 - Windows 上符号链接失败时回退到直接复制
 - `--force` 覆盖现有 skill，`--dry-run` 预览操作
 
+## draft edit 命令（BACK-683）
+
+`backlog draft edit` 补齐 CLI 侧草稿编辑能力，与 Web 看板的草稿编辑对齐（此前 CLI 只能 create/promote/demote 草稿）（[[sources/back-683-cli-draft-edit|BACK-683]]）。
+
+## 批量状态移动与多状态过滤（BACK-680/652）
+
+- **多 ID 批量状态移动**：`task edit` 接受多个任务 ID，一次性把选中任务移动到目标状态，底层走 core 的批量移动 primitive（[[sources/back-680-batch-status-move|BACK-680]]）
+- **多状态过滤扩展**：`task list --status` 接受多个状态值，复用 `normalizeCliStatusList` 校验（[[sources/back-652-multi-status-filter|BACK-652]]）
+
+## milestones list --plain 分组输出（BACK-688）
+
+`backlog milestones list --plain` 输出按里程碑分组的任务列表，便于 agent 直接消费里程碑-任务归属关系（[[sources/back-688-milestones-plain-grouped-output|BACK-688]]）；交互模式则替换为里程碑看板 TUI（[[sources/back-687-milestone-board-tui|BACK-687]]）。
+
+## AC 进度进入 plain/MCP 列表（BACK-659）
+
+验收标准进度后缀（`[x/y]`）从 JSON 扩展到 MCP 与 `--plain` 任务列表输出，agent 无需解析任务正文即可看到 AC 完成度（[[sources/back-659-ac-progress-mcp-plain-lists|BACK-659]]）。
+
 ## Related Concepts
 
 - [[concepts/cli-instructions]] — CLI 指令表面
@@ -207,3 +224,8 @@ backlog overview --plain # 纯文本输出
 - [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除过滤
 - [[sources/back-551-unassigned-task-filtering]] — BACK-551 未指派过滤
 - [[sources/back-552-doc-view-plain]] — BACK-552 doc view plain
+- [[sources/back-652-multi-status-filter]] — BACK-652 task list 多状态过滤
+- [[sources/back-659-ac-progress-mcp-plain-lists]] — BACK-659 AC 进度进入 MCP/plain 列表
+- [[sources/back-680-batch-status-move]] — BACK-680 多 ID 批量状态移动
+- [[sources/back-683-cli-draft-edit]] — BACK-683 CLI draft edit
+- [[sources/back-688-milestones-plain-grouped-output]] — BACK-688 milestones list --plain 分组输出

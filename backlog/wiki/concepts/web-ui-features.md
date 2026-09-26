@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 14:45'
 ---
 
 # Web UI 功能
@@ -160,6 +160,14 @@ macOS Spotlight 风格居中对话框，替代侧边栏 5 条上限的内联搜�
 - **时区一致性**：所有 UTC 存储字符串统一通过 `parseStoredUtcDate` 解析为本地时间（BACK-497）
 - **统计缓存**：服务端 debounced 缓存 + 客户端 localStorage 双缓存层，确保统计页面瞬时加载且数据实时同步（BACK-503）
 
+### 图谱视图（/graph 与 /knowledge，BACK-704/714）
+
+- **任务图谱 `/graph`**：Neo4j 风格 D3 力导向图，等屏尺寸规则（半径/虚线/箭头均除以缩放系数 k）；节点点击经 `backgroundLocation` 弹出详情模态框，关闭后视口原样保留
+- **知识图谱 `/knowledge`**（BACK-714）：同一 `/api/graph` payload 的第二种读法，仅显示 wiki/decision/document/tag；隐藏 kind 在 force 布局前剔除；点击知识节点新标签页打开真实页面
+- **模态关系图**（BACK-710/711）：任务详情 Dependencies 面板图标按钮切换出以当前任务为根的双向传递子图；`GraphLegend.tsx` 为 /graph 与模态图共享的单一视觉实现（NodeStyle/NODE_FILL/EDGE_DASH/LegendDot），两视图不可漂移
+- **`graphVersion` 实时刷新**：`graph-updated` WebSocket 事件驱动 App → TaskDetailsModal → TaskDependencyGraph 原地重取与重新布局
+- 详见 [[concepts/kuzu-graph]]
+
 ### 甘特图（Gantt View）
 - `/gantt` 路由，左侧任务列表 + 右侧时间线双栏布局
 - 五级时间粒度：日 / 周 / 月 / 季度 / 年
@@ -194,6 +202,18 @@ macOS Spotlight 风格居中对话框，替代侧边栏 5 条上限的内联搜�
 - 仅影响当前列展示顺序，不保存到后端
 - 拖拽任务后自动清除本地排序
 
+## 已完成语料呈现契约（BACK-662/663/665）
+
+- `CompletedFilterToggle` 复选框出现在看板与任务列表筛选栏，状态走 URL `completed=1`，计入活跃筛选；未勾选时零开销
+- 完成记录走普通管线（同一筛选/排序/分组），以 `task.source === "completed"` 为标记，统一佩戴共享 `CompletedBadge`（emerald，置于卡片头部徽章组）
+- **只读弹窗**：点击完成记录打开继承跨分支只读门控的 `TaskDetailsModal`（`isReadOnly = isFromOtherBranch || source === "completed"`），标题栏下横幅按原因选文案（`completedCorpusHint` / `crossBranchHint`）
+
+## 侧边栏排序开关统一模式（BACK-667/672/674）
+
+- 文档树、Wiki 树、决策列表三个区块共享 `renderSortButton` 控件与 `SortDirection` 类型；标题升序为默认，点击非活跃列升序起步、活跃列翻转方向
+- 文件夹始终居前并随方向按名排序；比较走 `localeCompare(numeric)` 与 `compareTaskIds`；文档树/决策列表排序字段与打印字段分离，Wiki 树标签随所选列切换（BACK-672 的刻意差异）
+- 排序函数纯化返回新节点对象，prop 树从不被 mutation
+
 ## 任务/里程碑详情模态框交互惯例簇（BACK-613/617/620/622/623）
 
 TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增功能按簇内既有惯例落地：
@@ -213,6 +233,7 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - **共享 canonical entity index**：三实体共用同一索引；`canonicalTaskId` 提取到纯模块 `src/utils/task-id.ts`，渲染与输入两侧复用（[[sources/back-614-entity-id-auto-link-autocomplete]]）
 
 ## Related Concepts
+- [[concepts/kuzu-graph]] — /graph、/knowledge 与模态关系图的后端支撑
 - [[concepts/spotlight-search]] — 全局搜索对话框的路由、虚拟列表与滚动记忆
 - [[concepts/web-server]] — Web Server HTTP API 与后端支撑
 - [[concepts/date-fields]] — 日期字段语义与存储格式
@@ -256,3 +277,13 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - [[sources/back-626-dependabot-mermaid-bump]] — BACK-626 mermaid 安全升级
 - [[sources/back-627-back-arrow-history-fix]] — BACK-627 返回箭头历史条目修复
 - [[sources/back-628-task-hierarchy-section]] — BACK-628 任务模态框父子层级区块
+- [[sources/back-663-completed-popup-read-only]] — BACK-663 完成记录只读弹窗契约
+- [[sources/back-665-completed-corpus-filter-checkbox]] — BACK-665 完成语料复选框与 CompletedBadge
+- [[sources/back-666-modified-files-tabbed-panel]] — BACK-666 References/Documentation/Modified Files 三标签面板
+- [[sources/back-667-sidebar-docs-sort-toggles]] — BACK-667 文档树排序开关
+- [[sources/back-672-wiki-tree-sort-toggles]] — BACK-672 Wiki 树排序与共享 renderSortButton
+- [[sources/back-674-decisions-sort-toggles]] — BACK-674 决策列表排序开关
+- [[sources/back-704-graph-view-web-ui]] — BACK-704 /graph 图谱视图
+- [[sources/back-710-task-modal-relationship-graph]] — BACK-710 模态关系图与 graphVersion 刷新
+- [[sources/back-711-modal-graph-alignment]] — BACK-711 共享 GraphLegend
+- [[sources/back-714-knowledge-graph-ingest]] — BACK-714 /knowledge 知识图谱视图
