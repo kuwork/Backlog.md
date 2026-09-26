@@ -1,11 +1,11 @@
 ---
 title: BACK-590 Hide empty board columns in the TUI
 created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
+updated_date: '2026-09-26 14:00'
 labels:
   - source
   - tui
-source_path: backlog/tasks/back-590 - Take-over-PR-808-hide-empty-board-columns-in-the-TUI.md
+source_path: backlog/tasks/back-590 - Hide-empty-board-columns-in-the-TUI.md
 ---
 
 # BACK-590 Hide empty board columns in the TUI

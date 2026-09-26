@@ -2,7 +2,7 @@
 title: MCP Server 实现
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-06-24 00:30
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -77,9 +77,14 @@ MCP Server 和 CLI 共享同一个 `Core` 和 `FileSystem`：
 - **task_list / task_search**：`status` 支持字符串或数组（多状态）并新增 `statusExcluded`；新增 `unassigned` 布尔（与 assignee 组合时以 VALIDATION_ERROR 拒绝）；validators 增加 oneOf 支持（[[sources/back-548-status-exclude-filtering|BACK-548]]、[[sources/back-551-unassigned-task-filtering|BACK-551]]）
 - **workflow 资源**：注册 `backlog://workflow/drafts` 草稿指南（[[sources/back-532-cli-draft-workflow-guides|BACK-532]]）
 
+## 决策工具组（BACK-635）
+
+首个 MCP 决策工具落地：新 `src/mcp/tools/decisions/` 组暴露 `decision_update`（id + content/appendContent/status),在 `createMcpServer` 注册，与 CLI `decision update --status`、Web 状态选择共用同一 core 路径。**phantom docs 教训**:`mcp/decisions.md` 指南此前记录了三个从未实现的决策工具——文档必须先于实现核对，本次随真实工具重写指南（[[sources/back-635-decision-status-editing]]）。
+
 ## Related Sources
 - [[sources/back-529-doc-update-multiline-append]] — document_update appendContent
 - [[sources/back-530-append-description]] — task_edit descriptionAppend
 - [[sources/back-537-deterministic-checklist-serialization]] — acceptanceCriteriaClear
 - [[sources/back-548-status-exclude-filtering]] — statusExcluded
 - [[sources/back-551-unassigned-task-filtering]] — unassigned
+- [[sources/back-635-decision-status-editing]] — decision_update 首个 MCP 决策工具
