@@ -1,14 +1,14 @@
 ---
 title: Add milestone detail view and redesign milestone edit modal (modeled on task detail/edit page)
 created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
+updated_date: '2026-09-26 14:00'
 labels:
   - source
   - web-ui
   - api
   - milestones
   - i18n
-source_path: backlog/tasks/back-580 - Add-milestone-detail-view-and-redesign-milestone-edit-modal.md
+source_path: backlog/tasks/back-580 - Add-milestone-detail-view-and-redesign-milestone-edit-modal-modeled-on-task-detail-edit-page.md
 ---
 
 # Add milestone detail view and redesign milestone edit modal (modeled on task detail/edit page)

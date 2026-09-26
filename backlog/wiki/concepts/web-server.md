@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -49,8 +49,10 @@ RESTful API 按资源组织：
 | 文件内容 | `/api/file-content` | GET（本地文件预览） |
 | 资源上传 | `/api/upload` | POST（`?temp=1` 临时上传） |
 | 资源提升 | `/api/assets/promote` | POST（`.temp/` → `paste/`） |
-| Wiki 树 | `/api/wiki/tree` | GET |
+| Wiki 树 | `/api/wiki/tree` | GET（BACK-672 起合并内容库 title） |
 | Wiki 页面 | `/api/wiki/*` | GET |
+| 图谱 | `/api/graph` | GET（`{status, backend, nodes, edges, reports, nodeCount}`；首次导入 `building`，他人持锁 503） |
+| 任务依赖 | `/api/task/:id/dependencies` | GET |
 | Word 转换 | `/api/docx/convert` | POST |
 
 ## 实时同步
@@ -59,6 +61,17 @@ RESTful API 按资源组织：
 - **ContentStore 订阅**：`BacklogServer` 订阅 `ContentStore` 的变更事件，自动广播给所有 WebSocket 客户端
 - **统计缓存**：`cachedStatisticsResponse` 缓存 JSON 响应，`invalidateStatistics()` 在 ContentStore 变更时触发 500ms debounce，重新计算后广播 `"statistics-updated"`。`handleGetStatistics()` 优先返回缓存，无缓存时即时计算（BACK-503）
 - **无缓存策略**：除统计 API 外，所有 GET/HEAD 响应附加 `no-store` 缓存头，确保浏览器始终获取最新数据
+
+### 内容实体广播 scope（BACK-700）
+
+- `DataUpdatedScope` 联合（tasks | milestones | documents | decisions | wikis）；pending scope 由单字段改为集合，75ms 防抖窗口内 tasks/milestones 保持 merge-to-widest，documents/decisions/wikis 各自投递独立消息，互不吞并
+- 内容存储订阅把 `event.type` 直译为 scope，CLI/TUI/MCP/外部编辑全覆盖，无需逐端点改动
+
+### 客户端原地刷新（BACK-698/700）
+
+- 广播不再重建整个客户端 store：取搜索语料 + `reconcileById` 原地调和（响应未变则为 state no-op），对象/数组身份保留；全量 `loadAllData` 仅作 store 未加载或上次失败的兜底
+- 内容实体的 `refreshDocumentsData` / `refreshDecisionsData` / `refreshWikisData` 刻意不进 tasks 的 `dataRequestRef`/`pendingScopeRank` 机制（幂等 GET，无需跨 scope 取代逻辑）
+- 图谱更新经 `graph-updated` WebSocket 消息推送（非 SSE），驱动前端 `graphVersion` 原地重取（BACK-703/704）
 
 ## SPA 路由
 
@@ -101,9 +114,17 @@ RESTful API 按资源组织：
 - `tasks-updated` WebSocket 广播 75ms 防抖，批量更新只发布一次
 - Reorder 返回 `changedTasks`，前端通过 `applyReorderedTasks` 原子合并而非全量刷新
 
+## Related Concepts
+
+- [[concepts/kuzu-graph]] — 进程内 Graph Service、`/api/graph` 与 `graph-updated` 广播
+- [[concepts/web-ui-features]] — 消费这些 API 的前端视图
+
 ## Related Sources
 
 - [[sources/back-558-browser-server-loopback-only]] — 回环绑定
 - [[sources/back-559-browser-launch-honor-browser-env]] — BROWSER 环境变量
 - [[sources/back-566-browser-async-loading]] — 异步加载指示
 - [[sources/back-568-core-browser-task-boundary]] — Core 浏览器边界
+- [[sources/back-698-web-in-place-refresh]] — BACK-698 原地刷新 reconcileById
+- [[sources/back-700-content-entity-broadcast-refresh]] — BACK-700 内容实体广播 scope
+- [[sources/back-703-graph-incremental-sync]] — BACK-703 /api/graph 与 graph-updated 推送

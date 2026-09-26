@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 15:10'
 ---
 
 # Knowledge Base Overview
@@ -121,6 +121,25 @@ updated_date: '2026-09-13 01:12'
   - **里程碑增强**（BACK-618~622）：created/updated 日期、documentation 字段、详情页/编辑模态框、归档/删除语义澄清
   - **评论闭环**（BACK-617/623）：preview 模式直接添加评论、--remove-comment/--clear-comments 全表面删除
 
+### 上游迁移（v1.50.1 .. v1.52.0）— 第四波，已完成
+- **doc-12 差异分类**：131 commits 分类为 7 A / 43 B / 30 C；处理上游撞号与 fork 的 deliberate divergence
+- **doc-13 领域分析**：按领域逐条迁移分析，映射到本波任务
+- **doc-11 To-Do 对照清算**：To-Do 任务与 v1.47.1-v1.50.1 三次迁移交叉核对
+- **BACK-630~699 大部分落地**：决策编辑/创建/状态全套 Web 能力（BACK-632~636）、文档 TOC 与锚点（BACK-637/638）、completed 语料（BACK-662~665）、Web 实时化（BACK-694~700）、TUI 增强簇（BACK-648/675~696）等
+
+### Kuzu 依赖图谱（Phase 1-3，m-9）
+- **doc-14 冷启动/热更新设计** 与 **doc-15 Wiki 知识图谱关系设计** 为设计文档
+- **图地基**（BACK-702/703/713）：FileNode 模型（路径主键 + SCHEMA_VERSION 自描述）、MemoryGraphStore 默认后端、fail-closed 解析器、指纹冷启动、增量重建与热更新
+- **可视化**（BACK-704/705/710/711）：Web UI D3.js /graph 页面与任务详情模态框关系图谱，两视图对齐
+- **依赖治理**（BACK-706~709）：validateDependencies 拒绝环（容忍历史存量）、doctor 报告依赖缺陷（warning 退出码 0）、本地语料闭包/跳数查询、里程碑 actualEnd 自动打戳
+- **知识图谱**（BACK-714）：wiki/docs/decisions 入图，FileNode 类型 + tags + provenance + wikilinks LinksTo，/knowledge 视图
+
+### 本波其他主题（BACK-630~714）
+- **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
+- **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
+- **TUI 增强簇**（BACK-648/675~696）：Unicode 安全插入、emoji 双宽、ASCII AC 进度条、help 弹窗抗 resize、composer 鼠标/极端尺寸、shift+方向键多选与批量状态移动、里程碑看板视图、composer 日期、draft 创建窗口
+- **搜索单源化**（BACK-685/686）：任务搜索配置与过滤器收敛到 core，TUI 与里程碑页走共享搜索
+
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
 - **数据流**：Markdown 文件 → `FileSystem` → `ContentStore`（内存缓存 + 文件监视）→ `SearchService`（Fuse.js 索引）
@@ -155,13 +174,13 @@ updated_date: '2026-09-13 01:12'
 
 ## 统计
 
-- Sources ingested: 196
-- Concepts extracted: 33
+- Sources ingested: 294
+- Concepts extracted: 34
 - Entities catalogued: 2
-- Execution notes: 20
-- Decisions recorded: 55
+- Execution notes: 24
+- Decisions recorded: 71
 - Patterns: 6
 - Reasoning traces: 3
 - Retrospectives: 1
-- User manual pages: 33
+- User manual pages: 34
 - Reports generated: 7
