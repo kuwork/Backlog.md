@@ -2,7 +2,7 @@
 title: 搜索与序列
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -58,6 +58,14 @@ backlog search "api" --unassigned                             # 未指派过滤
 
 这消除了短数字查询（如 `63`）误匹配无关任务 ID（如 `BACK-410`）的问题，同时保持文本查询的 Fuse 语义一致。
 
+### 单一所有者：core task-search 模块（BACK-685/686）
+
+任务搜索配置与过滤逻辑收敛到 core 的 `task-search.ts` 单一所有者模块，TUI 与 Web 里程碑页面等消费方改为路由到共享 core 搜索，不再各自维护一套 Fuse 配置（[[sources/back-685-single-source-task-search|BACK-685]]、[[sources/back-686-shared-search-consumers|BACK-686]]）。0.45 分数阈值在这一重构中保持不变。
+
+### completed 语料维度（BACK-662）
+
+`queryTasks` 与 `SearchService` 新增 completed-corpus 选项，可把 `backlog/completed/` 中的已完成任务纳入搜索语料；搜索结果的 source 字段可区分任务来自 active 还是 completed 语料（[[sources/back-662-completed-corpus-query-search|BACK-662]]）。
+
 ### Wiki 搜索（BACK-481）
 
 Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchService`，与 tasks/documents/decisions 共用同一套缓存失效机制。
@@ -109,3 +117,6 @@ Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchSe
 - [[sources/back-548-status-exclude-filtering]] — BACK-548 状态排除与多状态过滤
 - [[sources/back-551-unassigned-task-filtering]] — BACK-551 未指派过滤
 - [[sources/back-624-global-search-dialog]] — BACK-624 全局搜索对话框
+- [[sources/back-662-completed-corpus-query-search]] — BACK-662 completed 语料搜索维度
+- [[sources/back-685-single-source-task-search]] — BACK-685 core task-search 单一所有者
+- [[sources/back-686-shared-search-consumers]] — BACK-686 TUI/里程碑页路由到共享搜索

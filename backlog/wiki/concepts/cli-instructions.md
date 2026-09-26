@@ -2,7 +2,7 @@
 title: CLI 指令表面
 labels: [concept, cli, agent-guidance]
 created_date: '2026-07-14 11:20'
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 # CLI 指令表面
@@ -125,6 +125,14 @@ agent 指南规定：agent **首轮必须先加载项目实况再作答**，例�
 
 从 MCP 指南删除 "Markdown 文件回退" 死路径指导——该回退路径已不存在，保留指导会让 agent 走向无效操作。指南内容应与实际支持的 surface 严格对齐。
 
+## overview 每会话一次与任务描述修正（BACK-656）
+
+修正随产品发布的 agent 指南：`backlog instructions overview` 的读取节奏明确为**每个会话开始时读一次**（而非每轮重复读取），并修正任务描述相关的指引措辞，避免 agent 过度重复加载（[[sources/back-656-agent-guidance-overview-cadence|BACK-656]]）。
+
+## 行号引用文档（BACK-651）
+
+agent 指南新增 `path:LINE` 行号引用与行范围链接的说明，任务 references/documentation 可指向文件的具体行（如 `src/server/api.ts:42`），便于精确引用代码位置（[[sources/back-651-line-reference-docs|BACK-651]]）。
+
 ## Related Concepts
 
 - [[concepts/mcp-workflow]] — MCP 工作流与 AI 集成
@@ -151,3 +159,5 @@ agent 指南规定：agent **首轮必须先加载项目实况再作答**，例�
 - [[sources/back-559-browser-launch-honor-browser-env]] — BROWSER launch
 - [[sources/back-582-agent-first-round-load-config]] — BACK-582 agent 首轮加载项目实况
 - [[sources/back-572-agent-guides-date-fields-multiline-input]] — BACK-572 日期/多行输入约定与死路径清理
+- [[sources/back-651-line-reference-docs]] — BACK-651 path:LINE 行号引用文档
+- [[sources/back-656-agent-guidance-overview-cadence]] — BACK-656 overview 每会话一次节奏修正

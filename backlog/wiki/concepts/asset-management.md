@@ -2,6 +2,7 @@
 title: 资源管理与临时文件提升
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -51,3 +52,17 @@ Backlog.md 的 Web UI 资源处理系统，管理粘贴图片的上传、临时�
 - 非阻塞，不影响服务器启动
 - 逐文件 try/catch，单个文件错误不中断整体清理
 - 删除超过 30 分钟的 `.temp/` 文件
+
+## 各表面 promote 覆盖（BACK-631/632/634）
+
+`.temp` promote 模式已从任务描述扩展到所有挂载 PasteAwareMDEditor 的表面，统一走 `extractTempImageUrls` → `apiClient.promoteAssets` → `replaceTempImageUrls` → 写回编辑器状态 → 持久化：
+
+- **评论**(BACK-631)：评论输入框换用共享富文本编辑器后，`handleAddComment` 遵循任务描述的 promote 路径，保存失败时针对永久 URL 重试（[[sources/back-631-comment-rich-markdown-editor]]）。
+- **决策保存**(BACK-632):`DecisionDetail.handleSave` 更新分支此前不 promote,30 分钟清理会留下断图；现已与任务弹窗镜像对齐（[[sources/back-632-decision-image-promotion]]）。
+- **决策创建**(BACK-634)：创建分支在 `createDecision` 后归一化正文、promote 粘贴图片再以 `updateDecision` 持久化（[[sources/back-634-decision-creation-sidebar]]）。
+
+## Related Sources
+
+- [[sources/back-631-comment-rich-markdown-editor]] — 评论编辑器 promote
+- [[sources/back-632-decision-image-promotion]] — 决策保存 promote
+- [[sources/back-634-decision-creation-sidebar]] — 决策创建 promote

@@ -2,7 +2,7 @@
 title: 核心架构与数据流
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-09-26 14:45'
 ---
 
 
@@ -178,7 +178,22 @@ autoCommit 不再整目录暂存或清空共享 index：
 - `AmbiguousIdError` 携带候选列表，在各 surface fail-closed 呈现
 - 详见 [[concepts/task-identity]]
 
+## ContentStore publish:false 回退（BACK-699）
+
+`findIdentity` 的 rename 回退路径不再在未安装语料的情况下发布 freshness——即回退读取只返回身份解析结果，不推进发布版本指纹。这避免了"指纹已前进但语料未安装"的陷阱：消费者看到新指纹却读到旧数据（[[sources/back-699-findidentity-nonpublishing-fallback|BACK-699]]）。
+
+## 批量状态移动 primitive（BACK-680）
+
+core 提供批量移动 primitive，把多个任务一次性移动到目标状态，CLI 的多 ID `task edit` 与 TUI 多选移动共享该实现，保证锁与缓存失效语义一致（[[sources/back-680-batch-status-move|BACK-680]]）。
+
+## 强制刷新与在途 fetch（BACK-660）
+
+跨分支加载的强制刷新不再加入一个在途的过期 fetch（join 旧 fetch 会返回刷新前就已过时的结果）；强制刷新会等待在途 fetch 完成后发起新的加载，保证"强制"语义真正拿到新数据（[[sources/back-660-forced-refresh-stale-fetch-race|BACK-660]]）。
+
 ## Related Sources
 - [[sources/back-533-config-block-yaml-lists]] — BACK-533 块状 YAML 列表
 - [[sources/back-534-preserve-updated-date-ordinal-reorder]] — BACK-534 ordinal 保留时间戳
 - [[sources/back-540-content-store-stale-refresh-guard]] — BACK-540 过期刷新守卫
+- [[sources/back-660-forced-refresh-stale-fetch-race]] — BACK-660 强制刷新等待在途 fetch
+- [[sources/back-680-batch-status-move]] — BACK-680 批量状态移动 primitive
+- [[sources/back-699-findidentity-nonpublishing-fallback]] — BACK-699 findIdentity 非发布回退

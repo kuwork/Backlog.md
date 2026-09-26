@@ -2,7 +2,7 @@
 title: Web UI 国际化（i18n）
 labels: [concept]
 created_date: 2026-05-17 02:20
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 14:45'
 ---
 
 # Web UI 国际化（i18n）
@@ -31,6 +31,8 @@ type DeepString<T> = T extends (...args: infer P) => infer R
 - 所有语言文件必须与英语字典的键结构完全一致
 - 函数签名（参数个数与类型）必须一致
 - 访问不存在的键产生编译错误
+
+**tsc 强制规则**：`TranslationDict` 派生自 en，任何新键必须在四个字典同时落地，否则 tsc 编译失败——这是四语言覆盖的制度性保障（如 BACK-663 `completedCorpusHint`、BACK-667 排序开关键）。注意没有测试导入 locale 模块，四语言正确性依赖浏览器验证（BACK-636 先例）。
 
 ### 字典结构
 
@@ -90,6 +92,7 @@ const { t } = useI18n();
 - **Wiki 编辑**：Wiki 页面保存成功提示、占位文本已纳入 `wiki` 命名空间
 - **文件预览**：加载提示与行范围文案已纳入 `filePreview` 命名空间
 - **初始化向导**：全部步骤文本（~100+ 键）独立在 `init` 命名空间中
+- **决策状态标签（BACK-636）**：四语言新增 `statusLabels` 映射（proposed/accepted/rejected/deprecated/superseded）；`DecisionDetail` 预览徽章与编辑下拉共用同一查找 helper，自由文本状态回退首字母大写原样显示；option value 保持原始 status 字符串，界面翻译绝不改写存储数据
 
 ## Related Concepts
 - [[concepts/web-ui-features]] — Web UI 页面、视图与技术特性总览
@@ -101,3 +104,6 @@ const { t } = useI18n();
 - [[sources/task-completion-heatmap-task]] — BACK-503 热力图 i18n 与 locale 切换修复
 - [[sources/back-624-global-search-dialog]] — BACK-624 新增 `searchDialog` 命名空间（zh-TW 全量审计待办）
 - [[sources/back-628-task-hierarchy-section]] — BACK-628 层级区块文案四语言同步
+- [[sources/back-636-decision-status-i18n]] — BACK-636 决策状态标签四语言本地化
+- [[sources/back-663-completed-popup-read-only]] — BACK-663 completedCorpusHint 四字典同时落地（tsc 强制）
+- [[sources/back-667-sidebar-docs-sort-toggles]] — BACK-667 排序开关标签四语言

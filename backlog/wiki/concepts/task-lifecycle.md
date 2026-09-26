@@ -2,7 +2,7 @@
 title: 任务生命周期
 labels: [concept]
 created_date: '2026-05-06 00:00'
-updated_date: '2026-09-13 01:12'
+updated_date: '2026-09-26 14:45'
 ---
 
 # 任务生命周期
@@ -126,6 +126,23 @@ actual_end: "2026-05-15 18:30"
 - `--clear-ac` 通过 `acceptanceCriteriaSet=[]` 原子清空，且拒绝与其它 AC 变更选项组合
 - 推荐 clear-then-add 工作流
 
+## vacated-ID 清理与 local-first 生命周期命令（BACK-691/692）
+
+释放一个任务 ID 会留下指向它的悬空 dependencies/references——一旦该号码被重新分配给无关任务就十分危险（[[sources/back-691-local-first-lifecycle-vacated-refs]]）：
+
+- **archive / demote 清理**：`sanitizeVacatedTaskLinks` + `collectVacatedIdCleanup` 扫描工作副本与 completed 语料；active 依赖方走 `updateTasksBulk`,completed 依赖方经 `fs.saveTask` 原地重写（保留 filePath，无状态副作用）。demote 时引用被移除而非改写为新草稿身份。
+- **complete 不清理**：completed 依赖正是 readiness 读取的对象。
+- **local-first 解析**：archive/complete/demote 以 `includeCrossBranch=false` 经工作副本索引解析目标，歧义 fail-closed(`AmbiguousTaskIdError`)，不再触发全量 cross-branch 刷新。
+- **文件位置路由**(BACK-692):TUI 编辑键按文件所在目录（而非 frontmatter status）选择 task/draft store，因为 demote/promote 会刻意保留漂移的 status（[[sources/back-692-tui-edit-file-location-routing]]）。
+
+## Web demote 韧性（BACK-646）
+
+Web 弹窗的 demote-to-draft 曾 fire-and-forget(demote 非幂等，每次重试分配新草稿 ID)。现 `demoteTask` 走 `fetchWithoutRetry`，弹窗用 demotion 身份 + `activeDemotionRequest` 绑定每个 await 后续（迟到的响应被丢弃），进行期间封锁其它写操作与快捷键；网络错误提示"可能已成功"并刷新视图让用户先核对草稿列表（[[sources/back-646-web-demote-resilience]]）。
+
+## 里程碑 actualEnd 自动盖章修复（BACK-706）
+
+BACK-493 的里程碑 `actual_end` 自动盖章分支此前永不触发——判定用 `fs.listTasks()` 时翻转中的任务在磁盘上仍是旧状态。修复在判定前把翻转任务按 ID 解析为新状态；仅当最后一个非终态任务落终态且 `actual_end` 为空时盖章（[[sources/back-706-milestone-actual-end-stamp]]，另见 [[concepts/milestones]])。
+
 ## Related Concepts
 
 - [[concepts/date-fields]] — 日期字段详细语义
@@ -145,3 +162,7 @@ actual_end: "2026-05-15 18:30"
 - [[sources/back-534-preserve-updated-date-ordinal-reorder]] — BACK-534 ordinal 保留时间戳
 - [[sources/back-530-append-description]] — BACK-530 追加描述
 - [[sources/back-532-cli-draft-workflow-guides]] — BACK-532 草稿工作流指南
+- [[sources/back-691-local-first-lifecycle-vacated-refs]] — BACK-691 vacated-ID 清理与 local-first 生命周期
+- [[sources/back-692-tui-edit-file-location-routing]] — BACK-692 TUI 编辑按文件位置路由
+- [[sources/back-646-web-demote-resilience]] — BACK-646 Web demote 韧性
+- [[sources/back-706-milestone-actual-end-stamp]] — BACK-706 里程碑 actualEnd 自动盖章修复

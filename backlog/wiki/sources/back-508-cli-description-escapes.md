@@ -2,8 +2,8 @@
 title: BACK-508 CLI description 换行符转义修复
 labels: [source, bug, cli, ux]
 created_date: '2026-06-05 15:19'
-updated_date: '2026-06-05 15:19'
-source_path: backlog/tasks/back-508 - CLI task create does not interpret backslash-n escape sequences in description.md
+updated_date: '2026-09-26 14:00'
+source_path: backlog/tasks/back-508 - CLI-task-create-does-not-interpret-n-escape-sequences-in-description.md
 ---
 
 # BACK-508 CLI description 换行符转义修复
