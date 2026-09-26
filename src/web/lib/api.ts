@@ -40,9 +40,13 @@ async function throwResponseError(response: Response, fallback: string): Promise
 const API_BASE = "/api";
 
 // Task graph (doc-014): the /api/graph payload as served by the Web server.
-export type GraphNodeKind = "task" | "draft" | "milestone";
+/**
+ * Node kinds the graph payload can carry: the four work kinds, the three knowledge kinds (doc-15),
+ * plus `tag` for a virtual Tag node - the only kind that is not backed by a file.
+ */
+export type GraphNodeKind = "task" | "draft" | "milestone" | "wiki" | "decision" | "document" | "tag";
 
-export type GraphEdgeType = "ParentOf" | "BelongsToMilestone" | "DependsOn";
+export type GraphEdgeType = "ParentOf" | "BelongsToMilestone" | "DependsOn" | "TaggedWith" | "SourcedFrom" | "LinksTo";
 
 export interface GraphNodeDto {
 	id: string;

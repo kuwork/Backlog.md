@@ -547,6 +547,7 @@ export class BacklogServer {
 					"/wiki/*": spaIndexHtml,
 					"/statistics": spaIndexHtml,
 					"/graph": spaIndexHtml,
+					"/knowledge": spaIndexHtml,
 					"/settings": spaIndexHtml,
 					"/task/:id": spaIndexHtml,
 					"/task/:id/*": spaIndexHtml,

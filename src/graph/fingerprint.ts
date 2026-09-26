@@ -25,8 +25,12 @@ import { dirname } from "node:path";
  * 2: node identity moved from Task(id) to FileNode(path) (doc-014 §1.2), plus updatedDate; a
  * graph.kuzu built by version 1 has the wrong node table and must be rebuilt even though no file
  * changed.
+ * 3: phase 3 parsed fields (doc-15) - `file_type`, `labels`, `source_path` and body `[[wikilink]]`
+ * targets. Files outside the whitelist now parse too, and a file's parsed shape differs even when
+ * its content is unchanged (the same wiki page now yields labels and citations where it previously
+ * yielded nothing), so every cached entry has to be rebuilt.
  */
-export const PARSER_VERSION = 2;
+export const PARSER_VERSION = 3;
 
 export interface FileFingerprint {
 	size: number;

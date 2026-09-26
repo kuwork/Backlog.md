@@ -152,6 +152,9 @@ describe("fail-closed relation resolution", () => {
 			parentTaskId: null,
 			milestone: null,
 			dependencies: [],
+			labels: [],
+			sourcePath: null,
+			wikilinks: [],
 			...partial,
 		};
 	}
@@ -363,7 +366,7 @@ describe("cold start", () => {
 			expect(first.reused).toBe(false);
 			const current = loadMetaCache(graphPaths(dir).metaPath);
 			if (!current) throw new Error("expected a sidecar after the first build");
-			expect(current.parserVersion).toBe(2); // the FileNode schema bump
+			expect(current.parserVersion).toBe(3); // the phase-3 parsed-fields bump
 
 			// Same project, same content, same fingerprint - only the parser version differs, which
 			// must be enough on its own to force the rebuild.
@@ -371,7 +374,7 @@ describe("cold start", () => {
 			const upgraded = await coldStart(dir, { backend: "memory" });
 			expect(upgraded.reused).toBe(false);
 			expect(upgraded.nodeCount).toBe(1);
-			expect(loadMetaCache(graphPaths(dir).metaPath)?.parserVersion).toBe(2);
+			expect(loadMetaCache(graphPaths(dir).metaPath)?.parserVersion).toBe(3);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}
