@@ -2,8 +2,8 @@
 title: BACK-538 重复任务 ID 恢复工作流
 labels: [source, core, cli, data-consistency, bug]
 created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
-source_path: backlog/tasks/back-538 - Migrate-upstream-BACK-516-human-first-duplicate-task-ID-recovery-and-update-AI-guidelines.md
+updated_date: '2026-09-26 14:00'
+source_path: backlog/tasks/back-538 - Implement-human-first-duplicate-task-ID-recovery-and-update-AI-guidelines.md
 ---
 
 # BACK-538 人类优先的重复任务 ID 恢复流程

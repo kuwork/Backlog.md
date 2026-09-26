@@ -1,8 +1,8 @@
 ---
 title: BACK-496 修复子任务在所有视图中按 ID 排序时的分组
-source_path: backlog/tasks/back-496 - Fix subtask grouping under parent task for ID sorting across all views.md
+source_path: backlog/tasks/back-496 - Fix-subtask-grouping-under-parent-task-for-ID-sorting-across-all-views.md
 created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+updated_date: '2026-09-26 14:00'
 labels: [source, bug, web-ui, sorting]
 ---
 
