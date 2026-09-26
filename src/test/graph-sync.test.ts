@@ -83,6 +83,9 @@ describe("graph change set", () => {
 			parentTaskId: null,
 			milestone: null,
 			dependencies: [],
+			labels: [],
+			sourcePath: null,
+			wikilinks: [],
 		};
 		cache.set({ ...base, title: "t" });
 		cache.set({ ...base, title: "t2" });
@@ -121,6 +124,9 @@ describe("graph validation", () => {
 				parentTaskId: null,
 				milestone: null,
 				dependencies: ["b"],
+				labels: [],
+				sourcePath: null,
+				wikilinks: [],
 			},
 			{
 				id: "b",
@@ -132,6 +138,9 @@ describe("graph validation", () => {
 				parentTaskId: null,
 				milestone: null,
 				dependencies: [],
+				labels: [],
+				sourcePath: null,
+				wikilinks: [],
 			},
 		]);
 		expect(readiness.find((r) => r.id === "a")).toMatchObject({ isReady: true, isBlocked: false });

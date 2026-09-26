@@ -19,23 +19,39 @@
  * every mutation here is driven by file-system reconciliation only.
  */
 
-export type GraphKind = "task" | "draft" | "milestone";
+export type GraphKind = "task" | "draft" | "milestone" | "wiki" | "decision" | "document";
+
+/**
+ * Phase 3 (doc-15) node types. A knowledge file's type comes from the whitelisted directory it was
+ * scanned from - never from frontmatter, and never from a subfolder name (`wiki/sources/` is a
+ * wiki node just like `wiki/concepts/`).
+ */
+export const KNOWLEDGE_KINDS = ["wiki", "decision", "document"] as const;
+
+export type KnowledgeKind = (typeof KNOWLEDGE_KINDS)[number];
+
+export function isKnowledgeKind(value: string): value is KnowledgeKind {
+	return (KNOWLEDGE_KINDS as readonly string[]).includes(value);
+}
 
 export interface GraphNode {
 	/** Primary key: path relative to the backlog directory, e.g. "tasks/back-217 - Title.md". */
 	path: string;
-	/** The task id from frontmatter (back-217 / draft-N / m-1). A property, not an identity. */
+	/** The task id from frontmatter (back-217 / draft-N / m-1). Empty for knowledge files. */
 	id: string;
-	/** task | draft | milestone today; phase 3 (doc-15) widens it to wiki | decision | document. */
+	/** task | draft | milestone (work files) or wiki | decision | document (knowledge files). */
 	type: GraphKind;
 	title: string;
 	status: string;
 	updatedDate: string;
 }
 
-export type GraphEdgeType = "ParentOf" | "BelongsToMilestone" | "DependsOn";
+export type GraphEdgeType = "ParentOf" | "BelongsToMilestone" | "DependsOn" | "TaggedWith" | "SourcedFrom" | "LinksTo";
 
-/** Edge endpoints are node paths (the FileNode primary key), not task ids. */
+/**
+ * Edges connect two FileNodes by path, except TaggedWith, whose target is a Tag node name - the one
+ * edge that does not end in a file (doc-15 "标签节点").
+ */
 export interface GraphEdge {
 	type: GraphEdgeType;
 	from: string;
@@ -57,6 +73,14 @@ export interface GraphStore {
 	clear(): Promise<void>;
 	/** Batch upsert nodes by path; an existing path is replaced along with its edges. */
 	upsertNodes(nodes: GraphNode[]): Promise<void>;
+	/**
+	 * Additive: register these Tag names, keeping the ones already known. An orphan Tag - one whose
+	 * last TaggedWith edge went away with a label edit - is deliberately left in place; it is a
+	 * virtual classification node, not a file, and nothing reads a tag count as a correctness claim.
+	 */
+	upsertTags(names: string[]): Promise<void>;
+	/** All Tag names, for the /api/graph payload. */
+	getAllTags(): Promise<string[]>;
 	/** Batch remove nodes by path together with all their edges (DETACH DELETE semantics). */
 	deleteNodes(paths: string[]): Promise<void>;
 	/** Batch insert edges; duplicates within the batch are ignored. */
@@ -85,6 +109,7 @@ export class MemoryGraphStore implements GraphStore {
 
 	private nodes = new Map<string, GraphNode>();
 	private edges = new Map<string, GraphEdge>();
+	private tags = new Set<string>();
 	private meta = new Map<string, string>();
 
 	async init(): Promise<void> {}
@@ -92,17 +117,23 @@ export class MemoryGraphStore implements GraphStore {
 	async close(): Promise<void> {
 		this.nodes.clear();
 		this.edges.clear();
+		this.tags.clear();
 		this.meta.clear();
 	}
 
 	async clear(): Promise<void> {
 		this.nodes.clear();
 		this.edges.clear();
+		this.tags.clear();
 	}
 
 	async upsertNodes(nodes: GraphNode[]): Promise<void> {
 		for (const node of nodes) this.nodes.set(node.path, { ...node });
 		await this.deleteEdgesTouching(nodes.map((node) => node.path));
+	}
+
+	async upsertTags(names: string[]): Promise<void> {
+		for (const name of names) this.tags.add(name);
 	}
 
 	async deleteNodes(paths: string[]): Promise<void> {
@@ -112,7 +143,10 @@ export class MemoryGraphStore implements GraphStore {
 
 	async upsertEdges(edges: GraphEdge[]): Promise<void> {
 		for (const edge of edges) {
-			if (!this.nodes.has(edge.from) || !this.nodes.has(edge.to)) continue;
+			if (!this.nodes.has(edge.from)) continue;
+			// A TaggedWith edge ends in a Tag node, every other edge in a FileNode.
+			const targetKnown = edge.type === "TaggedWith" ? this.tags.has(edge.to) : this.nodes.has(edge.to);
+			if (!targetKnown) continue;
 			this.edges.set(edgeKey(edge.type, edge.from, edge.to), { ...edge });
 		}
 	}
@@ -121,12 +155,19 @@ export class MemoryGraphStore implements GraphStore {
 		const doomed = new Set(paths);
 		for (const key of [...this.edges.keys()]) {
 			const edge = this.edges.get(key);
-			if (edge && (doomed.has(edge.from) || doomed.has(edge.to))) this.edges.delete(key);
+			// A tag name is not a path: only the tagged file end can match a path here.
+			const touches =
+				!edge || (edge.type === "TaggedWith" ? doomed.has(edge.from) : doomed.has(edge.from) || doomed.has(edge.to));
+			if (touches) this.edges.delete(key);
 		}
 	}
 
 	async getAllNodes(): Promise<GraphNode[]> {
 		return [...this.nodes.values()].map((n) => ({ ...n }));
+	}
+
+	async getAllTags(): Promise<string[]> {
+		return [...this.tags];
 	}
 
 	async getAllEdges(): Promise<GraphEdge[]> {
@@ -176,8 +217,12 @@ export class MemoryGraphStore implements GraphStore {
  *
  * 1: FileNode(path PRIMARY KEY, id, type, title, status, updatedDate), doc-014 §1.2. A file with no
  *    version row is stale by definition - either empty, or written before this mechanism existed.
+ * 2: phase 3 (doc-15) adds the Tag node table plus the TaggedWith/SourcedFrom/LinksTo relationship
+ *    tables. `CREATE ... IF NOT EXISTS` would leave a version-1 file's tables as they are - and a
+ *    TaggedWith of FileNode->Tag cannot be added to a database whose Tag table never existed - so
+ *    the whole file is wiped and rebuilt instead.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** The Meta row holding SCHEMA_VERSION inside the database. Only the kuzu backend persists a file. */
 export const SCHEMA_VERSION_KEY = "schemaVersion";
@@ -189,13 +234,23 @@ export function isCurrentSchema(stored: string | null): boolean {
 
 const SCHEMA_DDL = [
 	"CREATE NODE TABLE IF NOT EXISTS FileNode (path STRING PRIMARY KEY, id STRING, type STRING, title STRING, status STRING, updatedDate STRING)",
+	"CREATE NODE TABLE IF NOT EXISTS Tag (name STRING PRIMARY KEY)",
+	"CREATE NODE TABLE IF NOT EXISTS Meta (name STRING PRIMARY KEY, value STRING)",
 	"CREATE REL TABLE IF NOT EXISTS ParentOf(FROM FileNode TO FileNode)",
 	"CREATE REL TABLE IF NOT EXISTS BelongsToMilestone(FROM FileNode TO FileNode)",
 	"CREATE REL TABLE IF NOT EXISTS DependsOn(FROM FileNode TO FileNode)",
-	"CREATE NODE TABLE IF NOT EXISTS Meta (name STRING PRIMARY KEY, value STRING)",
+	"CREATE REL TABLE IF NOT EXISTS SourcedFrom(FROM FileNode TO FileNode)",
+	"CREATE REL TABLE IF NOT EXISTS LinksTo(FROM FileNode TO FileNode)",
+	"CREATE REL TABLE IF NOT EXISTS TaggedWith(FROM FileNode TO Tag)",
 ] as const;
 
-const EDGE_TYPES = ["ParentOf", "BelongsToMilestone", "DependsOn"] as const;
+/** Every edge type whose endpoints are both FileNodes. */
+export const FILE_EDGE_TYPES = ["ParentOf", "BelongsToMilestone", "DependsOn", "SourcedFrom", "LinksTo"] as const;
+
+/** Edges ending in a Tag node instead of a file: `from` is a path, `to` is a tag name. */
+export const TAG_EDGE_TYPES = ["TaggedWith"] as const;
+
+export const EDGE_TYPES = [...FILE_EDGE_TYPES, ...TAG_EDGE_TYPES] as const;
 
 const NODE_BATCH_SIZE = 100;
 
@@ -321,6 +376,31 @@ export class KuzuGraphStore implements GraphStore {
 		}
 	}
 
+	async upsertTags(names: string[]): Promise<void> {
+		const fresh = [...new Set(names)].filter((name) => name.length > 0);
+		if (fresh.length === 0) return;
+		const known = new Set(await this.getAllTags());
+		const missing = fresh.filter((name) => !known.has(name));
+		for (let start = 0; start < missing.length; start += NODE_BATCH_SIZE) {
+			const batch = missing.slice(start, start + NODE_BATCH_SIZE);
+			const patterns: string[] = [];
+			const params: Record<string, string> = {};
+			batch.forEach((name, i) => {
+				const p = `t${i}`;
+				patterns.push(`(:Tag {name: $${p}name})`);
+				params[`${p}name`] = name;
+			});
+			await this.executePrepared(`CREATE ${patterns.join(", ")}`, params);
+		}
+	}
+
+	async getAllTags(): Promise<string[]> {
+		const result = await this.query("MATCH (t:Tag) RETURN t.name AS name");
+		const rows = await result.getAll();
+		await this.closeResult(result);
+		return rows.map((row) => String(row.name));
+	}
+
 	async deleteNodes(paths: string[]): Promise<void> {
 		if (paths.length === 0) return;
 		await this.executePrepared("MATCH (n:FileNode) WHERE n.path IN $paths DETACH DELETE n", { paths });
@@ -328,11 +408,17 @@ export class KuzuGraphStore implements GraphStore {
 
 	async deleteEdgesTouching(paths: string[]): Promise<void> {
 		if (paths.length === 0) return;
-		for (const type of EDGE_TYPES) {
+		for (const type of FILE_EDGE_TYPES) {
 			await this.executePrepared(
 				`MATCH (a:FileNode)-[r:${type}]->(b:FileNode) WHERE a.path IN $paths OR b.path IN $paths DELETE r`,
 				{ paths },
 			);
+		}
+		// A tag name is not a path, so only the tagged file end can match here.
+		for (const type of TAG_EDGE_TYPES) {
+			await this.executePrepared(`MATCH (a:FileNode)-[r:${type}]->(t:Tag) WHERE a.path IN $paths DELETE r`, {
+				paths,
+			});
 		}
 	}
 
@@ -347,10 +433,16 @@ export class KuzuGraphStore implements GraphStore {
 
 	async getAllEdges(): Promise<GraphEdge[]> {
 		const edges: GraphEdge[] = [];
-		for (const type of EDGE_TYPES) {
+		for (const type of FILE_EDGE_TYPES) {
 			const result = await this.query(
 				`MATCH (a:FileNode)-[r:${type}]->(b:FileNode) RETURN a.path AS from, b.path AS to`,
 			);
+			const rows = await result.getAll();
+			await this.closeResult(result);
+			for (const row of rows) edges.push({ type, from: String(row.from), to: String(row.to) });
+		}
+		for (const type of TAG_EDGE_TYPES) {
+			const result = await this.query(`MATCH (a:FileNode)-[r:${type}]->(t:Tag) RETURN a.path AS from, t.name AS to`);
 			const rows = await result.getAll();
 			await this.closeResult(result);
 			for (const row of rows) edges.push({ type, from: String(row.from), to: String(row.to) });
@@ -474,7 +566,7 @@ function toGraphNode(row: Record<string, unknown>): GraphNode {
 	return {
 		path: String(row.path ?? ""),
 		id: String(row.id ?? ""),
-		type: String(row.type ?? "task") as GraphKind,
+		type: String(row.type || "task") as GraphKind,
 		title: String(row.title ?? ""),
 		status: String(row.status ?? ""),
 		updatedDate: String(row.updatedDate ?? ""),

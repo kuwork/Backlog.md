@@ -3,7 +3,7 @@ id: doc-14
 title: Kuzu 任务图谱：冷启动校验与热更新设计
 type: design
 created_date: '2026-09-23'
-updated_date: '2026-09-26 07:06'
+updated_date: '2026-09-26 09:21'
 ---
 # Bun + KuzuDB 任务图谱：冷启动校验与热更新设计
 
@@ -37,7 +37,7 @@ updated_date: '2026-09-26 07:06'
 | `backlog/milestones/` | ✅ | `FileNode { type: "milestone" }` |
 | `backlog/completed/` | ✅ | 已完成任务，`FileNode { type: "task" }` + 终态 status（依赖判定/图谱灰显需要） |
 | `backlog/archive/` | ❌ 不考虑 | 明确排除，不入白名单 |
-| `backlog/wiki/`、`decisions/`、`docs/` | 三期 | 同一 `FileNode` 表，扩展 `type` 取值（见三期设计 doc-15） |
+| `backlog/wiki/`、`decisions/`、`docs/` | ✅ 三期 | 同一 `FileNode` 表，节点类型取自 frontmatter `file_type`（`wiki`/`decision`/`document`，见 doc-15）；`wiki/index.md` 与 `wiki/log.md` 不入图 |
 | `config.yml` | ✅（指纹参与） | 不建节点，statuses 变更触发重建 |
 
 扫描范围用**白名单**实现，禁止 `**/*.md` 全目录扫——`assets/`、二进制附件混进来既慢又容易炸哈希。
@@ -48,22 +48,27 @@ updated_date: '2026-09-26 07:06'
 CREATE NODE TABLE IF NOT EXISTS FileNode (
   path STRING PRIMARY KEY,   -- 规范化项目相对路径（如 tasks/back-217 - Create-web-UI.md），文件就是节点身份
   id STRING,                 -- 任务 ID（back-217 / draft-N / m1），仅任务类文件有；知识文件为 NULL
-  type STRING,               -- task | draft | milestone（三期扩展 wiki | decision | document）
+  type STRING,               -- task | draft | milestone（工作文件）| wiki | decision | document（知识文件）
   title STRING,
   status STRING,             -- 任务状态；非任务节点为 NULL
   updatedDate STRING
 );
--- 三种业务语义三张边表：层级（ParentOf）、归属（BelongsToMilestone）、依赖（DependsOn）
+-- 一期三条业务语义边表：层级（ParentOf）、归属（BelongsToMilestone）、依赖（DependsOn）
 CREATE REL TABLE IF NOT EXISTS ParentOf(FROM FileNode TO FileNode);           -- 层级父子：parent -> child，允许跨 type
 CREATE REL TABLE IF NOT EXISTS BelongsToMilestone(FROM FileNode TO FileNode); -- 归属：task -> milestone
 CREATE REL TABLE IF NOT EXISTS DependsOn(FROM FileNode TO FileNode);          -- 依赖：任务/草稿 -> 任务/草稿
+-- 三期（doc-15）：标签虚拟节点 + 三条机械关系边表
+CREATE NODE TABLE IF NOT EXISTS Tag(name STRING PRIMARY KEY);                 -- 标签虚拟节点（来自 frontmatter labels）
+CREATE REL TABLE IF NOT EXISTS TaggedWith(FROM FileNode TO Tag);              -- 标签归属
+CREATE REL TABLE IF NOT EXISTS SourcedFrom(FROM FileNode TO FileNode);        -- 溯源：source_path
+CREATE REL TABLE IF NOT EXISTS LinksTo(FROM FileNode TO FileNode);            -- 引用：正文 [[wikilink]]
 CREATE NODE TABLE IF NOT EXISTS Meta(name STRING PRIMARY KEY, value STRING);
 ```
 
 设计说明：
 
 - **节点表叫 `FileNode`、主键是文件相对路径，而不是 `Task(id)`。** 图谱节点就是 Markdown 文件，文件路径是唯一稳定的身份；任务 ID 只是任务类文件的一个属性。初版用 `Task(id)` 主键 + `filePath` 属性，等于给文件造了第二套身份，文件移动/改名时还要维护两套身份的映射。改成 `path` 主键后，节点增删直接由文件的增删决定，"移动/改名"在图谱层就是删旧节点建新节点，不再有身份漂移问题。
-- **单一 FileNode 节点表 + type 区分**，而不是多张节点表：任务/草稿/里程碑会互相连边（任务依赖任务、任务归属里程碑），Kuzu 的 REL 表端点绑定节点表，单一节点表让所有边类型共用一套端点，查询和增量删除都简单。三期知识文件（wiki/decision/document）也进这同一张表，只扩展 `type` 枚举（doc-15）。
+- **单一 FileNode 节点表 + type 区分**，而不是多张节点表：任务/草稿/里程碑会互相连边（任务依赖任务、任务归属里程碑），Kuzu 的 REL 表端点绑定节点表，单一节点表让所有边类型共用一套端点，查询和增量删除都简单。三期知识文件（wiki/decision/document）也进这同一张表，只扩展 `type` 取值；但知识文件的取值**不来自目录**，而来自 frontmatter 的 `file_type` 字段（`backlog/docs/` 的 `type` 已被 Backlog 文档类型占用，两者值域不相交，故另立字段；见 doc-15）。
 - **按业务语义拆三张边表**："层级"、"归属"、"依赖"是三种业务语义（级联规则、进度聚合、解锁逻辑完全不同），不能混在一张表里。
 - **父子（ParentOf）不再按 type 拆分**：文件层行为决定了跨 type 父子是**合法常态**——降级/转正会生成新 ID 但不清 `parentTaskId`，降级草稿会原样挂着一个 task 父（见 §3.5）。如果按 type 拆表，这些真实状态会被误判为非法。type 语义由查询侧过滤表达（任务树/草稿树各取所需）。
 - **依赖（DependsOn）的文件层保证**：ID 作废操作（降级/归档）时 core 会主动清理"别人依赖它"的引用，任务完成（complete）保留全部引用——所以依赖边在源文件层面基本不会悬空，图谱的 fail-closed 规则只兜外部编辑/git 合并带来的漏网情况。
@@ -111,7 +116,8 @@ RETURN root, sub;
 
 | schemaVersion | 图的形状 | 何时出现 |
 |---|---|---|
-| **1**（当前） | `FileNode(path PK, id, type, title, status, updatedDate)` + `ParentOf` / `BelongsToMilestone` / `DependsOn` | 本次改名后 |
+| **2**（当前） | `FileNode` + `Tag` + `ParentOf` / `BelongsToMilestone` / `DependsOn` / `TaggedWith` / `SourcedFrom` / `LinksTo` | 三期：新增 Tag 节点表与三条知识关系边表（doc-15） |
+| 1 | `FileNode(path PK, id, type, title, status, updatedDate)` + `ParentOf` / `BelongsToMilestone` / `DependsOn` | 在 BACK-713 把 `Task(id)` 改名为 `FileNode(path)` 之后 |
 | 无版本行 | 任意旧形状（含初版 `Task(id)`） | 早于本机制，或全新空文件 |
 
 规则：
@@ -320,4 +326,4 @@ MATCH (a:FileNode)-[:DependsOn*1..]->(a) RETURN a.path;      -- 循环依赖（�
 
 1. **一期（本文范围）**：`tasks/` + `drafts/` + `milestones/` + `completed/`；指纹冷启动 + notify/watch 热更新；Web UI 与 Graph Service 同进程部署。
 2. **二期**：CLI 独立进程与 IPC 协议固化；批量导入性能压测（万级任务）与 `COPY FROM` 优化。
-3. **三期**：`wiki/`、`decisions/`、`docs/` 入图（`FileNode.type` 扩展 `wiki`/`decision`/`document` 取值 + 语义链接边），白名单与解析器按目录注册，指纹机制无需改动。
+3. **三期**（已落地）：`wiki/`、`decisions/`、`docs/` 入图——白名单按目录注册（`wiki/index.md`、`wiki/log.md` 除外），节点类型取自 frontmatter `file_type`（`wiki`/`decision`/`document`，不复用被 Backlog 文档类型占用的 `type`）；机械生成知识文件的 `labels` → `TaggedWith`（任务侧的 `labels` 是另一套词汇，不入图，见 doc-15 §4）、`source_path` → `SourcedFrom`、正文 `[[wikilink]]` → `LinksTo` 三条关系边，语义关系（`relations`）整体暂缓；`schemaVersion` 升到 2，指纹机制无需改动。

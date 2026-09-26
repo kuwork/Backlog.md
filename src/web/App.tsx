@@ -1178,7 +1178,23 @@ function AppContent() {
 							<Statistics tasks={tasks} isLoading={isLoading} onEditTask={handleOpenTask} projectName={projectName} />
 						}
 					/>
-					<Route path="graph" element={<GraphView graphVersion={graphVersion} onEditTask={handleOpenTask} />} />
+					{/* Keyed per route: both views are one component reading one payload, but React keeps
+					    the instance across the route switch without a key, so the knowledge graph would
+					    inherit whatever the task graph had hidden (and its stored layout). A key remounts
+					    per view: filter state, layout cache and viewport all start fresh, and each view
+					    restores its own persisted picture. */}
+					<Route
+						path="graph"
+						element={
+							<GraphView key="task-graph" graphVersion={graphVersion} onEditTask={handleOpenTask} />
+						}
+					/>
+					<Route
+						path="knowledge"
+						element={
+							<GraphView key="knowledge-graph" graphVersion={graphVersion} onEditTask={handleOpenTask} variant="knowledge" />
+						}
+					/>
 					<Route path="settings" element={<Settings />} />
 					<Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleOpenTask} />} />
 				</Route>

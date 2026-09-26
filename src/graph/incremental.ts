@@ -1,3 +1,4 @@
+import { collectParseFindings, collectRelationFindings, type ParseReports } from "./cold-start";
 import type { MetaCache } from "./fingerprint";
 import type { ParsedRecord } from "./parser";
 import { parseTaskFile } from "./parser";
@@ -84,7 +85,8 @@ function toNode(record: ParsedRecord): GraphNode {
 	return {
 		path: record.filePath,
 		id: record.id,
-		type: record.kind,
+		// Empty when a knowledge file declares no usable file_type - never a folder guess.
+		type: record.kind ?? "",
 		title: record.title,
 		status: record.status,
 		updatedDate: record.updatedDate,
@@ -108,7 +110,7 @@ export async function applyChangeSet(
 	changeSet: ChangeSet,
 	recordCache: RecordCache,
 	scannedByPath: Map<string, ScannedFile>,
-	warnings: string[] = [],
+	reports: ParseReports,
 ): Promise<ApplyChangeSetResult> {
 	// Parse the new/changed files (the only content reads in an incremental sync).
 	const freshRecords = new Map<string, ParsedRecord>();
@@ -116,7 +118,7 @@ export async function applyChangeSet(
 		const scanned = scannedByPath.get(relPath);
 		if (!scanned) continue;
 		const parsed = parseTaskFile(scanned.absPath, relPath, scanned.kind);
-		if (parsed.warning) warnings.push(parsed.warning);
+		collectParseFindings(parsed, reports);
 		if (parsed.record) freshRecords.set(relPath, parsed.record);
 	}
 
@@ -134,7 +136,13 @@ export async function applyChangeSet(
 	if (freshRecords.size > 0) await store.upsertNodes([...freshRecords.values()].map(toNode));
 	const affected = new Set(affectedPaths);
 	const relations = resolveRelations(recordCache.all());
+	// The relations are re-resolved from every record, so their findings describe the whole corpus
+	// and replace whatever the previous pass reported.
+	collectRelationFindings(reports, relations);
 	await store.deleteEdgesTouching(affectedPaths);
+	// Tag names are add-only and idempotent, so re-registering the full set keeps every Tag node a
+	// TaggedWith edge could point at - including one only a peer outside this change set uses.
+	await store.upsertTags(relations.tags);
 	await store.upsertEdges(relations.edges.filter((edge) => affected.has(edge.from) || affected.has(edge.to)));
 	return { relations, affectedPaths };
 }
@@ -146,12 +154,12 @@ export async function applyChangeSet(
 export async function ensureRecordCache(
 	recordCache: RecordCache,
 	scanned: ScannedFile[],
-	warnings: string[] = [],
+	reports: ParseReports,
 ): Promise<void> {
 	if (recordCache.size > 0) return;
 	for (const file of scanned) {
 		const parsed = parseTaskFile(file.absPath, file.relPath, file.kind);
-		if (parsed.warning) warnings.push(parsed.warning);
+		collectParseFindings(parsed, reports);
 		if (parsed.record) recordCache.set(parsed.record);
 	}
 }

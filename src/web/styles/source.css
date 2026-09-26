@@ -266,3 +266,42 @@
         resize: none !important;
     }
 }
+
+/* Graph views (src/web/components/GraphView.tsx, TaskDependencyGraph.tsx).
+   The focus mode dims everything except the hovered or pinned node and its neighbours. It used to
+   be written inline per element - 5529 writes over a 7000-element graph, and any geometry read
+   afterwards then recalculated all of them at once (~176 ms measured on a hover). One class on the
+   zoom group plus a `lit` mark on the neighbourhood says the same thing and touches nothing else.
+   The dim level comes from --graph-focus-fade, which the component sets from FOCUS_FADE. */
+@layer components {
+    .graph-node,
+    .graph-caption,
+    .graph-edge,
+    .graph-relation {
+        transition: opacity 150ms ease;
+    }
+
+    .graph-edge {
+        opacity: 0.5;
+    }
+
+    .graph-dim .graph-node,
+    .graph-dim .graph-caption {
+        opacity: var(--graph-focus-fade, 0.18);
+    }
+
+    .graph-dim .graph-node.lit,
+    .graph-dim .graph-caption.lit,
+    .graph-dim .graph-edge.lit,
+    .graph-dim .graph-relation.lit {
+        opacity: 1;
+    }
+
+    .graph-dim .graph-edge {
+        opacity: 0.06;
+    }
+
+    .graph-dim .graph-relation {
+        opacity: 0.08;
+    }
+}

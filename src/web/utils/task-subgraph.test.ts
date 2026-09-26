@@ -54,6 +54,18 @@ describe("buildRelationshipSubgraph", () => {
 		expect(types).toEqual(["BelongsToMilestone", "DependsOn", "ParentOf", "ParentOf"]);
 	});
 
+	it("does not follow phase-3 knowledge edges: tags and wiki pages stay out", () => {
+		// A task's labels produce TaggedWith edges and its body may cite pages, but the modal is a
+		// task view (and has no way to open a Tag or a wiki page).
+		const knowledge: RelationshipGraphPayload = {
+			nodes: [node("BACK-1"), node("tag:bug", "tag"), node("wiki/concepts/a.md", "wiki")],
+			edges: [edge("TaggedWith", "BACK-1", "tag:bug"), edge("LinksTo", "BACK-1", "wiki/concepts/a.md")],
+		};
+		const graph = buildRelationshipSubgraph(knowledge, "BACK-1");
+		expect(graph.nodes.map((n) => n.id)).toEqual(["BACK-1"]);
+		expect(graph.edges).toEqual([]);
+	});
+
 	it("matches the focus id case-insensitively", () => {
 		const graph = buildRelationshipSubgraph(payload(), "back-1");
 		expect(graph.nodes.some((n) => n.isRoot)).toBe(true);

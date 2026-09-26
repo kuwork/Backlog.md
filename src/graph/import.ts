@@ -18,12 +18,15 @@ export async function fullImport(
 			(record): GraphNode => ({
 				path: record.filePath,
 				id: record.id,
-				type: record.kind,
+				// Empty when a knowledge file declares no usable file_type - never a folder guess.
+				type: record.kind ?? "",
 				title: record.title,
 				status: record.status,
 				updatedDate: record.updatedDate,
 			}),
 		),
 	);
+	// Tags before edges: a TaggedWith edge is only accepted once its Tag node exists.
+	await store.upsertTags(relations.tags);
 	await store.upsertEdges(relations.edges);
 }

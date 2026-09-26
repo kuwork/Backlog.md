@@ -8,7 +8,7 @@ import {
 	saveMetaCache,
 } from "./fingerprint";
 import { fullImport } from "./import";
-import type { ParsedRecord } from "./parser";
+import type { ParsedFile, ParsedRecord } from "./parser";
 import { parseTaskFile } from "./parser";
 import type { GraphSlot } from "./paths";
 import { graphPaths } from "./paths";
@@ -33,7 +33,41 @@ export interface ParseReports {
 	invalidRelations: string[];
 	missingDependencies: string[];
 	ambiguousIds: string[];
+	/** Phase 3: `source_path` values that matched 0 or >1 records (doc-15 §5, fail-closed). */
+	unresolvedSources: string[];
+	/** Phase 3: wikilinks that named a page but resolved to no unique one (doc-15 §8). */
+	unresolvedLinks: string[];
+	/** Phase 3: expected noise, not defects - placeholders, embeds, and originals outside the corpus. */
+	informational: string[];
+	/** Files that could not be read/parsed and were skipped. */
 	warnings: string[];
+}
+
+export function emptyParseReports(): ParseReports {
+	return {
+		invalidRelations: [],
+		missingDependencies: [],
+		ambiguousIds: [],
+		unresolvedSources: [],
+		unresolvedLinks: [],
+		informational: [],
+		warnings: [],
+	};
+}
+
+/** Record one file's outcome: its skip warning. */
+export function collectParseFindings(parsed: ParsedFile, reports: ParseReports): void {
+	if (parsed.warning) reports.warnings.push(parsed.warning);
+}
+
+/** Fill the relation-derived report buckets. Replaces them - a resolution is a complete answer. */
+export function collectRelationFindings(reports: ParseReports, relations: RelationResolution): void {
+	reports.invalidRelations = relations.invalidRelations;
+	reports.missingDependencies = relations.missingDependencies;
+	reports.ambiguousIds = relations.ambiguousIds;
+	reports.unresolvedSources = relations.unresolvedSources;
+	reports.unresolvedLinks = relations.unresolvedLinks;
+	reports.informational = relations.informational;
 }
 
 export interface ColdStartResult {
@@ -62,15 +96,16 @@ export interface ColdStartOptions {
 export async function buildGraphFromFiles(
 	store: GraphStore,
 	scanned: ScannedFile[],
-	warnings: string[] = [],
+	reports: ParseReports = emptyParseReports(),
 ): Promise<{ records: ParsedRecord[]; relations: RelationResolution }> {
 	const records: ParsedRecord[] = [];
 	for (const file of scanned) {
 		const parsed = parseTaskFile(file.absPath, file.relPath, file.kind);
-		if (parsed.warning) warnings.push(parsed.warning);
+		collectParseFindings(parsed, reports);
 		if (parsed.record) records.push(parsed.record);
 	}
 	const relations = resolveRelations(records);
+	collectRelationFindings(reports, relations);
 	await fullImport(store, records, relations);
 	return { records, relations };
 }
@@ -118,15 +153,15 @@ export async function coldStart(projectRoot: string, options: ColdStartOptions =
 					reused: true,
 					nodeCount,
 					scannedFiles: scanned.length,
-					reports: { invalidRelations: [], missingDependencies: [], ambiguousIds: [], warnings: [] },
+					reports: emptyParseReports(),
 					store,
 				};
 			}
 		}
 
 		// Rebuild path (also rewrites the cache afterwards).
-		const warnings: string[] = [];
-		const { records, relations } = await buildGraphFromFiles(store, scanned, warnings);
+		const reports = emptyParseReports();
+		const { records, relations } = await buildGraphFromFiles(store, scanned, reports);
 		saveMetaCache(metaPath, {
 			parserVersion: PARSER_VERSION,
 			backend: store.backend,
@@ -138,12 +173,7 @@ export async function coldStart(projectRoot: string, options: ColdStartOptions =
 			reused: false,
 			nodeCount: await store.countNodes(),
 			scannedFiles: scanned.length,
-			reports: {
-				invalidRelations: relations.invalidRelations,
-				missingDependencies: relations.missingDependencies,
-				ambiguousIds: relations.ambiguousIds,
-				warnings,
-			},
+			reports,
 			store,
 			relations,
 			records,

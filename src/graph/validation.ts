@@ -1,5 +1,6 @@
 import type { Task } from "../types";
 import { createReadinessGraph, getTaskReadiness } from "../utils/readiness";
+import type { ParseReports } from "./cold-start";
 import type { ParsedRecord } from "./parser";
 import type { GraphStore } from "./store";
 
@@ -104,4 +105,30 @@ export function computeRecordReadiness(records: ParsedRecord[]): RecordReadiness
 			missingDependencies: [...readiness.missingDependencies],
 		};
 	});
+}
+
+/**
+ * Knowledge-corpus lint (doc-15 §8).
+ *
+ * The corpus legitimately produces two kinds of finding, and only one is a defect:
+ * - informational: references that were never graph facts - placeholder text in prose, embeds of
+ *   non-markdown assets, originals living outside the corpus (doc-15 §2.3). Expected noise;
+ * - defects: a `source_path` naming a corpus-internal file that does not resolve, or a wikilink
+ *   resolving to no unique page.
+ *
+ * `passed` answers the gate's question - "does this tree have a real problem?".
+ */
+export interface KnowledgeLint {
+	defects: string[];
+	informational: string[];
+	passed: boolean;
+}
+
+export function lintKnowledgeCorpus(reports: ParseReports): KnowledgeLint {
+	const defects = [...reports.unresolvedSources, ...reports.unresolvedLinks];
+	return {
+		defects,
+		informational: [...reports.informational],
+		passed: defects.length === 0,
+	};
 }

@@ -29,6 +29,7 @@ import {
 	NODE_STROKE,
 	type NodeStyle,
 	nodeStyle,
+	TASK_GRAPH_HIDDEN_STYLES,
 } from "./GraphLegend";
 
 /** Where each task's graph viewport was left (`d3-zoom` transform), keyed by task id. */
@@ -56,8 +57,15 @@ const NODE_RADIUS = 14;
 const ROOT_RADIUS = 18;
 const PRECOMPUTE_TICKS = 200;
 const EDGE_LABEL_FONT = 10;
-/** No kind hidden - the set a task the modal holds no filters for falls back to, so it stays stable. */
-const NO_FILTERS: ReadonlySet<NodeStyle> = new Set<NodeStyle>();
+/** Opacity the focus mode dims to; the stylesheet reads it from --graph-focus-fade (same as GraphView). */
+const FOCUS_FADE = 0.18;
+/**
+ * The filter set a task the modal holds no state for falls back to. It is the same one `/graph`
+ * starts with (`GraphLegend.TASK_GRAPH_HIDDEN_STYLES`): every phase-3 kind hidden, so the modal
+ * stays a task relationship picture. The subgraph traversal already refuses to walk knowledge
+ * edges, so this is the view's own declaration of its scope rather than a second guarantee.
+ */
+const DEFAULT_FILTERS: ReadonlySet<NodeStyle> = new Set(TASK_GRAPH_HIDDEN_STYLES);
 /**
  * Canvas height: as tall as the modal can show without scrolling (the modal tops out at 94vh;
  * header, padding, title row and legend claim ~9.5rem). The width is the modal's own, so the
@@ -103,7 +111,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 	useEffect(() => {
 		onTaskClickRef.current = onTaskClick;
 	}, [onTaskClick]);
-	const filters = hiddenStyles ?? NO_FILTERS;
+	const filters = hiddenStyles ?? DEFAULT_FILTERS;
 
 	useEffect(() => {
 		let cancelled = false;
@@ -204,23 +212,28 @@ export const TaskDependencyGraph: FC<Props> = ({
 		marker.append("path").attr("d", "M 0 0 L 10 5 L 0 10 z").attr("fill", EDGE_STROKE);
 
 		const g = svg.append("g");
+		// The dim level of the focus mode is a custom property so the stylesheet and this constant
+		// cannot drift apart (same mechanism as GraphView).
+		g.style("--graph-focus-fade", `${FOCUS_FADE}`);
 		const edgeSel = g
 			.append("g")
 			.selectAll<SVGLineElement, SimLink>("line")
 			.data(links)
 			.join("line")
+			.attr("class", "graph-edge")
 			.attr("stroke", EDGE_STROKE)
 			.attr("stroke-width", 1)
 			.attr("stroke-dasharray", (d) => EDGE_DASH[d.type] ?? null)
-			.attr("marker-end", (d) => (d.type === "BelongsToMilestone" ? null : "url(#task-relationship-arrow)"))
-			.style("opacity", 0.6);
+			.attr("marker-end", (d) => (d.type === "BelongsToMilestone" ? null : "url(#task-relationship-arrow)"));
 
 		const nodeSel = g
 			.append("g")
 			.selectAll<SVGGElement, SimNode>("g")
 			.data(nodes)
 			.join("g")
-			.attr("cursor", (d) => (d.isRoot ? "default" : "pointer"));
+			.attr("class", "graph-node")
+			// Every node is clickable now: a single click pins the focus, on the root as well.
+			.attr("cursor", "pointer");
 
 		nodeSel
 			.append("circle")
@@ -237,7 +250,8 @@ export const TaskDependencyGraph: FC<Props> = ({
 			.attr("pointer-events", "none")
 			.selectAll<SVGGElement, SimNode>("g")
 			.data(nodes)
-			.join("g");
+			.join("g")
+			.attr("class", "graph-caption");
 		captionSel
 			.append("rect")
 			.attr("fill", plateFill)
@@ -255,6 +269,9 @@ export const TaskDependencyGraph: FC<Props> = ({
 			DependsOn: t.graphView.edgeDependsOn,
 			ParentOf: t.graphView.edgeParentOf,
 			BelongsToMilestone: t.graphView.edgeMilestone,
+			SourcedFrom: t.graphView.edgeSourcedFrom,
+			LinksTo: t.graphView.edgeLinksTo,
+			TaggedWith: t.graphView.edgeTaggedWith,
 		};
 		const edgeLabelSel = g
 			.append("g")
@@ -262,6 +279,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 			.selectAll<SVGTextElement, SimLink>("text")
 			.data(links)
 			.join("text")
+			.attr("class", "graph-relation")
 			.attr("text-anchor", "middle")
 			.attr("fill", EDGE_STROKE)
 			.attr("font-size", EDGE_LABEL_FONT)
@@ -415,9 +433,56 @@ export const TaskDependencyGraph: FC<Props> = ({
 					event.subject.fy = null;
 				}),
 		);
+		// Focus: the click-pinned node and its neighbours stay lit while the rest fades, through the
+		// same stylesheet classes GraphView uses (.graph-dim on the zoom group, .lit on the lit
+		// neighbourhood) - a subgraph is small, but the semantics should read identically.
+		const neighbours = new Map<string, Set<string>>();
+		const touchNeighbour = (id: string, other: string) => {
+			if (!neighbours.has(id)) neighbours.set(id, new Set());
+			neighbours.get(id)?.add(other);
+		};
+		for (const link of links) {
+			touchNeighbour((link.source as SimNode).id, (link.target as SimNode).id);
+			touchNeighbour((link.target as SimNode).id, (link.source as SimNode).id);
+		}
+		let selectedId: string | null = null;
+		const applyStyles = () => {
+			const lit = selectedId ? new Set([selectedId, ...(neighbours.get(selectedId) ?? [])]) : null;
+			nodeSel.classed("lit", (d) => lit?.has(d.id) ?? false);
+			captionSel.classed("lit", (d) => lit?.has(d.id) ?? false);
+			edgeSel.classed("lit", (d) => {
+				if (!lit) return false;
+				return lit.has((d.source as SimNode).id) && lit.has((d.target as SimNode).id);
+			});
+			edgeLabelSel.classed("lit", (d) => {
+				if (!lit) return false;
+				return lit.has((d.source as SimNode).id) && lit.has((d.target as SimNode).id);
+			});
+			g.classed("graph-dim", lit !== null);
+		};
+
 		nodeSel.on("click", (event: MouseEvent, d: SimNode) => {
 			event.stopPropagation();
-			if (!d.isRoot) onTaskClickRef.current(d.id);
+			// A single click only focuses: pin the node's neighbourhood, on the root as well.
+			selectedId = d.id;
+			applyStyles();
+		});
+		nodeSel.on("dblclick", (event: MouseEvent, d: SimNode) => {
+			// Double-click opens: drill into the neighbouring task's own detail view. Kept from
+			// bubbling so the canvas double-click zoom (d3-zoom's own dblclick handling) does not
+			// also fire. The root has nothing to open - it is already on screen.
+			event.stopPropagation();
+			event.preventDefault();
+			if (d.isRoot) return;
+			selectedId = d.id;
+			applyStyles();
+			onTaskClickRef.current(d.id);
+		});
+
+		// A click on the empty canvas releases the pinned focus.
+		svg.on("click", () => {
+			selectedId = null;
+			applyStyles();
 		});
 
 		return () => {
@@ -505,6 +570,11 @@ export const TaskDependencyGraph: FC<Props> = ({
 					role="img"
 					aria-label={t.taskDetails.dependencyGraphTitle}
 				/>
+				{ready && (
+					<div className="pointer-events-none absolute bottom-3 right-3 z-10 rounded-md border border-gray-200 bg-white/80 px-2 py-1 text-[11px] text-gray-500 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-400">
+						{t.graphView.mouseHint}
+					</div>
+				)}
 			</div>
 		</div>
 	);

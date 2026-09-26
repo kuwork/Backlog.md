@@ -1,7 +1,7 @@
 import { closeSync, type FSWatcher, mkdirSync, openSync, readFileSync, unlinkSync, watch, writeSync } from "node:fs";
 import { join } from "node:path";
 import type { Core } from "../core/backlog";
-import type { ParseReports } from "./cold-start";
+import { emptyParseReports, type ParseReports } from "./cold-start";
 import {
 	computeAggregateFingerprint,
 	computeFileHash,
@@ -42,11 +42,21 @@ const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
  * The /api/graph contract, deliberately id-shaped: the Web UI and its subgraph helpers key nodes by
  * task id, while the store's nodes are keyed by file path (doc-014 §1.2). `getPayload` is the one
  * place that translates between the two, so the frontend keeps seeing exactly what it saw before.
+ *
+ * Phase 3 adds one node kind the store does not call a file: `tag` is a Tag node (a virtual
+ * classification node, doc-15 §4), addressed by a prefixed id so it can never collide with one.
  */
+export type GraphNodeKind = GraphKind | "tag";
+
+/** Tag nodes are addressed by a prefixed id so a tag can never collide with a task id. */
+export function tagNodeId(name: string): string {
+	return `tag:${name}`;
+}
+
 export interface GraphPayloadNode {
 	id: string;
 	title: string;
-	kind: GraphKind;
+	kind: GraphNodeKind;
 	status: string;
 	filePath: string;
 }
@@ -120,7 +130,7 @@ export class GraphService {
 	private resyncAfterSync = false;
 	private watchers: FSWatcher[] = [];
 	private reconcileTimer: ReturnType<typeof setInterval> | null = null;
-	private reports: ParseReports = { invalidRelations: [], missingDependencies: [], ambiguousIds: [], warnings: [] };
+	private reports: ParseReports = emptyParseReports();
 	private ready = false;
 	private stopped = false;
 	/** The cache entry this service owns: one database, sidecar and lock per (project, slot). */
@@ -271,33 +281,22 @@ export class GraphService {
 			return; // fingerprint match: nothing to do
 		}
 
-		const warnings: string[] = [];
+		const reports = emptyParseReports();
 		if (previous && this.ready) {
 			// Incremental: diff against the previous cache, apply, rewrite cache.
-			await ensureRecordCache(this.recordCache, scanned, warnings);
+			await ensureRecordCache(this.recordCache, scanned, reports);
 			const changeSet = computeChangeSet(previous.files, nextFiles);
 			if (!changeSetIsEmpty(changeSet)) {
 				const scannedByPath = new Map(scanned.map((f) => [f.relPath, f] as const));
-				const result = await applyChangeSet(store, changeSet, this.recordCache, scannedByPath, warnings);
-				this.reports = {
-					invalidRelations: result.relations.invalidRelations,
-					missingDependencies: result.relations.missingDependencies,
-					ambiguousIds: result.relations.ambiguousIds,
-					warnings,
-				};
+				await applyChangeSet(store, changeSet, this.recordCache, scannedByPath, reports);
 			}
 		} else {
 			// Full rebuild: missing/corrupt cache, parser upgrade, backend switch, or first start.
 			const { buildGraphFromFiles } = await import("./cold-start");
-			const { records, relations } = await buildGraphFromFiles(store, scanned, warnings);
+			const { records } = await buildGraphFromFiles(store, scanned, reports);
 			this.recordCache = RecordCache.from(records);
-			this.reports = {
-				invalidRelations: relations.invalidRelations,
-				missingDependencies: relations.missingDependencies,
-				ambiguousIds: relations.ambiguousIds,
-				warnings,
-			};
 		}
+		this.reports = reports;
 
 		saveMetaCache(metaPath, {
 			parserVersion: PARSER_VERSION,
@@ -326,25 +325,35 @@ export class GraphService {
 				nodeCount: 0,
 			};
 		}
-		const [nodes, edges] = await Promise.all([store.getAllNodes(), store.getAllEdges()]);
+		const [nodes, edges, tags] = await Promise.all([store.getAllNodes(), store.getAllEdges(), store.getAllTags()]);
 		// Translate the store's path-keyed nodes and edges back into the id-keyed payload the Web UI
-		// expects. Ambiguous duplicate ids carry no edges (see relations.ts), so this map is exact
-		// for every endpoint that can appear in one.
-		const idByPath = new Map(nodes.map((node) => [node.path, node.id] as const));
+		// expects. A knowledge file has no id, so its path stands in for one - it is just as unique.
+		const payloadId = (path: string, id: string) => (id.length > 0 ? id : path);
+		const idByPath = new Map(nodes.map((node) => [node.path, payloadId(node.path, node.id)] as const));
 		return {
 			status: "ready",
 			backend: store.backend,
-			nodes: nodes.map((node) => ({
-				id: node.id,
-				title: node.title,
-				kind: node.type,
-				status: node.status,
-				filePath: node.path,
-			})),
+			nodes: [
+				...nodes.map((node) => ({
+					id: payloadId(node.path, node.id),
+					title: node.title,
+					kind: node.type,
+					status: node.status,
+					filePath: node.path,
+				})),
+				...tags.map((name) => ({
+					id: tagNodeId(name),
+					title: name,
+					kind: "tag" as const,
+					status: "",
+					filePath: "",
+				})),
+			],
 			edges: edges.map((edge) => ({
 				type: edge.type,
 				from: idByPath.get(edge.from) ?? edge.from,
-				to: idByPath.get(edge.to) ?? edge.to,
+				// A TaggedWith edge points at a Tag node; every other edge points at a file.
+				to: edge.type === "TaggedWith" ? tagNodeId(edge.to) : (idByPath.get(edge.to) ?? edge.to),
 			})),
 			reports: this.reports,
 			nodeCount: nodes.length,
