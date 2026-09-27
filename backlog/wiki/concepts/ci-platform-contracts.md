@@ -50,7 +50,6 @@ Bun 测试运行器默认 5000ms 超时，在并行负载下会误杀慢速但�
 
 ## Related Sources
 
-- [[sources/draft-89-windows-ci-under-three-minutes]] — draft-89 CI 优化
 - [[sources/back-609-mcp-stdio-test-timeout]] — BACK-609 MCP stdio 测试超时
 - [[sources/back-610-cli-priority-filtering-test-timeouts]] — BACK-610 优先级筛选测试超时
 - [[sources/back-612-content-store-test-stabilization]] — BACK-612 ContentStore 测试稳定化

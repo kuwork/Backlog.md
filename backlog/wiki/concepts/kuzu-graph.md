@@ -2,7 +2,7 @@
 title: Kuzu 任务图谱
 labels: [concept, graph, kuzu]
 created_date: '2026-09-26 14:45'
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-09-26 22:25'
 ---
 
 # Kuzu 任务图谱
@@ -13,7 +13,7 @@ updated_date: '2026-09-26 14:45'
 
 - **FileNode(path PK)**：节点表以项目相对文件路径为主键（BACK-713 由 `Task(id)` 重命名而来），任务 ID 降级为属性；重命名/移动/完成/归档/升降级折叠为一次同 ID 迁移（删旧路径 + 建新路径 + 重建受影响边）
 - **语义边**：`ParentOf` / `BelongsToMilestone` / `DependsOn`（任务层）；知识层（BACK-714，doc-15 阶段 3）新增机械派生边 `TaggedWith`（frontmatter labels → Tag 节点）、`SourcedFrom`（`source_path` 溯源）、`LinksTo`（正文 `[[wikilink]]` 解析，剥离 alias/heading，唯一命中才成边）
-- **Fail-closed 解析**：悬空/歧义引用进入 `missingDependencies` / `ambiguousIds` / `invalidRelations` 报告，绝不静默丢弃；节点始终入图
+- **Fail-closed 解析**：悬空/歧义引用进入 `missingDependencies` / `ambiguousIds` / `invalidRelations` 报告，绝不静默丢弃；节点始终入图（`ambiguousIds` 在 `src/graph/relations.ts` 由 `recordsById` 桶推导：同一 ID 被多条记录占据即入报告）
 - 节点类型仅由白名单目录决定（`wiki/`、`docs/`、`decisions/`），不从 frontmatter 推断；`wiki/index.md` 与 `wiki/log.md` 扫描时排除
 
 ## 后端：MemoryGraphStore 默认
@@ -71,3 +71,8 @@ kuzu 0.11.3 原生绑定在 Bun 1.3.14（Windows）下段错误（BACK-702 实�
 - [[sources/back-711-modal-graph-alignment]] — 模态图对齐与共享 GraphLegend
 - [[sources/back-713-filenode-rename]] — FileNode(path PK) 重命名与自描述版本
 - [[sources/back-714-knowledge-graph-ingest]] — wiki/docs/decisions 入图与 /knowledge 视图
+
+## Related Reasoning
+
+- [[reasoning/kuzu-graph-backend-and-lifecycle]] — 为什么是双后端、为什么主键换成路径、指纹冷启动与三层热更新怎么定下来
+- [[reasoning/knowledge-graph-relations]] — 节点类型由目录决定（而非 frontmatter）、机械派生三边、语义关系为何暂缓

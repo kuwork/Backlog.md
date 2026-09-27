@@ -38,6 +38,5 @@ Pressing the TUI edit key on a draft whose frontmatter status drifted away from 
 
 ## Related Sources
 
-- [[sources/draft-promote-flow-task]] — promote/demote flows that produce status drift
 - [[sources/demote-to-draft-action]] — the demote action whose output rows this fix handles
 - [[sources/back-693-tui-draft-creation-window]] — reuses the entity-noun helper (moved to `entity-noun.ts`) for the create window's wording

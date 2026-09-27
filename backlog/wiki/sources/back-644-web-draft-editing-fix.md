@@ -39,5 +39,4 @@ Editing a draft from the web Drafts page could never be saved: the browser task 
 ## Related Sources
 
 - [[sources/back-642-draft-identity-fail-closed]] — draft finder and 409 ambiguity mapping reused by these handlers
-- [[sources/draft-promote-flow-task]] — drafts page promote action that stays the single promote surface
 - [[sources/back-535-preserve-unsaved-web-drafts]] — web draft state handling in the same UI

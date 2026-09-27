@@ -34,5 +34,5 @@ Classification table for the upstream `v1.50.1..v1.52.0` range (131 commits, 80 
 
 - [[sources/doc-13-upstream-v1-50-1-to-v1-52-0-migration-analysis-by-domain]] — per-item deep analysis companion for every entry in this table
 - [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] — previous round's classification table
-- [[sources/draft-121-bidirectional-dependency-graphs]] — CORE-2, the head of the dependency-graph wave imported as DRAFT#121
-- [[sources/draft-169-biome-check-ci]] — INF-2, the no-task-number commit reconstructed as DRAFT#169
+- CORE-2 heads the dependency-graph wave; it has not yet been promoted to a fork task
+- INF-2 (biome check in CI) carries no upstream task number and was reconstructed from the commit
