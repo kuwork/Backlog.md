@@ -45,4 +45,3 @@ Cross-branch task reads repeatedly fetched, enumerated, indexed, hydrated, and p
 - [[sources/back-601-core-browser-publication-ownership]] — Publication-owner foundation this task depends on.
 - [[sources/back-600-query-tasks-local-fast-path]] — Complementary local-only fast path in queryTasks.
 - [[sources/back-567-cross-branch-task-identity]] — Cross-branch task identity model the incremental loader must preserve.
-- [[sources/draft-125-incremental-cross-branch-task-loading]] — The original upstream task record this port implements.
