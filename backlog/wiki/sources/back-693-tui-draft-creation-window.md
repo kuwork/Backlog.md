@@ -43,4 +43,3 @@ The TUI had no place to create a draft: the board's create key opened the task c
 - [[sources/back-689-tui-task-composer-dates]] — the composer date fields this window inherits
 - [[sources/back-692-tui-edit-file-location-routing]] — source of the `entityNoun` helper the composer reuses
 - [[sources/back-587-repair-tui-task-composer-ux]] — the composer being reused as the draft creation window
-- [[sources/draft-promote-flow-task]] — draft session semantics the created draft joins
