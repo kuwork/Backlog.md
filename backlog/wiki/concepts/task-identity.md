@@ -1,7 +1,7 @@
 ---
 title: 共享任务身份
 created_date: '2026-08-17 23:00'
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-09-26 16:30'
 labels: [concept, core, identity, git]
 ---
 
@@ -68,11 +68,9 @@ labels: [concept, core, identity, git]
 
 Kuzu 图节点表由 `Task(id)` 改为 `FileNode(path PRIMARY KEY, id, ...)`:文件路径是唯一节点身份，任务 ID 降级为属性。改名/完成/降级/归档折叠为一次同 ID 迁移（删旧路径 + 建新路径 + 重建受影响边）；对外 `getPayload` 仍把路径翻译回任务 ID,API 不变（[[sources/back-713-filenode-rename]]）。
 
-## 依赖校验中的身份处理（BACK-707、draft-140、draft-142）
+## 依赖校验中的身份处理（BACK-707/680）
 
-- **canonicalise-but-preserve-stored-spelling**(BACK-707)：可解析候选仍被规范化（`358` → `BACK-358`)，但存量不可解析依赖按其磁盘拼写原样写回（`task-213` 保持 `task-213`)；比较前双方必须同方式规范化，否则容忍逻辑不触发（[[sources/back-707-dependency-gate-cycles]]）。
-- **分配前置自检**(draft-142):`validateDependencies` 在语料解析前先用 `taskIdsEqual` 对 `target.id` 做原始拼写自检，悬挂引用等于即将分配的 promote/demote ID 时 fail-closed;`doctor --fix` 在重名修复后重跑依赖缺陷检测再定退出码（[[sources/draft-142-residual-self-dependency-gaps]]）。
-- **歧义来源内化**(draft-140):`TaskIdentityIndex.getContestedIds()` 报告被多个 live 身份占据的 ID，经 `TaskCorpus.ambiguousIds` 喂给 readiness 与依赖图（[[sources/draft-140-dependency-graph-follow-ups]]）。
+- **canonicalise-but-preserve-stored-spelling**(BACK-707)：可解析候选仍被规范化（`358` → `BACK-358`)，但存量不可解析依赖按其磁盘拼写原样写回（`task-213` 保持 `task-213`)；比较前双方必须同方式规范化，否则容忍逻辑不触发（[[sources/back-707-dependency-gate-cycles]]）。自引用在解析后判出（`taskIdsEqual(resolved, subjectId)` → `SelfDependentTaskError`），依赖缺陷在 `doctor` 里一律按 warning 报告、退出码 0（[[decisions/doctor-dependency-defects-warning-exit-zero]]）。
 - **批量去重**(BACK-680)：批量状态移动以 canonical 身份去重（前导零坍缩、裸数字补默认前缀）,cross-branch 卡片排除在批量写集外，歧义 ID 按任务逐个 fail-closed 报错（[[sources/back-680-batch-status-move]]）。
 
 ## Related Sources
@@ -89,5 +87,3 @@ Kuzu 图节点表由 `Task(id)` 改为 `FileNode(path PRIMARY KEY, id, ...)`:文
 - [[sources/back-680-batch-status-move]] — BACK-680 批量移动的身份去重
 - [[sources/back-707-dependency-gate-cycles]] — BACK-707 依赖写入门禁
 - [[sources/back-713-filenode-rename]] — BACK-713 FileNode path PK 身份拆分
-- [[sources/draft-140-dependency-graph-follow-ups]] — getContestedIds 歧义内化
-- [[sources/draft-142-residual-self-dependency-gaps]] — 分配前置自依赖自检
