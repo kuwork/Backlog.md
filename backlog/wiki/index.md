@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-09-26 15:10'
+updated_date: '2026-09-26 22:25'
 ---
 
 
@@ -38,8 +38,6 @@ Read this file FIRST on any wiki operation.
 | [[sources/wikilink-markdown-preview-fix]] | BACK-482 修复 Wikilink 与 Markdown 相对链接预览 | source |
 | [[sources/sidebar-resize-search-task]] | BACK-483 Web UI 侧边栏调整大小与搜索类型下拉 | source, web-ui, ux |
 | [[sources/web-ui-sort-optimization]] | BACK-484 Web UI 排序优化 | source, web-ui, ui, ux |
-| [[sources/draft-promote-flow-task]] | BACK-485 修复草稿提升流程并统一操作按钮样式 | source, web-ui, drafts, ux |
-| [[sources/draft-filters-task]] | BACK-486 草稿页添加筛选功能 | source, web-ui, drafts, filtering, ux |
 | [[sources/ssl-network-error-fix]] | BACK-487 GitOperations.fetch SSL 网络错误优雅处理 | source, bug, git, network, ssl, error-handling |
 | [[sources/wiki-pasted-images-promote-fix]] | BACK-488 Wiki 粘贴图片保存时 promote 修复 | source, bug, wiki, web-ui, image-handling |
 | [[sources/due-date-fields-task]] | BACK-401 日期字段支持（dueDate / plannedStart / plannedEnd） | source, feature, dates, cli, web-ui, mcp |
@@ -142,7 +140,6 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-569-acceptance-criteria-progress-ui]] | BACK-569 TUI/Web 任务摘要 AC 进度 | source, tui, web-ui, acceptance-criteria |
 | [[sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification]] | doc-7 上游 v1.48.0→v1.49.3 迁移差异分类 | source, doc, migration, upstream |
 | [[sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain]] | doc-8 上游 v1.48.0→v1.49.3 按领域迁移分析 | source, doc, migration, upstream |
-| [[sources/draft-89-windows-ci-under-three-minutes]] | draft-89 Windows CI 压到三分钟以下 | source, draft, ci, testing |
 | [[sources/readme-en-md]] | README.en.md 英文产品概述 | source |
 | [[sources/back-570-wiki-install-hints-cli-banner]] | BACK-570 CLI banner/agent nudge/README 补充 wiki install 指引 | source, cli, agent-guidance, wiki |
 | [[sources/back-571-fail-fast-concurrent-task-edits]] | BACK-571 并发任务编辑 fail-fast 文件锁 | source, migration, concurrency, core, bug |
@@ -203,14 +200,12 @@ Read this file FIRST on any wiki operation.
 | [[sources/doc-16-todo-tasks-vs-upstream-migration-report]] | doc-16 To-Do 任务与三次迁移对照清算 | source, doc, migration, backlog-hygiene |
 | [[sources/m-6-new-milestones-ui]] | m-6 New Milestones UI 里程碑 | source, milestone, milestones, web-ui |
 | [[sources/m-8-agent-cli-workflow]] | m-8 Agent CLI Workflow 里程碑 | source, milestone, cli, agent-workflow |
-| [[sources/draft-92-clear-task-dependencies-cli]] | draft-92 CLI 清除任务依赖（上游 issue #839） | source, draft, cli |
-| [[sources/draft-96-project-name-tui-window-titles]] | draft-96 TUI 窗口标题含项目名（上游 issue #853） | source, draft, tui |
-| [[sources/draft-125-incremental-cross-branch-task-loading]] | draft-125 增量跨分支加载（上游 BACK-624 原始草稿） | source, draft, performance, core |
 | [[sources/back-624-global-search-dialog]] | BACK-624 Web UI 全局 Spotlight 搜索对话框 | source, web-ui, search, routing, modal |
 | [[sources/back-625-ac-progress-json-output]] | BACK-625 任务 JSON 输出返回验收标准进度 | source, cli, json, api-contract |
 | [[sources/back-626-dependabot-mermaid-bump]] | BACK-626 mermaid 安全升级解除 5 个 Dependabot 告警 | source, security, dependencies, build |
 | [[sources/back-627-back-arrow-history-fix]] | BACK-627 修复钻取后返回箭头留下过期历史条目 | source, web-ui, routing, bug |
 | [[sources/back-628-task-hierarchy-section]] | BACK-628 任务模态框显示父任务与子任务 | source, web-ui, task-hierarchy |
+| [[sources/back-629-global-search-dialog-light-theme]] | BACK-629 修复全局搜索对话框不跟随亮色主题 | source, web-ui, theming |
 | [[sources/back-630-board-card-ac-progress-restyle]] | BACK-630 看板卡片 AC 进度重排与样式重构 | source, web-ui |
 | [[sources/back-631-comment-rich-markdown-editor]] | BACK-631 Web 评论输入换成富 Markdown 编辑器 | source, web-ui, comments |
 | [[sources/back-632-decision-image-promotion]] | BACK-632 决策保存时 promote 粘贴图片 | source, web-ui, decisions |
@@ -303,12 +298,6 @@ Read this file FIRST on any wiki operation.
 | [[sources/m-9-kuzu-task-graph-phase-1]] | m-9 Kuzu Task Graph Phase 1 里程碑 | source, milestone, kuzu, graph |
 | [[sources/doc-002-configuring-vim-neovim-default-editor]] | doc-002 配置 VIM/Neovim 为默认编辑器 | source, doc, config |
 | [[sources/doc-003-running-backlog-browser-as-a-service]] | doc-003 将 backlog browser 作为服务运行 | source, doc, ops |
-| [[sources/draft-121-bidirectional-dependency-graphs]] | draft-121 任务详情暴露双向依赖图 | source, draft, dependencies |
-| [[sources/draft-130-project-task-attribute-monorepo]] | draft-130 monorepo backlog 项目任务属性 | source, draft |
-| [[sources/draft-135-reject-self-referential-cyclic-dependencies]] | draft-135 拒绝自引用与循环任务依赖 | source, draft, dependencies |
-| [[sources/draft-140-dependency-graph-follow-ups]] | draft-140 BACK-548 评审的依赖图跟进项 | source, draft, dependencies |
-| [[sources/draft-142-residual-self-dependency-gaps]] | draft-142 BACK-656 评审遗留自依赖缺口 | source, draft, dependencies |
-| [[sources/draft-169-biome-check-ci]] | draft-169 CI 增加 biome check 并修复 task-composer 格式漂移 | source, draft, ci |
 
 ## Execution Notes
 
@@ -479,6 +468,8 @@ Read this file FIRST on any wiki operation.
 | [[reasoning/back-491-smart-gantt-view]] | BACK-491 甘特图视图规划痕迹 | 问题分解、方案对比（外部库 vs 自研）、关键设计决策与风险缓解 |
 | [[reasoning/tracking-gantt-design]] | BACK-495 跟踪甘特图设计推理 | 双层叠加 vs 切换模式 vs 并列条、视觉设计决策与子任务拆分 |
 | [[reasoning/back-624-global-search-dialog]] | BACK-624 全局搜索对话框设计推理 | PRD 到 Router 语义的适配、六项方案对比、风险与缓解 |
+| [[reasoning/kuzu-graph-backend-and-lifecycle]] | Kuzu 图谱后端、生命周期与存储治理设计推理 | 双后端、FileNode 路径主键、指纹冷启动、三层热更新、自描述版本与 slot 缓存/锁 |
+| [[reasoning/knowledge-graph-relations]] | 知识图谱关系模型设计推理（doc-15 / BACK-714） | 类型来源反转（frontmatter → 目录决定）、机械派生三边、语义关系暂缓、两视图与 caption 宽度 |
 
 ## Retrospectives
 
