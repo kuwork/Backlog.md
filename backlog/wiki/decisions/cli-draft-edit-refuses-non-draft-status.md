@@ -25,4 +25,3 @@ CLI 的 `--status` 只接受 Draft，其他值被拒并指向 `backlog draft pro
 
 - [[sources/back-683-cli-draft-edit]] — 本决策的落地
 - [[sources/back-644-web-draft-editing-fix]] — web/MCP 侧的相反取舍
-- [[sources/draft-promote-flow-task]] — 显式提升入口

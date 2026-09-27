@@ -42,4 +42,4 @@ The server's cross-branch indexing phase line was rendered verbatim in four plac
 
 - [[sources/back-669-initial-loading-skeleton]] — direct follow-up covering the pre-first-load surfaces (batch sibling)
 - [[sources/back-670-loading-motion-reduce-removal]] — follow-up removing the motion-reduce escapes from this chip (batch sibling)
-- [[sources/draft-125-incremental-cross-branch-task-loading]] — the cross-branch loading feature whose progress this displays
+- [[sources/back-602-incremental-cross-branch-task-loading]] — the cross-branch loading feature whose progress this displays
