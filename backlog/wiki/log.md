@@ -848,3 +848,67 @@ Chronological, append-only record of all wiki operations.
 **判定无需文档化**: 纯内部实现（BACK-701 测试基建、643/649/650/653/655/685/686/699 内部重构、712 wiki lint 指引）；行为纠正类修复（706 使实际行为与既有文档一致）。
 
 **重新生成**: `wiki_output/用户手册/manual.md`（merge.py；4557 → 4951 行）。
+
+## [2026-09-26 16:30:00] source-ingest | 补录 BACK-629，并更正 14:50 波次的「数据异常记录」
+
+**更正对象**：14:50 batch-ingest 条目末尾的「BACK-629/671 不存在（ID 跳号）」。
+
+**更正结论**：
+- **BACK-629 不是跳号，是漏摄取**：`backlog/tasks/back-629 - Fix-global-search-dialog-not-following-the-light-theme.md` 存在，`status: Done`，created 2026-09-14 03:30 —— 在检测基线 2026-09-13 01:12 之后，属本波范围。任务聚焦 BACK-624 全局搜索对话框的 dark-first 配色（无亮色对应项、无 `dark:` 变体），逐项改写为 light + `dark:` 对。
+- **BACK-671 才是真正的 ID 跳号**：`backlog/tasks/` 下 670 之后直接是 672。
+
+**补录动作**：
+- 新建 `sources/back-629-global-search-dialog-light-theme`（source_path 已核对存在），`index.md` Sources 表增 1 条
+- `overview.md` 统计：Sources ingested 294 → 295；**Reports generated 7 → 10**（`wiki_output/reports/` 实际 10 份，该数字此前未随报告产出更新）
+- 用户手册未新增章节：BACK-629 恢复的是「对话框跟随主题」这一既有文档描述的行为（与 40-Web界面/10-全局搜索 一致），属行为纠正类，无需新增说明
+
+**复核结果（本波摄取的事实性抽查）**：
+- 600+ 任务与 source 页面一一对应，除 629 外无缺失；无 source 页面指向不存在的任务文件
+- 294→295 个 source 页面的 `source_path` 复扫：失效仍为 6 条（4 条源已删除 + 2 条人工判定，均为有意保留），新增页面全部可解析
+- 全量 wikilink 扫描（剔除代码围栏与行内反引号）：**0 死链**；新增的 1 concept / 16 decision / 4 execution 页面交叉引用目标均存在
+- 抽样核对通过：`SCHEMA_VERSION 2` / `PARSER_VERSION 3`、150ms 防抖 + 5 分钟对账、`backlog-graph-<sha256-16>.kuzu` 命名、`BACKLOG_GRAPH_BACKEND`/`BACKLOG_GRAPH_CACHE_DIR`、`EDGE_DASH` 三态、`draftIdentityKey`/`isReservedTaskPrefix`/`compareTaskIds`/`installCloseConnectionFetch`/`BACKLOG_CWD` 等符号均与实际代码一致；`backlog doctor` 实测悬空引用 78 条、退出码 0，与 decisions/doctor-dependency-defects-warning-exit-zero 的描述吻合
+
+**遗留未修（非本次引入）**：`overview` 仍是无入链孤儿页；`usermanual/SUMMARY.md` 无 frontmatter；41 页缺 `updated_date`；`m-7 - ganttview` 里程碑尚无 source 页面（历史欠账，非本波范围）。
+
+## [2026-09-26 20:50:00] source-remove | 移除全部 12 个 draft source 页面（用户裁决：wiki 不收录草稿内容）
+
+**规则变更**：wiki 只收录已落地事实（tasks / docs / decisions / milestones / 顶层文档），`backlog/drafts/` 下的草稿**一律不摄为 source 页面**。理由：草稿是未落地的上游提案或待办想法，写进 wiki 会被读成既成事实 —— 典型如 `TaskIdentityIndex.getContestedIds()`、`TaskCorpus.ambiguousIds`、promote/demote 的「解析前置自检」三者在 fork 代码中均不存在，却曾被写进 `concepts/task-identity` 的现状描述。此前各波摄取草稿属既有惯例，本次起作废。
+
+**删除清单**（12 个）：`draft-89`、`draft-92`、`draft-96`、`draft-125`、`draft-121`、`draft-130`、`draft-135`、`draft-140`、`draft-142`、`draft-169`、`draft-filters-task`、`draft-promote-flow-task`。
+
+**副作用一併解决**：`draft-92/96/125` 属 `source_path` 失效里的「源已删除」类（草稿文件在 `d236aac6` 合并批次与 `4a417d7a` 中被删），此前按"依约定保留页面"维持。本次随新规则删除后，失效总数由 **6 → 3**（余 `config-docs` 目录表达式、`doc-16` 源已删、`tracking-gantt-design-doc` ID 复用）。
+
+**反向引用处理**（能映射则映射，不能则整条移除）：
+
+| 引用方 | 原指向 | 处置 |
+|---|---|---|
+| `sources/back-668-branch-indexing-header-chip` | draft-125 | 改引 `sources/back-602` |
+| `sources/back-602-incremental-cross-branch-task-loading` | draft-125（自述原始上游记录） | 移除；正文已写明 ported upstream BACK-624 |
+| `concepts/ci-platform-contracts` | draft-89 | 移除（CI 事实由 BACK-609/610/612/605 承载） |
+| `concepts/web-ui-features` | draft-filters-task | 移除 |
+| `decisions/cli-draft-edit-refuses-non-draft-status` | draft-promote-flow-task | 移除（`draft promote` 命令事实写在正文 Rejected alternatives） |
+| `sources/back-644`、`back-692`、`back-693`、`smart-gantt-view-task` | draft-promote-flow-task | 移除 |
+| `sources/doc-12-upstream-v1-50-1-to-v1-52-0-migration-diff-classification` | draft-121 / draft-169 | 改为不带链接的台账状态描述：CORE-2 尚未提升为 fork 任务；INF-2 无上游任务号、由 commit 复原 |
+
+**正文清理**：`concepts/task-identity` 删除 draft-140/142 两条（连同上一条 correction 加的「未迁移」标注一并移除 —— 标注不是解法，不收录才是）；其中仍有价值的 fork 事实改写到该留的地方：`src/graph/relations.ts` 由 `recordsById` 桶推导 `ambiguousIds` 补进 `concepts/kuzu-graph` 的 fail-closed 条目，自引用在解析后判出、`doctor` 依赖缺陷退出码 0 并入 BACK-707 条目自身。
+
+**同步**:`index.md` 移除 12 条 Sources 行；`overview.md` Sources 295 → 283，三处 draft 指涉改写为落地任务编号（BACK-539/605、BACK-577/591/602）；`log.md` 历史条目不动（append-only）。
+
+**复验**（`tmp/wiki-ingest-audit.py`）：source_path 失效 3（有意保留）、wikilink 死链 0、600+ 任务与 source 页一一对应、未登记页 3（index/log/overview）、overview 统计漂移 0。
+
+## [2026-09-26 22:25:00] reasoning-extract | 新增 2 页推理脉络：Kuzu 后端/生命周期、知识图谱关系模型
+
+**推翻 14:50 的判断**：当时写「BACK-702~714 图谱系列由 doc-14/15 设计文档承载推理，无需另建」。该判断不成立 —— doc-14/15 是**写给实现者的规范**（DDL、建边规则、校验清单），不承载"为什么这样选"；真正带实测反转的取舍此前只存在于任务 Implementation Notes 里，wiki 查不到。
+
+**新 reasoning 页面**:2 个
+- `reasoning/kuzu-graph-backend-and-lifecycle` — 11 项方案对比：双后端 vs 单 kuzu（实测 SEGFAULT 否决后者）、`Task(id)` PK vs `FileNode(path PK)`、冷启动判据（全量重算 / 内容哈希 / size+mtime 边车）、notify 钩子 vs watcher vs 轮询三层、SSE vs 既有 WebSocket、项目树内 vs OS 缓存 slot、迁移脚本 vs 自描述版本；含 4 条「计划 vs 落地」偏离
+- `reasoning/knowledge-graph-relations` — 节点类型来源的**反转**（计划：frontmatter `type` 且禁止按目录推断；落地：白名单目录决定，硬理由为 `serializeDocument`/`serializeDecision` 只序列化固定键会静默抹掉自定义 frontmatter）、Tag 节点 vs 并行字段、`source_path` 两类解析、wikilink 两级基准与唯一命中才成边、语义 `relations` 暂缓（无消费者）、同 payload 两视图与 caption 按估算宽度截断
+
+**与既有页面的分工**：16 个 decision 页记单点结论，reasoning 记完整推导链，两者互链不重叠；`concepts/kuzu-graph` 新增 Related Reasoning 双向入口。
+
+**同步**:`index.md` Reasoning 段 +2 行；`overview.md` Reasoning traces 3 → 5。
+
+**遗留（写作过程中发现，未修）**:
+- `doc-15` 仍停留在 frontmatter `file_type` 版，与实现（目录决定）**相反**；属 `backlog/docs/` 正式文档，须经 Core/CLI 改，已列入待办待用户确认
+- 代码注释 3 处过时仍写 frontmatter：`fingerprint.ts:28`、`import.ts:21`、`incremental.ts:88`
+- `backlog/wiki/usermanual/` 下新出现 `package.json` + `node_modules`（22:04，非本 agent 所为）：虽被 `.gitignore` 忽略，但 **wiki 扫描与图谱 scanner 会递归 `wiki/` 目录**，381 个第三方 md 会被当成 wiki 节点入图，建议移除或迁出 `wiki/` 根目录
