@@ -80,4 +80,3 @@ source_path: backlog/tasks/back-491 - Add-smart-Gantt-View.md
 ## Related Sources
 
 - [[sources/due-date-fields-task]] — 日期字段支持（plannedStart / plannedEnd）
-- [[sources/draft-promote-flow-task]] — 任务详情模态框复用

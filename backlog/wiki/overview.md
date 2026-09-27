@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-09-26 15:10'
+updated_date: '2026-09-26 22:25'
 ---
 
 # Knowledge Base Overview
@@ -93,7 +93,7 @@ updated_date: '2026-09-26 15:10'
 - **验收标准进度条**：TUI/Web 任务摘要显示 `[██████░░░░] 4/7` 式进度（BACK-569）
 - **Cursor AGENTS.md 清理**：移除 `.cursorrules` 特判与 `CURSOR_GUIDELINES`，Cursor 统一映射到 `AGENTS.md`（BACK-410）
 - **sequences 保留与 CLI 文档补齐**：上游已移除 sequences，fork 保留并补充 `backlog instructions overview` Quick Reference（BACK-554）
-- **CI 平台契约**：Windows CI 从 ~16m 压到 ~2m，Ubuntu 全量 + Windows/macOS 平台契约子集（draft-89）
+- **CI 平台契约**：Windows CI 从 ~16m 压到 ~2m，Ubuntu 全量 + Windows/macOS 平台契约子集（BACK-539/605/610）
 
 ### 上游迁移（v1.47.1 .. v1.48.0）
 - **doc-4 差异分类**：上游 39 项变更按 A/B/C 分类，映射到 fork 迁移任务（BACK-538/537/533/540/534/535/536/550/548/541/542/551/552/549/553/543/544/546）
@@ -101,13 +101,13 @@ updated_date: '2026-09-26 15:10'
 - **doc-6 B 类分析**：B1 路由、B9 dateFormat、B2 自定义优先级决策跳过；B8 draft 链接勘误
 
 ### 上游迁移（v1.48.0 .. v1.49.3）
-- **doc-7 差异分类**：按 CLI/Core、TUI、Web、Server、Infra、Nix 领域分组，最终 13 A / 5 B / 10 C，映射到 BACK-562/567/561/560/556/558/559/555/563/565/557/566/569 与 draft-89
+- **doc-7 差异分类**：按 CLI/Core、TUI、Web、Server、Infra、Nix 领域分组，最终 13 A / 5 B / 10 C，映射到 BACK-562/567/561/560/556/558/559/555/563/565/557/566/569 与 CI/平台项（BACK-539/605）
 - **doc-8 领域分析**：逐项给出上游任务核心目的、变更文件、与 fork 定制冲突风险、可复用部分、需排除部分、迁移建议（①直接复用 / ②参考重写 / ③忽略）
 
 ### 上游迁移（v1.49.3 .. v1.50.1）— 第三波，已完成
 - **doc-9 差异分类**：87 commits / 44 组，最终 17 A / 9 B / 7 C，含七波迁移顺序与 B16 两阶段方案
 - **doc-10 领域分析**：CLI-1~13 / TUI-1~8 / WEB-1~4 / SVR-1~2 / CI-1 逐条深度分析（六维度法 + file:line 证据）
-- **draft 导入**：draft-92（上游 issue #839 → BACK-577）、draft-96（上游 issue #853 → BACK-591）、draft-125（上游 BACK-624 → BACK-602）
+- **上游任务转写**：上游 issue #839 → BACK-577（CLI 清除依赖）、issue #853 → BACK-591（TUI 窗口标题带项目名）、上游 BACK-624 原始记录 → BACK-602（增量跨分支加载）
 - **BACK-570~623 全部落地**（54 个任务，全部 Done）：迁移标志性结构为 AC #1 固定 "git log --grep / git show 审查上游变更"，收尾固定 tsc / biome / scoped tests 三段式；与上游刻意分叉点记录在 doc-10 CLI-4（BACK-577 emptyClears 语义）
 - **doc-16 To-Do 清算**：42 个 To-Do 任务与三次迁移波对照（13 归档实现、2 决策跳过、4 部分实现、25 未实现，全部经 src/ grep 实证），形成"分类→分析→导入→落地→清算"的完整迁移闭环
 - **波后增量（BACK-624~628，2026-09-11~12）**：全局搜索对话框（BACK-624）、任务 JSON 验收标准进度（BACK-625）、mermaid 安全升级（BACK-626）、返回箭头历史条目修复（BACK-627）、模态框父子层级区块（BACK-628）
@@ -174,13 +174,13 @@ updated_date: '2026-09-26 15:10'
 
 ## 统计
 
-- Sources ingested: 294
+- Sources ingested: 283
 - Concepts extracted: 34
 - Entities catalogued: 2
 - Execution notes: 24
 - Decisions recorded: 71
 - Patterns: 6
-- Reasoning traces: 3
+- Reasoning traces: 5
 - Retrospectives: 1
 - User manual pages: 34
-- Reports generated: 7
+- Reports generated: 10
