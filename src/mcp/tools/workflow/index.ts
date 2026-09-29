@@ -1,3 +1,4 @@
+import { composeGuideTextWithProject } from "../../../core/state-machine-guidance.ts";
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
@@ -35,7 +36,7 @@ function getToolPayload(key: WorkflowGuideKey): WorkflowGuideDefinition {
 	return overviewGuide;
 }
 
-function createWorkflowTool(): McpToolHandler {
+function createWorkflowTool(server: McpServer): McpToolHandler {
 	type WorkflowInstructionsInput = {
 		instruction?: WorkflowGuideKey;
 	};
@@ -51,7 +52,9 @@ function createWorkflowTool(): McpToolHandler {
 		workflowInstructionsSchema,
 		async (input: WorkflowInstructionsInput) => {
 			const guide = getToolPayload(input.instruction ?? "overview");
-			const toolText = guide.toolText ?? guide.resourceText;
+			// The overview is assembled per call so the AI sees the project's current state machine,
+			// not the shipped static text (doc-19 FR-8).
+			const toolText = await composeGuideTextWithProject(guide.toolText ?? guide.resourceText, server.filesystem);
 
 			return {
 				content: [
@@ -74,5 +77,5 @@ function createWorkflowTool(): McpToolHandler {
 }
 
 export function registerWorkflowTools(server: McpServer): void {
-	server.addTool(createWorkflowTool());
+	server.addTool(createWorkflowTool(server));
 }

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -8,6 +9,7 @@ import {
 	CLI_AGENT_NUDGE,
 	ensureMcpGuidelines,
 	README_GUIDELINES,
+	refreshStateMachineInAgentInstructions,
 } from "../index.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
@@ -262,5 +264,74 @@ describe("addAgentInstructions", () => {
 		expect(updated).not.toContain("<!-- BACKLOG.MD MCP GUIDELINES START -->");
 		expect(updated).not.toContain("<!-- BACKLOG.MD MCP GUIDELINES END -->");
 		expect(updated).toContain("Header");
+	});
+});
+
+describe("the injected state machine block", () => {
+	beforeEach(async () => {
+		TEST_DIR = createUniqueTestDir("test-agent-state-machine");
+		await rm(TEST_DIR, { recursive: true, force: true }).catch(() => {});
+		await mkdir(TEST_DIR, { recursive: true });
+	});
+
+	afterEach(async () => {
+		try {
+			await safeCleanup(TEST_DIR);
+		} catch {
+			// Ignore cleanup errors - the unique directory names prevent conflicts
+		}
+	});
+
+	const START = "<!-- BACKLOG.MD STATE MACHINE START -->";
+	const END = "<!-- BACKLOG.MD STATE MACHINE END -->";
+	const agentsPath = () => join(TEST_DIR, "AGENTS.md");
+	const countBlocks = (text: string) => text.split(START).length - 1;
+
+	it("injects the rendered machine and stays idempotent across runs", async () => {
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"], false, "## This project's state machine\n\nFIRST\n");
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"], false, "## This project's state machine\n\nFIRST\n");
+		const text = await Bun.file(agentsPath()).text();
+
+		expect(countBlocks(text)).toBe(1);
+		expect(text.split(END).length - 1).toBe(1);
+		expect(text).toContain("FIRST");
+		// The guidelines block still comes first; the machine sits right after it.
+		expect(text.indexOf("BACKLOG.MD GUIDELINES END")).toBeLessThan(text.indexOf(START));
+	});
+
+	it("replaces a stale block when the machine changed", async () => {
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"], false, "## machine\n\nOLD\n");
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"], false, "## machine\n\nNEW\n");
+		const text = await Bun.file(agentsPath()).text();
+
+		expect(countBlocks(text)).toBe(1);
+		expect(text).toContain("NEW");
+		expect(text).not.toContain("OLD");
+	});
+
+	it("removes a stale block when no machine is supplied", async () => {
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"], false, "## machine\n\nSTALE\n");
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"]);
+		const text = await Bun.file(agentsPath()).text();
+
+		expect(countBlocks(text)).toBe(0);
+		expect(text).not.toContain("STALE");
+		expect(text).toContain("BACKLOG.MD GUIDELINES START");
+	});
+
+	it("refreshes existing files only, and never on an untouched file", async () => {
+		await addAgentInstructions(TEST_DIR, undefined, ["AGENTS.md"], false, "## machine\n\nOLD\n");
+		await Bun.write(join(TEST_DIR, "GEMINI.md"), "# My own notes\n");
+
+		const results = await refreshStateMachineInAgentInstructions(TEST_DIR, "## machine\n\nNEW\n");
+
+		expect(await Bun.file(agentsPath()).text()).toContain("NEW");
+		expect(await Bun.file(join(TEST_DIR, "GEMINI.md")).text()).toBe("# My own notes\n");
+		expect(results.map((result) => [result.fileName, result.action])).toEqual([["AGENTS.md", "updated"]]);
+	});
+
+	it("does not create an instruction file just because the machine changed", async () => {
+		await refreshStateMachineInAgentInstructions(TEST_DIR, "## machine\n\nNEW\n");
+		expect(existsSync(join(TEST_DIR, "CLAUDE.md"))).toBe(false);
 	});
 });

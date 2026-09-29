@@ -2,6 +2,7 @@ import { mkdir, readdir, rename, stat, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
+import type { StatusesInspection, StatusesRejection } from "../core/state-machine.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import { parseDecision, parseDocument, parseMarkdown, parseMilestone, parseTask } from "../markdown/parser.ts";
 import { serializeDecision, serializeDocument, serializeMilestone, serializeTask } from "../markdown/serializer.ts";
@@ -196,6 +197,81 @@ function parseStatusesConfig(content: string, fallback: string[] | undefined): S
 		// Not valid YAML; the caller falls back to the line-based parse.
 	}
 	return fallback;
+}
+
+/** Why {@link parseStatusEntry} would drop this item, in words a reader can act on. */
+function statusEntryRejectionReason(item: unknown): string {
+	if (typeof item === "string") return "an empty status name";
+	if (typeof item !== "object" || item === null) return "not a string, and not an object with a `name`";
+	const raw = item as Record<string, unknown>;
+	if (typeof raw.name !== "string" || raw.name.trim().length === 0) return "missing or empty `name`";
+	return "an entry the reader could not use";
+}
+
+/**
+ * Read `statuses` out of a config text **and** report what the parser had to reject.
+ *
+ * {@link parseStatusesConfig} cannot report this: it filters malformed entries out before
+ * returning, so a dropped status - or a transition that lost its `to` - is invisible to everything
+ * downstream, including `StateMachine.validate`, which only ever sees the survivors. This function
+ * is the one place where the declared-vs-accepted comparison is still possible, which is what lets
+ * the AI guidance announce a broken block instead of quietly rendering a smaller machine.
+ */
+export function inspectStatusesText(configText: string): StatusesInspection {
+	const rejected: StatusesRejection[] = [];
+	const fallbackLabel = `the built-in defaults (${DEFAULT_STATUSES.join(" / ")})`;
+	// Every reader falls back to DEFAULT_STATUSES when the block yields nothing, so the guidance
+	// renders that list rather than an empty machine: the AI should see the columns actually in use.
+	const fallbackStatuses = [...DEFAULT_STATUSES];
+	try {
+		const { data } = parseFrontmatter(`---\n${configText.trimEnd()}\n---\n`);
+		if (!Array.isArray(data.statuses)) {
+			return {
+				statuses: fallbackStatuses,
+				diagnostics: { declared: 0, accepted: 0, rejected, fallback: fallbackLabel },
+			};
+		}
+
+		const declared = data.statuses.length;
+		const accepted: StatusesConfig = [];
+		let index = -1;
+		for (const item of data.statuses) {
+			index += 1;
+			const parsed = parseStatusEntry(item);
+			if (parsed === undefined) {
+				rejected.push({ index, scope: "status", reason: statusEntryRejectionReason(item) });
+				continue;
+			}
+			accepted.push(parsed);
+
+			// An entry can survive while losing transitions: a `next` item without a `to` is dropped
+			// inside parseStatusEntry, so count those separately.
+			const rawNext = typeof item === "object" && item !== null ? (item as Record<string, unknown>).next : undefined;
+			if (!Array.isArray(rawNext)) continue;
+			const statusName = typeof parsed === "string" ? parsed : parsed.name;
+			for (const rawTransition of rawNext) {
+				const candidate = rawTransition as Record<string, unknown> | null;
+				const target = typeof candidate === "object" && candidate !== null ? candidate.to : undefined;
+				if (typeof target !== "string" || target.trim().length === 0) {
+					rejected.push({ index, scope: "transition", status: statusName, reason: "a transition with no `to`" });
+				}
+			}
+		}
+
+		if (accepted.length === 0) {
+			return {
+				statuses: fallbackStatuses,
+				diagnostics: { declared, accepted: 0, rejected, fallback: fallbackLabel },
+			};
+		}
+		return { statuses: accepted, diagnostics: { declared, accepted: accepted.length, rejected } };
+	} catch {
+		// The whole document is unreadable as YAML, so entries cannot even be counted.
+		return {
+			statuses: fallbackStatuses,
+			diagnostics: { declared: 0, accepted: 0, rejected, fallback: fallbackLabel, unreadable: true },
+		};
+	}
 }
 
 function yamlScalar(value: string): string {
@@ -1932,6 +2008,24 @@ export class FileSystem {
 		await Bun.write(configPath, content);
 		this.cachedConfig = normalizedConfig;
 		this.cachedConfigContent = { path: configPath, content };
+	}
+
+	/**
+	 * Read `statuses` straight from disk, with what the parser had to reject.
+	 *
+	 * Deliberately uncached and side-effect free: {@link loadConfig} answers from a cache and hands
+	 * back an already-filtered array, so it can never show that a block is broken. Failing to read
+	 * the file is reported as a broken block, never thrown - the caller is the AI guidance, and
+	 * losing that guidance is worse than losing fidelity (doc-19 FR-8).
+	 */
+	async inspectStatuses(): Promise<StatusesInspection> {
+		try {
+			const file = Bun.file(this.resolvedConfigPath);
+			if (!(await file.exists())) return inspectStatusesText("");
+			return inspectStatusesText(await file.text());
+		} catch {
+			return inspectStatusesText("");
+		}
 	}
 
 	// Utility methods

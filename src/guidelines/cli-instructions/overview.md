@@ -31,9 +31,56 @@ Search and read before changing anything. On the first interaction of a new sess
 
 Use the output of these commands when creating tasks, choosing default assignees/statuses, or interpreting user requests. Do not guess project configuration values.
 
-**Pay special attention to statuses:** read the configured `statuses` and `defaultStatus` from `backlog config list --plain`. The default initialization uses `statuses: [To Do, In Progress, Done]` and `defaultStatus: To Do`, but projects can customize these. Do not assume the defaults. When setting or validating a task status, ensure the value is one of the configured `statuses`.
+## The Project Status Machine (`backlog/config.yml` -> `statuses`)
 
-**Validate defaultStatus:** `defaultStatus` must be a member of `statuses`. If it is not, warn the user and ask them to either add it to `statuses` or choose a different `defaultStatus`.
+`statuses` **is** the project's state machine: the columns a task can occupy and, optionally, the moves declared between them. Read the configured `statuses` and `defaultStatus` (with `backlog config list --plain`) before you set a task's status: a new project starts from the seven-column machine below, but projects customize or replace that list, so never assume `To Do / In Progress / Done`.
+
+**`defaultStatus`** must be one of the configured `statuses`. If it is not, warn the user and ask them to either add it to `statuses` or choose a different `defaultStatus`.
+
+**Object form.** Each entry is an object:
+
+```yaml
+statuses:
+  - name: "To Do"            # the column label; the only required field
+    category: active         # initial | active | wip | blocked | done | dropped
+    exit: complete           # terminal statuses only: complete | archive
+    display: false           # false hides the board column (the status still exists)
+    next:                    # optional; the declared moves out of this status
+      - to: "Planning"       # required on every transition
+        when: "why this move happens"   # human-readable trigger
+        ai: allowed          # allowed | allowed_if | propose | forbidden
+        if: "condition text" # required when ai: allowed_if
+        requires: "..."      # machine-checkable precondition
+        evidence: "..."      # what must exist before the move
+```
+
+- `category` decides behaviour: `done` / `dropped` are terminal (reaching one stamps the end date), `wip` and `blocked` are work in flight, `initial` is the start.
+- `ai` says who may make the move: `allowed` (the AI may move on its own), `allowed_if` (only while `if` holds), `propose` (propose the move and wait for a human), `forbidden` (only a human may move).
+- `display: false` keeps a status working while hiding its board column.
+- `next` absent means no transitions are declared for that status.
+
+**Legacy form.** A plain string array is still valid and means the project declares no transitions:
+
+```yaml
+statuses: ["To Do", "In Progress", "Done"]
+```
+
+The last entry is treated as terminal, and a name that normalises to `inprogress` is `wip`; everything else is `active`.
+
+**Changing it on request.** Write the **whole** `statuses` array back and never drop a field you did not mean to change — `category`, `exit`, `display` and every `next` entry must survive. There is no `backlog config set statuses` command (the CLI refuses to set `statuses` directly on purpose), so object-form edits go through the settings page editor (`backlog browser` -> Settings -> state machine) or the config file itself. Ask before restructuring a machine, and never set a task to a status the config does not declare.
+
+**Using the machine.** Everything above describes the *format*. The block right below is *this* project's machine, rendered from `backlog/config.yml`, and it outranks any status list you remember from elsewhere or from the defaults. To move a task:
+
+1. Read its current `status` (`backlog task view <id> --plain`).
+2. Look that status up in the block below and read its `next` list - those edges are the only transitions declared out of it.
+3. Pick the edge whose `when` describes what actually happened. If none fits, do not move the task: say why and leave the status alone.
+4. Obey the edge's `ai` before acting. `forbidden`: only a human may make this move - ask and wait. `propose`: propose it and wait for confirmation. `allowed_if`: the edge's `if` must hold, and `requires` must be satisfiable, before you move. `allowed`: you may make the move yourself.
+5. Satisfy `evidence` first when the edge names something (a written comment, a filled field), then write the new status with `backlog task edit <id> -s "<target>"`.
+6. The block's "Stop and wait for a human" section collects every edge you may not take alone - never move along one without an explicit human answer.
+
+If the block says the project declares no transitions (a plain string array), there is no edge list to consult: a task may move between any pair of non-terminal statuses, so use the status the user asked for. Never set a status the machine does not list.
+
+{{STATE_MACHINE}}
 
 ### Detailed Guides
 

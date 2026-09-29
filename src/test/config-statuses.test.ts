@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { FileSystem } from "../file-system/operations.ts";
+import { statusNames } from "../core/state-machine.ts";
+import { FileSystem, inspectStatusesText } from "../file-system/operations.ts";
 import type { BacklogConfig } from "../types/index.ts";
 import { createUniqueTestDir } from "./test-utils.ts";
 
@@ -147,5 +148,58 @@ describe("config.yml statuses — object form (FR-7 R2 / R4)", () => {
 		const raw = await readFile(join(testDir, "backlog", "config.yml"), "utf8");
 		expect(raw).toContain("display: false");
 		expect(raw).not.toContain("display: true");
+	});
+});
+
+describe("inspectStatusesText — a dropped entry must not be invisible", () => {
+	it("reports a clean block as fully accepted", () => {
+		const inspection = inspectStatusesText(OBJECT_FORM);
+
+		expect(inspection.diagnostics).toEqual({ declared: 4, accepted: 4, rejected: [] });
+		expect(statusNames(inspection.statuses)).toEqual(["To Do", "Planning", "Plan Review", "Dropped"]);
+	});
+
+	it("leaves a plain string array alone", () => {
+		const inspection = inspectStatusesText(STRING_FORM);
+
+		expect(inspection.diagnostics).toEqual({ declared: 3, accepted: 3, rejected: [] });
+		expect(inspection.statuses).toEqual(["To Do", "In Progress", "Done"]);
+	});
+
+	it("names an entry the parser had to drop, instead of quietly returning one status fewer", () => {
+		const inspection = inspectStatusesText('statuses:\n  - name: "To Do"\n  - category: active\n');
+
+		expect(inspection.diagnostics.declared).toBe(2);
+		expect(inspection.diagnostics.accepted).toBe(1);
+		expect(inspection.diagnostics.rejected).toEqual([{ index: 1, scope: "status", reason: "missing or empty `name`" }]);
+		expect(statusNames(inspection.statuses)).toEqual(["To Do"]);
+	});
+
+	it("reports a transition that lost its target while keeping the status", () => {
+		const inspection = inspectStatusesText(
+			'statuses:\n  - name: "To Do"\n    next:\n      - to: Done\n      - when: "no target"\n  - name: "Done"\n',
+		);
+
+		expect(inspection.diagnostics.accepted).toBe(2);
+		expect(inspection.diagnostics.rejected).toEqual([
+			{ index: 0, scope: "transition", status: "To Do", reason: "a transition with no `to`" },
+		]);
+		expect(inspection.statuses?.[0]).toEqual({ name: "To Do", next: [{ to: "Done" }] });
+	});
+
+	it("reports an unreadable document and hands back the fallback every reader uses", () => {
+		const inspection = inspectStatusesText('statuses: [ "To Do"\n  - name: "Done"\n');
+
+		expect(inspection.diagnostics.unreadable).toBe(true);
+		expect(inspection.diagnostics.fallback).toContain("built-in defaults");
+		expect(statusNames(inspection.statuses)).toEqual(["To Do", "In Progress", "Done"]);
+	});
+
+	it("reports an absent block as a fallback rather than as a healthy empty machine", () => {
+		const inspection = inspectStatusesText('project_name: "No statuses"\n');
+
+		expect(inspection.diagnostics.declared).toBe(0);
+		expect(inspection.diagnostics.fallback).toContain("built-in defaults");
+		expect(inspection.diagnostics.unreadable).toBeUndefined();
 	});
 });

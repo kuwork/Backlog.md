@@ -270,7 +270,7 @@ describe("StateMachineEditor", () => {
 		expect(byId(editor.container, "status-name-0")).not.toBeNull();
 	});
 
-	it("shows lint warnings without blocking anything (M1 declares, never enforces)", () => {
+	it("shows lint warnings without blocking anything", () => {
 		const duplicated: StatusesConfig = [{ name: "A" }, { name: "a" }];
 		const { container } = renderEditor({ statuses: duplicated });
 		expect(container.textContent).toContain("Configuration warnings");

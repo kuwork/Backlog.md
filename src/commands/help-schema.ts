@@ -209,6 +209,23 @@ export function getCliTaskPrefix(): string {
 	return "task";
 }
 
+/**
+ * The project's `config.yml` text, or `null` when this directory has no backlog project.
+ *
+ * Read-only and synchronous, so a command that must print project-specific guidance (the
+ * instructions overview) can do it without becoming async. A read failure is reported as "no
+ * project" rather than thrown: losing the guide is worse than losing its project-specific half.
+ */
+export function readRuntimeConfigTextSync(): string | null {
+	const configPath = findBacklogConfigPathSync(getRuntimeConfigStartDir());
+	if (!configPath) return null;
+	try {
+		return readFileSync(configPath, "utf8");
+	} catch {
+		return null;
+	}
+}
+
 export function taskIdExample(body: string): string {
 	return `${getCliTaskPrefix().toUpperCase()}-${body}`;
 }

@@ -4,17 +4,27 @@ Use this guide when you are working on an existing Backlog task.
 
 ### Planning Workflow
 
+**Follow this project's state machine, not a fixed sequence.** `backlog/config.yml` declares the statuses and the transitions between them, and the overview you load renders that machine under "This project's state machine". **Re-read the overview (`backlog instructions overview`) whenever you are about to move a task**, so you work from this project's machine rather than a remembered one:
+
+- Read the task's current status, then look that status up in the rendered machine.
+- Move only along a declared `next` edge whose `when` matches what actually happened, and obey that edge's `ai`: `forbidden` means the user makes the move (ask and wait), `propose` means propose it and wait for confirmation, `allowed_if` means the edge's `if` must hold and `requires` must be satisfiable, `allowed` means you may move.
+- Satisfy the edge's `evidence` before moving, and never set a status the machine does not list.
+
+Status names are project data: never assume `In Progress` (or any other name) exists, comes next, or is yours to set. The default machine, for instance, reserves the move into implementation (`Plan Review` -> `In Progress`) for the user.
+
 Before writing code for non-trivial work:
 
 1. Read the task:
    - `backlog task view {{TASK_ID:123}} --plain`
-2. Mark it in progress and assign yourself:
+2. Move it along the machine and assign yourself:
+   - Re-read the overview for this project's machine if you have not seen it in this conversation: `backlog instructions overview`
    - Inspect accepted statuses if needed: `backlog task edit {{TASK_ID:123}} --help`
-   - `backlog task edit {{TASK_ID:123}} -s "<active status>" -a @your-name`
+   - `backlog task edit {{TASK_ID:123}} -s "<the status your machine's matching edge leads to>" -a @your-name`
+   - If the edge you need is `ai: forbidden` or `propose`, do not write the status yourself: propose the move and wait for the user.
 3. Review description, acceptance criteria, dependencies, references, and documentation.
 4. Inspect relevant code and tests.
 5. Draft an implementation plan.
-6. Present the plan to the user and ask for confirmation. **Do not begin coding until the user approves the plan or explicitly tells you to skip the review.**
+6. Present the plan to the user and ask for confirmation. **Do not begin coding until the user approves the plan or explicitly tells you to skip the review.** Where the machine routes planning through a review status, that approval *is* the edge into the implementing status: the user makes it (or tells you to), and only then do you start.
 7. Record the approved plan:
    - `backlog task edit {{TASK_ID:123}} --plan "1. Analyze current implementation\n2. Design minimal API change\n3. Implement and add tests\n4. Run checks and verify"`
 
@@ -47,8 +57,8 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | What You Want to Change | CLI Command to Use                                       |
 |-------------------------|----------------------------------------------------------|
 | Title                   | `backlog task edit {{TASK_ID:123}} -t "New Title"`       |
-| Status                  | `backlog task edit {{TASK_ID:123}} -s "In Progress"`     |
-| Status of several tasks | `backlog task edit {{TASK_ID:123}} {{TASK_ID:124}} -s "In Progress"` |
+| Status                  | `backlog task edit {{TASK_ID:123}} -s "<a status this project's machine declares>"` |
+| Status of several tasks | `backlog task edit {{TASK_ID:123}} {{TASK_ID:124}} -s "<a declared status>"` |
 | Assignee                | `backlog task edit {{TASK_ID:123}} -a @sara`             |
 | Assignees (multiple)    | `backlog task edit {{TASK_ID:123}} -a @sara -a @tam` or `-a "@sara,@tam"` |
 | Clear Assignee          | `backlog task edit {{TASK_ID:123}} --unassign`           |
@@ -154,7 +164,7 @@ All date fields have matching `--clear-*` flags: `--clear-due-date`, `--clear-pl
 > **Do not convert timezones by hand.** Read the value straight from the machine's local clock (for example `date "+%Y-%m-%d %H:%M"` on POSIX shells, or the local time shown by the terminal) and pass that string unchanged. Do not derive the local time from the UTC value in the file or from the current UTC time plus an offset — that is where timezone mistakes come from. If you are unsure, use the CLI's own display (`task view`) as the source of truth.
 > If you are editing the task Markdown file directly as a fallback, write the UTC value that should be stored in the frontmatter.
 
-> **Note:** `actualStart` is automatically set when you move a task to an in-progress status, and `actualEnd` is automatically set when you move it to a terminal status (for example "Done"). You only need to set them manually when you want to override those defaults or record a different time.
+> **Note:** `actualStart` is set automatically when a task moves into an in-progress status, and `actualEnd` when it moves into a terminal one. The rendered machine lists which statuses those are, so read it instead of assuming a name. You only need to set them manually when you want to override those defaults or record a different time.
 
 ### Scope Changes
 

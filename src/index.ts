@@ -4,10 +4,12 @@ export * from "./readme.ts";
 export {
 	_loadAgentGuideline,
 	type AgentInstructionFile,
+	type AgentInstructionWriteResult,
 	addAgentInstructions,
 	type EnsureMcpGuidelinesResult,
 	ensureMcpGuidelines,
 	installClaudeAgent,
+	refreshStateMachineInAgentInstructions,
 } from "./agent-instructions.ts";
 // Kanban board utilities
 export { exportKanbanBoardToFile, generateKanbanBoardWithMetadata } from "./board.ts";

@@ -7,7 +7,6 @@ import {
 	MCP_TASK_EXECUTION_GUIDE,
 	MCP_TASK_FINALIZATION_GUIDE,
 	MCP_WORKFLOW_OVERVIEW,
-	MCP_WORKFLOW_OVERVIEW_TOOLS,
 } from "../guidelines/mcp/index.ts";
 import { registerWorkflowResources } from "../mcp/resources/workflow/index.ts";
 import { createMcpServer, McpServer } from "../mcp/server.ts";
@@ -99,7 +98,7 @@ describe("McpServer bootstrap", () => {
 		await server.stop();
 	});
 
-	it("workflow overview resource returns correct content", async () => {
+	it("workflow overview resource carries the static guide plus the project's machine", async () => {
 		const server = await bootstrapServer();
 
 		const result = await server.testInterface.readResource({
@@ -107,7 +106,12 @@ describe("McpServer bootstrap", () => {
 		});
 
 		expect(result.contents).toHaveLength(1);
-		expect(getContentsText(result.contents)).toBe(MCP_WORKFLOW_OVERVIEW);
+		const text = getContentsText(result.contents);
+		// The static half is the shipped text; the dynamic half is rendered from this project.
+		expect(text).toContain("## The Project Status Machine (`backlog/config.yml` -> `statuses`)");
+		expect(text).toContain("## This project's state machine");
+		expect(text).toContain("| To Do | active | - | shown |");
+		expect(text).not.toContain("{{STATE_MACHINE}}");
 		expect(result.contents[0]?.mimeType).toBe("text/markdown");
 
 		await server.stop();
@@ -217,7 +221,10 @@ describe("McpServer bootstrap", () => {
 		const overview = await server.testInterface.callTool({
 			params: { name: "get_backlog_instructions", arguments: {} },
 		});
-		expect(getText(overview.content)).toBe(MCP_WORKFLOW_OVERVIEW_TOOLS);
+		// The overview tool text carries the project's machine too, not just the shipped static text.
+		expect(getText(overview.content)).toContain("## The Project Status Machine");
+		expect(getText(overview.content)).toContain("## This project's state machine");
+		expect(getText(overview.content)).not.toContain("{{STATE_MACHINE}}");
 
 		const creation = await server.testInterface.callTool({
 			params: { name: "get_backlog_instructions", arguments: { instruction: "task-creation" } },
