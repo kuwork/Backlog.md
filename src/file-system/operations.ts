@@ -6,6 +6,7 @@ import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.
 import { parseDecision, parseDocument, parseMarkdown, parseMilestone, parseTask } from "../markdown/parser.ts";
 import { serializeDecision, serializeDocument, serializeMilestone, serializeTask } from "../markdown/serializer.ts";
 import type {
+	AiPolicy,
 	BacklogConfig,
 	Decision,
 	DocsTreeNode,
@@ -13,6 +14,10 @@ import type {
 	Milestone,
 	MilestoneCreateOptions,
 	MilestoneUpdateOptions,
+	StatusCategory,
+	StatusDefinition,
+	StatusesConfig,
+	StatusTransition,
 	Task,
 	TaskListFilter,
 	WikiPage,
@@ -135,6 +140,105 @@ function parseInlineConfigList(value: string): string[] | undefined {
 		.split(",")
 		.map((item) => item.trim().replace(/['"]/g, ""))
 		.filter(Boolean);
+}
+
+/**
+ * Parse one `statuses` entry. A plain string stays a string; an object becomes a
+ * {@link StatusDefinition} carrying every declared field (name / category / exit / next with
+ * to / when / ai / if / requires / evidence). Anything else is dropped rather than coerced,
+ * because `String(item)` would turn an object into "[object Object]".
+ */
+function parseStatusEntry(item: unknown): string | StatusDefinition | undefined {
+	if (typeof item === "string") {
+		return item.trim().length > 0 ? item.trim() : undefined;
+	}
+	if (typeof item !== "object" || item === null) return undefined;
+	const raw = item as Record<string, unknown>;
+	if (typeof raw.name !== "string" || raw.name.trim().length === 0) return undefined;
+	const definition: StatusDefinition = { name: raw.name.trim() };
+	if (typeof raw.category === "string") definition.category = raw.category as StatusCategory;
+	if (raw.exit === "complete" || raw.exit === "archive") definition.exit = raw.exit;
+	if (typeof raw.display === "boolean") definition.display = raw.display;
+	if (Array.isArray(raw.next)) {
+		definition.next = raw.next
+			.map((transition) => {
+				if (typeof transition !== "object" || transition === null) return undefined;
+				const entry = transition as Record<string, unknown>;
+				if (typeof entry.to !== "string" || entry.to.trim().length === 0) return undefined;
+				const parsed: StatusTransition = { to: entry.to.trim() };
+				if (typeof entry.when === "string") parsed.when = entry.when;
+				if (typeof entry.if === "string") parsed.if = entry.if;
+				if (typeof entry.requires === "string") parsed.requires = entry.requires;
+				if (typeof entry.evidence === "string") parsed.evidence = entry.evidence;
+				if (typeof entry.ai === "string") parsed.ai = entry.ai as AiPolicy;
+				return parsed;
+			})
+			.filter((transition): transition is StatusTransition => transition !== undefined);
+	}
+	return definition;
+}
+
+/**
+ * Read `statuses` from the whole config document with a real YAML parser so the block
+ * sequence form (`- name: To Do` …) survives; the fallback is the legacy inline-bracket and
+ * line-based parse, which only ever produces plain strings.
+ */
+function parseStatusesConfig(content: string, fallback: string[] | undefined): StatusesConfig | undefined {
+	try {
+		const { data } = parseFrontmatter(`---\n${content.trimEnd()}\n---\n`);
+		if (Array.isArray(data.statuses)) {
+			const parsed = data.statuses
+				.map(parseStatusEntry)
+				.filter((entry): entry is string | StatusDefinition => entry !== undefined);
+			if (parsed.length > 0) return parsed;
+		}
+	} catch {
+		// Not valid YAML; the caller falls back to the line-based parse.
+	}
+	return fallback;
+}
+
+function yamlScalar(value: string): string {
+	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Serialize `statuses` as config lines. A plain string array keeps the single-line inline
+ * form so existing files round-trip byte-for-byte; the object form is written as a block
+ * sequence so every declared field survives a save (FR-7 R4).
+ */
+function serializeStatusesConfig(statuses: StatusesConfig): string[] {
+	if (statuses.length === 0) return ["statuses: []"];
+	if (!statuses.some((entry) => typeof entry !== "string")) {
+		return [`statuses: [${statuses.map((entry) => yamlScalar(String(entry))).join(", ")}]`];
+	}
+
+	const lines = ["statuses:"];
+	for (const entry of statuses) {
+		if (typeof entry === "string") {
+			lines.push(`  - ${yamlScalar(entry)}`);
+			continue;
+		}
+		lines.push(`  - name: ${yamlScalar(entry.name)}`);
+		if (entry.category) lines.push(`    category: ${entry.category}`);
+		if (entry.exit) lines.push(`    exit: ${entry.exit}`);
+		if (entry.display === false) lines.push("    display: false");
+		if (!entry.next) continue;
+		if (entry.next.length === 0) {
+			lines.push("    next: []");
+			continue;
+		}
+		lines.push("    next:");
+		for (const transition of entry.next) {
+			lines.push(`      - to: ${yamlScalar(transition.to)}`);
+			if (transition.when !== undefined) lines.push(`        when: ${yamlScalar(transition.when)}`);
+			if (transition.ai !== undefined) lines.push(`        ai: ${transition.ai}`);
+			if (transition.if !== undefined) lines.push(`        if: ${yamlScalar(transition.if)}`);
+			if (transition.requires !== undefined) lines.push(`        requires: ${yamlScalar(transition.requires)}`);
+			if (transition.evidence !== undefined) lines.push(`        evidence: ${yamlScalar(transition.evidence)}`);
+		}
+	}
+	return lines;
 }
 
 /**
@@ -1883,11 +1987,20 @@ export class FileSystem {
 				case "default_status":
 					config.defaultStatus = value.replace(/['"]/g, "");
 					break;
-				case "statuses":
+				case "statuses": {
+					const parsedStatuses = parseStatusesConfig(
+						content,
+						parsedListValues.statuses ?? parseInlineConfigList(value),
+					);
+					if (parsedStatuses) {
+						config.statuses = parsedStatuses;
+					}
+					break;
+				}
 				case "labels": {
-					const parsedList = parsedListValues[key] ?? parseInlineConfigList(value);
+					const parsedList = parsedListValues.labels ?? parseInlineConfigList(value);
 					if (parsedList) {
-						config[key] = parsedList;
+						config.labels = parsedList;
 					}
 					break;
 				}
@@ -2023,7 +2136,7 @@ export class FileSystem {
 				: []),
 			...(config.defaultReporter ? [`default_reporter: "${config.defaultReporter}"`] : []),
 			...(config.defaultStatus ? [`default_status: "${config.defaultStatus}"`] : []),
-			`statuses: [${config.statuses.map((s) => `"${s}"`).join(", ")}]`,
+			...serializeStatusesConfig(config.statuses ?? []),
 			`labels: [${config.labels.map((l) => `"${l}"`).join(", ")}]`,
 			...(Array.isArray(normalizedDefinitionOfDone)
 				? [`definition_of_done: [${normalizedDefinitionOfDone.map((item) => JSON.stringify(item)).join(", ")}]`]

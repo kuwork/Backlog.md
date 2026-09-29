@@ -4,6 +4,7 @@ import { apiClient } from "../lib/api";
 import type {
 	Milestone,
 	SearchPriorityFilter,
+	StatusesConfig,
 	Task,
 	TaskSearchResult,
 } from "../../types";
@@ -30,6 +31,11 @@ interface TaskListProps {
 	onNewTask: () => void;
 	tasks: Task[];
 	availableStatuses: string[];
+	/**
+	 * Raw `statuses` config. Terminal detection needs each status's category/exit, which the
+	 * name-only `availableStatuses` list drops.
+	 */
+	statusesConfig?: StatusesConfig;
 	availableLabels: string[];
 	availableMilestones: string[];
 	milestoneEntities: Milestone[];
@@ -89,6 +95,7 @@ const TaskList: React.FC<TaskListProps> = ({
 	onNewTask,
 	tasks,
 	availableStatuses,
+	statusesConfig,
 	availableLabels,
 	availableMilestones,
 	milestoneEntities,
@@ -142,7 +149,8 @@ const TaskList: React.FC<TaskListProps> = ({
 	const tableHeaderScrollRef = useRef<HTMLDivElement | null>(null);
 	const tableBodyScrollRef = useRef<HTMLDivElement | null>(null);
 	const isSyncingTableScrollRef = useRef(false);
-	const isFilteringTerminalStatus = statusFilter.length > 0 && statusFilter.every((status) => isTerminalStatus(status, availableStatuses));
+	const isFilteringTerminalStatus =
+		statusFilter.length > 0 && statusFilter.every((status) => isTerminalStatus(status, statusesConfig ?? availableStatuses));
 	const milestoneAliasToCanonical = useMemo(() => {
 		const aliasMap = new Map<string, string>();
 		const collectIdAliasKeys = (value: string): string[] => {

@@ -7,11 +7,16 @@ interface StatusExcludeDropdownProps {
 	onChange: (statuses: string[]) => void;
 	menuId: string;
 	className?: string;
+	/** Overrides the trigger label so the same multi-select can drive another setting. */
+	label?: string;
+	/** Label shown when nothing is selected; defaults to the status filter's wording. */
+	emptyLabel?: string;
 }
 
 /**
- * Multi-select status exclusion filter, modeled after LabelFilterDropdown.
- * Hides tasks whose status is one of the selected statuses.
+ * Multi-select over the configured statuses, modeled after LabelFilterDropdown.
+ * Used as the board's exclusion filter and, with a custom label, as any other
+ * "which statuses" setting (e.g. the terminal statuses of the state machine).
  */
 export default function StatusExcludeDropdown({
 	availableStatuses,
@@ -19,6 +24,8 @@ export default function StatusExcludeDropdown({
 	onChange,
 	menuId,
 	className = "min-w-[200px]",
+	label,
+	emptyLabel,
 }: StatusExcludeDropdownProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -60,10 +67,10 @@ export default function StatusExcludeDropdown({
 				className={`${className} py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200 text-left`}
 			>
 				<div className="flex items-center justify-between gap-2">
-					<span>{t.statusFilter.excludeStatuses}</span>
+					<span>{label ?? t.statusFilter.excludeStatuses}</span>
 					<span className="text-xs text-gray-500 dark:text-gray-400">
 						{excludedStatuses.length === 0
-							? t.common.all
+							? (emptyLabel ?? t.common.all)
 							: excludedStatuses.length === 1
 								? excludedStatuses[0]
 								: `${excludedStatuses.length} selected`}

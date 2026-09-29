@@ -110,9 +110,15 @@ function renderedColumnStatuses(root: LabelledWidget): string[] {
 
 const BOARD_TASKS = [createTask("TASK-1", "To Do"), createTask("TASK-2", "Done")];
 const BOARD_STATUSES = ["To Do", "In Progress", "Done"];
+// "In Progress" carries a task on purpose: a display:false column must disappear even when it is not empty.
+const HIDDEN_BOARD_TASKS = [
+	createTask("TASK-1", "To Do"),
+	createTask("TASK-2", "In Progress"),
+	createTask("TASK-3", "Done"),
+];
 
 async function withBoard(
-	options: { hideEmptyColumns?: boolean },
+	options: { hideEmptyColumns?: boolean; hiddenStatuses?: string[]; tasks?: Task[]; statuses?: string[] },
 	run: (context: {
 		screen: ScreenInterface & EmittingWidget;
 		columnStatuses: () => string[];
@@ -124,10 +130,17 @@ async function withBoard(
 	Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: true });
 	const screen = createScreen({ smartCSR: false }) as ScreenInterface & EmittingWidget;
 	try {
-		const boardPromise = renderBoardTui(BOARD_TASKS, BOARD_STATUSES, "horizontal", 20, {
-			screen,
-			hideEmptyColumns: options.hideEmptyColumns,
-		});
+		const boardPromise = renderBoardTui(
+			options.tasks ?? BOARD_TASKS,
+			options.statuses ?? BOARD_STATUSES,
+			"horizontal",
+			20,
+			{
+				screen,
+				hideEmptyColumns: options.hideEmptyColumns,
+				hiddenStatuses: options.hiddenStatuses,
+			},
+		);
 		await Bun.sleep(20);
 		let closed = false;
 		const quit = async () => {
@@ -241,7 +254,13 @@ describe("Shift+H toggles hideEmptyColumns", () => {
 });
 
 describe("piped board output honors hideEmptyColumns", () => {
-	async function captureBoardOutput(options: { hideEmptyColumns?: boolean; milestoneMode?: boolean }): Promise<string> {
+	async function captureBoardOutput(options: {
+		hideEmptyColumns?: boolean;
+		milestoneMode?: boolean;
+		hiddenStatuses?: string[];
+		tasks?: Task[];
+		statuses?: string[];
+	}): Promise<string> {
 		const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
 		Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: false });
 		const originalLog = console.log;
@@ -250,10 +269,11 @@ describe("piped board output honors hideEmptyColumns", () => {
 			lines.push(args.map(String).join(" "));
 		};
 		try {
-			await renderBoardTui(BOARD_TASKS, BOARD_STATUSES, "horizontal", 20, {
+			await renderBoardTui(options.tasks ?? BOARD_TASKS, options.statuses ?? BOARD_STATUSES, "horizontal", 20, {
 				hideEmptyColumns: options.hideEmptyColumns,
 				milestoneMode: options.milestoneMode,
 				milestoneEntities: [],
+				hiddenStatuses: options.hiddenStatuses,
 			});
 		} finally {
 			console.log = originalLog;
@@ -288,5 +308,30 @@ describe("piped board output honors hideEmptyColumns", () => {
 		expect(output).toContain("### To Do (1)");
 		expect(output).toContain("### Done (1)");
 		expect(output).not.toContain("In Progress");
+	});
+
+	it("drops a display:false status column even when it holds tasks", async () => {
+		const output = await captureBoardOutput({ tasks: HIDDEN_BOARD_TASKS, hiddenStatuses: ["In Progress"] });
+
+		expect(output).toContain("| To Do | Done |");
+		expect(output).not.toContain("In Progress");
+	});
+});
+
+describe("TUI board honors display:false (hiddenStatuses)", () => {
+	it("omits a hidden status column even when it holds tasks", async () => {
+		await withBoard({ tasks: HIDDEN_BOARD_TASKS, hiddenStatuses: ["In Progress"] }, ({ columnStatuses }) => {
+			expect(columnStatuses()).toEqual(["To Do", "Done"]);
+		});
+	});
+
+	it("never reveals a hidden column while a task is being moved", async () => {
+		await withBoard(
+			{ tasks: HIDDEN_BOARD_TASKS, hideEmptyColumns: true, hiddenStatuses: ["In Progress"] },
+			({ screen, columnStatuses }) => {
+				pressKey(screen, "m");
+				expect(columnStatuses()).toEqual(["To Do", "Done"]);
+			},
+		);
 	});
 });

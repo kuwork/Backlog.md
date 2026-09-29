@@ -1,4 +1,5 @@
 import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { statusNames } from "../core/state-machine.ts";
 import type { BacklogConfig } from "../types/index.ts";
 
 type CoreCallback<T> = (core: Core) => Promise<T>;
@@ -35,8 +36,8 @@ export async function getTaskIds(): Promise<string[]> {
 export async function getStatuses(): Promise<string[]> {
 	return await withCore(async (core) => {
 		const config: BacklogConfig | null = await core.filesystem.loadConfig();
-		const statuses = config?.statuses;
-		if (Array.isArray(statuses) && statuses.length > 0) {
+		const statuses = statusNames(config?.statuses);
+		if (statuses.length > 0) {
 			return statuses;
 		}
 		return getDefaultStatuses();

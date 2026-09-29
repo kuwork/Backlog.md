@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../hooks/useI18n';
-import { type Milestone, type Task } from '../../types';
+import { type Milestone, type StatusesConfig, type Task } from '../../types';
 import { apiClient, type ReorderTaskPayload } from '../lib/api';
 import { buildLanes, DEFAULT_LANE_KEY, groupTasksByLaneAndStatus, type LaneMode, sortTasksForStatus } from '../lib/lanes';
 import { collectAvailableLabels, labelsToLower } from '../../utils/label-filter';
@@ -21,6 +21,13 @@ interface BoardProps {
   onRefreshData?: () => Promise<void>;
   onTasksUpdated?: (tasks: Task[], requestTask: Task) => void;
   statuses: string[];
+  /**
+   * Raw `statuses` config (object form included). Terminal detection needs each status's
+   * category/exit, which the name-only `statuses` above drops.
+   */
+  statusesConfig?: StatusesConfig;
+  /** Status names whose board column is always hidden (`display: false`). Never revealed on drag. */
+  hiddenStatuses?: string[];
   isLoading: boolean;
   loadError?: Error | null;
   milestones: string[];
@@ -54,6 +61,8 @@ const Board: React.FC<BoardProps> = ({
   onRefreshData,
   onTasksUpdated,
   statuses,
+  statusesConfig,
+  hiddenStatuses = [],
   isLoading,
   loadError,
   availableLabels,
@@ -94,7 +103,9 @@ const Board: React.FC<BoardProps> = ({
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [cleanupSuccessMessage, setCleanupSuccessMessage] = useState<string | null>(null);
   const [collapsedLanes, setCollapsedLanes] = useState<Record<string, boolean>>({});
-  const terminalStatus = getTerminalStatus(statuses);
+  // Prefer the raw config so `Done` (category done / exit complete) is found even though `Dropped`
+  // is the last column; a name list would only ever name the last one.
+  const terminalStatus = getTerminalStatus(statusesConfig ?? statuses);
   const archivedMilestoneIds = useMemo(
     () => collectArchivedMilestoneKeys(archivedMilestones, milestoneEntities),
     [archivedMilestones, milestoneEntities]
@@ -476,17 +487,20 @@ const Board: React.FC<BoardProps> = ({
   const displayTasksByLane = (milestoneFilter || hasActiveFilters) ? filteredTasksByLane : tasksByLane;
   const laneMetadataTasksByLane = hasActiveFilters ? filteredTasksByLane : tasksByLane;
 
-  // When hideEmptyColumns is on, filter out status columns with no tasks across all visible lanes.
-  // While a task is being dragged we keep every column visible so empty statuses remain drop targets.
+  // A status with `display: false` is always dropped from the board, even while dragging. On top
+  // of that, when hideEmptyColumns is on we also drop status columns with no tasks across all
+  // visible lanes; those reappear while a task is being dragged so empty statuses stay valid drop
+  // targets.
   const visibleStatuses = useMemo(() => {
-    if (!hideEmptyColumns || hiddenColumnsRevealed) return statuses;
-    return statuses.filter(status => {
+    const shown = statuses.filter((status) => !hiddenStatuses.includes(status));
+    if (!hideEmptyColumns || hiddenColumnsRevealed) return shown;
+    return shown.filter(status => {
       for (const statusMap of displayTasksByLane.values()) {
         if ((statusMap.get(status) ?? []).length > 0) return true;
       }
       return false;
     });
-  }, [hideEmptyColumns, hiddenColumnsRevealed, statuses, displayTasksByLane]);
+  }, [hideEmptyColumns, hiddenColumnsRevealed, statuses, hiddenStatuses, displayTasksByLane]);
 
   const cancelHiddenColumnsReveal = () => {
     if (revealHiddenColumnsTimer.current !== null) clearTimeout(revealHiddenColumnsTimer.current);

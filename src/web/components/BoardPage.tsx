@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Board from './Board';
-import { type Milestone, type Task } from '../../types';
+import { type Milestone, type StatusesConfig, type Task } from '../../types';
 import { type LaneMode } from '../lib/lanes';
 import { useCompletedTasks } from '../hooks/useCompletedTasks';
 
@@ -12,6 +12,10 @@ interface BoardPageProps {
 	onRefreshData?: () => Promise<void>;
 	onTasksUpdated?: (tasks: Task[], requestTask: Task) => void;
 	statuses: string[];
+	/** Raw `statuses` config, forwarded so terminal detection can read each entry's category/exit. */
+	statusesConfig?: StatusesConfig;
+	/** Status names whose board column is always hidden (`display: false`). Never revealed on drag. */
+	hiddenStatuses?: string[];
 	milestones: string[];
 	availableLabels: string[];
 	milestoneEntities: Milestone[];
@@ -30,6 +34,8 @@ export default function BoardPage({
 	onRefreshData,
 	onTasksUpdated,
 	statuses,
+	statusesConfig,
+	hiddenStatuses,
 	milestones,
 	availableLabels,
 	milestoneEntities,
@@ -154,6 +160,8 @@ export default function BoardPage({
 				onRefreshData={onRefreshData}
 				onTasksUpdated={onTasksUpdated}
 				statuses={statuses}
+				statusesConfig={statusesConfig}
+				hiddenStatuses={hiddenStatuses}
 				milestones={milestones}
 				milestoneEntities={milestoneEntities}
 				archivedMilestones={archivedMilestones}

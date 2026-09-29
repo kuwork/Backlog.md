@@ -228,3 +228,51 @@ describe("Web board drag and drop with hidden empty columns", () => {
 		expect(renderedColumns(container)).toEqual(STATUSES);
 	});
 });
+
+describe("Web board honors display:false (hiddenStatuses)", () => {
+	const renderWithHidden = (hiddenStatuses: string[]): HTMLElement => {
+		setupDom();
+		const container = document.getElementById("root");
+		expect(container).toBeTruthy();
+		activeRoot = createRoot(container as HTMLElement);
+		act(() => {
+			activeRoot?.render(
+				<I18nProvider initialLocale="en">
+					<Board
+						onEditTask={() => {}}
+						onNewTask={() => {}}
+						tasks={[draggedTask]}
+						statuses={STATUSES}
+						hiddenStatuses={hiddenStatuses}
+						isLoading={false}
+						milestones={[]}
+						availableLabels={[]}
+						milestoneEntities={[]}
+						archivedMilestones={[]}
+						laneMode="none"
+						onLaneChange={() => {}}
+						hideEmptyColumns={false}
+					/>
+				</I18nProvider>,
+			);
+		});
+		return container as HTMLElement;
+	};
+
+	it("drops a status column whose display flag is false, even with hideEmptyColumns off", () => {
+		const container = renderWithHidden(["Blocked"]);
+		expect(renderedColumns(container).sort()).toEqual(["Done", "In Progress", "To Do"]);
+	});
+
+	it("never reveals a display:false column, even while a task is being dragged", async () => {
+		const container = renderWithHidden(["Blocked"]);
+		expect(renderedColumns(container).sort()).toEqual(["Done", "In Progress", "To Do"]);
+
+		act(() => {
+			dispatchDragEvent(getCard(container), "dragstart");
+		});
+		await flushTasks();
+		expect(renderedColumns(container)).not.toContain("Blocked");
+		expect(renderedColumns(container).sort()).toEqual(["Done", "In Progress", "To Do"]);
+	});
+});

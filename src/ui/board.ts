@@ -395,6 +395,11 @@ export async function renderBoardTui(
 		onFilterChange?: (filters: BoardFilterState) => void;
 		milestoneMode?: boolean;
 		milestoneEntities?: Milestone[];
+		/**
+		 * Status names whose `display` is false. The board omits these columns entirely
+		 * (even when they hold tasks), matching the web board's `display:false` semantics.
+		 */
+		hiddenStatuses?: string[];
 		hideEmptyColumns?: boolean;
 		projectName?: string;
 		createTask?: (input: TaskCreateInput) => Promise<Task>;
@@ -409,24 +414,41 @@ export async function renderBoardTui(
 		screen?: ScreenInterface;
 	},
 ): Promise<void> {
+	// A hidden status (`display:false`) is dropped from the board's column set entirely, even when
+	// it holds tasks. `buildKanbanStatusGroups` re-adds any status a task carries, so filtering the
+	// configured list alone is not enough — every column build is filtered too. Tasks in a hidden
+	// status then have nowhere to render, matching the web board.
+	const hiddenStatuses = options?.hiddenStatuses ?? [];
+	const dropHiddenColumns = (columns: ColumnData[]): ColumnData[] =>
+		hiddenStatuses.length > 0 ? columns.filter((column) => !hiddenStatuses.includes(column.status)) : columns;
+	const buildColumns = (tasks: Task[], statusList: string[]): ColumnData[] =>
+		dropHiddenColumns(prepareBoardColumns(tasks, statusList));
+	const boardStatuses =
+		hiddenStatuses.length > 0 ? statuses.filter((status) => !hiddenStatuses.includes(status)) : statuses;
 	if (!process.stdout.isTTY) {
 		// The piped board is the same view, so it hides the same columns the TUI hides.
+		// These generators rebuild columns from the tasks, so hidden-status tasks must be dropped
+		// from the task set too — filtering the status list alone is not enough.
+		const pipedTasks =
+			hiddenStatuses.length > 0
+				? initialTasks.filter((task) => !hiddenStatuses.includes((task.status ?? "").trim()))
+				: initialTasks;
 		// Milestone lanes filter on the same board-wide emptiness the browser lanes use.
 		const visibleStatuses = options?.hideEmptyColumns
-			? filterVisibleColumns(prepareBoardColumns(initialTasks, statuses), true, false).map((column) => column.status)
-			: statuses;
+			? filterVisibleColumns(buildColumns(pipedTasks, boardStatuses), true, false).map((column) => column.status)
+			: boardStatuses;
 		const projectName = options?.projectName?.trim() || "Project";
 		if (options?.milestoneMode) {
 			console.log(
-				generateMilestoneGroupedBoard(initialTasks, visibleStatuses, options.milestoneEntities ?? [], projectName),
+				generateMilestoneGroupedBoard(pipedTasks, visibleStatuses, options.milestoneEntities ?? [], projectName),
 			);
 		} else {
-			console.log(generateKanbanBoardWithMetadata(initialTasks, visibleStatuses, projectName));
+			console.log(generateKanbanBoardWithMetadata(pipedTasks, visibleStatuses, projectName));
 		}
 		return;
 	}
 
-	const initialColumns = prepareBoardColumns(initialTasks, statuses);
+	const initialColumns = buildColumns(initialTasks, boardStatuses);
 	if (initialColumns.length === 0) {
 		console.log("No tasks available for the Kanban board.");
 		return;
@@ -464,7 +486,12 @@ export async function renderBoardTui(
 			bottom: 0,
 		});
 
-		let currentTasks = initialTasks;
+		// Tasks in a hidden status are not on the board at all, so counts, move targets and label
+		// pickers all agree with the columns that are actually drawn.
+		const isHiddenStatus = (status: string | undefined) => hiddenStatuses.includes((status ?? "").trim());
+		const dropHiddenTasks = (tasks: Task[]): Task[] =>
+			hiddenStatuses.length > 0 ? tasks.filter((task) => !isHiddenStatus(task.status)) : tasks;
+		let currentTasks = dropHiddenTasks(initialTasks);
 		let columns: ColumnView[] = [];
 		let currentColumnsData: ColumnData[] = [];
 		let currentStatuses = initialColumns.map((column) => column.status);
@@ -603,7 +630,7 @@ export async function renderBoardTui(
 		/** The target column's real task ids minus `excludeIds`: the base the ghost inserts into. */
 		const getInsertionBase = (targetStatus: string, excludeIds: string[]): string[] => {
 			const excluded = new Set(excludeIds);
-			const column = prepareBoardColumns(getFilteredTasks(), currentStatuses).find(
+			const column = buildColumns(getFilteredTasks(), currentStatuses).find(
 				(candidate) => candidate.status === targetStatus,
 			);
 			return (column?.tasks ?? []).filter((task) => !excluded.has(task.id)).map((task) => task.id);
@@ -1061,26 +1088,26 @@ export async function renderBoardTui(
 		// Pure function to calculate the projected board state
 		const getProjectedColumns = (allTasks: Task[], operation: MoveOperation | null): ColumnData[] => {
 			if (!operation) {
-				return prepareBoardColumns(allTasks, currentStatuses);
+				return buildColumns(allTasks, currentStatuses);
 			}
 
 			const movingTask = allTasks.find((t) => t.id === operation.taskId);
 			if (!movingTask) {
-				return prepareBoardColumns(allTasks, currentStatuses);
+				return buildColumns(allTasks, currentStatuses);
 			}
 
 			// 1. Lift the previewed tasks out of their columns, keeping board display order
 			//    so a collapsed set lands as one block in the order it appears on the board.
 			const movingIds = new Set(getPreviewMovingIds(operation));
 			const blockTasks: Task[] = [];
-			for (const column of prepareBoardColumns(allTasks, currentStatuses)) {
+			for (const column of buildColumns(allTasks, currentStatuses)) {
 				for (const task of column.tasks) {
 					if (movingIds.has(task.id)) blockTasks.push(task);
 				}
 			}
 
 			// 2. Prepare columns without the moving tasks
-			const columns = prepareBoardColumns(
+			const columns = buildColumns(
 				allTasks.filter((t) => !movingIds.has(t.id)),
 				currentStatuses,
 			);
@@ -1431,11 +1458,13 @@ export async function renderBoardTui(
 				return;
 			}
 			// Update source of truth
-			currentTasks = nextTasks;
-			// Only update statuses if they changed (rare in TUI)
+			currentTasks = dropHiddenTasks(nextTasks);
+			// Only update statuses if they changed (rare in TUI). The host passes the full status
+			// list, so hidden ones are dropped here to keep move targets off display:false columns.
 			if (nextStatuses.length > 0) {
-				currentStatuses = nextStatuses;
-				configuredWorkflowStatuses = [...nextStatuses];
+				currentStatuses =
+					hiddenStatuses.length > 0 ? nextStatuses.filter((status) => !hiddenStatuses.includes(status)) : nextStatuses;
+				configuredWorkflowStatuses = [...currentStatuses];
 			}
 			configuredLabels = collectAvailableLabels(currentTasks, options?.availableLabels ?? []);
 			availableMilestones = Array.from(
@@ -1766,9 +1795,7 @@ export async function renderBoardTui(
 			const targetStatus = operation.targetStatus;
 
 			// No-op guard: the set already sits exactly where the preview lands it.
-			const realColumn = prepareBoardColumns(currentTasks, currentStatuses).find(
-				(c) => c.status === operation.targetStatus,
-			);
+			const realColumn = buildColumns(currentTasks, currentStatuses).find((c) => c.status === operation.targetStatus);
 			const realIds = (realColumn?.tasks ?? []).map((task) => task.id);
 			if (realIds.length === orderedTaskIds.length && realIds.every((id, index) => id === orderedTaskIds[index])) {
 				moveOp = null;

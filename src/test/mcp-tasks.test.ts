@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { $ } from "bun";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
+import { statusNames } from "../core/state-machine.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerTaskTools } from "../mcp/tools/tasks/index.ts";
 import type { JsonSchema } from "../mcp/validation/validators.ts";
@@ -576,8 +577,7 @@ describe("MCP task tools (MVP)", () => {
 
 	it("exposes status enums and defaults from configuration", async () => {
 		const config = await loadConfig(mcpServer);
-		const configuredStatuses =
-			config.statuses && config.statuses.length > 0 ? [...config.statuses] : Array.from(DEFAULT_STATUSES);
+		const configuredStatuses = statusNames(config.statuses);
 		const normalizedStatuses = configuredStatuses.map((status) => status.trim());
 		const hasDraft = normalizedStatuses.some((status) => status.toLowerCase() === "draft");
 		const expectedStatuses = hasDraft ? normalizedStatuses : ["Draft", ...normalizedStatuses];

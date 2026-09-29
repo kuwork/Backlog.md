@@ -17,6 +17,7 @@ import {
 } from "../utils/mcp-client-setup.ts";
 import { getTaskPrefixError } from "../utils/prefix-config.ts";
 import type { Core } from "./backlog.ts";
+import { DEFAULT_STATE_MACHINE } from "./state-machine.ts";
 
 export const MCP_SERVER_NAME = "backlog";
 export const MCP_GUIDE_URL = "https://github.com/MrLesk/Backlog.md#-mcp-integration-model-context-protocol";
@@ -142,7 +143,9 @@ export async function initializeProject(
 	const d = DEFAULT_INIT_CONFIG;
 	const baseConfig: BacklogConfig = {
 		projectName,
-		statuses: ["To Do", "In Progress", "Done"],
+		// A fresh project starts on the fork's seven-column preset machine (doc-19 §4.1), including
+		// the `display:false` Dropped column. Clone it so each project owns its own copy.
+		statuses: structuredClone(DEFAULT_STATE_MACHINE),
 		labels: [],
 		defaultStatus: "To Do",
 		dateFormat: "yyyy-mm-dd",

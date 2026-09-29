@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
+import { statusNames } from "../core/state-machine.ts";
 import { CLI_AGENT_NUDGE, Core, isGitRepository } from "../index.ts";
 import { parseTask } from "../markdown/parser.ts";
 import { extractStructuredSection } from "../markdown/structured-sections.ts";
@@ -276,6 +277,20 @@ describe("CLI Integration", () => {
 		});
 
 		it("shows task command field types in help", async () => {
+			// Pin the statuses locally: without a config the CLI walks up from TEST_DIR into the
+			// repo's own (object form) config, which would make the schema below non-deterministic.
+			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+			await Bun.write(
+				join(TEST_DIR, "backlog", "config.yml"),
+				[
+					'project_name: "Field Types Project"',
+					'statuses: ["To Do", "In Progress", "Done"]',
+					"labels: []",
+					"date_format: yyyy-mm-dd",
+					"",
+				].join("\n"),
+			);
+
 			const createHelp = await $`bun ${CLI_PATH} task create --help`.cwd(TEST_DIR).text();
 			const listHelp = await $`bun ${CLI_PATH} task list --help`.cwd(TEST_DIR).text();
 			const editHelp = await $`bun ${CLI_PATH} task edit --help`.cwd(TEST_DIR).text();
@@ -331,7 +346,45 @@ describe("CLI Integration", () => {
 			}
 		});
 
+		it("renders object-form statuses as bare names in help", async () => {
+			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+			await Bun.write(
+				join(TEST_DIR, "backlog", "config.yml"),
+				[
+					'project_name: "Object Status Project"',
+					"statuses:",
+					'  - name: "To Do"',
+					"    category: active",
+					'  - name: "Done"',
+					"    category: done",
+					'    exit: "complete"',
+					"labels: []",
+					"date_format: yyyy-mm-dd",
+					"",
+				].join("\n"),
+			);
+
+			const listHelp = await $`bun ${CLI_PATH} task list --help`.cwd(TEST_DIR).text();
+
+			// The object form must collapse to names, not leak `name: "To Do"` into the schema.
+			expect(listHelp).toContain("status: one of configured statuses: To Do, Done");
+			expect(listHelp).not.toContain('name: "To Do');
+		});
+
 		it("shows document, config, search, and cleanup schemas in help", async () => {
+			// Pin the statuses locally for the same reason as the schema test above.
+			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+			await Bun.write(
+				join(TEST_DIR, "backlog", "config.yml"),
+				[
+					'project_name: "Schema Project"',
+					'statuses: ["To Do", "In Progress", "Done"]',
+					"labels: []",
+					"date_format: yyyy-mm-dd",
+					"",
+				].join("\n"),
+			);
+
 			const docHelp = await $`bun ${CLI_PATH} doc update --help`.cwd(TEST_DIR).text();
 			const configHelp = await $`bun ${CLI_PATH} config set --help`.cwd(TEST_DIR).text();
 			const searchHelp = await $`bun ${CLI_PATH} search --help`.cwd(TEST_DIR).text();
@@ -415,7 +468,15 @@ describe("CLI Integration", () => {
 			// Verify config content
 			const config = await core.filesystem.loadConfig();
 			expect(config?.projectName).toBe("CLI Test Project");
-			expect(config?.statuses).toEqual(["To Do", "In Progress", "Done"]);
+			expect(statusNames(config?.statuses)).toEqual([
+				"To Do",
+				"Planning",
+				"Plan Review",
+				"In Progress",
+				"In Review",
+				"Done",
+				"Dropped",
+			]);
 			expect(config?.defaultStatus).toBe("To Do");
 
 			// Verify git commit was created
@@ -948,7 +1009,15 @@ describe("CLI Integration", () => {
 
 			// Load and verify default config status order
 			const config = await core.filesystem.loadConfig();
-			expect(config?.statuses).toEqual(["To Do", "In Progress", "Done"]);
+			expect(statusNames(config?.statuses)).toEqual([
+				"To Do",
+				"Planning",
+				"Plan Review",
+				"In Progress",
+				"In Review",
+				"Done",
+				"Dropped",
+			]);
 		});
 
 		it("should filter tasks by status", async () => {
@@ -2291,8 +2360,8 @@ describe("CLI Integration", () => {
 			expect(tasks).toHaveLength(3);
 
 			const config = await core.filesystem.loadConfig();
-			const statuses = config?.statuses || [];
-			expect(statuses).toEqual(["To Do", "In Progress", "Done"]);
+			const statuses = statusNames(config?.statuses);
+			expect(statuses).toEqual(["To Do", "Planning", "Plan Review", "In Progress", "In Review", "Done", "Dropped"]);
 
 			// Test the kanban board generation
 			const { generateKanbanBoardWithMetadata } = await import("../board.ts");
@@ -2326,14 +2395,14 @@ describe("CLI Integration", () => {
 			expect(tasks).toHaveLength(0);
 
 			const config = await core.filesystem.loadConfig();
-			const statuses = config?.statuses || [];
+			const statuses = statusNames(config?.statuses);
 
 			const { generateKanbanBoardWithMetadata } = await import("../board.ts");
 			const board = generateKanbanBoardWithMetadata(tasks, statuses, "Test Project");
 
 			// Should return board with metadata, configured status columns, and empty-state message
 			expect(board).toContain("# Kanban Board Export");
-			expect(board).toContain("| To Do | In Progress | Done |");
+			expect(board).toContain("| To Do | Planning | Plan Review | In Progress | In Review | Done | Dropped |");
 			expect(board).toContain("No tasks found");
 		});
 
@@ -2356,7 +2425,7 @@ describe("CLI Integration", () => {
 
 			const tasks = await core.filesystem.listTasks();
 			const config = await core.filesystem.loadConfig();
-			const statuses = config?.statuses || [];
+			const statuses = statusNames(config?.statuses);
 
 			const { generateKanbanBoardWithMetadata } = await import("../board.ts");
 			const board = generateKanbanBoardWithMetadata(tasks, statuses, "Test Project");
@@ -2387,7 +2456,7 @@ describe("CLI Integration", () => {
 
 			const tasks = await core.filesystem.listTasks();
 			const config = await core.filesystem.loadConfig();
-			const statuses = config?.statuses || [];
+			const statuses = statusNames(config?.statuses);
 
 			// Test that --vertical flag produces vertical layout
 			const { generateKanbanBoardWithMetadata } = await import("../board.ts");
@@ -2436,7 +2505,7 @@ describe("CLI Integration", () => {
 			await core.gitOps.fetch();
 			const branches = await core.gitOps.listRemoteBranches();
 			const config = await core.filesystem.loadConfig();
-			const statuses = config?.statuses || [];
+			const statuses = statusNames(config?.statuses);
 
 			const localTasks = await core.filesystem.listTasks();
 			const tasksById = new Map(localTasks.map((t) => [t.id, t]));
@@ -2505,7 +2574,7 @@ describe("CLI Integration", () => {
 			const outputPath = join(TEST_DIR, "test-export.md");
 			const tasks = await core.filesystem.listTasks();
 			const config = await core.filesystem.loadConfig();
-			const statuses = config?.statuses || [];
+			const statuses = statusNames(config?.statuses);
 
 			await exportKanbanBoardToFile(tasks, statuses, outputPath, "TestProject");
 

@@ -3,6 +3,7 @@
  */
 
 import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { hiddenStatusNames } from "../core/state-machine.ts";
 import type { Task } from "../types/index.ts";
 import { renderBoardTui } from "./board.ts";
 import { createLoadingScreen } from "./loading.ts";
@@ -187,6 +188,7 @@ async function renderBoardTuiWithSwitching(
 	// This is a placeholder - we'll need to modify the actual board.ts
 	return renderBoardTui(tasks, statuses, layout, maxColumnWidth, {
 		core,
+		hiddenStatuses: hiddenStatusNames(config?.statuses),
 		projectName: config?.projectName,
 	});
 }

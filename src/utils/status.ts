@@ -1,5 +1,6 @@
 import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { statusNames } from "../core/state-machine.ts";
 
 /**
  * Load valid statuses from project configuration.
@@ -7,7 +8,8 @@ import { type Core, createRuntimeCore } from "../core/backlog.ts";
 export async function getValidStatuses(core?: Core): Promise<string[]> {
 	const c = core ?? (await createRuntimeCore());
 	const config = await c.filesystem.loadConfig();
-	return config?.statuses && config.statuses.length > 0 ? config.statuses : [...DEFAULT_STATUSES];
+	const configured = statusNames(config?.statuses);
+	return configured.length > 0 ? configured : [...DEFAULT_STATUSES];
 }
 
 /**

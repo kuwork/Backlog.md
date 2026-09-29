@@ -20,6 +20,7 @@ import { findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
 import { initializeProject } from "./core/init.ts";
 import { foldArchivedMilestoneTasks } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
+import { hiddenStatusNames, statusNames } from "./core/state-machine.ts";
 import {
 	decisionListJson,
 	documentListJson,
@@ -2668,7 +2669,7 @@ async function runTaskList(
 		}
 
 		const canonicalByLower = new Map<string, string>();
-		const statuses = config?.statuses || [];
+		const statuses = statusNames(config?.statuses);
 		for (const status of statuses) {
 			canonicalByLower.set(status.toLowerCase(), status);
 		}
@@ -2826,7 +2827,7 @@ async function runTaskList(
 
 			return {
 				tasks: filtered,
-				statuses: config?.statuses || [],
+				statuses: statusNames(config?.statuses),
 				// The filters above narrow what is displayed. Dependency readiness must still see
 				// every task, or a dependency assigned to someone else reads as unknown.
 				readinessTasks: prefiltersDisplayList ? await core.queryTasks({ includeCrossBranch: false }) : undefined,
@@ -3879,6 +3880,8 @@ addHelpSchema(taskCmd.command("archive <taskId>"), {
 		}
 
 		const config = await core.filesystem.loadConfig();
+		// Keep the raw config so terminal resolution honours each status's category/exit channel
+		// instead of falling back to "the last column".
 		const statuses = config?.statuses ?? [...DEFAULT_STATUSES];
 		const terminalStatus = getTerminalStatus(statuses) ?? "Done";
 		if (isTerminalStatus(task.status, statuses)) {
@@ -3944,6 +3947,8 @@ addHelpSchema(taskCmd.command("complete <taskId>"), {
 		}
 
 		const config = await core.filesystem.loadConfig();
+		// Keep the raw config so terminal resolution honours each status's category/exit channel
+		// instead of falling back to "the last column".
 		const statuses = config?.statuses ?? [...DEFAULT_STATUSES];
 		const terminalStatus = getTerminalStatus(statuses) ?? "Done";
 		if (!isTerminalStatus(task.status, statuses)) {
@@ -4363,7 +4368,8 @@ addHelpSchema(milestoneCmd.command("list"), {
 			core.filesystem.listArchivedMilestones(),
 			core.filesystem.loadConfig(),
 		]);
-		const statuses = config?.statuses ?? ["To Do", "In Progress", "Done"];
+		const statuses = config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"];
+		const hiddenStatuses = hiddenStatusNames(config?.statuses);
 		const showCompleted = Boolean(options.showCompleted || process.argv.includes("--show-completed"));
 
 		if (!isPlainRequested(options) && !shouldAutoPlain) {
@@ -4378,6 +4384,7 @@ addHelpSchema(milestoneCmd.command("list"), {
 				maxColumnWidth: config?.maxColumnWidth || 20,
 				projectName: config?.projectName,
 				hideEmptyColumns: config?.hideEmptyColumns ?? false,
+				hiddenStatuses,
 			});
 			return;
 		}
@@ -4387,11 +4394,20 @@ addHelpSchema(milestoneCmd.command("list"), {
 			: tasks;
 		const groupedTasks = foldArchivedMilestoneTasks(plainTasks, milestones, archivedMilestones);
 		const { filterVisibleColumns, prepareBoardColumns } = await import("./ui/board.ts");
+		const boardStatuses =
+			hiddenStatuses.length > 0 ? statuses.filter((status) => !hiddenStatuses.includes(status)) : statuses;
+		// These generators rebuild columns from the tasks, so hidden-status tasks must be dropped too.
+		const visibleTasks =
+			hiddenStatuses.length > 0
+				? groupedTasks.filter((task) => !hiddenStatuses.includes((task.status ?? "").trim()))
+				: groupedTasks;
 		const visibleStatuses = config?.hideEmptyColumns
-			? filterVisibleColumns(prepareBoardColumns(groupedTasks, statuses), true, false).map((column) => column.status)
-			: statuses;
+			? filterVisibleColumns(prepareBoardColumns(visibleTasks, boardStatuses), true, false).map(
+					(column) => column.status,
+				)
+			: boardStatuses;
 		const projectName = config?.projectName?.trim() || "Project";
-		console.log(generateMilestoneGroupedBoard(groupedTasks, visibleStatuses, milestones, projectName));
+		console.log(generateMilestoneGroupedBoard(visibleTasks, visibleStatuses, milestones, projectName));
 	});
 
 addHelpSchema(milestoneCmd.command("edit <name>"), {
@@ -4632,7 +4648,7 @@ async function handleBoardView(options: { layout?: string; vertical?: boolean; m
 	const core = new Core(cwd);
 	const config = await core.filesystem.loadConfig();
 
-	const statuses = config?.statuses || [];
+	const statuses = statusNames(config?.statuses);
 
 	// Use unified view for Tab switching support
 	const { runUnifiedView } = await import("./ui/unified-view.ts");
@@ -4671,7 +4687,7 @@ boardCmd
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const config = await core.filesystem.loadConfig();
-		const statuses = config?.statuses || [];
+		const statuses = statusNames(config?.statuses);
 
 		// Load tasks with progress tracking
 		const loadingScreen = await createLoadingScreen("Loading tasks for export");
@@ -5460,7 +5476,7 @@ addHelpSchema(configCmd.command("get <key>"), {
 					console.log(config.defaultStatus || "");
 					break;
 				case "statuses":
-					console.log(config.statuses.join(", "));
+					console.log(statusNames(config.statuses).join(", "));
 					break;
 				case "labels":
 					console.log(config.labels.join(", "));
@@ -5768,7 +5784,7 @@ addHelpSchema(configCmd.command("list"), {
 			console.log(`  defaultEditor: ${config.defaultEditor || "(not set)"}`);
 			console.log(`  defaultAssignee: [${(config.defaultAssignee ?? []).join(", ")}]`);
 			console.log(`  defaultStatus: ${config.defaultStatus || "(not set)"}`);
-			console.log(`  statuses: [${config.statuses.join(", ")}]`);
+			console.log(`  statuses: [${statusNames(config.statuses).join(", ")}]`);
 			console.log(`  labels: [${config.labels.join(", ")}]`);
 			const milestones = await core.filesystem.listMilestones();
 			console.log(`  milestones: [${milestones.map((milestone) => milestone.id).join(", ")}]`);
@@ -5813,6 +5829,8 @@ addHelpSchema(program.command("cleanup"), {
 				process.exit(1);
 			}
 			core.gitOps.setConfig(config);
+			// Raw config keeps category/exit channel so "Done" is recognised as terminal even when a
+			// later column (e.g. Dropped) sits after it.
 			const statuses = config.statuses ?? [...DEFAULT_STATUSES];
 			const terminalStatus = getTerminalStatus(statuses);
 			if (!terminalStatus) {

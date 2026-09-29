@@ -1,6 +1,6 @@
 import { DEFAULT_STATUSES } from "../constants/index.ts";
 import type { Core } from "../core/backlog.ts";
-import type { Task } from "../types/index.ts";
+import type { StatusDefinition, Task } from "../types/index.ts";
 import { canonicalTaskId } from "./task-id.ts";
 import { isTerminalStatus } from "./terminal-status.ts";
 
@@ -32,7 +32,7 @@ export interface ReadinessGraph {
 	/** True when this task's own record lives in the completed corpus. */
 	isCompletedRecord(taskId: string): boolean;
 	/** Configured statuses with the project default applied, so an empty config still resolves. */
-	readonly statuses: readonly string[];
+	readonly statuses: readonly (string | StatusDefinition)[];
 }
 
 /**
@@ -49,7 +49,7 @@ export interface ReadinessGraph {
 export function createReadinessGraph(options: {
 	tasks: Task[];
 	completedTasks?: Task[];
-	statuses?: readonly string[];
+	statuses?: readonly (string | StatusDefinition)[];
 }): ReadinessGraph {
 	const statuses = options.statuses?.length ? options.statuses : DEFAULT_STATUSES;
 	const records = new Map<string, { task: Task; completed: boolean } | "ambiguous">();

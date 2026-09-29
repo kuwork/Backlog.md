@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { stripAnyPrefix } from "../../utils/prefix-config";
-import type { AcceptanceCriterion, Milestone, Task, TaskComment } from "../../types";
+import type { AcceptanceCriterion, Milestone, StatusesConfig, Task, TaskComment } from "../../types";
 import Modal from "./Modal";
+import TabButton from "./TabButton";
 import TaskHierarchySection from "./TaskHierarchySection";
 import { apiClient, ApiError, NetworkError } from "../lib/api";
 import type { TranslationDict } from "../locales/types";
@@ -39,6 +40,11 @@ interface Props {
   onArchive?: () => void; // For archiving tasks
   onPromoted?: (task: Task) => void; // For opening a newly promoted task
   availableStatuses?: string[]; // Available statuses for new tasks
+  /**
+   * Raw `statuses` config. Readiness needs each status's category/exit to know which statuses are
+   * terminal; the name-only `availableStatuses` list would collapse that to the last column.
+   */
+  statusesConfig?: StatusesConfig;
   availableTasks?: Task[]; // Task corpus for hierarchy display and dependency picker
   /** Bumped by the app whenever the task corpus is refreshed (broadcast or own writes). */
   tasksVersion?: number;
@@ -200,31 +206,6 @@ const metadataTabPriorityFor = (isDone: boolean): readonly MetadataTab[] =>
 const defaultMetadataTabFor = (counts: Record<MetadataTab, number>, isDone: boolean): MetadataTab =>
   metadataTabPriorityFor(isDone).find((tab) => counts[tab] > 0) ?? "references";
 
-const MetadataTabButton: React.FC<{
-  tab: MetadataTab;
-  label: string;
-  count: number;
-  active: boolean;
-  onSelect: (tab: MetadataTab) => void;
-}> = ({ tab, label, count, active, onSelect }) => (
-  <button
-    type="button"
-    role="tab"
-    id={metadataTabId(tab)}
-    aria-selected={active}
-    onClick={() => onSelect(tab)}
-    className={`px-3 py-1.5 rounded-md text-sm font-semibold tracking-tight transition-colors duration-200 ${
-      active
-        ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-        : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-700/50 dark:hover:text-gray-100"
-    }`}
-  >
-    {label}
-    {/* A count is only worth its space when there is something behind it: an empty list shows the
-        bare caption, so the strip does not fill up with (0)s. */}
-    {count > 0 && <span className="ml-1 font-normal tabular-nums">{`(${count})`}</span>}
-  </button>
-);
 
 export const TaskDetailsModal: React.FC<Props> = ({
   task,
@@ -235,6 +216,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
   onArchive,
   onPromoted,
   availableStatuses,
+  statusesConfig,
   availableTasks: initialAvailableTasks,
   tasksVersion = 0,
   availableMilestones: _availableMilestones,
@@ -644,11 +626,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
     const graph = createReadinessGraph({
       tasks: [...availableTasks, ...offBoard.filter((entry) => entry.source !== "completed")],
       completedTasks: offBoard.filter((entry) => entry.source === "completed"),
-      statuses: availableStatuses,
+      // Raw config so a `Done` dependency is terminal even though `Dropped` is the last column.
+      statuses: statusesConfig ?? availableStatuses,
     });
     const result = getTaskReadiness({ ...task, dependencies, status }, graph);
     return result.isReady || result.isBlocked ? result : null;
-  }, [task, dependencies, status, availableTasks, offBoardDependencies, availableStatuses]);
+  }, [task, dependencies, status, availableTasks, offBoardDependencies, availableStatuses, statusesConfig]);
 
   // Keep a baseline for dirty-check
   const baseline = useMemo(() => ({
@@ -1655,26 +1638,26 @@ export const TaskDetailsModal: React.FC<Props> = ({
               list cannot push the sections below out of reach. */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
             <div role="tablist" aria-label={t.taskDetails.metadataTabsLabel} className="flex flex-wrap gap-1 mb-3">
-              <MetadataTabButton
-                tab="references"
+              <TabButton
+                id={metadataTabId("references")}
                 label={t.taskDetails.section.references}
                 count={references.length}
                 active={activeMetadataTab === "references"}
-                onSelect={setMetadataTab}
+                onSelect={() => setMetadataTab("references")}
               />
-              <MetadataTabButton
-                tab="documentation"
+              <TabButton
+                id={metadataTabId("documentation")}
                 label={t.taskDetails.section.documentation}
                 count={documentation.length}
                 active={activeMetadataTab === "documentation"}
-                onSelect={setMetadataTab}
+                onSelect={() => setMetadataTab("documentation")}
               />
-              <MetadataTabButton
-                tab="modifiedFiles"
+              <TabButton
+                id={metadataTabId("modifiedFiles")}
                 label={t.taskDetails.section.modifiedFiles}
                 count={modifiedFiles.length}
                 active={activeMetadataTab === "modifiedFiles"}
-                onSelect={setMetadataTab}
+                onSelect={() => setMetadataTab("modifiedFiles")}
               />
             </div>
 

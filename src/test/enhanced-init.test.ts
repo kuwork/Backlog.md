@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { initializeProject } from "../core/init.ts";
+import { DEFAULT_STATE_MACHINE, hiddenStatusNames, statusNames } from "../core/state-machine.ts";
 import type { BacklogConfig } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -71,7 +72,18 @@ describe("Enhanced init command", () => {
 		expect(config).toBeTruthy();
 		expect(config?.projectName).toBe("New Project");
 		expect(config?.autoCommit).toBe(false); // Default value
-		expect(config?.statuses).toEqual(["To Do", "In Progress", "Done"]);
+		// A fresh project starts on the seven-column preset machine, Dropped hidden.
+		expect(config?.statuses).toEqual(DEFAULT_STATE_MACHINE);
+		expect(statusNames(config?.statuses)).toEqual([
+			"To Do",
+			"Planning",
+			"Plan Review",
+			"In Progress",
+			"In Review",
+			"Done",
+			"Dropped",
+		]);
+		expect(hiddenStatusNames(config?.statuses)).toEqual(["Dropped"]);
 		expect(config?.dateFormat).toBe("yyyy-mm-dd");
 	});
 

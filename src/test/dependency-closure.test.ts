@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import type { DependencyRecordLike } from "../utils/dependency-closure.ts";
-import { DependencyQuery } from "../utils/dependency-query.ts";
+import { DependencyQuery, type DependencyQueryInput } from "../utils/dependency-query.ts";
 
 const STATUSES = ["To Do", "In Progress", "Done"];
+
+/** The fork's seven-column shape, where `Done` is not the last entry. */
+const OBJECT_STATUSES: DependencyQueryInput["statuses"] = [
+	{ name: "To Do", category: "active" },
+	{ name: "In Progress", category: "wip" },
+	{ name: "Done", category: "done", exit: "complete" },
+	{ name: "Dropped", category: "dropped", exit: "archive" },
+];
 
 function record(id: string, dependencies: string[] = [], status = "To Do"): DependencyRecordLike {
 	return { id, title: `${id} title`, status, dependencies };
@@ -15,11 +23,13 @@ function queryOf(input: {
 	milestones?: Array<{ id: string }>;
 	released?: Array<{ id: string }>;
 	includeDrafts?: boolean;
+	statuses?: DependencyQueryInput["statuses"];
 }): DependencyQuery {
+	const { statuses, ...rest } = input;
 	return new DependencyQuery({
-		statuses: STATUSES,
+		statuses: statuses ?? STATUSES,
 		completed: [],
-		...input,
+		...rest,
 	});
 }
 
@@ -223,5 +233,30 @@ describe("dependency query", () => {
 
 		expect(query.answer("7")).toBeNull();
 		expect(query.answer("BACK-7")?.subject.id).toBe("BACK-7");
+	});
+});
+
+describe("dependency query with object-form statuses", () => {
+	test("marks a Done dependency terminal even though Dropped is the last column", () => {
+		// A name list would only ever name the last column (Dropped), so the category declaration is
+		// the only thing that lets a Done prerequisite read as finished instead of an open blocker.
+		const query = queryOf({
+			tasks: [record("TASK-1", ["TASK-2"]), record("TASK-2", [], "Done")],
+			statuses: OBJECT_STATUSES,
+		});
+
+		const result = query.answer("TASK-1");
+
+		expect(result?.rows.map((row) => [row.id, row.terminal])).toEqual([["TASK-2", true]]);
+		expect(result?.blockers).toEqual([]);
+	});
+
+	test("treats a name-only status list the same as before (legacy fallback)", () => {
+		const query = queryOf({
+			tasks: [record("TASK-1", ["TASK-2"]), record("TASK-2", [], "Done")],
+			statuses: ["To Do", "In Progress", "Done"],
+		});
+
+		expect(query.answer("TASK-1")?.rows.map((row) => [row.id, row.terminal])).toEqual([["TASK-2", true]]);
 	});
 });

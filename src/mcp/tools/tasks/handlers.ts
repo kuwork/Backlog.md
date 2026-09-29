@@ -1,9 +1,11 @@
 import { basename, join } from "node:path";
 import { DEFAULT_STATUSES } from "../../../constants/index.ts";
+import { statusNames } from "../../../core/state-machine.ts";
 import { isCreateLockError, isTaskLockError } from "../../../file-system/operations.ts";
 import {
 	isLocalEditableTask,
 	type SearchPriorityFilter,
+	type StatusesConfig,
 	type Task,
 	type TaskListFilter,
 } from "../../../types/index.ts";
@@ -83,7 +85,11 @@ export class TaskHandlers {
 		return resolveMilestoneInputForStorage(milestone, activeMilestones, archivedMilestones);
 	}
 
-	private async getConfiguredStatuses(): Promise<string[]> {
+	/**
+	 * The raw `statuses` config (object form included). Terminal resolution needs each entry's
+	 * category/exit channel, which a name list would throw away.
+	 */
+	private async getStatusesConfig(): Promise<StatusesConfig> {
 		const config = await this.core.filesystem.loadConfig();
 		return config?.statuses ?? [...DEFAULT_STATUSES];
 	}
@@ -269,7 +275,7 @@ export class TaskHandlers {
 		}
 
 		const config = await this.core.filesystem.loadConfig();
-		const statuses = config?.statuses ?? [];
+		const statuses = statusNames(config?.statuses);
 
 		const canonicalByLower = new Map<string, string>();
 		for (const status of statuses) {
@@ -450,7 +456,7 @@ export class TaskHandlers {
 			throw new BacklogToolError(`Cannot archive task from another branch: ${task.id}`, "VALIDATION_ERROR");
 		}
 
-		const statuses = await this.getConfiguredStatuses();
+		const statuses = await this.getStatusesConfig();
 		const terminalStatus = getTerminalStatus(statuses) ?? "Done";
 		if (isTerminalStatus(task.status, statuses)) {
 			throw new BacklogToolError(
@@ -482,7 +488,7 @@ export class TaskHandlers {
 			throw new BacklogToolError(`Cannot complete task from another branch: ${task.id}`, "VALIDATION_ERROR");
 		}
 
-		const statuses = await this.getConfiguredStatuses();
+		const statuses = await this.getStatusesConfig();
 		const terminalStatus = getTerminalStatus(statuses) ?? "Done";
 		if (!isTerminalStatus(task.status, statuses)) {
 			throw new BacklogToolError(
