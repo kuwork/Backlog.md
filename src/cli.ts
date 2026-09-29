@@ -5779,11 +5779,13 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 addHelpSchema(configCmd.command("list"), {
 	reads: "Project Backlog.md configuration",
 	required: [],
-	optional: [],
+	optional: [{ name: "plain", type: "Boolean", description: "Use plain text output" }],
 	output: "All public configuration values",
-	examples: ["backlog config list"],
+	examples: ["backlog config list", "backlog config list --plain"],
 })
 	.description("list all configuration values")
+	// Accepted so agent guidance that always passes --plain works; config list output is already plain text.
+	.option("--plain", "use plain text output")
 	.action(async () => {
 		try {
 			const cwd = await requireProjectRoot();

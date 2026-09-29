@@ -164,6 +164,15 @@ describe("Config commands", () => {
 		expect(portOutput.trim()).toBe("7001");
 	});
 
+	it("accepts --plain on config list and prints the same values", async () => {
+		const bareOutput = await $`bun ${CLI_PATH} config list`.cwd(TEST_DIR).text();
+		const plainOutput = await $`bun ${CLI_PATH} config list --plain`.cwd(TEST_DIR).text();
+		expect(plainOutput).toBe(bareOutput);
+
+		const helpOutput = await $`bun ${CLI_PATH} config list --help`.cwd(TEST_DIR).text();
+		expect(helpOutput).toContain("--plain");
+	});
+
 	it("round-trips hideEmptyColumns through config get/set/list", async () => {
 		const defaultGet = await $`bun ${CLI_PATH} config get hideEmptyColumns`.cwd(TEST_DIR).text();
 		expect(defaultGet.trim()).toBe("false");
