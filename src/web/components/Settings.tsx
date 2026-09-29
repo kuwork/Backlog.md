@@ -292,6 +292,20 @@ const Settings: React.FC = () => {
 						</div>
 					</div>
 
+					{/* State Machine */}
+					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+							{t.stateMachine.title}
+						</h2>
+						<StateMachineEditor
+							statuses={config.statuses}
+							onChange={handleStatusesChange}
+							onReload={handleReloadStatuses}
+							onRestoreDefault={handleRestoreDefaultStatuses}
+							dirty={statusesDirty}
+						/>
+					</div>
+
 					{/* Workflow Settings */}
 					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t.settings.workflowSettings}</h2>
@@ -371,6 +385,26 @@ const Settings: React.FC = () => {
 								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 									{t.stateMachine.terminalStatusDesc}
 								</p>
+							</div>
+
+							<div>
+								<label className="flex items-center justify-between">
+									<div>
+										<span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.settings.hideEmptyColumns}</span>
+										<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+											{t.settings.hideEmptyColumnsDesc}
+										</p>
+									</div>
+									<div className="relative inline-flex items-center cursor-pointer">
+										<input
+											type="checkbox"
+											checked={config.hideEmptyColumns ?? false}
+											onChange={(e) => handleInputChange('hideEmptyColumns', e.target.checked)}
+											className="sr-only peer"
+										/>
+										<div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-circle peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-circle after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+									</div>
+								</label>
 							</div>
 
 							<div>
@@ -525,26 +559,6 @@ const Settings: React.FC = () => {
 									</div>
 								</label>
 							</div>
-
-							<div>
-								<label className="flex items-center justify-between">
-									<div>
-										<span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.settings.hideEmptyColumns}</span>
-										<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-											{t.settings.hideEmptyColumnsDesc}
-										</p>
-									</div>
-									<div className="relative inline-flex items-center cursor-pointer">
-										<input
-											type="checkbox"
-											checked={config.hideEmptyColumns ?? false}
-											onChange={(e) => handleInputChange('hideEmptyColumns', e.target.checked)}
-											className="sr-only peer"
-										/>
-										<div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-circle peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-circle after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-									</div>
-								</label>
-							</div>
 						</div>
 					</div>
 
@@ -621,20 +635,6 @@ const Settings: React.FC = () => {
 								</p>
 							</div>
 						</div>
-					</div>
-
-					{/* State Machine */}
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-							{t.stateMachine.title}
-						</h2>
-						<StateMachineEditor
-							statuses={config.statuses}
-							onChange={handleStatusesChange}
-							onReload={handleReloadStatuses}
-							onRestoreDefault={handleRestoreDefaultStatuses}
-							dirty={statusesDirty}
-						/>
 					</div>
 
 					{/* Save/Cancel Buttons */}
