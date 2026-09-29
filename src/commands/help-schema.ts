@@ -18,7 +18,13 @@ export interface HelpSchema {
 	optional?: HelpField[];
 	output?: string;
 	examples?: string[];
+	note?: string;
 }
+
+// The first read every session owes this project. Commands that create or edit work share this one
+// literal, so their help footers cannot drift apart and a future edit has a single place to land.
+export const INSTRUCTIONS_OVERVIEW_HINT =
+	"Run `backlog instructions overview` first if you have not read it yet in this session - it is this project's required first read.";
 
 function resolveText(value: string | (() => string) | undefined): string | undefined {
 	return typeof value === "function" ? value() : value;
@@ -55,6 +61,9 @@ function renderHelpSchema(schema: HelpSchema): string {
 	}
 	if (schema.examples && schema.examples.length > 0) {
 		lines.push("Examples:", ...schema.examples.map((example) => `  ${renderConfiguredTaskIds(example)}`));
+	}
+	if (schema.note) {
+		lines.push("", `Note: ${schema.note}`);
 	}
 
 	return `\n${lines.join("\n")}\n`;
