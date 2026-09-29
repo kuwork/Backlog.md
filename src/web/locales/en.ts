@@ -449,6 +449,77 @@ export const en = {
 		},
 	},
 
+	stateMachine: {
+		title: "State Machine",
+		description:
+			"Statuses can be a plain list of names or a state machine with categories and transitions. Editing here writes the object form back to config.yml, keeping every field.",
+		tabsLabel: "State machine editor",
+		statusSettings: "Statuses",
+		preview: "Transition tree",
+		name: "Name",
+		category: "Category",
+		exit: "Exit",
+		display: "Display on board",
+		displayHint:
+			"When off, this status column is hidden from the board (tasks still appear in search and the task list).",
+		unset: "Not declared",
+		newStatusName: "New status",
+		addStatus: "Add status",
+		transitions: "Transitions",
+		addTransition: "Add transition",
+		to: "To",
+		when: "When",
+		ai: "AI policy",
+		if: "If (autonomy condition)",
+		requires: "Requires",
+		evidence: "Evidence",
+		reset: "Reset",
+		resetDesc: "Discard unsaved edits and reload what is saved in config.yml",
+		restoreDefault: "Default",
+		restoreDefaultDesc: "Overwrite the saved machine with the agreed seven-column default",
+		restoreDefaultConfirm:
+			"This replaces the whole state machine with the agreed seven-column default. Custom statuses will be lost. Continue?",
+		legacyTitle: "This project uses a plain string array",
+		legacyDesc: "No category or transitions are declared; the last column is treated as terminal.",
+		convert: "Convert to the object form",
+		noTransitions: "This project declares no transitions; statuses can move freely between non-terminal columns.",
+		lintTitle: "Configuration warnings (never block saving)",
+		terminalStatus: "Terminal statuses",
+		terminalStatusDesc:
+			"Statuses that end the work. Can be more than one; the last column is used when none is declared.",
+		categoryLabels: {
+			initial: "start",
+			active: "queued, unclaimed",
+			wip: "in progress",
+			blocked: "waiting on a human",
+			done: "finished",
+			dropped: "abandoned",
+		},
+		aiLabels: {
+			allowed: "act on its own",
+			allowed_if: "act only if the condition holds",
+			propose: "propose and wait",
+			forbidden: "stop and wait",
+		},
+		lint: {
+			notAnArray: "statuses must be a non-empty array",
+			invalidEntry: "Every statuses entry must be a string or an object with a name",
+			duplicateName: (status: string) => `Status "${status}" is duplicated`,
+			invalidCategory: (status: string, value: string) =>
+				`Status "${status}" has category "${value}", which is not one of the six`,
+			terminalMissingExit: (status: string) => `Terminal status "${status}" is missing exit (complete / archive)`,
+			unknownTarget: (status: string, target: string) => `Status "${status}" points at unknown status "${target}"`,
+			missingWhen: (status: string, target: string) =>
+				`Status "${status}" has several transitions but the one to "${target}" has no when`,
+			initialAsTarget: (target: string) => `The start status "${target}" should not be the target of a transition`,
+			allowedIntoTerminal: (target: string) =>
+				`A transition into terminal status "${target}" should not declare ai: allowed`,
+			allowedIfMissingIf: (status: string, target: string) =>
+				`"${status}" → "${target}" declares ai: allowed_if but has no if`,
+			invalidAi: (status: string, target: string, value: string) =>
+				`"${status}" → "${target}" declares ai "${value}", which is not one of the four`,
+		},
+	},
 	settings: {
 		title: "Settings",
 		loading: "Loading settings...",

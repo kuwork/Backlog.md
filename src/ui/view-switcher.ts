@@ -4,6 +4,7 @@
  */
 
 import type { Core } from "../core/backlog.ts";
+import { statusNames } from "../core/state-machine.ts";
 import type { Task } from "../types/index.ts";
 
 export type ViewType = "task-list" | "task-detail" | "kanban";
@@ -77,7 +78,7 @@ class BackgroundLoader {
 			const config = await this.core.filesystem.loadConfig();
 			return {
 				tasks: this.cachedTasks,
-				statuses: config?.statuses || [],
+				statuses: statusNames(config?.statuses),
 			};
 		}
 
@@ -96,7 +97,7 @@ class BackgroundLoader {
 
 		return {
 			tasks,
-			statuses: config?.statuses || [],
+			statuses: statusNames(config?.statuses),
 		};
 	}
 

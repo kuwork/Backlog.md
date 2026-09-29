@@ -3,7 +3,7 @@ id: doc-15
 title: Wiki 知识图谱关系设计（doc-14 第三期）
 type: specification
 created_date: '2026-09-26 02:19'
-updated_date: '2026-09-26 09:21'
+updated_date: '2026-09-28 07:58'
 tags:
   - wiki
   - graph

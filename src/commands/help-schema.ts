@@ -99,19 +99,32 @@ function parseStatusesFromConfig(content: string): string[] | null {
 		}
 
 		const blockValues: string[] = [];
+		// Only items at the block's own depth are statuses; an object entry's nested `next:` list
+		// sits deeper and must not be read as one.
+		let blockIndent: number | null = null;
 		for (let blockIndex = index + 1; blockIndex < lines.length; blockIndex++) {
 			const blockLine = lines[blockIndex] ?? "";
 			const trimmedBlockLine = blockLine.trim();
 			if (!trimmedBlockLine || trimmedBlockLine.startsWith("#")) {
 				continue;
 			}
-			if (/^[A-Za-z_][A-Za-z0-9_]*\s*:/.test(trimmedBlockLine)) {
+			const indent = blockLine.length - blockLine.trimStart().length;
+			// A flush-left `key:` starts the next top-level field, ending the statuses block.
+			if (indent === 0 && /^[A-Za-z_][A-Za-z0-9_]*\s*:/.test(trimmedBlockLine)) {
 				break;
 			}
 			const itemMatch = trimmedBlockLine.match(/^-\s*(.+)$/);
-			if (itemMatch?.[1]) {
-				blockValues.push(stripYamlScalar(itemMatch[1]));
+			if (!itemMatch?.[1]) {
+				continue;
 			}
+			blockIndent ??= indent;
+			if (indent !== blockIndent) {
+				continue;
+			}
+			// Object form starts each entry with `- name: "…"`; keep just the name scalar.
+			const itemText = itemMatch[1].trim();
+			const itemName = itemText.match(/^name\s*:\s*(.+)$/)?.[1];
+			blockValues.push(stripYamlScalar(itemName ?? itemText));
 		}
 		return blockValues.filter(Boolean);
 	}

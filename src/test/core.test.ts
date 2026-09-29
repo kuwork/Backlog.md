@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
+import { statusNames } from "../core/state-machine.ts";
 import type { Document, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -42,7 +43,15 @@ describe("Core", () => {
 
 			const config = await core.filesystem.loadConfig();
 			expect(config?.projectName).toBe("Test Project");
-			expect(config?.statuses).toEqual(["To Do", "In Progress", "Done"]);
+			expect(statusNames(config?.statuses)).toEqual([
+				"To Do",
+				"Planning",
+				"Plan Review",
+				"In Progress",
+				"In Review",
+				"Done",
+				"Dropped",
+			]);
 			expect(config?.defaultStatus).toBe("To Do");
 		});
 

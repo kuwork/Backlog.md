@@ -3,6 +3,7 @@
  */
 
 import type { Core } from "../core/backlog.ts";
+import { hiddenStatusNames, statusNames } from "../core/state-machine.ts";
 import type { Milestone, Task, TaskCreateInput } from "../types/index.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { collectAvailableLabels } from "../utils/label-filter.ts";
@@ -227,7 +228,7 @@ export async function loadTasksForUnifiedView(
 		const config = await core.filesystem.loadConfig();
 		return {
 			tasks: options.tasks,
-			statuses: config?.statuses || ["To Do", "In Progress", "Done"],
+			statuses: config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"],
 		};
 	}
 
@@ -240,7 +241,7 @@ export async function loadTasksForUnifiedView(
 			const config = await core.filesystem.loadConfig();
 			return {
 				tasks,
-				statuses: config?.statuses || ["To Do", "In Progress", "Done"],
+				statuses: config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"],
 			};
 		});
 
@@ -365,7 +366,7 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 
 		const configWatcher = watchConfig(options.core, {
 			onConfigChanged: (config) => {
-				kanbanStatuses = config?.statuses ?? [];
+				kanbanStatuses = statusNames(config?.statuses);
 				configuredLabels = config?.labels ?? [];
 				emitBoardUpdate();
 				emitTaskListUpdate();
@@ -474,6 +475,7 @@ export async function runUnifiedView(options: UnifiedViewOptions): Promise<void>
 
 				renderBoardTui(kanbanTasks, statuses, layout, maxColumnWidth, {
 					core: options.core,
+					hiddenStatuses: hiddenStatusNames(config?.statuses),
 					onTaskSelect: (task) => {
 						selectedTask = task;
 					},

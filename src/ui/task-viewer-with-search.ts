@@ -4,13 +4,14 @@ import { stdout as output } from "node:process";
 import type { BoxInterface, LineInterface, ScreenInterface, ScrollableTextInterface } from "neo-neo-bblessed";
 import { box, line, scrollabletext } from "neo-neo-bblessed";
 import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { statusNames } from "../core/state-machine.ts";
 import {
 	buildAcceptanceCriteriaItems,
 	buildDefinitionOfDoneItems,
 	formatDateForDisplay,
 	formatTaskPlainText,
 } from "../formatters/task-plain-text.ts";
-import type { Milestone, Task } from "../types/index.ts";
+import type { Milestone, StatusesConfig, Task } from "../types/index.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
 import { areLabelSelectionsEqual, collectAvailableLabels } from "../utils/label-filter.ts";
 import {
@@ -201,6 +202,9 @@ export async function viewTaskEnhanced(
 	// Show loading screen while loading tasks (can be slow with cross-branch loading)
 	let allTasks: Task[];
 	let statuses: string[];
+	// Terminal detection needs each status's category/exit, which the name list above drops, so the
+	// raw config is kept alongside it for the readiness graph only.
+	let statusesConfig: StatusesConfig | undefined;
 	let labels: string[];
 	let availableLabels: string[] = [];
 	// When tasks are provided, use in-memory search; otherwise use ContentStore-backed search
@@ -224,7 +228,8 @@ export async function viewTaskEnhanced(
 		// Tasks already provided - use in-memory search (no ContentStore loading)
 		allTasks = options.tasks.filter((t) => t.id && t.id.trim() !== "" && hasAnyPrefix(t.id));
 		const config = await core.filesystem.loadConfig();
-		statuses = config?.statuses || ["To Do", "In Progress", "Done"];
+		statuses = config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"];
+		statusesConfig = config?.statuses;
 		labels = config?.labels || [];
 		projectName = config?.projectName;
 		taskSearchIndex = createTaskSearchIndex(allTasks);
@@ -234,7 +239,8 @@ export async function viewTaskEnhanced(
 		try {
 			loadingScreen?.update("Loading configuration...");
 			const config = await core.filesystem.loadConfig();
-			statuses = config?.statuses || ["To Do", "In Progress", "Done"];
+			statuses = config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"];
+			statusesConfig = config?.statuses;
 			labels = config?.labels || [];
 			projectName = config?.projectName;
 
@@ -267,7 +273,8 @@ export async function viewTaskEnhanced(
 			for (const task of allTasks) byId.set(canonicalTaskId(task.id), task);
 			tasks = [...byId.values()];
 		}
-		return createReadinessGraph({ tasks, completedTasks: readinessCompletedTasks, statuses });
+		// Raw config, so a Done dependency is terminal even though it is not the last column.
+		return createReadinessGraph({ tasks, completedTasks: readinessCompletedTasks, statuses: statusesConfig });
 	};
 
 	// State for filtering - normalize filters to match configured values

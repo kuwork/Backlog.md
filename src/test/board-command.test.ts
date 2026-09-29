@@ -3,6 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
+import { statusNames } from "../core/state-machine.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -175,7 +176,7 @@ This is another test task for board testing.`,
 				viewSwitcher.getKanbanData = async () => {
 					// Mock config since it's not fully available in this test environment
 					const config = await core.filesystem.loadConfig();
-					const statuses = config?.statuses || ["To Do", "In Progress"];
+					const statuses = statusNames(config?.statuses);
 					return {
 						tasks: await core.filesystem.listTasks(),
 						statuses: statuses || [],

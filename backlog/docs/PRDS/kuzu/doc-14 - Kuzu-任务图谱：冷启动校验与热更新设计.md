@@ -3,7 +3,7 @@ id: doc-14
 title: Kuzu 任务图谱：冷启动校验与热更新设计
 type: design
 created_date: '2026-09-23'
-updated_date: '2026-09-26 09:21'
+updated_date: '2026-09-28 07:58'
 ---
 # Bun + KuzuDB 任务图谱：冷启动校验与热更新设计
 

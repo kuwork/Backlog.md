@@ -3,6 +3,7 @@
  */
 
 import type { Core } from "../core/backlog.ts";
+import { hiddenStatusNames, statusNames } from "../core/state-machine.ts";
 import type { Task } from "../types/index.ts";
 import { hasAnyPrefix } from "../utils/prefix-config.ts";
 import { renderBoardTui } from "./board.ts";
@@ -105,7 +106,7 @@ export async function runSimpleUnifiedView(options: SimpleUnifiedViewOptions): P
 			const validKanbanTasks = (options.tasks || []).filter((t) => t.id && t.id.trim() !== "" && hasAnyPrefix(t.id));
 			kanbanTasks = validKanbanTasks.map((t) => ({ ...t, source: "local" as const }));
 			const config = await options.core.filesystem.loadConfig();
-			statuses = config?.statuses || [];
+			statuses = statusNames(config?.statuses);
 		}
 
 		const config = await options.core.filesystem.loadConfig();
@@ -115,6 +116,7 @@ export async function runSimpleUnifiedView(options: SimpleUnifiedViewOptions): P
 		// Show kanban board with simple view switching
 		await renderBoardTui(kanbanTasks, statuses, layout, maxColumnWidth, {
 			core: options.core,
+			hiddenStatuses: hiddenStatusNames(config?.statuses),
 			onTaskSelect: (task) => {
 				selectedTask = task;
 			},

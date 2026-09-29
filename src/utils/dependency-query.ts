@@ -1,3 +1,4 @@
+import type { StatusDefinition } from "../types/index.ts";
 import {
 	DependencyClosure,
 	DependencyCorpus,
@@ -96,8 +97,12 @@ export interface DependencyQueryInput {
 	milestones?: readonly DependencyIdentity[];
 	/** Records that left the pool, so their ids are free again. */
 	released?: readonly DependencyIdentity[];
-	/** The project's status list, which decides what counts as unfinished. */
-	statuses: readonly string[];
+	/**
+	 * The project's status list, which decides what counts as unfinished. Pass the raw config
+	 * (`config.statuses`), not a name list: terminal detection needs each entry's category, and a
+	 * name list would silently collapse to "the last column" (which is `Dropped`, not `Done`).
+	 */
+	statuses: readonly (string | StatusDefinition)[];
 	/**
 	 * Whether the drafts' own edges take part in the walk, which is what makes a draft a legitimate
 	 * subject of a reverse query. Off unless the caller asks (AC #2): with it on, a draft can appear
@@ -118,7 +123,7 @@ export class DependencyQuery {
 	/** The records this query answers about: the targets, plus the drafts when they were asked for. */
 	private readonly scope: readonly DependencyRecordLike[];
 	private readonly completedIds = new Set<string>();
-	private readonly statuses: readonly string[];
+	private readonly statuses: readonly (string | StatusDefinition)[];
 	private readonly defects: DependencyDefect[];
 	private readonly counts: DependencyQueryResult["corpus"];
 

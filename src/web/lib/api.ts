@@ -8,6 +8,7 @@ import type {
 	SearchPriorityFilter,
 	SearchResult,
 	SearchResultType,
+	StatusesConfig,
 	Task,
 	TaskStatus,
 	WikiPage,
@@ -510,6 +511,24 @@ export class ApiClient {
 		const response = await fetch(`${API_BASE}/config`);
 		if (!response.ok) {
 			throw new Error("Failed to fetch config");
+		}
+		return response.json();
+	}
+
+	/**
+	 * Replace `statuses` on its own. Used by the settings page's "restore the agreed default"
+	 * button so it writes immediately instead of riding along with other pending edits.
+	 */
+	async updateStatuses(statuses: StatusesConfig): Promise<BacklogConfig> {
+		const response = await fetch(`${API_BASE}/config/statuses`, {
+			method: "PUT",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ statuses }),
+		});
+		if (!response.ok) {
+			throw new Error("Failed to update statuses");
 		}
 		return response.json();
 	}

@@ -5,7 +5,11 @@ import ChipInput from './ChipInput';
 import { useI18n } from '../hooks/useI18n';
 import { useI18nContext } from '../contexts/I18nContext';
 import { isValidLocale } from '../locales';
-import type { BacklogConfig } from '../../types';
+import { compileStateMachine, DEFAULT_STATE_MACHINE, statusNames } from '../../core/state-machine';
+import { getTerminalStatuses } from '../../utils/terminal-status';
+import StateMachineEditor from './StateMachineEditor';
+import StatusExcludeDropdown from './StatusExcludeDropdown';
+import type { BacklogConfig, StatusDefinition, StatusesConfig } from '../../types';
 
 const Settings: React.FC = () => {
 	const [config, setConfig] = useState<BacklogConfig | null>(null);
@@ -78,6 +82,64 @@ const Settings: React.FC = () => {
 		return (items ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
 	};
 
+	/** Column names of `statuses`, whatever shape it is in. */
+	const statusNamesFromConfig = (value: StatusesConfig): string[] => statusNames(value);
+
+	/** Terminal statuses as the runtime sees them: declared categories, else the last column. */
+	const terminalStatuses = getTerminalStatuses(config?.statuses ?? []);
+
+	/** Object-form rows for the terminal picker; a string array is converted on first edit. */
+	const asStatusDefinitions = (value: StatusesConfig): StatusDefinition[] => {
+		if (value.some((entry) => typeof entry !== "string")) {
+			return value.map((entry) => (typeof entry === "string" ? { name: entry } : entry));
+		}
+		const machine = compileStateMachine(value);
+		return value.map((entry) => {
+			const name = String(entry);
+			const definition: StatusDefinition = { name, category: machine.categoryOf(name) };
+			const exit = machine.exitChannel(name);
+			if (exit) definition.exit = exit;
+			return definition;
+		});
+	};
+
+	const handleTerminalStatusesChange = (selected: string[]) => {
+		if (!config) return;
+		const next = asStatusDefinitions(config.statuses).map((definition) => {
+			const isTerminal =
+				definition.category === "done" || definition.category === "dropped";
+			const shouldBeTerminal = selected.includes(definition.name);
+			if (shouldBeTerminal && !isTerminal) {
+				return { ...definition, category: "done" as const, exit: definition.exit ?? ("complete" as const) };
+			}
+			if (!shouldBeTerminal && isTerminal) {
+				const { exit: _dropExit, ...rest } = definition;
+				return { ...rest, category: "active" as const };
+			}
+			return definition;
+		});
+		handleInputChange("statuses", next);
+	};
+
+	const handleStatusesChange = (statuses: StatusesConfig) => {
+		handleInputChange("statuses", statuses);
+	};
+
+	const handleReloadStatuses = () => {
+		if (!config || !originalConfig) return;
+		setConfig({ ...config, statuses: originalConfig.statuses });
+	};
+
+	/** "Default" writes straight through: it replaces the saved machine, it does not queue an edit. */
+	const handleRestoreDefaultStatuses = async () => {
+		const updated = await apiClient.updateStatuses(DEFAULT_STATE_MACHINE);
+		setConfig(updated);
+		setOriginalConfig(updated);
+		await loadStatuses();
+		setShowSuccess(true);
+		setTimeout(() => setShowSuccess(false), 3000);
+	};
+
 	const validateConfig = (): boolean => {
 		const errors: Record<string, string> = {};
 
@@ -128,6 +190,7 @@ const Settings: React.FC = () => {
 	};
 
 	const hasUnsavedChanges = JSON.stringify(config) !== JSON.stringify(originalConfig);
+	const statusesDirty = JSON.stringify(config?.statuses) !== JSON.stringify(originalConfig?.statuses);
 
 	if (loading) {
 		return (
@@ -289,6 +352,24 @@ const Settings: React.FC = () => {
 								</select>
 								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 									{t.settings.defaultStatusDesc}
+								</p>
+							</div>
+
+							<div>
+								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+									{t.stateMachine.terminalStatus}
+								</label>
+								<StatusExcludeDropdown
+									availableStatuses={statusNamesFromConfig(config.statuses)}
+									excludedStatuses={terminalStatuses}
+									onChange={handleTerminalStatusesChange}
+									menuId="terminal-statuses-menu"
+									className="w-full"
+									label={t.stateMachine.terminalStatus}
+									emptyLabel={t.common.none}
+								/>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+									{t.stateMachine.terminalStatusDesc}
 								</p>
 							</div>
 
@@ -540,6 +621,20 @@ const Settings: React.FC = () => {
 								</p>
 							</div>
 						</div>
+					</div>
+
+					{/* State Machine */}
+					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+							{t.stateMachine.title}
+						</h2>
+						<StateMachineEditor
+							statuses={config.statuses}
+							onChange={handleStatusesChange}
+							onReload={handleReloadStatuses}
+							onRestoreDefault={handleRestoreDefaultStatuses}
+							dirty={statusesDirty}
+						/>
 					</div>
 
 					{/* Save/Cancel Buttons */}

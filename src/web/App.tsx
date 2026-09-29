@@ -17,6 +17,7 @@ import { collectAvailableLabels } from "../utils/label-filter";
 import { parseBrowserLoadingState } from "../utils/browser-loading-state";
 import { stripAnyPrefix } from "../utils/prefix-config";
 import BoardPage from "./components/BoardPage";
+import { hiddenStatusNames } from "../core/state-machine.ts";
 import DecisionDetail from "./components/DecisionDetail";
 import DocumentationDetail from "./components/DocumentationDetail";
 import DraftsList from "./components/DraftsList";
@@ -1063,6 +1064,8 @@ function AppContent() {
 		onRefreshData: refreshData,
 		onTasksUpdated: applyReorderedTasks,
 		statuses,
+		statusesConfig: config?.statuses,
+		hiddenStatuses: hiddenStatusNames(config?.statuses),
 		milestones,
 		availableLabels: collectAvailableLabels(tasks, availableLabels),
 		milestoneEntities,
@@ -1124,6 +1127,7 @@ function AppContent() {
 								onNewTask={handleNewTask}
 								tasks={tasks}
 								availableStatuses={statuses}
+								statusesConfig={config?.statuses}
 								availableLabels={availableLabels}
 								availableMilestones={milestones}
 								milestoneEntities={milestoneEntities}
@@ -1254,6 +1258,7 @@ function AppContent() {
 				onDrillDown={handleDrillDown}
 				onBack={taskHistory.length > 0 ? handleBack : undefined}
 				availableStatuses={isDraftMode ? ["Draft", ...statuses] : statuses}
+				statusesConfig={config?.statuses}
 				availableTasks={tasks}
 				tasksVersion={tasksVersion}
 				availableMilestones={milestones}

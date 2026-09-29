@@ -1,7 +1,64 @@
 project_name: "Backlog.md"
 default_assignee: ["@kimi"]
 default_status: "To Do"
-statuses: ["To Do", "In Progress", "Done"]
+statuses:
+  - name: "To Do"
+    category: active
+    next:
+      - to: "Planning"
+        when: "人类已确认描述与验收标准完整，可以开工"
+        ai: allowed
+      - to: "Dropped"
+        when: "任务已过时或被放弃（如很久以前列的、现在不再需要做）"
+        ai: propose
+  - name: "Planning"
+    category: wip
+    next:
+      - to: "Plan Review"
+        when: "实现计划已写入 implementationPlan"
+        ai: allowed_if
+        if: "implementationPlan 非空"
+        requires: "implementationPlan 非空"
+  - name: "Plan Review"
+    category: blocked
+    next:
+      - to: "In Progress"
+        when: "人类已批准实现计划"
+        ai: forbidden
+      - to: "Planning"
+        when: "计划被驳回或需修改"
+        ai: propose
+        evidence: "comments（写明驳回理由）"
+  - name: "In Progress"
+    category: wip
+    next:
+      - to: "In Review"
+        when: "实现完成，diff / 测试 / 验收说明已就绪"
+        ai: allowed_if
+        if: "finalSummary 非空"
+        requires: "finalSummary 非空"
+      - to: "Planning"
+        when: "实施中发现计划需要调整"
+        ai: allowed
+  - name: "In Review"
+    category: blocked
+    next:
+      - to: "Done"
+        when: "人类验收通过"
+        ai: forbidden
+      - to: "In Progress"
+        when: "验收未通过，需返工"
+        ai: propose
+        evidence: "comments（写明返工理由）"
+  - name: "Done"
+    category: done
+    exit: complete
+    next: []
+  - name: "Dropped"
+    category: dropped
+    exit: archive
+    display: false
+    next: []
 labels: []
 definition_of_done: ["bunx tsc --noEmit passes when TypeScript touched", "bun run check . passes when formatting/linting touched", "bun test (or scoped test) passes"]
 date_format: yyyy-mm-dd hh:mm

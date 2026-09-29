@@ -43,6 +43,8 @@ export type MilestonesTuiOptions = {
 	maxColumnWidth: number;
 	projectName?: string;
 	hideEmptyColumns?: boolean;
+	/** `display:false` statuses the embedded board must omit, mirroring the standalone board. */
+	hiddenStatuses?: string[];
 	/** Injected in tests; the CLI lets the board create its own screen. */
 	screen?: ScreenInterface;
 };
@@ -340,7 +342,7 @@ export async function createMilestonePopup(
  * Interactive milestone list + board. Resolves when the user quits.
  */
 export async function renderMilestonesTui(options: MilestonesTuiOptions): Promise<void> {
-	const { core, statuses } = options;
+	const { core, statuses, hiddenStatuses } = options;
 	let milestones = options.milestones;
 	let rows: SidebarRow[] = [];
 	let selectedIndex = 0;
@@ -788,6 +790,7 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 			screen,
 			projectName: options.projectName,
 			hideEmptyColumns: options.hideEmptyColumns,
+			hiddenStatuses,
 			availableLabels: collectAvailableLabels(options.tasks),
 			// The sidebar is the milestone picker, so the header keeps the board's other filters.
 			visibleFilters: ["search", "priority", "labels"],

@@ -87,6 +87,7 @@ import {
 } from "./reorder.ts";
 import { SearchService } from "./search-service.ts";
 import { computeSequences, planMoveToSequence, planMoveToUnsequenced } from "./sequences.ts";
+import { statusNames } from "./state-machine.ts";
 import { TaskIdentityIndex, type TaskIdentityRecord } from "./task-identity-index.ts";
 import {
 	BranchTaskLoader,
@@ -465,7 +466,7 @@ export class Core {
 			filesystemOnly,
 			taskPrefix: config?.prefixes?.task ?? "task",
 			taskResolutionStrategy: config?.taskResolutionStrategy ?? "most_progressed",
-			statuses: config?.statuses ?? DEFAULT_STATUSES,
+			statuses: statusNames(config?.statuses ?? [...DEFAULT_STATUSES]),
 			backlogDir: filesystem.backlogDirName,
 		};
 	}
@@ -986,7 +987,7 @@ export class Core {
 				localTasks,
 				completedTasks,
 				[],
-				config?.statuses ?? [...DEFAULT_STATUSES],
+				statusNames(config?.statuses ?? [...DEFAULT_STATUSES]),
 				config?.taskResolutionStrategy ?? "most_progressed",
 				null,
 				filesystem,
@@ -3977,7 +3978,7 @@ export class Core {
 	): Promise<{ tasks: Task[]; drafts: Task[]; statuses: string[] }> {
 		const snapshot = await this.loadTaskCorpusSnapshot(progressCallback);
 		const config = snapshot.config;
-		const statuses = (config?.statuses || DEFAULT_STATUSES) as string[];
+		const statuses = statusNames(config?.statuses || [...DEFAULT_STATUSES]);
 		if (!snapshot.identityIndex) throw new Error("Task corpus identity index was not initialized");
 		const tasks = snapshot.identityIndex.getTasks(true);
 
@@ -3985,7 +3986,7 @@ export class Core {
 		progressCallback?.("Loading drafts...");
 		const drafts = await this.fs.listDrafts();
 
-		return { tasks, drafts, statuses: statuses as string[] };
+		return { tasks, drafts, statuses };
 	}
 
 	/**
@@ -4036,7 +4037,7 @@ export class Core {
 				activeTasks,
 				completedTasks,
 				[],
-				config?.statuses ?? [...DEFAULT_STATUSES],
+				statusNames(config?.statuses ?? [...DEFAULT_STATUSES]),
 				config?.taskResolutionStrategy ?? "most_progressed",
 			);
 			return {
@@ -4092,7 +4093,7 @@ export class Core {
 				? retrySnapshot
 				: await this.getActiveBranchSnapshot(config, generation, filesystem, git);
 		if (projectChanged()) return await retryForCurrentProject();
-		const statuses = config?.statuses || [...DEFAULT_STATUSES];
+		const statuses = statusNames(config?.statuses || [...DEFAULT_STATUSES]);
 		const resolutionStrategy = config?.taskResolutionStrategy || "most_progressed";
 		const includeCompleted = options.includeCompleted ?? false;
 		const shouldLoadBranches = config?.checkActiveBranches !== false && config?.filesystemOnly !== true;

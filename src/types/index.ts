@@ -362,12 +362,51 @@ export interface PrefixConfig {
 	task: string;
 }
 
+/** Process role of a status. Drives every semantic derivation in the state machine. */
+export type StatusCategory = "initial" | "active" | "wip" | "blocked" | "done" | "dropped";
+
+/** How much autonomy the AI has on a transition. Declaration only — nothing is enforced. */
+export type AiPolicy = "allowed" | "allowed_if" | "propose" | "forbidden";
+
+/** Channel a terminal status takes when a human explicitly archives/completes a task. */
+export type StatusExitChannel = "complete" | "archive";
+
+/** A declared outgoing edge. All fields except `to` are documentation for humans and AI. */
+export interface StatusTransition {
+	to: string;
+	when?: string;
+	ai?: AiPolicy;
+	if?: string;
+	requires?: string;
+	evidence?: string;
+}
+
+/** Object form of a status. `next` being absent means the transitions are unrestricted. */
+export interface StatusDefinition {
+	name: string;
+	category?: StatusCategory;
+	exit?: StatusExitChannel;
+	next?: StatusTransition[];
+	/**
+	 * Whether this status gets its own board column. `false` hides the column (tasks in this
+	 * status are then only reachable through search / the task list). Defaults to shown, so the
+	 * field is omitted on the preset machine except where we deliberately hide a status.
+	 */
+	display?: boolean;
+}
+
+/**
+ * `config.statuses` accepts either shape: a plain string array (legacy, order-based
+ * semantics) or a list of {@link StatusDefinition} objects (state machine).
+ */
+export type StatusesConfig = (string | StatusDefinition)[];
+
 export interface BacklogConfig {
 	projectName: string;
 	/** Assignees applied to new tasks when none are provided. Empty or unset means no default. */
 	defaultAssignee?: string[];
 	defaultReporter?: string;
-	statuses: string[];
+	statuses: StatusesConfig;
 	labels: string[];
 	/** @deprecated Milestones are sourced from milestone files, not config. */
 	milestones?: string[];

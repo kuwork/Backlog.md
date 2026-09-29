@@ -1,4 +1,5 @@
 import { DEFAULT_STATUSES } from "../../constants/index.ts";
+import { statusNames } from "../../core/state-machine.ts";
 import type { BacklogConfig } from "../../types/index.ts";
 import type { JsonSchema } from "../validation/validators.ts";
 
@@ -6,8 +7,8 @@ import type { JsonSchema } from "../validation/validators.ts";
  * Builds the accepted task status values used by MCP schemas and public CLI help.
  */
 export function getStatusFieldEnumValues(config: Pick<BacklogConfig, "statuses">): string[] {
-	const configuredStatuses =
-		config.statuses && config.statuses.length > 0 ? [...config.statuses] : [...DEFAULT_STATUSES];
+	const configured = statusNames(config.statuses);
+	const configuredStatuses = configured.length > 0 ? configured : [...DEFAULT_STATUSES];
 	const normalizedStatuses = configuredStatuses.map((status) => status.trim());
 	const hasDraft = normalizedStatuses.some((status) => status.toLowerCase() === "draft");
 	return hasDraft ? normalizedStatuses : ["Draft", ...normalizedStatuses];
@@ -17,8 +18,8 @@ export function getStatusFieldEnumValues(config: Pick<BacklogConfig, "statuses">
  * Generates a status field schema with dynamic enum values sourced from config.
  */
 export function generateStatusFieldSchema(config: BacklogConfig): JsonSchema {
-	const configuredStatuses =
-		config.statuses && config.statuses.length > 0 ? [...config.statuses] : [...DEFAULT_STATUSES];
+	const configured = statusNames(config.statuses);
+	const configuredStatuses = configured.length > 0 ? configured : [...DEFAULT_STATUSES];
 	const normalizedStatuses = configuredStatuses.map((status) => status.trim());
 	const enumStatuses = getStatusFieldEnumValues(config);
 	const defaultStatus = normalizedStatuses[0] ?? DEFAULT_STATUSES[0];

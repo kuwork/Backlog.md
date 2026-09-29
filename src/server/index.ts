@@ -14,6 +14,7 @@ import {
 } from "../core/duplicate-task-repair.ts";
 import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
+import { statusNames, validateStatusesShape } from "../core/state-machine.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
@@ -431,7 +432,7 @@ export class BacklogServer {
 			const snapshot = store.getSnapshot();
 			const tasks = snapshot.tasks;
 			const config = await this.core.filesystem.loadConfig();
-			const statuses = config?.statuses || ["To Do", "In Progress", "Done"];
+			const statuses = statusNames(config?.statuses);
 			const drafts = await this.core.filesystem.listDrafts();
 			const statistics = getTaskStatistics(tasks, drafts, statuses);
 			const response = {
@@ -583,6 +584,10 @@ export class BacklogServer {
 					"/api/config": {
 						GET: async () => await this.handleGetConfig(),
 						PUT: async (req: Request) => await this.handleUpdateConfig(req),
+					},
+					"/api/config/statuses": {
+						PUT: async (req: Request) => await this.handleUpdateStatuses(req),
+						POST: async (req: Request) => await this.handleUpdateStatuses(req),
 					},
 					"/api/docs": {
 						GET: async () => await this.handleListDocs(),
@@ -1561,8 +1566,8 @@ export class BacklogServer {
 
 	private async handleGetStatuses(): Promise<Response> {
 		const config = await this.core.filesystem.loadConfig();
-		const statuses = config?.statuses || ["To Do", "In Progress", "Done"];
-		return Response.json(statuses);
+		const configured = statusNames(config?.statuses);
+		return Response.json(configured.length > 0 ? configured : ["To Do", "In Progress", "Done"]);
 	}
 
 	// Documentation handlers
@@ -1964,6 +1969,14 @@ export class BacklogServer {
 				return Response.json({ error: "Port must be between 1 and 65535" }, { status: 400 });
 			}
 
+			if (updatedConfig.statuses !== undefined) {
+				const check = validateStatusesShape(updatedConfig.statuses);
+				if (!check.ok) {
+					return Response.json({ error: `Invalid statuses: ${check.error}` }, { status: 400 });
+				}
+				updatedConfig.statuses = check.statuses;
+			}
+
 			// Save configuration
 			await this.core.filesystem.saveConfig(updatedConfig);
 
@@ -1972,13 +1985,44 @@ export class BacklogServer {
 				this.projectName = updatedConfig.projectName;
 			}
 
-			// Notify connected clients so that they refresh configuration-dependent data (e.g., statuses)
-			this.broadcastDataUpdated();
+			// Statuses (and other config-dependent data) changed: a full reload is the only
+			// path that re-reads /api/statuses and /api/config, so the board columns and the
+			// terminal status reflect the save.
+			this.broadcastConfigUpdated();
 
 			return Response.json(updatedConfig);
 		} catch (error) {
 			console.error("Error updating config:", error);
 			return Response.json({ error: "Failed to update configuration" }, { status: 500 });
+		}
+	}
+
+	/**
+	 * Replace `statuses` on its own. Used by the settings page's "restore the agreed default"
+	 * button, which must overwrite the saved machine immediately instead of riding along with
+	 * whatever else the user is still editing.
+	 */
+	private async handleUpdateStatuses(req: Request): Promise<Response> {
+		try {
+			const payload = (await req.json()) as { statuses?: unknown };
+			const check = validateStatusesShape(payload?.statuses);
+			if (!check.ok) {
+				return Response.json({ error: `Invalid statuses: ${check.error}` }, { status: 400 });
+			}
+
+			const config = await this.core.filesystem.loadConfig();
+			if (!config) {
+				return Response.json({ error: "Configuration not found" }, { status: 404 });
+			}
+			const nextConfig = { ...config, statuses: check.statuses };
+			await this.core.filesystem.saveConfig(nextConfig);
+			// Statuses changed: the client must reload /api/statuses so the board columns and the
+			// terminal status update, not just re-merge the task corpus.
+			this.broadcastConfigUpdated();
+			return Response.json(nextConfig);
+		} catch (error) {
+			console.error("Error updating statuses:", error);
+			return Response.json({ error: "Failed to update statuses" }, { status: 500 });
 		}
 	}
 
@@ -2049,7 +2093,9 @@ export class BacklogServer {
 			drafts,
 			milestones,
 			released,
-			statuses: config?.statuses ?? DEFAULT_STATUSES,
+			// Raw config so terminal detection honours category/exit (a name list would fall back to
+			// the last column, treating a Done dependency as unfinished).
+			statuses: config?.statuses ?? [...DEFAULT_STATUSES],
 			includeDrafts,
 		});
 	}
