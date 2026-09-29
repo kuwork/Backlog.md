@@ -9,7 +9,13 @@ import { generateMilestoneGroupedBoard } from "./board.ts";
 import { runAdvancedConfigWizard } from "./commands/advanced-config-wizard.ts";
 import { type CompletionInstallResult, installCompletion, registerCompletionCommand } from "./commands/completion.ts";
 import { configureAdvancedSettings } from "./commands/configure-advanced-settings.ts";
-import { addHelpSchema, choiceType, type HelpField, statusType } from "./commands/help-schema.ts";
+import {
+	addHelpSchema,
+	choiceType,
+	type HelpField,
+	INSTRUCTIONS_OVERVIEW_HINT,
+	statusType,
+} from "./commands/help-schema.ts";
 import { registerInstructionsCommand } from "./commands/instructions.ts";
 import { registerMcpCommand } from "./commands/mcp.ts";
 import { pickTaskForEditWizard, runTaskCreateWizard, runTaskEditWizard } from "./commands/task-wizard.ts";
@@ -1859,6 +1865,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		'backlog task create "Add OAuth" --ac "Login succeeds"',
 		'backlog task create -p {{TASK_ID:1}} "Add tests"',
 	],
+	note: INSTRUCTIONS_OVERVIEW_HINT,
 })
 	.option(
 		"-d, --description <text>",
@@ -3635,6 +3642,7 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 		"backlog task edit {{TASK_ID:1}} --check-ac 1",
 		'backlog task edit {{TASK_ID:1}} {{TASK_ID:2}} --status "<active status>"',
 	],
+	note: INSTRUCTIONS_OVERVIEW_HINT,
 })
 	.description("edit an existing task")
 	.action(async (taskIds: string[] | undefined, options) => {

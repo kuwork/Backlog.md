@@ -406,6 +406,44 @@ describe("CLI Integration", () => {
 			expect(searchHelp).toContain("modified-file: Project-root-relative path");
 			expect(cleanupHelp).toContain("Writes:");
 		});
+
+		it("points task create and edit help at the workflow overview", async () => {
+			// Pin the config locally: without it the normal-run probe below would walk up into the
+			// repository's own backlog folder and create a real task there.
+			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+			await Bun.write(
+				join(TEST_DIR, "backlog", "config.yml"),
+				[
+					'project_name: "Help Note Project"',
+					'statuses: ["To Do", "In Progress", "Done"]',
+					"labels: []",
+					"date_format: yyyy-mm-dd",
+					"",
+				].join("\n"),
+			);
+
+			const createHelp = await $`bun ${CLI_PATH} task create --help`.cwd(TEST_DIR).text();
+			const editHelp = await $`bun ${CLI_PATH} task edit --help`.cwd(TEST_DIR).text();
+			const listHelp = await $`bun ${CLI_PATH} task list --help`.cwd(TEST_DIR).text();
+			const created = await $`bun ${CLI_PATH} task create "Help note probe" --plain`.cwd(TEST_DIR).text();
+
+			const hint = "Run `backlog instructions overview` first";
+			const noteLine = (help: string) => {
+				const lines = normalizeCliOutput(help).trimEnd().split("\n");
+				return lines[lines.length - 1] ?? "";
+			};
+
+			for (const help of [createHelp, editHelp]) {
+				expect(help).toContain(`Note: ${hint}`);
+				// The hint closes the help output, so a reader cannot scroll past it.
+				expect(noteLine(help)).toContain(hint);
+			}
+			// One shared note, so the two commands cannot drift apart.
+			expect(noteLine(createHelp)).toBe(noteLine(editHelp));
+			// Commands without a note keep their help unchanged, and normal runs stay quiet.
+			expect(listHelp).not.toContain("instructions overview");
+			expect(created).not.toContain("instructions overview");
+		});
 	});
 
 	describe("self-correcting CLI errors", () => {
