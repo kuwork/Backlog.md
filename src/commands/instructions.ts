@@ -1,4 +1,6 @@
 import type { Command } from "commander";
+import { composeGuideText } from "../core/state-machine-guidance.ts";
+import { inspectStatusesText } from "../file-system/operations.ts";
 import {
 	getInstructionGuideByKey,
 	INSTRUCTION_GUIDE_KEYS,
@@ -6,7 +8,7 @@ import {
 	type InstructionGuideKey,
 	type WorkflowGuideDefinition,
 } from "../mcp/workflow-guides.ts";
-import { addHelpSchema, choiceType, renderConfiguredTaskIds } from "./help-schema.ts";
+import { addHelpSchema, choiceType, readRuntimeConfigTextSync, renderConfiguredTaskIds } from "./help-schema.ts";
 
 type InstructionsOptions = {
 	list?: boolean;
@@ -85,6 +87,13 @@ export function registerInstructionsCommand(program: Command): void {
 				process.exit(1);
 			}
 
-			process.stdout.write(formatInstructionGuideMarkdown(selectedGuide.resourceText));
+			// The overview carries the project's state machine, so it is assembled here from the current
+			// config instead of printing the shipped static text (doc-19 FR-8).
+			const configText = readRuntimeConfigTextSync();
+			const composed = composeGuideText(
+				selectedGuide.resourceText,
+				configText === null ? null : inspectStatusesText(configText),
+			);
+			process.stdout.write(formatInstructionGuideMarkdown(composed));
 		});
 }

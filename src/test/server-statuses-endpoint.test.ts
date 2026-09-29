@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { join } from "node:path";
 import { DEFAULT_STATE_MACHINE } from "../core/state-machine.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { BacklogServer } from "../server/index.ts";
@@ -182,5 +183,39 @@ describe("BacklogServer statuses endpoints", () => {
 			40,
 			250,
 		);
+	});
+
+	/**
+	 * Saving statuses must also refresh the machine that is injected into the project's instruction
+	 * files, or the guidance an agent reads would keep describing the machine that was just replaced.
+	 */
+	it("rewrites the injected state machine in AGENTS.md when statuses change", async () => {
+		const agentsPath = join(TEST_DIR, "AGENTS.md");
+		await Bun.write(
+			agentsPath,
+			[
+				"<!-- BACKLOG.MD GUIDELINES START -->",
+				"old guidelines",
+				"<!-- BACKLOG.MD GUIDELINES END -->",
+				"",
+				"<!-- BACKLOG.MD STATE MACHINE START -->",
+				"## This project's state machine",
+				"",
+				"STALE MACHINE",
+				"",
+				"<!-- BACKLOG.MD STATE MACHINE END -->",
+				"",
+			].join("\n"),
+		);
+
+		const response = await putJson("/api/config/statuses", { statuses: DEFAULT_STATE_MACHINE });
+		expect(response.ok).toBe(true);
+
+		const text = await Bun.file(agentsPath).text();
+		expect(text).not.toContain("STALE MACHINE");
+		expect(text).toContain("| Dropped | dropped | archive | hidden |");
+		// Exactly one block, and the guidelines half is left alone.
+		expect(text.split("<!-- BACKLOG.MD STATE MACHINE START -->").length - 1).toBe(1);
+		expect(text).toContain("old guidelines");
 	});
 });

@@ -2,6 +2,7 @@ import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import getPort, { portNumbers } from "get-port";
+import { refreshStateMachineInAgentInstructions } from "../agent-instructions.ts";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
@@ -15,6 +16,7 @@ import {
 import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { statusNames, validateStatusesShape } from "../core/state-machine.ts";
+import { renderProjectStateMachine } from "../core/state-machine-guidance.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
@@ -1989,6 +1991,7 @@ export class BacklogServer {
 			// path that re-reads /api/statuses and /api/config, so the board columns and the
 			// terminal status reflect the save.
 			this.broadcastConfigUpdated();
+			await this.refreshInjectedStateMachine();
 
 			return Response.json(updatedConfig);
 		} catch (error) {
@@ -2019,6 +2022,7 @@ export class BacklogServer {
 			// Statuses changed: the client must reload /api/statuses so the board columns and the
 			// terminal status update, not just re-merge the task corpus.
 			this.broadcastConfigUpdated();
+			await this.refreshInjectedStateMachine();
 			return Response.json(nextConfig);
 		} catch (error) {
 			console.error("Error updating statuses:", error);
@@ -2029,6 +2033,22 @@ export class BacklogServer {
 	private handleError(error: Error): Response {
 		console.error("Server Error:", error);
 		return new Response("Internal Server Error", { status: 500 });
+	}
+
+	/**
+	 * Rewrite the state machine that is injected into the project's instruction files.
+	 *
+	 * Called after `statuses` is written, so the guidance an agent reads from AGENTS.md / CLAUDE.md
+	 * cannot drift from `config.yml`. Existing files only, and never fatal: a settings save must not
+	 * fail because an instruction file could not be refreshed.
+	 */
+	private async refreshInjectedStateMachine(): Promise<void> {
+		try {
+			const section = await renderProjectStateMachine(this.core.filesystem);
+			await refreshStateMachineInAgentInstructions(this.core.filesystem.rootDir, section);
+		} catch (error) {
+			console.error("Error refreshing the injected state machine:", error);
+		}
 	}
 
 	/**

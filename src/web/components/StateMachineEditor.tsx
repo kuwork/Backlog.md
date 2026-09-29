@@ -91,7 +91,7 @@ export default function StateMachineEditor({
 		if (!definitions) return;
 		const next = definitions.map((status, position) => (position === index ? { ...status, ...patch } : status));
 		// Keep transitions pointing at a renamed status instead of dangling (the rename is the
-		// user's intent; M1 never blocks, but dangling edges would be lint noise).
+		// user's intent; dangling edges would only be lint noise).
 		const previousName = definitions[index]?.name;
 		const nextName = patch.name;
 		if (previousName && nextName && previousName !== nextName) {

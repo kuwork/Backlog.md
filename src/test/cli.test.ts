@@ -158,8 +158,12 @@ describe("CLI Integration", () => {
 			expect(taskExecution).toContain(
 				'backlog task list --status "<active status>" --assignee @your-name --labels backend --search "auth" --limit 20 --plain',
 			);
-			expect(taskExecution).toContain('backlog task edit BACK-123 -s "<active status>" -a @your-name');
+			// The move is routed through the project's machine, and the reader is sent back to the overview.
+			expect(taskExecution).toContain(`-s "<the status your machine's matching edge leads to>" -a @your-name`);
+			expect(taskExecution).toContain("Follow this project's state machine");
+			expect(taskExecution).toContain("backlog instructions overview");
 			expect(taskExecution).not.toContain('backlog task edit BACK-123 -s "In Progress" -a @your-name');
+			expect(taskExecution).not.toContain("Mark it in progress and assign yourself");
 			expect(taskFinalization).toContain("configured terminal status");
 			expect(taskFinalization).toContain("Inspect accepted statuses if needed: `backlog task edit BACK-123 --help`");
 			expect(taskFinalization).toContain('backlog task edit BACK-123 -s "<terminal status>"');

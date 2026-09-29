@@ -2,14 +2,16 @@
 
 ### Planning Workflow
 
+> **Follow this project's state machine, not a fixed sequence.** `backlog/config.yml` declares the statuses and the transitions between them, and the overview renders that machine under "This project's state machine". Re-read it (`backlog://workflow/overview`, or `get_backlog_instructions` with no `instruction`) whenever you are about to move a task: read the task's current status, move only along a declared `next` edge whose `when` matches, obey that edge's `ai` (`forbidden` = the user makes the move, ask and wait; `propose` = propose and wait; `allowed_if` = the edge's `if` must hold; `allowed` = you may move), satisfy its `evidence` first, and never set a status the machine does not list. Status names are project data: never assume `In Progress` (or any other name) exists, comes next, or is yours to set.
+
 > **Non-negotiable:** Capture an implementation plan in the Backlog task _before_ writing any code or running commands. The plan must live in the task record prior to implementation and remain up to date when you close the task.
 
-1. **Mark task as In Progress** via `task_edit` with status "In Progress"
+1. **Move the task along the machine and assign yourself** via `task_edit` - pick the status the matching `next` edge leads to (re-read the overview if you have not seen this project's machine yet), and if that edge is `ai: forbidden` or `propose`, do not set it yourself: propose the move and wait for the user
 2. **Assign to yourself** via `task_edit` with assignee field
 3. **Review task description, acceptance criteria, references, and documentation** - Check the description for outcome and any local code context, review acceptance criteria to confirm scope and success conditions, check `references` for external links/issues, and check `documentation` for design docs or API specs before planning
 4. **Draft the implementation plan** - Think through the approach, review code, identify key files
 5. **Present plan to user** - Show your proposed implementation approach
-6. **Wait for explicit approval** - Do not start coding until user confirms or asks you to skip review
+6. **Wait for explicit approval** - Do not start coding until the user confirms or asks you to skip review. Where the machine routes planning through a review status (the default machine reserves the move into implementation), that approval is the edge into the implementing status, and the user makes it.
 7. **Record approved plan** - Use `task_edit` with planSet or planAppend to capture the agreed approach in the task
 8. **Document the agreed breakdown** - In the parent task's plan, capture the final list of subtasks, owners, and sequencing so a replacement agent can resume with the approved structure
 

@@ -203,3 +203,98 @@ describe("validateStatusesShape", () => {
 		expect(validateStatusesShape([{ name: "A", next: [{ to: "A", ai: "allowed_if" }] }]).ok).toBe(true);
 	});
 });
+
+describe("describe()", () => {
+	const machine = compileStateMachine(DEFAULT_STATE_MACHINE);
+
+	it("renders every declared field of the seven-column default", () => {
+		const text = machine.describe();
+
+		expect(text).toContain("| To Do | active | - | shown |");
+		expect(text).toContain("| Dropped | dropped | archive | hidden |");
+		expect(text).toContain("### AI permission tiers");
+		for (const tier of ["allowed", "allowed_if", "propose", "forbidden"]) {
+			expect(text).toContain(`\`${tier}\``);
+		}
+		expect(text).toContain("when: 实现计划已写入 implementationPlan");
+		expect(text).toContain("if: implementationPlan 非空");
+		expect(text).toContain("requires: implementationPlan 非空");
+		expect(text).toContain("evidence: comments（写明驳回理由）");
+		expect(text).toContain("### Terminal statuses");
+		expect(text).toContain("### Archive rules");
+		expect(text).toContain("### Stop and wait for a human");
+		expect(text).toContain("`In Review` -> `Done`");
+	});
+
+	it("tells the reader how to use it, not just what it contains", () => {
+		const text = machine.describe();
+
+		expect(text).toContain("**Moving a task:**");
+		expect(text).toContain("follow the matching `next` edge");
+		expect(text).toContain("`forbidden` means only a human may make the move");
+		expect(text).toContain("Stop and wait for a human");
+		// The procedure comes before the tables it points at.
+		expect(text.indexOf("**Moving a task:**")).toBeLessThan(text.indexOf("### Statuses"));
+	});
+
+	it("says how to move a task when the project declares no transitions", () => {
+		const plain = compileStateMachine(["To Do", "In Progress", "Done"]).describe();
+
+		expect(plain).toContain("**Moving a task:**");
+		expect(plain).toContain("may move between any pair of non-terminal statuses");
+		expect(plain).not.toContain("follow the matching `next` edge");
+	});
+
+	it("states the AC-23 exception for a plain string array, with no tier table", () => {
+		const plain = compileStateMachine(["To Do", "In Progress", "Done"]).describe();
+
+		expect(plain).toContain("declares no transitions");
+		expect(plain).toContain("| Done | done | complete | shown |");
+		expect(plain).not.toContain("### AI permission tiers");
+	});
+
+	it("only reads: its whole surface returns config facts, never a verdict", () => {
+		// Pinning the surface keeps a future allow/deny method from slipping in unnoticed.
+		expect(Object.keys(machine).sort()).toEqual([
+			"categoryOf",
+			"describe",
+			"exitChannel",
+			"hasDeclaredTransitions",
+			"initialStatus",
+			"names",
+			"terminalStatuses",
+			"transitionsOf",
+			"validate",
+		]);
+	});
+
+	it("announces a broken statuses block instead of rendering it as a smaller machine", () => {
+		const text = compileStateMachine([{ name: "To Do" }]).describe({
+			declared: 3,
+			accepted: 1,
+			rejected: [{ index: 1, scope: "status", reason: "missing or empty `name`" }],
+		});
+
+		expect(text).toContain("### State machine config problem");
+		expect(text).toContain("declares 3 status(es); 1 could be read");
+		expect(text).toContain("entry 2: missing or empty `name`");
+		expect(text).toContain("omits the dropped items");
+	});
+
+	it("says which fallback is in use when nothing could be read", () => {
+		const text = compileStateMachine(["To Do", "In Progress", "Done"]).describe({
+			declared: 0,
+			accepted: 0,
+			rejected: [],
+			fallback: "the built-in defaults (To Do / In Progress / Done)",
+			unreadable: true,
+		});
+
+		expect(text).toContain("could not be parsed");
+		expect(text).toContain("the fallback every reader uses");
+	});
+
+	it("stays quiet when the config is healthy", () => {
+		expect(machine.describe()).not.toContain("### State machine config problem");
+	});
+});

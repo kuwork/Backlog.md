@@ -32,13 +32,18 @@ async function loadContent(textOrPath: string): Promise<string> {
 	}
 }
 
-type GuidelineMarkerKind = "default" | "mcp";
+type GuidelineMarkerKind = "default" | "mcp" | "state-machine";
 
 /**
  * Gets the appropriate markers for a given file type
  */
 function getMarkers(kind: GuidelineMarkerKind = "default"): { start: string; end: string } {
-	const label = kind === "mcp" ? "BACKLOG.MD MCP GUIDELINES" : "BACKLOG.MD GUIDELINES";
+	const label =
+		kind === "mcp"
+			? "BACKLOG.MD MCP GUIDELINES"
+			: kind === "state-machine"
+				? "BACKLOG.MD STATE MACHINE"
+				: "BACKLOG.MD GUIDELINES";
 	// All markdown files support HTML comments
 	return {
 		start: `<!-- ${label} START -->`,
@@ -113,11 +118,40 @@ function stripGuidelineSection(
 	return { content: result, removed, firstIndex };
 }
 
+/**
+ * Put the rendered state machine into its own marker block, replacing whatever was there before.
+ *
+ * Kept separate from the guideline block on purpose: the machine is re-rendered from the current
+ * `config.yml` on every call, so it has to be replaceable without disturbing the static guidelines.
+ * An `undefined` section still strips a stale block, which is how a project that no longer wants
+ * the machine in its instructions gets rid of it.
+ */
+function applyStateMachineSection(content: string, section?: string): string {
+	const stripped = stripGuidelineSection(content, "state-machine");
+	const base = stripped.content;
+	const block = section?.trim();
+	if (!block) return base;
+
+	let insertAt = stripped.firstIndex;
+	if (insertAt === undefined) {
+		// No block of ours yet: sit right after the guidelines block when the file has one.
+		const { end } = getMarkers("default");
+		const endIndex = base.indexOf(end);
+		insertAt = endIndex === -1 ? base.length : endIndex + end.length;
+		if (insertAt < base.length && base[insertAt] === "\r") insertAt += 1;
+		if (insertAt < base.length && base[insertAt] === "\n") insertAt += 1;
+	}
+
+	const bounded = Math.max(0, Math.min(insertAt, base.length));
+	return base.slice(0, bounded) + wrapWithMarkers(block, "state-machine") + base.slice(bounded);
+}
+
 export async function addAgentInstructions(
 	projectRoot: string,
 	git?: GitOperations,
 	files: AgentInstructionFile[] = ["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".github/copilot-instructions.md"],
 	autoCommit = false,
+	stateMachineSection?: string,
 ): Promise<AgentInstructionWriteResult[]> {
 	const mapping: Record<AgentInstructionFile, string> = {
 		"AGENTS.md": CLI_AGENT_NUDGE,
@@ -170,6 +204,8 @@ export async function addAgentInstructions(
 					finalContent = existing + wrapWithMarkers(content);
 				}
 
+				finalContent = applyStateMachineSection(finalContent, stateMachineSection);
+
 				if (finalContent === originalExisting) {
 					results.push({ action: "unchanged", fileName: name, filePath });
 					continue;
@@ -177,11 +213,11 @@ export async function addAgentInstructions(
 			} catch (error) {
 				console.error(`Error reading existing file ${filePath}:`, error);
 				// If we can't read it, just use the new content with markers
-				finalContent = wrapWithMarkers(content);
+				finalContent = applyStateMachineSection(wrapWithMarkers(content), stateMachineSection);
 			}
 		} else {
 			// File doesn't exist, create with markers
-			finalContent = wrapWithMarkers(content);
+			finalContent = applyStateMachineSection(wrapWithMarkers(content), stateMachineSection);
 		}
 
 		await mkdir(dirname(filePath), { recursive: true });
@@ -199,6 +235,47 @@ export async function addAgentInstructions(
 }
 
 export { loadContent as _loadAgentGuideline };
+
+/** True when the file already carries a rendered state machine block. */
+function hasStateMachineGuidelines(content: string): boolean {
+	return content.includes(getMarkers("state-machine").start);
+}
+
+/**
+ * Re-render the state machine block in the instruction files that already carry Backlog guidance.
+ *
+ * This is the "statuses changed" refresh: the machine sits in its own marker block, so a project
+ * that edited its statuses (settings page, config file) can have that block rewritten without
+ * touching the static guidelines. Files that do not exist are skipped - changing a status must
+ * never be the reason an instruction file appears - and a file with no Backlog guidance at all is
+ * left alone, because adding the machine there is a decision, not a side effect.
+ */
+export async function refreshStateMachineInAgentInstructions(
+	projectRoot: string,
+	section: string,
+	files: AgentInstructionFile[] = ["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".github/copilot-instructions.md"],
+): Promise<AgentInstructionWriteResult[]> {
+	const results: AgentInstructionWriteResult[] = [];
+	for (const name of files) {
+		const filePath = join(projectRoot, name);
+		if (!existsSync(filePath)) continue;
+		try {
+			const existing = process.platform === "win32" ? readFileSync(filePath, "utf-8") : await Bun.file(filePath).text();
+			if (!hasBacklogGuidelines(existing) && !hasStateMachineGuidelines(existing)) continue;
+			const next = applyStateMachineSection(existing, section);
+			if (next === existing) {
+				results.push({ action: "unchanged", fileName: name, filePath });
+				continue;
+			}
+			await Bun.write(filePath, next);
+			results.push({ action: "updated", fileName: name, filePath });
+		} catch (error) {
+			// A refresh is a courtesy; never let it break the config write that triggered it.
+			console.error(`Error refreshing the state machine block in ${filePath}:`, error);
+		}
+	}
+	return results;
+}
 
 async function readExistingFile(filePath: string): Promise<string> {
 	if (process.platform === "win32") {
