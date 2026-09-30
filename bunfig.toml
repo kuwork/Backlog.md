@@ -1,6 +1,6 @@
 [test]
 # Timeout for individual tests - increased for Windows compatibility
-timeout = "10s"
+timeout = 10000
 
 # Reduce memory usage during test runs to prevent WSL2 crashes
 smol = true

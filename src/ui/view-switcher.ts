@@ -66,7 +66,11 @@ class BackgroundLoader {
 
 		// Create new abort controller for this loading operation
 		this.abortController = new AbortController();
-		this.loadingPromise = this.loadKanbanData();
+		const loading = this.loadKanbanData();
+		this.loadingPromise = loading;
+		// A background load nobody awaits must never surface as an unhandled rejection; callers
+		// that do await still receive the error through getKanbanData().
+		loading.catch(() => {});
 	}
 
 	/**

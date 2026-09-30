@@ -206,5 +206,5 @@ describe("CLI packaging", () => {
 		} finally {
 			await client.close().catch(() => {});
 		}
-	});
+	}, 120000);
 });

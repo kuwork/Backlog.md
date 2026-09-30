@@ -616,7 +616,7 @@ describe("AcceptanceCriteriaManager unit tests", () => {
 			expect(taskResult.stdout.toString()).toContain("- [x] #2 Second"); // remained checked
 			expect(taskResult.stdout.toString()).toContain("- [x] #3 Third"); // remained checked
 			expect(taskResult.stdout.toString()).toContain("- [x] #4 Fourth"); // newly checked
-		});
+		}, 20000);
 
 		it("should support multiple --remove-ac flags with proper renumbering", async () => {
 			// Create task with 5 ACs

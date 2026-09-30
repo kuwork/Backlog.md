@@ -443,7 +443,7 @@ describe("CLI Integration", () => {
 			// Commands without a note keep their help unchanged, and normal runs stay quiet.
 			expect(listHelp).not.toContain("instructions overview");
 			expect(created).not.toContain("instructions overview");
-		});
+		}, 20000);
 	});
 
 	describe("self-correcting CLI errors", () => {

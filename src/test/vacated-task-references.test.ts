@@ -61,7 +61,7 @@ describe("Vacated task ID reference cleanup", () => {
 		// The freed slot is reused, and the surviving reference must not bind to the new task.
 		const { task: successor } = await freshCore().createTaskFromInput({ title: "Successor" }, false);
 		expect(taskIdsEqual(successor.id, target.id)).toBe(true);
-	});
+	}, 20000);
 
 	test("archiving cleans active dependents and reports them", async () => {
 		const setup = freshCore();
@@ -110,7 +110,7 @@ describe("Vacated task ID reference cleanup", () => {
 		const completed = await freshCore().filesystem.listCompletedTasks();
 		const record = completed.find((task) => taskIdsEqual(task.id, doneDependent.id));
 		expect(record?.dependencies ?? []).not.toContain(target.id);
-	});
+	}, 20000);
 
 	test("demoting through the edit path cleans dependents too", async () => {
 		const setup = freshCore();

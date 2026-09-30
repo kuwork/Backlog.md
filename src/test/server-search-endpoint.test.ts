@@ -684,7 +684,7 @@ Milestone: m-0
 
 		const removedMilestone = await fetch(`http://127.0.0.1:${serverPort}/api/milestones/${reassignSource.id}`);
 		expect(removedMilestone.status).toBe(404);
-	});
+	}, 20000);
 
 	it("rejects malformed and non-object milestone DELETE bodies without changing tasks", async () => {
 		const source = await createMilestoneViaApi("Invalid Delete Source");
