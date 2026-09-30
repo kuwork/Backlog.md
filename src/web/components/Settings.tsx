@@ -5,7 +5,7 @@ import ChipInput from './ChipInput';
 import { useI18n } from '../hooks/useI18n';
 import { useI18nContext } from '../contexts/I18nContext';
 import { isValidLocale } from '../locales';
-import { compileStateMachine, DEFAULT_STATE_MACHINE, statusNames } from '../../core/state-machine';
+import { compileStateMachine, defaultStateMachineForLocale, statusNames } from '../../core/state-machine';
 import { getTerminalStatuses } from '../../utils/terminal-status';
 import StateMachineEditor from './StateMachineEditor';
 import StatusExcludeDropdown from './StatusExcludeDropdown';
@@ -130,14 +130,10 @@ const Settings: React.FC = () => {
 		setConfig({ ...config, statuses: originalConfig.statuses });
 	};
 
-	/** "Default" writes straight through: it replaces the saved machine, it does not queue an edit. */
-	const handleRestoreDefaultStatuses = async () => {
-		const updated = await apiClient.updateStatuses(DEFAULT_STATE_MACHINE);
-		setConfig(updated);
-		setOriginalConfig(updated);
-		await loadStatuses();
-		setShowSuccess(true);
-		setTimeout(() => setShowSuccess(false), 3000);
+	/** "Default" only loads the default machine into the editor; nothing is saved until the user saves. */
+	const handleRestoreDefaultStatuses = () => {
+		// Load the variant matching the project's configured language, not always English.
+		handleInputChange("statuses", defaultStateMachineForLocale(config?.locale));
 	};
 
 	const validateConfig = (): boolean => {

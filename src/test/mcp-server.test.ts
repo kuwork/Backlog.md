@@ -108,7 +108,7 @@ describe("McpServer bootstrap", () => {
 		expect(result.contents).toHaveLength(1);
 		const text = getContentsText(result.contents);
 		// The static half is the shipped text; the dynamic half is rendered from this project.
-		expect(text).toContain("## The Project Status Machine (`backlog/config.yml` -> `statuses`)");
+		expect(text).toContain("## The Project State Machine (`backlog/config.yml` -> `statuses`)");
 		expect(text).toContain("## This project's state machine");
 		expect(text).toContain("| To Do | active | - | shown |");
 		expect(text).not.toContain("{{STATE_MACHINE}}");
@@ -222,7 +222,7 @@ describe("McpServer bootstrap", () => {
 			params: { name: "get_backlog_instructions", arguments: {} },
 		});
 		// The overview tool text carries the project's machine too, not just the shipped static text.
-		expect(getText(overview.content)).toContain("## The Project Status Machine");
+		expect(getText(overview.content)).toContain("## The Project State Machine");
 		expect(getText(overview.content)).toContain("## This project's state machine");
 		expect(getText(overview.content)).not.toContain("{{STATE_MACHINE}}");
 

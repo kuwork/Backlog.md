@@ -5,7 +5,7 @@ function quoteLabel(value: string): string {
 }
 
 /**
- * Render a status machine as a mermaid tree rooted at the first status (the initial one).
+ * Render a state machine as a mermaid tree rooted at the first status (the initial one).
  *
  * The tree is what the settings page shows next to the editor: it answers "where can I get to
  * from the start", so a status is expanded once. An edge that points back at something already

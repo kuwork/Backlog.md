@@ -1,7 +1,10 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
 	compileStateMachine,
 	DEFAULT_STATE_MACHINE,
+	DEFAULT_STATE_MACHINES,
+	defaultStateMachineForLocale,
+	detectDefaultLocale,
 	hiddenStatusNames,
 	statusNames,
 	validateStatusesShape,
@@ -108,7 +111,7 @@ describe("compileStateMachine — the agreed seven-column default (FR-2)", () =>
 		const [toPlanning, toDropped] = machine.transitionsOf("To Do");
 		expect(toPlanning).toEqual({
 			to: "Planning",
-			when: "人类已确认描述与验收标准完整，可以开工",
+			when: "The user has confirmed the description and acceptance criteria are complete; work can start",
 			ai: "allowed",
 		});
 		expect(toDropped?.ai).toBe("propose");
@@ -116,23 +119,158 @@ describe("compileStateMachine — the agreed seven-column default (FR-2)", () =>
 		const [toPlanReview] = machine.transitionsOf("Planning");
 		expect(toPlanReview).toEqual({
 			to: "Plan Review",
-			when: "实现计划已写入 implementationPlan",
+			when: "The implementation plan has been written to implementationPlan",
 			ai: "allowed_if",
-			if: "implementationPlan 非空",
-			requires: "implementationPlan 非空",
+			if: "implementationPlan is not empty",
+			requires: "implementationPlan is not empty",
 		});
 
 		const [approved] = machine.transitionsOf("Plan Review");
-		expect(approved?.ai).toBe("forbidden");
+		expect(approved?.ai).toBe("allowed_if");
+		expect(approved?.if).toContain("approved the implementation plan");
 		// The rejection edge carries the evidence requirement; the approval edge carries none.
 		const [accepted, rework] = machine.transitionsOf("In Review");
-		expect(accepted?.ai).toBe("forbidden");
-		expect(rework?.evidence).toBe("comments（写明返工理由）");
+		expect(accepted?.ai).toBe("allowed_if");
+		expect(accepted?.if).toContain("accepted the work");
+		expect(rework?.evidence).toBe("comments (stating the rework reason)");
 	});
 
 	it("falls back to the last column when an object form declares no terminal category", () => {
 		const noTerminal: StatusesConfig = [{ name: "A" }, { name: "B" }];
 		expect(getTerminalStatuses(noTerminal)).toEqual(["B"]);
+	});
+});
+
+describe("the localized default machines", () => {
+	const LOCALES = ["en", "zh-CN", "zh-TW", "ja"] as const;
+	const SEVEN = ["To Do", "Planning", "Plan Review", "In Progress", "In Review", "Done", "Dropped"];
+
+	it("ships exactly the four web-UI locales, all with the same shape", () => {
+		expect(Object.keys(DEFAULT_STATE_MACHINES).sort()).toEqual([...LOCALES].sort());
+		for (const locale of LOCALES) {
+			const variant = DEFAULT_STATE_MACHINES[locale] ?? [];
+			expect(statusNames(variant)).toEqual(SEVEN);
+			expect(hiddenStatusNames(variant)).toEqual(["Dropped"]);
+			expect(compileStateMachine(variant).validate()).toEqual([]);
+		}
+	});
+
+	it("keeps DEFAULT_STATE_MACHINE as the English variant", () => {
+		expect(DEFAULT_STATE_MACHINE).toBe(DEFAULT_STATE_MACHINES.en ?? []);
+	});
+
+	it("gates plan approval and acceptance on explicit user approval in every variant", () => {
+		for (const locale of LOCALES) {
+			const machine = compileStateMachine(DEFAULT_STATE_MACHINES[locale] ?? []);
+			const [approved] = machine.transitionsOf("Plan Review");
+			expect(approved?.to).toBe("In Progress");
+			expect(approved?.ai).toBe("allowed_if");
+			expect(approved?.if?.trim().length).toBeGreaterThan(0);
+
+			const [accepted] = machine.transitionsOf("In Review");
+			expect(accepted?.to).toBe("Done");
+			expect(accepted?.ai).toBe("allowed_if");
+			expect(accepted?.if?.trim().length).toBeGreaterThan(0);
+		}
+	});
+
+	it("hints that dropping archives the task in every variant", () => {
+		const archiveWords: Record<string, string> = { en: "archive", "zh-CN": "归档", "zh-TW": "歸檔", ja: "アーカイブ" };
+		for (const locale of LOCALES) {
+			const machine = compileStateMachine(DEFAULT_STATE_MACHINES[locale] ?? []);
+			const [, toDropped] = machine.transitionsOf("To Do");
+			expect(toDropped?.to).toBe("Dropped");
+			expect(toDropped?.ai).toBe("propose");
+			expect(toDropped?.when).toContain(archiveWords[locale] ?? "archive");
+			expect(toDropped?.when).not.toContain("exit:");
+		}
+	});
+});
+
+describe("defaultStateMachineForLocale", () => {
+	const SEVEN = ["To Do", "Planning", "Plan Review", "In Progress", "In Review", "Done", "Dropped"];
+	const EN = DEFAULT_STATE_MACHINES.en ?? [];
+	const ZH_CN = DEFAULT_STATE_MACHINES["zh-CN"] ?? [];
+	const ZH_TW = DEFAULT_STATE_MACHINES["zh-TW"] ?? [];
+	const JA = DEFAULT_STATE_MACHINES.ja ?? [];
+	let savedEnv: Record<string, string | undefined>;
+
+	beforeEach(() => {
+		savedEnv = {
+			LC_ALL: process.env.LC_ALL,
+			LC_MESSAGES: process.env.LC_MESSAGES,
+			LANG: process.env.LANG,
+		};
+	});
+
+	afterEach(() => {
+		for (const key of ["LC_ALL", "LC_MESSAGES", "LANG"] as const) {
+			const value = savedEnv[key];
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+	});
+
+	it("returns the explicit locale's variant, cloned", () => {
+		expect(defaultStateMachineForLocale("zh-CN")).toEqual(ZH_CN);
+		expect(defaultStateMachineForLocale("zh-TW")).toEqual(ZH_TW);
+		expect(defaultStateMachineForLocale("ja")).toEqual(JA);
+		expect(defaultStateMachineForLocale("en")).toEqual(EN);
+		const zh = defaultStateMachineForLocale("zh-CN");
+		expect(zh).not.toBe(DEFAULT_STATE_MACHINES["zh-CN"]);
+		expect(zh[0]?.next?.[0]?.when).toContain("用户");
+		expect(defaultStateMachineForLocale("ja")[0]?.next?.[0]?.when).toContain("ユーザー");
+	});
+
+	it("normalizes environment-style locale strings", () => {
+		expect(defaultStateMachineForLocale("zh_TW.UTF-8")).toEqual(ZH_TW);
+		expect(defaultStateMachineForLocale("zh-Hant-TW")).toEqual(ZH_TW);
+		expect(defaultStateMachineForLocale("zh_HK")).toEqual(ZH_TW);
+		expect(defaultStateMachineForLocale("zh_CN.UTF-8")).toEqual(ZH_CN);
+		expect(defaultStateMachineForLocale("ja_JP.UTF-8")).toEqual(JA);
+		expect(defaultStateMachineForLocale("en_US.UTF-8")).toEqual(EN);
+	});
+
+	it("detects the locale from the environment when none is given", () => {
+		delete process.env.LC_ALL;
+		delete process.env.LC_MESSAGES;
+		process.env.LANG = "zh_TW.UTF-8";
+		expect(defaultStateMachineForLocale()).toEqual(ZH_TW);
+
+		process.env.LANG = "ja_JP.UTF-8";
+		expect(defaultStateMachineForLocale()).toEqual(JA);
+
+		process.env.LANG = "zh_CN.UTF-8";
+		expect(defaultStateMachineForLocale()).toEqual(ZH_CN);
+	});
+
+	it("prefers LC_ALL over LANG and skips empty values", () => {
+		process.env.LC_ALL = "";
+		process.env.LC_MESSAGES = "";
+		process.env.LANG = "ja_JP.UTF-8";
+		expect(defaultStateMachineForLocale()).toEqual(JA);
+
+		process.env.LC_ALL = "zh_CN.UTF-8";
+		expect(defaultStateMachineForLocale()).toEqual(ZH_CN);
+	});
+
+	it("falls back to English for an unknown locale, and to the OS locale when env vars are missing", () => {
+		delete process.env.LC_ALL;
+		delete process.env.LC_MESSAGES;
+		delete process.env.LANG;
+		// No env vars: the OS locale (Intl) decides - on a zh-CN machine that means Chinese, not English.
+		const osRaw = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
+		const expectedKey = osRaw.startsWith("zh")
+			? /tw|hk|hant/.test(osRaw)
+				? "zh-TW"
+				: "zh-CN"
+			: osRaw.startsWith("ja")
+				? "ja"
+				: "en";
+		expect(detectDefaultLocale()).toBe(expectedKey);
+		expect(defaultStateMachineForLocale()).toEqual(DEFAULT_STATE_MACHINES[expectedKey] ?? EN);
+		expect(defaultStateMachineForLocale("fr_FR.UTF-8")).toEqual(EN);
+		expect(statusNames(defaultStateMachineForLocale("fr"))).toEqual(SEVEN);
 	});
 });
 
@@ -216,14 +354,25 @@ describe("describe()", () => {
 		for (const tier of ["allowed", "allowed_if", "propose", "forbidden"]) {
 			expect(text).toContain(`\`${tier}\``);
 		}
-		expect(text).toContain("when: 实现计划已写入 implementationPlan");
-		expect(text).toContain("if: implementationPlan 非空");
-		expect(text).toContain("requires: implementationPlan 非空");
-		expect(text).toContain("evidence: comments（写明驳回理由）");
+		expect(text).toContain("when: The implementation plan has been written to implementationPlan");
+		expect(text).toContain("if: implementationPlan is not empty");
+		// `requires` duplicates `if` on the default edges, so the renderer omits it.
+		expect(text).not.toContain("requires: implementationPlan is not empty");
+		expect(text).toContain("evidence: comments (stating the rejection reason)");
 		expect(text).toContain("### Terminal statuses");
-		expect(text).toContain("### Archive rules");
-		expect(text).toContain("### Stop and wait for a human");
+		expect(text).toContain("`exit: archive` marks work set aside");
+		expect(text).not.toContain("### Archive rules");
+		expect(text).toContain("### Stop and wait for the user");
 		expect(text).toContain("`In Review` -> `Done`");
+	});
+
+	it("renders requires only when it differs from if", () => {
+		const text = compileStateMachine([
+			{ name: "A", next: [{ to: "B", when: "x", ai: "allowed_if", if: "cond", requires: "cond" }] },
+			{ name: "B", next: [{ to: "A", when: "y", ai: "allowed_if", if: "cond", requires: "check(A.done)" }] },
+		]).describe();
+		expect(text).not.toContain("requires: cond");
+		expect(text).toContain("requires: check(A.done)");
 	});
 
 	it("tells the reader how to use it, not just what it contains", () => {
@@ -231,8 +380,10 @@ describe("describe()", () => {
 
 		expect(text).toContain("**Moving a task:**");
 		expect(text).toContain("follow the matching `next` edge");
-		expect(text).toContain("`forbidden` means only a human may make the move");
-		expect(text).toContain("Stop and wait for a human");
+		expect(text).toContain("obey the edge's `ai`");
+		expect(text).toContain('Never take an edge listed under "Stop and wait for the user"');
+		expect(text).toContain("| `forbidden` | only the user may make this move |");
+		expect(text).toContain("Stop and wait for the user");
 		// The procedure comes before the tables it points at.
 		expect(text.indexOf("**Moving a task:**")).toBeLessThan(text.indexOf("### Statuses"));
 	});

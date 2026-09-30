@@ -1,3 +1,4 @@
+import type { StatusDefinition } from "../../types/index.ts";
 export const en = {
 	common: {
 		loading: "Loading...",
@@ -476,9 +477,9 @@ export const en = {
 		reset: "Reset",
 		resetDesc: "Discard unsaved edits and reload what is saved in config.yml",
 		restoreDefault: "Default",
-		restoreDefaultDesc: "Overwrite the saved machine with the agreed seven-column default",
+		restoreDefaultDesc: "Load the agreed seven-column default into the editor (written only when you save)",
 		restoreDefaultConfirm:
-			"This replaces the whole state machine with the agreed seven-column default. Custom statuses will be lost. Continue?",
+			"This loads the seven-column default into the editor, replacing the current draft. Unsaved custom statuses will be lost; nothing is written until you save. Continue?",
 		legacyTitle: "This project uses a plain string array",
 		legacyDesc: "No category or transitions are declared; the last column is treated as terminal.",
 		convert: "Convert to the object form",
@@ -1017,3 +1018,89 @@ export const en = {
 		taskGraphReady: "Task graph ready",
 	},
 } as const;
+
+/** The default task state machine variant for this locale (see state-machine-locales conventions in index). */
+
+export const defaultStateMachine: StatusDefinition[] = [
+	{
+		name: "To Do",
+		category: "active",
+		next: [
+			{
+				to: "Planning",
+				when: "The user has confirmed the description and acceptance criteria are complete; work can start",
+				ai: "allowed",
+			},
+			{
+				to: "Dropped",
+				when: "The task is obsolete or abandoned; tell the user that dropping it archives the task",
+				ai: "propose",
+			},
+		],
+	},
+	{
+		name: "Planning",
+		category: "wip",
+		next: [
+			{
+				to: "Plan Review",
+				when: "The implementation plan has been written to implementationPlan",
+				ai: "allowed_if",
+				if: "implementationPlan is not empty",
+				requires: "implementationPlan is not empty",
+			},
+		],
+	},
+	{
+		name: "Plan Review",
+		category: "blocked",
+		next: [
+			{
+				to: "In Progress",
+				when: "The user has approved the implementation plan",
+				ai: "allowed_if",
+				if: "the user has explicitly approved the implementation plan in conversation or comments",
+			},
+			{
+				to: "Planning",
+				when: "The plan was rejected or needs changes",
+				ai: "propose",
+				evidence: "comments (stating the rejection reason)",
+			},
+		],
+	},
+	{
+		name: "In Progress",
+		category: "wip",
+		next: [
+			{
+				to: "In Review",
+				when: "Implementation is complete; diff / tests / acceptance notes are ready",
+				ai: "allowed_if",
+				if: "finalSummary is not empty",
+				requires: "finalSummary is not empty",
+			},
+			{ to: "Planning", when: "The plan needs adjustment discovered during implementation", ai: "allowed" },
+		],
+	},
+	{
+		name: "In Review",
+		category: "blocked",
+		next: [
+			{
+				to: "Done",
+				when: "The user has accepted the work",
+				ai: "allowed_if",
+				if: "the user has explicitly accepted the work in conversation or comments",
+			},
+			{
+				to: "In Progress",
+				when: "Acceptance failed; rework needed",
+				ai: "propose",
+				evidence: "comments (stating the rework reason)",
+			},
+		],
+	},
+	{ name: "Done", category: "done", exit: "complete", next: [] },
+	{ name: "Dropped", category: "dropped", exit: "archive", display: false, next: [] },
+];

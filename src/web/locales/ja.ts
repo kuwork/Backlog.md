@@ -1,3 +1,4 @@
+import type { StatusDefinition } from "../../types/index.ts";
 import type { TranslationDict } from "./types";
 
 export const ja: TranslationDict = {
@@ -478,9 +479,9 @@ export const ja: TranslationDict = {
 		reset: "リセット",
 		resetDesc: "未保存の変更を破棄し、config.yml の保存内容を再読み込みします",
 		restoreDefault: "デフォルト",
-		restoreDefaultDesc: "合意済みの7列デフォルト状態機で保存内容を上書きします",
+		restoreDefaultDesc: "合意済みの7列デフォルト状態機をエディターに読み込みます（保存時のみ書き込まれます）",
 		restoreDefaultConfirm:
-			"合意済みの7列デフォルト状態機で現在の状態機を置き換えます。カスタムのステータスは失われます。続けますか？",
+			"合意済みの7列デフォルト状態機をエディターに読み込み、現在の下書きを置き換えます。未保存のカスタムステータスは失われます。保存するまで書き込まれません。続けますか？",
 		legacyTitle: "このプロジェクトは文字列配列を使用しています",
 		legacyDesc: "カテゴリも遷移も宣言されていないため、最後の列が終状態として扱われます。",
 		convert: "オブジェクト形式に変換",
@@ -1009,3 +1010,89 @@ export const ja: TranslationDict = {
 		taskGraphReady: "タスクグラフの準備ができました",
 	},
 } as const;
+
+/** The default task state machine variant for this locale (see state-machine-locales conventions in index). */
+
+export const defaultStateMachine: StatusDefinition[] = [
+	{
+		name: "To Do",
+		category: "active",
+		next: [
+			{
+				to: "Planning",
+				when: "ユーザーが説明と受入基準が完全であることを確認し、着手可能",
+				ai: "allowed",
+			},
+			{
+				to: "Dropped",
+				when: "タスクが陳腐化または放棄された。Dropped への移動はアーカイブを意味することをユーザーに伝える",
+				ai: "propose",
+			},
+		],
+	},
+	{
+		name: "Planning",
+		category: "wip",
+		next: [
+			{
+				to: "Plan Review",
+				when: "実装計画が implementationPlan に記入された",
+				ai: "allowed_if",
+				if: "implementationPlan が空でない",
+				requires: "implementationPlan が空でない",
+			},
+		],
+	},
+	{
+		name: "Plan Review",
+		category: "blocked",
+		next: [
+			{
+				to: "In Progress",
+				when: "ユーザーが実装計画を承認した",
+				ai: "allowed_if",
+				if: "ユーザーが会話またはコメントで実装計画を明示的に承認している",
+			},
+			{
+				to: "Planning",
+				when: "計画が却下された、または修正が必要",
+				ai: "propose",
+				evidence: "comments（却下理由を記載）",
+			},
+		],
+	},
+	{
+		name: "In Progress",
+		category: "wip",
+		next: [
+			{
+				to: "In Review",
+				when: "実装が完了し、diff / テスト / 受入説明が準備できた",
+				ai: "allowed_if",
+				if: "finalSummary が空でない",
+				requires: "finalSummary が空でない",
+			},
+			{ to: "Planning", when: "実施中に計画の調整が必要と判明", ai: "allowed" },
+		],
+	},
+	{
+		name: "In Review",
+		category: "blocked",
+		next: [
+			{
+				to: "Done",
+				when: "ユーザーが作業を受け入れた",
+				ai: "allowed_if",
+				if: "ユーザーが会話またはコメントで作業を明示的に受け入れている",
+			},
+			{
+				to: "In Progress",
+				when: "受入未通過のため手直しが必要",
+				ai: "propose",
+				evidence: "comments（手直し理由を記載）",
+			},
+		],
+	},
+	{ name: "Done", category: "done", exit: "complete", next: [] },
+	{ name: "Dropped", category: "dropped", exit: "archive", display: false, next: [] },
+];

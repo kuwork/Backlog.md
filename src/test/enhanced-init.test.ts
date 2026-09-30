@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { initializeProject } from "../core/init.ts";
-import { DEFAULT_STATE_MACHINE, hiddenStatusNames, statusNames } from "../core/state-machine.ts";
+import {
+	DEFAULT_STATE_MACHINES,
+	defaultStateMachineForLocale,
+	hiddenStatusNames,
+	statusNames,
+} from "../core/state-machine.ts";
 import type { BacklogConfig } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -72,8 +77,9 @@ describe("Enhanced init command", () => {
 		expect(config).toBeTruthy();
 		expect(config?.projectName).toBe("New Project");
 		expect(config?.autoCommit).toBe(false); // Default value
-		// A fresh project starts on the seven-column preset machine, Dropped hidden.
-		expect(config?.statuses).toEqual(DEFAULT_STATE_MACHINE);
+		// A fresh project starts on the seven-column preset machine, Dropped hidden, in the
+		// variant matching the environment's locale.
+		expect(config?.statuses).toEqual(defaultStateMachineForLocale());
 		expect(statusNames(config?.statuses)).toEqual([
 			"To Do",
 			"Planning",
@@ -85,6 +91,33 @@ describe("Enhanced init command", () => {
 		]);
 		expect(hiddenStatusNames(config?.statuses)).toEqual(["Dropped"]);
 		expect(config?.dateFormat).toBe("yyyy-mm-dd");
+	});
+
+	test("should write the default machine variant matching the environment locale", async () => {
+		const saved = {
+			LC_ALL: process.env.LC_ALL,
+			LC_MESSAGES: process.env.LC_MESSAGES,
+			LANG: process.env.LANG,
+		};
+		try {
+			delete process.env.LC_ALL;
+			delete process.env.LC_MESSAGES;
+			process.env.LANG = "zh_TW.UTF-8";
+
+			const core = new Core(tmpDir);
+			await initializeTestProject(core, "Localized Project");
+
+			const config = await core.filesystem.loadConfig();
+			expect(config?.statuses).toEqual(DEFAULT_STATE_MACHINES["zh-TW"] ?? []);
+			// The Settings language option and the machine come from the same detection.
+			expect(config?.locale).toBe("zh-TW");
+		} finally {
+			for (const key of ["LC_ALL", "LC_MESSAGES", "LANG"] as const) {
+				const value = saved[key];
+				if (value === undefined) delete process.env[key];
+				else process.env[key] = value;
+			}
+		}
 	});
 
 	test("should handle editor configuration in init flow", async () => {

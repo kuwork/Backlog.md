@@ -6,6 +6,9 @@ import type {
 	StatusesConfig,
 	StatusTransition,
 } from "../types/index.ts";
+import { DEFAULT_STATE_MACHINES } from "../web/locales/index.ts";
+
+export { DEFAULT_STATE_MACHINES };
 
 /**
  * State machine compiler (M1 subset).
@@ -21,62 +24,48 @@ export const AI_POLICIES: readonly AiPolicy[] = ["allowed", "allowed_if", "propo
 /** Terminal categories: reaching them stamps `actualEnd`. */
 const TERMINAL_CATEGORIES: readonly StatusCategory[] = ["done", "dropped"];
 
-/** The seven-column default machine agreed in doc-19 §4.1. */
-export const DEFAULT_STATE_MACHINE: StatusDefinition[] = [
-	{
-		name: "To Do",
-		category: "active",
-		next: [
-			{ to: "Planning", when: "人类已确认描述与验收标准完整，可以开工", ai: "allowed" },
-			{ to: "Dropped", when: "任务已过时或被放弃（如很久以前列的、现在不再需要做）", ai: "propose" },
-		],
-	},
-	{
-		name: "Planning",
-		category: "wip",
-		next: [
-			{
-				to: "Plan Review",
-				when: "实现计划已写入 implementationPlan",
-				ai: "allowed_if",
-				if: "implementationPlan 非空",
-				requires: "implementationPlan 非空",
-			},
-		],
-	},
-	{
-		name: "Plan Review",
-		category: "blocked",
-		next: [
-			{ to: "In Progress", when: "人类已批准实现计划", ai: "forbidden" },
-			{ to: "Planning", when: "计划被驳回或需修改", ai: "propose", evidence: "comments（写明驳回理由）" },
-		],
-	},
-	{
-		name: "In Progress",
-		category: "wip",
-		next: [
-			{
-				to: "In Review",
-				when: "实现完成，diff / 测试 / 验收说明已就绪",
-				ai: "allowed_if",
-				if: "finalSummary 非空",
-				requires: "finalSummary 非空",
-			},
-			{ to: "Planning", when: "实施中发现计划需要调整", ai: "allowed" },
-		],
-	},
-	{
-		name: "In Review",
-		category: "blocked",
-		next: [
-			{ to: "Done", when: "人类验收通过", ai: "forbidden" },
-			{ to: "In Progress", when: "验收未通过，需返工", ai: "propose", evidence: "comments（写明返工理由）" },
-		],
-	},
-	{ name: "Done", category: "done", exit: "complete", next: [] },
-	{ name: "Dropped", category: "dropped", exit: "archive", display: false, next: [] },
-];
+/** The English default machine, kept under the old name for existing importers. */
+export const DEFAULT_STATE_MACHINE: StatusDefinition[] = DEFAULT_STATE_MACHINES.en ?? [];
+
+/**
+ * Detect the user's language as one of the supported locale keys. Order: `LC_ALL`,
+ * `LC_MESSAGES`, `LANG`, then the OS locale (`Intl`) - the env vars do not exist on a stock
+ * Windows install, so without the OS fallback detection would always land on English there.
+ * Any Traditional-Chinese locale (`tw`, `hk`, `hant`) maps to "zh-TW", other Chinese locales
+ * to "zh-CN", Japanese to "ja", and everything else to "en".
+ */
+export function detectDefaultLocale(): keyof typeof DEFAULT_STATE_MACHINES {
+	const env = typeof process === "undefined" ? undefined : process.env;
+	const raw = (
+		[env?.LC_ALL, env?.LC_MESSAGES, env?.LANG].find((value) => value?.trim()) ??
+		Intl.DateTimeFormat().resolvedOptions().locale ??
+		""
+	)
+		.trim()
+		.toLowerCase();
+	if (raw.startsWith("zh")) {
+		return /tw|hk|hant/.test(raw) ? "zh-TW" : "zh-CN";
+	}
+	if (raw.startsWith("ja")) {
+		return "ja";
+	}
+	return "en";
+}
+
+/**
+ * The default machine for a locale. When `locale` is omitted it is taken from
+ * {@link detectDefaultLocale}; an unrecognized explicit value falls back to English.
+ */
+export function defaultStateMachineForLocale(locale?: string): StatusDefinition[] {
+	const raw = (locale ?? detectDefaultLocale()).trim().toLowerCase();
+	let key: keyof typeof DEFAULT_STATE_MACHINES = "en";
+	if (raw.startsWith("zh")) {
+		key = /tw|hk|hant/.test(raw) ? "zh-TW" : "zh-CN";
+	} else if (raw.startsWith("ja")) {
+		key = "ja";
+	}
+	return structuredClone(DEFAULT_STATE_MACHINES[key] ?? DEFAULT_STATE_MACHINES.en ?? []);
+}
 
 /** Machine-readable rule id, so a localized UI can render its own wording. */
 export type LintCode =
@@ -113,7 +102,7 @@ export interface StateMachine {
 	exitChannel(status: string): StatusExitChannel | undefined;
 	validate(): LintIssue[];
 	/**
-	 * Render the machine as guidance for a human or an AI, straight from the config.
+	 * Render the machine as guidance for a user or an AI, straight from the config.
 	 *
 	 * Read-only and never throwing: it reports what the config declares, and still returns a
 	 * usable text when the `statuses` block is broken - in which case it says so. `diagnostics`
@@ -228,7 +217,7 @@ export function validateStatusesShape(value: unknown): StatusesShapeCheck {
 
 /** One `statuses` entry, or one transition inside it, that the config reader had to drop. */
 export interface StatusesRejection {
-	/** 0-based position of the owning entry in the `statuses` array, so a human can find it. */
+	/** 0-based position of the owning entry in the `statuses` array, so the user can find it. */
 	index: number;
 	/** The status name when it could be read; otherwise a best-effort label of the entry. */
 	status?: string;
@@ -484,12 +473,12 @@ function validateEntries(entries: CompiledStatus[], raw: StatusesConfig | undefi
 const AI_TIER_MEANINGS: Record<AiPolicy, string> = {
 	allowed: "the AI may make this move on its own",
 	allowed_if: "the AI may move only while the edge's `if` holds",
-	propose: "the AI proposes the move and waits for a human",
-	forbidden: "only a human may make this move",
+	propose: "the AI proposes the move and waits for the user",
+	forbidden: "only the user may make this move",
 };
 
 /** Edges the AI must not take by itself (`ai: forbidden` or `ai: propose`). */
-function humanOnlyEdges(entries: CompiledStatus[]): Array<{ from: string; transition: StatusTransition }> {
+function userOnlyEdges(entries: CompiledStatus[]): Array<{ from: string; transition: StatusTransition }> {
 	const edges: Array<{ from: string; transition: StatusTransition }> = [];
 	for (const entry of entries) {
 		for (const transition of entry.next ?? []) {
@@ -506,7 +495,10 @@ function renderEdge(from: string, transition: StatusTransition): string {
 	if (transition.when?.trim()) parts.push(`when: ${transition.when.trim()}`);
 	if (transition.ai) parts.push(`ai: ${transition.ai}`);
 	if (transition.if?.trim()) parts.push(`if: ${transition.if.trim()}`);
-	if (transition.requires?.trim()) parts.push(`requires: ${transition.requires.trim()}`);
+	// `requires` repeats `if` on most edges; only render it when it adds information.
+	if (transition.requires?.trim() && transition.requires.trim() !== transition.if?.trim()) {
+		parts.push(`requires: ${transition.requires.trim()}`);
+	}
 	if (transition.evidence?.trim()) parts.push(`evidence: ${transition.evidence.trim()}`);
 	return `- ${parts.join(" · ")}`;
 }
@@ -578,12 +570,19 @@ function renderMachine(
 		if (entries.length > 0) {
 			// Without this the reader gets a definition but no procedure: the machine says which moves
 			// exist, and this says to consult it before writing a status (doc-19 FR-8).
-			lines.push(
-				declaresTransitions
-					? "**Moving a task:** read its current status, find it below, and follow the matching `next` edge - obey that edge's `ai` (`forbidden` means only a human may make the move), gather its `evidence` first, and never take an edge listed under \"Stop and wait for a human\" without a human's answer."
-					: "**Moving a task:** this project declares no transitions, so a task may move between any pair of non-terminal statuses - use the status the user asked for.",
-				"",
-			);
+			if (declaresTransitions) {
+				lines.push(
+					"**Moving a task:**",
+					"- Find the task's current status below and follow the matching `next` edge; obey the edge's `ai` and gather its `evidence` first.",
+					'- Never take an edge listed under "Stop and wait for the user" without the user\'s answer.',
+					"",
+				);
+			} else {
+				lines.push(
+					"**Moving a task:** this project declares no transitions, so a task may move between any pair of non-terminal statuses - use the status the user asked for.",
+					"",
+				);
+			}
 		}
 		lines.push(...renderConfigProblems(diagnostics, issues));
 
@@ -603,15 +602,17 @@ function renderMachine(
 			for (const policy of AI_POLICIES) lines.push(`| \`${policy}\` | ${AI_TIER_MEANINGS[policy]} |`);
 			lines.push("");
 			lines.push("### Transitions", "", "Every declared `next` edge, grouped by the status it starts from.", "");
+			const noOutgoing: string[] = [];
 			for (const entry of entries) {
-				lines.push(`#### ${entry.name}`, "");
 				if ((entry.next ?? []).length === 0) {
-					lines.push("- No outgoing transitions.", "");
+					noOutgoing.push(`\`${entry.name}\``);
 					continue;
 				}
+				lines.push(`#### ${entry.name}`, "");
 				for (const transition of entry.next ?? []) lines.push(renderEdge(entry.name, transition));
 				lines.push("");
 			}
+			if (noOutgoing.length > 0) lines.push(`${noOutgoing.join(" and ")} have no outgoing transitions.`, "");
 		} else {
 			lines.push("### Transitions", "");
 			lines.push(
@@ -625,27 +626,21 @@ function renderMachine(
 		if (terminals.length === 0) {
 			lines.push("No status is declared terminal.", "");
 		} else {
-			lines.push("| Status | Category | Exit |", "| --- | --- | --- |");
-			for (const entry of terminals) lines.push(`| ${entry.name} | ${entry.category} | ${entry.exit ?? "-"} |`);
-			lines.push("");
 			lines.push(
-				"A status is terminal when its `category` is `done` or `dropped`; reaching one is what stamps `actualEnd`.",
+				"Reaching a status whose `category` is `done` or `dropped` (see the Statuses table) stamps `actualEnd`: `exit: complete` marks finished work, `exit: archive` marks work set aside, archived rather than completed.",
 				"",
 			);
 		}
 
-		lines.push("### Archive rules", "");
-		lines.push("- `exit: complete` marks work that was finished.");
-		lines.push("- `exit: archive` marks work that was set aside; it is archived rather than completed.");
-		lines.push("");
-
-		lines.push("### Stop and wait for a human", "");
-		const humanOnly = humanOnlyEdges(entries);
-		if (humanOnly.length === 0) {
-			lines.push("No edge is marked `forbidden` or `propose`, so no transition is reserved for a human.", "");
+		lines.push("### Stop and wait for the user", "");
+		const userOnly = userOnlyEdges(entries);
+		if (userOnly.length === 0) {
+			lines.push("No edge is marked `forbidden` or `propose`, so no transition is reserved for the user.", "");
 		} else {
+			// Index only: the full edge text lives under Transitions; this list is the "not yours" checklist.
 			lines.push("These edges are not the AI's to take:", "");
-			for (const edge of humanOnly) lines.push(renderEdge(edge.from, edge.transition));
+			for (const edge of userOnly)
+				lines.push(`- \`${edge.from}\` -> \`${edge.transition.to}\` · ai: ${edge.transition.ai}`);
 			lines.push("");
 		}
 

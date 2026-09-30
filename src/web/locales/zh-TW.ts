@@ -1,3 +1,4 @@
+import type { StatusDefinition } from "../../types/index.ts";
 import type { TranslationDict } from "./types";
 
 export const zhTW: TranslationDict = {
@@ -471,8 +472,8 @@ export const zhTW: TranslationDict = {
 		reset: "重設",
 		resetDesc: "放棄未儲存變更，從 config.yml 重新載入已儲存內容",
 		restoreDefault: "預設",
-		restoreDefaultDesc: "用約定的七欄預設狀態機覆蓋已儲存內容",
-		restoreDefaultConfirm: "將用約定的七欄預設狀態機整體取代目前狀態機，自訂狀態會遺失。繼續？",
+		restoreDefaultDesc: "將約定的七欄預設狀態機載入編輯器（儲存後才生效）",
+		restoreDefaultConfirm: "將用約定的七欄預設狀態機取代目前編輯內容，未儲存的自訂狀態會遺失；儲存後才寫入。繼續？",
 		legacyTitle: "目前專案使用純字串陣列",
 		legacyDesc: "未宣告類別與轉換規則，終態按「陣列最後一個」推斷。",
 		convert: "轉換為物件形式",
@@ -988,3 +989,75 @@ export const zhTW: TranslationDict = {
 		taskGraphReady: "任務圖譜已就緒",
 	},
 };
+
+/** The default task state machine variant for this locale (see state-machine-locales conventions in index). */
+
+export const defaultStateMachine: StatusDefinition[] = [
+	{
+		name: "To Do",
+		category: "active",
+		next: [
+			{ to: "Planning", when: "使用者已確認描述與驗收標準完整，可以開工", ai: "allowed" },
+			{
+				to: "Dropped",
+				when: "任務已過時或被放棄；提示使用者將其移動到 Dropped 即歸檔",
+				ai: "propose",
+			},
+		],
+	},
+	{
+		name: "Planning",
+		category: "wip",
+		next: [
+			{
+				to: "Plan Review",
+				when: "實現計畫已寫入 implementationPlan",
+				ai: "allowed_if",
+				if: "implementationPlan 非空",
+				requires: "implementationPlan 非空",
+			},
+		],
+	},
+	{
+		name: "Plan Review",
+		category: "blocked",
+		next: [
+			{
+				to: "In Progress",
+				when: "使用者已批准實現計畫",
+				ai: "allowed_if",
+				if: "使用者已在對話或評論中明確批准實現計畫",
+			},
+			{ to: "Planning", when: "計畫被駁回或需修改", ai: "propose", evidence: "comments（寫明駁回理由）" },
+		],
+	},
+	{
+		name: "In Progress",
+		category: "wip",
+		next: [
+			{
+				to: "In Review",
+				when: "實現完成，diff / 測試 / 驗收說明已就緒",
+				ai: "allowed_if",
+				if: "finalSummary 非空",
+				requires: "finalSummary 非空",
+			},
+			{ to: "Planning", when: "實施中發現計畫需要調整", ai: "allowed" },
+		],
+	},
+	{
+		name: "In Review",
+		category: "blocked",
+		next: [
+			{
+				to: "Done",
+				when: "使用者驗收通過",
+				ai: "allowed_if",
+				if: "使用者已在對話或評論中明確驗收通過",
+			},
+			{ to: "In Progress", when: "驗收未通過，需返工", ai: "propose", evidence: "comments（寫明返工理由）" },
+		],
+	},
+	{ name: "Done", category: "done", exit: "complete", next: [] },
+	{ name: "Dropped", category: "dropped", exit: "archive", display: false, next: [] },
+];

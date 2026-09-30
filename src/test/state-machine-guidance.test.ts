@@ -46,7 +46,7 @@ describe("the shipped overview texts", () => {
 		["MCP overview resource", MCP_WORKFLOW_OVERVIEW],
 		["MCP overview tool", MCP_WORKFLOW_OVERVIEW_TOOLS],
 	];
-	const HEADING = "## The Project Status Machine (`backlog/config.yml` -> `statuses`)";
+	const HEADING = "## The Project State Machine (`backlog/config.yml` -> `statuses`)";
 
 	for (const [name, text] of texts) {
 		it(`${name} carries the static section and the placeholder for the machine`, () => {
@@ -65,7 +65,7 @@ describe("the shipped overview texts", () => {
 			expect(instructionAt).toBeLessThan(text.indexOf(STATE_MACHINE_PLACEHOLDER));
 			expect(text).toContain("Read its current `status`");
 			expect(text).toContain("those edges are the only transitions declared out of it");
-			expect(text).toContain("never move along one without an explicit human answer");
+			expect(text).toContain("never move along one without an explicit user answer");
 			// The no-transitions project is not left to guess either.
 			expect(text).toContain("may move between any pair of non-terminal statuses");
 		});
@@ -200,7 +200,7 @@ describe("the project's own machine", () => {
 		expect(composed).toContain("### State machine config problem");
 		expect(composed).toContain("entry 2: missing or empty `name`");
 		// The static half is still there: the AI keeps the format docs even with a broken machine.
-		expect(composed).toContain("## The Project Status Machine");
+		expect(composed).toContain("## The Project State Machine");
 	});
 
 	it("renders the machine for injection into the agent instruction files", async () => {
