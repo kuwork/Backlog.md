@@ -21,7 +21,7 @@ interface StateMachineEditorProps {
 	/** Discard unsaved edits: reload what is actually saved in config.yml. */
 	onReload: () => void;
 	/** Overwrite the saved machine with the agreed seven-column default. */
-	onRestoreDefault: () => Promise<void>;
+	onRestoreDefault: () => void;
 	dirty: boolean;
 }
 

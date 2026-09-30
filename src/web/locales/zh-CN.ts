@@ -1,3 +1,4 @@
+import type { StatusDefinition } from "../../types/index.ts";
 import type { TranslationDict } from "./types";
 
 export const zhCN: TranslationDict = {
@@ -471,8 +472,8 @@ export const zhCN: TranslationDict = {
 		reset: "重置",
 		resetDesc: "放弃未保存改动，从 config.yml 重新加载已保存内容",
 		restoreDefault: "默认",
-		restoreDefaultDesc: "用约定的七列默认状态机覆盖已保存内容",
-		restoreDefaultConfirm: "将用约定的七列默认状态机整体替换当前状态机，自定义状态会丢失。继续？",
+		restoreDefaultDesc: "将约定的七列默认状态机载入编辑器（保存后才生效）",
+		restoreDefaultConfirm: "将用约定的七列默认状态机替换当前编辑内容，未保存的自定义状态会丢失；保存后才写入。继续？",
 		legacyTitle: "当前项目使用纯字符串数组",
 		legacyDesc: "未声明类别与转换规则，终态按“数组最后一个”推断。",
 		convert: "转换为对象形式",
@@ -988,3 +989,75 @@ export const zhCN: TranslationDict = {
 		taskGraphReady: "任务图谱已就绪",
 	},
 };
+
+/** The default task state machine variant for this locale (see state-machine-locales conventions in index). */
+
+export const defaultStateMachine: StatusDefinition[] = [
+	{
+		name: "To Do",
+		category: "active",
+		next: [
+			{ to: "Planning", when: "用户已确认描述与验收标准完整，可以开工", ai: "allowed" },
+			{
+				to: "Dropped",
+				when: "任务已过时或被放弃；提示用户将其移动到 Dropped 即归档",
+				ai: "propose",
+			},
+		],
+	},
+	{
+		name: "Planning",
+		category: "wip",
+		next: [
+			{
+				to: "Plan Review",
+				when: "实现计划已写入 implementationPlan",
+				ai: "allowed_if",
+				if: "implementationPlan 非空",
+				requires: "implementationPlan 非空",
+			},
+		],
+	},
+	{
+		name: "Plan Review",
+		category: "blocked",
+		next: [
+			{
+				to: "In Progress",
+				when: "用户已批准实现计划",
+				ai: "allowed_if",
+				if: "用户已在对话或评论中明确批准实现计划",
+			},
+			{ to: "Planning", when: "计划被驳回或需修改", ai: "propose", evidence: "comments（写明驳回理由）" },
+		],
+	},
+	{
+		name: "In Progress",
+		category: "wip",
+		next: [
+			{
+				to: "In Review",
+				when: "实现完成，diff / 测试 / 验收说明已就绪",
+				ai: "allowed_if",
+				if: "finalSummary 非空",
+				requires: "finalSummary 非空",
+			},
+			{ to: "Planning", when: "实施中发现计划需要调整", ai: "allowed" },
+		],
+	},
+	{
+		name: "In Review",
+		category: "blocked",
+		next: [
+			{
+				to: "Done",
+				when: "用户验收通过",
+				ai: "allowed_if",
+				if: "用户已在对话或评论中明确验收通过",
+			},
+			{ to: "In Progress", when: "验收未通过，需返工", ai: "propose", evidence: "comments（写明返工理由）" },
+		],
+	},
+	{ name: "Done", category: "done", exit: "complete", next: [] },
+	{ name: "Dropped", category: "dropped", exit: "archive", display: false, next: [] },
+];

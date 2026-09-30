@@ -6,10 +6,10 @@ statuses:
     category: active
     next:
       - to: "Planning"
-        when: "人类已确认描述与验收标准完整，可以开工"
+        when: "用户已确认描述与验收标准完整，可以开工"
         ai: allowed
       - to: "Dropped"
-        when: "任务已过时或被放弃（如很久以前列的、现在不再需要做）"
+        when: "任务已过时或被放弃；提示用户将其移动到 Dropped 即归档"
         ai: propose
   - name: "Planning"
     category: wip
@@ -23,8 +23,9 @@ statuses:
     category: blocked
     next:
       - to: "In Progress"
-        when: "人类已批准实现计划"
-        ai: forbidden
+        when: "用户已批准实现计划"
+        ai: allowed_if
+        if: "用户已在对话或评论中明确批准实现计划"
       - to: "Planning"
         when: "计划被驳回或需修改"
         ai: propose
@@ -44,8 +45,9 @@ statuses:
     category: blocked
     next:
       - to: "Done"
-        when: "人类验收通过"
-        ai: forbidden
+        when: "用户验收通过"
+        ai: allowed_if
+        if: "用户已在对话或评论中明确验收通过"
       - to: "In Progress"
         when: "验收未通过，需返工"
         ai: propose

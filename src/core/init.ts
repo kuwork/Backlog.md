@@ -17,7 +17,7 @@ import {
 } from "../utils/mcp-client-setup.ts";
 import { getTaskPrefixError } from "../utils/prefix-config.ts";
 import type { Core } from "./backlog.ts";
-import { DEFAULT_STATE_MACHINE } from "./state-machine.ts";
+import { defaultStateMachineForLocale, detectDefaultLocale } from "./state-machine.ts";
 import { renderProjectStateMachine } from "./state-machine-guidance.ts";
 
 export const MCP_SERVER_NAME = "backlog";
@@ -142,11 +142,16 @@ export async function initializeProject(
 	// Build config, preserving existing values for re-initialization.
 	// Re-init should be idempotent for fields that init does not explicitly manage.
 	const d = DEFAULT_INIT_CONFIG;
+	// The detected language feeds both the Settings language option and the default machine, so a
+	// fresh project never shows a UI in one language and a machine in another.
+	const detectedLocale = existingConfig?.locale ?? detectDefaultLocale();
 	const baseConfig: BacklogConfig = {
 		projectName,
-		// A fresh project starts on the fork's seven-column preset machine (doc-19 §4.1), including
-		// the `display:false` Dropped column. Clone it so each project owns its own copy.
-		statuses: structuredClone(DEFAULT_STATE_MACHINE),
+		locale: detectedLocale,
+		// A fresh project starts on the fork's seven-column preset machine (doc-19 §4.1), in the
+		// variant matching the detected locale, including the `display:false` Dropped column.
+		// The function returns a clone, so each project owns its own copy.
+		statuses: defaultStateMachineForLocale(detectedLocale),
 		labels: [],
 		defaultStatus: "To Do",
 		dateFormat: "yyyy-mm-dd",
