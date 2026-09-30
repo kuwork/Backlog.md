@@ -26,6 +26,16 @@ export const NODE_FILL: Record<NodeStyle, string> = {
 	tag: "#9ca3af",
 };
 
+/**
+ * Node fill with theme compensation. The tag gray is tuned for light surfaces - on the dark
+ * canvas it sinks into the background and the classification nodes read as absent (doc-15 §7
+ * asks for recessive, not invisible). Used by the canvas painters and the legend dots alike,
+ * so the dot and the node never disagree.
+ */
+export function nodeFill(style: NodeStyle, theme: string): string {
+	return theme === "dark" && style === "tag" ? "#cbd5e1" : NODE_FILL[style];
+}
+
 /** Light tint of each fill, so nodes read as tiles instead of flat dots (Neo4j-style). */
 export const NODE_STROKE: Record<NodeStyle, string> = {
 	task: "#93c5fd",
@@ -88,14 +98,18 @@ export const TASK_GRAPH_HIDDEN_STYLES: NodeStyle[] = ["wiki", "decision", "docum
 export const KNOWLEDGE_GRAPH_HIDDEN_STYLES: NodeStyle[] = ["task", "completed", "draft", "milestone"];
 
 /**
- * The subset of a payload one reading shows: every kind it does not hide, minus any Tag whose
- * TaggedWith edges all fell outside that subset.
+ * The subset of a payload one reading shows: every kind it does not hide, minus any Tag that
+ * has no TaggedWith edge anywhere in the payload.
  *
  * A Tag is a virtual classification node with no content of its own - it exists only through the
- * pages that carry it. Hide the carriers and the tag has nothing left to say, so it is dropped
- * rather than drawn as an unwired dot (79 of the 216 tags when the work kinds are hidden, because
- * a task's labels no longer count). Real pages are never dropped this way: a wiki page with no
- * link is still a wiki page.
+ * pages that carry it. A tag with no TaggedWith edge at all (e.g. one only tasks use, since task
+ * labels never enter the graph) can never connect to anything here and is dropped rather than
+ * drawn as an unwired dot (79 of the 216 tags at the time of measurement). But a tag whose
+ * carriers are merely *hidden by the legend* stays: the legend entry being lit promises the node
+ * is in the picture, and hiding the wiki pages must not silently take the tags with them. The
+ * edges still appear only when both ends are visible, so such a tag shows as a lone node - which
+ * is exactly the "this tag exists but its pages are hidden" state. Real pages are never dropped
+ * this way: a wiki page with no link is still a wiki page.
  *
  * Shared by the force layout and the headline count, so the number always matches the picture.
  */
@@ -105,10 +119,8 @@ export function selectVisibleGraph(
 	hidden: ReadonlySet<NodeStyle>,
 ): { nodes: GraphNodeDto[]; edges: GraphEdgeDto[] } {
 	const shown = nodes.filter((node) => !hidden.has(nodeStyle(node)));
-	const shownIds = new Set(shown.map((node) => node.id));
-	const supporting = edges.filter((edge) => shownIds.has(edge.from) && shownIds.has(edge.to));
 	const supportedTags = new Set<string>();
-	for (const edge of supporting) {
+	for (const edge of edges) {
 		if (edge.type !== "TaggedWith") continue;
 		supportedTags.add(edge.from);
 		supportedTags.add(edge.to);
