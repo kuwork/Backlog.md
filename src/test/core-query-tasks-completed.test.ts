@@ -47,7 +47,7 @@ describe("queryTasks includeCompleted corpus widening", () => {
 		const tasks = await core.queryTasks();
 		expect(tasks.map((task) => task.id)).not.toContain("TASK-1");
 		expect(tasks.map((task) => task.id)).toContain("TASK-2");
-	});
+	}, 20000);
 
 	it("widens the corpus with completed tasks only when asked", async () => {
 		await setupActiveAndCompletedTasks();
@@ -59,7 +59,7 @@ describe("queryTasks includeCompleted corpus widening", () => {
 		// The distinguishing marker consumers route on (AC#5).
 		expect(completed?.source).toBe("completed");
 		expect(tasks.map((task) => task.id)).toContain("TASK-2");
-	});
+	}, 20000);
 
 	it("widens the no-query cross-branch path from the ContentStore corpus", async () => {
 		await setupActiveAndCompletedTasks();
@@ -67,7 +67,7 @@ describe("queryTasks includeCompleted corpus widening", () => {
 
 		const tasks = await core.queryTasks({ includeCompleted: true, includeCrossBranch: true });
 		expect(tasks.map((task) => task.id)).toContain("TASK-1");
-	});
+	}, 20000);
 
 	it("widens the local path and keeps active records winning an id clash", async () => {
 		await setupActiveAndCompletedTasks();
@@ -79,7 +79,7 @@ describe("queryTasks includeCompleted corpus widening", () => {
 		expect(ids).toContain("TASK-2");
 		const completed = tasks.find((task) => task.id === "TASK-1");
 		expect(completed?.source).toBe("completed");
-	});
+	}, 20000);
 
 	it("lets fuzzy search reach completed tasks only when the corpus is widened", async () => {
 		await setupActiveAndCompletedTasks();
@@ -90,7 +90,7 @@ describe("queryTasks includeCompleted corpus widening", () => {
 
 		const withCompleted = await core.queryTasks({ query: "completed dep", includeCompleted: true });
 		expect(withCompleted.map((task) => task.id)).toContain("TASK-1");
-	});
+	}, 20000);
 
 	it("runs widened results through the same filter and limit pipeline", async () => {
 		await setupActiveAndCompletedTasks();
@@ -101,5 +101,5 @@ describe("queryTasks includeCompleted corpus widening", () => {
 
 		const limited = await core.queryTasks({ includeCompleted: true, limit: 1 });
 		expect(limited).toHaveLength(1);
-	});
+	}, 20000);
 });

@@ -109,7 +109,7 @@ describe("isModalSearchTarget", () => {
 describe("getSearchResultMeta", () => {
 	it("extracts task status and priority", () => {
 		const meta = getSearchResultMeta(makeTask("back-1", "T"));
-		expect(meta).toEqual({ id: "back-1", title: "T", status: "in-progress", priority: "high" });
+		expect(meta).toEqual({ id: "back-1", title: "T", status: "in-progress", priority: "high", completed: false });
 	});
 
 	it("extracts wiki title from frontmatter", () => {

@@ -270,7 +270,15 @@ export class GraphService {
 			if (entry && entry.size === file.size && entry.mtimeMs === file.mtimeMs) {
 				nextFiles[file.relPath] = entry;
 			} else {
-				const content = await readFile(file.absPath, "utf8");
+				// The file can vanish between the scan and the read (a move, a delete, a temp-dir
+				// cleanup); treat it as absent instead of failing the whole pass.
+				let content: string;
+				try {
+					content = await readFile(file.absPath, "utf8");
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+					throw error;
+				}
 				nextFiles[file.relPath] = { size: file.size, mtimeMs: file.mtimeMs, hash: computeFileHash(content) };
 			}
 		}

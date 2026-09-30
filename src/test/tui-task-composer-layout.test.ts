@@ -127,7 +127,9 @@ describe("TUI task composer extreme-size layout", () => {
 				expectEditableRowVisible(description);
 
 				// A short terminal cannot show every field, so the buttons stay reachable by scrolling.
-				for (let step = 0; step < 6 && screen.focused?.content !== "Create task"; step += 1) {
+				// The tab order crosses the status and priority selectors plus the five date fields
+				// before it reaches the buttons.
+				for (let step = 0; step < 12 && screen.focused?.content !== "Create task"; step += 1) {
 					pressKey(screen.focused, "down");
 				}
 				expect(screen.focused?.content).toBe("Create task");
@@ -159,7 +161,9 @@ describe("TUI task composer extreme-size layout", () => {
 			// "Actions" caption so the buttons are the last row.
 			expect(status?.position?.top).toBe(7);
 			expect(priority?.position?.top).toBe(8);
-			expect(create?.position?.top).toBe(10);
+			// The five date rows stack between the details frame and the buttons (dates land on
+			// rows 10-14), so the create button sits on row 15.
+			expect(create?.position?.top).toBe(15);
 			for (const selector of [status, priority]) {
 				expect(Number(selector?.width)).toBeGreaterThanOrEqual(Bun.stringWidth(selector?.content ?? ""));
 				expect(selector?.position?.left).toBe(3);
@@ -196,7 +200,8 @@ describe("TUI task composer extreme-size layout", () => {
 			expect(current.actions?.hidden).toBe(true);
 			expect(current.status?.position).toMatchObject({ top: 7, left: 3 });
 			expect(current.priority?.position).toMatchObject({ top: 8, left: 3 });
-			expect(current.create?.position?.top).toBe(10);
+			// Dates occupy rows 10-14 between the details frame and the buttons.
+			expect(current.create?.position?.top).toBe(15);
 
 			// A wide terminal fits it in the side-by-side column, so the expanded form comes back.
 			screen.width = 140;

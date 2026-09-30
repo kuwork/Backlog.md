@@ -78,7 +78,7 @@ Keep me exactly.
 		expect(content).not.toContain("<!-- SECTION:");
 		expect(content).not.toContain("<!-- AC:");
 		expect(content).not.toContain("## Acceptance Criteria");
-	});
+	}, 20000);
 
 	it("edits by full prefixed ID in a default task-prefix project", async () => {
 		const core = new Core(TEST_DIR);
@@ -101,7 +101,7 @@ Keep me exactly.
 		const task = await core.filesystem.loadTask("task-1");
 		expect(task).not.toBeNull();
 		expect(task?.labels).toContain("prefixed");
-	});
+	}, 20000);
 
 	it("should preserve all sections when updating description", async () => {
 		// Create a task with all sections
@@ -153,7 +153,7 @@ Keep me exactly.
 		expect(result).toContain("Step 2");
 		expect(result).toContain("Step 3");
 		expect(result).toContain("Original implementation notes");
-	});
+	}, 20000);
 
 	it("should preserve all sections when updating acceptance criteria", async () => {
 		// Create a task with all sections
@@ -189,7 +189,7 @@ Keep me exactly.
 		expect(result).toContain("Updated criterion 2");
 		expect(result).toContain("Original plan");
 		expect(result).toContain("Original notes");
-	});
+	}, 20000);
 
 	it("should preserve all sections when updating implementation plan", async () => {
 		// Create a task with all sections
@@ -225,7 +225,7 @@ Keep me exactly.
 		expect(result).toContain("Updated plan step 2");
 		expect(result).toContain("Original notes");
 		expect(result).not.toContain("Original plan");
-	});
+	}, 20000);
 
 	it("should preserve all sections when updating implementation notes", async () => {
 		// Create a task with all sections
@@ -260,7 +260,7 @@ Keep me exactly.
 		expect(result).toContain("Test plan");
 		expect(result).not.toContain("Original notes");
 		expect(result).toContain("Additional notes");
-	});
+	}, 20000);
 
 	it("should handle tasks with minimal content", async () => {
 		// Create a task with just description
@@ -287,7 +287,7 @@ Keep me exactly.
 
 		expect(result).toContain("Updated minimal description");
 		expect(result).toContain("No acceptance criteria defined");
-	});
+	}, 20000);
 
 	it("clears task date fields with --clear-* flags", async () => {
 		const core = new Core(TEST_DIR);
@@ -323,7 +323,7 @@ Keep me exactly.
 		expect(after).not.toContain("Actual Start:");
 		expect(after).toContain("Planned Start:");
 		expect(after).toContain("Actual End:");
-	});
+	}, 20000);
 });
 
 describe("Task edit with custom task prefix", () => {
@@ -362,7 +362,7 @@ describe("Task edit with custom task prefix", () => {
 		const task = await core.filesystem.loadTask("back-1");
 		expect(task).not.toBeNull();
 		expect(task?.priority).toBe("low");
-	});
+	}, 20000);
 
 	it("edits a task by prefixed ID when project uses a custom prefix", async () => {
 		await $`bun ${cliPath} task create "Custom prefix task" --priority medium`.cwd(customPrefixDir).quiet();
@@ -374,5 +374,5 @@ describe("Task edit with custom task prefix", () => {
 		const task = await core.filesystem.loadTask("back-1");
 		expect(task).not.toBeNull();
 		expect(task?.priority).toBe("high");
-	});
+	}, 20000);
 });

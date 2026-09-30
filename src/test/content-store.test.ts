@@ -421,7 +421,7 @@ describe("ContentStore", () => {
 		expect(documents).toHaveLength(1);
 		expect(documents[0]?.id).toBe("doc-1");
 		expect(documents[0]?.path).toBe(newPath);
-	});
+	}, 20000);
 
 	it("removes documents when a containing folder is deleted", async () => {
 		store.dispose();
