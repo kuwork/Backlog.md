@@ -190,6 +190,12 @@ export const Icons = {
 			<path strokeLinecap="round" strokeWidth={2} d="M8.5 6h7M6 8.5v7m12-7v7M8.5 18h7" />
 		</svg>
 	),
+	// Knowledge graph nav icon: a connected-cluster glyph (user-supplied, iconfont 1024 grid).
+	KnowledgeGraph: () => (
+		<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 1024 1024">
+			<path d="M943.4 387.9c-27.5-32.6-72.4-37.6-104.9-10L511.2 177.1c-2.5-15.1-7.5-27.6-17.5-40.2-27.5-32.6-72.4-37.6-104.9-10-15 12.5-22.5 30.1-25 47.7L186.4 280c-20-17.6-45-22.6-70-15.1-40 12.5-62.5 52.7-50 92.9 7.5 30.1 35 50.2 62.5 52.7l42.5 188.3c-20 12.5-35 37.6-35 62.7 0 42.6 32.5 75.3 75 75.3 17.5 0 35-7.5 47.5-17.6l177.4 105.4c0 5-2.5 10-2.5 15.1 0 42.7 32.5 75.3 75 75.3s75-32.6 75-75.3c0-12.5-2.5-25.1-7.5-35.1l277.3-298.7c25 10 54.9 7.5 77.4-10 34.9-27.7 39.9-75.3 12.4-108z m-129.9 90.4L541.1 769.5c-7.5-2.5-12.5-5-20-5l-40-188.2c30-15.1 52.5-45.2 55-82.8l277.4-15.2zM463.7 782L286.3 676.6c0-5 2.5-10 2.5-15.1 0-7.6-2.5-15.1-5-22.6l92.4-75.3c15 12.5 35 20.1 57.5 20.1l40 188.2-10 10.1zM221.3 588.7l-42.5-188.2 162.4 70.3c0 5-2.5 10.1-2.5 15.1 0 15.1 2.5 27.6 7.5 40.2l-92.4 72.8c-10-5.2-20-10.2-32.5-10.2z m-9.9-266l164.9-95.4c2.5 2.5 2.5 5 5 7.5 10 10 20 17.6 32.5 22.6v133c-22.5 5-40 17.6-52.5 35.1l-149.9-65.3c0-12.4 2.4-25 0-37.5z m287.3-95.4l314.8 193.2v7.6l-284.8 17.6c-12.5-27.6-37.5-47.7-65-55.2v-133c7.5-2.5 15-7.5 22.5-12.6 5-5 10-10.1 12.5-17.6z m0 0" />
+		</svg>
+	),
 	Milestone: () => (
 		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<circle cx="12" cy="12" r="9" strokeWidth={2} />
@@ -1340,7 +1346,7 @@ const SideNavigation = memo(function SideNavigation({
 								}`
 							}
 						>
-							<Icons.WikiPage />
+							<Icons.KnowledgeGraph />
 							<span className="ml-3 text-sm font-medium">{t.nav.knowledgeGraph}</span>
 						</NavLink>
 					</div>
@@ -1646,7 +1652,7 @@ const SideNavigation = memo(function SideNavigation({
 							}
 						>
 							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.WikiPage />
+								<Icons.KnowledgeGraph />
 							</div>
 						</NavLink>
 						<button

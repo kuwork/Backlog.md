@@ -3,7 +3,7 @@ id: doc-15
 title: Wiki 知识图谱关系设计（doc-14 第三期）
 type: specification
 created_date: '2026-09-26 02:19'
-updated_date: '2026-09-28 07:58'
+updated_date: '2026-09-30 04:22'
 tags:
   - wiki
   - graph
@@ -538,3 +538,7 @@ backlog/wiki/sources/back-712.md
 暂缓（语义关系有真实需求时追加）：增加路径形式的 `relations` 并解析建边；`relations.target` 的 Lint 检查；语义关系可视化样式。
 
 该顺序让现有 Wiki 持续可用，同时逐步增加机器可读语义。文件路径保持为唯一身份机制，标签保持为灵活的分类层。
+
+## 修订：标签剔除规则变更（BACK-720，2026-09-29）
+
+§4 的「配套的视图规则」已变更，原文规则（隐藏载体则标签一并剔除）作废。现行规则：Tag 只有在整个语料中没有任何 TaggedWith 边时才被剔除（真孤儿，如仅任务使用的标签）；载体仅被图例隐藏时 Tag 保留显示——图例亮着即节点可见。边仍只在两端都可见时绘制。实现见 src/web/components/GraphLegend.tsx 的 selectVisibleGraph。

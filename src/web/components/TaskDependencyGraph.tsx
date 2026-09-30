@@ -1,7 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
-// Imported for its standalone interrupt(node): d3-zoom needs the d3-transition prototype
-// patch the module carries, and the interrupt fallback below covers duplicated bundles.
-import { interrupt as d3Interrupt } from "d3-transition";
 import {
 	forceCenter,
 	forceCollide,
@@ -13,7 +10,7 @@ import {
 	type SimulationLinkDatum,
 	type SimulationNodeDatum,
 } from "d3-force";
-import { drag as d3Drag } from "d3-drag";
+import { quadtree, type Quadtree } from "d3-quadtree";
 import { select } from "d3-selection";
 import { zoom as d3Zoom, zoomIdentity, type ZoomTransform } from "d3-zoom";
 import { apiClient, type GraphEdgeDto, type GraphNodeDto } from "../lib/api";
@@ -21,13 +18,21 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { buildRelationshipSubgraph } from "../utils/task-subgraph";
 import {
+	canvasThemeColors,
+	drawCaption,
+	drawEdgeLabel,
+	ensureZoomInterrupt,
+	scaledRadius,
+	strokeEdge,
+} from "../utils/graph-canvas";
+import {
 	EDGE_DASH,
 	EDGE_STROKE,
 	LegendDot,
 	LegendLine,
-	NODE_FILL,
 	NODE_STROKE,
 	type NodeStyle,
+	nodeFill,
 	nodeStyle,
 	TASK_GRAPH_HIDDEN_STYLES,
 } from "./GraphLegend";
@@ -57,7 +62,7 @@ const NODE_RADIUS = 14;
 const ROOT_RADIUS = 18;
 const PRECOMPUTE_TICKS = 200;
 const EDGE_LABEL_FONT = 10;
-/** Opacity the focus mode dims to; the stylesheet reads it from --graph-focus-fade (same as GraphView). */
+/** Opacity everything outside the focused node's neighbourhood is drawn at. */
 const FOCUS_FADE = 0.18;
 /**
  * The filter set a task the modal holds no state for falls back to. It is the same one `/graph`
@@ -90,8 +95,9 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
  * Relationship graph (关联关系图) for the task details modal: a d3-force rendering of the
  * neighborhood around the open task, cut from the same /api/graph payload the main /graph
  * page renders. All relation types (parent, children, depends-on, milestone) show up with
- * the same edge styles and labels as the full graph view. The layout is precomputed with a
- * fixed tick budget and stays interactive through zoom and drag.
+ * the same edge styles and labels as the full graph view. Painted on Canvas 2D through the
+ * helpers shared with GraphView (src/web/utils/graph-canvas.ts); hit-testing uses a d3-quadtree.
+ * The layout is precomputed with a fixed tick budget and stays interactive through zoom and drag.
  */
 export const TaskDependencyGraph: FC<Props> = ({
 	focusId,
@@ -105,7 +111,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 	const { theme } = useTheme();
 	const [payload, setPayload] = useState<Awaited<ReturnType<typeof apiClient.getGraph>> | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const svgRef = useRef<SVGSVGElement | null>(null);
+	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const onTaskClickRef = useRef(onTaskClick);
 	useEffect(() => {
@@ -161,8 +167,11 @@ export const TaskDependencyGraph: FC<Props> = ({
 	);
 
 	useEffect(() => {
-		const svgEl = svgRef.current;
-		if (!svgEl || !visibleSubgraph || visibleSubgraph.nodes.length === 0) return;
+		const canvasEl = canvasRef.current;
+		const container = containerRef.current;
+		if (!canvasEl || !container || !visibleSubgraph || visibleSubgraph.nodes.length === 0) return;
+		const ctx = canvasEl.getContext("2d");
+		if (!ctx) return;
 
 		const nodes: SimNode[] = visibleSubgraph.nodes.map((node) => ({
 			id: node.id,
@@ -178,92 +187,6 @@ export const TaskDependencyGraph: FC<Props> = ({
 			target: edge.to,
 		}));
 
-		const svg = select(svgEl);
-		svg.selectAll("*").remove();
-		const width = svgEl.clientWidth || 800;
-		const height = svgEl.clientHeight || 440;
-
-		// Bun's bundler can duplicate the d3-selection module across a bundle, so d3-transition's
-		// prototype patch may land on a different Selection class; give it an interrupt() fallback
-		// that operates on the DOM node directly (same guard as GraphView).
-		const selectionProto = Object.getPrototypeOf(svg) as unknown as {
-			interrupt?: (name?: string) => unknown;
-		};
-		if (typeof selectionProto.interrupt !== "function") {
-			selectionProto.interrupt = function (name?: string) {
-				return (this as unknown as { each: (cb: (this: Element) => void) => unknown }).each(function (this: Element) {
-					d3Interrupt(this, name);
-				});
-			};
-		}
-
-		// Arrowhead on the directional edges; BelongsToMilestone is mere membership and stays plain.
-		const marker = svg
-			.append("defs")
-			.append("marker")
-			.attr("id", "task-relationship-arrow")
-			.attr("viewBox", "0 0 10 10")
-			.attr("refX", 10)
-			.attr("refY", 5)
-			.attr("markerUnits", "userSpaceOnUse")
-			.attr("markerWidth", ARROW_SIZE)
-			.attr("markerHeight", ARROW_SIZE)
-			.attr("orient", "auto-start-reverse");
-		marker.append("path").attr("d", "M 0 0 L 10 5 L 0 10 z").attr("fill", EDGE_STROKE);
-
-		const g = svg.append("g");
-		// The dim level of the focus mode is a custom property so the stylesheet and this constant
-		// cannot drift apart (same mechanism as GraphView).
-		g.style("--graph-focus-fade", `${FOCUS_FADE}`);
-		const edgeSel = g
-			.append("g")
-			.selectAll<SVGLineElement, SimLink>("line")
-			.data(links)
-			.join("line")
-			.attr("class", "graph-edge")
-			.attr("stroke", EDGE_STROKE)
-			.attr("stroke-width", 1)
-			.attr("stroke-dasharray", (d) => EDGE_DASH[d.type] ?? null)
-			.attr("marker-end", (d) => (d.type === "BelongsToMilestone" ? null : "url(#task-relationship-arrow)"));
-
-		const nodeSel = g
-			.append("g")
-			.selectAll<SVGGElement, SimNode>("g")
-			.data(nodes)
-			.join("g")
-			.attr("class", "graph-node")
-			// Every node is clickable now: a single click pins the focus, on the root as well.
-			.attr("cursor", "pointer");
-
-		nodeSel
-			.append("circle")
-			.attr("r", (d) => d.radius)
-			.attr("fill", (d) => NODE_FILL[d.style])
-			.attr("stroke", (d) => (d.isRoot ? "#1d4ed8" : NODE_STROKE[d.style]))
-			.attr("stroke-width", (d) => (d.isRoot ? 2.5 : 1));
-
-		// Captions: the code name (BACK-123) under the circle, on an opaque plate like GraphView.
-		const plateFill = theme === "dark" ? "#111827E6" : "#FFFFFFE6";
-		const plateStroke = theme === "dark" ? "#4B5563" : "#D1D5DB";
-		const captionSel = g
-			.append("g")
-			.attr("pointer-events", "none")
-			.selectAll<SVGGElement, SimNode>("g")
-			.data(nodes)
-			.join("g")
-			.attr("class", "graph-caption");
-		captionSel
-			.append("rect")
-			.attr("fill", plateFill)
-			.attr("stroke", plateStroke)
-			.attr("stroke-width", 1);
-		captionSel
-			.append("text")
-			.attr("text-anchor", "middle")
-			.attr("fill", "currentColor")
-			.attr("font-size", 10.5)
-			.text((d) => d.id);
-
 		// Edge labels: the relation name along each edge (same locale keys as the full graph view).
 		const EDGE_LABEL: Record<SimLink["type"], string> = {
 			DependsOn: t.graphView.edgeDependsOn,
@@ -273,17 +196,30 @@ export const TaskDependencyGraph: FC<Props> = ({
 			LinksTo: t.graphView.edgeLinksTo,
 			TaggedWith: t.graphView.edgeTaggedWith,
 		};
-		const edgeLabelSel = g
-			.append("g")
-			.attr("pointer-events", "none")
-			.selectAll<SVGTextElement, SimLink>("text")
-			.data(links)
-			.join("text")
-			.attr("class", "graph-relation")
-			.attr("text-anchor", "middle")
-			.attr("fill", EDGE_STROKE)
-			.attr("font-size", EDGE_LABEL_FONT)
-			.text((d) => EDGE_LABEL[d.type]);
+
+		// Resolve link endpoints BEFORE creating the simulation: forceLink's initialize mutates
+		// links, replacing the string ids with node objects, and a later lookup by string id
+		// would find nothing.
+		const nodeById = new Map(nodes.map((node) => [node.id, node]));
+		const linkEnds = links.map((link) => ({
+			type: link.type,
+			source: nodeById.get(link.source as string) as SimNode,
+			target: nodeById.get(link.target as string) as SimNode,
+		}));
+		// Focus: the click-pinned node and its neighbours stay lit while the rest fades - a subgraph
+		// is small, but the semantics should read identically to the full graph view.
+		const neighbours = new Map<string, Set<string>>();
+		const touchNeighbour = (id: string, other: string) => {
+			if (!neighbours.has(id)) neighbours.set(id, new Set());
+			neighbours.get(id)?.add(other);
+		};
+		for (const link of links) {
+			touchNeighbour(link.source as string, link.target as string);
+			touchNeighbour(link.target as string, link.source as string);
+		}
+		let selectedId: string | null = null;
+
+		const colors = canvasThemeColors(theme);
 
 		const simulation = forceSimulation<SimNode, SimLink>(nodes)
 			.force(
@@ -299,42 +235,104 @@ export const TaskDependencyGraph: FC<Props> = ({
 			.force("x", forceX(0).strength(0.05))
 			.force("y", forceY(0).strength(0.05));
 
-		let currentK = 1;
-		const scaledRadius = (d: SimNode, k: number) => Math.max(2.5, Math.min(30, d.radius / k));
-		const trimmedEnd = (d: SimLink) => {
-			const sx = (d.source as SimNode).x ?? 0;
-			const sy = (d.source as SimNode).y ?? 0;
-			const tx = (d.target as SimNode).x ?? 0;
-			const ty = (d.target as SimNode).y ?? 0;
-			const len = Math.hypot(tx - sx, ty - sy);
-			const trim = scaledRadius(d.target as SimNode, currentK) + ARROW_GAP / currentK;
-			const t = len > 0 ? Math.max(0, (len - trim) / len) : 1;
-			return { x: sx + (tx - sx) * t, y: sy + (ty - sy) * t };
+		// Draw-on-demand, same plumbing as GraphView: state changes schedule a single rAF.
+		let drawHandle: number | null = null;
+		let dpr = window.devicePixelRatio || 1;
+		let cssWidth = 0;
+		let cssHeight = 0;
+		let transform: ZoomTransform | null = null;
+		let quad: Quadtree<SimNode> = quadtree<SimNode>();
+		const syncQuadtree = () => {
+			quad = quadtree<SimNode>()
+				.x((d) => d.x ?? 0)
+				.y((d) => d.y ?? 0)
+				.addAll(nodes);
 		};
-		const placeEdges = () => {
-			edgeSel
-				.attr("x1", (d) => (d.source as SimNode).x ?? 0)
-				.attr("y1", (d) => (d.source as SimNode).y ?? 0)
-				.attr("x2", (d) => trimmedEnd(d).x)
-				.attr("y2", (d) => trimmedEnd(d).y);
+		function scheduleDraw() {
+			if (drawHandle === null) drawHandle = requestAnimationFrame(draw);
+		}
+		const resize = () => {
+			dpr = window.devicePixelRatio || 1;
+			cssWidth = container.clientWidth || 800;
+			cssHeight = container.clientHeight || 440;
+			canvasEl.width = Math.round(cssWidth * dpr);
+			canvasEl.height = Math.round(cssHeight * dpr);
+			scheduleDraw();
 		};
-		const placeEdgeLabels = () => {
-			edgeLabelSel.attr("transform", (d) => {
-				const sx = (d.source as SimNode).x ?? 0;
-				const sy = (d.source as SimNode).y ?? 0;
-				const tx = (d.target as SimNode).x ?? 0;
-				const ty = (d.target as SimNode).y ?? 0;
-				let angle = (Math.atan2(ty - sy, tx - sx) * 180) / Math.PI;
-				// Keep the text upright: lines running right-to-left get flipped 180°.
-				if (angle > 90 || angle < -90) angle += 180;
-				return `translate(${(sx + tx) / 2},${(sy + ty) / 2}) rotate(${angle}) translate(0,${-7 / currentK})`;
-			});
+
+		const draw = () => {
+			drawHandle = null;
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+			ctx.clearRect(0, 0, cssWidth, cssHeight);
+			if (!transform) return;
+			const k = transform.k;
+			ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * transform.x, dpr * transform.y);
+			ctx.lineJoin = "round";
+			const lit = selectedId ? new Set([selectedId, ...(neighbours.get(selectedId) ?? [])]) : null;
+			const alphaFor = (...ids: string[]) =>
+				lit && !ids.every((id) => lit.has(id)) ? FOCUS_FADE : 1;
+
+			for (const link of linkEnds) {
+				const { source, target } = link;
+				strokeEdge(ctx, source.x ?? 0, source.y ?? 0, target.x ?? 0, target.y ?? 0, {
+					k,
+					targetRadius: scaledRadius(target.radius, k),
+					arrowGap: ARROW_GAP,
+					arrowSize: link.type === "BelongsToMilestone" ? 0 : ARROW_SIZE,
+					stroke: EDGE_STROKE,
+					dash: EDGE_DASH[link.type] ?? undefined,
+					alpha: alphaFor(source.id, target.id),
+				});
+			}
+
+			for (const node of nodes) {
+				ctx.globalAlpha = alphaFor(node.id);
+				ctx.beginPath();
+				ctx.arc(node.x ?? 0, node.y ?? 0, scaledRadius(node.radius, k), 0, Math.PI * 2);
+				ctx.fillStyle = nodeFill(node.style, theme);
+				ctx.fill();
+				ctx.lineWidth = Math.max(0.35, (node.isRoot ? 2.5 : 1) / k);
+				ctx.strokeStyle = node.isRoot ? "#1d4ed8" : NODE_STROKE[node.style];
+				ctx.stroke();
+			}
+
+			// A neighbourhood is a handful of nodes, so captions and relation names stay on at every
+			// zoom - the full graph's tiers exist for a corpus, not for a modal.
+			for (const node of nodes) {
+				drawCaption(
+					ctx,
+					node.id,
+					node.x ?? 0,
+					node.y ?? 0,
+					scaledRadius(node.radius, k),
+					node.id.length * 6.1 + 14,
+					k,
+					alphaFor(node.id),
+					colors,
+				);
+			}
+			for (const link of linkEnds) {
+				const { source, target } = link;
+				drawEdgeLabel(
+					ctx,
+					EDGE_LABEL[link.type],
+					source.x ?? 0,
+					source.y ?? 0,
+					target.x ?? 0,
+					target.y ?? 0,
+					k,
+					-3.5,
+					alphaFor(source.id, target.id),
+					EDGE_STROKE,
+					EDGE_LABEL_FONT,
+				);
+			}
+			ctx.globalAlpha = 1;
 		};
+
 		const renderPositions = () => {
-			placeEdges();
-			placeEdgeLabels();
-			nodeSel.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
-			captionSel.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+			syncQuadtree();
+			scheduleDraw();
 		};
 		simulation.on("tick", renderPositions);
 
@@ -344,47 +342,42 @@ export const TaskDependencyGraph: FC<Props> = ({
 		for (let i = 0; i < PRECOMPUTE_TICKS; i++) simulation.tick();
 		renderPositions();
 
-		const zoomBehavior = d3Zoom<SVGSVGElement, unknown>()
+		const hitTest = (clientX: number, clientY: number): SimNode | null => {
+			const rect = canvasEl.getBoundingClientRect();
+			if (!transform) return null;
+			const [gx, gy] = transform.invert([clientX - rect.left, clientY - rect.top]);
+			const found = quad.find(gx, gy, 30 + 4 / transform.k);
+			if (!found) return null;
+			const radius = scaledRadius(found.radius, transform.k) + 3 / transform.k;
+			return Math.hypot((found.x ?? 0) - gx, (found.y ?? 0) - gy) <= radius ? found : null;
+		};
+
+		const zoomBehavior = d3Zoom<HTMLCanvasElement, unknown>()
 			.scaleExtent([0.2, 4])
 			.duration(0)
 			.on("zoom", (event) => {
-				g.attr("transform", event.transform.toString());
+				transform = event.transform;
 				// Remember the viewport on this task; a drill-down round trip comes back to it.
 				viewports.set(focusId, event.transform);
-				const k = event.transform.k;
-				currentK = k;
-				nodeSel
-					.select<SVGCircleElement>("circle")
-					.attr("r", (d) => scaledRadius(d, k))
-					.attr("stroke-width", (d) => Math.max(0.35, (d.isRoot ? 2.5 : 1) / k));
-				edgeSel
-					.attr("stroke-width", Math.max(0.35, 1 / k))
-					.attr("stroke-dasharray", (d) => {
-						const dash = EDGE_DASH[d.type];
-						return dash ? dash.split(" ").map((v) => Number(v) / k).join(" ") : null;
-					});
-				marker.attr("markerWidth", ARROW_SIZE / k).attr("markerHeight", ARROW_SIZE / k);
-				captionSel.each(function (d) {
-					const el = select(this);
-					const plateWidth = d.id.length * 6.1 + 14;
-					el.select("rect")
-						.attr("x", -plateWidth / k / 2)
-						.attr("y", scaledRadius(d, k) + 4 / k)
-						.attr("width", plateWidth / k)
-						.attr("height", 16 / k)
-						.attr("rx", 8 / k)
-						.attr("stroke-width", Math.max(0.35, 1 / k));
-					el.select("text")
-						.attr("font-size", 10.5 / k)
-						.attr("x", 0)
-						.attr("y", scaledRadius(d, k) + 16 / k);
-				});
-				edgeLabelSel.attr("font-size", EDGE_LABEL_FONT / k).attr("dy", 3.5 / k);
-				placeEdges();
-				placeEdgeLabels();
+				if (event.sourceEvent) scheduleDraw();
+				else draw();
 			});
-		svg.call(zoomBehavior);
+		// A mousedown that lands on a node belongs to the drag gesture, not to zoom's pan.
+		const defaultFilter = zoomBehavior.filter();
+		zoomBehavior.filter((event: Event) => {
+			if (event.type === "mousedown" && event instanceof MouseEvent) {
+				if (hitTest(event.clientX, event.clientY)) return false;
+			}
+			return defaultFilter.call(canvasEl, event, undefined);
+		});
+		ensureZoomInterrupt(select(canvasEl));
+		select(canvasEl).call(zoomBehavior);
+		// d3-zoom's dblclick.zoom would stopImmediatePropagation() and swallow our handler;
+		// disable it - the handler below owns double-click (node -> drill, empty -> zoom).
+		select(canvasEl).on("dblclick.zoom", null);
 
+		const width = cssWidth || container.clientWidth || 800;
+		const height = cssHeight || container.clientHeight || 440;
 		// Fit: frame the whole subgraph, centered in the viewport. No upper bound on the zoom - a
 		// neighborhood is a handful of nodes, so filling the canvas is the point; the /graph page's
 		// 1.5x cap exists because it frames a whole corpus and would only ever be reached by mistake.
@@ -393,7 +386,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 			// to the canvas would zoom in on nothing - far enough that the radius clamp draws the lone
 			// node oversized. Center it at 1:1 instead.
 			if (nodes.length < 2) {
-				svg.call(zoomBehavior.transform, zoomIdentity.translate(width / 2, height / 2));
+				select(canvasEl).call(zoomBehavior.transform, zoomIdentity.translate(width / 2, height / 2));
 				return;
 			}
 			const pad = 24;
@@ -402,92 +395,107 @@ export const TaskDependencyGraph: FC<Props> = ({
 			const dx = Math.max(1, Math.max(...xs) - Math.min(...xs));
 			const dy = Math.max(1, Math.max(...ys) - Math.min(...ys));
 			const scale = Math.max(0.2, Math.min(width / (dx + 2 * pad), height / (dy + 2 * pad)));
-			const transform: ZoomTransform = zoomIdentity
+			const fitted = zoomIdentity
 				.translate(
 					width / 2 - scale * ((Math.min(...xs) + Math.max(...xs)) / 2),
 					height / 2 - scale * ((Math.min(...ys) + Math.max(...ys)) / 2),
 				)
 				.scale(scale);
-			svg.call(zoomBehavior.transform, transform);
+			select(canvasEl).call(zoomBehavior.transform, fitted);
 		};
 		// Returning to a task the user already inspected (the drill-down round trip) restores the
 		// viewport they left there; a first visit frames the whole subgraph.
 		const savedTransform = viewports.get(focusId);
-		if (savedTransform) svg.call(zoomBehavior.transform, savedTransform);
+		if (savedTransform) select(canvasEl).call(zoomBehavior.transform, savedTransform);
 		else fitToView();
 
-		nodeSel.call(
-			d3Drag<SVGGElement, SimNode>()
-				.on("start", (event) => {
-					simulation.alphaTarget(0.3).restart();
-					event.subject.fx = event.subject.x;
-					event.subject.fy = event.subject.y;
-				})
-				.on("drag", (event) => {
-					event.subject.fx = event.x;
-					event.subject.fy = event.y;
-				})
-				.on("end", (event) => {
-					simulation.alphaTarget(0);
-					event.subject.fx = null;
-					event.subject.fy = null;
-				}),
-		);
-		// Focus: the click-pinned node and its neighbours stay lit while the rest fades, through the
-		// same stylesheet classes GraphView uses (.graph-dim on the zoom group, .lit on the lit
-		// neighbourhood) - a subgraph is small, but the semantics should read identically.
-		const neighbours = new Map<string, Set<string>>();
-		const touchNeighbour = (id: string, other: string) => {
-			if (!neighbours.has(id)) neighbours.set(id, new Set());
-			neighbours.get(id)?.add(other);
+		let dragNode: SimNode | null = null;
+		let dragMoved = false;
+		const onPointerMove = (event: PointerEvent) => {
+			if (dragNode) {
+				dragMoved = true;
+				const rect = canvasEl.getBoundingClientRect();
+				if (!transform) return;
+				const [gx, gy] = transform.invert([event.clientX - rect.left, event.clientY - rect.top]);
+				dragNode.fx = gx;
+				dragNode.fy = gy;
+				return;
+			}
+			canvasEl.style.cursor = hitTest(event.clientX, event.clientY) ? "pointer" : "";
 		};
-		for (const link of links) {
-			touchNeighbour((link.source as SimNode).id, (link.target as SimNode).id);
-			touchNeighbour((link.target as SimNode).id, (link.source as SimNode).id);
-		}
-		let selectedId: string | null = null;
-		const applyStyles = () => {
-			const lit = selectedId ? new Set([selectedId, ...(neighbours.get(selectedId) ?? [])]) : null;
-			nodeSel.classed("lit", (d) => lit?.has(d.id) ?? false);
-			captionSel.classed("lit", (d) => lit?.has(d.id) ?? false);
-			edgeSel.classed("lit", (d) => {
-				if (!lit) return false;
-				return lit.has((d.source as SimNode).id) && lit.has((d.target as SimNode).id);
-			});
-			edgeLabelSel.classed("lit", (d) => {
-				if (!lit) return false;
-				return lit.has((d.source as SimNode).id) && lit.has((d.target as SimNode).id);
-			});
-			g.classed("graph-dim", lit !== null);
+		const onPointerDown = (event: PointerEvent) => {
+			if (event.button !== 0) return;
+			const found = hitTest(event.clientX, event.clientY);
+			if (!found) return;
+			dragNode = found;
+			dragMoved = false;
+			canvasEl.setPointerCapture(event.pointerId);
+			simulation.alphaTarget(0.3).restart();
+			found.fx = found.x;
+			found.fy = found.y;
+			canvasEl.style.cursor = "grabbing";
 		};
-
-		nodeSel.on("click", (event: MouseEvent, d: SimNode) => {
-			event.stopPropagation();
+		const onPointerUp = (event: PointerEvent) => {
+			if (!dragNode) return;
+			simulation.alphaTarget(0);
+			dragNode.fx = null;
+			dragNode.fy = null;
+			dragNode = null;
+			canvasEl.style.cursor = "";
+			try {
+				canvasEl.releasePointerCapture(event.pointerId);
+			} catch {
+				// Already released (e.g. pointercancel).
+			}
+		};
+		const onClick = (event: MouseEvent) => {
+			// The mouseup that ends a real drag is followed by a click - swallow it.
+			if (dragMoved) {
+				dragMoved = false;
+				return;
+			}
+			const found = hitTest(event.clientX, event.clientY);
 			// A single click only focuses: pin the node's neighbourhood, on the root as well.
-			selectedId = d.id;
-			applyStyles();
-		});
-		nodeSel.on("dblclick", (event: MouseEvent, d: SimNode) => {
-			// Double-click opens: drill into the neighbouring task's own detail view. Kept from
-			// bubbling so the canvas double-click zoom (d3-zoom's own dblclick handling) does not
-			// also fire. The root has nothing to open - it is already on screen.
-			event.stopPropagation();
+			// A click on the empty canvas releases the pinned focus.
+			selectedId = found?.id ?? null;
+			scheduleDraw();
+		};
+		const onDoubleClick = (event: MouseEvent) => {
 			event.preventDefault();
-			if (d.isRoot) return;
-			selectedId = d.id;
-			applyStyles();
-			onTaskClickRef.current(d.id);
-		});
+			const found = hitTest(event.clientX, event.clientY);
+			if (!found) {
+				// Empty canvas: the double-click zoom d3-zoom used to own.
+				const rect = canvasEl.getBoundingClientRect();
+				select(canvasEl).call(zoomBehavior.scaleBy, 2, [event.clientX - rect.left, event.clientY - rect.top]);
+				return;
+			}
+			// Double-click opens: drill into the neighbouring task's own detail view.
+			// The root has nothing to open - it is already on screen.
+			if (found.isRoot) return;
+			selectedId = found.id;
+			scheduleDraw();
+			onTaskClickRef.current(found.id);
+		};
+		canvasEl.addEventListener("pointermove", onPointerMove);
+		canvasEl.addEventListener("pointerdown", onPointerDown);
+		canvasEl.addEventListener("pointerup", onPointerUp);
+		canvasEl.addEventListener("click", onClick);
+		canvasEl.addEventListener("dblclick", onDoubleClick);
 
-		// A click on the empty canvas releases the pinned focus.
-		svg.on("click", () => {
-			selectedId = null;
-			applyStyles();
-		});
+		const observer = new ResizeObserver(resize);
+		observer.observe(container);
+		resize();
 
 		return () => {
 			simulation.stop();
-			svg.on("click", null);
+			if (drawHandle !== null) cancelAnimationFrame(drawHandle);
+			observer.disconnect();
+			select(canvasEl).on(".zoom", null);
+			canvasEl.removeEventListener("pointermove", onPointerMove);
+			canvasEl.removeEventListener("pointerdown", onPointerDown);
+			canvasEl.removeEventListener("pointerup", onPointerUp);
+			canvasEl.removeEventListener("click", onClick);
+			canvasEl.removeEventListener("dblclick", onDoubleClick);
 		};
 	}, [visibleSubgraph, viewports, focusId, theme, t.graphView.edgeDependsOn, t.graphView.edgeParentOf, t.graphView.edgeMilestone]);
 
@@ -525,7 +533,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 					{legendEntries.map(({ style, label }) => (
 						<LegendDot
 							key={style}
-							color={NODE_FILL[style]}
+							color={nodeFill(style, theme)}
 							label={label}
 							count={counts[style] ?? 0}
 							active={!filters.has(style)}
@@ -562,11 +570,9 @@ export const TaskDependencyGraph: FC<Props> = ({
 						<p className="text-sm text-gray-500 dark:text-gray-400">{t.graphView.empty}</p>
 					</div>
 				) : null}
-				<svg
-					ref={svgRef}
-					width="100%"
-					height="100%"
-					className={ready ? "" : "invisible"}
+				<canvas
+					ref={canvasRef}
+					className={`w-full h-full ${ready ? "" : "invisible"}`}
 					role="img"
 					aria-label={t.taskDetails.dependencyGraphTitle}
 				/>
