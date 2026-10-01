@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Milestone, Task } from "../../types";
 import { stripAnyPrefix } from "../../utils/prefix-config";
@@ -8,6 +8,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { dateTimeLocalToStoredUtc, parseStoredUtcDate, storedUtcToDateTimeLocal } from "../utils/date-display";
+import { areJsonEqual, preserveDirtyRefreshValue } from "../utils/form-refresh";
 import { isTypingTarget } from "../utils/keyboard";
 import { isDoneStatus, milestoneKey } from "../utils/milestones";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
@@ -74,6 +75,18 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	const [mode, setMode] = useState<Mode>("preview");
 	const [fetchedMilestone, setFetchedMilestone] = useState<Milestone | null>(null);
 	const activeMilestone = milestone ?? fetchedMilestone;
+	const formBaselineRef = useRef<{
+		name: string;
+		description: string;
+		documentation: string[];
+		dueDate: string;
+		plannedStart: string;
+		plannedEnd: string;
+		actualStart: string;
+		actualEnd: string;
+	} | null>(null);
+	const previousMilestoneIdRef = useRef<string | null>(null);
+	const previousIsOpenRef = useRef(false);
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -112,23 +125,6 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		};
 	}, [isOpen, milestoneId, milestone, t]);
 
-	// Reset local state when the opened milestone changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
-	useEffect(() => {
-		setName(activeMilestone?.title || "");
-		setDescription(activeMilestone?.description || "");
-		setDocumentation(activeMilestone?.documentation ?? []);
-		setDueDate(activeMilestone?.dueDate || "");
-		setPlannedStart(activeMilestone?.plannedStart || "");
-		setPlannedEnd(activeMilestone?.plannedEnd || "");
-		setActualStart(activeMilestone?.actualStart || "");
-		setActualEnd(activeMilestone?.actualEnd || "");
-		setMode("preview");
-		setSortConfig(null);
-		setShowRemove(false);
-		setError(null);
-	}, [isOpen, milestoneId]);
-
 	const milestoneTasks = useMemo(() => {
 		const key = milestoneKey(activeMilestone?.id ?? "");
 		if (!key) return [];
@@ -151,6 +147,45 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		}),
 		[activeMilestone],
 	);
+
+	// Reset local state when the opened milestone changes. Re-runs whenever the
+	// milestone object updates (including the fallback fetch resolving late), but
+	// a same-record refresh only overwrites fields the user has not edited.
+	useEffect(() => {
+		const next = baseline;
+		const previous = formBaselineRef.current;
+		const sameOpenRefresh =
+			Boolean(previous) && isOpen && previousIsOpenRef.current && previousMilestoneIdRef.current === milestoneId;
+
+		if (sameOpenRefresh && previous) {
+			setName((current) => preserveDirtyRefreshValue(current, previous.name, next.name));
+			setDescription((current) => preserveDirtyRefreshValue(current, previous.description, next.description));
+			setDocumentation((current) =>
+				preserveDirtyRefreshValue(current, previous.documentation, next.documentation, areJsonEqual),
+			);
+			setDueDate((current) => preserveDirtyRefreshValue(current, previous.dueDate, next.dueDate));
+			setPlannedStart((current) => preserveDirtyRefreshValue(current, previous.plannedStart, next.plannedStart));
+			setPlannedEnd((current) => preserveDirtyRefreshValue(current, previous.plannedEnd, next.plannedEnd));
+			setActualStart((current) => preserveDirtyRefreshValue(current, previous.actualStart, next.actualStart));
+			setActualEnd((current) => preserveDirtyRefreshValue(current, previous.actualEnd, next.actualEnd));
+		} else {
+			setName(next.name);
+			setDescription(next.description);
+			setDocumentation(next.documentation);
+			setDueDate(next.dueDate);
+			setPlannedStart(next.plannedStart);
+			setPlannedEnd(next.plannedEnd);
+			setActualStart(next.actualStart);
+			setActualEnd(next.actualEnd);
+			setMode("preview");
+			setSortConfig(null);
+			setShowRemove(false);
+		}
+		formBaselineRef.current = next;
+		previousMilestoneIdRef.current = milestoneId;
+		previousIsOpenRef.current = isOpen;
+		setError(null);
+	}, [isOpen, milestoneId, baseline]);
 
 	const isDirty = useMemo(() => description !== baseline.description, [description, baseline]);
 
@@ -768,6 +803,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2">
 								<SectionHeader title={t.milestones.nameLabel} />
 								<input
+									id="milestone-details-modal-name"
 									type="text"
 									value={name}
 									onChange={(e) => {

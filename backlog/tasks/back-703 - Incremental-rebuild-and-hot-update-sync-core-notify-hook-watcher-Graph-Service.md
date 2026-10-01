@@ -7,7 +7,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-09-24 06:38'
-updated_date: '2026-09-24 08:59'
+updated_date: '2026-10-01 05:41'
 labels:
   - kuzu
   - graph
@@ -16,7 +16,7 @@ milestone: m-9
 dependencies:
   - BACK-702
 documentation:
-  - backlog/docs/BRDS/doc-014 - Kuzu-任务图谱：冷启动校验与热更新设计.md
+  - backlog/docs/PRDS/kuzu/doc-14 - Kuzu-任务图谱：冷启动校验与热更新设计.md
 modified_files:
   - src/graph/incremental.ts
   - src/graph/service.ts

@@ -46,7 +46,7 @@ const MilestoneTaskRow: React.FC<MilestoneTaskRowProps> = ({
 			onDragStart={(event) => onDragStart(event, task)}
 			onDragEnd={onDragEnd}
 			onClick={() => onEditTask(task)}
-			className="text-left group grid grid-cols-[1.5rem_5rem_1fr_5rem_5rem_5rem] gap-3 items-center px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+			className="w-full text-left group grid grid-cols-[1.5rem_5rem_1fr_5rem_5rem_5rem] gap-3 items-center px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
 		>
 			<div className="w-6 flex justify-center opacity-40 group-hover:opacity-100 transition-opacity">
 				<DragHandle />
