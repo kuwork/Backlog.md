@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { Memo } from "../../core/memos.ts";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
@@ -164,12 +164,14 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [isEditing, setIsEditing] = useState(false);
 	const [draft, setDraft] = useState(memo.rawContent);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [error, setError] = useState<{ title: string; detail: string | null } | null>(null);
 	const [menuOpen, setMenuOpen] = useState(false);
+	const [idCopied, setIdCopied] = useState(false);
 	const busy = isSaving || isDeleting;
 	const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
@@ -231,6 +233,34 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 			setError({ title: t.memos.updateFailed, detail: err instanceof Error ? err.message : null });
 		}
 	};
+
+	/**
+	 * Copies the memo id. The transient "copied" label lives on the menu item itself, so the
+	 * menu stays open for a beat and then closes once the confirmation has been seen.
+	 */
+	const handleCopyId = async () => {
+		try {
+			await navigator.clipboard.writeText(memo.id);
+		} catch {
+			// The Clipboard API needs a secure context; fall back to a hidden textarea.
+			const textarea = document.createElement("textarea");
+			textarea.value = memo.id;
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand("copy");
+			textarea.remove();
+		}
+		setIdCopied(true);
+	};
+
+	useEffect(() => {
+		if (!idCopied) return;
+		const timer = setTimeout(() => {
+			setIdCopied(false);
+			setMenuOpen(false);
+		}, 1200);
+		return () => clearTimeout(timer);
+	}, [idCopied]);
 
 	// The actions menu closes on an outside click or Escape, like the page's calendar popover.
 	useEffect(() => {
@@ -331,6 +361,14 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 								<button
 									type="button"
 									role="menuitem"
+									onClick={() => void handleCopyId()}
+									className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								>
+									{idCopied ? t.memos.copied : t.memos.copyId}
+								</button>
+								<button
+									type="button"
+									role="menuitem"
 									onClick={() => {
 										setMenuOpen(false);
 										void handleDelete();
@@ -373,8 +411,8 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 						wikilinkBasePath="index.md"
 						inlineTagChips={true}
 						onToggleTask={(index) => void handleToggleTask(index)}
-						onTaskClick={(taskId) => navigate(`/task/${taskId}`)}
-						onDraftClick={(draftId) => navigate(`/draft/${draftId}`)}
+						onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+						onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
 						onDocClick={(docId) => navigate(`/documentation/${docId}`)}
 						onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
 						onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}

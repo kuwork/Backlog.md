@@ -997,6 +997,8 @@ export const zhCN: TranslationDict = {
 		minutesAgo: "{n} 分钟前",
 		moreActions: "更多操作",
 		editMemo: "编辑随手记",
+		copyId: "复制 ID",
+		copied: "已复制",
 		saveChanges: "保存",
 		confirmDelete: "确定要永久删除这条随手记吗？",
 	},
