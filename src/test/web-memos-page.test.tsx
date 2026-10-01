@@ -39,6 +39,8 @@ let requests: string[] = [];
 let created: { content: string; tags: string[] } | null = null;
 /** Set false to make every mutation answer 500 and prove errors surface instead of dropping notes. */
 let failWrites = false;
+/** Set true to make the SECOND feed fetch (the live refresh) answer 500, proving it is swallowed. */
+let failRefreshes = false;
 
 let observed: Array<(entries: Array<{ isIntersecting: boolean }>) => void> = [];
 
@@ -47,6 +49,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 function serveApi(): void {
+	let noCursorFeedFetches = 0;
 	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 		const url = new URL(raw, "http://localhost");
@@ -65,7 +68,20 @@ function serveApi(): void {
 			const cursor = url.searchParams.get("cursor");
 			const limit = Number(url.searchParams.get("limit") ?? "30");
 			expect(limit).toBeGreaterThan(0);
-			if (!cursor) return json({ items: PAGE_ONE, nextCursor: "20261001-2" });
+			if (!cursor) {
+				// The first no-cursor fetch is the page load; any later one is the live refresh
+				// triggered by the memos-updated broadcast. The refresh surfaces a freshly written
+				// memo so the test can prove the list updated in place.
+				noCursorFeedFetches += 1;
+				if (failRefreshes && noCursorFeedFetches > 1) return json({ error: "refresh failed" }, 500);
+				if (noCursorFeedFetches > 1) {
+					return json({
+						items: [...PAGE_ONE, makeMemo("20261001-5", "Refreshed memo #live", ["live"])],
+						nextCursor: "20261001-2",
+					});
+				}
+				return json({ items: PAGE_ONE, nextCursor: "20261001-2" });
+			}
 			return json({ items: PAGE_TWO, nextCursor: null });
 		}
 
@@ -481,5 +497,56 @@ describe("MemoCard knowledge web (BACK-734)", () => {
 		await flush();
 		// SPA navigation: the location moved client-side; a full reload would 404 in jsdom.
 		expect(globalThis.window.location.pathname).toBe("/task/123");
+	});
+});
+
+describe("MemosPage live refresh (BACK-735)", () => {
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		failRefreshes = false;
+		created = null;
+		requests = [];
+		act(() => root?.unmount());
+		root = null;
+	});
+
+	it("refetches the feed in place on a memos-updated broadcast, without resetting the view", async () => {
+		const container = await renderMemos("/memos?view=feed");
+		// Initial load: two memos, feed mode, more pages behind the cursor.
+		expect(cardTexts(container)).toHaveLength(2);
+		const feedGetsBefore = requests.filter((request) => request.startsWith("GET /api/memos?")).length;
+
+		// The App relays the server's memos-updated websocket message as a window event.
+		await act(async () => {
+			globalThis.window.dispatchEvent(new Event("memos-updated"));
+			await Promise.resolve();
+		});
+		await flush();
+
+		// The refresh pulled the freshly written memo into the very same feed.
+		expect(cardTexts(container).some((text) => text.includes("Refreshed memo"))).toBe(true);
+		// The previously loaded pages stayed put - the list was updated, not reset to empty.
+		expect(cardTexts(container).some((text) => text.includes("Newest memo"))).toBe(true);
+		// A further feed fetch proves the broadcast path actually fired.
+		const feedGetsAfter = requests.filter((request) => request.startsWith("GET /api/memos?")).length;
+		expect(feedGetsAfter).toBeGreaterThan(feedGetsBefore);
+	});
+
+	it("swallows a failed refresh without blanking the list or breaking the page", async () => {
+		failRefreshes = true;
+		const container = await renderMemos("/memos?view=feed");
+		expect(cardTexts(container)).toHaveLength(2);
+
+		await act(async () => {
+			globalThis.window.dispatchEvent(new Event("memos-updated"));
+			await Promise.resolve();
+		});
+		await flush();
+
+		// The failed background refresh left the loaded list exactly as it was.
+		expect(cardTexts(container)).toHaveLength(2);
+		expect(cardTexts(container).some((text) => text.includes("Newest memo"))).toBe(true);
+		// And it did not knock the page into the destructive load-error state.
+		expect(container.querySelector("[role='alert']")).toBeNull();
 	});
 });
