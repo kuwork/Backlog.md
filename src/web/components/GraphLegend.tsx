@@ -1,3 +1,4 @@
+import { useTheme } from "../contexts/ThemeContext";
 import type { GraphEdgeDto, GraphNodeDto } from "../lib/api";
 
 /**
@@ -48,7 +49,37 @@ export const NODE_STROKE: Record<NodeStyle, string> = {
 	tag: "#d1d5db",
 };
 
+/** Same-hue 700 shade of each fill: a real outline on a light canvas. */
+const NODE_STROKE_LIGHT: Record<NodeStyle, string> = {
+	task: "#1d4ed8",
+	completed: "#047857",
+	draft: "#b45309",
+	milestone: "#7e22ce",
+	wiki: "#0e7490",
+	decision: "#be185d",
+	document: "#4338ca",
+	tag: "#6b7280",
+};
+
+/**
+ * Node stroke with theme compensation. The pale tints double as a glow on the dark canvas but
+ * vanish on a light one, so the light theme switches to a darker shade of the fill — the classic
+ * fill-plus-dark-border read. The tag gray stays a step lighter to keep it recessive.
+ */
+export function nodeStroke(style: NodeStyle, theme: string): string {
+	return theme === "dark" ? NODE_STROKE[style] : NODE_STROKE_LIGHT[style];
+}
+
 export const EDGE_STROKE = "#94a3b8";
+
+/**
+ * Edge stroke with theme compensation. The slate-400 base is tuned for the dark canvas — on a
+ * light surface it washes out and the relationships read as gaps, so the light theme steps two
+ * shades darker (slate-500 is still clearly a line, not a wireframe of text).
+ */
+export function edgeStroke(theme: string): string {
+	return theme === "dark" ? EDGE_STROKE : "#64748b";
+}
 
 /** DependsOn is the semantic backbone: solid with an arrowhead. The structural relations are dashed. */
 export const EDGE_DASH: Record<GraphEdgeDto["type"], string | null> = {
@@ -174,10 +205,19 @@ export function LegendDot({
 
 /** Legend entry for an edge style, drawn as a sample of the line itself. */
 export function LegendLine({ dash, label }: { dash: string | null; label: string }) {
+	const { theme } = useTheme();
 	return (
 		<span className="flex items-center gap-1.5">
 			<svg width="22" height="6" aria-hidden="true">
-				<line x1="0" y1="3" x2="22" y2="3" stroke={EDGE_STROKE} strokeWidth="1" strokeDasharray={dash ?? undefined} />
+				<line
+					x1="0"
+					y1="3"
+					x2="22"
+					y2="3"
+					stroke={edgeStroke(theme)}
+					strokeWidth="1"
+					strokeDasharray={dash ?? undefined}
+				/>
 			</svg>
 			{label}
 		</span>
