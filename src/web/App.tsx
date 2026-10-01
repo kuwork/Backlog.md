@@ -961,6 +961,10 @@ function AppContent() {
 				void refreshDecisionsData();
 			} else if (event.data === "wikis-updated") {
 				void refreshWikisData();
+			} else if (event.data === "memos-updated") {
+				// Memos are owned by MemosPage, not by this shell's global state, so hand the signal
+				// off to that page via a window event - it refreshes in place without resetting the view.
+				window.dispatchEvent(new Event("memos-updated"));
 			} else if (event.data === "config-updated") {
 				// Statuses and labels genuinely changed, which only a full load re-reads.
 				void loadAllData();

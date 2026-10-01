@@ -1,3 +1,4 @@
+import { type FSWatcher, watch } from "node:fs";
 import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
@@ -21,6 +22,7 @@ import {
 	listMemos,
 	listMemosPage,
 	MEMO_PAGE_SIZE,
+	memoDir,
 	updateMemo,
 } from "../core/memos.ts";
 import type { SearchService } from "../core/search-service.ts";
@@ -238,6 +240,7 @@ export class BacklogServer {
 	private servicesInitialized = false;
 	private browserLoadingState: BrowserLoadingState = { type: "loading", message: null };
 	private unsubscribeContentStore?: () => void;
+	private memoWatcher?: FSWatcher;
 	private storeReadyBroadcasted = false;
 	private taskBroadcastTimer?: ReturnType<typeof setTimeout>;
 	// Content-entity scopes (documents/decisions/wikis) are independent: each pending scope is
@@ -359,9 +362,38 @@ export class BacklogServer {
 			});
 		}
 
+		// Memos live outside the ContentStore, so its subscription never covers them. Watch the
+		// memo directory directly so edits made outside the web UI (editor, CLI, script) broadcast.
+		this.startMemoWatcher();
+
 		const search = await this.core.getSearchService();
 		this.searchService = search;
 		this.servicesInitialized = true;
+	}
+
+	/**
+	 * Watches `backlog/memos/` for out-of-band edits. The API write path already broadcasts on
+	 * create/update/delete; this covers the same file changed by any other tool, so the page
+	 * refreshes without a manual reload. Recursive is false because every memo is a flat file
+	 * directly under the directory.
+	 */
+	private startMemoWatcher(): void {
+		if (this.memoWatcher) return;
+		try {
+			const dir = memoDir(this.core.filesystem.rootDir);
+			this.memoWatcher = watch(dir, { recursive: false }, (_eventType, filename) => {
+				// Any change inside the memo directory - create, edit or delete - means the list
+				// the client holds is stale. The 75ms debounce in broadcastDataUpdated coalesces
+				// the burst of events a single save produces.
+				if (filename && typeof filename === "string") {
+					this.broadcastDataUpdated("memos");
+				}
+			});
+		} catch (error) {
+			// A missing directory (project without memos yet) is not fatal: the first memo write
+			// creates it, but we simply skip the watcher until the next start.
+			console.warn("Could not watch the memo directory for external edits:", error);
+		}
 	}
 
 	private publishBrowserLoadingState(state: BrowserLoadingState) {
@@ -940,6 +972,12 @@ export class BacklogServer {
 		try {
 			this.configWatcher?.stop();
 			this.configWatcher = null;
+		} catch {}
+
+		// Stop the memo directory watcher (memos are outside the ContentStore)
+		try {
+			this.memoWatcher?.close();
+			this.memoWatcher = undefined;
 		} catch {}
 
 		// Stop the Graph Service (releases the single-holder lock)

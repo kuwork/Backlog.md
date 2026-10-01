@@ -665,6 +665,49 @@ export default function MemosPage() {
 		[t.memos.loadFailed],
 	);
 
+	/**
+	 * Live refresh triggered by the server's `memos-updated` broadcast (an API write or an
+	 * out-of-band file edit). It re-pulls the window the user is already looking at and drops it
+	 * into place, so the view, the selected date and the scroll position are preserved - no return
+	 * to page one, no full reload.
+	 */
+	const refreshInPlace = useCallback(async () => {
+		// The calendar grid is always visible in its mode; keep its counts honest.
+		void loadCalendar(calendarYear, calendarMonth);
+		const requestId = ++feedRequestRef.current;
+		try {
+			let cursor: string | null = null;
+			const target = feed.memos.length;
+			const collected: Memo[] = [];
+			do {
+				const page = await apiClient.fetchMemosPage({
+					limit: MEMO_FEED_PAGE_SIZE,
+					cursor: cursor ?? undefined,
+					date: selectedDate ?? undefined,
+				});
+				collected.push(...page.items);
+				cursor = page.nextCursor;
+				if (collected.length >= target) break;
+			} while (cursor);
+			if (requestId !== feedRequestRef.current) return;
+			setFeed({ memos: collected, nextCursor: cursor });
+			setLoadError(null);
+		} catch (error) {
+			// A background refresh is not something the user asked for, so a failure must not blank
+			// the list (which would reset the view) or break the websocket - keep the loaded pages
+			// and swallow it, logging only.
+			console.warn("Failed to refresh memos after a memos-updated broadcast:", error);
+		}
+		// The open day panel is a slice of the same corpus; refresh it too.
+		if (selectedDay) void loadDayPanel(selectedDay);
+	}, [calendarYear, calendarMonth, feed.memos.length, loadCalendar, loadDayPanel, selectedDate, selectedDay]);
+
+	useEffect(() => {
+		const onUpdated = () => void refreshInPlace();
+		window.addEventListener("memos-updated", onUpdated);
+		return () => window.removeEventListener("memos-updated", onUpdated);
+	}, [refreshInPlace]);
+
 	useEffect(() => {
 		if (selectedDay) void loadDayPanel(selectedDay);
 		else setDayPanelMemos([]);
