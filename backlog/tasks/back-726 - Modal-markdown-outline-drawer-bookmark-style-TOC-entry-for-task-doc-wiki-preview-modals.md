@@ -3,11 +3,11 @@ id: BACK-726
 title: >-
   Modal markdown outline drawer: bookmark-style TOC entry for task/doc/wiki
   preview modals
-status: In Review
+status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-01 07:23'
-updated_date: '2026-10-01 07:47'
+updated_date: '2026-10-01 08:27'
 labels:
   - web-ui
 dependencies: []
@@ -31,6 +31,7 @@ modified_files:
   - src/test/web-toc-drawer.test.tsx
 ordinal: 296400
 actual_start: '2026-10-01 07:28'
+actual_end: '2026-10-01 07:50'
 ---
 
 ## Description

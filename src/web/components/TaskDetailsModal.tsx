@@ -1739,7 +1739,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 									</div>
 								)}
 								{/* Description */}
-								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<div
+									id="task-section-description"
+									data-toc-section={t.taskDetails.section.description}
+									className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+								>
 									<SectionHeader title={t.taskDetails.section.description} />
 									{mode === "preview" ? (
 										description ? (
@@ -1786,6 +1790,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											count={references.length}
 											active={activeMetadataTab === "references"}
 											onSelect={() => setMetadataTab("references")}
+											tocLabel={`${t.taskDetails.section.references}${references.length ? ` (${references.length})` : ""}`}
 										/>
 										<TabButton
 											id={metadataTabId("documentation")}
@@ -1793,6 +1798,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											count={documentation.length}
 											active={activeMetadataTab === "documentation"}
 											onSelect={() => setMetadataTab("documentation")}
+											tocLabel={`${t.taskDetails.section.documentation}${documentation.length ? ` (${documentation.length})` : ""}`}
 										/>
 										<TabButton
 											id={metadataTabId("modifiedFiles")}
@@ -1800,6 +1806,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											count={modifiedFiles.length}
 											active={activeMetadataTab === "modifiedFiles"}
 											onSelect={() => setMetadataTab("modifiedFiles")}
+											tocLabel={`${t.taskDetails.section.modifiedFiles}${modifiedFiles.length ? ` (${modifiedFiles.length})` : ""}`}
 										/>
 									</div>
 
@@ -2075,7 +2082,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 								</div>
 
 								{/* Acceptance Criteria */}
-								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<div
+									id="task-section-acceptance-criteria"
+									data-toc-section={`${t.taskDetails.section.acceptanceCriteria}${totalCount ? ` (${checkedCount}/${totalCount})` : ""}`}
+									className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+								>
 									<SectionHeader
 										title={`${t.taskDetails.section.acceptanceCriteria} ${totalCount ? `(${checkedCount}/${totalCount})` : ""}`}
 										right={mode === "preview" ? <span>{t.taskDetails.toggleToUpdate}</span> : null}
@@ -2110,7 +2121,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 								</div>
 
 								{/* Definition of Done */}
-								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<div
+									id="task-section-definition-of-done"
+									data-toc-section={`${t.taskDetails.section.definitionOfDone}${definitionTotalCount ? ` (${definitionCheckedCount}/${definitionTotalCount})` : ""}`}
+									className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+								>
 									<SectionHeader
 										title={`${t.taskDetails.section.definitionOfDone} ${definitionTotalCount ? `(${definitionCheckedCount}/${definitionTotalCount})` : ""}`}
 										right={mode === "preview" ? <span>{t.taskDetails.toggleToUpdate}</span> : null}
@@ -2144,7 +2159,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 								</div>
 
 								{/* Implementation Plan */}
-								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<div
+									id="task-section-implementation-plan"
+									data-toc-section={t.taskDetails.section.implementationPlan}
+									className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+								>
 									<SectionHeader title={t.taskDetails.section.implementationPlan} />
 									{mode === "preview" ? (
 										plan ? (
@@ -2177,7 +2196,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 								</div>
 
 								{/* Implementation Notes */}
-								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+								<div
+									id="task-section-implementation-notes"
+									data-toc-section={t.taskDetails.section.implementationNotes}
+									className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+								>
 									<SectionHeader title={t.taskDetails.section.implementationNotes} />
 									{mode === "preview" ? (
 										notes ? (
@@ -2211,7 +2234,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
 								{/* Comments */}
 								{!isCreateMode && (
-									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+									<div
+										id="task-section-comments"
+										data-toc-section={`${t.taskDetails.section.comments}${comments.length ? ` (${comments.length})` : ""}`}
+										className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+									>
 										<SectionHeader
 											title={`${t.taskDetails.section.comments}${comments.length ? ` (${comments.length})` : ""}`}
 											right={
@@ -2314,7 +2341,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
 								{/* Final Summary */}
 								{(mode !== "preview" || finalSummary.trim().length > 0) && (
-									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+									<div
+										id="task-section-final-summary"
+										data-toc-section={t.taskDetails.section.finalSummary}
+										className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+									>
 										<SectionHeader
 											title={t.taskDetails.section.finalSummary}
 											right={t.taskDetails.section.completionSummary}

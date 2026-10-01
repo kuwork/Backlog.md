@@ -1,6 +1,13 @@
 /** Heading selector used for table-of-contents entries. */
 export const TOC_HEADING_SELECTOR = "h1, h2, h3, h4, h5, h6";
 
+/**
+ * Selector for explicitly declared outline sections (e.g. the task detail
+ * cards: description, acceptance criteria, plan). Each section element must
+ * carry an id (its scroll anchor) and its display label as the attribute value.
+ */
+export const TOC_SECTION_SELECTOR = "[data-toc-section]";
+
 /** Deepest indentation a table of contents shows, even for deep heading trees. */
 const MAX_TOC_DEPTH = 6;
 
@@ -58,6 +65,42 @@ export function tocItemsEqual(a: TocItem[], b: TocItem[]): boolean {
 		const other = b[index];
 		return other !== undefined && item.id === other.id && item.text === other.text && item.level === other.level;
 	});
+}
+
+/**
+ * Collect outline entries grouped by declared sections: every
+ * `[data-toc-section]` element becomes a top-level entry (scrolling to the
+ * section card itself), and the headings rendered inside it nest underneath.
+ * Sections that are not rendered simply do not appear. Without declared
+ * sections this falls back to the flat heading collection, so reading pages
+ * keep their existing outline.
+ */
+export function collectSectionedTocItems(root: ParentNode | null | undefined): TocItem[] {
+	if (!root) return [];
+	const sections = root.querySelectorAll<HTMLElement>(TOC_SECTION_SELECTOR);
+	if (sections.length === 0) return collectTocItems(root);
+
+	const items: TocItem[] = [];
+	for (const section of sections) {
+		const id = section.id;
+		const text = (section.getAttribute("data-toc-section") ?? "").trim();
+		if (!id || !text) continue;
+		items.push({ id, text, level: 1 });
+
+		const headings: TocItem[] = [];
+		for (const heading of section.querySelectorAll<HTMLElement>(TOC_HEADING_SELECTOR)) {
+			const headingId = heading.id;
+			const headingLabel = headingText(heading);
+			if (!headingId || !headingLabel) continue;
+			headings.push({ id: headingId, text: headingLabel, level: Number.parseInt(heading.tagName.slice(1), 10) });
+		}
+		if (headings.length === 0) continue;
+		const shallowest = Math.min(...headings.map((heading) => heading.level));
+		for (const heading of headings) {
+			items.push({ ...heading, level: Math.min(heading.level - shallowest + 2, MAX_TOC_DEPTH) });
+		}
+	}
+	return items;
 }
 
 /** An outline entry with the entries nested underneath it. */

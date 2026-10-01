@@ -1,15 +1,16 @@
-import { type RefObject, useEffect, useState } from "react";
-import { collectTocItems, type TocItem, tocItemsEqual } from "../utils/toc";
+import { type RefObject, useEffect, useRef, useState } from "react";
+import { collectSectionedTocItems, type TocItem, tocItemsEqual } from "../utils/toc";
 
 /** Distance from the top of the scroll container where a heading counts as current. */
 const ACTIVE_HEADING_OFFSET_PX = 96;
 
 /**
- * Find the element that actually scrolls the given content: the nearest ancestor
- * with a scrollable overflow, or the window when the page itself scrolls.
+ * Find the element that actually scrolls the given content: the content itself
+ * when it is scrollable (modal bodies scroll their own container), otherwise the
+ * nearest scrollable ancestor, or the window when the page itself scrolls.
  */
 function findScrollContainer(element: HTMLElement | null): HTMLElement | Window {
-	let current = element?.parentElement ?? null;
+	let current = element ?? null;
 	while (current) {
 		const { overflowY } = window.getComputedStyle(current);
 		if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") return current;
@@ -37,7 +38,7 @@ export function useTocItems(containerRef: RefObject<HTMLElement | null>, content
 		}
 
 		const refresh = () => {
-			const next = collectTocItems(root);
+			const next = collectSectionedTocItems(root);
 			setItems((previous) => (tocItemsEqual(previous, next) ? previous : next));
 		};
 
@@ -51,12 +52,31 @@ export function useTocItems(containerRef: RefObject<HTMLElement | null>, content
 }
 
 /**
- * Track which entry is currently on screen, using the shallowest heading above
- * the reading position. Returns null when the outline is empty.
+ * A clicked outline entry the scrollspy must honor until the reader actually
+ * scrolls. Needed when the target cannot move — the scroller is already at its
+ * end, so no scroll event fires and position rules alone would never select it.
  */
-export function useActiveTocId(items: TocItem[], containerRef: RefObject<HTMLElement | null>): string | null {
-	const [activeId, setActiveId] = useState<string | null>(null);
+export interface TocActivePin {
+	id: string | null;
+	clear: () => void;
+}
 
+/**
+ * Track which entry is currently on screen, using the shallowest heading above
+ * the reading position. Returns null when the outline is empty. While `pin` is
+ * set it wins over every position rule; the first real scroll event clears it.
+ */
+export function useActiveTocId(
+	items: TocItem[],
+	containerRef: RefObject<HTMLElement | null>,
+	pin?: TocActivePin,
+): string | null {
+	const [activeId, setActiveId] = useState<string | null>(null);
+	const pinRef = useRef(pin);
+	pinRef.current = pin;
+	const pinnedId = pin?.id ?? null;
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pinnedId intentionally re-runs the effect so a new pin is applied immediately
 	useEffect(() => {
 		const root = containerRef.current;
 		if (!root || items.length === 0) {
@@ -74,29 +94,53 @@ export function useActiveTocId(items: TocItem[], containerRef: RefObject<HTMLEle
 			for (const item of items) {
 				const heading = document.getElementById(item.id);
 				if (!heading) continue;
+				// Inactive tabs share the active tab's position and are not visible;
+				// only the selected one may own the reading position.
+				if (heading.getAttribute("role") === "tab" && heading.getAttribute("aria-selected") !== "true") continue;
 				if (heading.getBoundingClientRect().top - containerTop <= ACTIVE_HEADING_OFFSET_PX) {
 					current = item.id;
 					continue;
 				}
 				break;
 			}
+			// A scroller that reached its end can never pull the last entry across
+			// the reading line, so the last rendered entry takes over as current.
+			const scrollerElement = scroller === window ? document.documentElement : (scroller as HTMLElement);
+			const scrollTop = scroller === window ? window.scrollY : scrollerElement.scrollTop;
+			const { scrollHeight, clientHeight } = scrollerElement;
+			if (scrollHeight > clientHeight && scrollTop + clientHeight >= scrollHeight - 8) {
+				for (let index = items.length - 1; index >= 0; index -= 1) {
+					const item = items[index];
+					const heading = item ? document.getElementById(item.id) : null;
+					if (!item || !heading) continue;
+					if (heading.getAttribute("role") === "tab" && heading.getAttribute("aria-selected") !== "true") continue;
+					current = item.id;
+					break;
+				}
+			}
+			const pinnedId = pinRef.current?.id;
+			if (pinnedId && document.getElementById(pinnedId)) current = pinnedId;
 			setActiveId((previous) => (previous === current ? previous : current));
 		};
-
 		const scheduleUpdate = () => {
 			if (frame === null) frame = requestAnimationFrame(update);
 		};
 
-		scroller.addEventListener("scroll", scheduleUpdate, { passive: true });
+		const handleScroll = () => {
+			pinRef.current?.clear();
+			scheduleUpdate();
+		};
+
+		scroller.addEventListener("scroll", handleScroll, { passive: true });
 		window.addEventListener("resize", scheduleUpdate);
 		update();
 
 		return () => {
-			scroller.removeEventListener("scroll", scheduleUpdate);
+			scroller.removeEventListener("scroll", handleScroll);
 			window.removeEventListener("resize", scheduleUpdate);
 			if (frame !== null) cancelAnimationFrame(frame);
 		};
-	}, [items, containerRef]);
+	}, [items, containerRef, pinnedId]);
 
 	return activeId;
 }
