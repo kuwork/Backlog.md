@@ -32,6 +32,8 @@ export interface MemoPageOptions {
 	cursor?: string;
 	/** `YYYY-MM-DD` — when set, only memos created on that date are returned */
 	date?: string;
+	/** when set, only memos carrying at least one of these tags (case-insensitive) are returned */
+	tags?: string[];
 }
 
 export interface MemoPage {
@@ -127,9 +129,10 @@ export async function nextMemoId(root: string): Promise<string> {
 	return `${prefix}${max + 1}`;
 }
 
-/** All memos, newest first (`createdDate` desc, `id` desc as a stable tiebreaker). */
+/** All memos, newest first (`createdDate` desc, `id` desc as a stable tiebreaker). Files without a usable id are corrupt leftovers and skipped. */
 export async function listMemos(root: string): Promise<Memo[]> {
-	return sortMemos(await Promise.all((await listMemoFiles(root)).map(toMemo)));
+	const memos = await Promise.all((await listMemoFiles(root)).map(toMemo));
+	return sortMemos(memos.filter((memo) => memo.id.length > 0));
 }
 
 function sortMemos(memos: Memo[]): Memo[] {
@@ -138,12 +141,16 @@ function sortMemos(memos: Memo[]): Memo[] {
 
 /**
  * Cursor pagination over the newest-first memo list. `cursor` is the id of the last memo of the
- * previous page; `nextCursor` is null once the end of the (optionally date-filtered) set is reached.
+ * previous page; `nextCursor` is null once the end of the (optionally filtered) set is reached.
  */
 export async function listMemosPage(root: string, options: MemoPageOptions = {}): Promise<MemoPage> {
-	let all = sortMemos(await Promise.all((await listMemoFiles(root)).map(toMemo)));
+	let all = await listMemos(root);
 	if (options.date) {
 		all = all.filter((memo) => memo.createdDate.slice(0, 10) === options.date);
+	}
+	if (options.tags && options.tags.length > 0) {
+		const wanted = new Set(options.tags.map((tag) => tag.toLowerCase()));
+		all = all.filter((memo) => memo.tags.some((tag) => wanted.has(tag.toLowerCase())));
 	}
 	const limit = options.limit ?? MEMO_PAGE_SIZE;
 	const start = options.cursor ? all.findIndex((memo) => memo.id === options.cursor) + 1 : 0;

@@ -275,7 +275,7 @@ describe("CLI Integration", () => {
 			expect(initHelp).not.toContain("backlog init --integration-mode mcp");
 			expect(initHelp).toContain("Writes:");
 			expect(instructionsHelp).toContain(
-				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, init-required",
+				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, memos, init-required",
 			);
 			expect(instructionsHelp).toContain("Output:");
 		});

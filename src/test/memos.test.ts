@@ -200,6 +200,36 @@ describe("memo storage", () => {
 		expect(nonePage.items).toEqual([]);
 	});
 
+	it("filters by tags, case-insensitively, matching any of the given tags", async () => {
+		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "idea note", ["Idea"]);
+		await seedMemo(`${todayStamp()}-2`, `${today()} 09:00`, "cli note", ["cli", "tool"]);
+		await seedMemo(`${todayStamp()}-3`, `${today()} 10:00`, "untagged");
+
+		const ideaPage = await listMemosPage(root, { tags: ["idea"] });
+		expect(ideaPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-1`]);
+
+		const multiPage = await listMemosPage(root, { tags: ["IDEA", "cli"] });
+		expect(multiPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-2`, `${todayStamp()}-1`]);
+
+		const nonePage = await listMemosPage(root, { tags: ["missing"] });
+		expect(nonePage.items).toEqual([]);
+
+		const taggedToday = await listMemosPage(root, { date: today(), tags: ["tool"] });
+		expect(taggedToday.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-2`]);
+	});
+
+	it("skips memo files without a usable id instead of listing a blank row", async () => {
+		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "real note");
+		await Bun.write(
+			join(memoDir(root), "corrupt.md"),
+			stringifyFrontmatter("Acceptance Criteria\n\n- [x] junk", { id: "", created_date: "" }),
+		);
+
+		const memos = await listMemos(root);
+		expect(memos.map((memo) => memo.id)).toEqual([`${todayStamp()}-1`]);
+		expect((await listMemosPage(root)).items.map((memo) => memo.id)).toEqual([`${todayStamp()}-1`]);
+	});
+
 	it("updateMemo bumps updatedDate while preserving id and createdDate", async () => {
 		const created = await createMemo(root, "original body", ["idea"]);
 		const updatedAtCreation = created.updatedDate;

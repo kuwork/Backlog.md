@@ -24,6 +24,7 @@ import { formatInstallResult, installWikiSkill } from "./commands/wiki-install.t
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
 import { findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
 import { initializeProject } from "./core/init.ts";
+import { createMemo, deleteMemo, getMemo, listMemosPage, updateMemo } from "./core/memos.ts";
 import { foldArchivedMilestoneTasks } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
 import { hiddenStatusNames, statusNames } from "./core/state-machine.ts";
@@ -771,6 +772,18 @@ async function requireProjectRoot(): Promise<string> {
 		process.exit(1);
 	}
 	return root;
+}
+
+/**
+ * Reads all of stdin as UTF-8 text. Callers must check `input.isTTY` first: an interactive
+ * invocation would otherwise block forever waiting for a body nobody is going to type.
+ */
+async function readStdinText(): Promise<string> {
+	const chunks: Buffer[] = [];
+	for await (const chunk of input) {
+		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf8"));
+	}
+	return Buffer.concat(chunks).toString("utf8");
 }
 
 // Windows color fix
@@ -5218,6 +5231,228 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 			status: hasStatus ? String(options.status) : undefined,
 		});
 		console.log(`Updated decision ${existingDecision.id}`);
+	});
+
+// Memo command group: throwaway notes. Deliberately not routed through the doc channel - memo ids
+// are `YYYYMMDD-N` and memos have no title - so it talks to src/core/memos.ts directly and shares
+// one id scheme and one file format with the HTTP API.
+const memoCmd = program.command("memo").description("capture and manage quick memos");
+
+addHelpSchema(memoCmd.command("create"), {
+	required: [],
+	optional: [
+		{
+			name: "content",
+			type: "String",
+			description: "Memo body; when omitted the body is read from stdin (multi-line friendly)",
+		},
+		{ name: "tags", type: "Comma-separated strings", description: "Tags to store with the memo" },
+	],
+	reads: "Stdin when --content is omitted",
+	writes: "Creates a memo markdown file under the configured memos directory",
+	output: "Created memo ID (YYYYMMDD-N)",
+	examples: [
+		'backlog memo create --content "Quick note"',
+		"backlog memo create --tags idea,cli",
+		'printf "line one\\nline two" | backlog memo create',
+	],
+})
+	.description("create a memo")
+	.option(
+		"-c, --content <content>",
+		"memo body (multi-line: write \\n literally inside a single-quoted or double-quoted argument); omit to read the body from stdin",
+	)
+	.option("-t, --tags <tags>", "set tags (comma-separated or use multiple times)", createMultiValueAccumulator())
+	.action(async (options) => {
+		const cwd = await requireProjectRoot();
+		let content: string;
+		if (typeof options.content === "string") {
+			content = processCliEscapes(options.content);
+		} else if (input.isTTY) {
+			console.error("No memo content provided. Pass --content or pipe the memo body on stdin.");
+			process.exitCode = 1;
+			return;
+		} else {
+			content = await readStdinText();
+		}
+		const body = content.trim();
+		if (!body) {
+			console.error("Memo content is empty. Pass --content or pipe a non-empty memo body on stdin.");
+			process.exitCode = 1;
+			return;
+		}
+		const memo = await createMemo(cwd, body, parseDelimitedStringList(options.tags) ?? []);
+		console.log(`Created memo ${memo.id}`);
+	});
+
+addHelpSchema(memoCmd.command("list"), {
+	reads: "Memos under the configured memos directory",
+	writes: "None; this is a read-only command",
+	required: [],
+	optional: [
+		{ name: "limit", type: "Number", description: "Page size (default 30)" },
+		{ name: "cursor", type: "Memo ID", description: "Resume after the memo with this id" },
+		{ name: "date", type: "String", description: "Only memos created on this date (YYYY-MM-DD)" },
+		{
+			name: "tags",
+			type: "Comma-separated strings",
+			description: "Only memos carrying at least one of these tags (case-insensitive)",
+		},
+		{
+			name: "plain",
+			type: "Boolean",
+			description: "Accepted for script consistency; memo list output is already plain text",
+		},
+	],
+	output:
+		"One line per memo as '<id>\\t<preview>' (first 20 characters of the body, newlines stripped), newest first, plus a next-cursor hint when more remain",
+	examples: [
+		"backlog memo list",
+		"backlog memo list --limit 5",
+		"backlog memo list --plain",
+		"backlog memo list --date 2026-10-01",
+		"backlog memo list --tags idea,cli",
+	],
+})
+	.description("list memos")
+	.option("-l, --limit <limit>", "number of memos to print (default 30)", "30")
+	.option("--cursor <memoId>", "resume listing after this memo id (see the next-cursor hint)")
+	.option("--date <date>", "only memos created on this date (YYYY-MM-DD)")
+	.option(
+		"--tags <tags>",
+		"only memos with at least one of these tags (comma-separated or repeatable)",
+		createMultiValueAccumulator(),
+	)
+	.option("--plain", "use plain text output (memo list output is already plain text)")
+	.action(async (options) => {
+		const cwd = await requireProjectRoot();
+		const limit = parsePositiveIntegerOption(options.limit, "--limit", "backlog memo list");
+		if (limit === null) return;
+		const date = typeof options.date === "string" ? options.date : undefined;
+		if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+			console.error(`Invalid --date "${date}". Use YYYY-MM-DD.`);
+			process.exitCode = 1;
+			return;
+		}
+		const { items, nextCursor } = await listMemosPage(cwd, {
+			limit,
+			cursor: typeof options.cursor === "string" ? options.cursor : undefined,
+			date,
+			tags: parseDelimitedStringList(options.tags),
+		});
+		if (items.length === 0) {
+			console.log("No memos found.");
+			return;
+		}
+		for (const memo of items) {
+			// One-line preview: strip newlines and keep the first 20 characters.
+			const flat = memo.rawContent.replace(/\n/g, "");
+			const preview = flat.length > 20 ? `${flat.slice(0, 20)}…` : flat;
+			console.log(`${memo.id}\t${preview}`);
+		}
+		if (nextCursor) {
+			console.log(`More memos available. Next page: backlog memo list --limit ${limit} --cursor ${nextCursor}`);
+		}
+	});
+
+addHelpSchema(memoCmd.command("view <memoId>"), {
+	reads: "Memo metadata and markdown body",
+	writes: "None; this is a read-only command",
+	required: [{ name: "memoId", type: "Memo ID", description: "Memo to display" }],
+	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of the interactive pager" }],
+	output: "Memo metadata and full markdown body",
+	examples: ["backlog memo view 20261001-1", "backlog memo view 20261001-1 --plain"],
+})
+	.description("view a memo")
+	.option("--plain", "use plain text output instead of the interactive pager")
+	.action(async (memoId: string, options) => {
+		const cwd = await requireProjectRoot();
+		const memo = await getMemo(cwd, memoId);
+		if (!memo) {
+			console.error(`Memo ${memoId} not found.`);
+			process.exitCode = 1;
+			return;
+		}
+		const lines = [
+			`id: ${memo.id}`,
+			`created_date: ${memo.createdDate}`,
+			...(memo.updatedDate ? [`updated_date: ${memo.updatedDate}`] : []),
+			...(memo.tags.length > 0 ? [`tags: ${memo.tags.join(", ")}`] : []),
+			"",
+			memo.rawContent,
+		];
+		const text = lines.join("\n");
+		if (isPlainRequested(options) || shouldAutoPlain) {
+			console.log(text);
+			return;
+		}
+		await scrollableViewer(text);
+	});
+
+addHelpSchema(memoCmd.command("update <memoId>"), {
+	required: [{ name: "memoId", type: "Memo ID", description: "Memo to update" }],
+	optional: [
+		{ name: "content", type: "Markdown", description: "Replacement memo body" },
+		{ name: "append", type: "Markdown", description: "Append a line to the memo body" },
+	],
+	writes: "Replaces or appends to the memo body and bumps its updated date",
+	output: "Updated memo ID",
+	examples: [
+		'backlog memo update 20261001-1 --content "Rewritten note"',
+		'backlog memo update 20261001-1 --append "One more line"',
+	],
+})
+	.description("update a memo")
+	.option(
+		"--content <content>",
+		"replace the memo body (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
+	.option(
+		"--append <text>",
+		"append a line to the memo body (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
+	)
+	.action(async (memoId: string, options) => {
+		const cwd = await requireProjectRoot();
+		const hasContent = typeof options.content === "string";
+		const append = typeof options.append === "string" ? processCliEscapes(options.append) : "";
+		if (!hasContent && append.trim().length === 0) {
+			console.error("No update options provided. Provide --content or --append.");
+			process.exitCode = 1;
+			return;
+		}
+		const existing = await getMemo(cwd, memoId);
+		if (!existing) {
+			console.error(`Memo ${memoId} not found.`);
+			process.exitCode = 1;
+			return;
+		}
+		const content = hasContent ? processCliEscapes(options.content) : `${existing.rawContent}\n${append}`;
+		const memo = await updateMemo(cwd, existing.id, { content });
+		if (!memo) {
+			console.error(`Memo ${memoId} not found.`);
+			process.exitCode = 1;
+			return;
+		}
+		console.log(`Updated memo ${memo.id}`);
+	});
+
+addHelpSchema(memoCmd.command("delete <memoId>"), {
+	required: [{ name: "memoId", type: "Memo ID", description: "Memo to delete" }],
+	optional: [],
+	writes: "Removes the memo file from the configured memos directory",
+	output: "Deleted memo ID",
+	examples: ["backlog memo delete 20261001-1"],
+})
+	.description("delete a memo")
+	.action(async (memoId: string) => {
+		const cwd = await requireProjectRoot();
+		const deleted = await deleteMemo(cwd, memoId);
+		if (!deleted) {
+			console.error(`Memo ${memoId} not found.`);
+			process.exitCode = 1;
+			return;
+		}
+		console.log(`Deleted memo ${memoId}`);
 	});
 
 // Agents command group
