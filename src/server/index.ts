@@ -1979,8 +1979,12 @@ export class BacklogServer {
 				return Response.json({ error: "Memo content is required" }, { status: 400 });
 			}
 			const tags = parseTagList(body?.tags, "Memo tags") ?? [];
+			const createdDate =
+				typeof body?.createdDate === "string" && body.createdDate.trim().length > 0
+					? body.createdDate.trim()
+					: undefined;
 
-			const memo = await createMemo(this.core.filesystem.rootDir, content, tags);
+			const memo = await createMemo(this.core.filesystem.rootDir, content, tags, createdDate);
 			this.broadcastDataUpdated("memos");
 			return Response.json(memo, { status: 201 });
 		} catch (error) {

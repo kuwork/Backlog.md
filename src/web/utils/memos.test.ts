@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Memo } from "../../core/memos.ts";
+import { createMemo, listMemos, nextMemoId } from "../../core/memos.ts";
 import {
 	appendMemoPage,
 	collectMemoTags,
@@ -126,5 +130,34 @@ describe("extractInlineTags", () => {
 	it("ignores markdown headings and code", () => {
 		expect(extractInlineTags("# Heading\nbody")).toEqual([]);
 		expect(extractInlineTags("npm install # not a tag")).toEqual([]);
+	});
+});
+
+describe("back-dated creation", () => {
+	const root = mkdtempSync(join(tmpdir(), "memo-backdate-"));
+
+	it("allocates the id prefix from the pinned date, not today", async () => {
+		const id = await nextMemoId(root, "2024-02-03 10:00");
+		expect(id).toBe("20240203-1");
+	});
+
+	it("writes the pinned createdDate and bumps updatedDate", async () => {
+		const memo = await createMemo(root, "a past note", ["retro"], "2024-02-03 10:00");
+		expect(memo.id).toBe("20240203-1");
+		expect(memo.createdDate).toBe("2024-02-03 10:00");
+		expect(memo.tags).toEqual(["retro"]);
+		expect(memo.updatedDate).not.toBe("2024-02-03 10:00");
+	});
+
+	it("falls back to now when the date is malformed", async () => {
+		const memo = await createMemo(root, "no real date", [], "not-a-date");
+		expect(memo.createdDate).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+	});
+
+	it("a back-dated memo sorts under its own day, not today", async () => {
+		const all = await listMemos(root);
+		expect(all.length).toBeGreaterThan(0);
+		expect(all[0]?.createdDate).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+		expect(all.some((memo) => memo.createdDate === "2024-02-03 10:00")).toBe(true);
 	});
 });

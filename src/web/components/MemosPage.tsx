@@ -24,24 +24,10 @@ import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import StoredDate from "./StoredDate";
 
 /**
- * The two faces of this page. Only the feed is rendered today: the calendar mode is the next
- * increment, but `view` and `selectedDate` already live here so it can slot in without a rewrite.
+ * The two faces of this page share one composer and one selectedDate, so picking a day in the
+ * calendar filters the feed and clearing the chip returns to everything.
  */
 export type MemosView = "feed" | "calendar";
-
-/**
- * The technical half of a failure: every banner keeps its localized headline and shows this beside
- * it when the server said anything, so a failed write never reads as a generic message.
- */
-function errorDetail(error: unknown): string | null {
-	return error instanceof Error && error.message ? error.message : null;
-}
-
-/** A localized headline, or the server's message when it said anything useful. */
-function errorMessage(error: unknown, fallback: string): string {
-	if (error instanceof Error && error.message) return error.message;
-	return fallback;
-}
 
 function ErrorBanner({
 	title,
@@ -83,7 +69,7 @@ interface MemoCardProps {
 	onDelete: (id: string) => Promise<void>;
 }
 
-/** One memo in the feed: stored date, markdown body through the shared renderer, read-only tags. */
+/** One memo in the feed or day panel: stored date, markdown body, read-only tags. */
 export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
@@ -109,7 +95,7 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 			await onUpdate(memo.id, draft, extractInlineTags(draft));
 			setIsEditing(false);
 		} catch (err) {
-			setError({ title: t.memos.updateFailed, detail: errorDetail(err) });
+			setError({ title: t.memos.updateFailed, detail: err instanceof Error ? err.message : null });
 		} finally {
 			setIsSaving(false);
 		}
@@ -123,7 +109,7 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 		try {
 			await onDelete(memo.id);
 		} catch (err) {
-			setError({ title: t.memos.deleteFailed, detail: errorDetail(err) });
+			setError({ title: t.memos.deleteFailed, detail: err instanceof Error ? err.message : null });
 		} finally {
 			setIsDeleting(false);
 		}
@@ -234,6 +220,273 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 	);
 }
 
+const pad = (value: number): string => String(value).padStart(2, "0");
+
+function todayString(): string {
+	const now = new Date();
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+interface MonthCell {
+	day: number | null;
+	key: string;
+}
+
+/** Six weeks of day numbers (plus leading/trailing nulls) so the grid is always rectangular. */
+function buildMonthMatrix(year: number, month: number): MonthCell[] {
+	const first = new Date(year, month - 1, 1);
+	const startWeekday = first.getDay();
+	const daysInMonth = new Date(year, month, 0).getDate();
+	const cells: MonthCell[] = [];
+	for (let i = 0; i < startWeekday; i++) cells.push({ day: null, key: `pad-${year}-${month}-${i}` });
+	for (let day = 1; day <= daysInMonth; day++) {
+		cells.push({ day, key: `${year}-${pad(month)}-${pad(day)}` });
+	}
+	while (cells.length % 7 !== 0) cells.push({ day: null, key: `tail-${year}-${month}-${cells.length}` });
+	return cells;
+}
+
+/** Intensity buckets over the month's max count; blue shades that survive dark mode. */
+function countClass(count: number, max: number): string {
+	if (count <= 0) return "bg-gray-50 dark:bg-gray-800/40";
+	const ratio = max > 0 ? count / max : 0;
+	if (ratio >= 0.66) return "bg-blue-200 dark:bg-blue-700/70 text-blue-900 dark:text-blue-50";
+	if (ratio >= 0.33) return "bg-blue-100 dark:bg-blue-700/40 text-blue-900 dark:text-blue-100";
+	return "bg-blue-50 dark:bg-blue-700/20 text-blue-800 dark:text-blue-200";
+}
+
+function weekdayHeadings(): string[] {
+	const formatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+	return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2023, 0, 1 + index)));
+}
+
+interface CalendarGridProps {
+	year: number;
+	month: number;
+	counts: Record<string, number>;
+	selectedDay: string | null;
+	today: string;
+	onSelectDay: (day: string) => void;
+	onPrevMonth: () => void;
+	onNextMonth: () => void;
+	onToday: () => void;
+}
+
+function CalendarGrid({
+	year,
+	month,
+	counts,
+	selectedDay,
+	today,
+	onSelectDay,
+	onPrevMonth,
+	onNextMonth,
+	onToday,
+}: CalendarGridProps) {
+	const { t } = useI18n();
+	const cells = useMemo(() => buildMonthMatrix(year, month), [year, month]);
+	const max = useMemo(() => Object.values(counts).reduce((acc, value) => Math.max(acc, value), 0), [counts]);
+	const monthTitle = useMemo(
+		() => new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1)),
+		[year, month],
+	);
+	const headings = useMemo(() => weekdayHeadings(), []);
+
+	return (
+		<section
+			aria-label={t.memos.calendar}
+			className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4"
+		>
+			<div className="flex items-center justify-between gap-2 mb-4">
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						onClick={onPrevMonth}
+						aria-label={t.memos.prevMonth}
+						className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					>
+						‹
+					</button>
+					<button
+						type="button"
+						onClick={onNextMonth}
+						aria-label={t.memos.nextMonth}
+						className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					>
+						›
+					</button>
+				</div>
+				<h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthTitle}</h2>
+				<button
+					type="button"
+					onClick={onToday}
+					className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+				>
+					{t.memos.today}
+				</button>
+			</div>
+
+			<div className="grid grid-cols-7 gap-1 mb-1">
+				{headings.map((heading) => (
+					<div key={heading} className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 py-1">
+						{heading}
+					</div>
+				))}
+			</div>
+
+			<div className="grid grid-cols-7 gap-1">
+				{cells.map((cell) => {
+					if (cell.day === null) {
+						return <div key={cell.key} className="aspect-square" />;
+					}
+					const date = cell.key;
+					const count = counts[date] ?? 0;
+					const isToday = date === today;
+					const isSelected = date === selectedDay;
+					return (
+						<button
+							key={date}
+							type="button"
+							data-testid="calendar-day"
+							data-date={date}
+							aria-pressed={isSelected}
+							aria-label={`${date}: ${count} ${t.memos.title}`}
+							onClick={() => onSelectDay(date)}
+							className={`aspect-square flex flex-col items-center justify-center rounded text-sm border transition-colors ${countClass(
+								count,
+								max,
+							)} ${
+								isSelected
+									? "ring-2 ring-blue-500 dark:ring-blue-400"
+									: "border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+							} ${isToday ? "font-bold underline" : ""}`}
+						>
+							<span>{cell.day}</span>
+							{count > 0 && <span className="text-[10px] leading-none mt-0.5 opacity-80">{count}</span>}
+						</button>
+					);
+				})}
+			</div>
+		</section>
+	);
+}
+
+interface DayPanelProps {
+	day: string;
+	memos: Memo[];
+	loading: boolean;
+	error: string | null;
+	onClose: () => void;
+	onViewInFeed: () => void;
+	onSaved: (memo: Memo) => void;
+	onUpdate: (id: string, content: string, tags: string[]) => Promise<void>;
+	onDelete: (id: string) => Promise<void>;
+}
+
+function DayPanel({ day, memos, loading, error, onClose, onViewInFeed, onSaved, onUpdate, onDelete }: DayPanelProps) {
+	const { t } = useI18n();
+	const { theme } = useTheme();
+	const [draft, setDraft] = useState("");
+	const [isSaving, setIsSaving] = useState(false);
+	const [composerError, setComposerError] = useState<string | null>(null);
+
+	const handleSave = async () => {
+		const content = draft.trim();
+		if (!content || isSaving) return;
+		setIsSaving(true);
+		setComposerError(null);
+		try {
+			const memo = await apiClient.createMemo(content, extractInlineTags(draft), day);
+			onSaved(memo);
+			setDraft("");
+		} catch (err) {
+			setComposerError(err instanceof Error ? err.message : t.memos.saveFailed);
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	return (
+		<section
+			data-testid="day-panel"
+			data-date={day}
+			className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4"
+		>
+			<div className="flex items-center justify-between gap-3 mb-3">
+				<h3 className="text-base font-semibold text-gray-900 dark:text-white">
+					{t.memos.title} · <StoredDate value={`${day} 00:00`} className="text-gray-500 dark:text-gray-400" />
+				</h3>
+				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						onClick={onViewInFeed}
+						className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					>
+						{t.memos.viewInFeed}
+					</button>
+					<button
+						type="button"
+						onClick={onClose}
+						aria-label={t.memos.clearDate}
+						className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					>
+						✕
+					</button>
+				</div>
+			</div>
+
+			<div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-md p-3 mb-3">
+				<div className="h-32">
+					<PasteAwareMDEditor
+						value={draft}
+						onChange={(value) => setDraft(value ?? "")}
+						preview="edit"
+						height="100%"
+						hideToolbar={true}
+						data-color-mode={theme}
+						textareaProps={{
+							placeholder: t.memos.composerPlaceholder,
+							onKeyDown: (event) => {
+								if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+									event.preventDefault();
+									void handleSave();
+								}
+							},
+						}}
+					/>
+				</div>
+				<div className="flex items-center justify-end mt-2">
+					<button
+						type="button"
+						onClick={() => void handleSave()}
+						disabled={isSaving || draft.trim().length === 0}
+						className="px-3 py-1.5 text-sm rounded bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+					>
+						{isSaving ? t.common.saving : t.common.save}
+					</button>
+				</div>
+				{composerError && <ErrorBanner title={t.memos.saveFailed} detail={composerError} />}
+			</div>
+
+			{loading ? (
+				<p role="status" className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+					{t.memos.loading}
+				</p>
+			) : error ? (
+				<ErrorBanner title={error} />
+			) : memos.length === 0 ? (
+				<p className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">{t.memos.noMemosThisDay}</p>
+			) : (
+				<div className="flex flex-col gap-3">
+					{memos.map((memo) => (
+						<MemoCard key={memo.id} memo={memo} onUpdate={onUpdate} onDelete={onDelete} />
+					))}
+				</div>
+			)}
+		</section>
+	);
+}
+
 function viewFromParam(value: string | null): MemosView {
 	return value === "calendar" ? "calendar" : "feed";
 }
@@ -248,6 +501,27 @@ export default function MemosPage() {
 	const [view, setView] = useState<MemosView>(() => viewFromParam(viewParam));
 	const [selectedDate, setSelectedDate] = useState<string | null>(() => dateParam || null);
 	const [activeTags, setActiveTags] = useState<string[]>([]);
+
+	const today = useMemo(() => todayString(), []);
+	const [calendarYear, setCalendarYear] = useState<number>(() => {
+		if (dateParam) {
+			const parts = dateParam.split("-");
+			if (parts.length >= 2 && Number(parts[0])) return Number(parts[0]);
+		}
+		return new Date().getFullYear();
+	});
+	const [calendarMonth, setCalendarMonth] = useState<number>(() => {
+		if (dateParam) {
+			const parts = dateParam.split("-");
+			if (parts.length >= 2 && Number(parts[1])) return Number(parts[1]);
+		}
+		return new Date().getMonth() + 1;
+	});
+	const [calendarCounts, setCalendarCounts] = useState<Record<string, number>>({});
+	const [selectedDay, setSelectedDay] = useState<string | null>(() => (viewParam === "calendar" ? dateParam : null));
+	const [dayPanelMemos, setDayPanelMemos] = useState<Memo[]>([]);
+	const [dayPanelLoading, setDayPanelLoading] = useState(false);
+	const [dayPanelError, setDayPanelError] = useState<string | null>(null);
 
 	const [feed, setFeed] = useState<MemoFeedState>(EMPTY_MEMO_FEED);
 	const [initialLoading, setInitialLoading] = useState(true);
@@ -284,7 +558,15 @@ export default function MemosPage() {
 			const next = dateParam || null;
 			return current === next ? current : next;
 		});
-	}, [dateParam]);
+		if (dateParam) {
+			const parts = dateParam.split("-");
+			if (parts.length >= 2 && Number(parts[0]) && Number(parts[1])) {
+				setCalendarYear(Number(parts[0]));
+				setCalendarMonth(Number(parts[1]));
+			}
+			if (viewParam === "calendar") setSelectedDay(dateParam);
+		}
+	}, [dateParam, viewParam]);
 
 	const loadFirstPage = useCallback(
 		async (date: string | null) => {
@@ -299,7 +581,7 @@ export default function MemosPage() {
 				setFeed({ memos: page.items, nextCursor: page.nextCursor });
 			} catch (error) {
 				if (requestId !== feedRequestRef.current) return;
-				setLoadError(errorMessage(error, t.memos.loadFailed));
+				setLoadError(error instanceof Error && error.message ? error.message : t.memos.loadFailed);
 			} finally {
 				if (requestId === feedRequestRef.current) setInitialLoading(false);
 			}
@@ -328,7 +610,9 @@ export default function MemosPage() {
 			if (requestId !== feedRequestRef.current) return;
 			setFeed((current) => appendMemoPage(current, page));
 		} catch (error) {
-			if (requestId === feedRequestRef.current) setAppendError(errorMessage(error, t.memos.loadMoreFailed));
+			if (requestId === feedRequestRef.current) {
+				setAppendError(error instanceof Error && error.message ? error.message : t.memos.loadMoreFailed);
+			}
 		} finally {
 			loadingMoreRef.current = false;
 			if (requestId === feedRequestRef.current) setLoadingMore(false);
@@ -352,6 +636,58 @@ export default function MemosPage() {
 		observer.observe(sentinel);
 		return () => observer.disconnect();
 	}, [view, initialLoading, loadingMore, hasMore, loadMore]);
+
+	const loadCalendar = useCallback(async (year: number, month: number) => {
+		try {
+			setCalendarCounts(await apiClient.fetchMemoCalendar(year, month));
+		} catch {
+			// A calendar fetch is best-effort; an empty grid is a graceful fallback.
+		}
+	}, []);
+
+	useEffect(() => {
+		void loadCalendar(calendarYear, calendarMonth);
+	}, [calendarYear, calendarMonth, loadCalendar]);
+
+	const loadDayPanel = useCallback(
+		async (day: string) => {
+			setDayPanelLoading(true);
+			setDayPanelError(null);
+			try {
+				const page = await apiClient.fetchMemosPage({ limit: 100, date: day });
+				setDayPanelMemos(page.items);
+			} catch (error) {
+				setDayPanelError(error instanceof Error && error.message ? error.message : t.memos.loadFailed);
+			} finally {
+				setDayPanelLoading(false);
+			}
+		},
+		[t.memos.loadFailed],
+	);
+
+	useEffect(() => {
+		if (selectedDay) void loadDayPanel(selectedDay);
+		else setDayPanelMemos([]);
+	}, [selectedDay, loadDayPanel]);
+
+	const goMonth = useCallback(
+		(delta: number) => {
+			setCalendarMonth((current) => {
+				let month = current + delta;
+				let year = calendarYear;
+				if (month < 1) {
+					month = 12;
+					year -= 1;
+				} else if (month > 12) {
+					month = 1;
+					year += 1;
+				}
+				setCalendarYear(year);
+				return month;
+			});
+		},
+		[calendarYear],
+	);
 
 	const toggleTag = (tag: string) => {
 		setActiveTags((current) =>
@@ -379,6 +715,20 @@ export default function MemosPage() {
 		setSearchParams(nextParams, { replace: true });
 	}, [searchParams, setSearchParams]);
 
+	const handleSelectDay = useCallback((day: string) => {
+		setSelectedDay((current) => (current === day ? null : day));
+	}, []);
+
+	const handleViewDayInFeed = useCallback(() => {
+		if (!selectedDay) return;
+		setSelectedDate(selectedDay);
+		const nextParams = new URLSearchParams(searchParams);
+		nextParams.set("date", selectedDay);
+		nextParams.delete("view");
+		setSearchParams(nextParams, { replace: true });
+		setView("feed");
+	}, [selectedDay, searchParams, setSearchParams]);
+
 	const handleCapture = useCallback(async () => {
 		const content = draft.trim();
 		if (!content || isSaving) return;
@@ -395,17 +745,24 @@ export default function MemosPage() {
 				setDraft(saveContent);
 			}
 			const memo = await apiClient.createMemo(saveContent, extractInlineTags(saveContent));
-			// Feed first, then clear: a failed clear would leave the note visible twice.
 			if (memoMatchesFilters(memo, selectedDate, activeTags)) {
 				setFeed((current) => prependMemo(current, memo));
 			}
 			setDraft("");
 		} catch (error) {
-			setComposerError(errorDetail(error));
+			setComposerError(error instanceof Error && error.message ? error.message : t.memos.saveFailed);
 		} finally {
 			setIsSaving(false);
 		}
-	}, [activeTags, draft, isSaving, selectedDate]);
+	}, [activeTags, draft, isSaving, selectedDate, t.memos.saveFailed]);
+
+	const handleDaySaved = useCallback((memo: Memo) => {
+		setDayPanelMemos((current) => prependMemo({ memos: current, nextCursor: null }, memo).memos);
+		setCalendarCounts((current) => ({
+			...current,
+			[memo.createdDate.slice(0, 10)]: (current[memo.createdDate.slice(0, 10)] ?? 0) + 1,
+		}));
+	}, []);
 
 	const handleUpdate = useCallback(async (id: string, content: string, tags: string[]) => {
 		let saveContent = content;
@@ -416,12 +773,21 @@ export default function MemosPage() {
 		}
 		const memo = await apiClient.updateMemo(id, { content: saveContent, tags });
 		setFeed((current) => replaceMemo(current, memo));
+		setDayPanelMemos((current) => replaceMemo({ memos: current, nextCursor: null }, memo).memos);
 	}, []);
 
-	const handleDelete = useCallback(async (id: string) => {
-		await apiClient.deleteMemo(id);
-		setFeed((current) => removeMemo(current, id));
-	}, []);
+	const handleDelete = useCallback(
+		async (id: string) => {
+			await apiClient.deleteMemo(id);
+			const day = dayPanelMemos.find((memo) => memo.id === id)?.createdDate.slice(0, 10);
+			setFeed((current) => removeMemo(current, id));
+			setDayPanelMemos((current) => removeMemo({ memos: current, nextCursor: null }, id).memos);
+			if (day) {
+				setCalendarCounts((current) => ({ ...current, [day]: Math.max(0, (current[day] ?? 1) - 1) }));
+			}
+		},
+		[dayPanelMemos],
+	);
 
 	const visibleMemos = useMemo(() => filterMemosByTags(feed.memos, activeTags), [feed.memos, activeTags]);
 	const availableTags = useMemo(() => collectMemoTags(feed.memos), [feed.memos]);
@@ -495,9 +861,37 @@ export default function MemosPage() {
 				{composerError && <ErrorBanner title={t.memos.saveFailed} detail={composerError} />}
 
 				{view === "calendar" ? (
-					<section className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-6 text-sm text-gray-600 dark:text-gray-300">
-						{t.memos.calendarPlaceholder}
-					</section>
+					<>
+						<CalendarGrid
+							year={calendarYear}
+							month={calendarMonth}
+							counts={calendarCounts}
+							selectedDay={selectedDay}
+							today={today}
+							onSelectDay={handleSelectDay}
+							onPrevMonth={() => goMonth(-1)}
+							onNextMonth={() => goMonth(1)}
+							onToday={() => {
+								const now = new Date();
+								setCalendarYear(now.getFullYear());
+								setCalendarMonth(now.getMonth() + 1);
+								setSelectedDay(todayString());
+							}}
+						/>
+						{selectedDay && (
+							<DayPanel
+								day={selectedDay}
+								memos={dayPanelMemos}
+								loading={dayPanelLoading}
+								error={dayPanelError}
+								onClose={() => setSelectedDay(null)}
+								onViewInFeed={handleViewDayInFeed}
+								onSaved={handleDaySaved}
+								onUpdate={handleUpdate}
+								onDelete={handleDelete}
+							/>
+						)}
+					</>
 				) : (
 					<>
 						{(selectedDate || availableTags.length > 0) && (

@@ -67,6 +67,13 @@ function serveApi(): void {
 			return json({ items: PAGE_TWO, nextCursor: null });
 		}
 
+		if (url.pathname === "/api/memos/calendar") {
+			const year = Number(url.searchParams.get("year"));
+			const month = Number(url.searchParams.get("month"));
+			if (year === 2026 && month === 10) return json({ "2026-10-01": 2, "2026-10-15": 5 });
+			return json({});
+		}
+
 		return json([]);
 	}) as unknown as typeof globalThis.fetch;
 }
@@ -288,5 +295,101 @@ describe("MemosPage feed", () => {
 		);
 		expect(feedTab?.getAttribute("aria-selected")).toBe("true");
 		expect(cardTexts(container).length).toBeGreaterThan(0);
+	});
+});
+
+const calendarDay = (container: HTMLElement, date: string): HTMLElement | null =>
+	container.querySelector(`[data-testid="calendar-day"][data-date="${date}"]`);
+
+async function clickCalendarDay(container: HTMLElement, date: string): Promise<void> {
+	const button = calendarDay(container, date);
+	expect(button).toBeTruthy();
+	await act(async () => {
+		reactProps(button as Element).onClick?.({});
+		await Promise.resolve();
+	});
+	await flush();
+}
+
+describe("MemosPage calendar", () => {
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		failWrites = false;
+		created = null;
+		requests = [];
+		act(() => root?.unmount());
+		root = null;
+	});
+
+	it("renders the month grid with per-day counts and prev/next navigation", async () => {
+		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
+		expect(calendarDay(container, "2026-10-01")).toBeTruthy();
+		expect(calendarDay(container, "2026-10-15")).toBeTruthy();
+		// Two memos were reported for the first; the count badge shows the number.
+		expect(calendarDay(container, "2026-10-01")?.textContent).toContain("2");
+		expect(container.querySelector('[aria-label="Previous month"]')).toBeTruthy();
+		expect(container.querySelector('[aria-label="Next month"]')).toBeTruthy();
+	});
+
+	it("opens a day panel when a day is clicked and collapses it on the second click", async () => {
+		const container = await renderMemos("/memos?view=calendar");
+		expect(container.querySelector('[data-testid="day-panel"]')).toBeNull();
+		await clickCalendarDay(container, "2026-10-01");
+		expect(container.querySelector('[data-testid="day-panel"]')).toBeTruthy();
+		await clickCalendarDay(container, "2026-10-01");
+		expect(container.querySelector('[data-testid="day-panel"]')).toBeNull();
+	});
+
+	it("deep-links ?view=calendar&date= straight to that day's panel", async () => {
+		const container = await renderMemos("/memos?view=calendar&date=2026-10-15");
+		const panel = container.querySelector('[data-testid="day-panel"]');
+		expect(panel).toBeTruthy();
+		expect(panel?.getAttribute("data-date")).toBe("2026-10-15");
+	});
+
+	it("saves a back-dated memo from the day panel pinned to that day", async () => {
+		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
+		const panel = container.querySelector('[data-testid="day-panel"]');
+		expect(panel).toBeTruthy();
+
+		const textarea = panel?.querySelector("textarea");
+		expect(textarea).toBeTruthy();
+		await act(async () => {
+			const props = reactProps(textarea as Element);
+			const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+			setter?.call(textarea, "Backdated note #retro");
+			props.onChange?.({ target: textarea });
+			await Promise.resolve();
+		});
+		await flush();
+
+		const saveButton = Array.from((panel as HTMLElement).querySelectorAll("button")).find(
+			(button) => button.textContent?.trim() === "Save",
+		);
+		expect(saveButton).toBeTruthy();
+		await act(async () => {
+			reactProps(saveButton as Element).onClick?.({});
+			await Promise.resolve();
+		});
+		await flush();
+
+		expect(created?.content).toBe("Backdated note #retro");
+		expect(created?.tags).toEqual(["retro"]);
+		// The panel composer pins the capture to the selected day.
+		expect(requests.some((request) => request.includes("2026-10-01"))).toBe(true);
+	});
+
+	it("switches to feed filtered to the day from the panel", async () => {
+		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
+		const panel = container.querySelector('[data-testid="day-panel"]');
+		const viewInFeed = buttonByText(panel as HTMLElement, "View in feed");
+		expect(viewInFeed).toBeTruthy();
+		await clickButton(panel as HTMLElement, "View in feed");
+		// The feed mode is selected and the date chip is shown.
+		const feedTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+			(tab) => tab.textContent?.trim() === "Feed",
+		);
+		expect(feedTab?.getAttribute("aria-selected")).toBe("true");
+		expect(container.textContent).toContain("2026-10-01");
 	});
 });
