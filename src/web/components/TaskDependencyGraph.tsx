@@ -27,12 +27,12 @@ import {
 import { buildRelationshipSubgraph } from "../utils/task-subgraph";
 import {
 	EDGE_DASH,
-	EDGE_STROKE,
+	edgeStroke,
 	LegendDot,
 	LegendLine,
-	NODE_STROKE,
 	type NodeStyle,
 	nodeFill,
+	nodeStroke,
 	nodeStyle,
 	TASK_GRAPH_HIDDEN_STYLES,
 } from "./GraphLegend";
@@ -283,7 +283,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 					targetRadius: scaledRadius(target.radius, k),
 					arrowGap: ARROW_GAP,
 					arrowSize: link.type === "BelongsToMilestone" ? 0 : ARROW_SIZE,
-					stroke: EDGE_STROKE,
+					stroke: edgeStroke(theme),
 					dash: EDGE_DASH[link.type] ?? undefined,
 					alpha: alphaFor(source.id, target.id),
 				});
@@ -296,7 +296,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 				ctx.fillStyle = nodeFill(node.style, theme);
 				ctx.fill();
 				ctx.lineWidth = Math.max(0.35, (node.isRoot ? 2.5 : 1) / k);
-				ctx.strokeStyle = node.isRoot ? "#1d4ed8" : NODE_STROKE[node.style];
+				ctx.strokeStyle = node.isRoot ? "#1d4ed8" : nodeStroke(node.style, theme);
 				ctx.stroke();
 			}
 
@@ -327,7 +327,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 					k,
 					-3.5,
 					alphaFor(source.id, target.id),
-					EDGE_STROKE,
+					edgeStroke(theme),
 					EDGE_LABEL_FONT,
 				);
 			}

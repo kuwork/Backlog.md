@@ -30,13 +30,13 @@ import { captionFor, captionPlateWidth } from "../utils/graph-caption";
 import { knowledgeNodeHref } from "../utils/graph-node-links";
 import {
 	EDGE_DASH,
-	EDGE_STROKE,
+	edgeStroke,
 	KNOWLEDGE_GRAPH_HIDDEN_STYLES,
 	LegendDot,
 	LegendLine,
-	NODE_STROKE,
 	type NodeStyle,
 	nodeFill,
+	nodeStroke,
 	nodeStyle,
 	selectVisibleGraph,
 	TASK_GRAPH_HIDDEN_STYLES,
@@ -560,7 +560,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 					targetRadius: scaledRadius(target.radius, k),
 					arrowGap: ARROW_GAP,
 					arrowSize: link.type === "BelongsToMilestone" ? 0 : ARROW_SIZE,
-					stroke: EDGE_STROKE,
+					stroke: edgeStroke(theme),
 					dash: EDGE_DASH[link.type] ?? undefined,
 					alpha: alphaFor(source.id, target.id),
 				});
@@ -575,7 +575,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 				ctx.fillStyle = nodeFill(node.style, theme);
 				ctx.fill();
 				ctx.lineWidth = strokeWidth;
-				ctx.strokeStyle = NODE_STROKE[node.style];
+				ctx.strokeStyle = nodeStroke(node.style, theme);
 				ctx.stroke();
 			}
 
@@ -610,7 +610,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 						k,
 						-3.5,
 						alphaFor(source.id, target.id),
-						EDGE_STROKE,
+						edgeStroke(theme),
 						RELATION_FONT,
 					);
 				}
