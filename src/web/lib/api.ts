@@ -670,14 +670,14 @@ export class ApiClient {
 		return this.fetchJson<Record<string, number>>(`${API_BASE}/memos/calendar${query ? `?${query}` : ""}`);
 	}
 
-	async createMemo(content: string, tags: string[] = []): Promise<Memo> {
+	async createMemo(content: string, tags: string[] = [], createdDate?: string): Promise<Memo> {
 		// Not replayed on retry: a second POST would allocate another id and leave two copies.
 		const response = await fetch(`${API_BASE}/memos`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ content, tags }),
+			body: JSON.stringify({ content, tags, ...(createdDate ? { createdDate } : {}) }),
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to create memo");

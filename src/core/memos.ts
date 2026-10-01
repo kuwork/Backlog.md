@@ -56,6 +56,13 @@ function dateStamp(): string {
 	return new Date().toISOString().slice(0, 10).replace(/-/g, "");
 }
 
+/** `YYYYMMDD` from a stored `YYYY-MM-DD` or `YYYY-MM-DD HH:mm` value, defaulting to today. */
+function dateStampFrom(value: string): string {
+	const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+	if (!match) return dateStamp();
+	return `${match[1]}${match[2]}${match[3]}`;
+}
+
 /** Mirror of `FileSystem.ensureDirectoryExists`: a missing dir is fine, other failures are swallowed. */
 async function ensureDir(dir: string): Promise<void> {
 	try {
@@ -113,12 +120,13 @@ async function toMemo(file: string): Promise<Memo> {
 }
 
 /**
- * `YYYYMMDD-N` where N is the highest sequence already used today plus one. A new day restarts at 1.
+ * `YYYYMMDD-N` where N is the highest sequence already used on `date` (default today) plus one.
+ * A new day (or a back-dated day) restarts at 1.
  */
-export async function nextMemoId(root: string): Promise<string> {
-	const today = dateStamp();
+export async function nextMemoId(root: string, date?: string): Promise<string> {
+	const day = date ? dateStampFrom(date) : dateStamp();
 	const files = await listMemoFiles(root);
-	const prefix = `${today}-`;
+	const prefix = `${day}-`;
 	let max = 0;
 	for (const file of files) {
 		const base = basename(file, ".md");
@@ -167,16 +175,27 @@ export async function getMemo(root: string, id: string): Promise<Memo | null> {
 	return toMemo(file);
 }
 
-/** Create a memo: allocates the next id, writes `backlog/memos/<id>.md` with LF endings. */
-export async function createMemo(root: string, content: string, tags: string[] = []): Promise<Memo> {
+/** A pinned `createdDate` must be a stored-format value; anything else falls back to now. */
+const CREATED_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/;
+
+/**
+ * Create a memo: allocates the next id for its day (today unless `createdDate` is pinned, which
+ * supports back-dated capture from the calendar), writes `backlog/memos/<id>.md` with LF endings.
+ */
+export async function createMemo(
+	root: string,
+	content: string,
+	tags: string[] = [],
+	createdDate?: string,
+): Promise<Memo> {
 	const dir = memoDir(root);
 	await ensureDir(dir);
-	const id = await nextMemoId(root);
-	const now = nowStamp();
+	const effectiveDate = createdDate && CREATED_DATE_PATTERN.test(createdDate.trim()) ? createdDate.trim() : nowStamp();
+	const id = await nextMemoId(root, effectiveDate);
 	const frontmatter: Record<string, unknown> = {
 		id,
-		created_date: now,
-		updated_date: now,
+		created_date: effectiveDate,
+		updated_date: nowStamp(),
 		...(tags.length > 0 && { tags }),
 	};
 	const file = join(dir, `${id}.md`);
