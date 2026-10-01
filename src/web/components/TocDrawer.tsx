@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useState } from "react";
+import { type RefObject, useCallback, useMemo, useState } from "react";
 import { useI18n } from "../hooks/useI18n";
 import { useActiveTocId, useTocItems } from "../hooks/useToc";
 import { useTocTree } from "../hooks/useTocTree";
@@ -29,7 +29,13 @@ export default function TocDrawer({
 	const { t } = useI18n();
 	const [isOpen, setIsOpen] = useState(false);
 	const items = useTocItems(containerRef, contentKey);
-	const activeId = useActiveTocId(isOpen ? items : NO_ITEMS, containerRef);
+	// A clicked entry stays selected until the reader scrolls; without this, a
+	// target that is already on screen (or cannot scroll further) could never
+	// become the active entry.
+	const [pinnedId, setPinnedId] = useState<string | null>(null);
+	const clearPin = useCallback(() => setPinnedId(null), []);
+	const activePin = useMemo(() => ({ id: pinnedId, clear: clearPin }), [pinnedId, clearPin]);
+	const activeId = useActiveTocId(isOpen ? items : NO_ITEMS, containerRef, activePin);
 	const { rows, activeAncestors, isCollapsed, toggleFold, toggleAllFolds, anyCollapsed, hasFoldable, releaseFoldAll } =
 		useTocTree(items, activeId);
 
@@ -37,7 +43,12 @@ export default function TocDrawer({
 		(id: string) => {
 			releaseFoldAll();
 			const heading = document.getElementById(id);
-			if (heading && typeof heading.scrollIntoView === "function") {
+			if (!heading) return;
+			setPinnedId(id);
+			// Entries that point at a tab (references/documentation/modified files)
+			// switch to that tab, not just scroll to it.
+			if (heading.getAttribute("role") === "tab") heading.click();
+			if (typeof heading.scrollIntoView === "function") {
 				heading.scrollIntoView({ behavior: "smooth", block: "start" });
 			}
 		},

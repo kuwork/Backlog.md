@@ -9,13 +9,15 @@ interface TabButtonProps {
 	count?: number;
 	active: boolean;
 	onSelect: () => void;
+	/** When set, the tab registers itself as an outline section entry under this label. */
+	tocLabel?: string;
 }
 
 /**
  * One entry of a `role="tablist"` strip. Shared by every tab strip in the UI so strips keep the
  * same shape, weight and active state wherever they appear.
  */
-export default function TabButton({ id, label, count = 0, active, onSelect }: TabButtonProps) {
+export default function TabButton({ id, label, count = 0, active, onSelect, tocLabel }: TabButtonProps) {
 	return (
 		<button
 			type="button"
@@ -23,6 +25,7 @@ export default function TabButton({ id, label, count = 0, active, onSelect }: Ta
 			id={id}
 			aria-selected={active}
 			onClick={onSelect}
+			data-toc-section={tocLabel}
 			className={`px-3 py-1.5 rounded-md text-sm font-semibold tracking-tight transition-colors duration-200 ${
 				active
 					? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
