@@ -25,7 +25,21 @@ function renderTaskItem(task: Task, terminalWidth: number): string {
 
 // ─── Colored TUI ───────────────────────────────────────────────────────────
 
-export async function renderOverviewTui(statistics: TaskStatistics, projectName: string): Promise<void> {
+export interface OverviewScope {
+	/** Set when the corpus included the completed folder. */
+	includeCompleted?: boolean;
+}
+
+/** Both renderers print the corpus, so a reader can tell the two scopes apart. */
+function scopeLabel(scope: OverviewScope): string {
+	return scope.includeCompleted ? "active + completed" : "active only";
+}
+
+export async function renderOverviewTui(
+	statistics: TaskStatistics,
+	projectName: string,
+	scope: OverviewScope = {},
+): Promise<void> {
 	const w = process.stdout.columns || 80;
 
 	if (process.stdout.isTTY) {
@@ -54,6 +68,12 @@ export async function renderOverviewTui(statistics: TaskStatistics, projectName:
 	if (statistics.draftCount > 0) {
 		lines.push(`  ${picocolors.yellow("Drafts:")} ${statistics.draftCount}`);
 	}
+	// The summary block carries the headline metrics, so the completion time belongs here rather
+	// than buried in Project Health.
+	lines.push(
+		`  ${picocolors.bold("Avg Time Spent:")} ${statistics.projectHealth.averageCompletionMinutes} min (n=${statistics.projectHealth.completionSampleCount})`,
+	);
+	lines.push(`  ${picocolors.bold("Scope:")} ${scopeLabel(scope)}`);
 
 	// Section 2: Priority Breakdown
 	lines.push("");
@@ -205,7 +225,7 @@ function renderPlainTaskList(title: string, tasks: Task[]): string {
 	return `${title}\n${rule("-", title.length)}\n${lines.join("\n")}`;
 }
 
-export function renderStatsPlainText(stats: TaskStatistics, projectName: string): void {
+export function renderStatsPlainText(stats: TaskStatistics, projectName: string, scope: OverviewScope = {}): void {
 	const w = process.stdout.columns || 80;
 
 	// Title
@@ -225,6 +245,11 @@ export function renderStatsPlainText(stats: TaskStatistics, projectName: string)
 	if (stats.draftCount > 0) {
 		console.log(`  Drafts: ${stats.draftCount}`);
 	}
+	// Same placement as the colored output: the headline summary, not Project Health.
+	console.log(
+		`  Avg Time Spent: ${stats.projectHealth.averageCompletionMinutes} min (n=${stats.projectHealth.completionSampleCount})`,
+	);
+	console.log(`  Scope: ${scopeLabel(scope)}`);
 
 	// Priority Breakdown
 	console.log("");

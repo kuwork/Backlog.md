@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { getTaskStatistics } from "../core/statistics.ts";
-import type { Task } from "../types/index.ts";
+import type { StatusesConfig, Task } from "../types/index.ts";
+import { resolveTaskTimeSpan } from "../utils/task-time-span.ts";
 
 describe("getTaskStatistics", () => {
 	const statuses = ["To Do", "In Progress", "Done"];
@@ -416,5 +417,107 @@ describe("getTaskStatistics", () => {
 		expect(stats.completionHeatmap[twoDaysAgo]).toBe(1);
 		expect(stats.completionHeatmap[oldDate]).toBeUndefined();
 		expect(Object.keys(stats.completionHeatmap).length).toBe(3);
+	});
+});
+
+describe("getTaskStatistics completion time", () => {
+	/** A machine whose completion status is not named Done, with a dropped status beside it. */
+	const machine: StatusesConfig = [
+		{ name: "Todo", category: "active" },
+		{ name: "Shipped", category: "done", exit: "complete" },
+		{ name: "Dropped", category: "dropped", exit: "archive" },
+	];
+
+	const create = (partial: Partial<Task>): Task => ({
+		id: "task-1",
+		title: "Test Task",
+		status: "Shipped",
+		assignee: [],
+		labels: [],
+		dependencies: [],
+		createdDate: "2026-01-01",
+		rawContent: "",
+		...partial,
+	});
+
+	test("reads completion from the configured status rather than a status named Done", () => {
+		const stats = getTaskStatistics([create({})], [], machine);
+
+		expect(stats.completedTasks).toBe(1);
+		expect(stats.projectHealth.completionSampleCount).toBe(1);
+	});
+
+	test("does not treat a dropped status as a completion", () => {
+		const stats = getTaskStatistics([create({ status: "Dropped" })], [], machine);
+
+		expect(stats.completedTasks).toBe(0);
+		expect(stats.projectHealth.completionSampleCount).toBe(0);
+		expect(stats.projectHealth.averageCompletionMinutes).toBe(0);
+	});
+
+	test("reports zero rather than dividing by an empty sample", () => {
+		const stats = getTaskStatistics([], [], machine);
+
+		expect(stats.projectHealth.averageCompletionMinutes).toBe(0);
+		expect(stats.projectHealth.completionSampleCount).toBe(0);
+	});
+
+	test("covers a completion with no actual timestamps through the fallback chain", () => {
+		const stats = getTaskStatistics(
+			[create({ createdDate: "2026-01-01 10:00", updatedDate: "2026-01-01 11:00" })],
+			[],
+			machine,
+		);
+
+		expect(stats.projectHealth.completionSampleCount).toBe(1);
+		expect(stats.projectHealth.averageCompletionMinutes).toBe(60);
+	});
+
+	test("keeps a zero-length span in the sample instead of dropping it", () => {
+		const stats = getTaskStatistics(
+			[create({ createdDate: "2026-01-01 10:00", updatedDate: "2026-01-01 10:00" })],
+			[],
+			machine,
+		);
+
+		expect(stats.projectHealth.completionSampleCount).toBe(1);
+		expect(stats.projectHealth.averageCompletionMinutes).toBe(0);
+	});
+
+	test("counts an inverted pair at the Gantt clamp of one day", () => {
+		const stats = getTaskStatistics(
+			[create({ actualStart: "2026-01-02 10:00", actualEnd: "2026-01-01 10:00" })],
+			[],
+			machine,
+		);
+
+		expect(stats.projectHealth.completionSampleCount).toBe(1);
+		expect(stats.projectHealth.averageCompletionMinutes).toBe(24 * 60);
+	});
+
+	/**
+	 * Parity with the surface the number is defined against: the statistic is the mean of the very
+	 * spans the Gantt resolves. Every task here carries a createdDate, so the helper's `now`
+	 * fallback never fires and the two calls cannot disagree about the clock.
+	 */
+	test("averages the same spans the Gantt resolution produces", () => {
+		const tasks = [
+			create({ id: "task-1", actualStart: "2026-01-01 10:00", actualEnd: "2026-01-01 10:30" }),
+			create({ id: "task-2", createdDate: "2026-01-02 09:00", updatedDate: "2026-01-02 12:00" }),
+			create({ id: "task-3", createdDate: "2026-01-03 09:00", updatedDate: "2026-01-03 09:00" }),
+		];
+		const expected = Math.round(
+			tasks.reduce((total, task) => {
+				const { start, end } = resolveTaskTimeSpan(task);
+				return total + (end.getTime() - start.getTime());
+			}, 0) /
+				tasks.length /
+				(60 * 1000),
+		);
+
+		const stats = getTaskStatistics(tasks, [], machine);
+
+		expect(stats.projectHealth.completionSampleCount).toBe(tasks.length);
+		expect(stats.projectHealth.averageCompletionMinutes).toBe(expected);
 	});
 });

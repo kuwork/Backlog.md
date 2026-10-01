@@ -6323,6 +6323,7 @@ program
 	.command("overview")
 	.description("display project statistics and metrics")
 	.option("--plain", "use plain text output without colors")
+	.option("--completed", "include tasks from the completed folder")
 	.action(async (options) => {
 		try {
 			const cwd = await requireProjectRoot();

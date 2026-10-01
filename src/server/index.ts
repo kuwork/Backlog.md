@@ -216,8 +216,8 @@ export class BacklogServer {
 	// delivered as its own message, while tasks/milestones keep their merge-to-widest semantics.
 	private pendingDataBroadcastScopes = new Set<DataUpdatedScope>();
 	private configWatcher: { stop: () => void } | null = null;
-	// Statistics cache
-	private cachedStatisticsResponse: string | null = null;
+	// Statistics cache, one entry per corpus scope so the two can never serve each other's numbers
+	private readonly statisticsCache = new Map<string, string>();
 	private statisticsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	private statisticsDirty = false;
 	// Graph Service (doc-014 §3.3): hosted in-process with the Web UI; null when another process
@@ -413,9 +413,36 @@ export class BacklogServer {
 		}
 	}
 
+	/** One cache key per corpus scope, so a scope switch never reads the other scope's body. */
+	private statisticsScopeKey(includeCompleted: boolean): string {
+		return includeCompleted ? "active+completed" : "active";
+	}
+
+	/**
+	 * The single place statistics are computed, for either corpus. The warm path (recompute after a
+	 * task change) and the cold path (first request after a restart) both come through here, so the
+	 * two can no longer disagree about which tasks are counted or how a status is read.
+	 */
+	private async computeStatistics(includeCompleted: boolean): Promise<string> {
+		const store = await this.getContentStoreInstance();
+		await store.ensureInitialized();
+		const config = await this.core.filesystem.loadConfig();
+		const drafts = await this.core.filesystem.listDrafts();
+		const tasks = store.getTasks(undefined, { includeCompleted });
+		// Hand over the raw config, not a name list: deriving the status names is getTaskStatistics'
+		// job, and it needs the categories to tell a completion from a drop.
+		const statistics = getTaskStatistics(tasks, drafts, config?.statuses ?? [...DEFAULT_STATUSES]);
+
+		return JSON.stringify({
+			...statistics,
+			statusCounts: Object.fromEntries(statistics.statusCounts),
+			priorityCounts: Object.fromEntries(statistics.priorityCounts),
+		});
+	}
+
 	private invalidateStatistics(): void {
 		this.statisticsDirty = true;
-		this.cachedStatisticsResponse = null;
+		this.statisticsCache.clear();
 		if (this.statisticsDebounceTimer) {
 			clearTimeout(this.statisticsDebounceTimer);
 		}
@@ -430,19 +457,14 @@ export class BacklogServer {
 		this.statisticsDirty = false;
 
 		try {
-			const store = await this.getContentStoreInstance();
-			const snapshot = store.getSnapshot();
-			const tasks = snapshot.tasks;
-			const config = await this.core.filesystem.loadConfig();
-			const statuses = statusNames(config?.statuses);
-			const drafts = await this.core.filesystem.listDrafts();
-			const statistics = getTaskStatistics(tasks, drafts, statuses);
-			const response = {
-				...statistics,
-				statusCounts: Object.fromEntries(statistics.statusCounts),
-				priorityCounts: Object.fromEntries(statistics.priorityCounts),
-			};
-			this.cachedStatisticsResponse = JSON.stringify(response);
+			// Keep both scopes warm, so a client holding the widened corpus is never served a stale
+			// body after a task change and no scope has to be computed on the request path.
+			for (const includeCompleted of [false, true]) {
+				this.statisticsCache.set(
+					this.statisticsScopeKey(includeCompleted),
+					await this.computeStatistics(includeCompleted),
+				);
+			}
 
 			// If dirty again during computation, schedule another recompute
 			if (this.statisticsDirty) {
@@ -706,7 +728,7 @@ export class BacklogServer {
 						GET: async () => await this.handleGetVersion(),
 					},
 					"/api/statistics": {
-						GET: async () => await this.handleGetStatistics(),
+						GET: async (req: Request) => await this.handleGetStatistics(req),
 					},
 					"/api/graph": {
 						GET: async () => await this.handleGetGraph(),
@@ -1197,8 +1219,8 @@ export class BacklogServer {
 				limit,
 				types,
 				filters,
-				// Query-parameter passthrough only: the web app does not send this yet, and the
-				// board/search-panel composition must not change in this task.
+				// The show-completed toggle sends this from the board and the task list, and the
+				// statistics page uses the same parameter for its own scope.
 				includeCompleted: url.searchParams.get("completed") === "true",
 			});
 			return Response.json(results);
@@ -2708,37 +2730,18 @@ export class BacklogServer {
 		}
 	}
 
-	private async handleGetStatistics(): Promise<Response> {
+	private async handleGetStatistics(req: Request): Promise<Response> {
 		try {
-			// Return cached response immediately if available
-			if (this.cachedStatisticsResponse) {
-				return new Response(this.cachedStatisticsResponse, {
-					headers: { "Content-Type": "application/json" },
-				});
+			const includeCompleted = new URL(req.url).searchParams.get("completed") === "true";
+			const cacheKey = this.statisticsScopeKey(includeCompleted);
+
+			// The warm path fills this during startup; a cold cache is just a first request.
+			const cached = this.statisticsCache.get(cacheKey);
+			const body = cached ?? (await this.computeStatistics(includeCompleted));
+			if (!cached) {
+				this.statisticsCache.set(cacheKey, body);
 			}
 
-			// Compute on-demand if no cache exists
-			const servicesWereReady = this.servicesInitialized;
-			const store = await this.getContentStoreInstance();
-			const currentConfig = await this.core.filesystem.loadConfig();
-			await store.ensureConfigWatcher();
-			if (servicesWereReady) await this.core.refreshTasksForTaskRead();
-			const corpus = store.getTaskCorpusSnapshot();
-			const corpusConfig = corpus.config ?? currentConfig;
-			const tasks = corpus.identityIndex?.getTasks(true) ?? [...corpus.activeTasks, ...corpus.completedTasks];
-			const drafts = await this.core.filesystem.listDrafts();
-			const statuses = (corpusConfig?.statuses || DEFAULT_STATUSES) as string[];
-
-			const statistics = getTaskStatistics(tasks, drafts, statuses);
-
-			const response = {
-				...statistics,
-				statusCounts: Object.fromEntries(statistics.statusCounts),
-				priorityCounts: Object.fromEntries(statistics.priorityCounts),
-			};
-
-			const body = JSON.stringify(response);
-			this.cachedStatisticsResponse = body;
 			return new Response(body, { headers: { "Content-Type": "application/json" } });
 		} catch (error) {
 			console.error("Error getting statistics:", error);
