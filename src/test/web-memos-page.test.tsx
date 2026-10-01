@@ -4,9 +4,11 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import type { Memo } from "../core/memos.ts";
-import MemosPage from "../web/components/MemosPage.tsx";
+import type { Decision, Document as DocEntity, Task } from "../types";
+import MemosPage, { MemoCard } from "../web/components/MemosPage.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext";
+import { TaskIdIndexProvider } from "../web/contexts/TaskIdIndexContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext";
 
 /**
@@ -391,5 +393,93 @@ describe("MemosPage calendar", () => {
 		);
 		expect(feedTab?.getAttribute("aria-selected")).toBe("true");
 		expect(container.textContent).toContain("2026-10-01");
+	});
+});
+
+describe("MemoCard knowledge web (BACK-734)", () => {
+	const asTask = (id: string) => ({ id }) as unknown as Task;
+	const asDoc = (id: string) => ({ id }) as unknown as DocEntity;
+	const asDecision = (id: string) => ({ id }) as unknown as Decision;
+
+	const index = {
+		tasks: [asTask("task-123")],
+		docs: [asDoc("doc-9")],
+		decisions: [asDecision("decision-1")],
+	};
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		act(() => root?.unmount());
+		root = null;
+	});
+
+	async function renderCard(content: string, withIndex = true): Promise<HTMLElement> {
+		const container = setupDom("/memos");
+		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
+		root = createRoot(container);
+		await act(async () => {
+			root?.render(
+				<ThemeProvider>
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<BrowserRouter>
+								<TaskIdIndexProvider
+									tasks={withIndex ? index.tasks : []}
+									docs={withIndex ? index.docs : []}
+									decisions={withIndex ? index.decisions : []}
+								>
+									<MemoCard
+										memo={makeMemo("20261001-3", content, [])}
+										onUpdate={async () => {}}
+										onDelete={async () => {}}
+									/>
+								</TaskIdIndexProvider>
+							</BrowserRouter>
+						</ImageLightboxProvider>
+					</I18nProvider>
+				</ThemeProvider>,
+			);
+		});
+		await flush();
+		return container;
+	}
+
+	it("renders a bare task id as a link to the task route", async () => {
+		const container = await renderCard("See task-123 for context");
+		const link = container.querySelector('a[href="/task/123"]');
+		expect(link).toBeTruthy();
+		expect(link?.textContent).toContain("task-123");
+	});
+
+	it("renders bare doc and decision ids as links to their routes", async () => {
+		const container = await renderCard("Cross-reference doc-9 and decision-1 here");
+		expect(container.querySelector('a[href="/documentation/9"]')?.textContent).toContain("doc-9");
+		expect(container.querySelector('a[href="/decisions/1"]')?.textContent).toContain("decision-1");
+	});
+
+	it("renders a [[wiki/path]] wikilink as a link to the wiki page", async () => {
+		const container = await renderCard("Background in [[wiki/notes]]");
+		const link = container.querySelector('a[href^="/wiki/"]');
+		expect(link).toBeTruthy();
+		expect(link?.textContent).toContain("wiki/notes");
+	});
+
+	it("leaves entity ids inside inline code untouched", async () => {
+		const container = await renderCard("Do not link `task-123` inside code");
+		expect(container.querySelector('a[href="/task/123"]')).toBeNull();
+		expect(container.textContent).toContain("task-123");
+	});
+
+	it("navigates to the entity without a full page reload when the link is clicked", async () => {
+		const container = await renderCard("Jump to task-123");
+		const link = container.querySelector('a[href="/task/123"]') as HTMLElement | null;
+		expect(link).toBeTruthy();
+		await act(async () => {
+			reactProps(link as Element).onClick?.({ preventDefault() {} });
+			await Promise.resolve();
+		});
+		await flush();
+		// SPA navigation: the location moved client-side; a full reload would 404 in jsdom.
+		expect(globalThis.window.location.pathname).toBe("/task/123");
 	});
 });
