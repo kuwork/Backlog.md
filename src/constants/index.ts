@@ -24,6 +24,8 @@ export const DEFAULT_DIRECTORIES = {
 	DOCS: "docs",
 	/** Decision logs directory */
 	DECISIONS: "decisions",
+	/** Quick-capture memos directory */
+	MEMOS: "memos",
 	/** Milestones directory */
 	MILESTONES: "milestones",
 } as const;
