@@ -1018,6 +1018,8 @@ export const ja: TranslationDict = {
 		minutesAgo: "{n}分前",
 		moreActions: "その他の操作",
 		editMemo: "メモを編集",
+		copyId: "IDをコピー",
+		copied: "コピーしました",
 		saveChanges: "保存",
 		confirmDelete: "このメモを完全に削除しますか？",
 	},

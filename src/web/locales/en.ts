@@ -1026,6 +1026,8 @@ export const en = {
 		minutesAgo: "{n} min ago",
 		moreActions: "More actions",
 		editMemo: "Edit memo",
+		copyId: "Copy ID",
+		copied: "Copied",
 		saveChanges: "Save",
 		confirmDelete: "Delete this memo permanently?",
 	},

@@ -997,6 +997,8 @@ export const zhTW: TranslationDict = {
 		minutesAgo: "{n} 分鐘前",
 		moreActions: "更多操作",
 		editMemo: "編輯隨手記",
+		copyId: "複製 ID",
+		copied: "已複製",
 		saveChanges: "儲存",
 		confirmDelete: "確定要永久刪除這則隨手記嗎？",
 	},

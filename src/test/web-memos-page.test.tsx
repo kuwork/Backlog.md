@@ -354,6 +354,31 @@ describe("MemosPage feed", () => {
 		expect(container.querySelector("#memos-calendar-popover")).toBeNull();
 		expect(cardTexts(container).length).toBeGreaterThan(0);
 	});
+
+	it("copies the memo id from the card menu with a transient confirmation", async () => {
+		const container = await renderMemos();
+		// setupDom swaps in a fresh jsdom navigator, so the mock goes on after the render.
+		const written: string[] = [];
+		Object.defineProperty(globalThis.navigator, "clipboard", {
+			value: {
+				writeText: async (text: string) => {
+					written.push(text);
+				},
+			},
+			configurable: true,
+		});
+
+		await clickElement(container.querySelector('[aria-label="More actions"]'));
+		const menu = container.querySelector('[role="menu"]') as HTMLElement;
+		expect(menu).toBeTruthy();
+		expect(buttonByText(menu, "Copy ID")).toBeTruthy();
+
+		await clickButton(menu, "Copy ID");
+		// The newest card heads the feed, so its id is what lands on the clipboard.
+		expect(written).toEqual(["20261001-3"]);
+		// The menu stays open for a beat showing the confirmation before closing itself.
+		expect(buttonByText(menu, "Copied")).toBeTruthy();
+	});
 });
 
 const calendarDay = (container: HTMLElement, date: string): HTMLElement | null =>
@@ -563,6 +588,19 @@ describe("MemoCard knowledge web (BACK-734)", () => {
 		await flush();
 		// SPA navigation: the location moved client-side; a full reload would 404 in jsdom.
 		expect(globalThis.window.location.pathname).toBe("/task/123");
+	});
+
+	it("carries /memos as the background location so the task modal closes back onto the feed", async () => {
+		const container = await renderCard("Jump to task-123");
+		const link = container.querySelector('a[href="/task/123"]') as HTMLElement | null;
+		expect(link).toBeTruthy();
+		await act(async () => {
+			reactProps(link as Element).onClick?.({ preventDefault() {} });
+			await Promise.resolve();
+		});
+		await flush();
+		const state = window.history.state as { usr?: { backgroundLocation?: { pathname?: string } } } | null;
+		expect(state?.usr?.backgroundLocation?.pathname).toBe("/memos");
 	});
 
 	it("shows the elapsed minutes for a recent memo instead of a persistent 'just now'", async () => {
