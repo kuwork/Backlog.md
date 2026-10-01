@@ -1180,14 +1180,14 @@ export class BacklogServer {
 
 			let types: SearchResultType[] | undefined;
 			if (typeParams.length > 0) {
-				const allowed: SearchResultType[] = ["task", "document", "decision", "wiki"];
+				const allowed: SearchResultType[] = ["task", "document", "decision", "wiki", "memo"];
 				const normalizedTypes = typeParams
 					.map((value) => value.toLowerCase())
 					.filter((value): value is SearchResultType => {
 						return allowed.includes(value as SearchResultType);
 					});
 				if (normalizedTypes.length === 0) {
-					return Response.json({ error: "type must be task, document, or decision" }, { status: 400 });
+					return Response.json({ error: `type must be one of ${allowed.join(", ")}` }, { status: 400 });
 				}
 				types = normalizedTypes;
 			}

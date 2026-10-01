@@ -12,6 +12,13 @@ import type {
 } from "../types/index.ts";
 import { buildTaskSearchFields, createTaskFilterMatcher, TASK_SEARCH_FUSE_OPTIONS } from "../utils/task-search.ts";
 import type { ContentStore, ContentStoreEvent } from "./content-store.ts";
+import type { Memo } from "./memos.ts";
+
+/**
+ * Memos live outside the ContentStore, so their corpus ages independently of store events: how
+ * long a memo set is trusted before a search triggers a reload in the background.
+ */
+const MEMO_CORPUS_TTL_MS = 500;
 
 interface BaseSearchEntity {
 	readonly id: string;
@@ -46,7 +53,18 @@ interface WikiSearchEntity extends BaseSearchEntity {
 	readonly fileName: string;
 }
 
-type SearchEntity = TaskSearchEntity | DocumentSearchEntity | DecisionSearchEntity | WikiSearchEntity;
+interface MemoSearchEntity extends BaseSearchEntity {
+	readonly type: "memo";
+	readonly memo: Memo;
+	readonly fileName: string;
+}
+
+type SearchEntity =
+	| TaskSearchEntity
+	| DocumentSearchEntity
+	| DecisionSearchEntity
+	| WikiSearchEntity
+	| MemoSearchEntity;
 
 export class SearchService {
 	private initialized = false;
@@ -57,10 +75,20 @@ export class SearchService {
 	private documents: DocumentSearchEntity[] = [];
 	private decisions: DecisionSearchEntity[] = [];
 	private wikis: WikiSearchEntity[] = [];
+	private memos: MemoSearchEntity[] = [];
 	private collection: SearchEntity[] = [];
 	private version = 0;
+	private memosLoadedAt = 0;
+	private memosRefreshing: Promise<void> | null = null;
 
-	constructor(private readonly store: ContentStore) {}
+	/**
+	 * @param store Source of truth for tasks/documents/decisions/wikis.
+	 * @param loadMemos Reads the memo corpus; memos are deliberately not part of the store snapshot.
+	 */
+	constructor(
+		private readonly store: ContentStore,
+		private readonly loadMemos: () => Promise<Memo[]> = () => Promise.resolve([]),
+	) {}
 
 	async ensureInitialized(): Promise<void> {
 		if (this.initialized) {
@@ -88,6 +116,7 @@ export class SearchService {
 		this.documents = [];
 		this.decisions = [];
 		this.wikis = [];
+		this.memos = [];
 		this.initialized = false;
 		this.initializing = null;
 	}
@@ -97,11 +126,16 @@ export class SearchService {
 			throw new Error("SearchService not initialized. Call ensureInitialized() first.");
 		}
 
+		// Nothing in the store signals a memo change, so every search whose memo corpus has aged
+		// past the TTL reloads it in the background: memos written after startup become findable
+		// without restarting the process.
+		this.refreshMemosWhenStale();
+
 		const { query = "", limit, types, filters, includeCompleted = false } = options;
 
 		const trimmedQuery = query.trim();
 		const allowedTypes = new Set<SearchResultType>(
-			types && types.length > 0 ? types : ["task", "document", "decision", "wiki"],
+			types && types.length > 0 ? types : ["task", "document", "decision", "wiki", "memo"],
 		);
 		const taskMatcher = this.createTaskMatcher(filters);
 
@@ -154,6 +188,54 @@ export class SearchService {
 		};
 	}
 
+	private toMemoEntity(memo: Memo): MemoSearchEntity {
+		return {
+			id: memo.id,
+			type: "memo",
+			title: memo.displayTitle,
+			bodyText: memo.rawContent,
+			memo,
+			fileName: `${memo.id}.md`,
+			idVariants: [],
+			dependencyIds: [],
+			modifiedFiles: [],
+		};
+	}
+
+	/**
+	 * Reloads the memo corpus through the injected loader and rebuilds the index. Concurrent
+	 * callers share one reload. Exposed so a memo write path can invalidate explicitly; every other
+	 * path (initialize, store events, aged-out searches) ends up here too.
+	 */
+	async refreshMemos(): Promise<void> {
+		if (this.memosRefreshing) {
+			return this.memosRefreshing;
+		}
+
+		const refresh = this.loadMemos()
+			.then((memos) => {
+				this.memos = memos.map((memo) => this.toMemoEntity(memo));
+				this.memosLoadedAt = Date.now();
+				this.rebuildIndex();
+			})
+			.finally(() => {
+				this.memosRefreshing = null;
+			});
+
+		this.memosRefreshing = refresh;
+		return refresh;
+	}
+
+	/** Kick off a background reload when the memo corpus aged out; never blocks the current search. */
+	private refreshMemosWhenStale(): void {
+		if (Date.now() - this.memosLoadedAt < MEMO_CORPUS_TTL_MS) {
+			return;
+		}
+		void this.refreshMemos().catch(() => {
+			// The memo directory may not exist yet; the next search retries from an empty corpus.
+		});
+	}
+
 	private async initialize(): Promise<void> {
 		const snapshot = await this.store.ensureInitialized();
 		this.applySnapshot(
@@ -163,6 +245,7 @@ export class SearchService {
 			snapshot.wikis,
 			snapshot.taskCorpus?.completedTasks ?? [],
 		);
+		await this.refreshMemos();
 
 		if (!this.unsubscribe) {
 			this.unsubscribe = this.store.subscribe((event) => {
@@ -186,6 +269,9 @@ export class SearchService {
 			event.snapshot.wikis,
 			event.snapshot.taskCorpus?.completedTasks ?? [],
 		);
+		void this.refreshMemos().catch(() => {
+			// A failed memo reload leaves the last good corpus in place.
+		});
 	}
 
 	private applySnapshot(
@@ -240,7 +326,12 @@ export class SearchService {
 			};
 		});
 
-		this.collection = [...this.tasks, ...this.documents, ...this.decisions, ...this.wikis];
+		// Memos are appended last so every other kind keeps the ordering it had before memos joined.
+		this.rebuildIndex();
+	}
+
+	private rebuildIndex(): void {
+		this.collection = [...this.tasks, ...this.documents, ...this.decisions, ...this.wikis, ...this.memos];
 		this.rebuildFuse();
 	}
 
@@ -322,6 +413,15 @@ export class SearchService {
 			}
 		}
 
+		if (allowedTypes.has("memo")) {
+			for (const entity of this.memos) {
+				results.push(this.mapEntityToResult(entity));
+				if (limit && results.length >= limit) {
+					return results;
+				}
+			}
+		}
+
 		return results;
 	}
 
@@ -352,6 +452,15 @@ export class SearchService {
 				type: "wiki",
 				score,
 				wiki: entity.wiki,
+				matches,
+			};
+		}
+
+		if (entity.type === "memo") {
+			return {
+				type: "memo",
+				score,
+				memo: entity.memo,
 				matches,
 			};
 		}

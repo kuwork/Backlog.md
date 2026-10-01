@@ -46,6 +46,7 @@ const TYPE_ICON_COLORS: Record<SearchResultType, string> = {
 	document: "text-green-600 dark:text-green-400",
 	decision: "text-stone-600 dark:text-stone-400",
 	wiki: "text-blue-600 dark:text-blue-400",
+	memo: "text-amber-600 dark:text-amber-400",
 };
 
 const SearchTypeIcon: React.FC<{ type: SearchResultType | "all"; className?: string }> = ({
@@ -484,12 +485,14 @@ const SearchDialog: React.FC = () => {
 		{ type: "document", label: t.searchDialog.filterDocument },
 		{ type: "wiki", label: t.searchDialog.filterWiki },
 		{ type: "decision", label: t.searchDialog.filterDecision },
+		{ type: "memo", label: t.searchDialog.filterMemo },
 	];
 
 	const groupLabel = (rowType: SearchResultType): string => {
 		if (rowType === "task") return t.searchDialog.filterTask;
 		if (rowType === "document") return t.searchDialog.filterDocument;
 		if (rowType === "wiki") return t.searchDialog.filterWiki;
+		if (rowType === "memo") return t.searchDialog.filterMemo;
 		return t.searchDialog.filterDecision;
 	};
 

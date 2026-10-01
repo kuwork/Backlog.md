@@ -79,6 +79,7 @@ import { isTerminalStatus } from "../utils/terminal-status.ts";
 import { AssetManager } from "./assets.ts";
 import { migrateConfig, needsMigration } from "./config-migration.ts";
 import { ContentStore, type TaskCorpusSnapshot } from "./content-store.ts";
+import { listMemos } from "./memos.ts";
 import { migrateDraftPrefixes, needsDraftPrefixMigration } from "./prefix-migration.ts";
 import {
 	calculateBlockOrdinals,
@@ -413,7 +414,7 @@ export class Core {
 			}
 			let searchService = this.searchService;
 			if (!searchService) {
-				searchService = new SearchService(store);
+				searchService = new SearchService(store, () => listMemos(filesystem.rootDir));
 				this.searchService = searchService;
 			}
 			try {

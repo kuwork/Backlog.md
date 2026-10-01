@@ -1,6 +1,7 @@
 import type {
 	DecisionSearchResult,
 	DocumentSearchResult,
+	MemoSearchResult,
 	SearchResult,
 	SearchResultType,
 	TaskSearchResult,
@@ -33,7 +34,7 @@ export interface SearchResultMeta {
 	tags?: string[];
 }
 
-const TYPE_ORDER: SearchResultType[] = ["task", "document", "wiki", "decision"];
+const TYPE_ORDER: SearchResultType[] = ["task", "document", "wiki", "decision", "memo"];
 
 export function parseSearchTypeParam(raw: string | null | undefined): SearchFilterType {
 	switch (raw) {
@@ -46,6 +47,8 @@ export function parseSearchTypeParam(raw: string | null | undefined): SearchFilt
 			return "decision";
 		case "wiki":
 			return "wiki";
+		case "memo":
+			return "memo";
 		default:
 			return "all";
 	}
@@ -66,6 +69,13 @@ export function getSearchResultLink(result: SearchResult): string {
 	}
 	if (result.type === "wiki") {
 		return `/wiki/${encodeWikiPath((result as WikiSearchResult).wiki.path)}`;
+	}
+	// Memos have no detail route of their own: they are read in the feed, so land on the memos page
+	// already filtered to the day the memo was captured.
+	if (result.type === "memo") {
+		const memo = (result as MemoSearchResult).memo;
+		const day = memo.createdDate.slice(0, 10);
+		return day ? `/memos?date=${day}` : "/memos";
 	}
 	const task = (result as TaskSearchResult).task;
 	const base = task.id.startsWith("DRAFT-") ? "draft" : "task";
@@ -99,6 +109,10 @@ export function getSearchResultMeta(result: SearchResult): SearchResultMeta {
 				? wiki.frontmatter.title
 				: (wiki.path.replace(/\.md$/i, "").split("/").pop() ?? wiki.path);
 		return { id: wiki.path, title };
+	}
+	if (result.type === "memo") {
+		const memo = (result as MemoSearchResult).memo;
+		return { id: memo.id, title: memo.displayTitle, tags: memo.tags };
 	}
 	const task = (result as TaskSearchResult).task;
 	return {
