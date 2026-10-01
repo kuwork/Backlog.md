@@ -36,8 +36,20 @@ const milestoneEntities: Milestone[] = [
 
 const baseTasks: Task[] = [
 	createTask({ id: "task-101", title: "Setup authentication flow", status: "In Progress", milestone: "m-1" }),
-	createTask({ id: "task-202", title: "Deploy pipeline", status: "To Do", milestone: "m-1", labels: ["backend-infra"] }),
-	createTask({ id: "task-404", title: "Ship docs site", status: "To Do", milestone: "m-2", description: "Publishes the needle-body-content portal." }),
+	createTask({
+		id: "task-202",
+		title: "Deploy pipeline",
+		status: "To Do",
+		milestone: "m-1",
+		labels: ["backend-infra"],
+	}),
+	createTask({
+		id: "task-404",
+		title: "Ship docs site",
+		status: "To Do",
+		milestone: "m-2",
+		description: "Publishes the needle-body-content portal.",
+	}),
 	createTask({ id: "task-303", title: "Draft release notes", status: "To Do" }),
 ];
 

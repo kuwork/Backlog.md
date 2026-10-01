@@ -30,9 +30,9 @@ describe("AcceptanceCriteriaProgress", () => {
 				})}
 			/>,
 		);
-		expect(html).toContain("data-cell-count=\"10\"");
-		expect(html).toContain("aria-valuenow=\"2\"");
-		expect(html).toContain("aria-valuemax=\"3\"");
+		expect(html).toContain('data-cell-count="10"');
+		expect(html).toContain('aria-valuenow="2"');
+		expect(html).toContain('aria-valuemax="3"');
 		expect(html).toContain("2 of 3 acceptance criteria checked");
 	});
 
@@ -48,7 +48,7 @@ describe("AcceptanceCriteriaProgress", () => {
 				})}
 			/>,
 		);
-		expect(html).toContain("data-cell-count=\"5\"");
+		expect(html).toContain('data-cell-count="5"');
 		expect(html).toContain("1 of 2 acceptance criteria checked");
 	});
 
@@ -68,8 +68,8 @@ describe("AcceptanceCriteriaProgress", () => {
 		);
 		expect(html).toContain(">2/4<");
 		expect(html).toContain("width:50%");
-		expect(html).toContain("aria-valuenow=\"2\"");
-		expect(html).toContain("aria-valuemax=\"4\"");
+		expect(html).toContain('aria-valuenow="2"');
+		expect(html).toContain('aria-valuemax="4"');
 		expect(html).not.toContain("data-cell-count");
 		expect(html.indexOf("width:50%")).toBeLessThan(html.indexOf(">2/4<"));
 	});
@@ -98,9 +98,7 @@ describe("AcceptanceCriteriaProgress", () => {
 	});
 
 	it("renders nothing for non-In-Progress statuses", () => {
-		const html = renderToString(
-			<AcceptanceCriteriaProgress cells={10} task={task({ status: "To Do" })} />,
-		);
+		const html = renderToString(<AcceptanceCriteriaProgress cells={10} task={task({ status: "To Do" })} />);
 		expect(html).toBe("");
 	});
 });

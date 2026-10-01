@@ -1,18 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { apiClient } from "../lib/api";
-import MermaidMarkdown from "./MermaidMarkdown";
-import { usePageToc } from "../contexts/TocContext";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import type { WikiPage } from "../../types";
 import ErrorBoundary from "../components/ErrorBoundary";
+import { useTheme } from "../contexts/ThemeContext";
+import { usePageToc } from "../contexts/TocContext";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import { encodeWikiPath } from "../utils/urlHelpers";
+import { resolveWikiPath } from "../utils/wikiLinks";
+import ChipInput from "./ChipInput";
+import MermaidMarkdown from "./MermaidMarkdown";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { SuccessToast } from "./SuccessToast";
-import { useTheme } from "../contexts/ThemeContext";
-import ChipInput from "./ChipInput";
-import { useI18n } from '../hooks/useI18n';
-import { encodeWikiPath } from '../utils/urlHelpers';
-import { resolveWikiPath } from '../utils/wikiLinks';
-import type { WikiPage } from "../../types";
 
 /**
  * Resolve a standard Markdown relative link against the current wiki page path.
@@ -47,6 +47,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 	const navigate = useNavigate();
 	const location = useLocation();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		let cancelled = false;
 		const load = async () => {
@@ -64,9 +65,12 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 			}
 		};
 		load();
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [path]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		if (!previewContentRef.current) return;
 		const container = previewContentRef.current;
@@ -93,7 +97,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 
 			if (href.startsWith("/task/")) {
 				e.preventDefault();
-				const taskId = href.slice("/task/".length).split('/')[0];
+				const taskId = href.slice("/task/".length).split("/")[0];
 				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
 				onClose();
 				return;
@@ -134,16 +138,32 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 				<div className="text-gray-500 dark:text-gray-400 py-8 text-center">{t.common.loading}</div>
 			) : previewError || !previewPage ? (
 				<div className="text-center py-8">
-					<svg className="mx-auto h-10 w-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+					<svg
+						aria-hidden="true"
+						className="mx-auto h-10 w-10 text-red-400"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+						/>
 					</svg>
 					<p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{previewError?.message || t.common.notFound}</p>
 				</div>
 			) : (
 				<div className="space-y-4">
 					<div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-						<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+						<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+							/>
 						</svg>
 						<span>{previewPage.path}</span>
 					</div>
@@ -152,7 +172,15 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 						className="prose prose-sm !max-w-none w-full p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 						data-color-mode={theme}
 					>
-						<MermaidMarkdown source={previewPage?.content || ""} wikilinkBasePath={path} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
+						<MermaidMarkdown
+							source={previewPage?.content || ""}
+							wikilinkBasePath={path}
+							onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+							onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
+							onDocClick={(docId) => navigate(`/documentation/${docId}`)}
+							onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
+							onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
+						/>
 					</div>
 				</div>
 			)}
@@ -185,8 +213,12 @@ export default function WikiDetail() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
-	const hasChanges = editContent !== originalContent || editTitle !== originalTitle || JSON.stringify(editLabels) !== JSON.stringify(originalLabels);
+	const hasChanges =
+		editContent !== originalContent ||
+		editTitle !== originalTitle ||
+		JSON.stringify(editLabels) !== JSON.stringify(originalLabels);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const loadWikiPage = useCallback(async () => {
 		if (!wikiPath) return;
 		try {
@@ -210,6 +242,7 @@ export default function WikiDetail() {
 		}
 	}, [wikiPath, loadWikiPage]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		if (!contentRef.current) return;
 		const container = contentRef.current;
@@ -235,7 +268,7 @@ export default function WikiDetail() {
 
 			if (href.startsWith("/task/")) {
 				e.preventDefault();
-				const taskId = href.slice("/task/".length).split('/')[0];
+				const taskId = href.slice("/task/".length).split("/")[0];
 				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
 				return;
 			}
@@ -269,9 +302,7 @@ export default function WikiDetail() {
 			typeof page?.frontmatter?.title === "string" && page.frontmatter.title
 				? page.frontmatter.title
 				: page?.path.split("/").pop()?.replace(/\.md$/i, "") || "";
-		const currentLabels = Array.isArray(page?.frontmatter?.labels)
-			? page.frontmatter.labels.map(String)
-			: [];
+		const currentLabels = Array.isArray(page?.frontmatter?.labels) ? page.frontmatter.labels.map(String) : [];
 		setEditContent(page?.content || "");
 		setOriginalContent(page?.content || "");
 		setEditTitle(currentTitle);
@@ -298,6 +329,7 @@ export default function WikiDetail() {
 		return result;
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const handleSave = useCallback(async () => {
 		if (!wikiPath || !hasChanges) return;
 		try {
@@ -328,8 +360,19 @@ export default function WikiDetail() {
 		return (
 			<div className="flex-1 flex items-center justify-center p-8">
 				<div className="text-center">
-					<svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+					<svg
+						aria-hidden="true"
+						className="mx-auto h-12 w-12 text-gray-400"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+						/>
 					</svg>
 					<h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t.wiki.noPageSelected}</h3>
 					<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.wiki.selectPageHint}</p>
@@ -350,8 +393,19 @@ export default function WikiDetail() {
 		return (
 			<div className="flex-1 flex items-center justify-center p-8">
 				<div className="text-center">
-					<svg className="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+					<svg
+						aria-hidden="true"
+						className="mx-auto h-12 w-12 text-red-400"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+						/>
 					</svg>
 					<h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t.wiki.failedToLoad}</h3>
 					<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error?.message || t.common.notFound}</p>
@@ -364,8 +418,6 @@ export default function WikiDetail() {
 		typeof page.frontmatter?.title === "string" && page.frontmatter.title
 			? page.frontmatter.title
 			: page.path.split("/").pop()?.replace(/\.md$/i, "") || page.path;
-
-
 
 	return (
 		<ErrorBoundary>
@@ -392,8 +444,13 @@ export default function WikiDetail() {
 											placeholder={t.taskDetails.placeholderLabels}
 										/>
 										<div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-											<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+											<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+												/>
 											</svg>
 											<span>{page.path}</span>
 										</div>
@@ -420,14 +477,36 @@ export default function WikiDetail() {
 										})()}
 										<div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
 											<div className="flex items-center space-x-2">
-												<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+												<svg
+													aria-hidden="true"
+													className="w-4 h-4"
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+													/>
 												</svg>
 												<span>{t.nav.wiki}</span>
 											</div>
 											<div className="flex items-center space-x-2">
-												<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+												<svg
+													aria-hidden="true"
+													className="w-4 h-4"
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+													/>
 												</svg>
 												<span>{page.path}</span>
 											</div>
@@ -439,28 +518,37 @@ export default function WikiDetail() {
 								{isEditing ? (
 									<>
 										<button
+											type="button"
 											onClick={handleCancelEdit}
 											className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 										>
 											{t.common.cancel}
 										</button>
 										<button
+											type="button"
 											onClick={handleSave}
 											disabled={!hasChanges || isSaving}
 											className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 ${
-											hasChanges && !isSaving
-												? 'bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400'
-												: 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-										}`}
+												hasChanges && !isSaving
+													? "bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400"
+													: "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+											}`}
 										>
-											<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+											<svg
+												aria-hidden="true"
+												className="w-4 h-4 mr-2"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 											</svg>
 											{isSaving ? t.common.saving : t.common.save}
 										</button>
 									</>
 								) : (
 									<button
+										type="button"
 										onClick={handleEdit}
 										className="px-4 py-2 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
 									>
@@ -474,45 +562,46 @@ export default function WikiDetail() {
 
 				{/* Content Section */}
 				<div className="flex-1 bg-gray-50 dark:bg-gray-800 transition-colors duration-200 flex flex-col">
-				<div className="flex-1 p-8 flex flex-col min-h-0">
-					{isEditing ? (
-								<div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-									<PasteAwareMDEditor
-										value={editContent}
-										onChange={(val) => setEditContent(val || "")}
-										preview="edit"
-										height="100%"
-										hideToolbar={false}
-										data-color-mode={theme}
-										textareaProps={{
-											placeholder: t.wiki.placeholderBody,
-											style: { fontSize: "14px", resize: "none" },
-										}}
-									/>
-								</div>
-							) : (
-								<div
-									ref={contentRef}
-									className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+					<div className="flex-1 p-8 flex flex-col min-h-0">
+						{isEditing ? (
+							<div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+								<PasteAwareMDEditor
+									value={editContent}
+									onChange={(val) => setEditContent(val || "")}
+									preview="edit"
+									height="100%"
+									hideToolbar={false}
 									data-color-mode={theme}
-								>
-									<MermaidMarkdown source={page.content} wikilinkBasePath={wikiPath} onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })} onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })} onDocClick={(docId) => navigate(`/documentation/${docId}`)} onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)} onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)} />
-								</div>
-							)}
+									textareaProps={{
+										placeholder: t.wiki.placeholderBody,
+										style: { fontSize: "14px", resize: "none" },
+									}}
+								/>
+							</div>
+						) : (
+							<div
+								ref={contentRef}
+								className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+								data-color-mode={theme}
+							>
+								<MermaidMarkdown
+									source={page.content}
+									wikilinkBasePath={wikiPath}
+									onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+									onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
+									onDocClick={(docId) => navigate(`/documentation/${docId}`)}
+									onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
+									onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
+								/>
+							</div>
+						)}
 					</div>
 				</div>
 			</div>
 
-			{previewPath && (
-				<WikiLinkPreview path={previewPath} onClose={() => setPreviewPath(null)} />
-			)}
+			{previewPath && <WikiLinkPreview path={previewPath} onClose={() => setPreviewPath(null)} />}
 
-			{showSaveSuccess && (
-				<SuccessToast
-					message={t.wiki.saveSuccess}
-					onDismiss={() => setShowSaveSuccess(false)}
-				/>
-			)}
+			{showSaveSuccess && <SuccessToast message={t.wiki.saveSuccess} onDismiss={() => setShowSaveSuccess(false)} />}
 		</ErrorBoundary>
 	);
 }

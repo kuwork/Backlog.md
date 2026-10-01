@@ -4,10 +4,10 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Decision as BacklogDecision, Document as BacklogDocument } from "../types/index.ts";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import { TocProvider } from "../web/contexts/TocContext.tsx";
 import DecisionDetail from "../web/components/DecisionDetail.tsx";
 import DocumentationDetail from "../web/components/DocumentationDetail.tsx";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { TocProvider } from "../web/contexts/TocContext.tsx";
 
 let activeRoot: Root | null = null;
 const originalFetch = globalThis.fetch;
@@ -34,7 +34,11 @@ function setupDom(): HTMLElement {
 	globalThis.navigator = dom.window.navigator as unknown as Navigator;
 	globalThis.localStorage = dom.window.localStorage;
 	if (!window.matchMedia) {
-		window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as never;
+		window.matchMedia = (() => ({
+			matches: false,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as never;
 	}
 	return dom.window.document.getElementById("root") as unknown as HTMLElement;
 }
@@ -88,7 +92,11 @@ describe("ambiguous identity rendering", () => {
 			},
 		];
 
-		const container = await renderRoute("/documentation/doc-1", "/documentation/:id", <DocumentationDetail docs={docs} onRefreshData={async () => {}} />);
+		const container = await renderRoute(
+			"/documentation/doc-1",
+			"/documentation/:id",
+			<DocumentationDetail docs={docs} onRefreshData={async () => {}} />,
+		);
 
 		const text = container.textContent ?? "";
 		expect(text).toContain("Document ID doc-1 is ambiguous");
@@ -112,7 +120,11 @@ describe("ambiguous identity rendering", () => {
 			},
 		];
 
-		const container = await renderRoute("/decisions/decision-1", "/decisions/:id", <DecisionDetail decisions={decisions} onRefreshData={async () => {}} />);
+		const container = await renderRoute(
+			"/decisions/decision-1",
+			"/decisions/:id",
+			<DecisionDetail decisions={decisions} onRefreshData={async () => {}} />,
+		);
 
 		const text = container.textContent ?? "";
 		expect(text).toContain("Decision ID decision-1 is ambiguous");

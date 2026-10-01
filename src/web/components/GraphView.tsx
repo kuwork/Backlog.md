@@ -1,5 +1,3 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import {
 	forceCenter,
 	forceCollide,
@@ -11,14 +9,15 @@ import {
 	type SimulationLinkDatum,
 	type SimulationNodeDatum,
 } from "d3-force";
-import { quadtree, type Quadtree } from "d3-quadtree";
+import { type Quadtree, quadtree } from "d3-quadtree";
 import { select } from "d3-selection";
-import { zoom as d3Zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
+import { zoom as d3Zoom, type ZoomBehavior, type ZoomTransform, zoomIdentity } from "d3-zoom";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { Task } from "../../types";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
-import { captionFor, captionPlateWidth } from "../utils/graph-caption";
-import { knowledgeNodeHref } from "../utils/graph-node-links";
+import { apiClient, type GraphEdgeDto, type GraphNodeDto, type GraphNodeKind, type GraphPayload } from "../lib/api";
 import {
 	canvasThemeColors,
 	drawCaption,
@@ -27,7 +26,8 @@ import {
 	scaledRadius,
 	strokeEdge,
 } from "../utils/graph-canvas";
-import { apiClient, type GraphEdgeDto, type GraphNodeDto, type GraphNodeKind, type GraphPayload } from "../lib/api";
+import { captionFor, captionPlateWidth } from "../utils/graph-caption";
+import { knowledgeNodeHref } from "../utils/graph-node-links";
 import {
 	EDGE_DASH,
 	EDGE_STROKE,
@@ -193,7 +193,8 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 	// Read once per mount: the persisted layout of this view, folded into the in-session map by the
 	// first build so a reload does not re-run the force layout.
 	const storedPositionsRef = useRef<Map<string, { x: number; y: number }> | null>(null);
-	if (storedPositionsRef.current === null) storedPositionsRef.current = loadStoredPositions(positionKeyFor(isKnowledge));
+	if (storedPositionsRef.current === null)
+		storedPositionsRef.current = loadStoredPositions(positionKeyFor(isKnowledge));
 	const positionKey = positionKeyFor(isKnowledge);
 	// The viewport the user is looking at. A data refresh rebuilds the simulation, and re-framing
 	// the whole graph at that point would yank the view away from whatever was being inspected, so
@@ -323,6 +324,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		});
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		let cancelled = false;
 		let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -456,7 +458,10 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			.force("charge", forceManyBody().strength(-90))
 			.force("center", forceCenter(0, 0))
 			// Collide with the real radius so hubs get the room their circle needs.
-			.force("collide", forceCollide<SimNode>().radius((d) => d.radius + 3))
+			.force(
+				"collide",
+				forceCollide<SimNode>().radius((d) => d.radius + 3),
+			)
 			.force("x", forceX(0).strength(0.05))
 			.force("y", forceY(0).strength(0.05));
 
@@ -545,8 +550,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			ctx.lineJoin = "round";
 			const focusId = hoverIdRef.current ?? selectedIdRef.current;
 			const lit = focusId ? new Set([focusId, ...(neighbours.get(focusId) ?? [])]) : null;
-			const alphaFor = (...ids: string[]) =>
-				lit && !ids.every((id) => lit.has(id)) ? FOCUS_FADE : 1;
+			const alphaFor = (...ids: string[]) => (lit && !ids.every((id) => lit.has(id)) ? FOCUS_FADE : 1);
 
 			// Edges: BelongsToMilestone is mere membership and stays plain (no arrowhead).
 			for (const link of linkEnds) {
@@ -1021,7 +1025,9 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 					<h2 className="text-xl font-bold">{heading}</h2>
 					{ready && (
 						<span className="text-sm text-gray-500 dark:text-gray-400">
-							{t.graphView.nodesAndEdges.replace("{1}", String(visibleCounts.nodes)).replace("{2}", String(visibleCounts.edges))}
+							{t.graphView.nodesAndEdges
+								.replace("{1}", String(visibleCounts.nodes))
+								.replace("{2}", String(visibleCounts.edges))}
 						</span>
 					)}
 				</div>

@@ -4,9 +4,9 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import type { Task } from "../types/index.ts";
+import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext";
-import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 
 let activeRoot: Root | null = null;
 let activeDom: JSDOM | null = null;
@@ -32,9 +32,7 @@ const task: Task = {
 	labels: [],
 	dependencies: ["BACK-2"],
 	references: [],
-	comments: [
-		{ index: 1, body: "Blocked by [BACK-2](/task/BACK-2) until it lands.", createdDate: "2026-08-07" },
-	],
+	comments: [{ index: 1, body: "Blocked by [BACK-2](/task/BACK-2) until it lands.", createdDate: "2026-08-07" }],
 };
 
 const setupDom = () => {

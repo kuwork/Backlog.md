@@ -18,6 +18,7 @@ export default function Switch({ id, checked, onChange, ariaLabel }: SwitchProps
 				id={id}
 				type="checkbox"
 				role="switch"
+				aria-checked={checked}
 				checked={checked}
 				onChange={(event) => onChange(event.target.checked)}
 				aria-label={ariaLabel}

@@ -139,11 +139,7 @@ describe("Web task popup keyboard shortcuts", () => {
 			["reference", container.querySelector("input[name='newRef']"), "e"],
 			["assignee", container.querySelector("#chip-input-assignee"), "e"],
 			["label", container.querySelector("#chip-input-labels"), "E"],
-			[
-				"title",
-				Array.from(container.querySelectorAll("input")).find((input) => input.value === task.title),
-				"e",
-			],
+			["title", Array.from(container.querySelectorAll("input")).find((input) => input.value === task.title), "e"],
 			["dependency", container.querySelector("#dependency-input"), "e"],
 			["select", container.querySelector("select"), "e"],
 			["content editable descendant", contentEditableChild, "e"],
@@ -234,9 +230,7 @@ describe("Web task popup keyboard shortcuts", () => {
 				const editButton = findButton(container, "Edit");
 				expect(editButton).toBeTruthy();
 				await click(editButton as HTMLButtonElement);
-				const titleInput = Array.from(container.querySelectorAll("input")).find(
-					(input) => input.value === task.title,
-				);
+				const titleInput = Array.from(container.querySelectorAll("input")).find((input) => input.value === task.title);
 				expect(titleInput).toBeTruthy();
 
 				const event = await press(titleInput as HTMLInputElement, "s", modifier);

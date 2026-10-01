@@ -3,8 +3,8 @@ import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Task } from "../types/index.ts";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import TaskColumn from "../web/components/TaskColumn.tsx";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import type { ReorderTaskPayload } from "../web/lib/api.ts";
 
 const createTask = (overrides: Partial<Task>): Task => ({
@@ -146,11 +146,13 @@ describe("TaskColumn priority sorting", () => {
 });
 
 const getTaskOrderFromDom = (container: HTMLElement): string[] => {
-	const cards = Array.from(container.querySelectorAll(".space-y-3 > div.relative"));
-	return cards.map((card) => {
-		const match = card.textContent?.match(/TASK-\d+/);
-		return match?.[0] ?? "";
-	}).filter(Boolean);
+	const cards = Array.from(container.querySelectorAll(".space-y-3 > li.relative"));
+	return cards
+		.map((card) => {
+			const match = card.textContent?.match(/TASK-\d+/);
+			return match?.[0] ?? "";
+		})
+		.filter(Boolean);
 };
 
 describe("TaskColumn creation-date sorting", () => {
@@ -278,16 +280,12 @@ const activeSortLabel = async (container: HTMLElement): Promise<string | null> =
 	const active = Array.from(container.querySelectorAll('button[role="menuitem"]')).find((item) =>
 		item.querySelector('button[aria-label="Clear sort"]'),
 	);
-	return active ? active.textContent?.trim() ?? "" : null;
+	return active ? (active.textContent?.trim() ?? "") : null;
 };
 
 /** Fires a drag event on the column root: the handlers sit there, so the event has to start inside
  * the column (bubbling only travels upwards). */
-const dragEventOnColumn = async (
-	container: HTMLElement,
-	type: string,
-	data: Record<string, string> = {},
-) => {
+const dragEventOnColumn = async (container: HTMLElement, type: string, data: Record<string, string> = {}) => {
 	const column = container.querySelector("h3")?.closest(".rounded-lg");
 	expect(column).toBeTruthy();
 	const event = new window.Event(type, { bubbles: true, cancelable: true });
@@ -317,7 +315,7 @@ const dropOnColumn = async (container: HTMLElement, data: Record<string, string>
  * JSDOM lays nothing out, so the rect is supplied and the column can read which half the pointer is
  * in, the same way a real hover decides between inserting above and below the card. */
 const hoverOnCard = async (container: HTMLElement, taskId: string, half: "top" | "bottom" = "bottom") => {
-	const card = Array.from(container.querySelectorAll(".space-y-3 > div.relative")).find((element) =>
+	const card = Array.from(container.querySelectorAll(".space-y-3 > li.relative")).find((element) =>
 		element.textContent?.includes(taskId),
 	);
 	expect(card).toBeTruthy();

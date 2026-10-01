@@ -102,9 +102,7 @@ const getHeaderButton = (container: HTMLElement, label: string): HTMLButtonEleme
 };
 
 const getRowIds = (container: HTMLElement): string[] =>
-	Array.from(container.querySelectorAll("tbody tr td:first-child")).map(
-		(element) => element.textContent?.trim() ?? "",
-	);
+	Array.from(container.querySelectorAll("tbody tr td:first-child")).map((element) => element.textContent?.trim() ?? "");
 
 afterEach(() => {
 	if (activeRoot) {

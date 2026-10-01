@@ -1,4 +1,5 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { forwardRef, useCallback, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { SearchRow } from "../../utils/search-results";
 
 export interface VirtualListHandle {
@@ -39,7 +40,17 @@ const findStartIndex = (offsets: number[], scrollTop: number): number => {
 };
 
 const VirtualList = forwardRef<VirtualListHandle, VirtualListProps>(function VirtualList(
-	{ rows, headerHeight, itemHeight, overscan = 4, restoreIndex = null, onRestoreHandled, resetKey, onVisibleStartChange, children },
+	{
+		rows,
+		headerHeight,
+		itemHeight,
+		overscan = 4,
+		restoreIndex = null,
+		onRestoreHandled,
+		resetKey,
+		onVisibleStartChange,
+		children,
+	},
 	ref,
 ) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +61,10 @@ const VirtualList = forwardRef<VirtualListHandle, VirtualListProps>(function Vir
 	onVisibleStartChangeRef.current = onVisibleStartChange;
 	onRestoreHandledRef.current = onRestoreHandled;
 
-	const rowHeight = useCallback((row: SearchRow) => (row.kind === "header" ? headerHeight : itemHeight), [headerHeight, itemHeight]);
+	const rowHeight = useCallback(
+		(row: SearchRow) => (row.kind === "header" ? headerHeight : itemHeight),
+		[headerHeight, itemHeight],
+	);
 
 	const { offsets, totalHeight } = useMemo(() => {
 		const result: number[] = [];

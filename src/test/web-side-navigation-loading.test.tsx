@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import BoardPage from "../web/components/BoardPage";
 import SideNavigation from "../web/components/SideNavigation";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 
 const storage = new Map<string, string>();
 globalThis.localStorage = {

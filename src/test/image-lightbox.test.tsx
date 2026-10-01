@@ -242,7 +242,9 @@ describe("ImageLightbox", () => {
 	});
 
 	it("shows a dot indicator and switches images by clicking dots", async () => {
-		const container = renderInteractive(<MermaidMarkdown source="![first](/assets/a.png) ![second](/assets/b.png) ![third](/assets/c.png)" />);
+		const container = renderInteractive(
+			<MermaidMarkdown source="![first](/assets/a.png) ![second](/assets/b.png) ![third](/assets/c.png)" />,
+		);
 		const images = container.querySelectorAll("[data-lightbox-img]");
 		await clickElement(images[0] as HTMLImageElement);
 
@@ -287,7 +289,9 @@ describe("ImageLightbox", () => {
 		});
 
 		it("opens lightbox for wikilink image and shows the clicked image", async () => {
-			const container = renderInteractive(<MermaidMarkdown source="![[assets/a.png]] ![[assets/b.png]]" wikilinkBasePath="index.md" />);
+			const container = renderInteractive(
+				<MermaidMarkdown source="![[assets/a.png]] ![[assets/b.png]]" wikilinkBasePath="index.md" />,
+			);
 
 			const images = container.querySelectorAll("[data-lightbox-img]");
 			expect(images.length).toBe(2);

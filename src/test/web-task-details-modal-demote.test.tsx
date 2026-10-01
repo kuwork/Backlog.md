@@ -34,7 +34,11 @@ function setupDom(): HTMLElement {
 	// realm as the window it is dispatched on.
 	globalThis.CustomEvent = dom.window.CustomEvent as unknown as typeof globalThis.CustomEvent;
 	if (!window.matchMedia) {
-		window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as never;
+		window.matchMedia = (() => ({
+			matches: false,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as never;
 	}
 	window.confirm = (() => true) as typeof window.confirm;
 	window.alert = ((message?: unknown) => {
@@ -168,17 +172,25 @@ describe("Web demote-to-draft action", () => {
 		);
 		const closes: number[] = [];
 		const saves: number[] = [];
-		const container = await openPopup(task("BACK-1", "Ship the migration"), () => closes.push(1), () => {
-			saves.push(1);
-		});
+		const container = await openPopup(
+			task("BACK-1", "Ship the migration"),
+			() => closes.push(1),
+			() => {
+				saves.push(1);
+			},
+		);
 
 		await click(buttonByText(container, "Demote to draft"));
 		expect(demoteCalls.length).toBe(1);
 
 		// The user moved on before the response arrived.
-		await showTask(task("BACK-2", "Unrelated work"), () => closes.push(2), () => {
-			saves.push(2);
-		});
+		await showTask(
+			task("BACK-2", "Unrelated work"),
+			() => closes.push(2),
+			() => {
+				saves.push(2);
+			},
+		);
 		await act(async () => {
 			resolveDemote?.(json({ success: true }));
 			await Promise.resolve();
@@ -196,9 +208,13 @@ describe("Web demote-to-draft action", () => {
 		});
 		const closes: number[] = [];
 		const saves: number[] = [];
-		const container = await openPopup(task("BACK-1", "Ship the migration"), () => closes.push(1), () => {
-			saves.push(1);
-		});
+		const container = await openPopup(
+			task("BACK-1", "Ship the migration"),
+			() => closes.push(1),
+			() => {
+				saves.push(1);
+			},
+		);
 
 		await click(buttonByText(container, "Demote to draft"));
 
@@ -245,9 +261,13 @@ describe("Web demote-to-draft action", () => {
 		const events: string[] = [];
 		const closes: number[] = [];
 		const saves: number[] = [];
-		const container = await openPopup(task("BACK-1", "Ship the migration"), () => closes.push(1), () => {
-			saves.push(1);
-		});
+		const container = await openPopup(
+			task("BACK-1", "Ship the migration"),
+			() => closes.push(1),
+			() => {
+				saves.push(1);
+			},
+		);
 		window.addEventListener("drafts-updated", () => events.push("drafts-updated"));
 
 		await click(buttonByText(container, "Demote to draft"));

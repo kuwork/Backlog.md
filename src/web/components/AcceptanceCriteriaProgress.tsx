@@ -50,7 +50,10 @@ export default function AcceptanceCriteriaProgress({
 			) : (
 				<>
 					<span className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-500 overflow-hidden">
-						<span className="block h-full bg-emerald-500 transition-all duration-300" style={{ width: `${percent}%` }} />
+						<span
+							className="block h-full bg-emerald-500 transition-all duration-300"
+							style={{ width: `${percent}%` }}
+						/>
 					</span>
 					<span className="flex-shrink-0">{fraction}</span>
 				</>

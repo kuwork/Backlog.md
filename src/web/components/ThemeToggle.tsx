@@ -1,21 +1,23 @@
-import React from 'react';
-import { useI18n } from '../hooks/useI18n';
-import { useTheme } from '../contexts/ThemeContext';
+import type React from "react";
+import { useTheme } from "../contexts/ThemeContext";
+import { useI18n } from "../hooks/useI18n";
 
 const ThemeToggle: React.FC = () => {
 	const { theme, toggleTheme } = useTheme();
 	const { t } = useI18n();
 
-		return (
-			<button
-				onClick={toggleTheme}
-				className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:ring-offset-2 dark:focus:ring-stone-400 dark:focus:ring-offset-gray-900"
-				aria-label={theme === 'light' ? t.themeToggle.switchToDark : t.themeToggle.switchToLight}
-				title={theme === 'light' ? t.themeToggle.switchToDark : t.themeToggle.switchToLight}
-			>
-			{theme === 'light' ? (
+	return (
+		<button
+			type="button"
+			onClick={toggleTheme}
+			className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:ring-offset-2 dark:focus:ring-stone-400 dark:focus:ring-offset-gray-900"
+			aria-label={theme === "light" ? t.themeToggle.switchToDark : t.themeToggle.switchToLight}
+			title={theme === "light" ? t.themeToggle.switchToDark : t.themeToggle.switchToLight}
+		>
+			{theme === "light" ? (
 				// Moon icon - show when in light mode (to switch to dark)
 				<svg
+					aria-hidden="true"
 					className="w-5 h-5 text-gray-600 dark:text-gray-400"
 					fill="currentColor"
 					viewBox="0 0 24 24"
@@ -26,6 +28,7 @@ const ThemeToggle: React.FC = () => {
 			) : (
 				// Sun icon - show when in dark mode (to switch to light)
 				<svg
+					aria-hidden="true"
 					className="w-5 h-5 text-gray-600 dark:text-gray-400"
 					fill="currentColor"
 					viewBox="0 0 24 24"

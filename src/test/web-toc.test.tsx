@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { JSDOM } from "jsdom";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { JSDOM } from "jsdom";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Decision as BacklogDecision } from "../types/index.ts";
 import DecisionDetail from "../web/components/DecisionDetail.tsx";
 import MermaidMarkdown from "../web/components/MermaidMarkdown.tsx";
 import TocButton from "../web/components/TocButton.tsx";
-import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
 import { TocProvider, usePageToc } from "../web/contexts/TocContext.tsx";
-import { collectTocItems, buildTocTree, flattenTocTree, normalizeTocLevels, tocAncestorIds } from "../web/utils/toc.ts";
+import { buildTocTree, collectTocItems, flattenTocTree, normalizeTocLevels, tocAncestorIds } from "../web/utils/toc.ts";
 
 const originalFetch = globalThis.fetch;
 const originalWindowGlobal = (globalThis as { window?: typeof window }).window;
@@ -40,7 +40,11 @@ function setupInteractiveDom(url = "http://localhost:6421/decisions/decision-1")
 	globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => setTimeout(callback, 0) as unknown as number;
 	globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);
 	if (!window.matchMedia) {
-		window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as never;
+		window.matchMedia = (() => ({
+			matches: false,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as never;
 	}
 	return dom;
 }
@@ -349,13 +353,21 @@ describe("TocButton", () => {
 	it("opens a long outline folded below the top level", async () => {
 		await renderToc(longSource());
 		// The reader is at the top of the page, so nothing forces a branch open.
-		Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")).forEach((heading, index) =>
-			headingTops.set(heading.id, index === 0 ? -100 : 600),
-		);
+		Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")).forEach((heading, index) => {
+			headingTops.set(heading.id, index === 0 ? -100 : 600);
+		});
 		await openPanel();
 
 		// 25 headings: the 6 sections stay visible, their 18 descendants start folded.
-		expect(visibleLabels()).toEqual(["Top", "Section 1", "Section 2", "Section 3", "Section 4", "Section 5", "Section 6"]);
+		expect(visibleLabels()).toEqual([
+			"Top",
+			"Section 1",
+			"Section 2",
+			"Section 3",
+			"Section 4",
+			"Section 5",
+			"Section 6",
+		]);
 
 		await clickElement(foldToggle("Section 1"));
 
@@ -405,9 +417,9 @@ describe("TocButton", () => {
 
 	it("unfolds a long outline that opened folded, and folds it back to the top level", async () => {
 		await renderToc(longSource());
-		Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")).forEach((heading, index) =>
-			headingTops.set(heading.id, index === 0 ? -100 : 600),
-		);
+		Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")).forEach((heading, index) => {
+			headingTops.set(heading.id, index === 0 ? -100 : 600);
+		});
 		await openPanel();
 
 		// The default already folds the deeper levels, so the control offers the
@@ -428,7 +440,9 @@ describe("TocButton", () => {
 	it("keeps the outline folded while the reader scrolls after folding everything", async () => {
 		await renderToc(longSource());
 		const headings = Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
-		headings.forEach((heading, index) => headingTops.set(heading.id, index === 0 ? -100 : 600));
+		headings.forEach((heading, index) => {
+			headingTops.set(heading.id, index === 0 ? -100 : 600);
+		});
 		await openPanel();
 
 		// Unfold everything, then fold it back to the top level.
@@ -438,7 +452,9 @@ describe("TocButton", () => {
 
 		// The reader scrolls past the first few headings. The scrollspy follows
 		// the page, but it must not unfold the tree the reader just folded.
-		headings.forEach((heading, index) => headingTops.set(heading.id, index <= 4 ? -100 : 600));
+		headings.forEach((heading, index) => {
+			headingTops.set(heading.id, index <= 4 ? -100 : 600);
+		});
 		await act(async () => {
 			window.dispatchEvent(new window.Event("scroll"));
 			await new Promise((resolve) => setTimeout(resolve, 60));
@@ -465,7 +481,9 @@ describe("TocButton", () => {
 
 		const headings = Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
 		// Top, Section 1, Detail 1.1, Detail 1.2 and Note 1.2.a sit above the reading position.
-		headings.forEach((heading, index) => headingTops.set(heading.id, index <= 4 ? -100 : 600));
+		headings.forEach((heading, index) => {
+			headingTops.set(heading.id, index <= 4 ? -100 : 600);
+		});
 
 		await act(async () => {
 			window.dispatchEvent(new window.Event("scroll"));
@@ -588,8 +606,14 @@ describe("DecisionDetail outline", () => {
 							<ImageLightboxProvider>
 								<MemoryRouter initialEntries={["/decisions/decision-1"]}>
 									<Routes>
-										<Route path="/decisions/:id" element={<DecisionDetail decisions={[decisionFixture()]} onRefreshData={async () => {}} />} />
-										<Route path="/decisions/:id/:title" element={<DecisionDetail decisions={[decisionFixture()]} onRefreshData={async () => {}} />} />
+										<Route
+											path="/decisions/:id"
+											element={<DecisionDetail decisions={[decisionFixture()]} onRefreshData={async () => {}} />}
+										/>
+										<Route
+											path="/decisions/:id/:title"
+											element={<DecisionDetail decisions={[decisionFixture()]} onRefreshData={async () => {}} />}
+										/>
 									</Routes>
 								</MemoryRouter>
 								<TocButton />
@@ -611,7 +635,9 @@ describe("DecisionDetail outline", () => {
 		await clickElement(tocButton());
 		expect(tocLinks().length).toBe(4);
 
-		const editButton = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.trim() === "Edit");
+		const editButton = Array.from(document.querySelectorAll("button")).find(
+			(button) => button.textContent?.trim() === "Edit",
+		);
 		expect(editButton).toBeTruthy();
 		await clickElement(editButton);
 

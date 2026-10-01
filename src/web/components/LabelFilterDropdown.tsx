@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useI18n } from '../hooks/useI18n';
-import { getLabelColorClasses, LABEL_COLOR_PRESETS } from '../utils/labelColors';
+import { useI18n } from "../hooks/useI18n";
+import { getLabelColorClasses, LABEL_COLOR_PRESETS } from "../utils/labelColors";
 
 interface LabelFilterDropdownProps {
 	availableLabels: string[];
@@ -102,7 +102,7 @@ export default function LabelFilterDropdown({
 				<div
 					id={menuId}
 					ref={menuRef}
-					className={`absolute z-50 mt-2 w-[240px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg ${isInPicker ? '' : 'max-h-72 overflow-y-auto'}`}
+					className={`absolute z-50 mt-2 w-[240px] rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg ${isInPicker ? "" : "max-h-72 overflow-y-auto"}`}
 				>
 					{isInPicker ? (
 						<div className="p-3">
@@ -116,14 +116,19 @@ export default function LabelFilterDropdown({
 									className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
 									aria-label={t.common.cancel}
 								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+									<svg
+										aria-hidden="true"
+										className="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth={2}
+										viewBox="0 0 24 24"
+									>
 										<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
 									</svg>
 								</button>
 							</div>
-							<div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-								选择颜色
-							</div>
+							<div className="text-xs text-gray-500 dark:text-gray-400 mb-2">选择颜色</div>
 							<div className="grid grid-cols-4 gap-2 mb-3">
 								{LABEL_COLOR_PRESETS.map((colorKey) => {
 									const isSelected = draftColor === colorKey;
@@ -135,13 +140,14 @@ export default function LabelFilterDropdown({
 											onClick={() => setDraftColor(colorKey)}
 											className={`relative w-full aspect-square rounded-md ${colorClasses.bg} ${colorClasses.text} border-2 transition-all ${
 												isSelected
-													? 'border-gray-900 dark:border-white scale-105'
-													: 'border-transparent hover:border-gray-300 dark:hover:border-gray-500'
+													? "border-gray-900 dark:border-white scale-105"
+													: "border-transparent hover:border-gray-300 dark:hover:border-gray-500"
 											}`}
 											title={colorKey}
 										>
 											{isSelected && (
 												<svg
+													aria-hidden="true"
 													className="absolute inset-0 m-auto w-4 h-4 text-gray-900 dark:text-white"
 													fill="none"
 													stroke="currentColor"
@@ -153,46 +159,47 @@ export default function LabelFilterDropdown({
 											)}
 										</button>
 									);
-									})}
-									<button
-										type="button"
-										onClick={() => setDraftColor(null)}
-										className={`relative w-full aspect-square rounded-md bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 border-2 transition-all ${
-											draftColor === null
-												? 'border-gray-900 dark:border-white scale-105'
-												: 'border-transparent hover:border-gray-300 dark:hover:border-gray-500'
-										}`}
-										title="Default"
-									>
-										{draftColor === null && (
-											<svg
-												className="absolute inset-0 m-auto w-4 h-4 text-gray-900 dark:text-white"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth={3}
-												viewBox="0 0 24 24"
-											>
-												<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-											</svg>
-										)}
-									</button>
-								</div>
-								<div className="flex items-center gap-2">
-									<button
-										type="button"
-										onClick={saveColor}
-										className="flex-1 text-xs px-3 py-1.5 rounded bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 transition-colors"
-									>
-										{t.common.save}
-									</button>
-									<button
-										type="button"
-										onClick={closePicker}
-										className="flex-1 text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-									>
-										{t.common.cancel}
-									</button>
-								</div>
+								})}
+								<button
+									type="button"
+									onClick={() => setDraftColor(null)}
+									className={`relative w-full aspect-square rounded-md bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 border-2 transition-all ${
+										draftColor === null
+											? "border-gray-900 dark:border-white scale-105"
+											: "border-transparent hover:border-gray-300 dark:hover:border-gray-500"
+									}`}
+									title="Default"
+								>
+									{draftColor === null && (
+										<svg
+											aria-hidden="true"
+											className="absolute inset-0 m-auto w-4 h-4 text-gray-900 dark:text-white"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth={3}
+											viewBox="0 0 24 24"
+										>
+											<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+										</svg>
+									)}
+								</button>
+							</div>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									onClick={saveColor}
+									className="flex-1 text-xs px-3 py-1.5 rounded bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 transition-colors"
+								>
+									{t.common.save}
+								</button>
+								<button
+									type="button"
+									onClick={closePicker}
+									className="flex-1 text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								>
+									{t.common.cancel}
+								</button>
+							</div>
 						</div>
 					) : (
 						<>
@@ -204,47 +211,47 @@ export default function LabelFilterDropdown({
 									const currentColorKey = labelColors[label];
 									const colorClasses = getLabelColorClasses(currentColorKey);
 									return (
-									<div
-										key={label}
-										className="flex items-center gap-2 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-									>
-										<label className="flex items-center gap-2 flex-1 cursor-pointer truncate">
-											<input
-												type="checkbox"
-												checked={isSelected}
-												onChange={() => toggleLabel(label)}
-												className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 shrink-0"
-											/>
-											<span className="truncate">{label}</span>
-										</label>
-										{onLabelColorsChange && (
-											<button
-												type="button"
-												data-swatches
-												onClick={(e) => {
-													e.stopPropagation();
-													openPicker(label);
-												}}
-												className={`shrink-0 w-4 h-4 rounded-sm border border-gray-300 dark:border-gray-500 ${colorClasses.bg} transition-transform hover:scale-110`}
-												title="Set color"
-											/>
-										)}
-									</div>
+										<div
+											key={label}
+											className="flex items-center gap-2 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+										>
+											<label className="flex items-center gap-2 flex-1 cursor-pointer truncate">
+												<input
+													type="checkbox"
+													checked={isSelected}
+													onChange={() => toggleLabel(label)}
+													className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 shrink-0"
+												/>
+												<span className="truncate">{label}</span>
+											</label>
+											{onLabelColorsChange && (
+												<button
+													type="button"
+													data-swatches
+													onClick={(e) => {
+														e.stopPropagation();
+														openPicker(label);
+													}}
+													className={`shrink-0 w-4 h-4 rounded-sm border border-gray-300 dark:border-gray-500 ${colorClasses.bg} transition-transform hover:scale-110`}
+													title="Set color"
+												/>
+											)}
+										</div>
 									);
-										})
-									)}
-								{selectedLabels.length > 0 && (
-									<button
-										type="button"
-										className="w-full text-left px-3 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-t border-gray-200 dark:border-gray-700"
-										onClick={() => {
-											onChange([]);
-											setIsOpen(false);
-										}}
-									>
-										{t.labelFilter.clearFilter}
-									</button>
-								)}
+								})
+							)}
+							{selectedLabels.length > 0 && (
+								<button
+									type="button"
+									className="w-full text-left px-3 py-2 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-t border-gray-200 dark:border-gray-700"
+									onClick={() => {
+										onChange([]);
+										setIsOpen(false);
+									}}
+								>
+									{t.labelFilter.clearFilter}
+								</button>
+							)}
 						</>
 					)}
 				</div>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { JSDOM } from "jsdom";
 import { MemoryRouter } from "react-router-dom";
 import GraphView from "../web/components/GraphView.tsx";
 import TaskDependencyGraph, { type GraphViewports } from "../web/components/TaskDependencyGraph.tsx";
@@ -65,7 +65,11 @@ function setupDom(omitCtxMethods: string[] = []) {
 		setTimeout(() => cb(performance.now()), 0)) as unknown as typeof requestAnimationFrame;
 	globalThis.cancelAnimationFrame = ((id: number) => clearTimeout(id)) as unknown as typeof cancelAnimationFrame;
 	if (!window.matchMedia) {
-		window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as never;
+		window.matchMedia = (() => ({
+			matches: false,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as never;
 	}
 	// jsdom has no canvas 2d and no ResizeObserver.
 	dom.window.HTMLCanvasElement.prototype.getContext = (() => stubContext2d(omitCtxMethods)) as never;
@@ -77,8 +81,7 @@ function setupDom(omitCtxMethods: string[] = []) {
 	(globalThis.window as { ResizeObserver?: unknown }).ResizeObserver = (
 		globalThis as { ResizeObserver?: unknown }
 	).ResizeObserver;
-	globalThis.fetch = (async () =>
-		new Response(JSON.stringify(PAYLOAD), { status: 200 })) as unknown as typeof fetch;
+	globalThis.fetch = (async () => new Response(JSON.stringify(PAYLOAD), { status: 200 })) as unknown as typeof fetch;
 	// d3-zoom/d3-selection reference these as bare globals.
 	for (const name of ["SVGElement", "HTMLElement", "Element", "Node", "MouseEvent", "PointerEvent"] as const) {
 		const value = (dom.window as unknown as Record<string, unknown>)[name];

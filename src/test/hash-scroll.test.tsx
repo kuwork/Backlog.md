@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import React from "react";
-import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
 import { JSDOM } from "jsdom";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import MermaidMarkdown from "../web/components/MermaidMarkdown.tsx";
-import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { useHashScroll } from "../web/hooks/useHashScroll.ts";
 
 const originalFetch = globalThis.fetch;

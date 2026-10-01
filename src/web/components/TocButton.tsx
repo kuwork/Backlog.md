@@ -3,7 +3,7 @@ import { useTocRegistry } from "../contexts/TocContext";
 import { useI18n } from "../hooks/useI18n";
 import { useActiveTocId } from "../hooks/useToc";
 import { activateHashTarget } from "../utils/hash-target";
-import { buildTocTree, flattenTocTree, type TocNode, tocAncestorIds, type TocItem, type TocRow } from "../utils/toc";
+import { buildTocTree, flattenTocTree, type TocItem, type TocNode, type TocRow, tocAncestorIds } from "../utils/toc";
 
 /** Stable empties so the scrollspy hooks keep the same identity while closed. */
 const NO_ITEMS: TocItem[] = [];
@@ -158,17 +158,11 @@ export default function TocButton() {
 
 	const rows = useMemo(() => flattenTocTree(tree, isCollapsed), [tree, isCollapsed]);
 
-	const activeAncestors = useMemo(
-		() => new Set(activeId ? tocAncestorIds(tree, activeId) : []),
-		[tree, activeId],
-	);
+	const activeAncestors = useMemo(() => new Set(activeId ? tocAncestorIds(tree, activeId) : []), [tree, activeId]);
 
 	/** Entries owning a subtree, i.e. everything the master control can fold. */
 	const foldableIds = useMemo(
-		() =>
-			[...nodesById.values()]
-				.filter((node) => node.children.length > 0)
-				.map((node) => node.id),
+		() => [...nodesById.values()].filter((node) => node.children.length > 0).map((node) => node.id),
 		[nodesById],
 	);
 
@@ -176,6 +170,7 @@ export default function TocButton() {
 	const anyCollapsed = foldableIds.some((id) => isCollapsed(id));
 
 	// A new document starts from the defaults again.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		foldAllRef.current = false;
 		setFoldedOverrides(new Map());

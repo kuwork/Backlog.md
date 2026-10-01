@@ -2,14 +2,14 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Task } from "../types/index.ts";
 import { MemoryRouter } from "react-router-dom";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import type { Locale } from "../web/locales";
-import { ThemeProvider } from "../web/contexts/ThemeContext";
-import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
-import { apiClient, ApiError } from "../web/lib/api.ts";
+import type { Task } from "../types/index.ts";
 import type { DependencyQueryAnswer } from "../utils/dependency-query.ts";
+import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { ThemeProvider } from "../web/contexts/ThemeContext";
+import { ApiError, apiClient } from "../web/lib/api.ts";
+import type { Locale } from "../web/locales";
 
 let activeRoot: Root | null = null;
 
@@ -157,7 +157,12 @@ describe("Web task popup dependency closure display", () => {
 					<MemoryRouter>
 						<I18nProvider initialLocale="en">
 							<ThemeProvider>
-								<TaskDetailsModal task={buildTask({})} isOpen={false} onClose={() => {}} availableTasks={[buildTask({})]} />
+								<TaskDetailsModal
+									task={buildTask({})}
+									isOpen={false}
+									onClose={() => {}}
+									availableTasks={[buildTask({})]}
+								/>
 							</ThemeProvider>
 						</I18nProvider>
 					</MemoryRouter>,
@@ -322,8 +327,8 @@ describe("Web task popup dependency closure display", () => {
 		try {
 			const container = renderModal(buildTask({ dependencies: ["BACK-2"] }), "zh-CN");
 			await waitFor(() => container.textContent?.includes("等待") === true);
-			const removeButton = Array.from(container.querySelectorAll("button")).find(
-				(button) => button.getAttribute("aria-label")?.includes("BACK-2"),
+			const removeButton = Array.from(container.querySelectorAll("button")).find((button) =>
+				button.getAttribute("aria-label")?.includes("BACK-2"),
 			);
 			expect(removeButton).toBeDefined();
 			await act(async () => {

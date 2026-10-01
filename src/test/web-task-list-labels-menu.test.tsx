@@ -147,10 +147,7 @@ describe("TaskList labels filter menu", () => {
 	it("renders label filter options alphabetically", async () => {
 		const container = renderTaskList(undefined, {
 			availableLabels: ["zeta", "Alpha"],
-			tasks: [
-				createTask({ id: "task-101", labels: ["beta"] }),
-				createTask({ id: "task-102", labels: ["delta"] }),
-			],
+			tasks: [createTask({ id: "task-101", labels: ["beta"] }), createTask({ id: "task-102", labels: ["delta"] })],
 		});
 
 		await clickElement(getLabelsButton(container));
@@ -239,8 +236,8 @@ describe("TaskList labels filter menu", () => {
 		});
 
 		// Open the Status filter dropdown and select "Closed"
-		const statusButton = Array.from(container.querySelectorAll("button")).find(
-			(button) => button.textContent?.includes("Status"),
+		const statusButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("Status"),
 		);
 		expect(statusButton).toBeTruthy();
 		await clickElement(statusButton as Element);
@@ -276,8 +273,8 @@ describe("TaskList labels filter menu", () => {
 		});
 
 		// Open the Status filter dropdown and select "Review"
-		const statusButton = Array.from(container.querySelectorAll("button")).find(
-			(button) => button.textContent?.includes("Status"),
+		const statusButton = Array.from(container.querySelectorAll("button")).find((button) =>
+			button.textContent?.includes("Status"),
 		);
 		expect(statusButton).toBeTruthy();
 		await clickElement(statusButton as Element);
@@ -292,12 +289,13 @@ describe("TaskList labels filter menu", () => {
 	});
 
 	it("shows the single selected status name instead of a duplicate count from URL params", async () => {
-		globalThis.fetch = (async (_input: RequestInfo | URL) => ({
-			ok: true,
-			status: 200,
-			statusText: "OK",
-			json: async () => [],
-		}) as Response) as typeof fetch;
+		globalThis.fetch = (async (_input: RequestInfo | URL) =>
+			({
+				ok: true,
+				status: 200,
+				statusText: "OK",
+				json: async () => [],
+			}) as Response) as typeof fetch;
 
 		// URL with a single status param must not be parsed into two entries
 		const container = renderTaskList(["/?status=Closed"], {
@@ -314,12 +312,13 @@ describe("TaskList labels filter menu", () => {
 	});
 
 	it("shows the single excluded status name instead of a duplicate count from URL params", async () => {
-		globalThis.fetch = (async (_input: RequestInfo | URL) => ({
-			ok: true,
-			status: 200,
-			statusText: "OK",
-			json: async () => [],
-		}) as Response) as typeof fetch;
+		globalThis.fetch = (async (_input: RequestInfo | URL) =>
+			({
+				ok: true,
+				status: 200,
+				statusText: "OK",
+				json: async () => [],
+			}) as Response) as typeof fetch;
 
 		const container = renderTaskList(["/?statusExcluded=Closed"], {
 			tasks: [],

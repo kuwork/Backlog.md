@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
 import {
 	forceCenter,
 	forceCollide,
@@ -10,13 +9,13 @@ import {
 	type SimulationLinkDatum,
 	type SimulationNodeDatum,
 } from "d3-force";
-import { quadtree, type Quadtree } from "d3-quadtree";
+import { type Quadtree, quadtree } from "d3-quadtree";
 import { select } from "d3-selection";
-import { zoom as d3Zoom, zoomIdentity, type ZoomTransform } from "d3-zoom";
-import { apiClient, type GraphEdgeDto, type GraphNodeDto } from "../lib/api";
+import { zoom as d3Zoom, type ZoomTransform, zoomIdentity } from "d3-zoom";
+import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
-import { buildRelationshipSubgraph } from "../utils/task-subgraph";
+import { apiClient, type GraphEdgeDto, type GraphNodeDto } from "../lib/api";
 import {
 	canvasThemeColors,
 	drawCaption,
@@ -25,6 +24,7 @@ import {
 	scaledRadius,
 	strokeEdge,
 } from "../utils/graph-canvas";
+import { buildRelationshipSubgraph } from "../utils/task-subgraph";
 import {
 	EDGE_DASH,
 	EDGE_STROKE,
@@ -119,6 +119,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 	}, [onTaskClick]);
 	const filters = hiddenStyles ?? DEFAULT_FILTERS;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		let cancelled = false;
 		apiClient
@@ -166,6 +167,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 		[filters, onHiddenStylesChange],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const canvasEl = canvasRef.current;
 		const container = containerRef.current;
@@ -231,7 +233,10 @@ export const TaskDependencyGraph: FC<Props> = ({
 			)
 			.force("charge", forceManyBody().strength(-160))
 			.force("center", forceCenter(0, 0))
-			.force("collide", forceCollide<SimNode>().radius((d) => d.radius + 6))
+			.force(
+				"collide",
+				forceCollide<SimNode>().radius((d) => d.radius + 6),
+			)
 			.force("x", forceX(0).strength(0.05))
 			.force("y", forceY(0).strength(0.05));
 
@@ -269,8 +274,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 			ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * transform.x, dpr * transform.y);
 			ctx.lineJoin = "round";
 			const lit = selectedId ? new Set([selectedId, ...(neighbours.get(selectedId) ?? [])]) : null;
-			const alphaFor = (...ids: string[]) =>
-				lit && !ids.every((id) => lit.has(id)) ? FOCUS_FADE : 1;
+			const alphaFor = (...ids: string[]) => (lit && !ids.every((id) => lit.has(id)) ? FOCUS_FADE : 1);
 
 			for (const link of linkEnds) {
 				const { source, target } = link;
@@ -497,7 +501,15 @@ export const TaskDependencyGraph: FC<Props> = ({
 			canvasEl.removeEventListener("click", onClick);
 			canvasEl.removeEventListener("dblclick", onDoubleClick);
 		};
-	}, [visibleSubgraph, viewports, focusId, theme, t.graphView.edgeDependsOn, t.graphView.edgeParentOf, t.graphView.edgeMilestone]);
+	}, [
+		visibleSubgraph,
+		viewports,
+		focusId,
+		theme,
+		t.graphView.edgeDependsOn,
+		t.graphView.edgeParentOf,
+		t.graphView.edgeMilestone,
+	]);
 
 	const loading = !payload;
 	const building = payload?.status === "building";

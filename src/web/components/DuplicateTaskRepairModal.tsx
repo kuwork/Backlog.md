@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { apiClient } from "../lib/api";
-import { useI18n } from "../hooks/useI18n";
-import Modal from "./Modal";
+import type React from "react";
+import { useEffect, useState } from "react";
 import type { Task } from "../../types";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import Modal from "./Modal";
 
 interface DuplicateGroup {
 	id: string;
@@ -72,6 +73,7 @@ const DuplicateTaskRepairModal: React.FC<DuplicateTaskRepairModalProps> = ({ isO
 		}
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		if (isOpen) {
 			void loadPreview();
@@ -186,8 +188,8 @@ const DuplicateTaskRepairModal: React.FC<DuplicateTaskRepairModalProps> = ({ isO
 					{t.duplicateRepair.referencesToReview}
 				</h3>
 				<ul className="space-y-1 max-h-48 overflow-auto">
-					{items.map((reference, index) => (
-						<li key={index} className="text-xs text-gray-600 dark:text-gray-400">
+					{items.map((reference) => (
+						<li key={`${reference.path}:${reference.line}`} className="text-xs text-gray-600 dark:text-gray-400">
 							<code className="break-all">
 								{reference.path}:{reference.line}
 							</code>
@@ -205,8 +207,8 @@ const DuplicateTaskRepairModal: React.FC<DuplicateTaskRepairModalProps> = ({ isO
 			<div className="space-y-2">
 				<h3 className="text-sm font-semibold text-red-700 dark:text-red-300">{t.duplicateRepair.blockedReasons}</h3>
 				<ul className="space-y-1">
-					{plan.blockedReasons.map((reason, index) => (
-						<li key={index} className="text-xs text-red-600 dark:text-red-300">
+					{plan.blockedReasons.map((reason) => (
+						<li key={reason} className="text-xs text-red-600 dark:text-red-300">
 							{reason}
 						</li>
 					))}

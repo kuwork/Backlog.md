@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents } from "../../utils/task-sorting";
-import { storedUtcHoverTitle } from "../utils/date-display";
 import { useI18n } from "../hooks/useI18n";
+import { storedUtcHoverTitle } from "../utils/date-display";
 
 const DAY = 24 * 60 * 60 * 1000;
 const ROW_HEIGHT = 40;
@@ -10,12 +10,15 @@ const HEADER_HEIGHT = 80;
 
 export type Granularity = "day" | "week" | "month" | "quarter" | "year";
 
-const GRANULARITY_CONFIG: Record<Granularity, {
-	pxPerDay: number;
-	minWidthPx: number;
-	minDurationDays: number;
-	columnWidth: number;
-}> = {
+const GRANULARITY_CONFIG: Record<
+	Granularity,
+	{
+		pxPerDay: number;
+		minWidthPx: number;
+		minDurationDays: number;
+		columnWidth: number;
+	}
+> = {
 	day: { pxPerDay: 90, minWidthPx: (90 / 24) * 4, minDurationDays: 4 / 24, columnWidth: 90 },
 	week: { pxPerDay: 350 / 7, minWidthPx: 350 / 7, minDurationDays: 1, columnWidth: 350 },
 	month: { pxPerDay: 350 / 30, minWidthPx: 350 / 30, minDurationDays: 1, columnWidth: 350 },
@@ -170,7 +173,7 @@ function getWeekNumber(date: Date): number {
 	const dayNum = d.getUTCDay() || 7;
 	d.setUTCDate(d.getUTCDate() + 4 - dayNum);
 	const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-	return Math.ceil((((d.getTime() - yearStart.getTime()) / DAY) + 1) / 7);
+	return Math.ceil(((d.getTime() - yearStart.getTime()) / DAY + 1) / 7);
 }
 
 function getQuarter(date: Date): number {
@@ -234,7 +237,10 @@ function getTimelineColumns(viewStart: Date, viewEnd: Date, granularity: Granula
 				const bottomTicks: Array<{ offsetPx: number; label: string }> = [];
 				for (let i = 0; i < 7; i++) {
 					const d = new Date(current.getTime() + i * DAY);
-					bottomTicks.push({ offsetPx: (i / 7) * GRANULARITY_CONFIG.week.columnWidth, label: `${d.getMonth() + 1}/${d.getDate()}` });
+					bottomTicks.push({
+						offsetPx: (i / 7) * GRANULARITY_CONFIG.week.columnWidth,
+						label: `${d.getMonth() + 1}/${d.getDate()}`,
+					});
 				}
 				columns.push({
 					start: current,
@@ -256,7 +262,10 @@ function getTimelineColumns(viewStart: Date, viewEnd: Date, granularity: Granula
 				const bottomTicks: Array<{ offsetPx: number; label: string }> = [];
 				for (const day of [1, 11, 21]) {
 					if (day <= daysInMonth) {
-						bottomTicks.push({ offsetPx: ((day - 1) / daysInMonth) * GRANULARITY_CONFIG.month.columnWidth, label: `${day}日` });
+						bottomTicks.push({
+							offsetPx: ((day - 1) / daysInMonth) * GRANULARITY_CONFIG.month.columnWidth,
+							label: `${day}日`,
+						});
 					}
 				}
 				columns.push({
@@ -399,12 +408,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 				const cmp = compareParsedTaskIds(a, b);
 				return sortDirection === "asc" ? cmp : -cmp;
 			});
-			return groupSubtasksUnderParents(
-				list,
-				compareParsedTaskIds,
-				(p) => p.raw.parentTaskId,
-				sortDirection,
-			);
+			return groupSubtasksUnderParents(list, compareParsedTaskIds, (p) => p.raw.parentTaskId, sortDirection);
 		}
 
 		const list = [...parsedTasks];
@@ -470,6 +474,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 		return positions;
 	}, [sortedTasks, columns, granularity, config]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const planPositions = useMemo(() => {
 		const positions: Record<string, { x: number; y: number; width: number } | null> = {};
 		sortedTasks.forEach((task) => {
@@ -487,15 +492,19 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 		return positions;
 	}, [sortedTasks, columns, granularity, config]);
 
-	const scrollToTask = useCallback((taskId: string) => {
-		const pos = taskPositions[taskId];
-		if (pos && timelineContainerRef.current) {
-			const container = timelineContainerRef.current;
-			const targetScrollLeft = pos.x + pos.width / 2 - container.clientWidth / 2;
-			container.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: "smooth" });
-		}
-	}, [taskPositions]);
+	const scrollToTask = useCallback(
+		(taskId: string) => {
+			const pos = taskPositions[taskId];
+			if (pos && timelineContainerRef.current) {
+				const container = timelineContainerRef.current;
+				const targetScrollLeft = pos.x + pos.width / 2 - container.clientWidth / 2;
+				container.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: "smooth" });
+			}
+		},
+		[taskPositions],
+	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		if (selectedTaskId) {
 			scrollToTask(selectedTaskId);
@@ -527,34 +536,57 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 		});
 	}, []);
 
-	const getSortAriaValue = useCallback((column: GanttSortColumn): "none" | "ascending" | "descending" => {
-		if (sortColumn !== column) return "none";
-		return sortDirection === "asc" ? "ascending" : "descending";
-	}, [sortColumn, sortDirection]);
+	const getSortAriaValue = useCallback(
+		(column: GanttSortColumn): "none" | "ascending" | "descending" => {
+			if (sortColumn !== column) return "none";
+			return sortDirection === "asc" ? "ascending" : "descending";
+		},
+		[sortColumn, sortDirection],
+	);
 
-	const renderSortIcon = useCallback((column: GanttSortColumn) => {
-		const isActive = sortColumn === column;
-		const isAsc = sortDirection === "asc";
-		return (
-			<span className="inline-flex items-center justify-center w-4 text-xs select-none" aria-hidden="true">
-				<span className={isActive && isAsc ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}>↑</span>
-				<span className={isActive && !isAsc ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}>↓</span>
-			</span>
-		);
-	}, [sortColumn, sortDirection]);
+	const renderSortIcon = useCallback(
+		(column: GanttSortColumn) => {
+			const isActive = sortColumn === column;
+			const isAsc = sortDirection === "asc";
+			return (
+				<span className="inline-flex items-center justify-center w-4 text-xs select-none" aria-hidden="true">
+					<span className={isActive && isAsc ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}>
+						↑
+					</span>
+					<span
+						className={isActive && !isAsc ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}
+					>
+						↓
+					</span>
+				</span>
+			);
+		},
+		[sortColumn, sortDirection],
+	);
 
-	const renderSortableHeader = useCallback((label: string, column: GanttSortColumn, widthClass: string) => (
-		<th className={`px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${widthClass}`} style={{ height: HEADER_HEIGHT }} aria-sort={getSortAriaValue(column)}>
-			<div className="h-full flex items-end pb-2">
-				<button type="button" onClick={() => handleSortChange(column)} className="inline-flex flex-row items-center hover:text-gray-700 dark:hover:text-gray-100 leading-tight whitespace-pre-line gap-1">
-					{label}
-					{renderSortIcon(column)}
-				</button>
-			</div>
-		</th>
-	), [handleSortChange, getSortAriaValue, renderSortIcon]);
+	const renderSortableHeader = useCallback(
+		(label: string, column: GanttSortColumn, widthClass: string) => (
+			<th
+				className={`px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${widthClass}`}
+				style={{ height: HEADER_HEIGHT }}
+				aria-sort={getSortAriaValue(column)}
+			>
+				<div className="h-full flex items-end pb-2">
+					<button
+						type="button"
+						onClick={() => handleSortChange(column)}
+						className="inline-flex flex-row items-center hover:text-gray-700 dark:hover:text-gray-100 leading-tight whitespace-pre-line gap-1"
+					>
+						{label}
+						{renderSortIcon(column)}
+					</button>
+				</div>
+			</th>
+		),
+		[handleSortChange, getSortAriaValue, renderSortIcon],
+	);
 
-	const handleMouseDown = useCallback((e: React.MouseEvent) => {
+	const handlePointerDown = useCallback((e: React.PointerEvent) => {
 		if ((e.target as HTMLElement).closest("[data-task-bar]")) return;
 		setIsDragging(true);
 		dragStartX.current = e.clientX;
@@ -563,18 +595,21 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 		scrollTopAtDrag.current = timelineContainerRef.current?.scrollTop ?? 0;
 	}, []);
 
-	const handleMouseMove = useCallback((e: React.MouseEvent) => {
-		if (!isDragging) return;
-		const deltaX = e.clientX - dragStartX.current;
-		const deltaY = e.clientY - dragStartY.current;
-		const container = timelineContainerRef.current;
-		if (container) {
-			container.scrollLeft = scrollLeftAtDrag.current - deltaX;
-			container.scrollTop = scrollTopAtDrag.current - deltaY;
-		}
-	}, [isDragging]);
+	const handlePointerMove = useCallback(
+		(e: React.PointerEvent) => {
+			if (!isDragging) return;
+			const deltaX = e.clientX - dragStartX.current;
+			const deltaY = e.clientY - dragStartY.current;
+			const container = timelineContainerRef.current;
+			if (container) {
+				container.scrollLeft = scrollLeftAtDrag.current - deltaX;
+				container.scrollTop = scrollTopAtDrag.current - deltaY;
+			}
+		},
+		[isDragging],
+	);
 
-	const handleMouseUp = useCallback(() => {
+	const handlePointerUp = useCallback(() => {
 		setIsDragging(false);
 	}, []);
 
@@ -591,8 +626,12 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 		const right = timelineContainerRef.current;
 		if (!left || !right) return;
 
-		const syncFromLeft = () => { right.scrollTop = left.scrollTop; };
-		const syncFromRight = () => { left.scrollTop = right.scrollTop; };
+		const syncFromLeft = () => {
+			right.scrollTop = left.scrollTop;
+		};
+		const syncFromRight = () => {
+			left.scrollTop = right.scrollTop;
+		};
 
 		left.addEventListener("scroll", syncFromLeft);
 		right.addEventListener("scroll", syncFromRight);
@@ -608,71 +647,75 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 	const showTodayLine = todayX >= 0 && todayX <= timelineWidth;
 
 	const granularityButtons: { key: Granularity; label: string }[] = [
-		{ key: "day", label: (t as any).gantt?.granularity?.day ?? "日" },
-		{ key: "week", label: (t as any).gantt?.granularity?.week ?? "周" },
-		{ key: "month", label: (t as any).gantt?.granularity?.month ?? "月" },
-		{ key: "quarter", label: (t as any).gantt?.granularity?.quarter ?? "季" },
-		{ key: "year", label: (t as any).gantt?.granularity?.year ?? "年" },
+		{ key: "day", label: t.gantt?.granularity?.day ?? "日" },
+		{ key: "week", label: t.gantt?.granularity?.week ?? "周" },
+		{ key: "month", label: t.gantt?.granularity?.month ?? "月" },
+		{ key: "quarter", label: t.gantt?.granularity?.quarter ?? "季" },
+		{ key: "year", label: t.gantt?.granularity?.year ?? "年" },
 	];
 
 	return (
 		<>
 			<style>{"\n\t\t\t\t.gantt-hide-scrollbar::-webkit-scrollbar { display: none; }\n\t\t\t"}</style>
 			<div className="flex flex-col h-full bg-white dark:bg-gray-900 transition-colors duration-200">
-					{/* Toolbar */}
-					<div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 gap-4">
-						<div className="flex items-center gap-4">
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-								{(t as any).gantt?.title ?? "Gantt"}
-							</h2>
-							<div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-								{granularityButtons.map((btn) => (
-									<button
-										key={btn.key}
-										type="button"
-										onClick={() => setGranularity(btn.key)}
-										className={`px-3 py-1 text-sm rounded-md transition-colors ${
-											granularity === btn.key
-												? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm font-medium"
-												: "text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-										}`}
-									>
-										{btn.label}
-									</button>
-								))}
-							</div>
-						</div>
-						<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-							{Array.from(
-								tasks.reduce((map, task) => {
-									const lower = task.status.toLowerCase();
-									if (!map.has(lower)) map.set(lower, task.status);
-									return map;
-								}, new Map<string, string>()),
-							).map(([lower, original]) => (
-								<div key={lower} className="flex items-center gap-1">
-									<div className={`w-4 h-3 rounded-sm ${getTaskStatusColor(lower)}`} />
-									<span>{original}</span>
-								</div>
+				{/* Toolbar */}
+				<div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 gap-4">
+					<div className="flex items-center gap-4">
+						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t.gantt?.title ?? "Gantt"}</h2>
+						<div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+							{granularityButtons.map((btn) => (
+								<button
+									key={btn.key}
+									type="button"
+									onClick={() => setGranularity(btn.key)}
+									className={`px-3 py-1 text-sm rounded-md transition-colors ${
+										granularity === btn.key
+											? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+									}`}
+								>
+									{btn.label}
+								</button>
 							))}
-							<div className="flex items-center gap-1">
-								<div className="w-4 h-3 border border-gray-400 dark:border-white rounded-sm" style={{ backgroundImage: "repeating-linear-gradient(-60deg, transparent, transparent 2px, rgba(128,128,128,0.18) 2px, rgba(128,128,128,0.18) 3px)", backgroundSize: "4px 4px" }} />
-								<span>{(t as any).gantt?.legend?.planned ?? "Planned"}</span>
-							</div>
-							<div className="flex items-center gap-1">
-								<svg width="16" height="10" className="text-gray-500 dark:text-gray-400">
-									<line x1="0" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1.5" />
-									<polygon points="12,5 8,3 8,7" fill="currentColor" />
-								</svg>
-								<span>{(t as any).gantt?.legend?.dependency ?? "Dependency"}</span>
-							</div>
-							<div className="flex items-center gap-1">
-								<span className="text-amber-600 dark:text-amber-400 font-bold">*</span>
-								<span>{(t as any).gantt?.legend?.fallback ?? "Fallback"}</span>
-							</div>
 						</div>
 					</div>
-
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+						{Array.from(
+							tasks.reduce((map, task) => {
+								const lower = task.status.toLowerCase();
+								if (!map.has(lower)) map.set(lower, task.status);
+								return map;
+							}, new Map<string, string>()),
+						).map(([lower, original]) => (
+							<div key={lower} className="flex items-center gap-1">
+								<div className={`w-4 h-3 rounded-sm ${getTaskStatusColor(lower)}`} />
+								<span>{original}</span>
+							</div>
+						))}
+						<div className="flex items-center gap-1">
+							<div
+								className="w-4 h-3 border border-gray-400 dark:border-white rounded-sm"
+								style={{
+									backgroundImage:
+										"repeating-linear-gradient(-60deg, transparent, transparent 2px, rgba(128,128,128,0.18) 2px, rgba(128,128,128,0.18) 3px)",
+									backgroundSize: "4px 4px",
+								}}
+							/>
+							<span>{t.gantt?.legend?.planned ?? "Planned"}</span>
+						</div>
+						<div className="flex items-center gap-1">
+							<svg aria-hidden="true" width="16" height="10" className="text-gray-500 dark:text-gray-400">
+								<line x1="0" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1.5" />
+								<polygon points="12,5 8,3 8,7" fill="currentColor" />
+							</svg>
+							<span>{t.gantt?.legend?.dependency ?? "Dependency"}</span>
+						</div>
+						<div className="flex items-center gap-1">
+							<span className="text-amber-600 dark:text-amber-400 font-bold">*</span>
+							<span>{t.gantt?.legend?.fallback ?? "Fallback"}</span>
+						</div>
+					</div>
+				</div>
 
 				{/* Main content */}
 				<div className="flex flex-1 overflow-hidden">
@@ -683,7 +726,10 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 						style={{ width: leftPanelWidth, scrollbarWidth: "none" }}
 					>
 						<table className="w-full text-left border-collapse table-fixed">
-							<thead className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10 relative" style={{ height: HEADER_HEIGHT }}>
+							<thead
+								className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10 relative"
+								style={{ height: HEADER_HEIGHT }}
+							>
 								<div className="absolute top-2 left-2 flex items-center gap-3 z-20">
 									<label className="flex items-center gap-1 text-[11px] text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap">
 										<input
@@ -692,7 +738,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 											onChange={(e) => setShowPlanTime(e.target.checked)}
 											className="w-3 h-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
 										/>
-										{(t as any).gantt?.showPlanTime ?? "Show Plan Time"}
+										{t.gantt?.showPlanTime ?? "Show Plan Time"}
 									</label>
 									<label className="flex items-center gap-1 text-[11px] text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap">
 										<input
@@ -701,20 +747,41 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 											onChange={(e) => setShowActualTime(e.target.checked)}
 											className="w-3 h-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
 										/>
-										{(t as any).gantt?.showActualTime ?? "Show Actual Time"}
+										{t.gantt?.showActualTime ?? "Show Actual Time"}
 									</label>
 								</div>
 								<tr className="border-b border-gray-200 dark:border-gray-700" style={{ height: HEADER_HEIGHT }}>
-									{renderSortableHeader((t as any).gantt?.columns?.id ?? "ID", "id", "w-24")}
-									{renderSortableHeader((t as any).gantt?.columns?.title ?? "Title", "title", "")}
-									{showPlanTime && renderSortableHeader((t as any).gantt?.columns?.plannedStart ?? "Plan Start", "plannedStart", hasCrossYearTasks ? "w-24" : "w-20")}
-									{showPlanTime && renderSortableHeader((t as any).gantt?.columns?.plannedEnd ?? "Plan End", "plannedEnd", hasCrossYearTasks ? "w-24" : "w-20")}
-									{showActualTime && renderSortableHeader((t as any).gantt?.columns?.actualStart ?? "Actual Start", "actualStart", hasCrossYearTasks ? "w-44" : "w-32")}
-									{showActualTime && renderSortableHeader((t as any).gantt?.columns?.actualEnd ?? "Actual End", "actualEnd", hasCrossYearTasks ? "w-44" : "w-32")}
-									<th className="px-2 w-20 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" style={{ height: HEADER_HEIGHT }}>
-										<div className="h-full flex items-end pb-2">
-											{(t as any).gantt?.columns?.action ?? "Action"}
-										</div>
+									{renderSortableHeader(t.gantt?.columns?.id ?? "ID", "id", "w-24")}
+									{renderSortableHeader(t.gantt?.columns?.title ?? "Title", "title", "")}
+									{showPlanTime &&
+										renderSortableHeader(
+											t.gantt?.columns?.plannedStart ?? "Plan Start",
+											"plannedStart",
+											hasCrossYearTasks ? "w-24" : "w-20",
+										)}
+									{showPlanTime &&
+										renderSortableHeader(
+											t.gantt?.columns?.plannedEnd ?? "Plan End",
+											"plannedEnd",
+											hasCrossYearTasks ? "w-24" : "w-20",
+										)}
+									{showActualTime &&
+										renderSortableHeader(
+											t.gantt?.columns?.actualStart ?? "Actual Start",
+											"actualStart",
+											hasCrossYearTasks ? "w-44" : "w-32",
+										)}
+									{showActualTime &&
+										renderSortableHeader(
+											t.gantt?.columns?.actualEnd ?? "Actual End",
+											"actualEnd",
+											hasCrossYearTasks ? "w-44" : "w-32",
+										)}
+									<th
+										className="px-2 w-20 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+										style={{ height: HEADER_HEIGHT }}
+									>
+										<div className="h-full flex items-end pb-2">{t.gantt?.columns?.action ?? "Action"}</div>
 									</th>
 								</tr>
 							</thead>
@@ -738,28 +805,44 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 										</td>
 										{showPlanTime && (
 											<React.Fragment>
-												<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-24" : "w-20"}`}>
+												<td
+													className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-24" : "w-20"}`}
+												>
 													{task.plannedStart ? formatDisplayDate(task.plannedStart, false) : "-"}
 												</td>
-												<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-24" : "w-20"}`}>
+												<td
+													className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-24" : "w-20"}`}
+												>
 													{task.plannedEnd ? formatDisplayDate(task.plannedEnd, false) : "-"}
 												</td>
 											</React.Fragment>
 										)}
-											{showActualTime && (
-												<React.Fragment>
-													<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`} title={storedUtcHoverTitle(task.originalStart)}>
-														{task.raw.actualStart ? formatDisplayDate(task.start) : (
-															<span className="text-amber-600 dark:text-amber-400">{formatDisplayDate(task.start)} *</span>
-														)}
-													</td>
-													<td className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`} title={storedUtcHoverTitle(task.originalEnd)}>
-														{task.raw.actualEnd ? formatDisplayDate(task.end) : (
-															<span className="text-amber-600 dark:text-amber-400">{formatDisplayDate(task.end)} *</span>
-														)}
-													</td>
-												</React.Fragment>
-											)}
+										{showActualTime && (
+											<React.Fragment>
+												<td
+													className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`}
+													title={storedUtcHoverTitle(task.originalStart)}
+												>
+													{task.raw.actualStart ? (
+														formatDisplayDate(task.start)
+													) : (
+														<span className="text-amber-600 dark:text-amber-400">
+															{formatDisplayDate(task.start)} *
+														</span>
+													)}
+												</td>
+												<td
+													className={`px-2 h-10 text-sm text-gray-600 dark:text-gray-400 truncate ${hasCrossYearTasks ? "w-44" : "w-32"}`}
+													title={storedUtcHoverTitle(task.originalEnd)}
+												>
+													{task.raw.actualEnd ? (
+														formatDisplayDate(task.end)
+													) : (
+														<span className="text-amber-600 dark:text-amber-400">{formatDisplayDate(task.end)} *</span>
+													)}
+												</td>
+											</React.Fragment>
+										)}
 										<td className="px-2 h-10 whitespace-nowrap w-20">
 											<button
 												type="button"
@@ -769,7 +852,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 													onEditTask(task.raw);
 												}}
 											>
-												{(t as any).gantt?.action?.detail ?? "Detail"}
+												{t.gantt?.action?.detail ?? "Detail"}
 											</button>
 										</td>
 									</tr>
@@ -777,7 +860,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 								{sortedTasks.length === 0 && (
 									<tr>
 										<td colSpan={5} className="px-4 h-10 text-center text-gray-500 dark:text-gray-400 text-sm w-full">
-											{(t as any).gantt?.noTasks ?? "No tasks to display"}
+											{t.gantt?.noTasks ?? "No tasks to display"}
 										</td>
 									</tr>
 								)}
@@ -789,14 +872,20 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 					<div
 						ref={timelineContainerRef}
 						className="flex-1 overflow-auto relative select-none"
-						onMouseDown={handleMouseDown}
-						onMouseMove={handleMouseMove}
-						onMouseUp={handleMouseUp}
+						onPointerDown={handlePointerDown}
+						onPointerMove={handlePointerMove}
+						onPointerUp={handlePointerUp}
 						style={{ cursor: isDragging ? "grabbing" : "grab" }}
 					>
-						<div className="relative" style={{ width: timelineWidth, height: HEADER_HEIGHT + Math.max(sortedTasks.length * ROW_HEIGHT, 200) }}>
+						<div
+							className="relative"
+							style={{ width: timelineWidth, height: HEADER_HEIGHT + Math.max(sortedTasks.length * ROW_HEIGHT, 200) }}
+						>
 							{/* Timeline header - three-level ticks */}
-							<div className="sticky top-0 left-0 bg-gray-50 dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 flex flex-col" style={{ height: HEADER_HEIGHT }}>
+							<div
+								className="sticky top-0 left-0 bg-gray-50 dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 flex flex-col"
+								style={{ height: HEADER_HEIGHT }}
+							>
 								{/* Layer 1: group labels */}
 								<div className="h-[20px] flex relative border-b border-gray-100 dark:border-gray-700/50">
 									{(() => {
@@ -814,23 +903,32 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 										if (cur) groups.push(cur);
 										return (
 											<>
-												{groups.map((g, i) => (
-													g.label && (
-															<div key={i} className="absolute top-0 bottom-0 flex items-center justify-center text-[10px] text-gray-500 dark:text-gray-400 font-medium text-center truncate px-1" style={{ left: g.start, width: g.width }}>
+												{groups.map(
+													(g) =>
+														g.label && (
+															<div
+																key={`group-${g.start}-${g.width}`}
+																className="absolute top-0 bottom-0 flex items-center justify-center text-[10px] text-gray-500 dark:text-gray-400 font-medium text-center truncate px-1"
+																style={{ left: g.start, width: g.width }}
+															>
 																{g.label}
 															</div>
-														)
-													))}
-													{columns.map((col, idx) => {
-														const prevTop = idx > 0 ? columns[idx - 1]?.topLabel : null;
-														const showTop = col.topLabel && col.topLabel !== prevTop;
-														return showTop && idx > 0 ? (
-															<div key={idx} className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-gray-500" style={{ left: idx * config.columnWidth }} />
-														) : null;
-													})}
-												</>
-											);
-										})()}
+														),
+												)}
+												{columns.map((col, idx) => {
+													const prevTop = idx > 0 ? columns[idx - 1]?.topLabel : null;
+													const showTop = col.topLabel && col.topLabel !== prevTop;
+													return showTop && idx > 0 ? (
+														<div
+															key={`vline-${col.start.getTime()}`}
+															className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-gray-500"
+															style={{ left: idx * config.columnWidth }}
+														/>
+													) : null;
+												})}
+											</>
+										);
+									})()}
 								</div>
 								{/* Layer 2: column labels */}
 								<div className="h-[30px] flex border-b border-gray-100 dark:border-gray-700/50">
@@ -858,10 +956,10 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 													className="absolute bottom-0 border-l border-gray-300 dark:border-gray-600"
 													style={{ left: tick.offsetPx, height: 6 }}
 												>
-														<span className="absolute -top-3 left-0 text-[9px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
-															{tick.label}
-														</span>
-													</div>
+													<span className="absolute -top-3 left-0 text-[9px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
+														{tick.label}
+													</span>
+												</div>
 											))}
 										</div>
 									))}
@@ -871,22 +969,21 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 							{showTodayLine && (
 								<div
 									className="absolute bottom-0 border-l-2 border-red-400 dark:border-red-500 z-10 pointer-events-none"
-										style={{ top: HEADER_HEIGHT, left: todayX }}
+									style={{ top: HEADER_HEIGHT, left: todayX }}
 								>
 									<span className="absolute top-0 -translate-x-1/2 text-[10px] text-red-500 dark:text-red-400 bg-white dark:bg-gray-900 px-1">
-										{(t as any).gantt?.today ?? "Today"}
+										{t.gantt?.today ?? "Today"}
 									</span>
 								</div>
 							)}
-
-							{/* Grid lines */}						{Array.from({ length: sortedTasks.length + 1 }).map((_, i) => (
+							{/* Grid lines */}{" "}
+							{Array.from({ length: sortedTasks.length + 1 }, (_, position) => position).map((row) => (
 								<div
-									key={`grid-${i}`}
+									key={row}
 									className="absolute left-0 right-0 border-b border-gray-100 dark:border-gray-800"
-									style={{ top: HEADER_HEIGHT + i * ROW_HEIGHT }}
+									style={{ top: HEADER_HEIGHT + row * ROW_HEIGHT }}
 								/>
 							))}
-
 							{/* Actual task bars (bottom layer) */}
 							{sortedTasks.map((task) => {
 								const pos = taskPositions[task.id];
@@ -897,12 +994,13 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 								const barTop = pos.y + (ROW_HEIGHT - 24) / 2;
 
 								return (
-									<div
+									<button
+										type="button"
 										key={`actual-${task.id}`}
 										data-task-bar
-										className={`absolute h-6 rounded transition-all duration-200 cursor-pointer ${
-											getTaskStatusColor(task.status)
-										} ${isDimmed ? "opacity-30" : isHighlighted ? "opacity-100" : "opacity-90"} ${
+										className={`text-left absolute h-6 rounded transition-all duration-200 cursor-pointer ${getTaskStatusColor(
+											task.status,
+										)} ${isDimmed ? "opacity-30" : isHighlighted ? "opacity-100" : "opacity-90"} ${
 											isHovered ? "ring-2 ring-white dark:ring-gray-700 z-20" : ""
 										}`}
 										style={{
@@ -930,10 +1028,9 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 												{task.id}
 											</span>
 										)}
-									</div>
+									</button>
 								);
 							})}
-
 							{/* Plan border bars (top layer) */}
 							{sortedTasks.map((task) => {
 								const planPos = planPositions[task.id];
@@ -941,7 +1038,8 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 								const isHighlighted = highlightedIds.has(task.id);
 								const isDimmed = selectedTaskId && !isHighlighted;
 								const barTop = planPos.y + (ROW_HEIGHT - 24) / 2;
-								const hatch = "repeating-linear-gradient(-60deg, transparent, transparent 4px, rgba(128,128,128,0.18) 4px, rgba(128,128,128,0.18) 5px)";
+								const hatch =
+									"repeating-linear-gradient(-60deg, transparent, transparent 4px, rgba(128,128,128,0.18) 4px, rgba(128,128,128,0.18) 5px)";
 
 								return (
 									<div
@@ -968,9 +1066,9 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 									</div>
 								);
 							})}
-
 							{/* Dependency arrows */}
 							<svg
+								aria-hidden="true"
 								className="absolute inset-0 pointer-events-none"
 								style={{ width: timelineWidth, height: HEADER_HEIGHT + Math.max(sortedTasks.length * ROW_HEIGHT, 200) }}
 							>
@@ -987,7 +1085,9 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 										// Resolve arrow start point (from task's end side)
 										let startX: number;
 										if (fromTask.plannedStart && fromTask.end.getTime() < fromTask.plannedStart.getTime()) {
-											startX = fromTask.plannedEnd ? getTimelineX(fromTask.plannedEnd, columns, granularity) : fromPos.x + fromPos.width;
+											startX = fromTask.plannedEnd
+												? getTimelineX(fromTask.plannedEnd, columns, granularity)
+												: fromPos.x + fromPos.width;
 										} else {
 											startX = fromPos.x + fromPos.width;
 										}
@@ -1049,16 +1149,20 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
 							if (!task) return null;
 							return (
 								<div className="space-y-0.5">
-									<div className="font-semibold">{task.id} - {task.title}</div>
-											{task.plannedStart && task.plannedEnd && (
-												<div className="text-gray-300">
-													{(t as any).gantt?.tooltip?.planned ?? "Planned"}: {formatDisplayDate(task.plannedStart, false)} → {formatDisplayDate(task.plannedEnd, false)}
-												</div>
-											)}
-											<div>
-												{(t as any).gantt?.tooltip?.actual ?? "Actual"}: {formatDisplayDate(task.start)} → {formatDisplayDate(task.end)}
-												{task.isFallback && ` [${(t as any).gantt?.tooltip?.fallback ?? "fallback"}]`}
-											</div>
+									<div className="font-semibold">
+										{task.id} - {task.title}
+									</div>
+									{task.plannedStart && task.plannedEnd && (
+										<div className="text-gray-300">
+											{t.gantt?.tooltip?.planned ?? "Planned"}: {formatDisplayDate(task.plannedStart, false)} →{" "}
+											{formatDisplayDate(task.plannedEnd, false)}
+										</div>
+									)}
+									<div>
+										{t.gantt?.tooltip?.actual ?? "Actual"}: {formatDisplayDate(task.start)} →{" "}
+										{formatDisplayDate(task.end)}
+										{task.isFallback && ` [${t.gantt?.tooltip?.fallback ?? "fallback"}]`}
+									</div>
 								</div>
 							);
 						})()}

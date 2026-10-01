@@ -190,9 +190,9 @@ function serveApi(boardTasks: Task[] = [], singleRecords: Task[] = [], completed
 
 /** The action buttons render their label as the button text, so this is the reliable probe. */
 function buttonWithText(label: string): HTMLButtonElement | undefined {
-	return Array.from(document.querySelectorAll("button")).find(
-		(button) => button.textContent?.trim() === label,
-	) as HTMLButtonElement | undefined;
+	return Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.trim() === label) as
+		| HTMLButtonElement
+		| undefined;
 }
 
 async function flush(milliseconds = 0): Promise<void> {

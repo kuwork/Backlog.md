@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["src/**/*.ts", "scripts/**/*.cjs", "*.json", "**/*.json", "!**/.claude"]
+		"includes": ["src/**/*.{ts,tsx}", "scripts/**/*.cjs", "*.json", "**/*.json", "!**/.claude"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -44,6 +44,16 @@
 			"formatter": {
 				"indentStyle": "space",
 				"indentWidth": 2
+			}
+		},
+		{
+			"includes": ["src/test/**/*.ts", "src/test/**/*.tsx"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noNonNullAssertion": "off"
+					}
+				}
 			}
 		}
 	]

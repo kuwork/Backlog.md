@@ -3,10 +3,10 @@ import { JSDOM } from "jsdom";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import type { Task } from "../types/index.ts";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import type { Locale } from "../web/locales";
-import { ThemeProvider } from "../web/contexts/ThemeContext";
 import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { ThemeProvider } from "../web/contexts/ThemeContext";
+import type { Locale } from "../web/locales";
 
 const renderModal = (task: Task, availableTasks: Task[] = [], locale: Locale = "en") =>
 	renderToString(
@@ -71,7 +71,12 @@ describe("Web task popup hierarchy display", () => {
 		setupDom();
 
 		const task = buildTask({ id: "BACK-217", title: "Create web UI for sequences" });
-		const doneSubtask = buildTask({ id: "BACK-218", title: "Implement sequence API", status: "Done", parentTaskId: "BACK-217" });
+		const doneSubtask = buildTask({
+			id: "BACK-218",
+			title: "Implement sequence API",
+			status: "Done",
+			parentTaskId: "BACK-217",
+		});
 		const todoSubtask = buildTask({ id: "BACK-219", title: "Create sequence list UI", parentTaskId: "BACK-217" });
 
 		const html = renderModal(task, [task, doneSubtask, todoSubtask]);

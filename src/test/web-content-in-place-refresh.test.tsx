@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
-import { StrictMode, act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Document, DocsTreeNode, Decision, SearchResult, WikiTreeNode } from "../types/index.ts";
+import type { Decision, DocsTreeNode, Document, SearchResult, WikiTreeNode } from "../types/index.ts";
 import App from "../web/App.tsx";
 import { HealthCheckProvider } from "../web/contexts/HealthCheckContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
@@ -256,7 +256,13 @@ afterEach(() => {
 
 describe("in-place content-entity refresh", () => {
 	it("refreshes documentation and its tree in place on documents-updated", async () => {
-		const stableNode: DocsTreeNode = { name: "Stable-doc.md", path: "Stable-doc.md", type: "file", docId: "doc-1", docTitle: "Stable doc" };
+		const stableNode: DocsTreeNode = {
+			name: "Stable-doc.md",
+			path: "Stable-doc.md",
+			type: "file",
+			docId: "doc-1",
+			docTitle: "Stable doc",
+		};
 		documents = [makeDoc("doc-1", "Stable doc")];
 		docsTreeData = [stableNode];
 		const container = await renderBoard();
@@ -264,7 +270,10 @@ describe("in-place content-entity refresh", () => {
 		expect(stableBefore).toBeTruthy();
 
 		documents = [makeDoc("doc-1", "Stable doc"), makeDoc("doc-2", "Brand new doc")];
-		docsTreeData = [stableNode, { name: "New-doc.md", path: "New-doc.md", type: "file", docId: "doc-2", docTitle: "Brand new doc" }];
+		docsTreeData = [
+			stableNode,
+			{ name: "New-doc.md", path: "New-doc.md", type: "file", docId: "doc-2", docTitle: "Brand new doc" },
+		];
 		await act(async () => {
 			getAppDataWebSocket().deliver("documents-updated");
 		});
@@ -305,7 +314,10 @@ describe("in-place content-entity refresh", () => {
 		await act(async () => {
 			getAppDataWebSocket().deliver("decisions-updated");
 		});
-		await waitFor(() => (container.textContent ?? "").includes("Externally added decision"), "externally created decision");
+		await waitFor(
+			() => (container.textContent ?? "").includes("Externally added decision"),
+			"externally created decision",
+		);
 		await settle();
 
 		expect(requestedPaths()).toEqual(["/api/decisions"]);
@@ -318,7 +330,10 @@ describe("in-place content-entity refresh", () => {
 		await act(async () => {
 			getAppDataWebSocket().deliver("wikis-updated");
 		});
-		await waitFor(() => (container.textContent ?? "").includes("Externally added page"), "externally created wiki page");
+		await waitFor(
+			() => (container.textContent ?? "").includes("Externally added page"),
+			"externally created wiki page",
+		);
 		await settle();
 
 		expect(requestedPaths()).toEqual(["/api/wiki/tree"]);

@@ -1,14 +1,15 @@
-import React, { useMemo, useState, useCallback } from "react";
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import type { Milestone, MilestoneBucket, Task } from "../../types";
+import { matchMilestoneSearchTaskIds } from "../../utils/milestone-search";
+import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
-import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
 import { parseStoredUtcDate } from "../utils/date-display";
-import { type Milestone, type MilestoneBucket, type Task } from "../../types";
-import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
-import { matchMilestoneSearchTaskIds } from "../../utils/milestone-search";
-import MilestoneTaskRow from "./MilestoneTaskRow";
+import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
 import MilestoneAddModal from "./MilestoneAddModal";
+import MilestoneTaskRow from "./MilestoneTaskRow";
 import Modal from "./Modal";
 import StoredDate from "./StoredDate";
 
@@ -32,11 +33,7 @@ function compareTaskIdsAscending(a: Task, b: Task): number {
 	return compareTaskIds(a.id, b.id);
 }
 
-const rebuildFilteredBucket = (
-	bucket: MilestoneBucket,
-	filteredTasks: Task[],
-	statuses: string[],
-): MilestoneBucket => {
+const rebuildFilteredBucket = (bucket: MilestoneBucket, filteredTasks: Task[], statuses: string[]): MilestoneBucket => {
 	const counts: Record<string, number> = {};
 	for (const status of statuses) {
 		counts[status] = 0;
@@ -195,29 +192,32 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		setDropTargetKey(null);
 	}, []);
 
-	const handleDrop = useCallback(async (e: React.DragEvent, targetMilestone: string | undefined) => {
-		e.preventDefault();
-		setDropTargetKey(null);
+	const handleDrop = useCallback(
+		async (e: React.DragEvent, targetMilestone: string | undefined) => {
+			e.preventDefault();
+			setDropTargetKey(null);
 
-		if (!draggedTask) return;
+			if (!draggedTask) return;
 
-		// Don't do anything if dropping on same milestone
-		if (draggedTask.milestone === targetMilestone) {
-			setDraggedTask(null);
-			return;
-		}
-
-		try {
-			await apiClient.updateTask(draggedTask.id, { milestone: targetMilestone });
-			if (onRefreshData) {
-				await onRefreshData();
+			// Don't do anything if dropping on same milestone
+			if (draggedTask.milestone === targetMilestone) {
+				setDraggedTask(null);
+				return;
 			}
-		} catch (err) {
-			console.error("Failed to update task milestone:", err);
-		}
 
-		setDraggedTask(null);
-	}, [draggedTask, onRefreshData]);
+			try {
+				await apiClient.updateTask(draggedTask.id, { milestone: targetMilestone });
+				if (onRefreshData) {
+					await onRefreshData();
+				}
+			} catch (err) {
+				console.error("Failed to update task milestone:", err);
+			}
+
+			setDraggedTask(null);
+		},
+		[draggedTask, onRefreshData],
+	);
 
 	const handleMilestoneCreated = async (title: string) => {
 		setSuccess(t.milestones.addSuccess(title));
@@ -500,14 +500,14 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		const isRemoving = removingMilestoneKey === bucket.key;
 
 		return (
-			<div
+			<fieldset
 				key={bucket.key}
-				className={`rounded-lg border-2 transition-all duration-200 ${
+				className={`min-w-0 rounded-lg border-2 transition-all duration-200 ${
 					isDropTarget
 						? "border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.01]"
 						: isDragging
-						? "border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-						: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+							? "border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+							: "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
 				}`}
 				onDragOver={(e) => handleDragOver(e, bucket.key)}
 				onDragLeave={handleDragLeave}
@@ -542,9 +542,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								<span className="text-sm text-gray-500 dark:text-gray-400">
 									{bucket.total} {bucket.total === 1 ? t.milestones.taskSingular : t.milestones.taskPlural}
 								</span>
-								<span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-									{progress}%
-								</span>
+								<span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{progress}%</span>
 							</div>
 						)}
 					</div>
@@ -553,26 +551,47 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					{(() => {
 						const entity = milestoneEntities.find((m) => m.id === bucket.milestone);
 						const lastUpdated = entity ? (entity.updatedDate ?? entity.createdDate) : undefined;
-						if (!entity || (!entity.dueDate && !entity.plannedStart && !entity.plannedEnd && !entity.actualStart && !entity.actualEnd && !lastUpdated)) return null;
+						if (
+							!entity ||
+							(!entity.dueDate &&
+								!entity.plannedStart &&
+								!entity.plannedEnd &&
+								!entity.actualStart &&
+								!entity.actualEnd &&
+								!lastUpdated)
+						)
+							return null;
 						return (
 							<div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
 								{entity.dueDate && (
-									<span>{t.taskDetails.section.dueDate}: {entity.dueDate}</span>
+									<span>
+										{t.taskDetails.section.dueDate}: {entity.dueDate}
+									</span>
 								)}
 								{entity.plannedStart && (
-									<span>{t.taskDetails.section.plannedStart}: {entity.plannedStart}</span>
+									<span>
+										{t.taskDetails.section.plannedStart}: {entity.plannedStart}
+									</span>
 								)}
 								{entity.plannedEnd && (
-									<span>{t.taskDetails.section.plannedEnd}: {entity.plannedEnd}</span>
+									<span>
+										{t.taskDetails.section.plannedEnd}: {entity.plannedEnd}
+									</span>
 								)}
 								{entity.actualStart && (
-									<span>{t.taskDetails.section.actualStart}: <StoredDate value={entity.actualStart} /></span>
+									<span>
+										{t.taskDetails.section.actualStart}: <StoredDate value={entity.actualStart} />
+									</span>
 								)}
 								{entity.actualEnd && (
-									<span>{t.taskDetails.section.actualEnd}: <StoredDate value={entity.actualEnd} /></span>
+									<span>
+										{t.taskDetails.section.actualEnd}: <StoredDate value={entity.actualEnd} />
+									</span>
 								)}
 								{lastUpdated && (
-									<span>{t.taskDetails.section.lastUpdated}: <StoredDate value={lastUpdated} /></span>
+									<span>
+										{t.taskDetails.section.lastUpdated}: <StoredDate value={lastUpdated} />
+									</span>
 								)}
 							</div>
 						);
@@ -608,8 +627,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								to={`/?lane=milestone&milestone=${encodeURIComponent(bucket.milestone ?? "")}`}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 							>
-								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+								<svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+									/>
 								</svg>
 								{t.milestones.board}
 							</Link>
@@ -617,8 +641,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								to={`/tasks?milestone=${encodeURIComponent(bucket.milestone ?? "")}`}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 							>
-								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+								<svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M4 6h16M4 10h16M4 14h16M4 18h16"
+									/>
 								</svg>
 								{t.milestones.list}
 							</Link>
@@ -632,9 +661,19 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60"
 							>
-								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+								<svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+									/>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+									/>
 								</svg>
 								{t.common.detail}
 							</button>
@@ -644,8 +683,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60"
 							>
-								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m3 0V5a2 2 0 012-2h0a2 2 0 012 2v2" />
+								<svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m3 0V5a2 2 0 012-2h0a2 2 0 012 2v2"
+									/>
 								</svg>
 								{isRemoving ? t.common.removing : t.common.remove}
 							</button>
@@ -655,8 +699,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								disabled={isArchiving || isRemoving}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-60"
 							>
-								<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+								<svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+									/>
 								</svg>
 								{isArchiving ? t.common.archiving : t.milestones.archive}
 							</button>
@@ -669,7 +718,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
 						>
 							{isExpanded ? t.milestones.hideTasks : t.milestones.showTasks}
-							<svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg
+								aria-hidden="true"
+								className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
 							</svg>
 						</button>
@@ -679,7 +734,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					{isExpanded && !isEmpty && (
 						<div id={listId} className="mt-4 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
 							<div className="divide-y divide-gray-200 dark:divide-gray-700">
-							{renderBucketTableHeader(bucket.key)}
+								{renderBucketTableHeader(bucket.key)}
 								{sortedTasks.slice(0, 10).map((task) => {
 									return (
 										<MilestoneTaskRow
@@ -697,7 +752,10 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							</div>
 							{sortedTasks.length > 10 && (
 								<div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
-									<Link to={`/tasks?milestone=${encodeURIComponent(bucket.milestone ?? "")}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+									<Link
+										to={`/tasks?milestone=${encodeURIComponent(bucket.milestone ?? "")}`}
+										className="text-blue-600 dark:text-blue-400 hover:underline"
+									>
 										{t.milestones.viewAll(sortedTasks.length)}
 									</Link>
 								</div>
@@ -705,7 +763,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 						</div>
 					)}
 				</div>
-			</div>
+			</fieldset>
 		);
 	};
 
@@ -717,7 +775,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			? unassignedBucket.tasks
 			: unassignedBucket.tasks.filter((task) => !isDoneStatus(task.status));
 		const sortedActiveTasks = getSortedTasks(unassignedTasksForDisplay, "__unassigned");
-		const isExpanded = expandedBuckets["__unassigned"] ?? true;
+		const isExpanded = expandedBuckets.__unassigned ?? true;
 		const displayTasks = showAllUnassigned ? sortedActiveTasks : sortedActiveTasks.slice(0, 12);
 		const hasMore = sortedActiveTasks.length > 12;
 		const hasActiveUnassignedTasks = sortedActiveTasks.length > 0;
@@ -728,23 +786,38 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					{/* Header */}
 					<div className="flex items-center justify-between gap-4">
 						<div className="flex items-center gap-2">
-							<svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							<svg
+								aria-hidden="true"
+								className="w-4 h-4 text-gray-400"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
 							</svg>
 							<h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
 								{t.milestones.unassignedTasks}
 							</h3>
-							<span className="text-sm text-gray-500 dark:text-gray-400">
-								({sortedActiveTasks.length})
-							</span>
+							<span className="text-sm text-gray-500 dark:text-gray-400">({sortedActiveTasks.length})</span>
 						</div>
 						<button
 							type="button"
-							onClick={() => setExpandedBuckets((c) => ({ ...c, "__unassigned": !isExpanded }))}
+							onClick={() => setExpandedBuckets((c) => ({ ...c, __unassigned: !isExpanded }))}
 							className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
 						>
 							{isExpanded ? t.common.collapse : t.common.expand}
-							<svg className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg
+								aria-hidden="true"
+								className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
 							</svg>
 						</button>
@@ -756,7 +829,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								<>
 									{/* Table */}
 									<div className="rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
-											{renderBucketTableHeader("__unassigned")}
+										{renderBucketTableHeader("__unassigned")}
 
 										{/* Table rows */}
 										<div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -782,24 +855,18 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 													onClick={() => setShowAllUnassigned(!showAllUnassigned)}
 													className="text-blue-600 dark:text-blue-400 hover:underline"
 												>
-													{showAllUnassigned
-														? t.milestones.showLess
-														: t.milestones.showAll(sortedActiveTasks.length)}
+													{showAllUnassigned ? t.milestones.showLess : t.milestones.showAll(sortedActiveTasks.length)}
 												</button>
 											</div>
 										)}
 									</div>
 
 									{/* Hint */}
-									<p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-										{t.milestones.dragHint}
-									</p>
+									<p className="mt-3 text-xs text-gray-400 dark:text-gray-500">{t.milestones.dragHint}</p>
 								</>
 							) : (
 								<p className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-gray-800/50 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-									{isSearchActive
-										? t.milestones.noMatchingUnassigned
-										: t.milestones.noActiveUnassigned}
+									{isSearchActive ? t.milestones.noMatchingUnassigned : t.milestones.noActiveUnassigned}
 								</p>
 							)}
 						</div>
@@ -822,8 +889,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.milestones.title}</h1>
 					<div className="relative w-full min-w-[240px] max-w-[420px]">
 						<span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
-							<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+							<svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+								/>
 							</svg>
 						</span>
 						<label htmlFor="milestones-search" className="sr-only">
@@ -845,7 +917,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								aria-label={t.milestones.clearSearchAria}
 								className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
 							>
-								<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 								</svg>
 							</button>
@@ -855,7 +927,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 				<div className="flex items-center gap-3">
 					{success && (
 						<span className="inline-flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
-							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 							</svg>
 							{success}
@@ -863,8 +935,13 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					)}
 					{error && (
 						<span className="inline-flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
-							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z" />
+							<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M12 9v4m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z"
+								/>
 							</svg>
 							{error}
 						</span>
@@ -922,6 +999,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							<span>{t.milestones.completed}</span>
 							<span className="text-xs text-gray-400 dark:text-gray-500">({completedMilestones.length})</span>
 							<svg
+								aria-hidden="true"
 								className={`w-4 h-4 transition-transform ${showCompleted ? "rotate-180" : ""}`}
 								fill="none"
 								stroke="currentColor"
@@ -942,8 +1020,19 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			{/* Empty state */}
 			{noMilestones && !unassignedBucket?.total && (
 				<div className="flex flex-col items-center justify-center py-16 text-center">
-					<svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+					<svg
+						aria-hidden="true"
+						className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={1.5}
+							d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+						/>
 					</svg>
 					<p className="text-gray-500 dark:text-gray-400">{t.milestones.noMilestones}</p>
 				</div>
@@ -959,11 +1048,14 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			)}
 
 			{/* Remove modal */}
-			<Modal isOpen={archivingBucket !== null} onClose={closeArchiveModal} title={t.milestones.archiveTitle} maxWidthClass="max-w-md">
+			<Modal
+				isOpen={archivingBucket !== null}
+				onClose={closeArchiveModal}
+				title={t.milestones.archiveTitle}
+				maxWidthClass="max-w-md"
+			>
 				<div className="space-y-4">
-					<p className="text-sm text-gray-600 dark:text-gray-300">
-						{t.milestones.archiveDescription}
-					</p>
+					<p className="text-sm text-gray-600 dark:text-gray-300">{t.milestones.archiveDescription}</p>
 					<div className="flex justify-end gap-2">
 						<button
 							type="button"
@@ -984,11 +1076,14 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 				</div>
 			</Modal>
 
-			<Modal isOpen={removingBucket !== null} onClose={closeRemoveModal} title={t.milestones.removeTitle} maxWidthClass="max-w-md">
+			<Modal
+				isOpen={removingBucket !== null}
+				onClose={closeRemoveModal}
+				title={t.milestones.removeTitle}
+				maxWidthClass="max-w-md"
+			>
 				<div className="space-y-4">
-					<p className="text-sm text-gray-600 dark:text-gray-300">
-						{t.milestones.removeDescription}
-					</p>
+					<p className="text-sm text-gray-600 dark:text-gray-300">{t.milestones.removeDescription}</p>
 					<div className="space-y-3">
 						<label className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 dark:border-gray-700 px-3 py-3 text-sm text-gray-700 dark:text-gray-200">
 							<input
@@ -1003,7 +1098,9 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								className="mt-0.5"
 							/>
 							<span>
-								<span className="block font-medium text-gray-900 dark:text-gray-100">{t.milestones.leaveUnassigned}</span>
+								<span className="block font-medium text-gray-900 dark:text-gray-100">
+									{t.milestones.leaveUnassigned}
+								</span>
 								<span className="block text-xs text-gray-500 dark:text-gray-400">
 									{t.milestones.leaveUnassignedDesc}
 								</span>
@@ -1024,9 +1121,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 							/>
 							<span className="flex-1">
 								<span className="block font-medium text-gray-900 dark:text-gray-100">{t.milestones.reassignTasks}</span>
-								<span className="block text-xs text-gray-500 dark:text-gray-400">
-									{t.milestones.reassignTasksDesc}
-								</span>
+								<span className="block text-xs text-gray-500 dark:text-gray-400">{t.milestones.reassignTasksDesc}</span>
 								<select
 									value={removeReassignTo}
 									onChange={(event) => {

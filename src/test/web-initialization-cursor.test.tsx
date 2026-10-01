@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "react-dom/server";
-import { getDictionary } from "../web/locales";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import InitializationScreen from "../web/components/InitializationScreen";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { getDictionary } from "../web/locales";
 
 describe("Web init Cursor copy", () => {
 	it("describes the AGENTS.md option as shared with Cursor in every locale", () => {

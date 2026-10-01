@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import type React from "react";
+import { useMemo, useState } from "react";
 import type { Task } from "../../types";
 import { canonicalTaskId } from "../../utils/task-id";
 import { sortByTaskId } from "../../utils/task-sorting";

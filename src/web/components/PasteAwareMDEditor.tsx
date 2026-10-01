@@ -1,13 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MDEditor, { commands } from "@uiw/react-md-editor";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
+import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
+import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
-import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
 import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
 import { MermaidAwarePre } from "./MermaidDiagram";
-import { useI18n } from '../hooks/useI18n';
 
 type MDEditorProps = React.ComponentProps<typeof MDEditor>;
 
@@ -74,7 +75,7 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const textareaPropsRef = useRef(textareaProps);
 	textareaPropsRef.current = textareaProps;
-	const wrapperRef = useRef<HTMLDivElement | null>(null);
+	const wrapperRef = useRef<HTMLFieldSetElement | null>(null);
 	const [autocompleteTextarea, setAutocompleteTextarea] = useState<HTMLTextAreaElement | null>(null);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [isConverting, setIsConverting] = useState(false);
@@ -172,9 +173,7 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 				// Ensure ordered-list markers are followed by a space.
 				markdown = markdown.replace(/(^|\s)(\d+\.)([^\s\d])/g, "$1$2 $3");
 
-				const textarea =
-					textareaRef.current ??
-					document.querySelector<HTMLTextAreaElement>(".w-md-editor-text-input");
+				const textarea = textareaRef.current ?? document.querySelector<HTMLTextAreaElement>(".w-md-editor-text-input");
 				if (textarea) {
 					insertMarkdownAtCaret(textarea, markdown, onChange);
 				}
@@ -262,7 +261,7 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 					{isConverting ? (
 						<span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
 					) : (
-						<svg className="h-3.5 w-3.5" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+						<svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
 							<path
 								d="M106.915276 0.008063C87.725354 0.008063 68.535433 19.189921 68.535433 38.379843V985.088c0 19.189921 19.189921 38.379843 38.379843 38.379843h805.976693c19.189921 0 38.379843-19.189921 38.379842-38.379843V223.893165L727.394772 0.008063H106.915276z"
 								fill="#2C97FF"
@@ -275,26 +274,26 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 								d="M738.900661 329.881197c-21.600756 0-39.847307 18.246551-39.847307 39.847307v256.056441L538.583685 457.977953c-7.071244-8.482268-16.988724-12.965291-28.680063-12.965292-11.038236 0-22.011969 4.966803-28.494614 12.739528L318.197921 627.123402V369.728504c0-21.608819-18.254614-39.847307-39.85537-39.847307s-39.85537 18.246551-39.85537 39.847307v356.940598c0 16.311433 10.56252 31.550488 25.688693 37.049449a41.064819 41.064819 0 0 0 14.053795 2.467276c10.965669 0 21.802331-4.33789 29.889512-12.425071l201.792504-210.62148L711.502614 752.277165c7.071244 8.466142 16.988724 12.965291 28.680063 12.965292 5.418331 0 10.167433-0.120945 12.900788-1.531969 15.110047-5.490898 25.664504-20.729953 25.664504-37.041386v-356.948661c0-21.592693-18.246551-39.839244-39.847308-39.839244"
 								fill="#FFFFFF"
 							/>
-							</svg>
-						)}
-					</button>
-				);
+						</svg>
+					)}
+				</button>
+			);
 		},
 	};
 
 	return (
-		<div
+		<fieldset
 			ref={wrapperRef}
 			// `h-full` keeps the editor filling definite-height containers: MDEditor sizes
 			// itself with `height: 100%`, which collapses to its content when this wrapper
 			// is an auto-height block. That is invisible in edit/live mode (the textarea
 			// supplies a height) but it flattened the preview-only pane to a 20px strip.
-			className="relative h-full"
+			className="min-w-0 relative h-full"
 			onDragOver={(e) => e.preventDefault()}
 			onDrop={(e) => {
 				e.preventDefault();
 				const file = e.dataTransfer.files[0];
-				if (file && file.name.toLowerCase().endsWith(".docx")) {
+				if (file?.name.toLowerCase().endsWith(".docx")) {
 					void handleDocxUpload(file);
 				}
 			}}
@@ -318,13 +317,15 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 				onChange={onChange}
 				previewOptions={mergedPreviewOptions}
 				extraCommands={[wordCommand, ...(propExtraCommands ?? commands.getExtraCommands())]}
-				textareaProps={{
-					...textareaProps,
-					// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
-					ref: handleTextareaRef as any,
-					onPaste: handlePaste,
-					// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
-				} as any}
+				textareaProps={
+					{
+						...textareaProps,
+						// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
+						ref: handleTextareaRef as any,
+						onPaste: handlePaste,
+						// biome-ignore lint/suspicious/noExplicitAny: library types don't expose ref on textareaProps
+					} as any
+				}
 			/>
 			{entityAutocomplete.menu && (
 				<EntityLinkAutocompleteMenu
@@ -333,6 +334,6 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 					onSelect={entityAutocomplete.insertCandidate}
 				/>
 			)}
-		</div>
+		</fieldset>
 	);
 };

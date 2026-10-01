@@ -273,8 +273,7 @@ describe("rendered readiness guidance", () => {
 	const graph = [doneDep, inProgDep, readyTask, blockedTask, unknownDepTask, noDepsTask];
 
 	it("renders TUI detail readiness guidance for ready, blocked, and unresolved dependencies", () => {
-		const detailBody = (task: Task) =>
-			generateDetailContent(task, undefined, graphOf(graph)).bodyContent.join("\n");
+		const detailBody = (task: Task) => generateDetailContent(task, undefined, graphOf(graph)).bodyContent.join("\n");
 
 		expect(detailBody(readyTask)).toContain("Readiness:");
 		expect(detailBody(readyTask)).toContain("✓ Ready to start");

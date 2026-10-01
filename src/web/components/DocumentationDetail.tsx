@@ -1,19 +1,19 @@
-import {useState, useEffect, memo, useCallback, useRef, type Ref} from 'react';
-import {useParams, useNavigate, useLocation, useSearchParams} from 'react-router-dom';
-import {apiClient, isAmbiguousIdConflict} from '../lib/api';
-import { AmbiguousIdNotice } from './AmbiguousIdNotice';
-import { PasteAwareMDEditor } from './PasteAwareMDEditor';
-import MermaidMarkdown from './MermaidMarkdown';
-import { usePageToc } from '../contexts/TocContext';
-import FilePreviewModal from './FilePreviewModal';
-import {type Document} from '../../types';
-import ErrorBoundary from '../components/ErrorBoundary';
-import {SuccessToast} from './SuccessToast';
-import { useTheme } from '../contexts/ThemeContext';
-import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
-import { storedUtcHoverTitle } from '../utils/date-display';
-import { useI18n } from '../hooks/useI18n';
-import { normalizeMarkdownHashLinks } from '../../markdown/hash-links';
+import { memo, type Ref, useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { normalizeMarkdownHashLinks } from "../../markdown/hash-links";
+import type { Document } from "../../types";
+import ErrorBoundary from "../components/ErrorBoundary";
+import { useTheme } from "../contexts/ThemeContext";
+import { usePageToc } from "../contexts/TocContext";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient, isAmbiguousIdConflict } from "../lib/api";
+import { storedUtcHoverTitle } from "../utils/date-display";
+import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
+import { AmbiguousIdNotice } from "./AmbiguousIdNotice";
+import FilePreviewModal from "./FilePreviewModal";
+import MermaidMarkdown from "./MermaidMarkdown";
+import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
+import { SuccessToast } from "./SuccessToast";
 
 // Custom MDEditor wrapper for proper height handling
 const MarkdownEditor = memo(function MarkdownEditor({
@@ -28,605 +28,742 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	onWikiClick,
 	containerRef,
 }: {
-    value: string;
-    onChange?: (val: string | undefined) => void;
-    isEditing: boolean;
-    isReadonly?: boolean;
-    onFileClick?: (path: string) => void;
-    onTaskClick?: (taskId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-    onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-    onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-    onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-    onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-    containerRef?: Ref<HTMLDivElement | null>;
+	value: string;
+	onChange?: (val: string | undefined) => void;
+	isEditing: boolean;
+	isReadonly?: boolean;
+	onFileClick?: (path: string) => void;
+	onTaskClick?: (taskId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	containerRef?: Ref<HTMLDivElement | null>;
 }) {
-    const { t } = useI18n();
-    const { theme } = useTheme();
-    if (!isEditing) {
-        // Preview mode - just show the rendered markdown without editor UI
-        return (
-            <div
-                ref={containerRef}
-                className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-                data-color-mode={theme}>
-                <MermaidMarkdown source={value} onFileClick={onFileClick} onTaskClick={onTaskClick} onDraftClick={onDraftClick} onDocClick={onDocClick} onDecisionClick={onDecisionClick} onWikiClick={onWikiClick} wikilinkBasePath="index.md" />
-            </div>
-        );
-    }
+	const { t } = useI18n();
+	const { theme } = useTheme();
+	if (!isEditing) {
+		// Preview mode - just show the rendered markdown without editor UI
+		return (
+			<div
+				ref={containerRef}
+				className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+				data-color-mode={theme}
+			>
+				<MermaidMarkdown
+					source={value}
+					onFileClick={onFileClick}
+					onTaskClick={onTaskClick}
+					onDraftClick={onDraftClick}
+					onDocClick={onDocClick}
+					onDecisionClick={onDecisionClick}
+					onWikiClick={onWikiClick}
+					wikilinkBasePath="index.md"
+				/>
+			</div>
+		);
+	}
 
-    // Edit mode - show full editor that fills the available space
-    return (
-        <div className="h-full w-full flex flex-col">
-            <div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-                <PasteAwareMDEditor
-                    value={value}
-                    onChange={onChange}
-                    preview="edit"
-                    height="100%"
-                    hideToolbar={false}
-                    data-color-mode={theme}
-                    textareaProps={{
-                        placeholder: t.documents.placeholderBody,
-                        style: {
-                            fontSize: '14px',
-                            resize: 'none'
-                        }
-                    }}
-                />
-            </div>
-        </div>
-    );
+	// Edit mode - show full editor that fills the available space
+	return (
+		<div className="h-full w-full flex flex-col">
+			<div className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+				<PasteAwareMDEditor
+					value={value}
+					onChange={onChange}
+					preview="edit"
+					height="100%"
+					hideToolbar={false}
+					data-color-mode={theme}
+					textareaProps={{
+						placeholder: t.documents.placeholderBody,
+						style: {
+							fontSize: "14px",
+							resize: "none",
+						},
+					}}
+				/>
+			</div>
+		</div>
+	);
 });
 
 // Utility function to add doc prefix for API calls
 const addDocPrefix = (id: string): string => {
-    return id.startsWith('doc-') ? id : `doc-${id}`;
+	return id.startsWith("doc-") ? id : `doc-${id}`;
 };
 
 const getDocumentDirectory = (path?: string): string => {
-    if (!path) return '';
-    return path.split(/[\\/]+/).slice(0, -1).join('/');
+	if (!path) return "";
+	return path
+		.split(/[\\/]+/)
+		.slice(0, -1)
+		.join("/");
 };
 
 interface DocumentationDetailProps {
-    docs: Document[];
-    onRefreshData: () => Promise<void>;
+	docs: Document[];
+	onRefreshData: () => Promise<void>;
 }
 
-export default function DocumentationDetail({docs, onRefreshData}: DocumentationDetailProps) {
-    const { t } = useI18n();
-    const {id, title} = useParams<{ id: string; title: string }>();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [document, setDocument] = useState<Document | null>(null);
-    const [content, setContent] = useState<string>('');
-    const [originalContent, setOriginalContent] = useState<string>('');
-    const [docTitle, setDocTitle] = useState<string>('');
-    const [originalDocTitle, setOriginalDocTitle] = useState<string>('');
-    const [docPath, setDocPath] = useState<string>('');
-    const [originalDocPath, setOriginalDocPath] = useState<string>('');
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const [saveError, setSaveError] = useState<Error | null>(null);
-    const [isNewDocument, setIsNewDocument] = useState(false);
-    const [showSaveSuccess, setShowSaveSuccess] = useState(false);
-    type PreviewTarget =
-        | { kind: "file"; path: string }
-        | { kind: "entity"; type: "task" | "draft" | "doc" | "decision" | "wiki"; id: string; lineStart?: number; lineEnd?: number };
-    const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
-    const handledRouteIdRef = useRef<string | undefined>(undefined);
-    // Fingerprint of the body currently on screen, together with the route it belongs to.
-    // It is what tells a real external edit apart from an unrelated refresh.
-    const renderedFingerprintRef = useRef<{ id: string; hash?: string } | undefined>(undefined);
-    const contentRef = useRef<HTMLDivElement | null>(null);
-    // Publishes the rendered headings to the header outline; empty while editing.
-    usePageToc(contentRef, isEditing ? null : content);
+export default function DocumentationDetail({ docs, onRefreshData }: DocumentationDetailProps) {
+	const { t } = useI18n();
+	const { id, title } = useParams<{ id: string; title: string }>();
+	const navigate = useNavigate();
+	const location = useLocation();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [document, setDocument] = useState<Document | null>(null);
+	const [content, setContent] = useState<string>("");
+	const [originalContent, setOriginalContent] = useState<string>("");
+	const [docTitle, setDocTitle] = useState<string>("");
+	const [originalDocTitle, setOriginalDocTitle] = useState<string>("");
+	const [docPath, setDocPath] = useState<string>("");
+	const [originalDocPath, setOriginalDocPath] = useState<string>("");
+	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
+	const [error, setError] = useState<Error | null>(null);
+	const [saveError, setSaveError] = useState<Error | null>(null);
+	const [isNewDocument, setIsNewDocument] = useState(false);
+	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+	type PreviewTarget =
+		| { kind: "file"; path: string }
+		| {
+				kind: "entity";
+				type: "task" | "draft" | "doc" | "decision" | "wiki";
+				id: string;
+				lineStart?: number;
+				lineEnd?: number;
+		  };
+	const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+	const handledRouteIdRef = useRef<string | undefined>(undefined);
+	// Fingerprint of the body currently on screen, together with the route it belongs to.
+	// It is what tells a real external edit apart from an unrelated refresh.
+	const renderedFingerprintRef = useRef<{ id: string; hash?: string } | undefined>(undefined);
+	const contentRef = useRef<HTMLDivElement | null>(null);
+	// Publishes the rendered headings to the header outline; empty while editing.
+	usePageToc(contentRef, isEditing ? null : content);
 
-    useEffect(() => {
-            // Only react to an actual route change. The parent refreshes its docs array
-            // regularly (initial load, websocket updates), and re-running this on every
-            // refresh used to reload the content: the document was unmounted while the
-            // spinner showed, which scrolled the reader back to the top of the page and
-            // discarded an in-progress hash link position.
-            // A refresh that really did change this document's body is handled by the
-            // fingerprint effect below instead.
-            if (handledRouteIdRef.current === id) return;
-            handledRouteIdRef.current = id;
-            if (id === 'new') {
-                // Handle new document creation
-                setIsNewDocument(true);
-                setIsEditing(true);
-                setIsLoading(false);
-                setError(null);
-                setDocument(null);
-                setDocTitle('');
-                setOriginalDocTitle('');
-                const pathParam = searchParams.get('path') || '';
-                setDocPath(pathParam);
-                setOriginalDocPath(pathParam);
-                setContent('');
-        } else if (id) {
-            setIsNewDocument(false);
-            setIsEditing(false); // Ensure we start in preview mode for existing documents
-            loadDocContent();
-        }
-    }, [id, docs]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
+	useEffect(() => {
+		// Only react to an actual route change. The parent refreshes its docs array
+		// regularly (initial load, websocket updates), and re-running this on every
+		// refresh used to reload the content: the document was unmounted while the
+		// spinner showed, which scrolled the reader back to the top of the page and
+		// discarded an in-progress hash link position.
+		// A refresh that really did change this document's body is handled by the
+		// fingerprint effect below instead.
+		if (handledRouteIdRef.current === id) return;
+		handledRouteIdRef.current = id;
+		if (id === "new") {
+			// Handle new document creation
+			setIsNewDocument(true);
+			setIsEditing(true);
+			setIsLoading(false);
+			setError(null);
+			setDocument(null);
+			setDocTitle("");
+			setOriginalDocTitle("");
+			const pathParam = searchParams.get("path") || "";
+			setDocPath(pathParam);
+			setOriginalDocPath(pathParam);
+			setContent("");
+		} else if (id) {
+			setIsNewDocument(false);
+			setIsEditing(false); // Ensure we start in preview mode for existing documents
+			loadDocContent();
+		}
+	}, [id, docs]);
 
-    // Check for edit query parameter to start in edit mode
-    useEffect(() => {
-        if (searchParams.get('edit') === 'true') {
-            setIsEditing(true);
-            // Remove the edit parameter from URL
-            setSearchParams(params => {
-                params.delete('edit');
-                return params;
-            });
-        }
-    }, [searchParams, setSearchParams]);
+	// Check for edit query parameter to start in edit mode
+	useEffect(() => {
+		if (searchParams.get("edit") === "true") {
+			setIsEditing(true);
+			// Remove the edit parameter from URL
+			setSearchParams((params) => {
+				params.delete("edit");
+				return params;
+			});
+		}
+	}, [searchParams, setSearchParams]);
 
-    // Normalize bare /documentation/:id to slugged /documentation/:id/:title
-    useEffect(() => {
-        if (!id || id === 'new' || isLoading || !document) return;
-        const expectedSlug = sanitizeUrlTitle(docTitle);
-        if (title !== expectedSlug) {
-            // Keep the anchor: a bare id link with an in-document hash must still land on its heading.
-            navigate(`/documentation/${id}/${expectedSlug}${location.hash}`, { replace: true });
-        }
-    }, [id, docTitle, document, isLoading, title, navigate, location.hash]);
+	// Normalize bare /documentation/:id to slugged /documentation/:id/:title
+	useEffect(() => {
+		if (!id || id === "new" || isLoading || !document) return;
+		const expectedSlug = sanitizeUrlTitle(docTitle);
+		if (title !== expectedSlug) {
+			// Keep the anchor: a bare id link with an in-document hash must still land on its heading.
+			navigate(`/documentation/${id}/${expectedSlug}${location.hash}`, { replace: true });
+		}
+	}, [id, docTitle, document, isLoading, title, navigate, location.hash]);
 
-    const loadDocContent = useCallback(async (options?: { silent?: boolean }) => {
-        if (!id) return;
-        // A silent reload is the external-edit path: the body is already on screen, so keep the
-        // DOM mounted (no loading state, no error takeover) and only swap the content.
-        const silent = options?.silent === true;
+	const loadDocContent = useCallback(
+		async (options?: { silent?: boolean }) => {
+			if (!id) return;
+			// A silent reload is the external-edit path: the body is already on screen, so keep the
+			// DOM mounted (no loading state, no error takeover) and only swap the content.
+			const silent = options?.silent === true;
 
-        try {
-            if (!silent) {
-                setIsLoading(true);
-                setError(null);
-            }
-            // Find document from props
-            const prefixedId = addDocPrefix(id);
-            const doc = docs.find(d => d.id === prefixedId);
-            
-            // Always try to fetch the document from API, whether we found it in docs or not
-            // This ensures deep linking works even before the parent component loads the docs array
-            try {
-                const fullDoc = await apiClient.fetchDoc(prefixedId);
-                // The reader may have switched documents while this was in flight.
-                if (handledRouteIdRef.current !== id) return;
-                renderedFingerprintRef.current = { id, hash: fullDoc.contentHash };
-                setContent(fullDoc.rawContent || '');
-                setOriginalContent(fullDoc.rawContent || '');
-                setDocTitle(fullDoc.title || '');
-                setOriginalDocTitle(fullDoc.title || '');
-                setDocPath(getDocumentDirectory(fullDoc.path));
-                setOriginalDocPath(getDocumentDirectory(fullDoc.path));
-                // Update document state with full data
-                setDocument(fullDoc);
-            } catch (fetchError) {
-                if (silent) {
-                    // Keep the body already on screen and let the next refresh retry.
-                    console.error('Failed to refresh document:', fetchError);
-                    return;
-                }
-                if (isAmbiguousIdConflict(fetchError)) {
-                    // Fail closed: never fall back to the cached entry when identity is ambiguous.
-                    setDocument(null);
-                    setError(fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
-                    return;
-                }
-                // If fetch fails and we don't have the doc in props, show error
-                if (!doc) {
-                    setError(new Error(`Document with ID "${prefixedId}" not found`));
-                    console.error('Failed to load document:', fetchError);
-                } else {
-                    // We have basic info from props even if fetch failed
-                    setDocument(doc);
-                    setDocTitle(doc.title || '');
-                    setOriginalDocTitle(doc.title || '');
-                    setDocPath(getDocumentDirectory(doc.path));
-                    setOriginalDocPath(getDocumentDirectory(doc.path));
-                }
-            }
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to load document');
-            if (!silent) {
-                setError(error);
-            }
-            console.error('Failed to load document:', error);
-        } finally {
-            if (!silent) {
-                setIsLoading(false);
-            }
-        }
-    }, [id, docs]);
+			try {
+				if (!silent) {
+					setIsLoading(true);
+					setError(null);
+				}
+				// Find document from props
+				const prefixedId = addDocPrefix(id);
+				const doc = docs.find((d) => d.id === prefixedId);
 
-    // The parent hands down a fresh docs array on every websocket refresh, including edits
-    // made outside the app. The route guard above deliberately ignores those refreshes, and
-    // the docs payload only carries metadata, so the body fingerprint is what tells a real
-    // edit apart from an unrelated refresh. Reload silently: the rendered DOM (and the
-    // reader's scroll position) survives an unchanged refresh, and an in-progress edit is
-    // never overwritten.
-    useEffect(() => {
-        if (!id || id === 'new' || isEditing || isLoading) return;
-        const rendered = renderedFingerprintRef.current;
-        if (!rendered || rendered.id !== id) return;
-        const incoming = docs.find(d => d.id === addDocPrefix(id))?.contentHash;
-        if (!incoming || incoming === rendered.hash) return;
-        loadDocContent({ silent: true });
-    }, [id, docs, isEditing, isLoading, loadDocContent]);
+				// Always try to fetch the document from API, whether we found it in docs or not
+				// This ensures deep linking works even before the parent component loads the docs array
+				try {
+					const fullDoc = await apiClient.fetchDoc(prefixedId);
+					// The reader may have switched documents while this was in flight.
+					if (handledRouteIdRef.current !== id) return;
+					renderedFingerprintRef.current = { id, hash: fullDoc.contentHash };
+					setContent(fullDoc.rawContent || "");
+					setOriginalContent(fullDoc.rawContent || "");
+					setDocTitle(fullDoc.title || "");
+					setOriginalDocTitle(fullDoc.title || "");
+					setDocPath(getDocumentDirectory(fullDoc.path));
+					setOriginalDocPath(getDocumentDirectory(fullDoc.path));
+					// Update document state with full data
+					setDocument(fullDoc);
+				} catch (fetchError) {
+					if (silent) {
+						// Keep the body already on screen and let the next refresh retry.
+						console.error("Failed to refresh document:", fetchError);
+						return;
+					}
+					if (isAmbiguousIdConflict(fetchError)) {
+						// Fail closed: never fall back to the cached entry when identity is ambiguous.
+						setDocument(null);
+						setError(fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
+						return;
+					}
+					// If fetch fails and we don't have the doc in props, show error
+					if (!doc) {
+						setError(new Error(`Document with ID "${prefixedId}" not found`));
+						console.error("Failed to load document:", fetchError);
+					} else {
+						// We have basic info from props even if fetch failed
+						setDocument(doc);
+						setDocTitle(doc.title || "");
+						setOriginalDocTitle(doc.title || "");
+						setDocPath(getDocumentDirectory(doc.path));
+						setOriginalDocPath(getDocumentDirectory(doc.path));
+					}
+				}
+			} catch (err) {
+				const error = err instanceof Error ? err : new Error("Failed to load document");
+				if (!silent) {
+					setError(error);
+				}
+				console.error("Failed to load document:", error);
+			} finally {
+				if (!silent) {
+					setIsLoading(false);
+				}
+			}
+		},
+		[id, docs],
+	);
 
-    const handleTaskClick = useCallback((taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-        if (range?.lineStart !== undefined) {
-            setPreviewTarget({ kind: "entity", type: "task", id: taskId, lineStart: range.lineStart, lineEnd: range.lineEnd });
-            return;
-        }
-        navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
-    }, [navigate, location]);
-    const handleDraftClick = useCallback((draftId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-        if (range?.lineStart !== undefined) {
-            setPreviewTarget({ kind: "entity", type: "draft", id: draftId, lineStart: range.lineStart, lineEnd: range.lineEnd });
-            return;
-        }
-        navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } });
-    }, [navigate, location]);
-    const handleDocClick = useCallback((docId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-        if (range?.lineStart !== undefined) {
-            setPreviewTarget({ kind: "entity", type: "doc", id: docId, lineStart: range.lineStart, lineEnd: range.lineEnd });
-            return;
-        }
-        navigate(`/documentation/${docId}`);
-    }, [navigate]);
-    const handleDecisionClick = useCallback((decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-        if (range?.lineStart !== undefined) {
-            setPreviewTarget({ kind: "entity", type: "decision", id: decisionId, lineStart: range.lineStart, lineEnd: range.lineEnd });
-            return;
-        }
-        navigate(`/decisions/${decisionId}`);
-    }, [navigate]);
-    const handleWikiClick = useCallback((wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => {
-        if (range?.lineStart !== undefined) {
-            setPreviewTarget({ kind: "entity", type: "wiki", id: wikiPath, lineStart: range.lineStart, lineEnd: range.lineEnd });
-            return;
-        }
-        navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
-    }, [navigate]);
+	// The parent hands down a fresh docs array on every websocket refresh, including edits
+	// made outside the app. The route guard above deliberately ignores those refreshes, and
+	// the docs payload only carries metadata, so the body fingerprint is what tells a real
+	// edit apart from an unrelated refresh. Reload silently: the rendered DOM (and the
+	// reader's scroll position) survives an unchanged refresh, and an in-progress edit is
+	// never overwritten.
+	useEffect(() => {
+		if (!id || id === "new" || isEditing || isLoading) return;
+		const rendered = renderedFingerprintRef.current;
+		if (!rendered || rendered.id !== id) return;
+		const incoming = docs.find((d) => d.id === addDocPrefix(id))?.contentHash;
+		if (!incoming || incoming === rendered.hash) return;
+		loadDocContent({ silent: true });
+	}, [id, docs, isEditing, isLoading, loadDocContent]);
 
-    const extractTempImageUrls = (text: string): string[] => {
-        const matches = text.match(/\/assets\/\.temp\/[^)\s\\"']+/g);
-        return matches ? [...new Set(matches)] : [];
-    };
+	const handleTaskClick = useCallback(
+		(taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+			if (range?.lineStart !== undefined) {
+				setPreviewTarget({
+					kind: "entity",
+					type: "task",
+					id: taskId,
+					lineStart: range.lineStart,
+					lineEnd: range.lineEnd,
+				});
+				return;
+			}
+			navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
+		},
+		[navigate, location],
+	);
+	const handleDraftClick = useCallback(
+		(draftId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+			if (range?.lineStart !== undefined) {
+				setPreviewTarget({
+					kind: "entity",
+					type: "draft",
+					id: draftId,
+					lineStart: range.lineStart,
+					lineEnd: range.lineEnd,
+				});
+				return;
+			}
+			navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } });
+		},
+		[navigate, location],
+	);
+	const handleDocClick = useCallback(
+		(docId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+			if (range?.lineStart !== undefined) {
+				setPreviewTarget({
+					kind: "entity",
+					type: "doc",
+					id: docId,
+					lineStart: range.lineStart,
+					lineEnd: range.lineEnd,
+				});
+				return;
+			}
+			navigate(`/documentation/${docId}`);
+		},
+		[navigate],
+	);
+	const handleDecisionClick = useCallback(
+		(decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+			if (range?.lineStart !== undefined) {
+				setPreviewTarget({
+					kind: "entity",
+					type: "decision",
+					id: decisionId,
+					lineStart: range.lineStart,
+					lineEnd: range.lineEnd,
+				});
+				return;
+			}
+			navigate(`/decisions/${decisionId}`);
+		},
+		[navigate],
+	);
+	const handleWikiClick = useCallback(
+		(wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => {
+			if (range?.lineStart !== undefined) {
+				setPreviewTarget({
+					kind: "entity",
+					type: "wiki",
+					id: wikiPath,
+					lineStart: range.lineStart,
+					lineEnd: range.lineEnd,
+				});
+				return;
+			}
+			navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
+		},
+		[navigate],
+	);
 
-    const replaceTempImageUrls = (text: string, mapping: Record<string, string>): string => {
-        let result = text;
-        for (const [oldUrl, newUrl] of Object.entries(mapping)) {
-            result = result.replaceAll(oldUrl, newUrl);
-        }
-        return result;
-    };
+	const extractTempImageUrls = (text: string): string[] => {
+		const matches = text.match(/\/assets\/\.temp\/[^)\s\\"']+/g);
+		return matches ? [...new Set(matches)] : [];
+	};
 
-    const handleSave = useCallback(async () => {
-        if (!docTitle.trim()) {
-            setSaveError(new Error('Document title is required'));
-            return;
-        }
+	const replaceTempImageUrls = (text: string, mapping: Record<string, string>): string => {
+		let result = text;
+		for (const [oldUrl, newUrl] of Object.entries(mapping)) {
+			result = result.replaceAll(oldUrl, newUrl);
+		}
+		return result;
+	};
 
-        try {
-            setIsSaving(true);
-            setSaveError(null);
-            const normalizedTitle = docTitle.trim();
-            const normalizedPath = docPath.trim();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
+	const handleSave = useCallback(async () => {
+		if (!docTitle.trim()) {
+			setSaveError(new Error("Document title is required"));
+			return;
+		}
 
-            // Promote temporary pasted images before saving.
-            let saveContent = content;
-            const tempUrls = extractTempImageUrls(content);
-            if (tempUrls.length > 0) {
-                const mapping = await apiClient.promoteAssets(tempUrls);
-                saveContent = replaceTempImageUrls(saveContent, mapping);
-                setContent(saveContent);
-            }
+		try {
+			setIsSaving(true);
+			setSaveError(null);
+			const normalizedTitle = docTitle.trim();
+			const normalizedPath = docPath.trim();
 
-            // Normalize in-document hash links so TOC entries written with
-            // human-readable heading text receive the rendered github-slugger anchor.
-            saveContent = normalizeMarkdownHashLinks(saveContent);
+			// Promote temporary pasted images before saving.
+			let saveContent = content;
+			const tempUrls = extractTempImageUrls(content);
+			if (tempUrls.length > 0) {
+				const mapping = await apiClient.promoteAssets(tempUrls);
+				saveContent = replaceTempImageUrls(saveContent, mapping);
+				setContent(saveContent);
+			}
 
-            if (isNewDocument) {
-                // Create new document
-                const result = await apiClient.createDoc(normalizedTitle, saveContent, normalizedPath);
-                // Refresh data and navigate to the new document
-                await onRefreshData();
-                // Show success toast
-                setShowSaveSuccess(true);
-                setTimeout(() => setShowSaveSuccess(false), 4000);
-                // Exit edit mode and navigate to the new document
-                setIsEditing(false);
-                setIsNewDocument(false);
-                setDocTitle(normalizedTitle);
-                setOriginalDocTitle(normalizedTitle);
-                setDocPath(getDocumentDirectory(result.path) || normalizedPath);
-                setOriginalDocPath(getDocumentDirectory(result.path) || normalizedPath);
-                // Use the returned document ID for navigation
-                const documentId = result.id.replace('doc-', ''); // Remove prefix for URL
-                navigate(`/documentation/${documentId}/${sanitizeUrlTitle(normalizedTitle)}`);
-            } else {
-                // Update existing document
-                if (!id) return;
+			// Normalize in-document hash links so TOC entries written with
+			// human-readable heading text receive the rendered github-slugger anchor.
+			saveContent = normalizeMarkdownHashLinks(saveContent);
 
-                // Check if title has changed
-                const titleChanged = normalizedTitle !== originalDocTitle;
-                const pathChanged = normalizedPath !== originalDocPath;
+			if (isNewDocument) {
+				// Create new document
+				const result = await apiClient.createDoc(normalizedTitle, saveContent, normalizedPath);
+				// Refresh data and navigate to the new document
+				await onRefreshData();
+				// Show success toast
+				setShowSaveSuccess(true);
+				setTimeout(() => setShowSaveSuccess(false), 4000);
+				// Exit edit mode and navigate to the new document
+				setIsEditing(false);
+				setIsNewDocument(false);
+				setDocTitle(normalizedTitle);
+				setOriginalDocTitle(normalizedTitle);
+				setDocPath(getDocumentDirectory(result.path) || normalizedPath);
+				setOriginalDocPath(getDocumentDirectory(result.path) || normalizedPath);
+				// Use the returned document ID for navigation
+				const documentId = result.id.replace("doc-", ""); // Remove prefix for URL
+				navigate(`/documentation/${documentId}/${sanitizeUrlTitle(normalizedTitle)}`);
+			} else {
+				// Update existing document
+				if (!id) return;
 
-                // Pass title only if it has changed
-                const updatedDocument = await apiClient.updateDoc(
-                    addDocPrefix(id),
-                    saveContent,
-                    titleChanged ? normalizedTitle : undefined,
-                    pathChanged ? normalizedPath : undefined
-                );
+				// Check if title has changed
+				const titleChanged = normalizedTitle !== originalDocTitle;
+				const pathChanged = normalizedPath !== originalDocPath;
 
-                // Update original title to the new value
-                if (titleChanged) {
-                    setDocTitle(normalizedTitle);
-                    setOriginalDocTitle(normalizedTitle);
-                }
-                if (pathChanged) {
-                    const updatedPath = getDocumentDirectory(updatedDocument.path) || normalizedPath;
-                    setDocPath(updatedPath);
-                    setOriginalDocPath(updatedPath);
-                }
+				// Pass title only if it has changed
+				const updatedDocument = await apiClient.updateDoc(
+					addDocPrefix(id),
+					saveContent,
+					titleChanged ? normalizedTitle : undefined,
+					pathChanged ? normalizedPath : undefined,
+				);
 
-                // Refresh data from parent
-                await onRefreshData();
-                // Show success toast
-                setShowSaveSuccess(true);
-                setTimeout(() => setShowSaveSuccess(false), 4000);
-                // Exit edit mode and navigate to document detail page (this will load in preview mode)
-                setIsEditing(false);
-                navigate(`/documentation/${id}/${sanitizeUrlTitle(normalizedTitle)}`);
-            }
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to save document');
-            setSaveError(error);
-            console.error('Failed to save document:', error);
-        } finally {
-            setIsSaving(false);
-        }
-    }, [id, docTitle, docPath, originalDocPath, content, isNewDocument, onRefreshData, navigate, loadDocContent]);
+				// Update original title to the new value
+				if (titleChanged) {
+					setDocTitle(normalizedTitle);
+					setOriginalDocTitle(normalizedTitle);
+				}
+				if (pathChanged) {
+					const updatedPath = getDocumentDirectory(updatedDocument.path) || normalizedPath;
+					setDocPath(updatedPath);
+					setOriginalDocPath(updatedPath);
+				}
 
-    const handleEdit = () => {
-        setIsEditing(true);
-    };
+				// Refresh data from parent
+				await onRefreshData();
+				// Show success toast
+				setShowSaveSuccess(true);
+				setTimeout(() => setShowSaveSuccess(false), 4000);
+				// Exit edit mode and navigate to document detail page (this will load in preview mode)
+				setIsEditing(false);
+				navigate(`/documentation/${id}/${sanitizeUrlTitle(normalizedTitle)}`);
+			}
+		} catch (err) {
+			const error = err instanceof Error ? err : new Error("Failed to save document");
+			setSaveError(error);
+			console.error("Failed to save document:", error);
+		} finally {
+			setIsSaving(false);
+		}
+	}, [
+		id,
+		docTitle,
+		docPath,
+		originalDocTitle,
+		originalDocPath,
+		content,
+		isNewDocument,
+		onRefreshData,
+		navigate,
+		loadDocContent,
+	]);
 
-    const handleCancelEdit = () => {
-        if (isNewDocument) {
-            // Navigate back for new documents
-            navigate('/documentation');
-        } else {
-            // Revert changes for existing documents
-            setContent(originalContent);
-            setDocTitle(originalDocTitle);
-            setDocPath(originalDocPath);
-            setIsEditing(false);
-        }
-    };
+	const handleEdit = () => {
+		setIsEditing(true);
+	};
 
-    const hasChanges = content !== originalContent || docTitle !== originalDocTitle || docPath !== originalDocPath;
+	const handleCancelEdit = () => {
+		if (isNewDocument) {
+			// Navigate back for new documents
+			navigate("/documentation");
+		} else {
+			// Revert changes for existing documents
+			setContent(originalContent);
+			setDocTitle(originalDocTitle);
+			setDocPath(originalDocPath);
+			setIsEditing(false);
+		}
+	};
 
-    if (!id) {
-        return (
-            <div className="flex-1 flex items-center justify-center p-8">
-                <div className="text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
-                         viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">{t.documents.noDocumentSelected}</h3>
-                    <p className="mt-1 text-sm text-gray-500">{t.documents.selectDocument}</p>
-                </div>
-            </div>
-        );
-    }
+	const hasChanges = content !== originalContent || docTitle !== originalDocTitle || docPath !== originalDocPath;
 
-    if (isLoading) {
-        return (
-            <div className="flex-1 flex items-center justify-center">
-                <div className="text-gray-500">{t.common.loading}</div>
-            </div>
-        );
-    }
+	if (!id) {
+		return (
+			<div className="flex-1 flex items-center justify-center p-8">
+				<div className="text-center">
+					<svg
+						aria-hidden="true"
+						className="mx-auto h-12 w-12 text-gray-400"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+						/>
+					</svg>
+					<h3 className="mt-2 text-sm font-medium text-gray-900">{t.documents.noDocumentSelected}</h3>
+					<p className="mt-1 text-sm text-gray-500">{t.documents.selectDocument}</p>
+				</div>
+			</div>
+		);
+	}
 
-    if (error && !isEditing) {
-        return (
-            <ErrorBoundary>
-                <div className="flex-1 bg-white dark:bg-gray-900">
-                    <AmbiguousIdNotice message={error.message} />
-                </div>
-            </ErrorBoundary>
-        );
-    }
+	if (isLoading) {
+		return (
+			<div className="flex-1 flex items-center justify-center">
+				<div className="text-gray-500">{t.common.loading}</div>
+			</div>
+		);
+	}
 
-    return (
-        <ErrorBoundary>
-            <div className="h-full bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">
-                {/* Header Section - Confluence/Linear Style */}
-                <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                    <div className="max-w-4xl mx-auto px-8 py-6">
-                        <div className="flex items-start justify-between mb-6">
-                            <div className="flex-1">
-                                {isEditing ? (
-                                    <div className="space-y-3 mb-2">
-                                        <input
-                                            type="text"
-                                            value={docTitle}
-                                            onChange={(e) => setDocTitle(e.target.value)}
-                                            className="text-3xl font-bold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
-                                            placeholder={t.documents.placeholderTitle}
-                                        />
-                                        <input
-                                            type="text"
-                                            value={docPath}
-                                            onChange={(e) => setDocPath(e.target.value)}
-                                            className="w-full max-w-md bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
-                                            placeholder={t.documents.placeholderPath}
-                                        />
-                                    </div>
-                                ) : (
-                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-200">
-                                        {docTitle || document?.title || (title ? decodeURIComponent(title) : `Document ${id}`)}
-                                    </h1>
-                                )}
-                                <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                                    <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a.997.997 0 01-1.414 0l-7-7A1.997 1.997 0 013 12V7a4 4 0 014-4z"/>
-                                        </svg>
-                                        <span>ID: {document?.id || `doc-${id}`}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                        </svg>
-                                        <span>{t.common.documentation}</span>
-                                    </div>
-                                    {document?.path && (
-                                        <div className="flex items-center space-x-2">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                      d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
-                                            </svg>
-                                            <span>{document.path}</span>
-                                        </div>
-                                    )}
-                                    {document?.createdDate && (
-                                        <div className="flex items-center space-x-2">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor"
-                                                 viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                            </svg>
-                                            <span title={storedUtcHoverTitle(document.createdDate)}>{t.common.created}: {document.createdDate}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-3 ml-6">
-                                {!isEditing ? (
-                                    <button
-                                        onClick={handleEdit}
-                                        className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
-                                    >
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                             viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                        {t.common.edit}
-                                    </button>
-                                ) : (
-                                    <div className="flex items-center space-x-2">
-	                                        <button
-	                                            onClick={handleCancelEdit}
-	                                            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
-	                                        >
-	                                            {t.common.cancel}
-	                                        </button>
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={!hasChanges || isSaving}
-	                                            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 ${
-	                                                hasChanges && !isSaving
-	                                                    ? 'bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400'
-	                                                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-	                                            }`}
-	                                        >
-                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                                 viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                      d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                            {isSaving ? t.common.saving : t.common.save}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+	if (error && !isEditing) {
+		return (
+			<ErrorBoundary>
+				<div className="flex-1 bg-white dark:bg-gray-900">
+					<AmbiguousIdNotice message={error.message} />
+				</div>
+			</ErrorBoundary>
+		);
+	}
 
-                {/* Content Section */}
-                <div className="flex-1 bg-gray-50 dark:bg-gray-800 transition-colors duration-200 flex flex-col">
-                    <div className="flex-1 p-8 flex flex-col min-h-0">
-                        <MarkdownEditor
-                            value={content}
-                            onChange={(val) => setContent(val || '')}
-                            isEditing={isEditing}
-                            containerRef={contentRef}
-                            onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
-                            onTaskClick={handleTaskClick}
-                            onDraftClick={handleDraftClick}
-                            onDocClick={handleDocClick}
-                            onDecisionClick={handleDecisionClick}
-                            onWikiClick={handleWikiClick}
-                        />
-                    </div>
-                </div>
+	return (
+		<ErrorBoundary>
+			<div className="h-full bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">
+				{/* Header Section - Confluence/Linear Style */}
+				<div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+					<div className="max-w-4xl mx-auto px-8 py-6">
+						<div className="flex items-start justify-between mb-6">
+							<div className="flex-1">
+								{isEditing ? (
+									<div className="space-y-3 mb-2">
+										<input
+											type="text"
+											value={docTitle}
+											onChange={(e) => setDocTitle(e.target.value)}
+											className="text-3xl font-bold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+											placeholder={t.documents.placeholderTitle}
+										/>
+										<input
+											type="text"
+											value={docPath}
+											onChange={(e) => setDocPath(e.target.value)}
+											className="w-full max-w-md bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+											placeholder={t.documents.placeholderPath}
+										/>
+									</div>
+								) : (
+									<h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-200">
+										{docTitle || document?.title || (title ? decodeURIComponent(title) : `Document ${id}`)}
+									</h1>
+								)}
+								<div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
+									<div className="flex items-center space-x-2">
+										<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a.997.997 0 01-1.414 0l-7-7A1.997 1.997 0 013 12V7a4 4 0 014-4z"
+											/>
+										</svg>
+										<span>ID: {document?.id || `doc-${id}`}</span>
+									</div>
+									<div className="flex items-center space-x-2">
+										<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+											/>
+										</svg>
+										<span>{t.common.documentation}</span>
+									</div>
+									{document?.path && (
+										<div className="flex items-center space-x-2">
+											<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+												/>
+											</svg>
+											<span>{document.path}</span>
+										</div>
+									)}
+									{document?.createdDate && (
+										<div className="flex items-center space-x-2">
+											<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+												/>
+											</svg>
+											<span title={storedUtcHoverTitle(document.createdDate)}>
+												{t.common.created}: {document.createdDate}
+											</span>
+										</div>
+									)}
+								</div>
+							</div>
+							<div className="flex items-center space-x-3 ml-6">
+								{!isEditing ? (
+									<button
+										type="button"
+										onClick={handleEdit}
+										className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+									>
+										<svg
+											aria-hidden="true"
+											className="w-4 h-4 mr-2"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+											/>
+										</svg>
+										{t.common.edit}
+									</button>
+								) : (
+									<div className="flex items-center space-x-2">
+										<button
+											type="button"
+											onClick={handleCancelEdit}
+											className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+										>
+											{t.common.cancel}
+										</button>
+										<button
+											type="button"
+											onClick={handleSave}
+											disabled={!hasChanges || isSaving}
+											className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 ${
+												hasChanges && !isSaving
+													? "bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700 focus:ring-blue-500 dark:focus:ring-blue-400"
+													: "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+											}`}
+										>
+											<svg
+												aria-hidden="true"
+												className="w-4 h-4 mr-2"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+											</svg>
+											{isSaving ? t.common.saving : t.common.save}
+										</button>
+									</div>
+								)}
+							</div>
+						</div>
+					</div>
+				</div>
 
-                {/* Save Error Alert */}
-                {saveError && (
-                    <div className="border-t border-red-200 bg-red-50 px-8 py-3">
-                        <div className="flex items-center space-x-3">
-                            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-                            </svg>
-                            <span className="text-sm text-red-700">{t.documents.failedToSave}: {saveError.message}</span>
-                            <button
-                                onClick={() => setSaveError(null)}
-                                className="ml-auto text-red-700 hover:text-red-900"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                          d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+				{/* Content Section */}
+				<div className="flex-1 bg-gray-50 dark:bg-gray-800 transition-colors duration-200 flex flex-col">
+					<div className="flex-1 p-8 flex flex-col min-h-0">
+						<MarkdownEditor
+							value={content}
+							onChange={(val) => setContent(val || "")}
+							isEditing={isEditing}
+							containerRef={contentRef}
+							onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
+							onTaskClick={handleTaskClick}
+							onDraftClick={handleDraftClick}
+							onDocClick={handleDocClick}
+							onDecisionClick={handleDecisionClick}
+							onWikiClick={handleWikiClick}
+						/>
+					</div>
+				</div>
 
-            {/* Save Success Toast */}
-            {showSaveSuccess && (
-                <SuccessToast
-                    message={`${t.documents.saveSuccessPrefix} "${docTitle}" ${t.documents.saveSuccessSuffix}`}
-                    onDismiss={() => setShowSaveSuccess(false)}
-                    icon={
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    }
-                />
-            )}
-            {previewTarget?.kind === "file" && (
-                <FilePreviewModal
-                    path={previewTarget.path}
-                    onClose={() => setPreviewTarget(null)}
-                />
-            )}
-            {previewTarget?.kind === "entity" && (
-                <FilePreviewModal
-                    path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}
-                    onClose={() => setPreviewTarget(null)}
-                    loader={() => apiClient.fetchPreview(previewTarget.type, previewTarget.id, previewTarget.lineStart, previewTarget.lineEnd)}
-                />
-            )}
-        </ErrorBoundary>
-    );
+				{/* Save Error Alert */}
+				{saveError && (
+					<div className="border-t border-red-200 bg-red-50 px-8 py-3">
+						<div className="flex items-center space-x-3">
+							<svg
+								aria-hidden="true"
+								className="w-5 h-5 text-red-500"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+								/>
+							</svg>
+							<span className="text-sm text-red-700">
+								{t.documents.failedToSave}: {saveError.message}
+							</span>
+							<button
+								type="button"
+								onClick={() => setSaveError(null)}
+								className="ml-auto text-red-700 hover:text-red-900"
+							>
+								<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+					</div>
+				)}
+			</div>
+
+			{/* Save Success Toast */}
+			{showSaveSuccess && (
+				<SuccessToast
+					message={`${t.documents.saveSuccessPrefix} "${docTitle}" ${t.documents.saveSuccessSuffix}`}
+					onDismiss={() => setShowSaveSuccess(false)}
+					icon={
+						<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+					}
+				/>
+			)}
+			{previewTarget?.kind === "file" && (
+				<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />
+			)}
+			{previewTarget?.kind === "entity" && (
+				<FilePreviewModal
+					path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}
+					onClose={() => setPreviewTarget(null)}
+					loader={() =>
+						apiClient.fetchPreview(previewTarget.type, previewTarget.id, previewTarget.lineStart, previewTarget.lineEnd)
+					}
+				/>
+			)}
+		</ErrorBoundary>
+	);
 }

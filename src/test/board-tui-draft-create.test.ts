@@ -130,7 +130,7 @@ async function withDraftBoard(
 				() => {
 					const rendered = renderedRows(screen as unknown as TreeWidget);
 					if (!rendered.some((row) => row.includes(drafts[0]?.id ?? ""))) {
-						throw new Error("board rows not ready: " + JSON.stringify(rendered));
+						throw new Error(`board rows not ready: ${JSON.stringify(rendered)}`);
 					}
 					return Promise.resolve(true);
 				},
