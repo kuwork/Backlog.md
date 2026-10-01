@@ -389,6 +389,13 @@ export class BacklogServer {
 					this.broadcastDataUpdated("memos");
 				}
 			});
+			// fs.watch reports a deleted/unreachable directory as an async 'error' event; without a
+			// listener it would crash the process. Mirror the ContentStore watchers and swallow it.
+			this.memoWatcher.on("error", (error) => {
+				if (process.env.DEBUG) {
+					console.warn("Memo watcher error", error);
+				}
+			});
 		} catch (error) {
 			// A missing directory (project without memos yet) is not fatal: the first memo write
 			// creates it, but we simply skip the watcher until the next start.
