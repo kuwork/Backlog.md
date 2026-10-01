@@ -99,6 +99,50 @@ export function memoMatchesFilters(memo: Memo, date: string | null, selectedTags
 }
 
 /**
+ * A GFM task-list marker: an optional blockquote prefix, a bullet or ordered list marker, then
+ * `[ ]`, `[x]` or `[X]`. Only list items produce a checkbox, so a bare `[ ]` in a paragraph is not
+ * one — the same rule the renderer follows.
+ */
+const TASK_MARKER_PATTERN = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\])/;
+const FENCE_PATTERN = /^\s*(`{3,}|~{3,})/;
+
+/**
+ * Flip the nth task-list checkbox, counting in the same document order the rendered checkboxes
+ * appear. Fenced code blocks are skipped: their `- [ ]` is shown as code and never becomes a
+ * checkbox, so counting it would shift every later index. An out-of-range index returns the source
+ * untouched, which makes a stale click after an edit a no-op instead of a corruption.
+ */
+export function toggleTaskInMarkdown(source: string, index: number): string {
+	if (index < 0) return source;
+	const lines = source.split("\n");
+	let seen = 0;
+	let fenceChar: string | null = null;
+
+	for (let i = 0; i < lines.length; i += 1) {
+		const line = lines[i] ?? "";
+		const fenceMarker = FENCE_PATTERN.exec(line)?.[1]?.[0];
+		if (fenceMarker) {
+			if (fenceChar === null) fenceChar = fenceMarker;
+			else if (fenceMarker === fenceChar) fenceChar = null;
+			continue;
+		}
+		if (fenceChar !== null) continue;
+
+		const marker = TASK_MARKER_PATTERN.exec(line);
+		if (!marker) continue;
+		if (seen !== index) {
+			seen += 1;
+			continue;
+		}
+		const [matched, before = "", state = " ", bracket = "]"] = marker;
+		const flipped = state === " " ? "x" : " ";
+		lines[i] = `${before}${flipped}${bracket}${line.slice(matched?.length ?? 0)}`;
+		return lines.join("\n");
+	}
+	return source;
+}
+
+/**
  * `#tag` tokens typed in the composer body. The body is stored verbatim — tags are the same words
  * lifted into the searchable `tags` field — and a `# heading` (space after the hash) is not a tag.
  */

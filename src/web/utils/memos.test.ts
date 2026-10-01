@@ -16,6 +16,7 @@ import {
 	prependMemo,
 	removeMemo,
 	replaceMemo,
+	toggleTaskInMarkdown,
 } from "./memos";
 
 const makeMemo = (id: string, overrides: Partial<Memo> = {}): Memo => ({
@@ -159,5 +160,43 @@ describe("back-dated creation", () => {
 		expect(all.length).toBeGreaterThan(0);
 		expect(all[0]?.createdDate).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
 		expect(all.some((memo) => memo.createdDate === "2024-02-03 10:00")).toBe(true);
+	});
+});
+
+describe("toggleTaskInMarkdown", () => {
+	it("ticks the marker the rendered checkbox stands for", () => {
+		const source = "- [ ] alpha\n- [ ] beta\n- [ ] gamma";
+		expect(toggleTaskInMarkdown(source, 1)).toBe("- [ ] alpha\n- [x] beta\n- [ ] gamma");
+	});
+
+	it("unticks a checked marker, and accepts an uppercase X", () => {
+		expect(toggleTaskInMarkdown("- [x] done\n- [X] also done", 0)).toBe("- [ ] done\n- [X] also done");
+		expect(toggleTaskInMarkdown("- [x] done\n- [X] also done", 1)).toBe("- [x] done\n- [ ] also done");
+	});
+
+	it("keeps the indentation, spacing and trailing text of the line", () => {
+		// The shape a pasted acceptance list arrives in: one leading space, two after the marker.
+		expect(toggleTaskInMarkdown(" - [ ]  A valid prototype exists.", 0)).toBe(" - [x]  A valid prototype exists.");
+	});
+
+	it("does not count a marker inside a fenced code block", () => {
+		const source = "```\n- [ ] in code\n```\n- [ ] real";
+		expect(toggleTaskInMarkdown(source, 0)).toBe("```\n- [ ] in code\n```\n- [x] real");
+	});
+
+	it("counts ordered lists, nested items and blockquotes like the renderer does", () => {
+		const source = "1. [ ] first\n   - [ ] nested\n> - [ ] quoted";
+		expect(toggleTaskInMarkdown(source, 2)).toBe("1. [ ] first\n   - [ ] nested\n> - [x] quoted");
+	});
+
+	it("leaves the source untouched for an out-of-range index", () => {
+		const source = "- [ ] only";
+		expect(toggleTaskInMarkdown(source, 5)).toBe(source);
+		expect(toggleTaskInMarkdown(source, -1)).toBe(source);
+	});
+
+	it("ignores a bare [ ] that is not a list item", () => {
+		const source = "A [ ] bracket pair\n- [ ] real item";
+		expect(toggleTaskInMarkdown(source, 0)).toBe("A [ ] bracket pair\n- [x] real item");
 	});
 });

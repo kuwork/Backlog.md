@@ -1,6 +1,6 @@
 import MDEditor from "@uiw/react-md-editor";
 import Slugger from "github-slugger";
-import type { Element, Root } from "hast";
+import type { Element, ElementContent, Parent, Root, RootContent } from "hast";
 import React, { useEffect, useMemo, useRef } from "react";
 import { visit } from "unist-util-visit";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
@@ -22,6 +22,17 @@ interface Props {
 	onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	wikilinkBasePath?: string;
+	/**
+	 * When set, GFM task-list checkboxes become clickable and report their document-order index, so
+	 * the caller can flip the matching `- [ ]` marker in its own source. Left unset the checkboxes
+	 * stay disabled, exactly like GitHub's rendering.
+	 */
+	onToggleTask?: (index: number) => void;
+	/**
+	 * When set, `#tag` tokens in the body render as chips instead of plain text. Opt-in because
+	 * only the note surfaces dress them; a task or doc body keeps its literal `#word`.
+	 */
+	inlineTagChips?: boolean;
 }
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/;
@@ -54,6 +65,93 @@ function rehypeHeadingMetadata() {
 				anchor.properties = { ...anchor.properties, href: `#${slug}` };
 			}
 		});
+	};
+}
+
+/**
+ * GFM task-list checkboxes arrive from mdast-util-to-hast hard-coded `disabled`, so nothing can
+ * toggle them. Tag each one, in document order, with the index of the marker it stands for; the
+ * click handler reads it back off the DOM and the caller flips that marker in its source.
+ */
+function rehypeTaskListIndex() {
+	return (tree: Root) => {
+		let index = 0;
+		visit(tree, "element", (node: Element) => {
+			if (node.tagName !== "input" || node.properties?.type !== "checkbox") return;
+			node.properties = { ...node.properties, "data-task-index": String(index) };
+			index += 1;
+		});
+	};
+}
+
+/**
+ * `#tag` tokens - the same shape `extractInlineTags` lifts into a memo's `tags`, so a chip always
+ * has a filter it can stand for.
+ */
+const INLINE_TAG_PATTERN = /(^|[\s(])#([^\s#`]+)/g;
+/** Elements whose text must never be split: code is code, a label inside a link is a label. */
+const INLINE_TAG_SKIP_TAGS = new Set(["a", "code", "pre", "script", "style"]);
+
+/** Split one text node into plain runs and chip elements, or null when it holds no tag. */
+function splitInlineTags(value: string): ElementContent[] | null {
+	let parts: ElementContent[] | null = null;
+	let cursor = 0;
+
+	INLINE_TAG_PATTERN.lastIndex = 0;
+	for (let match = INLINE_TAG_PATTERN.exec(value); match; match = INLINE_TAG_PATTERN.exec(value)) {
+		const tag = match[2];
+		if (!tag) continue;
+		const start = match.index;
+		parts ??= [];
+		if (start > cursor) parts.push({ type: "text", value: value.slice(cursor, start) });
+		// Keep the separating space out of the chip, so the chip hugs the tag itself.
+		if (match[1]) parts.push({ type: "text", value: match[1] });
+		parts.push({
+			type: "element",
+			tagName: "span",
+			properties: {
+				className: ["inline-tag"],
+				"data-memo-tag": tag,
+				// A chip stands for a filter, so it has to be reachable and activatable without a mouse.
+				role: "button",
+				tabIndex: 0,
+			},
+			children: [{ type: "text", value: `#${tag}` }],
+		});
+		cursor = start + match[0].length;
+	}
+	if (!parts) return null;
+	if (cursor < value.length) parts.push({ type: "text", value: value.slice(cursor) });
+	return parts;
+}
+
+/**
+ * Rebuild the children array while descending, the same way `linkEntityIds` does for entity IDs:
+ * visits in place, so the markdown source never has to be rewritten.
+ */
+function decorateInlineTags(node: Parent): void {
+	const rewritten: RootContent[] = [];
+	let changed = false;
+	for (const child of node.children) {
+		if (child.type === "text" && typeof child.value === "string") {
+			const parts = splitInlineTags(child.value);
+			if (parts) {
+				rewritten.push(...parts);
+				changed = true;
+				continue;
+			}
+		} else if (child.type === "element" && !INLINE_TAG_SKIP_TAGS.has(child.tagName)) {
+			decorateInlineTags(child);
+		}
+		rewritten.push(child);
+	}
+	if (changed) node.children = rewritten;
+}
+
+/** Opt-in pass: turns `#tag` text into a chip element the memo styles can dress. */
+function rehypeInlineTags() {
+	return (tree: Root) => {
+		decorateInlineTags(tree);
 	};
 }
 
@@ -291,6 +389,8 @@ export default function MermaidMarkdown({
 	onDecisionClick,
 	onWikiClick,
 	wikilinkBasePath,
+	onToggleTask,
+	inlineTagChips,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = wikilinkBasePath
@@ -300,6 +400,54 @@ export default function MermaidMarkdown({
 	const theme = useOptionalTheme();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
+	const rehypePlugins = useMemo(
+		() =>
+			inlineTagChips
+				? [rehypeHeadingMetadata, rehypeTaskListIndex, rehypeInlineTags]
+				: [rehypeHeadingMetadata, rehypeTaskListIndex],
+		[inlineTagChips],
+	);
+
+	// react-markdown hands a component only the element's own hast props, so the page's toggle
+	// handler has to be bound in from here. Going through a ref keeps the component's identity
+	// stable: a fresh type on every render would unmount and remount each checkbox.
+	const toggleTaskRef = useRef(onToggleTask);
+	useEffect(() => {
+		toggleTaskRef.current = onToggleTask;
+	}, [onToggleTask]);
+	const TaskCheckbox = useMemo(
+		() =>
+			function TaskCheckboxInput({
+				node: _node,
+				checked,
+				...props
+			}: React.InputHTMLAttributes<HTMLInputElement> & { node?: unknown }) {
+				// Without a handler the checkbox keeps the renderer's own disabled state, like GitHub.
+				if (!toggleTaskRef.current) return <input {...props} checked={checked} />;
+				return (
+					<input
+						{...props}
+						// Always a real boolean, never omitted. The renderer only emits `checked` for a
+						// ticked item, and React re-applies that prop only while it exists - so without
+						// this, unticking would save but the box would keep the tick React restored.
+						checked={checked === true}
+						disabled={false}
+						className={`${props.className ?? ""} cursor-pointer`.trim()}
+						onChange={(event) => {
+							// The index travels on the DOM node, not in props, so it arrives the same way
+							// whichever name the markdown pipeline gives the property.
+							const raw = event.currentTarget.getAttribute("data-task-index");
+							const index = raw === null ? Number.NaN : Number.parseInt(raw, 10);
+							// Read the handler at click time. Taking it from the ref while rendering would
+							// freeze whatever the previous commit stored, and every second click on a memo
+							// would then toggle a stale copy of it - the box would appear stuck.
+							if (Number.isFinite(index)) toggleTaskRef.current?.(index);
+						}}
+					/>
+				);
+			},
+		[],
+	);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
@@ -533,8 +681,14 @@ export default function MermaidMarkdown({
 				// `renderMermaidIn` replaces with its own SVG containers.
 				key={theme}
 				source={safeSource}
-				components={{ a: LinkComponent, img: LightboxImage, video: VideoPlayer, audio: AudioPlayer }}
-				rehypePlugins={[rehypeHeadingMetadata]}
+				components={{
+					a: LinkComponent,
+					img: LightboxImage,
+					video: VideoPlayer,
+					audio: AudioPlayer,
+					input: TaskCheckbox,
+				}}
+				rehypePlugins={rehypePlugins}
 				remarkPlugins={remarkPlugins}
 			/>
 		</div>

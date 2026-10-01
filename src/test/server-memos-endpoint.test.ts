@@ -166,6 +166,14 @@ describe("GET /api/memos/calendar", () => {
 	});
 });
 
+describe("SPA fallback", () => {
+	it("serves the app shell when /memos is refreshed", async () => {
+		const response = await request("/memos");
+		expect(response.status).toBe(200);
+		expect(response.headers.get("content-type") ?? "").toContain("text/html");
+	});
+});
+
 describe("/api/memos/:id", () => {
 	it("reads one memo and answers 404 for an unknown id", async () => {
 		const { status, body } = await fetchJson("/api/memos/20190305-1");
