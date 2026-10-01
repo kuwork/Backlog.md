@@ -14,6 +14,15 @@ import {
 	rollbackDuplicateTaskIdRepair,
 } from "../core/duplicate-task-repair.ts";
 import { initializeProject } from "../core/init.ts";
+import {
+	createMemo,
+	deleteMemo,
+	getMemo,
+	listMemos,
+	listMemosPage,
+	MEMO_PAGE_SIZE,
+	updateMemo,
+} from "../core/memos.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { statusNames, validateStatusesShape } from "../core/state-machine.ts";
 import { renderProjectStateMachine } from "../core/state-machine-guidance.ts";
@@ -53,6 +62,12 @@ import { withWikiPageTitles } from "../utils/wiki-titles.ts";
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
 const DEFAULT_PREFIX = "task-";
 const DOCUMENT_TYPES = new Set<Document["type"]>(DOCUMENT_TYPE_VALUES);
+/** `YYYY-MM-DD`, the shape of `?date=` and of the calendar buckets' keys. */
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/** Memo ids are `YYYYMMDD-N`; anything else is refused so an id can never escape the memo directory. */
+const MEMO_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+/** A caller asking for more than this gets a capped page, not the whole corpus. */
+const MAX_MEMO_PAGE_SIZE = 100;
 
 /**
  * Data scopes a client can be told to refetch. Tasks and milestones share a
@@ -60,7 +75,7 @@ const DOCUMENT_TYPES = new Set<Document["type"]>(DOCUMENT_TYPE_VALUES);
  * documents, decisions and wikis each get their own message so a client only
  * refetches the entity list that actually changed.
  */
-type DataUpdatedScope = "tasks" | "milestones" | "documents" | "decisions" | "wikis";
+type DataUpdatedScope = "tasks" | "milestones" | "documents" | "decisions" | "wikis" | "memos";
 
 /**
  * The task routes serve drafts too, so only an explicit DRAFT- id addresses a draft.
@@ -90,17 +105,22 @@ function parseDocumentType(value: unknown): Document["type"] | undefined {
 	return value as Document["type"];
 }
 
-function parseDocumentTags(value: unknown): string[] | undefined {
+/** Shared tag normalization for every payload that carries tags: trim, drop empties, dedupe. */
+function parseTagList(value: unknown, subject: string): string[] | undefined {
 	if (value === undefined) {
 		return undefined;
 	}
 	if (!Array.isArray(value)) {
-		throw new DocumentPayloadValidationError("Document tags must be an array of strings.");
+		throw new DocumentPayloadValidationError(`${subject} must be an array of strings.`);
 	}
 	if (value.some((tag) => typeof tag !== "string")) {
-		throw new DocumentPayloadValidationError("Document tags must be an array of strings.");
+		throw new DocumentPayloadValidationError(`${subject} must be an array of strings.`);
 	}
 	return Array.from(new Set(value.map((tag) => tag.trim()).filter((tag) => tag.length > 0)));
+}
+
+function parseDocumentTags(value: unknown): string[] | undefined {
+	return parseTagList(value, "Document tags");
 }
 
 function parseCreateDocumentPath(value: unknown): string | undefined {
@@ -142,6 +162,14 @@ function ensurePrefix(id: string): string {
 		return id;
 	}
 	return `${DEFAULT_PREFIX}${id}`;
+}
+
+/** Calendar query values: absent means "the current month", anything non-numeric is a bad request. */
+function parseCalendarNumber(raw: string | undefined, fallback: number): number | null {
+	if (raw === undefined) return fallback;
+	if (!/^\d+$/.test(raw)) return null;
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseOptionalBoolean(value: unknown): boolean | undefined {
@@ -387,6 +415,9 @@ export class BacklogServer {
 			if (pending.has("documents")) messages.add("documents-updated");
 			if (pending.has("decisions")) messages.add("decisions-updated");
 			if (pending.has("wikis")) messages.add("wikis-updated");
+			// Memos are not in the ContentStore, so nothing else broadcasts for them: every memo
+			// write pushes this scope explicitly.
+			if (pending.has("memos")) messages.add("memos-updated");
 			for (const message of messages) {
 				for (const ws of this.sockets) {
 					try {
@@ -629,6 +660,20 @@ export class BacklogServer {
 					},
 					"/api/docs/folder": {
 						POST: async (req: Request) => await this.handleCreateDocsFolder(req),
+					},
+					"/api/memos": {
+						GET: async (req: Request) => await this.handleListMemos(req),
+						POST: async (req: Request) => await this.handleCreateMemo(req),
+					},
+					// Registered ahead of /api/memos/:id so the literal segment cannot be swallowed
+					// by the param route (same reason /api/docs/tree sits next to /api/docs/:id).
+					"/api/memos/calendar": {
+						GET: async (req: Request) => await this.handleGetMemoCalendar(req),
+					},
+					"/api/memos/:id": {
+						GET: async (req: Request & { params: { id: string } }) => await this.handleGetMemo(req.params.id),
+						PUT: async (req: Request & { params: { id: string } }) => await this.handleUpdateMemo(req, req.params.id),
+						DELETE: async (req: Request & { params: { id: string } }) => await this.handleDeleteMemo(req.params.id),
 					},
 					"/api/wiki/tree": {
 						GET: async () => await this.handleGetWikiTree(),
@@ -1875,6 +1920,178 @@ export class BacklogServer {
 			}
 			console.error("Error updating document:", error);
 			return Response.json({ error: "Failed to update document" }, { status: 500 });
+		}
+	}
+
+	// Memo handlers
+	//
+	// The server owns no memo IO: every handler validates its input, delegates to src/core/memos.ts
+	// and broadcasts. Memos sit outside the ContentStore, so the store subscription that covers
+	// documents/decisions/wikis never fires for them - each successful write broadcasts here.
+
+	/** A memo id is a file name segment; refusing anything else keeps it inside the memo directory. */
+	private memoIdError(id: string): Response | null {
+		if (MEMO_ID_PATTERN.test(id)) return null;
+		return Response.json({ error: "Invalid memo id" }, { status: 400 });
+	}
+
+	private async handleListMemos(req: Request): Promise<Response> {
+		const url = new URL(req.url);
+		const rawLimit = url.searchParams.get("limit")?.trim() || undefined;
+		let limit = MEMO_PAGE_SIZE;
+		if (rawLimit !== undefined) {
+			if (!/^\d+$/.test(rawLimit)) {
+				return Response.json({ error: "limit must be a positive integer" }, { status: 400 });
+			}
+			const parsed = Number.parseInt(rawLimit, 10);
+			if (!Number.isFinite(parsed) || parsed <= 0) {
+				return Response.json({ error: "limit must be a positive integer" }, { status: 400 });
+			}
+			limit = Math.min(parsed, MAX_MEMO_PAGE_SIZE);
+		}
+		// cursor is opaque: it is the id of the last memo of the previous page, nothing more.
+		const cursor = url.searchParams.get("cursor")?.trim() || undefined;
+		const date = url.searchParams.get("date")?.trim() || undefined;
+		if (date !== undefined && !DATE_ONLY_PATTERN.test(date)) {
+			return Response.json({ error: "date must be formatted as YYYY-MM-DD" }, { status: 400 });
+		}
+
+		try {
+			const page = await listMemosPage(this.core.filesystem.rootDir, { limit, cursor, date });
+			return Response.json(page);
+		} catch (error) {
+			console.error("Error listing memos:", error);
+			return Response.json({ error: "Failed to list memos" }, { status: 500 });
+		}
+	}
+
+	private async handleCreateMemo(req: Request): Promise<Response> {
+		try {
+			const body = await req.json();
+			const content = typeof body?.content === "string" ? body.content : undefined;
+			if (content === undefined) {
+				return Response.json(
+					{ error: body?.content === undefined ? "Memo content is required" : "Memo content must be a string" },
+					{ status: 400 },
+				);
+			}
+			if (content.trim().length === 0) {
+				return Response.json({ error: "Memo content is required" }, { status: 400 });
+			}
+			const tags = parseTagList(body?.tags, "Memo tags") ?? [];
+
+			const memo = await createMemo(this.core.filesystem.rootDir, content, tags);
+			this.broadcastDataUpdated("memos");
+			return Response.json(memo, { status: 201 });
+		} catch (error) {
+			if (error instanceof SyntaxError) {
+				return Response.json({ error: "Invalid request payload" }, { status: 400 });
+			}
+			if (error instanceof DocumentPayloadValidationError) {
+				return Response.json({ error: error.message }, { status: 400 });
+			}
+			console.error("Error creating memo:", error);
+			return Response.json({ error: "Failed to create memo" }, { status: 500 });
+		}
+	}
+
+	private async handleGetMemoCalendar(req: Request): Promise<Response> {
+		const url = new URL(req.url);
+		const now = new Date();
+		const rawYear = url.searchParams.get("year")?.trim() || undefined;
+		const rawMonth = url.searchParams.get("month")?.trim() || undefined;
+
+		const year = parseCalendarNumber(rawYear, now.getFullYear());
+		if (year === null || year < 1000 || year > 9999) {
+			return Response.json({ error: "year must be a four-digit number" }, { status: 400 });
+		}
+		const month = parseCalendarNumber(rawMonth, now.getMonth() + 1);
+		if (month === null || month < 1 || month > 12) {
+			return Response.json({ error: "month must be a number between 1 and 12" }, { status: 400 });
+		}
+		const monthPrefix = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+
+		try {
+			const memos = await listMemos(this.core.filesystem.rootDir);
+			const counts: Record<string, number> = {};
+			for (const memo of memos) {
+				const day = memo.createdDate.slice(0, 10);
+				if (!day.startsWith(monthPrefix)) continue;
+				counts[day] = (counts[day] ?? 0) + 1;
+			}
+			return Response.json(counts);
+		} catch (error) {
+			console.error("Error building memo calendar:", error);
+			return Response.json({ error: "Failed to build memo calendar" }, { status: 500 });
+		}
+	}
+
+	private async handleGetMemo(id: string): Promise<Response> {
+		const invalid = this.memoIdError(id);
+		if (invalid) return invalid;
+
+		try {
+			const memo = await getMemo(this.core.filesystem.rootDir, id);
+			if (!memo) {
+				return Response.json({ error: "Memo not found" }, { status: 404 });
+			}
+			return Response.json(memo);
+		} catch (error) {
+			console.error("Error loading memo:", error);
+			return Response.json({ error: "Failed to load memo" }, { status: 500 });
+		}
+	}
+
+	private async handleUpdateMemo(req: Request, id: string): Promise<Response> {
+		const invalid = this.memoIdError(id);
+		if (invalid) return invalid;
+
+		try {
+			const body = await req.json();
+			const content = typeof body?.content === "string" ? body.content : undefined;
+			if (body?.content !== undefined && content === undefined) {
+				return Response.json({ error: "Memo content must be a string" }, { status: 400 });
+			}
+			const tags = parseTagList(body?.tags, "Memo tags");
+			if (content === undefined && tags === undefined) {
+				return Response.json({ error: "Memo content or tags is required" }, { status: 400 });
+			}
+
+			const memo = await updateMemo(this.core.filesystem.rootDir, id, {
+				...(content !== undefined && { content }),
+				...(tags !== undefined && { tags }),
+			});
+			if (!memo) {
+				return Response.json({ error: "Memo not found" }, { status: 404 });
+			}
+			this.broadcastDataUpdated("memos");
+			return Response.json(memo);
+		} catch (error) {
+			if (error instanceof SyntaxError) {
+				return Response.json({ error: "Invalid request payload" }, { status: 400 });
+			}
+			if (error instanceof DocumentPayloadValidationError) {
+				return Response.json({ error: error.message }, { status: 400 });
+			}
+			console.error("Error updating memo:", error);
+			return Response.json({ error: "Failed to update memo" }, { status: 500 });
+		}
+	}
+
+	private async handleDeleteMemo(id: string): Promise<Response> {
+		const invalid = this.memoIdError(id);
+		if (invalid) return invalid;
+
+		try {
+			const deleted = await deleteMemo(this.core.filesystem.rootDir, id);
+			if (!deleted) {
+				return Response.json({ error: "Memo not found" }, { status: 404 });
+			}
+			this.broadcastDataUpdated("memos");
+			return new Response(null, { status: 204 });
+		} catch (error) {
+			console.error("Error deleting memo:", error);
+			return Response.json({ error: "Failed to delete memo" }, { status: 500 });
 		}
 	}
 
