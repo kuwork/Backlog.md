@@ -312,6 +312,14 @@ export const Icons = {
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
 		</svg>
 	),
+	// Memos nav icon: a folded sticky note, the capture inbox shape from the Memos integration.
+	Memo: () => (
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4h9l5 5v11H5z" />
+			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 4v5h5" />
+			<path strokeLinecap="round" strokeWidth={2} d="M8.5 13h7M8.5 16.5h4.5" />
+		</svg>
+	),
 };
 
 const countWikiFiles = (nodes: WikiTreeNode[]): number => {
@@ -1490,6 +1498,21 @@ const SideNavigation = memo(function SideNavigation({
 								<Icons.KnowledgeGraph />
 								<span className="ml-3 text-sm font-medium">{t.nav.knowledgeGraph}</span>
 							</NavLink>
+
+							{/* Memos Navigation */}
+							<NavLink
+								to="/memos"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Memo />
+								<span className="ml-3 text-sm font-medium">{t.nav.memos}</span>
+							</NavLink>
 						</div>
 					)}
 
@@ -1816,6 +1839,23 @@ const SideNavigation = memo(function SideNavigation({
 							>
 								<div className="w-6 h-6 flex items-center justify-center">
 									<Icons.KnowledgeGraph />
+								</div>
+							</NavLink>
+							{/* Memos Navigation */}
+							<NavLink
+								to="/memos"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.memos}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Memo />
 								</div>
 							</NavLink>
 							<button

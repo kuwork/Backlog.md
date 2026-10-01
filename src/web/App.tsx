@@ -28,6 +28,7 @@ import GraphView from "./components/GraphView";
 import InitializationScreen from "./components/InitializationScreen";
 import Layout from "./components/Layout";
 import LoadingSpinner from "./components/LoadingSpinner";
+import MemosPage from "./components/MemosPage";
 import MilestoneDetailsModal from "./components/MilestoneDetailsModal";
 import MilestonesPage from "./components/MilestonesPage";
 import Settings from "./components/Settings";
@@ -1221,6 +1222,7 @@ function AppContent() {
 					/>
 					<Route path="settings" element={<Settings />} />
 					<Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleOpenTask} />} />
+					<Route path="memos" element={<MemosPage />} />
 				</Route>
 				<Route path="task/:id" element={<Layout {...layoutProps} />}>
 					<Route index element={<BoardPage {...boardPageProps} />} />
