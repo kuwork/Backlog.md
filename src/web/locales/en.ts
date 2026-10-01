@@ -146,6 +146,7 @@ export const en = {
 		filterDocument: "Docs",
 		filterWiki: "Wiki",
 		filterDecision: "Decisions",
+		filterMemo: "Memos",
 		completed: "Completed",
 		emptyHint: "Type to search across tasks, documents, decisions and wiki.",
 		collapseGroup: "Collapse group",

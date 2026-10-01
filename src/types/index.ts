@@ -1,3 +1,5 @@
+import type { Memo } from "../core/memos.ts";
+
 export type TaskStatus = string;
 
 /**
@@ -286,7 +288,7 @@ export interface DocumentUpdateInput {
 	tags?: string[];
 }
 
-export type SearchResultType = "task" | "document" | "decision" | "wiki";
+export type SearchResultType = "task" | "document" | "decision" | "wiki" | "memo";
 
 export type SearchPriorityFilter = "high" | "medium" | "low";
 
@@ -343,7 +345,19 @@ export interface WikiSearchResult {
 	matches?: SearchMatch[];
 }
 
-export type SearchResult = TaskSearchResult | DocumentSearchResult | DecisionSearchResult | WikiSearchResult;
+export interface MemoSearchResult {
+	type: "memo";
+	score: number | null;
+	memo: Memo;
+	matches?: SearchMatch[];
+}
+
+export type SearchResult =
+	| TaskSearchResult
+	| DocumentSearchResult
+	| DecisionSearchResult
+	| WikiSearchResult
+	| MemoSearchResult;
 
 export interface Sequence {
 	/** 1-based sequence index */

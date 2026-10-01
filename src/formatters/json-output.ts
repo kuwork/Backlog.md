@@ -1,9 +1,11 @@
 import { isAbsolute, join, relative } from "node:path";
+import type { Memo } from "../core/memos.ts";
 import type {
 	Decision,
 	DecisionSearchResult,
 	Document,
 	DocumentSearchResult,
+	MemoSearchResult,
 	Task,
 	TaskSearchResult,
 	WikiSearchResult,
@@ -91,6 +93,7 @@ export type SearchResultInput =
 	| DocumentSearchResult
 	| DecisionSearchResult
 	| WikiSearchResult
+	| MemoSearchResult
 	| (Omit<TaskSearchResult, "task"> & { task: TaskListItem });
 
 type DocumentSummaryJson = {
@@ -115,11 +118,19 @@ type WikiSummaryJson = {
 	content: string | null;
 };
 
+type MemoSummaryJson = {
+	id: string | null;
+	title: string | null;
+	createdDate: string | null;
+	tags: string[];
+};
+
 type SearchResultJson =
 	| { type: "task"; data: TaskSummaryJson }
 	| { type: "document"; data: DocumentSummaryJson }
 	| { type: "decision"; data: DecisionSummaryJson }
-	| { type: "wiki"; data: WikiSummaryJson };
+	| { type: "wiki"; data: WikiSummaryJson }
+	| { type: "memo"; data: MemoSummaryJson };
 
 function nullable(value: string | undefined): string | null {
 	return value ?? null;
@@ -239,6 +250,15 @@ function toWikiSummaryJson(wiki: { path: string; content: string }): WikiSummary
 	};
 }
 
+function toMemoSummaryJson(memo: Memo): MemoSummaryJson {
+	return {
+		id: nullable(memo.id),
+		title: nullable(memo.displayTitle),
+		createdDate: nullable(memo.createdDate),
+		tags: memo.tags,
+	};
+}
+
 export function taskListJson(tasks: TaskListItem[]) {
 	return { schemaVersion: 1, kind: "task-list" as const, tasks: tasks.map(toTaskSummaryJson) };
 }
@@ -274,6 +294,10 @@ export function searchJson(results: SearchResultInput[], projectRoot: string, do
 		}
 		if (result.type === "wiki") {
 			publicResults.push({ type: "wiki", data: toWikiSummaryJson(result.wiki) });
+			continue;
+		}
+		if (result.type === "memo") {
+			publicResults.push({ type: "memo", data: toMemoSummaryJson(result.memo) });
 			continue;
 		}
 		publicResults.push({ type: "decision", data: toDecisionSummaryJson(result.decision) });

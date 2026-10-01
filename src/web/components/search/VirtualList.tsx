@@ -175,6 +175,7 @@ function getRowId(row: SearchRow): string {
 	if (result.type === "task") return result.task.id;
 	if (result.type === "document") return result.document.id;
 	if (result.type === "decision") return result.decision.id;
+	if (result.type === "memo") return result.memo.id;
 	return result.wiki.path;
 }
 
