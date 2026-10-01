@@ -1,3 +1,4 @@
+import type { Memo } from "../../core/memos.ts";
 import type { TaskStatistics } from "../../core/statistics.ts";
 import type {
 	BacklogConfig,
@@ -646,6 +647,68 @@ export class ApiClient {
 			return throwResponseError(response, "Failed to create document");
 		}
 		return response.json();
+	}
+
+	// Memo endpoints mirror /api/docs but stay out of the doc channel (see core/memos.ts): ids are
+	// `YYYYMMDD-N` and there is no title, so nothing here goes through the document helpers.
+	async fetchMemosPage(
+		options: { limit?: number; cursor?: string; date?: string } = {},
+	): Promise<{ items: Memo[]; nextCursor: string | null }> {
+		const params = new URLSearchParams();
+		if (options.limit !== undefined) params.set("limit", String(options.limit));
+		if (options.cursor) params.set("cursor", options.cursor);
+		if (options.date) params.set("date", options.date);
+		const query = params.toString();
+		return this.fetchJson<{ items: Memo[]; nextCursor: string | null }>(`${API_BASE}/memos${query ? `?${query}` : ""}`);
+	}
+
+	async fetchMemoCalendar(year?: number, month?: number): Promise<Record<string, number>> {
+		const params = new URLSearchParams();
+		if (year !== undefined) params.set("year", String(year));
+		if (month !== undefined) params.set("month", String(month));
+		const query = params.toString();
+		return this.fetchJson<Record<string, number>>(`${API_BASE}/memos/calendar${query ? `?${query}` : ""}`);
+	}
+
+	async createMemo(content: string, tags: string[] = []): Promise<Memo> {
+		// Not replayed on retry: a second POST would allocate another id and leave two copies.
+		const response = await fetch(`${API_BASE}/memos`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ content, tags }),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to create memo");
+		}
+		return response.json();
+	}
+
+	async updateMemo(id: string, patch: { content?: string; tags?: string[] }): Promise<Memo> {
+		const response = await fetch(`${API_BASE}/memos/${encodeURIComponent(id)}`, {
+			method: "PUT",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(patch),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to update memo");
+		}
+		return response.json();
+	}
+
+	async deleteMemo(id: string): Promise<void> {
+		const response = await fetch(`${API_BASE}/memos/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to delete memo");
+		}
 	}
 
 	async fetchDecisions(): Promise<Decision[]> {
