@@ -22,6 +22,7 @@ import {
 	type MilestoneUpdateOptions,
 	type SearchFilters,
 	type Sequence,
+	type StatusesConfig,
 	type Task,
 	type TaskCommentInput,
 	type TaskCreateInput,
@@ -3972,15 +3973,21 @@ export class Core {
 	/**
 	 * Load and process all tasks with the same logic as CLI overview
 	 * This method extracts the common task loading logic for reuse
+	 *
+	 * The completed folder is opt-in. By default the corpus is the active tasks alone, so the
+	 * overview reports on the same set the board shows; passing `includeCompleted` widens it.
 	 */
 	async loadAllTasksForStatistics(
 		progressCallback?: (msg: string) => void,
-	): Promise<{ tasks: Task[]; drafts: Task[]; statuses: string[] }> {
+		options: { includeCompleted?: boolean } = {},
+	): Promise<{ tasks: Task[]; drafts: Task[]; statuses: StatusesConfig }> {
 		const snapshot = await this.loadTaskCorpusSnapshot(progressCallback);
 		const config = snapshot.config;
-		const statuses = statusNames(config?.statuses || [...DEFAULT_STATUSES]);
+		// Hand back the raw config rather than a name list: getTaskStatistics needs the categories
+		// to tell a completion from a drop.
+		const statuses = config?.statuses ?? [...DEFAULT_STATUSES];
 		if (!snapshot.identityIndex) throw new Error("Task corpus identity index was not initialized");
-		const tasks = snapshot.identityIndex.getTasks(true);
+		const tasks = snapshot.identityIndex.getTasks(options.includeCompleted === true);
 
 		// Load drafts
 		progressCallback?.("Loading drafts...");

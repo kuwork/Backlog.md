@@ -1,6 +1,9 @@
-import type { Task } from "../types/index.ts";
+import type { StatusesConfig, Task } from "../types/index.ts";
 import { getStoredUtcTimestamp, parseStoredUtcDate } from "../utils/date-utc.ts";
 import { taskIdsEqual } from "../utils/task-path.ts";
+import { resolveTaskTimeSpan } from "../utils/task-time-span.ts";
+import { getTerminalStatus } from "../utils/terminal-status.ts";
+import { statusNames } from "./state-machine.ts";
 
 export interface TaskStatistics {
 	statusCounts: Map<string, number>;
@@ -15,6 +18,10 @@ export interface TaskStatistics {
 	};
 	projectHealth: {
 		averageTaskAge: number;
+		/** Mean span of completed tasks, in minutes, resolved the same way the Gantt resolves its actual bar. */
+		averageCompletionMinutes: number;
+		/** How many completed tasks that mean covers. */
+		completionSampleCount: number;
 		staleTasks: Task[];
 		atRiskTasks: Task[];
 		overdueTasks: Task[];
@@ -26,14 +33,21 @@ export interface TaskStatistics {
 /**
  * Calculate comprehensive task statistics for the overview
  */
-export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: string[]): TaskStatistics {
+export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: StatusesConfig): TaskStatistics {
 	const statusCounts = new Map<string, number>();
 	const priorityCounts = new Map<string, number>();
 
 	// Initialize status counts
-	for (const status of statuses) {
+	for (const status of statusNames(statuses)) {
 		statusCounts.set(status, 0);
 	}
+
+	// The project decides which status means done, so read it from the raw config instead of
+	// assuming a status name. A renamed or multi-valued machine then still counts correctly, and
+	// a dropped status is not a completion.
+	const completedStatus = getTerminalStatus(statuses);
+	const isCompleted = (status: string | undefined): boolean =>
+		completedStatus !== null && (status ?? "").trim().toLowerCase() === completedStatus.trim().toLowerCase();
 
 	// Initialize priority counts
 	priorityCounts.set("high", 0);
@@ -54,6 +68,8 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 	const blockedTasks: Task[] = [];
 	let totalAge = 0;
 	let taskCount = 0;
+	let totalCompletionMs = 0;
+	let completionSampleCount = 0;
 	const completionHeatmap: Record<string, number> = {};
 	const oneYearAgo = now.getTime() - 365 * 24 * 60 * 60 * 1000;
 
@@ -68,9 +84,16 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 		const currentCount = statusCounts.get(task.status) || 0;
 		statusCounts.set(task.status, currentCount + 1);
 
-		// Count completed tasks and build heatmap
-		if (task.status === "Done") {
+		// Count completed tasks, build the heatmap, and accumulate the completion span
+		if (isCompleted(task.status)) {
 			completedTasks++;
+
+			// Every completed task contributes to the mean however its span resolves: one with no
+			// stored timestamps still resolves through the Gantt fallback chain, so the sample
+			// count stays equal to the completed task count.
+			const span = resolveTaskTimeSpan(task, now);
+			totalCompletionMs += span.end.getTime() - span.start.getTime();
+			completionSampleCount++;
 
 			const completionDateStr = task.actualEnd || task.updatedDate;
 			if (typeof completionDateStr === "string" && completionDateStr) {
@@ -101,7 +124,7 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 			// For completed tasks, use the time from creation to completion
 			// For active tasks, use the time from creation to now
 			let ageInDays: number;
-			if (task.status === "Done" && task.updatedDate) {
+			if (isCompleted(task.status) && task.updatedDate) {
 				const updatedDate = getStoredUtcTimestamp(task.updatedDate);
 				ageInDays = Math.floor((updatedDate - createdDate) / (24 * 60 * 60 * 1000));
 			} else {
@@ -122,7 +145,7 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 		}
 
 		// Identify stale tasks (not updated in 30 days and not done, and no due date)
-		if (task.status !== "Done" && !task.dueDate) {
+		if (!isCompleted(task.status) && !task.dueDate) {
 			const lastDate = task.updatedDate || task.createdDate;
 			if (lastDate) {
 				const date = getStoredUtcTimestamp(lastDate);
@@ -133,7 +156,7 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 		}
 
 		// Identify at-risk and overdue tasks based on dueDate
-		if (task.status !== "Done" && task.dueDate) {
+		if (!isCompleted(task.status) && task.dueDate) {
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 			const due = new Date(`${task.dueDate}T00:00:00`);
@@ -146,11 +169,11 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 		}
 
 		// Identify blocked tasks (has dependencies that are not done)
-		if (task.dependencies && task.dependencies.length > 0 && task.status !== "Done") {
+		if (task.dependencies && task.dependencies.length > 0 && !isCompleted(task.status)) {
 			// Check if any dependency is not done
 			const hasBlockingDependency = task.dependencies.some((depId) => {
 				const dep = tasks.find((t) => taskIdsEqual(t.id, depId));
-				return dep && dep.status !== "Done";
+				return dep && !isCompleted(dep.status);
 			});
 
 			if (hasBlockingDependency) {
@@ -175,6 +198,11 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 	// Calculate average task age
 	const averageTaskAge = taskCount > 0 ? Math.round(totalAge / taskCount) : 0;
 
+	// Average completion time, in minutes. No sample is filtered out, so the count here equals
+	// the number of completed tasks the overview reports.
+	const averageCompletionMinutes =
+		completionSampleCount > 0 ? Math.round(totalCompletionMs / completionSampleCount / (60 * 1000)) : 0;
+
 	// Calculate completion percentage (only count tasks with valid status)
 	const totalTasks = Array.from(statusCounts.values()).reduce((sum, count) => sum + count, 0);
 	const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -192,6 +220,8 @@ export function getTaskStatistics(tasks: Task[], drafts: Task[], statuses: strin
 		},
 		projectHealth: {
 			averageTaskAge,
+			averageCompletionMinutes,
+			completionSampleCount,
 			staleTasks: staleTasks.slice(0, 5), // Top 5 stale tasks
 			atRiskTasks: atRiskTasks.slice(0, 5), // Top 5 at-risk tasks
 			overdueTasks: overdueTasks.slice(0, 5), // Top 5 overdue tasks

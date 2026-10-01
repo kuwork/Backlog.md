@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Task } from "../../types";
 import { compareTaskIds, groupSubtasksUnderParents } from "../../utils/task-sorting";
+import { resolveTaskTimeSpan } from "../../utils/task-time-span";
 import { useI18n } from "../hooks/useI18n";
 import { storedUtcHoverTitle } from "../utils/date-display";
 
@@ -58,65 +59,11 @@ interface GanttViewProps {
 	onEditTask: (task: Task) => void;
 }
 
-function parseDate(dateStr?: string): Date | null {
-	if (!dateStr) return null;
-	const iso = `${dateStr}T00:00:00`;
-	const d = new Date(iso);
-	return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function parseDateTime(dateStr?: string): Date | null {
-	if (!dateStr) return null;
-	const hasTime = dateStr.includes(" ") || dateStr.includes("T");
-	const iso = dateStr.replace(" ", "T") + (hasTime ? ":00Z" : "T00:00:00Z");
-	const d = new Date(iso);
-	return Number.isNaN(d.getTime()) ? null : d;
-}
-
 function parseTasks(tasks: Task[]): ParsedTask[] {
 	return tasks.map((task) => {
-		const plannedStart = parseDate(task.plannedStart);
-		const plannedEnd = parseDate(task.plannedEnd);
-		const actualStart = parseDateTime(task.actualStart);
-		const actualEnd = parseDateTime(task.actualEnd);
-		const created = parseDateTime(task.createdDate);
-		const updated = parseDateTime(task.updatedDate);
-
-		// Actual time resolution (for left table and actual bar)
-		let start: Date;
-		let originalStart: string | undefined;
-		if (actualStart) {
-			start = actualStart;
-			originalStart = task.actualStart;
-		} else if (created) {
-			start = created;
-			originalStart = task.createdDate;
-		} else {
-			start = new Date();
-		}
-
-		let end: Date;
-		let originalEnd: string | undefined;
-		let isFallback = false;
-		if (actualEnd) {
-			end = actualEnd;
-			originalEnd = task.actualEnd;
-		} else if (updated) {
-			end = updated;
-			originalEnd = task.updatedDate;
-		} else if (created) {
-			end = new Date(created.getTime() + DAY);
-			isFallback = true;
-			originalEnd = undefined;
-		} else {
-			end = new Date(start.getTime() + DAY);
-			isFallback = true;
-		}
-
-		if (end.getTime() < start.getTime()) {
-			end = new Date(start.getTime() + DAY);
-			isFallback = true;
-		}
+		// Start, end and the fallback flags all come from the shared resolution, so this view and
+		// the statistics module cannot disagree about what a task's start and end are.
+		const { start, end, originalStart, originalEnd, isFallback, plannedStart, plannedEnd } = resolveTaskTimeSpan(task);
 
 		return {
 			id: task.id,

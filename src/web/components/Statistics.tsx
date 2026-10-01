@@ -1,9 +1,11 @@
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { TaskStatistics } from "../../core/statistics";
 import type { Task } from "../../types";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
+import CompletedFilterToggle from "./CompletedFilterToggle";
 import LoadingSpinner from "./LoadingSpinner";
 import StoredDate from "./StoredDate";
 
@@ -22,9 +24,12 @@ interface StatisticsProps {
 interface ContributionGraphProps {
 	data: Record<string, number>;
 	total: number;
+	/** The page-wide corpus switch sits in this card's header. */
+	showCompleted: boolean;
+	onShowCompletedChange: (checked: boolean) => void;
 }
 
-const ContributionGraph: React.FC<ContributionGraphProps> = ({ data, total }) => {
+const ContributionGraph: React.FC<ContributionGraphProps> = ({ data, total, showCompleted, onShowCompletedChange }) => {
 	const { t, locale } = useI18n();
 
 	const weeks = useMemo(() => {
@@ -188,9 +193,17 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({ data, total }) =>
 
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-			<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-				{t.statistics.contributionTitle(total)}
-			</h3>
+			<div className="flex items-center justify-between gap-4 mb-4">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+					{t.statistics.contributionTitle(total)}
+				</h3>
+				<CompletedFilterToggle
+					id="statistics-show-completed"
+					checked={showCompleted}
+					onChange={onShowCompletedChange}
+					variant="plain"
+				/>
+			</div>
 
 			{/* Main layout: 2 columns - labels sidebar + cells area */}
 			<div className="grid" style={{ gridTemplateColumns: "28px 1fr", gap: `${gap}px` }}>
@@ -297,16 +310,35 @@ const Statistics: React.FC<StatisticsProps> = ({
 	projectName,
 }) => {
 	const { t } = useI18n();
-	const LOCAL_STORAGE_KEY = "backlog:statistics";
+	const [searchParams, setSearchParams] = useSearchParams();
+	// The URL owns the scope, exactly as on the board and the task list.
+	const showCompleted = searchParams.get("completed") === "1";
+	// One cache entry per scope, so a switch never briefly shows the other corpus's numbers.
+	const localStorageKey = `backlog:statistics:${showCompleted ? "completed" : "active"}`;
 
 	const [statistics, setStatistics] = useState<StatisticsData | null>(() => {
 		try {
-			const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+			const cached = localStorage.getItem(localStorageKey);
 			if (cached) return JSON.parse(cached) as StatisticsData;
 		} catch {}
 		return null;
 	});
 	const [loading, setLoading] = useState(!statistics);
+	const hasLoadedRef = useRef(false);
+
+	const handleShowCompletedChange = (checked: boolean) => {
+		setSearchParams(
+			(params) => {
+				if (checked) {
+					params.set("completed", "1");
+				} else {
+					params.delete("completed");
+				}
+				return params;
+			},
+			{ replace: true },
+		);
+	};
 	const [error, setError] = useState<string | null>(null);
 	const [loadingMessage, setLoadingMessage] = useState(t.statistics.loadingMessages[0] || "");
 
@@ -338,7 +370,7 @@ const Statistics: React.FC<StatisticsProps> = ({
 					}, 800);
 				}
 
-				const data = await apiClient.fetchStatistics();
+				const data = await apiClient.fetchStatistics(showCompleted);
 
 				if (messageInterval) {
 					clearInterval(messageInterval);
@@ -346,9 +378,10 @@ const Statistics: React.FC<StatisticsProps> = ({
 				}
 
 				if (isMounted) {
+					hasLoadedRef.current = true;
 					setStatistics(data);
 					try {
-						localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+						localStorage.setItem(localStorageKey, JSON.stringify(data));
 					} catch {}
 				}
 			} catch (err) {
@@ -363,7 +396,9 @@ const Statistics: React.FC<StatisticsProps> = ({
 			}
 		};
 
-		fetchStatistics();
+		// A scope switch refetches silently, so the numbers already on screen stay put until the
+		// new corpus arrives instead of flashing the loading screen.
+		fetchStatistics(hasLoadedRef.current);
 
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 		ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -392,7 +427,7 @@ const Statistics: React.FC<StatisticsProps> = ({
 				ws.close();
 			}
 		};
-	}, [t]);
+	}, [t, showCompleted, localStorageKey]);
 
 	if (loading || externalLoading) {
 		return (
@@ -612,11 +647,16 @@ const Statistics: React.FC<StatisticsProps> = ({
 
 			{/* Contribution Graph */}
 			{statistics.completionHeatmap && (
-				<ContributionGraph data={statistics.completionHeatmap} total={statistics.completedTasks} />
+				<ContributionGraph
+					data={statistics.completionHeatmap}
+					total={statistics.completedTasks}
+					showCompleted={showCompleted}
+					onShowCompletedChange={handleShowCompletedChange}
+				/>
 			)}
 
 			{/* Key Metrics Cards */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
 				{/* Total Tasks */}
 				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
 					<div className="flex items-center">
@@ -711,6 +751,41 @@ const Statistics: React.FC<StatisticsProps> = ({
 						<div className="ml-4">
 							<p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{statistics.draftCount}</p>
 							<p className="text-gray-600 dark:text-gray-400 text-sm">{t.statistics.drafts}</p>
+						</div>
+					</div>
+				</div>
+
+				{/* Average completion time, measured the way the Gantt measures its actual bar */}
+				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+					<div className="flex items-center">
+						<div className="p-3 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+							<svg
+								aria-hidden="true"
+								className="w-6 h-6 text-teal-600 dark:text-teal-400"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
+							</svg>
+						</div>
+						<div className="ml-4">
+							<p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+								{/* Older cached payloads predate these fields. */}
+								{statistics.projectHealth.averageCompletionMinutes ?? 0}
+								<span className="ml-1 text-base font-medium text-gray-500 dark:text-gray-400">
+									{t.statistics.minutesShort}
+								</span>
+							</p>
+							<p className="text-gray-600 dark:text-gray-400 text-sm">{t.statistics.avgTimeSpent}</p>
+							<p className="text-xs text-gray-500 dark:text-gray-400">
+								{t.statistics.sampleSize(statistics.projectHealth.completionSampleCount ?? 0)}
+							</p>
 						</div>
 					</div>
 				</div>

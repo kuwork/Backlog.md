@@ -10,11 +10,14 @@ function formatTime(ms: number): string {
 
 export interface OverviewOptions {
 	plain?: boolean;
+	/** Widen the corpus to include the completed folder. Defaults to the active tasks alone. */
+	completed?: boolean;
 }
 
 export async function runOverviewCommand(core: Core, options: OverviewOptions = {}): Promise<void> {
 	const startTime = performance.now();
 	const useTui = !options.plain;
+	const includeCompleted = options.completed === true;
 
 	// Load tasks with loading screen (only for TUI mode)
 	const loadingScreen = useTui ? await createLoadingScreen("Loading project statistics") : null;
@@ -26,11 +29,14 @@ export async function runOverviewCommand(core: Core, options: OverviewOptions = 
 			tasks: activeTasks,
 			drafts,
 			statuses,
-		} = await core.loadAllTasksForStatistics((msg) => {
-			if (loadingScreen) {
-				loadingScreen.update(`${msg} in ${formatTime(performance.now() - loadStart)}`);
-			}
-		});
+		} = await core.loadAllTasksForStatistics(
+			(msg) => {
+				if (loadingScreen) {
+					loadingScreen.update(`${msg} in ${formatTime(performance.now() - loadStart)}`);
+				}
+			},
+			{ includeCompleted },
+		);
 
 		loadingScreen?.close();
 
@@ -43,12 +49,12 @@ export async function runOverviewCommand(core: Core, options: OverviewOptions = 
 		const projectName = config?.projectName || "Project";
 
 		if (options.plain) {
-			renderStatsPlainText(statistics, projectName);
+			renderStatsPlainText(statistics, projectName, { includeCompleted });
 		} else {
 			// Display the TUI
 			const totalTime = Math.round(performance.now() - startTime);
 			console.log(`\nPerformance summary: Total time ${totalTime}ms (stats calculation: ${statsTime}ms)`);
-			await renderOverviewTui(statistics, projectName);
+			await renderOverviewTui(statistics, projectName, { includeCompleted });
 		}
 	} catch (error) {
 		loadingScreen?.close();

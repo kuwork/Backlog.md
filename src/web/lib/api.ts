@@ -819,12 +819,13 @@ export class ApiClient {
 		return response.json();
 	}
 
-	async fetchStatistics(): Promise<
-		TaskStatistics & { statusCounts: Record<string, number>; priorityCounts: Record<string, number> }
-	> {
+	/** Widen the reported corpus to include the completed folder. Defaults to the active tasks. */
+	async fetchStatistics(
+		completed = false,
+	): Promise<TaskStatistics & { statusCounts: Record<string, number>; priorityCounts: Record<string, number> }> {
 		return this.fetchJson<
 			TaskStatistics & { statusCounts: Record<string, number>; priorityCounts: Record<string, number> }
-		>(`${API_BASE}/statistics`);
+		>(`${API_BASE}/statistics${completed ? "?completed=true" : ""}`);
 	}
 
 	async fetchDocsTree(): Promise<DocsTreeNode[]> {
