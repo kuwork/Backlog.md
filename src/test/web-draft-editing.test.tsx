@@ -34,7 +34,11 @@ function setupDom(): HTMLElement {
 	globalThis.navigator = dom.window.navigator as unknown as Navigator;
 	globalThis.localStorage = dom.window.localStorage;
 	if (!window.matchMedia) {
-		window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as never;
+		window.matchMedia = (() => ({
+			matches: false,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as never;
 	}
 	return dom.window.document.getElementById("root") as unknown as HTMLElement;
 }

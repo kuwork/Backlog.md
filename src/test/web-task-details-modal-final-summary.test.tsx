@@ -3,11 +3,11 @@ import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import type { Milestone, Task } from "../types/index.ts";
 import { MemoryRouter } from "react-router-dom";
+import type { Milestone, Task } from "../types/index.ts";
+import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext";
-import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 import { apiClient } from "../web/lib/api.ts";
 
 let activeRoot: Root | null = null;
@@ -127,9 +127,13 @@ describe("Web task popup Final Summary display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Final Summary");
@@ -158,9 +162,13 @@ describe("Web task popup Final Summary display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Comments");
@@ -183,9 +191,13 @@ describe("Web task popup Final Summary display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Comments");
@@ -209,9 +221,13 @@ describe("Web task popup Final Summary display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Read-only comment");
@@ -237,9 +253,13 @@ describe("Web task popup Final Summary display", () => {
 
 		await act(async () => {
 			activeRoot?.render(
-				<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-					<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-				</ThemeProvider></I18nProvider></MemoryRouter>,
+				<MemoryRouter>
+					<I18nProvider initialLocale="en">
+						<ThemeProvider>
+							<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+						</ThemeProvider>
+					</I18nProvider>
+				</MemoryRouter>,
 			);
 			await Promise.resolve();
 		});
@@ -295,9 +315,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -311,7 +335,9 @@ describe("Web task popup Final Summary display", () => {
 				await Promise.resolve();
 			});
 
-			const authorInput = (container as HTMLElement).querySelector("input[placeholder='Author']") as HTMLInputElement | null;
+			const authorInput = (container as HTMLElement).querySelector(
+				"input[placeholder='Author']",
+			) as HTMLInputElement | null;
 			const commentTextarea = (container as HTMLElement).querySelector(
 				"textarea[placeholder='Add a comment...']",
 			) as HTMLTextAreaElement | null;
@@ -334,9 +360,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -365,10 +395,7 @@ describe("Web task popup Final Summary display", () => {
 		};
 		const updatedTask: Task = {
 			...task,
-			comments: [
-				...(task.comments ?? []),
-				{ index: 2, createdDate: "2025-01-03 12:00", body: "Preview comment" },
-			],
+			comments: [...(task.comments ?? []), { index: 2, createdDate: "2025-01-03 12:00", body: "Preview comment" }],
 		};
 		apiClient.updateTask = async (id, updates) => {
 			expect(id).toBe("TASK-12C");
@@ -383,9 +410,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -413,9 +444,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -442,9 +477,13 @@ describe("Web task popup Final Summary display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).not.toContain("Final Summary");
@@ -454,9 +493,13 @@ describe("Web task popup Final Summary display", () => {
 		setupDom();
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Final Summary");
@@ -486,9 +529,13 @@ describe("Web task popup Final Summary display", () => {
 		];
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} milestoneEntities={milestones} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} milestoneEntities={milestones} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain('option value="m-1"');
@@ -519,9 +566,13 @@ describe("Web task popup Final Summary display", () => {
 		];
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} milestoneEntities={milestones} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} milestoneEntities={milestones} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain('option value="m-1"');
@@ -559,15 +610,19 @@ describe("Web task popup Final Summary display", () => {
 		];
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal
-					task={task}
-					isOpen={true}
-					onClose={() => {}}
-					milestoneEntities={milestones}
-					archivedMilestoneEntities={archivedMilestones}
-				/>
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal
+							task={task}
+							isOpen={true}
+							onClose={() => {}}
+							milestoneEntities={milestones}
+							archivedMilestoneEntities={archivedMilestones}
+						/>
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain('option value="m-0"');
@@ -604,9 +659,13 @@ describe("Web task popup Final Summary display", () => {
 
 		await act(async () => {
 			activeRoot?.render(
-				<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-					<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-				</ThemeProvider></I18nProvider></MemoryRouter>,
+				<MemoryRouter>
+					<I18nProvider initialLocale="en">
+						<ThemeProvider>
+							<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+						</ThemeProvider>
+					</I18nProvider>
+				</MemoryRouter>,
 			);
 			await Promise.resolve();
 		});
@@ -636,9 +695,13 @@ describe("Web task popup Final Summary display", () => {
 
 		await act(async () => {
 			activeRoot?.render(
-				<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-					<TaskDetailsModal task={refreshedTask} isOpen={true} onClose={() => {}} />
-				</ThemeProvider></I18nProvider></MemoryRouter>,
+				<MemoryRouter>
+					<I18nProvider initialLocale="en">
+						<ThemeProvider>
+							<TaskDetailsModal task={refreshedTask} isOpen={true} onClose={() => {}} />
+						</ThemeProvider>
+					</I18nProvider>
+				</MemoryRouter>,
 			);
 			await Promise.resolve();
 		});
@@ -660,14 +723,18 @@ describe("Web task popup Final Summary display", () => {
 
 		await act(async () => {
 			activeRoot?.render(
-				<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-					<TaskDetailsModal
-						isOpen={true}
-						onClose={() => {}}
-						availableStatuses={["To Do", "In Progress", "Done"]}
-						definitionOfDoneDefaults={["Initial default"]}
-					/>
-				</ThemeProvider></I18nProvider></MemoryRouter>,
+				<MemoryRouter>
+					<I18nProvider initialLocale="en">
+						<ThemeProvider>
+							<TaskDetailsModal
+								isOpen={true}
+								onClose={() => {}}
+								availableStatuses={["To Do", "In Progress", "Done"]}
+								definitionOfDoneDefaults={["Initial default"]}
+							/>
+						</ThemeProvider>
+					</I18nProvider>
+				</MemoryRouter>,
 			);
 			await Promise.resolve();
 		});
@@ -691,18 +758,26 @@ describe("Web task popup Final Summary display", () => {
 				((container as HTMLElement).querySelector("input[placeholder='Enter task title']") as HTMLInputElement | null)
 					?.value === "Local draft title",
 		);
-		await waitFor(() => ((container as HTMLElement).querySelector("textarea") as HTMLTextAreaElement | null)?.value === "Local draft description");
+		await waitFor(
+			() =>
+				((container as HTMLElement).querySelector("textarea") as HTMLTextAreaElement | null)?.value ===
+				"Local draft description",
+		);
 
 		await act(async () => {
 			activeRoot?.render(
-				<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-					<TaskDetailsModal
-						isOpen={true}
-						onClose={() => {}}
-						availableStatuses={["Backlog", "To Do", "In Progress", "Done"]}
-						definitionOfDoneDefaults={["Refreshed default"]}
-					/>
-				</ThemeProvider></I18nProvider></MemoryRouter>,
+				<MemoryRouter>
+					<I18nProvider initialLocale="en">
+						<ThemeProvider>
+							<TaskDetailsModal
+								isOpen={true}
+								onClose={() => {}}
+								availableStatuses={["Backlog", "To Do", "In Progress", "Done"]}
+								definitionOfDoneDefaults={["Refreshed default"]}
+							/>
+						</ThemeProvider>
+					</I18nProvider>
+				</MemoryRouter>,
 			);
 			await Promise.resolve();
 		});
@@ -712,10 +787,7 @@ describe("Web task popup Final Summary display", () => {
 			"value",
 			"Local draft title",
 		);
-		expect((container as HTMLElement).querySelector("textarea")).toHaveProperty(
-			"value",
-			"Local draft description",
-		);
+		expect((container as HTMLElement).querySelector("textarea")).toHaveProperty("value", "Local draft description");
 	});
 
 	it("renders comment delete buttons in preview mode", () => {
@@ -733,9 +805,13 @@ describe("Web task popup Final Summary display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Preview comment");
@@ -779,9 +855,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -797,9 +877,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -844,9 +928,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});
@@ -860,9 +948,13 @@ describe("Web task popup Final Summary display", () => {
 
 			await act(async () => {
 				activeRoot?.render(
-					<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-						<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
-					</ThemeProvider></I18nProvider></MemoryRouter>,
+					<MemoryRouter>
+						<I18nProvider initialLocale="en">
+							<ThemeProvider>
+								<TaskDetailsModal task={updatedTask} isOpen={true} onClose={() => {}} />
+							</ThemeProvider>
+						</I18nProvider>
+					</MemoryRouter>,
 				);
 				await Promise.resolve();
 			});

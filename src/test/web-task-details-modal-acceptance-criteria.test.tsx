@@ -49,9 +49,13 @@ describe("Web task popup acceptance criteria display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskDetailsModal task={task} isOpen={true} onClose={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Acceptance Criteria (1/2)");
@@ -76,9 +80,13 @@ describe("Web task popup acceptance criteria display", () => {
 		};
 
 		const html = renderToString(
-			<MemoryRouter><I18nProvider initialLocale="en"><ThemeProvider>
-				<TaskCard task={task} onUpdate={() => {}} onEdit={() => {}} />
-			</ThemeProvider></I18nProvider></MemoryRouter>,
+			<MemoryRouter>
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<TaskCard task={task} onUpdate={() => {}} onEdit={() => {}} />
+					</ThemeProvider>
+				</I18nProvider>
+			</MemoryRouter>,
 		);
 
 		expect(html).toContain("Board card task");

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
-import Modal from "./Modal";
-import { apiClient } from "../lib/api";
-import MermaidMarkdown from "./MermaidMarkdown";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
 import { encodeWikiPath } from "../utils/urlHelpers";
+import MermaidMarkdown from "./MermaidMarkdown";
+import Modal from "./Modal";
 
 interface FileContentResult {
 	content: string;
@@ -74,6 +75,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		let cancelled = false;
 
@@ -134,26 +136,26 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 							className="prose prose-sm !max-w-none wmde-markdown rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800"
 							data-color-mode={theme}
 						>
-								<MermaidMarkdown
-									source={content}
-									onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
-									onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
-									onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
-									onDecisionClick={(decisionId) => window.open(`/decisions/${decisionId}`, "_blank")}
-									onWikiClick={(wikiPath) => window.open(`/wiki/${encodeWikiPath(wikiPath)}`, "_blank")}
-								/>
+							<MermaidMarkdown
+								source={content}
+								onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
+								onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
+								onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
+								onDecisionClick={(decisionId) => window.open(`/decisions/${decisionId}`, "_blank")}
+								onWikiClick={(wikiPath) => window.open(`/wiki/${encodeWikiPath(wikiPath)}`, "_blank")}
+							/>
 						</div>
 					) : (
 						<div className="rounded-lg border border-gray-200 dark:border-gray-700 max-h-[60vh] overflow-auto">
 							{isPartial && (
 								<div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs px-4 py-1.5 border-b border-blue-200 dark:border-blue-800 sticky top-0 z-10">
-									{t.filePreview.linesOfTotal.replace("{start}", String(lineStart)).replace("{end}", String(lineEnd)).replace("{total}", String(totalLines))}
+									{t.filePreview.linesOfTotal
+										.replace("{start}", String(lineStart))
+										.replace("{end}", String(lineEnd))
+										.replace("{total}", String(totalLines))}
 								</div>
 							)}
-							<div
-								className="code-file-preview"
-								style={{ counterReset: `line ${startLineNumber}` }}
-							>
+							<div className="code-file-preview" style={{ counterReset: `line ${startLineNumber}` }}>
 								<MermaidMarkdown source={wrapInCodeBlock(content, getLanguage(filePath))} />
 							</div>
 						</div>

@@ -178,10 +178,7 @@ export function ImageLightboxProvider({ children }: ImageLightboxProviderProps) 
 			if (!isDraggingRef.current) return;
 			const dx = e.clientX - dragStartRef.current.x;
 			const dy = e.clientY - dragStartRef.current.y;
-			const next = clampTranslate(
-				{ x: dragStartRef.current.tx + dx, y: dragStartRef.current.ty + dy },
-				view.scale,
-			);
+			const next = clampTranslate({ x: dragStartRef.current.tx + dx, y: dragStartRef.current.ty + dy }, view.scale);
 			setView((prev) => ({ ...prev, translate: next }));
 		};
 
@@ -198,10 +195,7 @@ export function ImageLightboxProvider({ children }: ImageLightboxProviderProps) 
 			e.preventDefault();
 			const dx = touch.clientX - dragStartRef.current.x;
 			const dy = touch.clientY - dragStartRef.current.y;
-			const next = clampTranslate(
-				{ x: dragStartRef.current.tx + dx, y: dragStartRef.current.ty + dy },
-				view.scale,
-			);
+			const next = clampTranslate({ x: dragStartRef.current.tx + dx, y: dragStartRef.current.ty + dy }, view.scale);
 			setView((prev) => ({ ...prev, translate: next }));
 		};
 

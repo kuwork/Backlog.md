@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useI18n } from "../hooks/useI18n";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { DEFAULT_INIT_CONFIG } from "../../constants/index.ts";
+import { useAutoFocus } from "../hooks/useAutoFocus";
+import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 
 type IntegrationMode = "mcp" | "cli" | "none";
@@ -35,6 +37,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 
 	// Form data
 	const [projectName, setProjectName] = useState("");
+	const projectNameRef = useAutoFocus<HTMLInputElement>();
 	const [integrationMode, setIntegrationMode] = useState<IntegrationMode | null>(null);
 	const [selectedMcpClients, setSelectedMcpClients] = useState<McpClient[]>([]);
 	const [selectedAgentFiles, setSelectedAgentFiles] = useState<AgentFile[]>([]);
@@ -163,7 +166,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 		try {
 			const normalizedBacklogDirectory =
 				backlogDirectorySource === "custom"
-					? normalizeRelativeBacklogDirectory(backlogDirectory) ?? backlogDirectory
+					? (normalizeRelativeBacklogDirectory(backlogDirectory) ?? backlogDirectory)
 					: backlogDirectory;
 			await apiClient.initializeProject({
 				projectName: projectName.trim(),
@@ -191,15 +194,11 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	};
 
 	const toggleMcpClient = (client: McpClient) => {
-		setSelectedMcpClients((prev) =>
-			prev.includes(client) ? prev.filter((c) => c !== client) : [...prev, client],
-		);
+		setSelectedMcpClients((prev) => (prev.includes(client) ? prev.filter((c) => c !== client) : [...prev, client]));
 	};
 
 	const toggleAgentFile = (file: AgentFile) => {
-		setSelectedAgentFiles((prev) =>
-			prev.includes(file) ? prev.filter((f) => f !== file) : [...prev, file],
-		);
+		setSelectedAgentFiles((prev) => (prev.includes(file) ? prev.filter((f) => f !== file) : [...prev, file]));
 	};
 
 	const renderStepIndicator = () => {
@@ -230,9 +229,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						{index < steps.length - 1 && (
 							<div
 								className={`w-12 h-1 mx-1 ${
-									index < currentIndex
-										? "bg-blue-500 dark:bg-blue-600"
-										: "bg-gray-200 dark:bg-gray-700"
+									index < currentIndex ? "bg-blue-500 dark:bg-blue-600" : "bg-gray-200 dark:bg-gray-700"
 								}`}
 							/>
 						)}
@@ -245,16 +242,14 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	const renderProjectNameStep = () => (
 		<div>
 			<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{t.init.projectName}</h2>
-			<p className="text-gray-600 dark:text-gray-400 mb-6">
-				{t.init.projectNameDescription}
-			</p>
+			<p className="text-gray-600 dark:text-gray-400 mb-6">{t.init.projectNameDescription}</p>
 			<input
+				ref={projectNameRef}
 				type="text"
 				value={projectName}
 				onChange={(e) => setProjectName(e.target.value)}
 				placeholder={t.init.projectNamePlaceholder}
 				className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors duration-200"
-				autoFocus
 			/>
 		</div>
 	);
@@ -262,9 +257,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	const renderIntegrationModeStep = () => (
 		<div>
 			<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{t.init.integrationMode}</h2>
-			<p className="text-gray-600 dark:text-gray-400 mb-6">
-				{t.init.integrationModeDescription}
-			</p>
+			<p className="text-gray-600 dark:text-gray-400 mb-6">{t.init.integrationModeDescription}</p>
 			<div className="space-y-3">
 				<label
 					className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -282,12 +275,8 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						className="mt-1 mr-3"
 					/>
 					<div>
-						<div className="font-medium text-gray-900 dark:text-gray-100">
-							{t.init.mcpConnector}
-						</div>
-						<div className="text-sm text-gray-500 dark:text-gray-400">
-							{t.init.mcpConnectorDesc}
-						</div>
+						<div className="font-medium text-gray-900 dark:text-gray-100">{t.init.mcpConnector}</div>
+						<div className="text-sm text-gray-500 dark:text-gray-400">{t.init.mcpConnectorDesc}</div>
 					</div>
 				</label>
 
@@ -307,12 +296,8 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						className="mt-1 mr-3"
 					/>
 					<div>
-						<div className="font-medium text-gray-900 dark:text-gray-100">
-							{t.init.cliCommands}
-						</div>
-						<div className="text-sm text-gray-500 dark:text-gray-400">
-							{t.init.cliCommandsDesc}
-						</div>
+						<div className="font-medium text-gray-900 dark:text-gray-100">{t.init.cliCommands}</div>
+						<div className="text-sm text-gray-500 dark:text-gray-400">{t.init.cliCommandsDesc}</div>
 					</div>
 				</label>
 
@@ -333,9 +318,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 					/>
 					<div>
 						<div className="font-medium text-gray-900 dark:text-gray-100">{t.init.skipForNow}</div>
-						<div className="text-sm text-gray-500 dark:text-gray-400">
-							{t.init.skipForNowDesc}
-						</div>
+						<div className="text-sm text-gray-500 dark:text-gray-400">{t.init.skipForNowDesc}</div>
 					</div>
 				</label>
 			</div>
@@ -345,9 +328,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	const renderMcpClientsStep = () => (
 		<div>
 			<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{t.init.mcpClientsTitle}</h2>
-			<p className="text-gray-600 dark:text-gray-400 mb-6">
-				{t.init.mcpClientSetupDesc}
-			</p>
+			<p className="text-gray-600 dark:text-gray-400 mb-6">{t.init.mcpClientSetupDesc}</p>
 			<div className="space-y-3">
 				{[
 					{ id: "claude" as McpClient, label: t.init.mcpClients.claude, description: t.init.mcpClients.claudeDesc },
@@ -381,9 +362,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 				))}
 			</div>
 			{selectedMcpClients.length === 0 && (
-				<p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
-					💡 {t.init.selectAtLeastOneMcp}
-				</p>
+				<p className="mt-4 text-sm text-amber-600 dark:text-amber-400">💡 {t.init.selectAtLeastOneMcp}</p>
 			)}
 		</div>
 	);
@@ -391,18 +370,24 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	const renderAgentFilesStep = () => (
 		<div>
 			<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{t.init.agentFiles}</h2>
-			<p className="text-gray-600 dark:text-gray-400 mb-6">
-				{t.init.agentFilesDescription}
-			</p>
+			<p className="text-gray-600 dark:text-gray-400 mb-6">{t.init.agentFilesDescription}</p>
 			<div className="space-y-3">
 				{[
-					{ id: "CLAUDE.md" as AgentFile, label: t.init.agentFilesLabels.claudeMd, description: t.init.agentFilesLabels.claudeMdDesc },
+					{
+						id: "CLAUDE.md" as AgentFile,
+						label: t.init.agentFilesLabels.claudeMd,
+						description: t.init.agentFilesLabels.claudeMdDesc,
+					},
 					{
 						id: "AGENTS.md" as AgentFile,
 						label: t.init.agentFilesLabels.agentsMd,
 						description: t.init.agentFilesLabels.agentsMdDesc,
 					},
-					{ id: "GEMINI.md" as AgentFile, label: t.init.agentFilesLabels.geminiMd, description: t.init.agentFilesLabels.geminiMdDesc },
+					{
+						id: "GEMINI.md" as AgentFile,
+						label: t.init.agentFilesLabels.geminiMd,
+						description: t.init.agentFilesLabels.geminiMdDesc,
+					},
 					{
 						id: ".github/copilot-instructions.md" as AgentFile,
 						label: t.init.agentFilesLabels.copilot,
@@ -440,12 +425,8 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						className="mt-1 mr-3"
 					/>
 					<div>
-						<div className="font-medium text-gray-900 dark:text-gray-100">
-							{t.init.installClaudeAgent}
-						</div>
-						<div className="text-sm text-gray-500 dark:text-gray-400">
-							{t.init.installClaudeAgentDesc}
-						</div>
+						<div className="font-medium text-gray-900 dark:text-gray-100">{t.init.installClaudeAgent}</div>
+						<div className="text-sm text-gray-500 dark:text-gray-400">{t.init.installClaudeAgentDesc}</div>
 					</div>
 				</label>
 			</div>
@@ -459,7 +440,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 			<div className="mb-6">
 				<h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t.init.backlogFolder}</h3>
 				<div className="space-y-3">
-					{([
+					{[
 						{
 							id: "backlog" as BacklogDirectoryChoice,
 							label: "backlog/",
@@ -475,7 +456,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 							label: t.init.customPath,
 							description: t.init.customPathDesc(rootConfigPath ?? "backlog.config.yml"),
 						},
-					]).map((option) => (
+					].map((option) => (
 						<label
 							key={option.id}
 							className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -509,10 +490,14 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 				</div>
 				{backlogDirectorySource === "custom" && (
 					<div className="mt-4">
-						<label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+						<label
+							htmlFor="initialization-screen-project-relative-backlog-directory"
+							className="block text-sm text-gray-700 dark:text-gray-300 mb-1"
+						>
 							{t.init.projectRelativeBacklogDirectory}
 						</label>
 						<input
+							id="initialization-screen-project-relative-backlog-directory"
 							type="text"
 							value={backlogDirectory}
 							onChange={(e) => setBacklogDirectory(e.target.value)}
@@ -526,9 +511,9 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 				)}
 				{backlogDirectorySource !== "custom" && (
 					<div className="mt-4">
-						<label className="block text-sm text-gray-700 dark:text-gray-300 mb-3">{t.init.configLocation}</label>
-						<div className="space-y-3">
-							{([
+						<span className="block text-sm text-gray-700 dark:text-gray-300 mb-3">{t.init.configLocation}</span>
+						<div className="space-y-3" role="radiogroup" aria-label={t.init.configLocation}>
+							{[
 								{
 									id: "folder" as ConfigLocationChoice,
 									label: `${backlogDirectory}/config.yml`,
@@ -539,7 +524,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 									label: "backlog.config.yml",
 									description: t.init.storeConfigInRoot,
 								},
-							]).map((option) => (
+							].map((option) => (
 								<label
 									key={option.id}
 									className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -598,9 +583,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								/>
 								<div>
 									<span className="text-gray-900 dark:text-gray-100">{t.init.checkAcrossBranches}</span>
-									<p className="text-xs text-gray-500 dark:text-gray-400">
-										{t.init.checkAcrossBranchesDesc}
-									</p>
+									<p className="text-xs text-gray-500 dark:text-gray-400">{t.init.checkAcrossBranchesDesc}</p>
 								</div>
 							</label>
 
@@ -610,30 +593,30 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 										<input
 											type="checkbox"
 											checked={advancedConfig.remoteOperations}
-											onChange={(e) =>
-												setAdvancedConfig((prev) => ({ ...prev, remoteOperations: e.target.checked }))
-											}
+											onChange={(e) => setAdvancedConfig((prev) => ({ ...prev, remoteOperations: e.target.checked }))}
 											className="mr-3"
 										/>
 										<div>
 											<span className="text-gray-900 dark:text-gray-100">{t.init.includeRemoteBranches}</span>
-											<p className="text-xs text-gray-500 dark:text-gray-400">
-												{t.init.includeRemoteBranchesDesc}
-											</p>
+											<p className="text-xs text-gray-500 dark:text-gray-400">{t.init.includeRemoteBranchesDesc}</p>
 										</div>
 									</label>
 
 									<div className="ml-6">
-										<label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+										<label
+											htmlFor="initialization-screen-active-branch-days"
+											className="block text-sm text-gray-700 dark:text-gray-300 mb-1"
+										>
 											{t.init.activeBranchDays}
 										</label>
 										<input
+											id="initialization-screen-active-branch-days"
 											type="number"
 											value={advancedConfig.activeBranchDays}
 											onChange={(e) =>
 												setAdvancedConfig((prev) => ({
 													...prev,
-													activeBranchDays: Number.parseInt(e.target.value) || 30,
+													activeBranchDays: Number.parseInt(e.target.value, 10) || 30,
 												}))
 											}
 											min={1}
@@ -654,16 +637,12 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								<input
 									type="checkbox"
 									checked={advancedConfig.autoCommit}
-									onChange={(e) =>
-										setAdvancedConfig((prev) => ({ ...prev, autoCommit: e.target.checked }))
-									}
+									onChange={(e) => setAdvancedConfig((prev) => ({ ...prev, autoCommit: e.target.checked }))}
 									className="mr-3"
 								/>
 								<div>
 									<span className="text-gray-900 dark:text-gray-100">{t.init.autoCommit}</span>
-									<p className="text-xs text-gray-500 dark:text-gray-400">
-										{t.init.autoCommitDesc}
-									</p>
+									<p className="text-xs text-gray-500 dark:text-gray-400">{t.init.autoCommitDesc}</p>
 								</div>
 							</label>
 
@@ -671,16 +650,12 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								<input
 									type="checkbox"
 									checked={advancedConfig.bypassGitHooks}
-									onChange={(e) =>
-										setAdvancedConfig((prev) => ({ ...prev, bypassGitHooks: e.target.checked }))
-									}
+									onChange={(e) => setAdvancedConfig((prev) => ({ ...prev, bypassGitHooks: e.target.checked }))}
 									className="mr-3"
 								/>
 								<div>
 									<span className="text-gray-900 dark:text-gray-100">{t.init.bypassGitHooks}</span>
-									<p className="text-xs text-gray-500 dark:text-gray-400">
-										{t.init.bypassGitHooksDesc}
-									</p>
+									<p className="text-xs text-gray-500 dark:text-gray-400">{t.init.bypassGitHooksDesc}</p>
 								</div>
 							</label>
 						</div>
@@ -703,23 +678,25 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 							/>
 							<div>
 								<span className="text-gray-900 dark:text-gray-100">{t.init.zeroPaddedIds}</span>
-								<p className="text-xs text-gray-500 dark:text-gray-400">
-									{t.init.zeroPaddedIdsDesc}
-								</p>
+								<p className="text-xs text-gray-500 dark:text-gray-400">{t.init.zeroPaddedIdsDesc}</p>
 							</div>
 						</label>
 						{advancedConfig.zeroPaddedIds !== null && (
 							<div className="ml-6 mt-2">
-								<label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									htmlFor="initialization-screen-number-of-digits"
+									className="block text-sm text-gray-700 dark:text-gray-300 mb-1"
+								>
 									{t.init.numberOfDigits}
 								</label>
 								<input
+									id="initialization-screen-number-of-digits"
 									type="number"
 									value={advancedConfig.zeroPaddedIds}
 									onChange={(e) =>
 										setAdvancedConfig((prev) => ({
 											...prev,
-											zeroPaddedIds: Number.parseInt(e.target.value) || 3,
+											zeroPaddedIds: Number.parseInt(e.target.value, 10) || 3,
 										}))
 									}
 									min={1}
@@ -731,10 +708,14 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 
 						{/* Task Prefix */}
 						<div className="mt-4">
-							<label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+							<label
+								htmlFor="initialization-screen-task-prefix"
+								className="block text-sm text-gray-700 dark:text-gray-300 mb-1"
+							>
 								{t.init.taskPrefix}
 							</label>
 							<input
+								id="initialization-screen-task-prefix"
 								type="text"
 								value={advancedConfig.taskPrefix}
 								onChange={(e) =>
@@ -746,9 +727,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								placeholder={t.init.taskPrefixPlaceholder}
 								className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
 							/>
-							<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-								{t.init.taskPrefixHint}
-							</p>
+							<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.init.taskPrefixHint}</p>
 						</div>
 					</div>
 
@@ -758,15 +737,11 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						<input
 							type="text"
 							value={advancedConfig.defaultEditor}
-							onChange={(e) =>
-								setAdvancedConfig((prev) => ({ ...prev, defaultEditor: e.target.value }))
-							}
+							onChange={(e) => setAdvancedConfig((prev) => ({ ...prev, defaultEditor: e.target.value }))}
 							placeholder={t.init.editorPlaceholder}
 							className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
 						/>
-						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							{t.init.leaveBlankForDefault}
-						</p>
+						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.init.leaveBlankForDefault}</p>
 					</div>
 
 					{/* Web UI Settings */}
@@ -774,16 +749,20 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						<h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t.init.webUi}</h3>
 						<div className="space-y-3">
 							<div>
-								<label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									htmlFor="initialization-screen-default-port"
+									className="block text-sm text-gray-700 dark:text-gray-300 mb-1"
+								>
 									{t.init.defaultPort}
 								</label>
 								<input
+									id="initialization-screen-default-port"
 									type="number"
 									value={advancedConfig.defaultPort}
 									onChange={(e) =>
 										setAdvancedConfig((prev) => ({
 											...prev,
-											defaultPort: Number.parseInt(e.target.value) || 6420,
+											defaultPort: Number.parseInt(e.target.value, 10) || 6420,
 										}))
 									}
 									min={1}
@@ -796,9 +775,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								<input
 									type="checkbox"
 									checked={advancedConfig.autoOpenBrowser}
-									onChange={(e) =>
-										setAdvancedConfig((prev) => ({ ...prev, autoOpenBrowser: e.target.checked }))
-									}
+									onChange={(e) => setAdvancedConfig((prev) => ({ ...prev, autoOpenBrowser: e.target.checked }))}
 									className="mr-3"
 								/>
 								<span className="text-gray-900 dark:text-gray-100">{t.init.autoOpenBrowser}</span>
@@ -843,9 +820,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 				{integrationMode === "mcp" && selectedMcpClients.length > 0 && (
 					<div className="flex justify-between">
 						<span className="text-gray-600 dark:text-gray-400">{t.init.mcpClientsLabel}</span>
-						<span className="font-medium text-gray-900 dark:text-gray-100">
-							{selectedMcpClients.join(", ")}
-						</span>
+						<span className="font-medium text-gray-900 dark:text-gray-100">{selectedMcpClients.join(", ")}</span>
 					</div>
 				)}
 				{integrationMode === "cli" && selectedAgentFiles.length > 0 && (
@@ -932,6 +907,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 				<div className="text-center mb-6">
 					<div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-3">
 						<svg
+							aria-hidden="true"
 							className="w-6 h-6 text-blue-600 dark:text-blue-400"
 							fill="none"
 							stroke="currentColor"
@@ -963,25 +939,30 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 
 				{/* Navigation Buttons */}
 				<div className="flex justify-between">
-						<button
-							type="button"
-							onClick={handleBack}
-							disabled={currentStep === "projectName" || isInitializing}
-							className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors duration-200"
-						>
-							{t.common.back}
-						</button>
+					<button
+						type="button"
+						onClick={handleBack}
+						disabled={currentStep === "projectName" || isInitializing}
+						className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors duration-200"
+					>
+						{t.common.back}
+					</button>
 
 					{currentStep === "summary" ? (
-							<button
-								type="button"
-								onClick={handleInitialize}
-								disabled={isInitializing}
-								className="px-6 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
-							>
-								{isInitializing ? (
-									<span className="flex items-center">
-										<svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+						<button
+							type="button"
+							onClick={handleInitialize}
+							disabled={isInitializing}
+							className="px-6 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
+						>
+							{isInitializing ? (
+								<span className="flex items-center">
+									<svg
+										aria-hidden="true"
+										className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+										fill="none"
+										viewBox="0 0 24 24"
+									>
 										<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
 										<path
 											className="opacity-75"
@@ -996,14 +977,14 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 							)}
 						</button>
 					) : (
-							<button
-								type="button"
-								onClick={handleNext}
-								disabled={!canProceed()}
-								className="px-6 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
-							>
-								{t.common.next}
-							</button>
+						<button
+							type="button"
+							onClick={handleNext}
+							disabled={!canProceed()}
+							className="px-6 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
+						>
+							{t.common.next}
+						</button>
 					)}
 				</div>
 			</div>

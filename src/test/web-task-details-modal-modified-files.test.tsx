@@ -5,10 +5,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import type { Task } from "../types/index.ts";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import type { Locale } from "../web/locales";
-import { ThemeProvider } from "../web/contexts/ThemeContext";
 import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { ThemeProvider } from "../web/contexts/ThemeContext";
+import type { Locale } from "../web/locales";
 
 const originalFetch = globalThis.fetch;
 
@@ -117,8 +117,8 @@ const panel = (container: HTMLElement): HTMLElement => {
 };
 
 const selectTab = (container: HTMLElement, label: string) => {
-	const tab = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find(
-		(candidate) => (candidate.textContent ?? "").startsWith(label),
+	const tab = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((candidate) =>
+		(candidate.textContent ?? "").startsWith(label),
 	);
 	expect(tab).toBeTruthy();
 	act(() => {

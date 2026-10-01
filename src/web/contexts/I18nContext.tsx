@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { getDictionary, type Locale, type TranslationDict, isValidLocale } from "../locales";
+import type React from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { apiClient } from "../lib/api";
+import { getDictionary, isValidLocale, type Locale, type TranslationDict } from "../locales";
 
 interface I18nContextType {
 	locale: Locale;
@@ -23,20 +24,20 @@ interface I18nProviderProps {
 	initialLocale?: Locale;
 }
 
-export const I18nProvider: React.FC<I18nProviderProps> = ({
-	children,
-	initialLocale = "en",
-}) => {
+export const I18nProvider: React.FC<I18nProviderProps> = ({ children, initialLocale = "en" }) => {
 	const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
 	useEffect(() => {
-		apiClient.fetchConfig().then((config) => {
-			if (config.locale && isValidLocale(config.locale)) {
-				setLocaleState(config.locale);
-			}
-		}).catch(() => {
-			// ignore: fallback to initialLocale
-		});
+		apiClient
+			.fetchConfig()
+			.then((config) => {
+				if (config.locale && isValidLocale(config.locale)) {
+					setLocaleState(config.locale);
+				}
+			})
+			.catch(() => {
+				// ignore: fallback to initialLocale
+			});
 	}, []);
 
 	const setLocale = useCallback((next: Locale) => {
@@ -45,9 +46,5 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
 
 	const t = getDictionary(locale);
 
-	return (
-		<I18nContext.Provider value={{ locale, setLocale, t }}>
-			{children}
-		</I18nContext.Provider>
-	);
+	return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
 };

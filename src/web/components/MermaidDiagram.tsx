@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import type React from "react";
+import { useEffect, useRef } from "react";
 import { useOptionalTheme } from "../contexts/ThemeContext";
-import { hasMermaidLanguageClass, renderMermaidDiagram, type MermaidMode } from "../utils/mermaid";
+import { hasMermaidLanguageClass, type MermaidMode, renderMermaidDiagram } from "../utils/mermaid";
 
 interface MermaidDiagramProps {
 	/** Fenced code block body, exactly as authored. */

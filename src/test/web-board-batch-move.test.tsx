@@ -4,10 +4,10 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Milestone, Task } from "../types/index.ts";
 import Board from "../web/components/Board.tsx";
-import { apiClient, type MoveTasksPayload, type MoveTasksResult } from "../web/lib/api.ts";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import { en } from "../web/locales/en.ts";
+import { apiClient, type MoveTasksPayload, type MoveTasksResult } from "../web/lib/api.ts";
 import type { LaneMode } from "../web/lib/lanes.ts";
+import { en } from "../web/locales/en.ts";
 
 const STATUSES = ["To Do", "In Progress", "Done"];
 
@@ -688,10 +688,7 @@ describe("Web board batch move", () => {
 
 	it("feeds a completed batch move through the board store rather than reloading the board", async () => {
 		const originalMoveTasks = apiClient.moveTasks.bind(apiClient);
-		const moved: Task[] = [
-			{ ...TASKS[0], status: "Done" } as Task,
-			{ ...TASKS[1], status: "Done" } as Task,
-		];
+		const moved: Task[] = [{ ...TASKS[0], status: "Done" } as Task, { ...TASKS[1], status: "Done" } as Task];
 		apiClient.moveTasks = async (): Promise<MoveTasksResult> => ({
 			success: true,
 			tasks: moved,
@@ -894,11 +891,7 @@ describe("Web board batch move", () => {
 				await Promise.resolve();
 			});
 
-			const expectedMessage = en.board.batchMoveFailed(
-				1,
-				2,
-				"TASK-2: Task TASK-2 not found.",
-			);
+			const expectedMessage = en.board.batchMoveFailed(1, 2, "TASK-2: Task TASK-2 not found.");
 			expect(container.textContent).toContain(expectedMessage);
 		} finally {
 			apiClient.moveTasks = originalMoveTasks;

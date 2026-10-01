@@ -3,9 +3,9 @@ import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
+import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext";
-import { TaskDetailsModal } from "../web/components/TaskDetailsModal";
 
 let activeRoot: Root | null = null;
 

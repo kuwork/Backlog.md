@@ -42,7 +42,8 @@ const renderSkeleton = (container: HTMLElement, columnCount?: number, locale: Lo
 };
 
 const ghostTrack = (container: HTMLElement) => container.querySelector('[aria-hidden="true"].overflow-x-auto');
-const countGhostColumns = (container: HTMLElement) => ghostTrack(container)?.querySelectorAll(".min-w-\\[16rem\\]").length;
+const countGhostColumns = (container: HTMLElement) =>
+	ghostTrack(container)?.querySelectorAll(".min-w-\\[16rem\\]").length;
 
 describe("BoardLoadingSkeleton", () => {
 	it("announces a compact loading status without visible copy", () => {

@@ -4,8 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { SearchResult, Task } from "../types/index.ts";
-import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import SearchDialog from "../web/components/search/SearchDialog.tsx";
+import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 
 const SEARCH_DEBOUNCE_MS = 300;
 

@@ -1,7 +1,7 @@
-import Slugger from "github-slugger";
 import MDEditor from "@uiw/react-md-editor";
-import React, { useEffect, useMemo, useRef } from "react";
+import Slugger from "github-slugger";
 import type { Element, Root } from "hast";
+import React, { useEffect, useMemo, useRef } from "react";
 import { visit } from "unist-util-visit";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
@@ -24,7 +24,7 @@ interface Props {
 	wikilinkBasePath?: string;
 }
 
-const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\u0000-\u0020]*>/;
+const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/;
 const EMAIL_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+>/;
 
 function getTextContent(node: Element): string {
@@ -62,12 +62,12 @@ function sanitizeMarkdownSource(source: string): string {
 
 	// Protect code blocks (```...```)
 	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
-		protectedRanges.push({ start: match.index!, end: match.index! + match[0].length });
+		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
 	}
 
 	// Protect inline code (`...`)
 	for (const match of source.matchAll(/`[^`\n]+`/g)) {
-		protectedRanges.push({ start: match.index!, end: match.index! + match[0].length });
+		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
 	}
 
 	return source.replace(/<(?=[A-Za-z])/g, (match, offset, fullText) => {
@@ -90,12 +90,12 @@ function encodeLocalFileLinkDestinations(source: string): string {
 
 	// Protect code blocks (```...```)
 	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
-		protectedRanges.push({ start: match.index!, end: match.index! + match[0].length });
+		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
 	}
 
 	// Protect inline code (`...`)
 	for (const match of source.matchAll(/`[^`\n]+`/g)) {
-		protectedRanges.push({ start: match.index!, end: match.index! + match[0].length });
+		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
 	}
 
 	return source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, ...args) => {
@@ -135,7 +135,7 @@ interface LocalLinkInfo {
 function parseLineRange(segment: string): { id: string; range?: LineRange } | null {
 	const match = segment.match(/^([^:]+)(?::(\d+)(?:-(\d+))?)?$/);
 	if (!match) return null;
-	const id = match[1]!;
+	const id = match[1] ?? "";
 	if (!id) return null;
 	if (!match[2]) return { id };
 	const lineStart = Number.parseInt(match[2], 10);
@@ -163,35 +163,55 @@ export function parseLocalUrl(href: string): LocalLinkInfo | null {
 
 		const taskMatch = url.pathname.match(/^\/task\/([^/]+)/);
 		if (taskMatch) {
-			const parsed = parseLineRange(taskMatch[1]!);
+			const parsed = parseLineRange(taskMatch[1] ?? "");
 			if (!parsed) return null;
-			return { type: "task", id: parsed.id, alias: formatAliasWithRange(`TASK#${parsed.id}`, parsed.range), range: parsed.range };
+			return {
+				type: "task",
+				id: parsed.id,
+				alias: formatAliasWithRange(`TASK#${parsed.id}`, parsed.range),
+				range: parsed.range,
+			};
 		}
 
 		const draftMatch = url.pathname.match(/^\/draft\/([^/]+)/);
 		if (draftMatch) {
-			const parsed = parseLineRange(draftMatch[1]!);
+			const parsed = parseLineRange(draftMatch[1] ?? "");
 			if (!parsed) return null;
-			return { type: "draft", id: parsed.id, alias: formatAliasWithRange(`DRAFT#${parsed.id}`, parsed.range), range: parsed.range };
+			return {
+				type: "draft",
+				id: parsed.id,
+				alias: formatAliasWithRange(`DRAFT#${parsed.id}`, parsed.range),
+				range: parsed.range,
+			};
 		}
 
 		const docMatch = url.pathname.match(/^\/documentation\/([^/]+)/);
 		if (docMatch) {
-			const parsed = parseLineRange(docMatch[1]!);
+			const parsed = parseLineRange(docMatch[1] ?? "");
 			if (!parsed) return null;
-			return { type: "doc", id: parsed.id, alias: formatAliasWithRange(`DOC#${parsed.id}`, parsed.range), range: parsed.range };
+			return {
+				type: "doc",
+				id: parsed.id,
+				alias: formatAliasWithRange(`DOC#${parsed.id}`, parsed.range),
+				range: parsed.range,
+			};
 		}
 
 		const decisionMatch = url.pathname.match(/^\/decisions\/([^/]+)/);
 		if (decisionMatch) {
-			const parsed = parseLineRange(decisionMatch[1]!);
+			const parsed = parseLineRange(decisionMatch[1] ?? "");
 			if (!parsed) return null;
-			return { type: "decision", id: parsed.id, alias: formatAliasWithRange(`Decisions#${parsed.id}`, parsed.range), range: parsed.range };
+			return {
+				type: "decision",
+				id: parsed.id,
+				alias: formatAliasWithRange(`Decisions#${parsed.id}`, parsed.range),
+				range: parsed.range,
+			};
 		}
 
 		const wikiMatch = url.pathname.match(/^\/wiki\/(.+)/);
 		if (wikiMatch) {
-			const parsed = parseLineRange(decodeURIComponent(wikiMatch[1]!));
+			const parsed = parseLineRange(decodeURIComponent(wikiMatch[1] ?? ""));
 			if (!parsed) return null;
 			return {
 				type: "wiki",
@@ -225,33 +245,30 @@ function LightboxImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
 	const { openLightbox } = useImageLightbox();
 	const { t } = useI18n();
 	const { className, onClick, onKeyDown, alt, ...rest } = props;
+	const imageRef = useRef<HTMLImageElement | null>(null);
 
-	const handleActivate = (target: HTMLImageElement) => {
-		const rawSrc = target.getAttribute("src");
+	const handleActivate = () => {
+		const rawSrc = imageRef.current?.getAttribute("src");
 		if (rawSrc) openLightbox(rawSrc);
 	};
 
 	return (
-		<img
-			{...rest}
-			data-lightbox-img
-			alt={alt ?? ""}
-			className={`${className ?? ""} cursor-zoom-in max-w-full`.trim()}
-			role="button"
-			tabIndex={0}
+		<button
+			type="button"
+			className="max-w-full cursor-zoom-in border-0 bg-transparent p-0"
 			aria-label={alt || t.imageLightbox.viewImage}
-			onClick={(e) => {
-				handleActivate(e.currentTarget);
-				onClick?.(e);
-			}}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					handleActivate(e.currentTarget);
-				}
-				onKeyDown?.(e);
-			}}
-		/>
+			onClick={handleActivate}
+		>
+			<img
+				{...rest}
+				ref={imageRef}
+				data-lightbox-img
+				alt={alt ?? ""}
+				className={`${className ?? ""} max-w-full`.trim()}
+				onClick={onClick}
+				onKeyDown={onKeyDown}
+			/>
+		</button>
 	);
 }
 
@@ -284,6 +301,7 @@ export default function MermaidMarkdown({
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		if (!ref.current) return;
 
@@ -321,7 +339,7 @@ export default function MermaidMarkdown({
 
 			const localLink = href ? parseLocalUrl(href) : null;
 
-			if (href && href.startsWith("#")) {
+			if (href?.startsWith("#")) {
 				const resolvedHref =
 					typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}${href}` : href;
 
@@ -351,11 +369,7 @@ export default function MermaidMarkdown({
 					!/^[a-z][a-z0-9+.-]*:/i.test(children) &&
 					children !== href;
 				const content =
-					localLink.type === "wiki" && isWikilink
-						? children
-						: hasCustomLabel
-							? children
-							: localLink.alias;
+					localLink.type === "wiki" && isWikilink ? children : hasCustomLabel ? children : localLink.alias;
 
 				if (localLink.type === "task" && onTaskClick) {
 					return (

@@ -1,25 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { type Milestone, type Task } from "../../types";
-import Modal from "./Modal";
-import MilestoneTaskRow from "./MilestoneTaskRow";
-import MermaidMarkdown from "./MermaidMarkdown";
-import { PathAutocomplete } from "./PathAutocomplete";
-import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
-import { apiClient } from "../lib/api";
+import type { Milestone, Task } from "../../types";
+import { stripAnyPrefix } from "../../utils/prefix-config";
+import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import { dateTimeLocalToStoredUtc, parseStoredUtcDate, storedUtcToDateTimeLocal } from "../utils/date-display";
 import { isTypingTarget } from "../utils/keyboard";
-import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { isDoneStatus, milestoneKey } from "../utils/milestones";
-import {
-	dateTimeLocalToStoredUtc,
-	parseStoredUtcDate,
-	storedUtcToDateTimeLocal,
-} from "../utils/date-display";
+import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
+import MermaidMarkdown from "./MermaidMarkdown";
+import MilestoneTaskRow from "./MilestoneTaskRow";
+import Modal from "./Modal";
+import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
+import { PathAutocomplete } from "./PathAutocomplete";
 import StoredDate from "./StoredDate";
-import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
-import { stripAnyPrefix } from "../../utils/prefix-config";
 
 interface Props {
 	milestoneId: string | null;
@@ -116,6 +113,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	}, [isOpen, milestoneId, milestone, t]);
 
 	// Reset local state when the opened milestone changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		setName(activeMilestone?.title || "");
 		setDescription(activeMilestone?.description || "");
@@ -129,7 +127,6 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 		setSortConfig(null);
 		setShowRemove(false);
 		setError(null);
-		// biome-ignore lint/correctness/useExhaustiveDependencies: only reset when the opened milestone changes, not on every content refresh
 	}, [isOpen, milestoneId]);
 
 	const milestoneTasks = useMemo(() => {
@@ -320,9 +317,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 
 	const handleTaskClick = useCallback(
 		(taskId: string) => {
-			const target = milestoneTasks.find(
-				(task) => stripAnyPrefix(task.id) === taskId || task.id === taskId,
-			);
+			const target = milestoneTasks.find((task) => stripAnyPrefix(task.id) === taskId || task.id === taskId);
 			if (target) {
 				onEditTask(target);
 			} else {
@@ -330,12 +325,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				navigate(`/task/${taskId}`);
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 		[milestoneTasks, onEditTask, navigate, confirmLeaveWithUnsavedEdits],
 	);
 
 	const noopDrag = useCallback(() => {}, []);
 
 	// Escape cancels edit (not close) in edit mode; Cmd/Ctrl+S saves
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (mode === "edit" && e.key === "Escape") {
@@ -586,7 +583,13 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 										title={t.common.cancel}
 									>
-										<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+										<svg
+											className="w-4 h-4 mr-2"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 										</svg>
 										{t.common.cancel}
@@ -598,7 +601,13 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 										className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:opacity-50"
 										title={t.common.save}
 									>
-										<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+										<svg
+											className="w-4 h-4 mr-2"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 										</svg>
 										{saving ? t.common.saving : t.common.save}
@@ -655,7 +664,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									{documentation.length > 0 ? (
 										<ul className="space-y-2">
 											{documentation.map((doc, idx) => (
-												<li key={idx} className="flex items-center gap-3 group">
+												<li key={doc} className="flex items-center gap-3 group">
 													<span className="flex-1 min-w-0">
 														{doc.startsWith("http://") || doc.startsWith("https://") ? (
 															<a
@@ -682,8 +691,19 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 														className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
 														title={t.taskDetails.removeDocumentation}
 													>
-														<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-															<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+														<svg
+															aria-hidden="true"
+															className="w-4 h-4"
+															fill="none"
+															stroke="currentColor"
+															viewBox="0 0 24 24"
+														>
+															<path
+																strokeLinecap="round"
+																strokeLinejoin="round"
+																strokeWidth={2}
+																d="M6 18L18 6M6 6l12 12"
+															/>
 														</svg>
 													</button>
 												</li>
@@ -694,30 +714,30 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									)}
 									<form
 										onSubmit={(e) => {
-												e.preventDefault();
-												const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
-												const value = input.value.trim();
-												if (value && !documentation.includes(value)) {
-													const newDocs = [...documentation, value];
-													setDocumentation(newDocs);
-													void saveMeta({ documentation: newDocs });
-													input.value = "";
-												}
-											}}
-											className="flex gap-2"
+											e.preventDefault();
+											const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
+											const value = input.value.trim();
+											if (value && !documentation.includes(value)) {
+												const newDocs = [...documentation, value];
+												setDocumentation(newDocs);
+												void saveMeta({ documentation: newDocs });
+												input.value = "";
+											}
+										}}
+										className="flex gap-2"
+									>
+										<PathAutocomplete
+											name="newDoc"
+											placeholder={t.taskDetails.placeholderRefDoc}
+											className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+										/>
+										<button
+											type="submit"
+											className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
 										>
-											<PathAutocomplete
-												name="newDoc"
-												placeholder={t.taskDetails.placeholderRefDoc}
-												className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-											/>
-											<button
-												type="submit"
-												className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-											>
-												{t.common.add}
-											</button>
-										</form>
+											{t.common.add}
+										</button>
+									</form>
 								</div>
 							</div>
 						</div>
@@ -728,9 +748,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-1">
 									{activeMilestone.createdDate && (
 										<div>
-											<span className="font-semibold text-gray-800 dark:text-gray-100">
-												{t.common.created}:
-											</span>{" "}
+											<span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.created}:</span>{" "}
 											<span className="text-gray-700 dark:text-gray-200">
 												<StoredDate value={activeMilestone.createdDate} />
 											</span>
@@ -738,9 +756,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									)}
 									{activeMilestone.updatedDate && (
 										<div>
-											<span className="font-semibold text-gray-800 dark:text-gray-100">
-												{t.common.updated}:
-											</span>{" "}
+											<span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.updated}:</span>{" "}
 											<span className="text-gray-700 dark:text-gray-200">
 												<StoredDate value={activeMilestone.updatedDate} />
 											</span>
@@ -780,7 +796,10 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
 								<SectionHeader title={t.milestones.progressLabel} />
 								<div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-									<div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+									<div
+										className="h-full bg-emerald-500 transition-all duration-300"
+										style={{ width: `${progress}%` }}
+									/>
 								</div>
 								<div className="flex items-center justify-between text-sm">
 									<span className="text-gray-500 dark:text-gray-400">
@@ -794,10 +813,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
 								<SectionHeader title={t.milestones.datesLabel} />
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<label
+										htmlFor="milestone-details-modal-due-date"
+										className="text-sm font-medium text-gray-900 dark:text-gray-100"
+									>
 										{t.taskDetails.section.dueDate}
 									</label>
 									<input
+										id="milestone-details-modal-due-date"
 										type="date"
 										value={dueDate}
 										onChange={(e) => {
@@ -809,10 +832,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									/>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<label
+										htmlFor="milestone-details-modal-planned-start"
+										className="text-sm font-medium text-gray-900 dark:text-gray-100"
+									>
 										{t.taskDetails.section.plannedStart}
 									</label>
 									<input
+										id="milestone-details-modal-planned-start"
 										type="date"
 										value={plannedStart}
 										onChange={(e) => {
@@ -824,10 +851,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									/>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<label
+										htmlFor="milestone-details-modal-planned-end"
+										className="text-sm font-medium text-gray-900 dark:text-gray-100"
+									>
 										{t.taskDetails.section.plannedEnd}
 									</label>
 									<input
+										id="milestone-details-modal-planned-end"
 										type="date"
 										value={plannedEnd}
 										onChange={(e) => {
@@ -839,10 +870,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									/>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<label
+										htmlFor="milestone-details-modal-actual-start"
+										className="text-sm font-medium text-gray-900 dark:text-gray-100"
+									>
 										{t.taskDetails.section.actualStart}
 									</label>
 									<input
+										id="milestone-details-modal-actual-start"
 										type="datetime-local"
 										value={storedUtcToDateTimeLocal(actualStart)}
 										onChange={(e) => {
@@ -854,10 +889,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 									/>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<label
+										htmlFor="milestone-details-modal-actual-end"
+										className="text-sm font-medium text-gray-900 dark:text-gray-100"
+									>
 										{t.taskDetails.section.actualEnd}
 									</label>
 									<input
+										id="milestone-details-modal-actual-end"
 										type="datetime-local"
 										value={storedUtcToDateTimeLocal(actualEnd)}
 										onChange={(e) => {
@@ -919,9 +958,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				maxWidthClass="max-w-md"
 			>
 				<div className="space-y-4">
-					<p className="text-sm text-gray-600 dark:text-gray-300">
-						{t.milestones.archiveDescription}
-					</p>
+					<p className="text-sm text-gray-600 dark:text-gray-300">{t.milestones.archiveDescription}</p>
 					<div className="flex justify-end gap-2">
 						<button
 							type="button"
@@ -950,9 +987,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				maxWidthClass="max-w-md"
 			>
 				<div className="space-y-4">
-					<p className="text-sm text-gray-600 dark:text-gray-300">
-						{t.milestones.removeDescription}
-					</p>
+					<p className="text-sm text-gray-600 dark:text-gray-300">{t.milestones.removeDescription}</p>
 					<div className="space-y-3">
 						<label className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 dark:border-gray-700 px-3 py-3 text-sm text-gray-700 dark:text-gray-200">
 							<input
@@ -983,12 +1018,8 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 								className="mt-0.5"
 							/>
 							<span className="flex-1">
-								<span className="block font-medium text-gray-900 dark:text-gray-100">
-									{t.milestones.reassignTasks}
-								</span>
-								<span className="block text-xs text-gray-500 dark:text-gray-400">
-									{t.milestones.reassignTasksDesc}
-								</span>
+								<span className="block font-medium text-gray-900 dark:text-gray-100">{t.milestones.reassignTasks}</span>
+								<span className="block text-xs text-gray-500 dark:text-gray-400">{t.milestones.reassignTasksDesc}</span>
 								<select
 									value={removeReassignTo}
 									onChange={(event) => setRemoveReassignTo(event.target.value)}

@@ -5,7 +5,7 @@ const RECONNECT_DELAY = 5000; // 5 seconds
 export function useHealthCheck() {
 	const [isOnline, setIsOnline] = useState(true);
 	const [wasDisconnected, setWasDisconnected] = useState(false);
-	
+
 	const wsRef = useRef<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const isMountedRef = useRef(true);
@@ -16,7 +16,10 @@ export function useHealthCheck() {
 		}
 
 		// Check if already connected or connecting
-		if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+		if (
+			wsRef.current &&
+			(wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)
+		) {
 			return;
 		}
 
@@ -27,9 +30,9 @@ export function useHealthCheck() {
 		}
 
 		try {
-			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+			const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 			const wsUrl = `${protocol}//${window.location.host}`;
-			
+
 			const ws = new WebSocket(wsUrl);
 			wsRef.current = ws;
 
@@ -51,7 +54,6 @@ export function useHealthCheck() {
 				setIsOnline(false);
 				setWasDisconnected(true);
 			};
-
 		} catch (error) {
 			console.error("[WebSocket Client] Failed to create WebSocket:", error);
 			setIsOnline(false);
@@ -70,7 +72,7 @@ export function useHealthCheck() {
 	// Set up WebSocket connection
 	useEffect(() => {
 		isMountedRef.current = true;
-		
+
 		// Add a small delay to avoid rapid connect/disconnect in StrictMode
 		const connectTimer = setTimeout(() => {
 			connectWebSocket();
@@ -79,10 +81,10 @@ export function useHealthCheck() {
 		return () => {
 			// Mark as unmounted
 			isMountedRef.current = false;
-			
+
 			// Clear the connect timer if it hasn't fired yet
 			clearTimeout(connectTimer);
-			
+
 			// Cleanup on unmount
 			if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
 				wsRef.current.close();

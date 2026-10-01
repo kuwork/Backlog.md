@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { useI18n } from '../hooks/useI18n';
+import type React from "react";
+import { useEffect, useRef } from "react";
+import { useI18n } from "../hooks/useI18n";
 
 interface ModalProps {
 	isOpen: boolean;
@@ -12,41 +13,66 @@ interface ModalProps {
 	leftActions?: React.ReactNode; // optional actions rendered in header before title
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidthClass = "max-w-2xl", disableEscapeClose, actions, leftActions }) => {
+const Modal: React.FC<ModalProps> = ({
+	isOpen,
+	onClose,
+	title,
+	children,
+	maxWidthClass = "max-w-2xl",
+	disableEscapeClose,
+	actions,
+	leftActions,
+}) => {
 	const { t } = useI18n();
+	const panelRef = useRef<HTMLDivElement | null>(null);
+	const onCloseRef = useRef(onClose);
+	onCloseRef.current = onClose;
 	useEffect(() => {
 		const handleEscape = (e: KeyboardEvent) => {
-			if (e.key === 'Escape' && !disableEscapeClose) {
-				onClose();
+			if (e.key === "Escape" && !disableEscapeClose) {
+				onCloseRef.current();
 			}
 		};
 
 		if (isOpen) {
 			if (!disableEscapeClose) {
-				document.addEventListener('keydown', handleEscape);
+				document.addEventListener("keydown", handleEscape);
 			}
-			document.body.style.overflow = 'hidden';
+			document.body.style.overflow = "hidden";
 		}
 
 		return () => {
 			if (!disableEscapeClose) {
-				document.removeEventListener('keydown', handleEscape);
+				document.removeEventListener("keydown", handleEscape);
 			}
-			document.body.style.overflow = 'unset';
+			document.body.style.overflow = "unset";
 		};
-	}, [isOpen, onClose, disableEscapeClose]);
+	}, [isOpen, disableEscapeClose]);
+
+	// Backdrop close is wired at the document level instead of with an onClick on the
+	// overlay: a click handler on a plain <div> is invisible to keyboard users, and
+	// Escape already covers them. Clicks inside the panel are ignored.
+	useEffect(() => {
+		if (!isOpen || disableEscapeClose) return undefined;
+		const handleBackdropClick = (event: MouseEvent) => {
+			const target = event.target as Node | null;
+			if (!target || panelRef.current?.contains(target)) return;
+			onCloseRef.current();
+		};
+		document.addEventListener("click", handleBackdropClick);
+		return () => document.removeEventListener("click", handleBackdropClick);
+	}, [isOpen, disableEscapeClose]);
 
 	if (!isOpen) return null;
 
 	return (
 		<div
 			className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4"
-			onClick={disableEscapeClose ? undefined : onClose}
 			role="presentation"
 		>
 			<div
+				ref={panelRef}
 				className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-2xl ${maxWidthClass} w-full max-h-[94vh] overflow-y-auto transition-colors duration-200`}
-				onClick={(e) => e.stopPropagation()}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="modal-title"
@@ -54,22 +80,26 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
 				<div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-white/75 supports-[backdrop-filter]:dark:bg-gray-800/75">
 					<div className="flex items-center gap-2 flex-1 min-w-0 mr-4">
 						{leftActions}
-						<h2 id="modal-title" className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-1 min-w-0 line-clamp-2">{title}</h2>
+						<h2
+							id="modal-title"
+							className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-1 min-w-0 line-clamp-2"
+						>
+							{title}
+						</h2>
 					</div>
 					<div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
 						{actions}
-							<button
-								onClick={onClose}
-								className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200 text-2xl leading-none w-8 h-8 flex items-center justify-center"
-								aria-label={t.modal.closeAria}
-							>
-								×
-							</button>
+						<button
+							type="button"
+							onClick={onClose}
+							className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200 text-2xl leading-none w-8 h-8 flex items-center justify-center"
+							aria-label={t.modal.closeAria}
+						>
+							×
+						</button>
 					</div>
 				</div>
-				<div className="px-6 pt-4 pb-6">
-					{children}
-				</div>
+				<div className="px-6 pt-4 pb-6">{children}</div>
 			</div>
 		</div>
 	);

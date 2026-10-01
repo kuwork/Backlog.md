@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import Modal from './Modal';
-import StoredDate from './StoredDate';
-import { apiClient } from '../lib/api';
-import { useI18n } from '../hooks/useI18n';
+import type React from "react";
+import { useState } from "react";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import Modal from "./Modal";
+import StoredDate from "./StoredDate";
 
 interface CleanupModalProps {
 	isOpen: boolean;
@@ -36,7 +37,7 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 	const [error, setError] = useState<string | null>(null);
 	const [showConfirmation, setShowConfirmation] = useState(false);
 
-	const selectedLabel = AGE_OPTIONS.find(o => o.value === selectedAge)?.label ?? '';
+	const selectedLabel = AGE_OPTIONS.find((o) => o.value === selectedAge)?.label ?? "";
 
 	const handleAgeSelect = async (age: number) => {
 		setSelectedAge(age);
@@ -93,28 +94,29 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 			<div className="space-y-6">
 				{/* Age Selector */}
 				<div>
-					<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-						{t.cleanup.moveTasksOlderThan}
-					</label>
-					<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-						{AGE_OPTIONS.map(option => (
-							<button
-								key={option.value}
-								onClick={() => handleAgeSelect(option.value)}
-								disabled={isLoadingPreview || isExecuting}
-								className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-									selectedAge === option.value
-										? 'bg-blue-500 dark:bg-blue-600 text-white'
-										: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-								} disabled:opacity-50`}
-							>
-								{option.label}
-							</button>
-						))}
-					</div>
-					<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-						{t.cleanup.description}
-					</p>
+					<fieldset className="min-w-0 border-0 p-0">
+						<legend className="block p-0 text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+							{t.cleanup.moveTasksOlderThan}
+						</legend>
+						<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+							{AGE_OPTIONS.map((option) => (
+								<button
+									type="button"
+									key={option.value}
+									onClick={() => handleAgeSelect(option.value)}
+									disabled={isLoadingPreview || isExecuting}
+									className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+										selectedAge === option.value
+											? "bg-blue-500 dark:bg-blue-600 text-white"
+											: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+									} disabled:opacity-50`}
+								>
+									{option.label}
+								</button>
+							))}
+						</div>
+						<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t.cleanup.description}</p>
+					</fieldset>
 				</div>
 
 				{/* Error Message */}
@@ -145,8 +147,11 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 								</h3>
 								<div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md">
 									<ul className="divide-y divide-gray-200 dark:divide-gray-700">
-										{previewTasks.slice(0, 10).map(task => (
-											<li key={task.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+										{previewTasks.slice(0, 10).map((task) => (
+											<li
+												key={task.id}
+												className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
+											>
 												<div className="flex justify-between items-start">
 													<div className="flex-1 min-w-0">
 														<p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -159,33 +164,30 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 												</div>
 											</li>
 										))}
-											{previewCount > 10 && (
-												<li className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">
-													{t.cleanup.andMore(previewCount - 10)}
-												</li>
-											)}
-										</ul>
-									</div>
-								</>
-							)}
-						</div>
-					)}
+										{previewCount > 10 && (
+											<li className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">
+												{t.cleanup.andMore(previewCount - 10)}
+											</li>
+										)}
+									</ul>
+								</div>
+							</>
+						)}
+					</div>
+				)}
 
 				{/* Confirmation Section */}
 				{showConfirmation && previewCount > 0 && (
 					<div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4">
-						<h3 className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-							{t.cleanup.confirmTitle}
-						</h3>
-						<p className="text-sm text-amber-700 dark:text-amber-300">
-							{t.cleanup.confirmMessage(previewCount)}
-						</p>
+						<h3 className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">{t.cleanup.confirmTitle}</h3>
+						<p className="text-sm text-amber-700 dark:text-amber-300">{t.cleanup.confirmMessage(previewCount)}</p>
 					</div>
 				)}
 
 				{/* Action Buttons */}
 				<div className="flex justify-end gap-3">
 					<button
+						type="button"
 						onClick={handleClose}
 						disabled={isExecuting}
 						className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors duration-200"
@@ -193,27 +195,27 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess 
 						{t.common.cancel}
 					</button>
 
-					{selectedAge !== null && previewCount > 0 && (
-						<>
-							{!showConfirmation ? (
-								<button
-									onClick={() => setShowConfirmation(true)}
-									disabled={isLoadingPreview || isExecuting}
-									className="px-4 py-2 text-sm font-medium text-white bg-blue-500 dark:bg-blue-600 rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200"
-								>
-									{t.common.continue}
-								</button>
-							) : (
-								<button
-									onClick={handleExecuteCleanup}
-									disabled={isExecuting}
-									className="px-4 py-2 text-sm font-medium text-white bg-red-500 dark:bg-red-600 rounded-md hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50 transition-colors duration-200"
-								>
-									{isExecuting ? t.cleanup.movingTasks : t.cleanup.moveTasks(previewCount)}
-								</button>
-							)}
-						</>
-					)}
+					{selectedAge !== null &&
+						previewCount > 0 &&
+						(!showConfirmation ? (
+							<button
+								type="button"
+								onClick={() => setShowConfirmation(true)}
+								disabled={isLoadingPreview || isExecuting}
+								className="px-4 py-2 text-sm font-medium text-white bg-blue-500 dark:bg-blue-600 rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200"
+							>
+								{t.common.continue}
+							</button>
+						) : (
+							<button
+								type="button"
+								onClick={handleExecuteCleanup}
+								disabled={isExecuting}
+								className="px-4 py-2 text-sm font-medium text-white bg-red-500 dark:bg-red-600 rounded-md hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50 transition-colors duration-200"
+							>
+								{isExecuting ? t.cleanup.movingTasks : t.cleanup.moveTasks(previewCount)}
+							</button>
+						))}
 				</div>
 			</div>
 		</Modal>

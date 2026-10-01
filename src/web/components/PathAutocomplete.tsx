@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "../lib/api";
+import { activateOnKey } from "../utils/keyboard";
 
 interface PathAutocompleteProps {
 	name?: string;
@@ -42,11 +43,7 @@ export const PathAutocomplete = React.forwardRef<HTMLInputElement, PathAutocompl
 		const abortRef = useRef<AbortController | null>(null);
 		const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
-		React.useImperativeHandle(
-			forwardedRef,
-			() => inputRef.current!,
-			[],
-		);
+		React.useImperativeHandle(forwardedRef, () => inputRef.current as HTMLInputElement, []);
 
 		const fetchList = useCallback(async (dir: string, separator: string) => {
 			if (abortRef.current) {
@@ -146,6 +143,7 @@ export const PathAutocomplete = React.forwardRef<HTMLInputElement, PathAutocompl
 				});
 		}, [entries, hasSep, prefix, lowerPrefix]);
 
+		// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 		const handleKeyDown = useCallback(
 			(e: React.KeyboardEvent<HTMLInputElement>) => {
 				if (e.key === "ArrowLeft") {
@@ -259,7 +257,9 @@ export const PathAutocomplete = React.forwardRef<HTMLInputElement, PathAutocompl
 						{filtered.map((entry, idx) => (
 							<li
 								key={entry.fullPath}
-								ref={(el) => { itemRefs.current[idx] = el; }}
+								ref={(el) => {
+									itemRefs.current[idx] = el;
+								}}
 								className={`px-3 py-2 text-sm cursor-pointer flex items-center gap-2 ${
 									idx === highlightedIndex
 										? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
@@ -267,10 +267,9 @@ export const PathAutocomplete = React.forwardRef<HTMLInputElement, PathAutocompl
 								}`}
 								onMouseEnter={() => setHighlightedIndex(idx)}
 								onClick={() => handleSelect(entry)}
+								onKeyDown={(event) => activateOnKey(event, () => handleSelect(entry))}
 							>
-								<span className="text-gray-400 dark:text-gray-500">
-									{entry.type === "directory" ? "📁" : "📄"}
-								</span>
+								<span className="text-gray-400 dark:text-gray-500">{entry.type === "directory" ? "📁" : "📄"}</span>
 								<span className="truncate">{entry.name}</span>
 							</li>
 						))}

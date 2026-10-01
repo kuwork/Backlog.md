@@ -1,33 +1,25 @@
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Tooltip } from 'react-tooltip';
-import {
-	type Decision,
-	type DocsTreeNode,
-	type Document,
-	type Task,
-	type WikiTreeNode,
-} from '../../types';
-import ErrorBoundary from './ErrorBoundary';
-import Modal from './Modal';
-import { sanitizeUrlTitle, encodeWikiPath } from '../utils/urlHelpers';
-import { getWebVersion } from '../utils/version';
-import { apiClient } from '../lib/api';
-import { useI18n } from '../hooks/useI18n';
-import { compareTaskIds } from '../../utils/task-sorting';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Tooltip } from "react-tooltip";
+import type { Decision, DocsTreeNode, Document, Task, WikiTreeNode } from "../../types";
+import { compareTaskIds } from "../../utils/task-sorting";
+import { useAutoFocus } from "../hooks/useAutoFocus";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
+import { getWebVersion } from "../utils/version";
+import ErrorBoundary from "./ErrorBoundary";
+import Modal from "./Modal";
 
 // Utility functions for ID transformations
 const stripIdPrefix = (id: string): string => {
 	// Remove any prefix pattern: letters followed by dash (task-, doc-, decision-, JIRA-, etc.)
-	return id.replace(/^[a-zA-Z]+-/, '');
+	return id.replace(/^[a-zA-Z]+-/, "");
 };
 
 const LoadingPhase = ({ className }: { className: string }) => (
-	<p className={className} role="status">
-		<span
-			className="inline-block h-3 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-700"
-			aria-label="Loading content"
-		/>
+	<p className={className} role="status" aria-label="Loading content">
+		<span className="inline-block h-3 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-700" aria-hidden="true" />
 	</p>
 );
 
@@ -46,143 +38,250 @@ const NavigationCount = ({
 		return (
 			<span
 				className="inline-block h-3 w-5 animate-pulse rounded bg-gray-300 align-middle dark:bg-gray-700"
+				role="status"
 				aria-label={`Loading ${label} count`}
 			/>
 		);
 	}
-	return error ? <span aria-label={`${label} count unavailable`}>—</span> : count;
+	return error ? (
+		<span role="status" aria-label={`${label} count unavailable`}>
+			—
+		</span>
+	) : (
+		count
+	);
 };
 
 // Icon components for better semantics and performance
 export const Icons = {
 	Tasks: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+			/>
 		</svg>
 	),
 	Board: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+			/>
 		</svg>
 	),
 	List: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+			/>
 		</svg>
 	),
 	Draft: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+			/>
 		</svg>
 	),
 	Document: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+			/>
 		</svg>
 	),
 	DocumentPage: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+			/>
 		</svg>
 	),
 	DocumentCode: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
 		</svg>
 	),
 	DocumentBook: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+			/>
 		</svg>
 	),
 	DocumentChart: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+			/>
 		</svg>
 	),
 	DocumentSettings: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+			/>
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 		</svg>
 	),
 	DocumentInfo: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+			/>
 		</svg>
 	),
 	Decision: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+			/>
 		</svg>
 	),
 	DecisionPage: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+			/>
 		</svg>
 	),
 	WikiPage: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+			/>
 		</svg>
 	),
 	DecisionArchitecture: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+			/>
 		</svg>
 	),
 	DecisionTech: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+			/>
 		</svg>
 	),
 	DecisionProcess: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+			/>
 		</svg>
 	),
 	DecisionBusiness: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"
+			/>
 		</svg>
 	),
 	Folder: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+			/>
 		</svg>
 	),
 	File: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+			/>
 		</svg>
 	),
 	Search: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+			/>
 		</svg>
 	),
 	ChevronLeft: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
 		</svg>
 	),
 	ChevronRight: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
 		</svg>
 	),
 	ChevronDown: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
 		</svg>
 	),
 	Statistics: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
 		</svg>
 	),
 	Graph: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<circle cx="6" cy="6" r="2.5" strokeWidth={2} />
 			<circle cx="18" cy="6" r="2.5" strokeWidth={2} />
 			<circle cx="6" cy="18" r="2.5" strokeWidth={2} />
@@ -192,24 +291,24 @@ export const Icons = {
 	),
 	// Knowledge graph nav icon: a connected-cluster glyph (user-supplied, iconfont 1024 grid).
 	KnowledgeGraph: () => (
-		<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 1024 1024">
+		<svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 1024 1024">
 			<path d="M943.4 387.9c-27.5-32.6-72.4-37.6-104.9-10L511.2 177.1c-2.5-15.1-7.5-27.6-17.5-40.2-27.5-32.6-72.4-37.6-104.9-10-15 12.5-22.5 30.1-25 47.7L186.4 280c-20-17.6-45-22.6-70-15.1-40 12.5-62.5 52.7-50 92.9 7.5 30.1 35 50.2 62.5 52.7l42.5 188.3c-20 12.5-35 37.6-35 62.7 0 42.6 32.5 75.3 75 75.3 17.5 0 35-7.5 47.5-17.6l177.4 105.4c0 5-2.5 10-2.5 15.1 0 42.7 32.5 75.3 75 75.3s75-32.6 75-75.3c0-12.5-2.5-25.1-7.5-35.1l277.3-298.7c25 10 54.9 7.5 77.4-10 34.9-27.7 39.9-75.3 12.4-108z m-129.9 90.4L541.1 769.5c-7.5-2.5-12.5-5-20-5l-40-188.2c30-15.1 52.5-45.2 55-82.8l277.4-15.2zM463.7 782L286.3 676.6c0-5 2.5-10 2.5-15.1 0-7.6-2.5-15.1-5-22.6l92.4-75.3c15 12.5 35 20.1 57.5 20.1l40 188.2-10 10.1zM221.3 588.7l-42.5-188.2 162.4 70.3c0 5-2.5 10.1-2.5 15.1 0 15.1 2.5 27.6 7.5 40.2l-92.4 72.8c-10-5.2-20-10.2-32.5-10.2z m-9.9-266l164.9-95.4c2.5 2.5 2.5 5 5 7.5 10 10 20 17.6 32.5 22.6v133c-22.5 5-40 17.6-52.5 35.1l-149.9-65.3c0-12.4 2.4-25 0-37.5z m287.3-95.4l314.8 193.2v7.6l-284.8 17.6c-12.5-27.6-37.5-47.7-65-55.2v-133c7.5-2.5 15-7.5 22.5-12.6 5-5 10-10.1 12.5-17.6z m0 0" />
 		</svg>
 	),
 	Milestone: () => (
-		<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<circle cx="12" cy="12" r="9" strokeWidth={2} />
 			<circle cx="12" cy="12" r="5" strokeWidth={2} />
 			<circle cx="12" cy="12" r="1" strokeWidth={2} />
 		</svg>
 	),
 	Gantt: () => (
-		<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 1024 1024">
+		<svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 1024 1024">
 			<path d="M153.6 806.4a44.8 44.8 0 0 1 44.8-44.8h179.2v-44.8a44.8 44.8 0 0 1 44.8-44.8h313.6a44.8 44.8 0 0 1 44.8 44.8V896a44.8 44.8 0 0 1-44.8 44.8H422.4a44.8 44.8 0 0 1-44.8-44.8v-44.736L198.4 851.2a44.8 44.8 0 0 1-44.8-44.8z m313.6-44.8v89.6h224v-89.6H467.2zM243.2 403.2a44.8 44.8 0 0 1 44.8-44.8h582.4a44.8 44.8 0 0 1 44.8 44.8v44.864L960 448a44.8 44.8 0 0 1 0 89.6l-44.8 0.064V582.4a44.8 44.8 0 0 1-44.8 44.8H288a44.8 44.8 0 0 1-44.8-44.8V403.2z m89.6 44.8v89.6h492.8V448H332.8zM19.2 179.2a44.8 44.8 0 0 1 44.8-44.8l134.4 0.064V89.6a44.8 44.8 0 0 1 44.8-44.8h201.6a44.8 44.8 0 0 1 44.8 44.8v44.864L736 134.4a44.8 44.8 0 0 1 0 89.6H489.6v44.8a44.8 44.8 0 0 1-44.8 44.8H243.2a44.8 44.8 0 0 1-44.8-44.8v-44.8H64a44.8 44.8 0 0 1-44.8-44.8z m268.8-44.8v89.6h112V134.4H288z" />
 		</svg>
 	),
 	Plus: () => (
-		<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
 		</svg>
 	),
@@ -218,7 +317,7 @@ export const Icons = {
 const countWikiFiles = (nodes: WikiTreeNode[]): number => {
 	let count = 0;
 	for (const node of nodes) {
-		if (node.type === 'file' && node.name.endsWith('.md')) {
+		if (node.type === "file" && node.name.endsWith(".md")) {
 			count++;
 		}
 		if (node.children) {
@@ -231,7 +330,7 @@ const countWikiFiles = (nodes: WikiTreeNode[]): number => {
 const countDocsFiles = (nodes: DocsTreeNode[]): number => {
 	let count = 0;
 	for (const node of nodes) {
-		if (node.type === 'file') {
+		if (node.type === "file") {
 			count++;
 		}
 		if (node.children) {
@@ -241,26 +340,26 @@ const countDocsFiles = (nodes: DocsTreeNode[]): number => {
 	return count;
 };
 
-type DocsSortColumn = 'name' | 'id';
-type WikiSortColumn = 'title' | 'file';
-type DecisionSortColumn = 'title' | 'id';
-type SortDirection = 'asc' | 'desc';
+type DocsSortColumn = "name" | "id";
+type WikiSortColumn = "title" | "file";
+type DecisionSortColumn = "title" | "id";
+type SortDirection = "asc" | "desc";
 
 /**
  * What the sidebar prints for a node: the document title when the corpus has one, otherwise the file
  * name without its extension. Sorting by name sorts on this label, so the order matches what is shown.
  */
 const docsNodeLabel = (node: DocsTreeNode, docTitles: Map<string, string>): string =>
-	(node.docId ? docTitles.get(node.docId) : undefined) || node.name.replace(/\.md$/i, '');
+	(node.docId ? docTitles.get(node.docId) : undefined) || node.name.replace(/\.md$/i, "");
 
 const compareDocsNodeNames = (a: DocsTreeNode, b: DocsTreeNode): number =>
 	// Natural order so doc-2 sorts before doc-10, which is what a folder listing is expected to do.
-	a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+	a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
 
 const compareDocsNodeLabels = (a: DocsTreeNode, b: DocsTreeNode, docTitles: Map<string, string>): number =>
 	docsNodeLabel(a, docTitles).localeCompare(docsNodeLabel(b, docTitles), undefined, {
 		numeric: true,
-		sensitivity: 'base',
+		sensitivity: "base",
 	});
 
 const compareDocsNodeIds = (a: DocsTreeNode, b: DocsTreeNode, docTitles: Map<string, string>): number =>
@@ -277,12 +376,12 @@ const sortDocsTree = (
 	direction: SortDirection,
 	docTitles: Map<string, string>,
 ): DocsTreeNode[] => {
-	const sign = direction === 'asc' ? 1 : -1;
-	const compareFiles = column === 'id' ? compareDocsNodeIds : compareDocsNodeLabels;
+	const sign = direction === "asc" ? 1 : -1;
+	const compareFiles = column === "id" ? compareDocsNodeIds : compareDocsNodeLabels;
 	return [...nodes]
 		.sort((a, b) => {
-			if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-			return sign * (a.type === 'directory' ? compareDocsNodeNames(a, b) : compareFiles(a, b, docTitles));
+			if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
+			return sign * (a.type === "directory" ? compareDocsNodeNames(a, b) : compareFiles(a, b, docTitles));
 		})
 		.map((node) =>
 			node.children ? { ...node, children: sortDocsTree(node.children, column, direction, docTitles) } : node,
@@ -290,7 +389,7 @@ const sortDocsTree = (
 };
 
 /** The file name a wiki page is listed under: the markdown extension is not part of the label. */
-const wikiNodeFileName = (node: WikiTreeNode): string => node.name.replace(/\.md$/i, '');
+const wikiNodeFileName = (node: WikiTreeNode): string => node.name.replace(/\.md$/i, "");
 
 /**
  * What the sidebar prints for a wiki node: the page title when the corpus has one, otherwise the file
@@ -298,15 +397,15 @@ const wikiNodeFileName = (node: WikiTreeNode): string => node.name.replace(/\.md
  * it is sorted by.
  */
 const wikiNodeLabel = (node: WikiTreeNode, column: WikiSortColumn): string =>
-	column === 'title' ? node.title || wikiNodeFileName(node) : wikiNodeFileName(node);
+	column === "title" ? node.title || wikiNodeFileName(node) : wikiNodeFileName(node);
 
 const compareWikiNodeNames = (a: WikiTreeNode, b: WikiTreeNode): number =>
-	a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+	a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
 
 const compareWikiNodeLabels = (a: WikiTreeNode, b: WikiTreeNode, column: WikiSortColumn): number =>
 	wikiNodeLabel(a, column).localeCompare(wikiNodeLabel(b, column), undefined, {
 		numeric: true,
-		sensitivity: 'base',
+		sensitivity: "base",
 	});
 
 /**
@@ -315,20 +414,20 @@ const compareWikiNodeLabels = (a: WikiTreeNode, b: WikiTreeNode, column: WikiSor
  * is sorted on its own and the input tree is left untouched.
  */
 const sortWikiTree = (nodes: WikiTreeNode[], column: WikiSortColumn, direction: SortDirection): WikiTreeNode[] => {
-	const sign = direction === 'asc' ? 1 : -1;
+	const sign = direction === "asc" ? 1 : -1;
 	return [...nodes]
 		.sort((a, b) => {
-			if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-			return sign * (a.type === 'directory' ? compareWikiNodeNames(a, b) : compareWikiNodeLabels(a, b, column));
+			if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
+			return sign * (a.type === "directory" ? compareWikiNodeNames(a, b) : compareWikiNodeLabels(a, b, column));
 		})
 		.map((node) => (node.children ? { ...node, children: sortWikiTree(node.children, column, direction) } : node));
 };
 
 const compareDecisionTitles = (a: Decision, b: Decision): number =>
-	a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+	a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" });
 
 const compareDecisions = (a: Decision, b: Decision, column: DecisionSortColumn): number =>
-	column === 'id' ? compareTaskIds(a.id, b.id) || compareDecisionTitles(a, b) : compareDecisionTitles(a, b);
+	column === "id" ? compareTaskIds(a.id, b.id) || compareDecisionTitles(a, b) : compareDecisionTitles(a, b);
 
 /**
  * Order the decisions list for the sidebar. Decisions are flat — there are no folders to hold back —
@@ -336,12 +435,12 @@ const compareDecisions = (a: Decision, b: Decision, column: DecisionSortColumn):
  * columns match the documents tree: title first, then the ID the list is identified by.
  */
 const sortDecisions = (items: Decision[], column: DecisionSortColumn, direction: SortDirection): Decision[] => {
-	const sign = direction === 'asc' ? 1 : -1;
+	const sign = direction === "asc" ? 1 : -1;
 	return [...items].sort((a, b) => sign * compareDecisions(a, b, column));
 };
 
-const WIKI_EXPANDED_PATHS_KEY = 'wikiExpandedPaths';
-const DOCS_EXPANDED_PATHS_KEY = 'docsExpandedPaths';
+const WIKI_EXPANDED_PATHS_KEY = "wikiExpandedPaths";
+const DOCS_EXPANDED_PATHS_KEY = "docsExpandedPaths";
 
 const WikiActionDropdown = memo(function WikiActionDropdown({
 	parentPath,
@@ -368,13 +467,14 @@ const WikiActionDropdown = memo(function WikiActionDropdown({
 				setIsOpen(false);
 			}
 		};
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
 	return (
 		<div className="relative flex" ref={menuRef}>
 			<button
+				type="button"
 				onClick={(e) => {
 					e.stopPropagation();
 					setIsOpen(!isOpen);
@@ -388,6 +488,7 @@ const WikiActionDropdown = memo(function WikiActionDropdown({
 				<div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
 					{!isFile && (
 						<button
+							type="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								setIsOpen(false);
@@ -400,6 +501,7 @@ const WikiActionDropdown = memo(function WikiActionDropdown({
 					)}
 					{!isFile && (
 						<button
+							type="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								setIsOpen(false);
@@ -412,6 +514,7 @@ const WikiActionDropdown = memo(function WikiActionDropdown({
 					)}
 					{onRename && (
 						<button
+							type="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								setIsOpen(false);
@@ -442,7 +545,7 @@ const WikiTreeItem = memo(function WikiTreeItem({
 	onRename: (path: string, name: string) => void;
 }) {
 	const [isExpanded, setIsExpanded] = useState(() => {
-		if (typeof window === 'undefined') return false;
+		if (typeof window === "undefined") return false;
 		try {
 			const saved = localStorage.getItem(WIKI_EXPANDED_PATHS_KEY);
 			const paths: string[] = saved ? JSON.parse(saved) : [];
@@ -471,24 +574,25 @@ const WikiTreeItem = memo(function WikiTreeItem({
 		});
 	}, [node.path]);
 
-	if (node.type === 'directory') {
+	if (node.type === "directory") {
 		const fileCount = countWikiFiles(node.children || []);
 		const hasChildren = (node.children || []).length > 0;
 
 		return (
 			<div className="group/directory">
 				<button
+					type="button"
 					onClick={() => hasChildren && toggleExpanded()}
-					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? 'cursor-default' : ''}`}
+					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? "cursor-default" : ""}`}
 				>
 					<span className="text-gray-400 dark:text-gray-500 w-4">
-						{hasChildren ? (isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />) : null}
+						{hasChildren ? isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight /> : null}
 					</span>
-					<span className="text-gray-400 dark:text-gray-500"><Icons.Folder /></span>
+					<span className="text-gray-400 dark:text-gray-500">
+						<Icons.Folder />
+					</span>
 					<span className="truncate">{node.name}</span>
-					{fileCount > 0 && (
-						<span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({fileCount})</span>
-					)}
+					{fileCount > 0 && <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({fileCount})</span>}
 					<div className="ml-auto opacity-0 group-hover/directory:opacity-100 group-hover/directory:pointer-events-auto pointer-events-none transition-opacity duration-150">
 						<WikiActionDropdown
 							parentPath={node.path}
@@ -525,12 +629,14 @@ const WikiTreeItem = memo(function WikiTreeItem({
 				className={({ isActive }) =>
 					`flex-1 flex items-center space-x-3 px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${
 						isActive
-							? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+							? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+							: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
 					}`
 				}
 			>
-				<span className="text-gray-400 dark:text-gray-500"><Icons.File /></span>
+				<span className="text-gray-400 dark:text-gray-500">
+					<Icons.File />
+				</span>
 				<span className="truncate">{wikiNodeLabel(node, sortColumn)}</span>
 			</NavLink>
 			<div className="absolute right-1.5 opacity-0 group-hover/file:opacity-100 group-hover/file:pointer-events-auto pointer-events-none transition-opacity duration-150">
@@ -568,13 +674,14 @@ const DocActionDropdown = memo(function DocActionDropdown({
 				setIsOpen(false);
 			}
 		};
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
 	return (
 		<div className="relative flex" ref={menuRef}>
 			<button
+				type="button"
 				onClick={(e) => {
 					e.stopPropagation();
 					setIsOpen(!isOpen);
@@ -588,6 +695,7 @@ const DocActionDropdown = memo(function DocActionDropdown({
 				<div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
 					{!isFile && (
 						<button
+							type="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								setIsOpen(false);
@@ -600,6 +708,7 @@ const DocActionDropdown = memo(function DocActionDropdown({
 					)}
 					{!isFile && (
 						<button
+							type="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								setIsOpen(false);
@@ -628,7 +737,7 @@ const DocTreeItem = memo(function DocTreeItem({
 	onCreateFolder: (parentPath: string) => void;
 }) {
 	const [isExpanded, setIsExpanded] = useState(() => {
-		if (typeof window === 'undefined') return false;
+		if (typeof window === "undefined") return false;
 		try {
 			const saved = localStorage.getItem(DOCS_EXPANDED_PATHS_KEY);
 			const paths: string[] = saved ? JSON.parse(saved) : [];
@@ -657,24 +766,25 @@ const DocTreeItem = memo(function DocTreeItem({
 		});
 	}, [node.path]);
 
-	if (node.type === 'directory') {
+	if (node.type === "directory") {
 		const fileCount = countDocsFiles(node.children || []);
 		const hasChildren = (node.children || []).length > 0;
 
 		return (
 			<div className="group/directory">
 				<button
+					type="button"
 					onClick={() => hasChildren && toggleExpanded()}
-					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? 'cursor-default' : ''}`}
+					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? "cursor-default" : ""}`}
 				>
 					<span className="text-gray-400 dark:text-gray-500 w-4">
-						{hasChildren ? (isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />) : null}
+						{hasChildren ? isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight /> : null}
 					</span>
-					<span className="text-gray-400 dark:text-gray-500"><Icons.Folder /></span>
+					<span className="text-gray-400 dark:text-gray-500">
+						<Icons.Folder />
+					</span>
 					<span className="truncate">{node.name}</span>
-					{fileCount > 0 && (
-						<span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({fileCount})</span>
-					)}
+					{fileCount > 0 && <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({fileCount})</span>}
 					<div className="ml-auto opacity-0 group-hover/directory:opacity-100 group-hover/directory:pointer-events-auto pointer-events-none transition-opacity duration-150">
 						<DocActionDropdown
 							parentPath={node.path}
@@ -687,7 +797,13 @@ const DocTreeItem = memo(function DocTreeItem({
 				{isExpanded && node.children && (
 					<div className="ml-4 space-y-1">
 						{node.children.map((child) => (
-							<DocTreeItem key={child.path} node={child} docTitles={docTitles} onCreateFile={onCreateFile} onCreateFolder={onCreateFolder} />
+							<DocTreeItem
+								key={child.path}
+								node={child}
+								docTitles={docTitles}
+								onCreateFile={onCreateFile}
+								onCreateFolder={onCreateFolder}
+							/>
 						))}
 					</div>
 				)}
@@ -696,7 +812,7 @@ const DocTreeItem = memo(function DocTreeItem({
 	}
 
 	const docTitle = docsNodeLabel(node, docTitles);
-	const docId = node.docId || '';
+	const docId = node.docId || "";
 
 	return (
 		<div className="group/file relative flex items-center rounded-lg transition-colors duration-200">
@@ -705,12 +821,14 @@ const DocTreeItem = memo(function DocTreeItem({
 				className={({ isActive }) =>
 					`flex-1 flex items-center space-x-3 px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${
 						isActive
-							? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+							? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+							: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
 					}`
 				}
 			>
-				<span className="text-gray-400 dark:text-gray-500"><Icons.DocumentPage /></span>
+				<span className="text-gray-400 dark:text-gray-500">
+					<Icons.DocumentPage />
+				</span>
 				<span className="truncate">{docTitle}</span>
 			</NavLink>
 		</div>
@@ -742,18 +860,18 @@ const SideNavigation = memo(function SideNavigation({
 }: SideNavigationProps) {
 	const { t } = useI18n();
 	const [isCollapsed, setIsCollapsed] = useState(() => {
-		const saved = localStorage.getItem('sideNavCollapsed');
+		const saved = localStorage.getItem("sideNavCollapsed");
 		return saved ? JSON.parse(saved) : false;
 	});
 	const [sidebarWidth, setSidebarWidth] = useState(() => {
-		const saved = localStorage.getItem('sideNavWidth');
+		const saved = localStorage.getItem("sideNavWidth");
 		return saved ? Number.parseInt(saved, 10) : 320;
 	});
 	const [isResizing, setIsResizing] = useState(false);
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	const resizeGhostRef = useRef<HTMLDivElement>(null);
 	const [isDocsCollapsed, setIsDocsCollapsed] = useState(() => {
-		const saved = localStorage.getItem('docsCollapsed');
+		const saved = localStorage.getItem("docsCollapsed");
 		if (saved !== null) {
 			return JSON.parse(saved);
 		}
@@ -761,19 +879,19 @@ const SideNavigation = memo(function SideNavigation({
 		return docs.length > 6;
 	});
 	const [isDecisionsCollapsed, setIsDecisionsCollapsed] = useState(() => {
-		const saved = localStorage.getItem('decisionsCollapsed');
+		const saved = localStorage.getItem("decisionsCollapsed");
 		if (saved !== null) {
 			return JSON.parse(saved);
 		}
 		// Auto-collapse if more than 6 decisions
 		return decisions.length > 6;
 	});
-	const [docsSortColumn, setDocsSortColumn] = useState<DocsSortColumn>('name');
-	const [docsSortDirection, setDocsSortDirection] = useState<SortDirection>('asc');
-	const [wikiSortColumn, setWikiSortColumn] = useState<WikiSortColumn>('title');
-	const [wikiSortDirection, setWikiSortDirection] = useState<SortDirection>('asc');
-	const [decisionSortColumn, setDecisionSortColumn] = useState<DecisionSortColumn>('title');
-	const [decisionSortDirection, setDecisionSortDirection] = useState<SortDirection>('asc');
+	const [docsSortColumn, setDocsSortColumn] = useState<DocsSortColumn>("name");
+	const [docsSortDirection, setDocsSortDirection] = useState<SortDirection>("asc");
+	const [wikiSortColumn, setWikiSortColumn] = useState<WikiSortColumn>("title");
+	const [wikiSortDirection, setWikiSortDirection] = useState<SortDirection>("asc");
+	const [decisionSortColumn, setDecisionSortColumn] = useState<DecisionSortColumn>("title");
+	const [decisionSortDirection, setDecisionSortDirection] = useState<SortDirection>("asc");
 	const docTitles = useMemo(() => new Map(docs.map((doc) => [doc.id, doc.title])), [docs]);
 	const sortedDocsTree = useMemo(
 		() => sortDocsTree(docsTree, docsSortColumn, docsSortDirection, docTitles),
@@ -784,47 +902,53 @@ const SideNavigation = memo(function SideNavigation({
 		[wikiTree, wikiSortColumn, wikiSortDirection],
 	);
 	const [isWikiCollapsed, setIsWikiCollapsed] = useState(() => {
-		const saved = localStorage.getItem('wikiCollapsed');
+		const saved = localStorage.getItem("wikiCollapsed");
 		if (saved !== null) {
 			return JSON.parse(saved);
 		}
 		return false;
 	});
-	const [version, setVersion] = useState<string>('');
+	const [version, setVersion] = useState<string>("");
 	const location = useLocation();
 	const navigate = useNavigate();
 
 	// Wiki create modal state
 	const [showCreateWikiModal, setShowCreateWikiModal] = useState(false);
-	const [createWikiParentPath, setCreateWikiParentPath] = useState('');
+	const [createWikiParentPath, setCreateWikiParentPath] = useState("");
 	const [createWikiIsFolder, setCreateWikiIsFolder] = useState(false);
-	const [newWikiName, setNewWikiName] = useState('');
+	const [newWikiName, setNewWikiName] = useState("");
+	const newWikiNameRef = useAutoFocus<HTMLInputElement>();
 	const [isCreatingWiki, setIsCreatingWiki] = useState(false);
 	const [createWikiError, setCreateWikiError] = useState<string | null>(null);
 
 	// Wiki rename modal state
 	const [showRenameWikiModal, setShowRenameWikiModal] = useState(false);
-	const [renameWikiOldPath, setRenameWikiOldPath] = useState('');
-	const [renameWikiOldName, setRenameWikiOldName] = useState('');
-	const [renameWikiNewName, setRenameWikiNewName] = useState('');
+	const [renameWikiOldPath, setRenameWikiOldPath] = useState("");
+	const [renameWikiOldName, setRenameWikiOldName] = useState("");
+	const [renameWikiNewName, setRenameWikiNewName] = useState("");
+	const renameWikiNameRef = useAutoFocus<HTMLInputElement>();
 	const [isRenamingWiki, setIsRenamingWiki] = useState(false);
 	const [renameWikiError, setRenameWikiError] = useState<string | null>(null);
 
 	// Docs folder modal state
 	const [showCreateDocsFolderModal, setShowCreateDocsFolderModal] = useState(false);
-	const [createDocsFolderParentPath, setCreateDocsFolderParentPath] = useState('');
-	const [newDocsFolderName, setNewDocsFolderName] = useState('');
+	const [createDocsFolderParentPath, setCreateDocsFolderParentPath] = useState("");
+	const [newDocsFolderName, setNewDocsFolderName] = useState("");
+	const newDocsFolderNameRef = useAutoFocus<HTMLInputElement>();
 	const [isCreatingDocsFolder, setIsCreatingDocsFolder] = useState(false);
 	const [createDocsFolderError, setCreateDocsFolderError] = useState<string | null>(null);
 
-	const handleCreateDocFile = useCallback((parentPath: string) => {
-		const query = parentPath ? `?path=${encodeURIComponent(parentPath)}` : '';
-		navigate(`/documentation/new${query}`);
-	}, [navigate]);
+	const handleCreateDocFile = useCallback(
+		(parentPath: string) => {
+			const query = parentPath ? `?path=${encodeURIComponent(parentPath)}` : "";
+			navigate(`/documentation/new${query}`);
+		},
+		[navigate],
+	);
 
 	const handleCreateDocFolder = useCallback((parentPath: string) => {
 		setCreateDocsFolderParentPath(parentPath);
-		setNewDocsFolderName('');
+		setNewDocsFolderName("");
 		setCreateDocsFolderError(null);
 		setShowCreateDocsFolderModal(true);
 	}, []);
@@ -848,29 +972,29 @@ const SideNavigation = memo(function SideNavigation({
 
 	const handleDocsSortChange = (column: DocsSortColumn) => {
 		if (docsSortColumn === column) {
-			setDocsSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+			setDocsSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
 			return;
 		}
 		setDocsSortColumn(column);
-		setDocsSortDirection('asc');
+		setDocsSortDirection("asc");
 	};
 
 	const handleWikiSortChange = (column: WikiSortColumn) => {
 		if (wikiSortColumn === column) {
-			setWikiSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+			setWikiSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
 			return;
 		}
 		setWikiSortColumn(column);
-		setWikiSortDirection('asc');
+		setWikiSortDirection("asc");
 	};
 
 	const handleDecisionSortChange = (column: DecisionSortColumn) => {
 		if (decisionSortColumn === column) {
-			setDecisionSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+			setDecisionSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
 			return;
 		}
 		setDecisionSortColumn(column);
-		setDecisionSortDirection('asc');
+		setDecisionSortDirection("asc");
 	};
 
 	/** Every section uses the same control: a column label with the pair of direction arrows. */
@@ -883,16 +1007,18 @@ const SideNavigation = memo(function SideNavigation({
 				aria-label={hint}
 				className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${
 					isActive
-						? 'text-gray-600 dark:text-gray-300'
-						: 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-100'
+						? "text-gray-600 dark:text-gray-300"
+						: "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-100"
 				}`}
 			>
 				{label}
 				<span className="inline-flex items-center justify-center w-4 text-xs select-none" aria-hidden="true">
-					<span className={isActive && isAsc ? 'text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600'}>
+					<span className={isActive && isAsc ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}>
 						↑
 					</span>
-					<span className={isActive && !isAsc ? 'text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600'}>
+					<span
+						className={isActive && !isAsc ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}
+					>
 						↓
 					</span>
 				</span>
@@ -901,48 +1027,50 @@ const SideNavigation = memo(function SideNavigation({
 	};
 
 	const renderDocsSortButton = (label: string, hint: string, column: DocsSortColumn) =>
-		renderSortButton(label, hint, docsSortColumn === column, docsSortDirection === 'asc', () =>
+		renderSortButton(label, hint, docsSortColumn === column, docsSortDirection === "asc", () =>
 			handleDocsSortChange(column),
 		);
 
 	const renderWikiSortButton = (label: string, hint: string, column: WikiSortColumn) =>
-		renderSortButton(label, hint, wikiSortColumn === column, wikiSortDirection === 'asc', () =>
+		renderSortButton(label, hint, wikiSortColumn === column, wikiSortDirection === "asc", () =>
 			handleWikiSortChange(column),
 		);
 
 	const renderDecisionSortButton = (label: string, hint: string, column: DecisionSortColumn) =>
-		renderSortButton(label, hint, decisionSortColumn === column, decisionSortDirection === 'asc', () =>
+		renderSortButton(label, hint, decisionSortColumn === column, decisionSortDirection === "asc", () =>
 			handleDecisionSortChange(column),
 		);
 
 	useEffect(() => {
-		localStorage.setItem('sideNavCollapsed', JSON.stringify(isCollapsed));
+		localStorage.setItem("sideNavCollapsed", JSON.stringify(isCollapsed));
 	}, [isCollapsed]);
 
 	// Fetch version on mount
 	useEffect(() => {
-		getWebVersion().then(setVersion).catch(() => setVersion(''));
+		getWebVersion()
+			.then(setVersion)
+			.catch(() => setVersion(""));
 	}, []);
 
 	// Save docs collapse state to localStorage
 	useEffect(() => {
-		localStorage.setItem('docsCollapsed', JSON.stringify(isDocsCollapsed));
+		localStorage.setItem("docsCollapsed", JSON.stringify(isDocsCollapsed));
 	}, [isDocsCollapsed]);
 
 	// Save decisions collapse state to localStorage
 	useEffect(() => {
-		localStorage.setItem('decisionsCollapsed', JSON.stringify(isDecisionsCollapsed));
+		localStorage.setItem("decisionsCollapsed", JSON.stringify(isDecisionsCollapsed));
 	}, [isDecisionsCollapsed]);
 
 	// Save wiki collapse state to localStorage
 	useEffect(() => {
-		localStorage.setItem('wikiCollapsed', JSON.stringify(isWikiCollapsed));
+		localStorage.setItem("wikiCollapsed", JSON.stringify(isWikiCollapsed));
 	}, [isWikiCollapsed]);
 
 	const handleCreateWikiFile = useCallback((parentPath: string) => {
 		setCreateWikiParentPath(parentPath);
 		setCreateWikiIsFolder(false);
-		setNewWikiName('');
+		setNewWikiName("");
 		setCreateWikiError(null);
 		setShowCreateWikiModal(true);
 	}, []);
@@ -950,18 +1078,19 @@ const SideNavigation = memo(function SideNavigation({
 	const handleCreateWikiFolder = useCallback((parentPath: string) => {
 		setCreateWikiParentPath(parentPath);
 		setCreateWikiIsFolder(true);
-		setNewWikiName('');
+		setNewWikiName("");
 		setCreateWikiError(null);
 		setShowCreateWikiModal(true);
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const executeCreateWiki = useCallback(async () => {
 		if (!newWikiName.trim()) return;
 		try {
 			setIsCreatingWiki(true);
 			setCreateWikiError(null);
 
-			const name = newWikiName.trim().replace(/\.md$/i, '');
+			const name = newWikiName.trim().replace(/\.md$/i, "");
 			const fullPath = createWikiParentPath ? `${createWikiParentPath}/${name}` : name;
 
 			if (createWikiIsFolder) {
@@ -984,13 +1113,14 @@ const SideNavigation = memo(function SideNavigation({
 	const handleRenameWiki = useCallback((oldPath: string, oldName: string) => {
 		setRenameWikiOldPath(oldPath);
 		setRenameWikiOldName(oldName);
-		setRenameWikiNewName(oldName.replace(/\.md$/i, ''));
+		setRenameWikiNewName(oldName.replace(/\.md$/i, ""));
 		setRenameWikiError(null);
 		setShowRenameWikiModal(true);
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const executeRenameWiki = useCallback(async () => {
-		if (!renameWikiNewName.trim() || renameWikiNewName.trim() === renameWikiOldName.replace(/\.md$/i, '')) {
+		if (!renameWikiNewName.trim() || renameWikiNewName.trim() === renameWikiOldName.replace(/\.md$/i, "")) {
 			setShowRenameWikiModal(false);
 			return;
 		}
@@ -998,10 +1128,12 @@ const SideNavigation = memo(function SideNavigation({
 			setIsRenamingWiki(true);
 			setRenameWikiError(null);
 
-			const parentPath = renameWikiOldPath.includes('/') ? renameWikiOldPath.slice(0, renameWikiOldPath.lastIndexOf('/')) : '';
+			const parentPath = renameWikiOldPath.includes("/")
+				? renameWikiOldPath.slice(0, renameWikiOldPath.lastIndexOf("/"))
+				: "";
 			const newName = renameWikiNewName.trim();
-			const isFile = renameWikiOldName.endsWith('.md');
-			const newFileName = isFile && !newName.endsWith('.md') ? `${newName}.md` : newName;
+			const isFile = renameWikiOldName.endsWith(".md");
+			const newFileName = isFile && !newName.endsWith(".md") ? `${newName}.md` : newName;
 			const newPath = parentPath ? `${parentPath}/${newFileName}` : newFileName;
 
 			await apiClient.renameWikiItem(renameWikiOldPath, newPath);
@@ -1020,21 +1152,21 @@ const SideNavigation = memo(function SideNavigation({
 
 	// Auto-collapse when data loads/changes if no saved preference exists
 	useEffect(() => {
-		const savedDocsCollapsed = localStorage.getItem('docsCollapsed');
+		const savedDocsCollapsed = localStorage.getItem("docsCollapsed");
 		if (savedDocsCollapsed === null && docs.length > 6) {
 			setIsDocsCollapsed(true);
 		}
 	}, [docs.length]);
 
 	useEffect(() => {
-		const savedDecisionsCollapsed = localStorage.getItem('decisionsCollapsed');
+		const savedDecisionsCollapsed = localStorage.getItem("decisionsCollapsed");
 		if (savedDecisionsCollapsed === null && decisions.length > 6) {
 			setIsDecisionsCollapsed(true);
 		}
 	}, [decisions.length]);
 
 	useEffect(() => {
-		const savedWikiCollapsed = localStorage.getItem('wikiCollapsed');
+		const savedWikiCollapsed = localStorage.getItem("wikiCollapsed");
 		if (savedWikiCollapsed === null && wikiTree.length > 6) {
 			setIsWikiCollapsed(true);
 		}
@@ -1042,25 +1174,25 @@ const SideNavigation = memo(function SideNavigation({
 
 	// Add keyboard shortcut for the global search dialog
 	const openSearchDialog = useCallback(() => {
-		navigate('/search', { state: { backgroundLocation: location } });
+		navigate("/search", { state: { backgroundLocation: location } });
 	}, [navigate, location]);
 	const openSearchDialogRef = useRef(openSearchDialog);
 	openSearchDialogRef.current = openSearchDialog;
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+			if ((e.metaKey || e.ctrlKey) && e.key === "k") {
 				e.preventDefault();
 				openSearchDialogRef.current();
 			}
 		};
 
-		document.addEventListener('keydown', handleKeyDown);
-		return () => document.removeEventListener('keydown', handleKeyDown);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
 	}, []);
 
-	location.pathname.startsWith('/documentation');
-	location.pathname.startsWith('/decisions');
+	location.pathname.startsWith("/documentation");
+	location.pathname.startsWith("/decisions");
 
 	// Always show full lists in their sections, search results are separate
 	const filteredDecisions = decisions;
@@ -1070,7 +1202,7 @@ const SideNavigation = memo(function SideNavigation({
 	);
 
 	const toggleCollapse = useCallback(() => {
-		setIsCollapsed((prev: any) => !prev);
+		setIsCollapsed((prev: boolean) => !prev);
 	}, []);
 
 	// Sidebar resize handlers — mutate DOM directly during drag for smoothness
@@ -1079,39 +1211,42 @@ const SideNavigation = memo(function SideNavigation({
 		setIsResizing(true);
 	}, []);
 
-	const handleResizeMove = useCallback((e: MouseEvent) => {
-		if (!isResizing || !resizeGhostRef.current || !sidebarRef.current) return;
-		const sidebarRect = sidebarRef.current.getBoundingClientRect();
-		const newWidth = Math.max(200, Math.min(500, e.clientX - sidebarRect.left));
-		resizeGhostRef.current.style.left = `${newWidth}px`;
-	}, [isResizing]);
+	const handleResizeMove = useCallback(
+		(e: MouseEvent) => {
+			if (!isResizing || !resizeGhostRef.current || !sidebarRef.current) return;
+			const sidebarRect = sidebarRef.current.getBoundingClientRect();
+			const newWidth = Math.max(200, Math.min(500, e.clientX - sidebarRect.left));
+			resizeGhostRef.current.style.left = `${newWidth}px`;
+		},
+		[isResizing],
+	);
 
 	const handleResizeEnd = useCallback(() => {
 		if (isResizing && resizeGhostRef.current) {
 			const finalWidth = Math.max(200, Math.min(500, resizeGhostRef.current.offsetLeft));
 			setSidebarWidth(finalWidth);
-			localStorage.setItem('sideNavWidth', String(finalWidth));
+			localStorage.setItem("sideNavWidth", String(finalWidth));
 			setIsResizing(false);
 		}
 	}, [isResizing]);
 
 	useEffect(() => {
 		if (isResizing) {
-			document.addEventListener('mousemove', handleResizeMove);
-			document.addEventListener('mouseup', handleResizeEnd);
-			document.body.style.cursor = 'col-resize';
-			document.body.style.userSelect = 'none';
+			document.addEventListener("mousemove", handleResizeMove);
+			document.addEventListener("mouseup", handleResizeEnd);
+			document.body.style.cursor = "col-resize";
+			document.body.style.userSelect = "none";
 		} else {
-			document.removeEventListener('mousemove', handleResizeMove);
-			document.removeEventListener('mouseup', handleResizeEnd);
-			document.body.style.cursor = '';
-			document.body.style.userSelect = '';
+			document.removeEventListener("mousemove", handleResizeMove);
+			document.removeEventListener("mouseup", handleResizeEnd);
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
 		}
 		return () => {
-			document.removeEventListener('mousemove', handleResizeMove);
-			document.removeEventListener('mouseup', handleResizeEnd);
-			document.body.style.cursor = '';
-			document.body.style.userSelect = '';
+			document.removeEventListener("mousemove", handleResizeMove);
+			document.removeEventListener("mouseup", handleResizeEnd);
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
 		};
 	}, [isResizing, handleResizeMove, handleResizeEnd]);
 
@@ -1122,13 +1257,13 @@ const SideNavigation = memo(function SideNavigation({
 			    header column and would be covered by the header's opaque background otherwise. */}
 			<div
 				ref={sidebarRef}
-				className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-full z-30 ${isCollapsed ? 'w-16 transition-all duration-300' : 'transition-all duration-300'}`}
+				className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-full z-30 ${isCollapsed ? "w-16 transition-all duration-300" : "transition-all duration-300"}`}
 				style={isCollapsed ? undefined : { width: sidebarWidth }}
 			>
 				{/* Resize Handle */}
 				{!isCollapsed && !isResizing && (
-					<div
-						className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400/50 z-20 transition-colors"
+					<hr
+						className="absolute right-0 top-0 bottom-0 w-1 border-0 cursor-col-resize hover:bg-blue-400/50 z-20 transition-colors"
 						onMouseDown={handleResizeStart}
 						title="Drag to resize sidebar"
 					/>
@@ -1141,653 +1276,694 @@ const SideNavigation = memo(function SideNavigation({
 						style={{ left: sidebarWidth }}
 					/>
 				)}
-			{/* Search Bar */}
-			<div className={`${isCollapsed ? 'px-2' : 'px-4'} border-b border-gray-200 dark:border-gray-700 h-18 flex items-center relative`}>
-				{/* Collapse Toggle Button - Always positioned on the border */}
-				<button
-					onClick={toggleCollapse}
-					className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-30 flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-circle shadow-sm hover:shadow-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200"
-					aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-					title={isCollapsed ? t.nav.expandSidebar : t.nav.collapseSidebar}
+				{/* Search Bar */}
+				<div
+					className={`${isCollapsed ? "px-2" : "px-4"} border-b border-gray-200 dark:border-gray-700 h-18 flex items-center relative`}
 				>
-					{isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
-				</button>
-				
-				{!isCollapsed ? (
-					<div className="flex items-center w-full">
-						<button
-							type="button"
-							onClick={openSearchDialog}
-							className="w-full flex items-center gap-2 pl-3 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors duration-200"
-							title={t.nav.search}
-							aria-label={t.nav.search}
-						>
-							<Icons.Search />
-							<span className="truncate">{t.nav.searchPlaceholder}</span>
-						</button>
-					</div>
-				) : (
+					{/* Collapse Toggle Button - Always positioned on the border */}
+					<button
+						type="button"
+						onClick={toggleCollapse}
+						className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-30 flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-circle shadow-sm hover:shadow-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200"
+						aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+						title={isCollapsed ? t.nav.expandSidebar : t.nav.collapseSidebar}
+					>
+						{isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
+					</button>
+
+					{!isCollapsed ? (
+						<div className="flex items-center w-full">
+							<button
+								type="button"
+								onClick={openSearchDialog}
+								className="w-full flex items-center gap-2 pl-3 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors duration-200"
+								title={t.nav.search}
+								aria-label={t.nav.search}
+							>
+								<Icons.Search />
+								<span className="truncate">{t.nav.searchPlaceholder}</span>
+							</button>
+						</div>
+					) : (
 						<div className="flex items-center justify-center">
 							<button
+								type="button"
 								onClick={openSearchDialog}
 								className="flex items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
 								title={t.nav.search}
 								aria-label={t.nav.search}
 							>
 								<Icons.Search />
-						</button>
-					</div>
-				)}
-			</div>
+							</button>
+						</div>
+					)}
+				</div>
 
-			<nav className="flex-1 overflow-y-auto">
-				{/* Error State */}
-				{error && isCollapsed && onRetry && (
-					<div className="px-2 py-3" role="alert">
-						<button
-							type="button"
-							onClick={onRetry}
-							className="flex w-full items-center justify-center rounded-md bg-red-50 p-3 font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
-							aria-label={`${t.nav.failedToLoadNav}. ${t.common.retry}`}
-							title={`${t.nav.failedToLoadNav}. ${t.common.retry}`}
-						>
-							<span aria-hidden="true">!</span>
-							<span className="sr-only">{t.common.retry}</span>
-						</button>
-					</div>
-				)}
-				{error && !isLoading && !isCollapsed && (
-					<div className="px-4 py-4">
-						<div className="text-center p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-							<p className="text-sm text-red-700 dark:text-red-400 mb-2">{t.nav.failedToLoadNav}</p>
+				<nav className="flex-1 overflow-y-auto">
+					{/* Error State */}
+					{error && isCollapsed && onRetry && (
+						<div className="px-2 py-3" role="alert">
+							<button
+								type="button"
+								onClick={onRetry}
+								className="flex w-full items-center justify-center rounded-md bg-red-50 p-3 font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+								aria-label={`${t.nav.failedToLoadNav}. ${t.common.retry}`}
+								title={`${t.nav.failedToLoadNav}. ${t.common.retry}`}
+							>
+								<span aria-hidden="true">!</span>
+								<span className="sr-only">{t.common.retry}</span>
+							</button>
+						</div>
+					)}
+					{error && !isLoading && !isCollapsed && (
+						<div className="px-4 py-4">
+							<div className="text-center p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+								<p className="text-sm text-red-700 dark:text-red-400 mb-2">{t.nav.failedToLoadNav}</p>
 								{onRetry && (
 									<button
+										type="button"
 										onClick={onRetry}
 										className="text-xs px-3 py-1 bg-red-600 dark:bg-red-700 text-white rounded hover:bg-red-700 dark:hover:bg-red-600 transition-colors duration-200"
 									>
 										{t.common.retry}
 									</button>
-							)}
+								)}
+							</div>
 						</div>
-					</div>
-				)}
-				
-				{/* Tasks Section - Hidden in collapsed state */}
-				{!isCollapsed && (
-					<div className="px-4 py-4">
-						<div className="flex items-center space-x-3 text-gray-700 dark:text-gray-300">
-							<span className="text-gray-500 dark:text-gray-400"><Icons.Tasks /></span>
-							<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
-								{t.nav.tasks} (<NavigationCount count={tasks.length} isLoading={isLoading} error={error} label="task" />)
-							</span>
-						</div>
-						{isLoading && (
-							<LoadingPhase className="mt-2 text-xs text-gray-500 dark:text-gray-400" />
-						)}
-					</div>
-				)}
+					)}
 
-				{/* Navigation items only show when expanded */}
-				{!isCollapsed && (
-					<div className="px-4 space-y-1">
-						{/* Board Navigation */}
-						<NavLink
-							to="/"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.Board />
-							<span className="ml-3 text-sm font-medium">{t.nav.board}</span>
-						</NavLink>
-
-						{/* Tasks Navigation */}
-						<NavLink
-							to="/tasks"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.List />
-							<span className="ml-3 text-sm font-medium">{t.nav.tasks}</span>
-						</NavLink>
-
-						{/* Milestones Navigation */}
-						<NavLink
-							to="/milestones"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.Milestone />
-							<span className="ml-3 text-sm font-medium">{t.nav.milestones}</span>
-						</NavLink>
-
-						{/* Gantt Navigation */}
-						<NavLink
-							to="/gantt"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-									}`
-							}
-						>
-							<Icons.Gantt />
-							<span className="ml-3 text-sm font-medium">{t.nav.gantt}</span>
-						</NavLink>
-
-						{/* Drafts Navigation */}
-						<NavLink
-							to="/drafts"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.Draft />
-							<span className="ml-3 text-sm font-medium">{t.nav.drafts}</span>
-						</NavLink>
-
-						{/* Statistics Navigation */}
-						<NavLink
-							to="/statistics"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.Statistics />
-							<span className="ml-3 text-sm font-medium">{t.nav.statistics}</span>
-						</NavLink>
-
-						{/* Graph Navigation */}
-						<NavLink
-							to="/graph"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.Graph />
-							<span className="ml-3 text-sm font-medium">{t.nav.graph}</span>
-						</NavLink>
-
-						{/* Knowledge Graph Navigation */}
-						<NavLink
-							to="/knowledge"
-							className={({ isActive }) =>
-								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-										: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<Icons.KnowledgeGraph />
-							<span className="ml-3 text-sm font-medium">{t.nav.knowledgeGraph}</span>
-						</NavLink>
-					</div>
-				)}
-
-				{!isCollapsed && (
-					<>
-						{/* Divider between Tasks and Documents */}
-						<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700"></div>
-						
-						{/* Documents Section */}
+					{/* Tasks Section - Hidden in collapsed state */}
+					{!isCollapsed && (
 						<div className="px-4 py-4">
-							<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
+							<div className="flex items-center space-x-3 text-gray-700 dark:text-gray-300">
+								<span className="text-gray-500 dark:text-gray-400">
+									<Icons.Tasks />
+								</span>
+								<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+									{t.nav.tasks} (
+									<NavigationCount count={tasks.length} isLoading={isLoading} error={error} label="task" />)
+								</span>
+							</div>
+							{isLoading && <LoadingPhase className="mt-2 text-xs text-gray-500 dark:text-gray-400" />}
+						</div>
+					)}
+
+					{/* Navigation items only show when expanded */}
+					{!isCollapsed && (
+						<div className="px-4 space-y-1">
+							{/* Board Navigation */}
+							<NavLink
+								to="/"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Board />
+								<span className="ml-3 text-sm font-medium">{t.nav.board}</span>
+							</NavLink>
+
+							{/* Tasks Navigation */}
+							<NavLink
+								to="/tasks"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.List />
+								<span className="ml-3 text-sm font-medium">{t.nav.tasks}</span>
+							</NavLink>
+
+							{/* Milestones Navigation */}
+							<NavLink
+								to="/milestones"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Milestone />
+								<span className="ml-3 text-sm font-medium">{t.nav.milestones}</span>
+							</NavLink>
+
+							{/* Gantt Navigation */}
+							<NavLink
+								to="/gantt"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Gantt />
+								<span className="ml-3 text-sm font-medium">{t.nav.gantt}</span>
+							</NavLink>
+
+							{/* Drafts Navigation */}
+							<NavLink
+								to="/drafts"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Draft />
+								<span className="ml-3 text-sm font-medium">{t.nav.drafts}</span>
+							</NavLink>
+
+							{/* Statistics Navigation */}
+							<NavLink
+								to="/statistics"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Statistics />
+								<span className="ml-3 text-sm font-medium">{t.nav.statistics}</span>
+							</NavLink>
+
+							{/* Graph Navigation */}
+							<NavLink
+								to="/graph"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.Graph />
+								<span className="ml-3 text-sm font-medium">{t.nav.graph}</span>
+							</NavLink>
+
+							{/* Knowledge Graph Navigation */}
+							<NavLink
+								to="/knowledge"
+								className={({ isActive }) =>
+									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<Icons.KnowledgeGraph />
+								<span className="ml-3 text-sm font-medium">{t.nav.knowledgeGraph}</span>
+							</NavLink>
+						</div>
+					)}
+
+					{!isCollapsed && (
+						<>
+							{/* Divider between Tasks and Documents */}
+							<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
+
+							{/* Documents Section */}
+							<div className="px-4 py-4">
+								<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
 									<div className="flex items-center space-x-3">
 										<button
+											type="button"
 											onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
 											className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors duration-200"
 											title={isDocsCollapsed ? t.nav.expandDocuments : t.nav.collapseDocuments}
 										>
 											{isDocsCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
-									</button>
-									<span className="text-gray-500 dark:text-gray-400"><Icons.Document /></span>
-									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
-										{t.nav.documents} (<NavigationCount count={docs.length} isLoading={isLoading} error={error} label="document" />)
-									</span>
+										</button>
+										<span className="text-gray-500 dark:text-gray-400">
+											<Icons.Document />
+										</span>
+										<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+											{t.nav.documents} (
+											<NavigationCount count={docs.length} isLoading={isLoading} error={error} label="document" />)
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										{renderDocsSortButton(t.nav.sortDocsByName, t.nav.sortDocsByNameHint, "name")}
+										{renderDocsSortButton(t.nav.sortDocsById, t.nav.sortDocsByIdHint, "id")}
+										<DocActionDropdown
+											parentPath=""
+											isFile={false}
+											onCreateFile={handleCreateDocFile}
+											onCreateFolder={handleCreateDocFolder}
+										/>
+									</div>
 								</div>
-								<div className="flex items-center gap-1">
-									{renderDocsSortButton(t.nav.sortDocsByName, t.nav.sortDocsByNameHint, 'name')}
-									{renderDocsSortButton(t.nav.sortDocsById, t.nav.sortDocsByIdHint, 'id')}
-									<DocActionDropdown
-										parentPath=""
-										isFile={false}
-										onCreateFile={handleCreateDocFile}
-										onCreateFolder={handleCreateDocFolder}
-									/>
-								</div>
-							</div>
-							
-							{/* Document Tree */}
-							{!isDocsCollapsed && (
-								<div className="space-y-1">
-									{isLoading ? (
-										<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
-									) : error ? (
-										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.documentsUnavailable}</p>
-									) : sortedDocsTree.length === 0 ? (
-										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDocuments}</p>
-									) : (
-										sortedDocsTree.map((node) => (
-											<DocTreeItem key={node.path} node={node} docTitles={docTitles} onCreateFile={handleCreateDocFile} onCreateFolder={handleCreateDocFolder} />
-										))
-									)}
-								</div>
-							)}
-						</div>
-						{/* Divider between Documents and Decisions */}
-						<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700"></div>
 
-						{/* Decisions Section */}
-						<div className="px-4 py-4">
-							<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
+								{/* Document Tree */}
+								{!isDocsCollapsed && (
+									<div className="space-y-1">
+										{isLoading ? (
+											<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
+										) : error ? (
+											<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.documentsUnavailable}</p>
+										) : sortedDocsTree.length === 0 ? (
+											<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDocuments}</p>
+										) : (
+											sortedDocsTree.map((node) => (
+												<DocTreeItem
+													key={node.path}
+													node={node}
+													docTitles={docTitles}
+													onCreateFile={handleCreateDocFile}
+													onCreateFolder={handleCreateDocFolder}
+												/>
+											))
+										)}
+									</div>
+								)}
+							</div>
+							{/* Divider between Documents and Decisions */}
+							<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
+
+							{/* Decisions Section */}
+							<div className="px-4 py-4">
+								<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
 									<div className="flex items-center space-x-3">
 										<button
+											type="button"
 											onClick={() => setIsDecisionsCollapsed(!isDecisionsCollapsed)}
 											className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors duration-200"
 											title={isDecisionsCollapsed ? t.nav.expandDecisions : t.nav.collapseDecisions}
 										>
 											{isDecisionsCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
-									</button>
-									<span className="text-gray-500 dark:text-gray-400"><Icons.Decision /></span>
-									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
-										{t.nav.decisions} (<NavigationCount count={decisions.length} isLoading={isLoading} error={error} label="decision" />)
-									</span>
+										</button>
+										<span className="text-gray-500 dark:text-gray-400">
+											<Icons.Decision />
+										</span>
+										<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+											{t.nav.decisions} (
+											<NavigationCount count={decisions.length} isLoading={isLoading} error={error} label="decision" />)
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										{renderDecisionSortButton(t.nav.sortDecisionsByTitle, t.nav.sortDecisionsByTitleHint, "title")}
+										{renderDecisionSortButton(t.nav.sortDecisionsById, t.nav.sortDecisionsByIdHint, "id")}
+										<button
+											type="button"
+											onClick={() => navigate("/decisions/new")}
+											className="p-1 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+											title={t.nav.createDecision}
+											aria-label={t.nav.createDecision}
+										>
+											<Icons.Plus />
+										</button>
+									</div>
 								</div>
-								<div className="flex items-center gap-1">
-									{renderDecisionSortButton(t.nav.sortDecisionsByTitle, t.nav.sortDecisionsByTitleHint, 'title')}
-									{renderDecisionSortButton(t.nav.sortDecisionsById, t.nav.sortDecisionsByIdHint, 'id')}
-									<button
-										onClick={() => navigate('/decisions/new')}
-										className="p-1 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-										title={t.nav.createDecision}
-										aria-label={t.nav.createDecision}
-									>
-										<Icons.Plus />
-									</button>
-								</div>
-							</div>
-							
-							{/* Decision List */}
-							{!isDecisionsCollapsed && (
-								<div className="space-y-1">
-									{isLoading ? (
-										<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
-									) : error ? (
-										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.decisionsUnavailable}</p>
-									) : sortedDecisions.length === 0 ? (
-										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDecisions}</p>
-									) : (
-										sortedDecisions.map((decision) => (
-											<NavLink
-												key={decision.id}
-												to={`/decisions/${stripIdPrefix(decision.id)}/${sanitizeUrlTitle(decision.title)}`}
-												className={({ isActive }) =>
-													`flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-														isActive
-															? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-															: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-													}`
-												}
-											>
-												<span className="text-gray-400 dark:text-gray-500"><Icons.DecisionPage /></span>
-												<span className="truncate">{decision.title}</span>
-											</NavLink>
-										))
-									)}
-								</div>
-							)}
-						</div>
 
-						{/* Divider between Decisions and Wiki */}
-						<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700"></div>
-
-						{/* Wiki Section */}
-						<div className="px-4 py-4">
-							<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
-								<div className="flex items-center space-x-3">
-									<button
-										onClick={() => setIsWikiCollapsed(!isWikiCollapsed)}
-										className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors duration-200"
-										title={isWikiCollapsed ? t.nav.expandWiki : t.nav.collapseWiki}
-									>
-										{isWikiCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
-									</button>
-									<span className="text-gray-500 dark:text-gray-400"><Icons.DocumentBook /></span>
-									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.nav.wiki} ({countWikiFiles(wikiTree)})</span>
-								</div>
-								<div className="flex items-center gap-1">
-									{renderWikiSortButton(t.nav.sortWikiByTitle, t.nav.sortWikiByTitleHint, 'title')}
-									{renderWikiSortButton(t.nav.sortWikiByFileName, t.nav.sortWikiByFileNameHint, 'file')}
-									<WikiActionDropdown
-										nodeName=""
-										isFile={false}
-										parentPath=""
-										onCreateFile={handleCreateWikiFile}
-										onCreateFolder={handleCreateWikiFolder}
-									/>
-								</div>
+								{/* Decision List */}
+								{!isDecisionsCollapsed && (
+									<div className="space-y-1">
+										{isLoading ? (
+											<LoadingPhase className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400" />
+										) : error ? (
+											<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.decisionsUnavailable}</p>
+										) : sortedDecisions.length === 0 ? (
+											<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDecisions}</p>
+										) : (
+											sortedDecisions.map((decision) => (
+												<NavLink
+													key={decision.id}
+													to={`/decisions/${stripIdPrefix(decision.id)}/${sanitizeUrlTitle(decision.title)}`}
+													className={({ isActive }) =>
+														`flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+															isActive
+																? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+																: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+														}`
+													}
+												>
+													<span className="text-gray-400 dark:text-gray-500">
+														<Icons.DecisionPage />
+													</span>
+													<span className="truncate">{decision.title}</span>
+												</NavLink>
+											))
+										)}
+									</div>
+								)}
 							</div>
 
-							{/* Wiki Tree */}
-							{!isWikiCollapsed && (
-								<div className="space-y-1">
-									{wikiTree.length === 0 ? (
-										<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noWikiPages}</p>
-									) : (
-										sortedWikiTree.map((node) => (
-											<WikiTreeItem
-												key={node.path}
-												node={node}
-												sortColumn={wikiSortColumn}
-												onCreateFile={handleCreateWikiFile}
-												onCreateFolder={handleCreateWikiFolder}
-												onRename={handleRenameWiki}
-											/>
-										))
-									)}
-								</div>
-							)}
-						</div>
-					</>
-				)}
+							{/* Divider between Decisions and Wiki */}
+							<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
 
-				{isCollapsed && (
-					<div className="px-2 py-2 space-y-2">
-						<NavLink
-							to="/"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.board}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Board />
+							{/* Wiki Section */}
+							<div className="px-4 py-4">
+								<div className="flex flex-wrap items-center justify-between gap-y-1 mb-4">
+									<div className="flex items-center space-x-3">
+										<button
+											type="button"
+											onClick={() => setIsWikiCollapsed(!isWikiCollapsed)}
+											className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors duration-200"
+											title={isWikiCollapsed ? t.nav.expandWiki : t.nav.collapseWiki}
+										>
+											{isWikiCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
+										</button>
+										<span className="text-gray-500 dark:text-gray-400">
+											<Icons.DocumentBook />
+										</span>
+										<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+											{t.nav.wiki} ({countWikiFiles(wikiTree)})
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										{renderWikiSortButton(t.nav.sortWikiByTitle, t.nav.sortWikiByTitleHint, "title")}
+										{renderWikiSortButton(t.nav.sortWikiByFileName, t.nav.sortWikiByFileNameHint, "file")}
+										<WikiActionDropdown
+											nodeName=""
+											isFile={false}
+											parentPath=""
+											onCreateFile={handleCreateWikiFile}
+											onCreateFolder={handleCreateWikiFolder}
+										/>
+									</div>
+								</div>
+
+								{/* Wiki Tree */}
+								{!isWikiCollapsed && (
+									<div className="space-y-1">
+										{wikiTree.length === 0 ? (
+											<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noWikiPages}</p>
+										) : (
+											sortedWikiTree.map((node) => (
+												<WikiTreeItem
+													key={node.path}
+													node={node}
+													sortColumn={wikiSortColumn}
+													onCreateFile={handleCreateWikiFile}
+													onCreateFolder={handleCreateWikiFolder}
+													onRename={handleRenameWiki}
+												/>
+											))
+										)}
+									</div>
+								)}
 							</div>
-						</NavLink>
-						<NavLink
-							to="/tasks"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.tasks}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.List />
-							</div>
-						</NavLink>
-						{/* Drafts Navigation */}
-						<NavLink
-							to="/drafts"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.drafts}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Draft />
-							</div>
-						</NavLink>
-						{/* Milestones Navigation */}
-						<NavLink
-							to="/milestones"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.milestones}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Milestone />
-							</div>
-						</NavLink>
-						{/* Gantt Navigation */}
-						<NavLink
-							to="/gantt"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.gantt}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Gantt />
-							</div>
-						</NavLink>
-						{/* Statistics Navigation */}
-						<NavLink
-							to="/statistics"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.statistics}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Statistics />
-							</div>
-						</NavLink>
-						{/* Graph Navigation */}
-						<NavLink
-							to="/graph"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.graph}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Graph />
-							</div>
-						</NavLink>
-						{/* Knowledge Graph Navigation */}
-						<NavLink
-							to="/knowledge"
-							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content={t.nav.knowledgeGraph}
-							className={({ isActive }) =>
-								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-									isActive
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-								}`
-							}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.KnowledgeGraph />
-							</div>
-						</NavLink>
-						<button
-							onClick={() => {
-								setIsCollapsed(false);
-								setIsDocsCollapsed(false);
-							}}
+						</>
+					)}
+
+					{isCollapsed && (
+						<div className="px-2 py-2 space-y-2">
+							<NavLink
+								to="/"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.board}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Board />
+								</div>
+							</NavLink>
+							<NavLink
+								to="/tasks"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.tasks}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.List />
+								</div>
+							</NavLink>
+							{/* Drafts Navigation */}
+							<NavLink
+								to="/drafts"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.drafts}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Draft />
+								</div>
+							</NavLink>
+							{/* Milestones Navigation */}
+							<NavLink
+								to="/milestones"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.milestones}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Milestone />
+								</div>
+							</NavLink>
+							{/* Gantt Navigation */}
+							<NavLink
+								to="/gantt"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.gantt}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Gantt />
+								</div>
+							</NavLink>
+							{/* Statistics Navigation */}
+							<NavLink
+								to="/statistics"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.statistics}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Statistics />
+								</div>
+							</NavLink>
+							{/* Graph Navigation */}
+							<NavLink
+								to="/graph"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.graph}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Graph />
+								</div>
+							</NavLink>
+							{/* Knowledge Graph Navigation */}
+							<NavLink
+								to="/knowledge"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.knowledgeGraph}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.KnowledgeGraph />
+								</div>
+							</NavLink>
+							<button
+								type="button"
+								onClick={() => {
+									setIsCollapsed(false);
+									setIsDocsCollapsed(false);
+								}}
 								data-tooltip-id="sidebar-tooltip"
 								data-tooltip-content={t.nav.documents}
 								className={`flex items-center justify-center p-3 rounded-md transition-colors duration-200 w-full ${
-									location.pathname.startsWith('/documentation')
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+									location.pathname.startsWith("/documentation")
+										? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+										: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
 								}`}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Document />
-							</div>
-						</button>
-						<button
-							onClick={() => {
-								setIsCollapsed(false);
-								setIsDecisionsCollapsed(false);
-							}}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Document />
+								</div>
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									setIsCollapsed(false);
+									setIsDecisionsCollapsed(false);
+								}}
 								data-tooltip-id="sidebar-tooltip"
 								data-tooltip-content={t.nav.decisions}
 								className={`flex items-center justify-center p-3 rounded-md transition-colors duration-200 w-full ${
-									location.pathname.startsWith('/decisions')
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+									location.pathname.startsWith("/decisions")
+										? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+										: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
 								}`}
-						>
-							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.Decision />
-							</div>
-						</button>
-						<button
-							onClick={() => {
-								setIsCollapsed(false);
-								setIsWikiCollapsed(false);
-							}}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Decision />
+								</div>
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									setIsCollapsed(false);
+									setIsWikiCollapsed(false);
+								}}
 								data-tooltip-id="sidebar-tooltip"
 								data-tooltip-content={t.nav.wiki}
 								className={`flex items-center justify-center p-3 rounded-md transition-colors duration-200 w-full ${
-									location.pathname.startsWith('/wiki')
-										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+									location.pathname.startsWith("/wiki")
+										? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+										: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
 								}`}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.DocumentBook />
+								</div>
+							</button>
+						</div>
+					)}
+				</nav>
+
+				{/* Settings Button - Bottom Left */}
+				<div className={`border-t border-gray-200 dark:border-gray-700 ${isCollapsed ? "px-2 py-2" : "px-4 py-4"}`}>
+					{!isCollapsed ? (
+						<NavLink
+							to="/settings"
+							className={({ isActive }) =>
+								`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+									isActive
+										? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+										: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+								}`
+							}
+						>
+							<Icons.DocumentSettings />
+							<span className="ml-3 text-sm font-medium">{t.nav.settings}</span>
+							{version && (
+								<span className="ml-auto text-xs text-gray-500 dark:text-gray-400">Backlog.md - v{version}</span>
+							)}
+						</NavLink>
+					) : (
+						<NavLink
+							to="/settings"
+							data-tooltip-id="sidebar-tooltip"
+							data-tooltip-content={t.nav.settings}
+							className={({ isActive }) =>
+								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+									isActive
+										? "bg-stone-50 dark:bg-stone-900/30 text-stone-700 dark:text-stone-400"
+										: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+								}`
+							}
 						>
 							<div className="w-6 h-6 flex items-center justify-center">
-								<Icons.DocumentBook />
+								<Icons.DocumentSettings />
 							</div>
-						</button>
-					</div>
-				)}
-			</nav>
-			
-			{/* Settings Button - Bottom Left */}
-			<div className={`border-t border-gray-200 dark:border-gray-700 ${isCollapsed ? 'px-2 py-2' : 'px-4 py-4'}`}>
-				{!isCollapsed ? (
-					<NavLink
-						to="/settings"
-						className={({ isActive }) =>
-							`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-								isActive
-									? 'bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium'
-									: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-							}`
-						}
-					>
-						<Icons.DocumentSettings />
-						<span className="ml-3 text-sm font-medium">{t.nav.settings}</span>
-						{version && (
-							<span className="ml-auto text-xs text-gray-500 dark:text-gray-400">Backlog.md - v{version}</span>
-						)}
-					</NavLink>
-				) : (
-					<NavLink
-						to="/settings"
-						data-tooltip-id="sidebar-tooltip"
-						data-tooltip-content={t.nav.settings}
-						className={({ isActive }) =>
-							`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-								isActive
-									? 'bg-stone-50 dark:bg-stone-900/30 text-stone-700 dark:text-stone-400'
-									: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-							}`
-						}
-					>
-						<div className="w-6 h-6 flex items-center justify-center">
-							<Icons.DocumentSettings />
-						</div>
-					</NavLink>
-				)}
-			</div>
-			
+						</NavLink>
+					)}
+				</div>
+
 				{showCreateWikiModal && (
 					<Modal
 						isOpen={true}
 						onClose={() => setShowCreateWikiModal(false)}
-						title={createWikiIsFolder ? (createWikiParentPath ? t.nav.createFolderIn(createWikiParentPath) : t.nav.createFolder) : (createWikiParentPath ? t.nav.createPageIn(createWikiParentPath) : t.nav.createPage)}
+						title={
+							createWikiIsFolder
+								? createWikiParentPath
+									? t.nav.createFolderIn(createWikiParentPath)
+									: t.nav.createFolder
+								: createWikiParentPath
+									? t.nav.createPageIn(createWikiParentPath)
+									: t.nav.createPage
+						}
 					>
 						<div className="space-y-4">
 							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+								<label
+									htmlFor="side-navigation-folder-name"
+									className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
 									{createWikiIsFolder ? t.nav.folderName : t.nav.fileName}
 								</label>
 								<input
+									id="side-navigation-folder-name"
+									ref={newWikiNameRef}
 									type="text"
 									value={newWikiName}
 									onChange={(e) => setNewWikiName(e.target.value)}
-									onKeyDown={(e) => e.key === 'Enter' && executeCreateWiki()}
+									onKeyDown={(e) => e.key === "Enter" && executeCreateWiki()}
 									placeholder={createWikiIsFolder ? t.nav.folderNamePlaceholder : t.nav.fileNamePlaceholder}
 									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-									autoFocus
 								/>
 								{!createWikiIsFolder && (
-									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-										{t.nav.mdExtensionHint}
-									</p>
+									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t.nav.mdExtensionHint}</p>
 								)}
 							</div>
 
-							{createWikiError && (
-								<div className="text-sm text-red-600 dark:text-red-400">{createWikiError}</div>
-							)}
+							{createWikiError && <div className="text-sm text-red-600 dark:text-red-400">{createWikiError}</div>}
 
 							<div className="flex justify-end space-x-3">
 								<button
+									type="button"
 									onClick={() => setShowCreateWikiModal(false)}
 									className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
 								>
 									{t.common.cancel}
 								</button>
 								<button
+									type="button"
 									onClick={executeCreateWiki}
 									disabled={isCreatingWiki || !newWikiName.trim()}
 									className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1799,95 +1975,105 @@ const SideNavigation = memo(function SideNavigation({
 					</Modal>
 				)}
 
-					{showRenameWikiModal && (
-						<Modal
-							isOpen={true}
-							onClose={() => setShowRenameWikiModal(false)}
-							title={`${t.common.rename} ${renameWikiOldName}`}
-						>
-							<div className="space-y-4">
-								<div>
-									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-										{t.common.newName}
-									</label>
-									<input
-										type="text"
-										value={renameWikiNewName}
-										onChange={(e) => setRenameWikiNewName(e.target.value)}
-										onKeyDown={(e) => e.key === 'Enter' && executeRenameWiki()}
-										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-										autoFocus
-									/>
-								</div>
-
-								{renameWikiError && (
-									<div className="text-sm text-red-600 dark:text-red-400">{renameWikiError}</div>
-								)}
-
-								<div className="flex justify-end space-x-3">
-									<button
-										onClick={() => setShowRenameWikiModal(false)}
-										className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-									>
-										{t.common.cancel}
-									</button>
-									<button
-										onClick={executeRenameWiki}
-										disabled={isRenamingWiki || !renameWikiNewName.trim()}
-										className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-									>
-										{isRenamingWiki ? t.common.renaming : t.common.rename}
-									</button>
-								</div>
+				{showRenameWikiModal && (
+					<Modal
+						isOpen={true}
+						onClose={() => setShowRenameWikiModal(false)}
+						title={`${t.common.rename} ${renameWikiOldName}`}
+					>
+						<div className="space-y-4">
+							<div>
+								<label
+									htmlFor="side-navigation-new-name"
+									className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
+									{t.common.newName}
+								</label>
+								<input
+									id="side-navigation-new-name"
+									ref={renameWikiNameRef}
+									type="text"
+									value={renameWikiNewName}
+									onChange={(e) => setRenameWikiNewName(e.target.value)}
+									onKeyDown={(e) => e.key === "Enter" && executeRenameWiki()}
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+								/>
 							</div>
-						</Modal>
-					)}
 
-					{showCreateDocsFolderModal && (
-						<Modal
-							isOpen={true}
-							onClose={() => setShowCreateDocsFolderModal(false)}
-							title={createDocsFolderParentPath ? t.nav.createFolderIn(createDocsFolderParentPath) : t.nav.createFolder}
-						>
-							<div className="space-y-4">
-								<div>
-									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-										{t.nav.folderName}
-									</label>
-									<input
-										type="text"
-										value={newDocsFolderName}
-										onChange={(e) => setNewDocsFolderName(e.target.value)}
-										onKeyDown={(e) => e.key === 'Enter' && executeCreateDocsFolder()}
-										placeholder={t.nav.folderNamePlaceholder}
-										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-										autoFocus
-									/>
-								</div>
+							{renameWikiError && <div className="text-sm text-red-600 dark:text-red-400">{renameWikiError}</div>}
 
-								{createDocsFolderError && (
-									<div className="text-sm text-red-600 dark:text-red-400">{createDocsFolderError}</div>
-								)}
-
-								<div className="flex justify-end space-x-3">
-									<button
-										onClick={() => setShowCreateDocsFolderModal(false)}
-										className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-									>
-										{t.common.cancel}
-									</button>
-									<button
-										onClick={executeCreateDocsFolder}
-										disabled={isCreatingDocsFolder || !newDocsFolderName.trim()}
-										className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-									>
-										{isCreatingDocsFolder ? t.common.creating : t.common.create}
-									</button>
-								</div>
+							<div className="flex justify-end space-x-3">
+								<button
+									type="button"
+									onClick={() => setShowRenameWikiModal(false)}
+									className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+								>
+									{t.common.cancel}
+								</button>
+								<button
+									type="button"
+									onClick={executeRenameWiki}
+									disabled={isRenamingWiki || !renameWikiNewName.trim()}
+									className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+								>
+									{isRenamingWiki ? t.common.renaming : t.common.rename}
+								</button>
 							</div>
-						</Modal>
-					)}
-			<Tooltip id="sidebar-tooltip" place="right" />
+						</div>
+					</Modal>
+				)}
+
+				{showCreateDocsFolderModal && (
+					<Modal
+						isOpen={true}
+						onClose={() => setShowCreateDocsFolderModal(false)}
+						title={createDocsFolderParentPath ? t.nav.createFolderIn(createDocsFolderParentPath) : t.nav.createFolder}
+					>
+						<div className="space-y-4">
+							<div>
+								<label
+									htmlFor="side-navigation-docs-folder-name"
+									className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
+									{t.nav.folderName}
+								</label>
+								<input
+									id="side-navigation-docs-folder-name"
+									type="text"
+									ref={newDocsFolderNameRef}
+									value={newDocsFolderName}
+									onChange={(e) => setNewDocsFolderName(e.target.value)}
+									onKeyDown={(e) => e.key === "Enter" && executeCreateDocsFolder()}
+									placeholder={t.nav.folderNamePlaceholder}
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+								/>
+							</div>
+
+							{createDocsFolderError && (
+								<div className="text-sm text-red-600 dark:text-red-400">{createDocsFolderError}</div>
+							)}
+
+							<div className="flex justify-end space-x-3">
+								<button
+									type="button"
+									onClick={() => setShowCreateDocsFolderModal(false)}
+									className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+								>
+									{t.common.cancel}
+								</button>
+								<button
+									type="button"
+									onClick={executeCreateDocsFolder}
+									disabled={isCreatingDocsFolder || !newDocsFolderName.trim()}
+									className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+								>
+									{isCreatingDocsFolder ? t.common.creating : t.common.create}
+								</button>
+							</div>
+						</div>
+					</Modal>
+				)}
+				<Tooltip id="sidebar-tooltip" place="right" />
 			</div>
 		</ErrorBoundary>
 	);

@@ -2,19 +2,19 @@ import { afterAll, afterEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Decision, Document as BacklogDocument, Task } from "../types/index.ts";
-import { buildEntityIndex, type EntityIndex } from "../web/utils/task-id-links.ts";
-import {
-	ENTITY_AUTOCOMPLETE_DEBOUNCE_MS,
-	computeAutocompleteCandidates,
-	createCandidateCache,
-	queryCandidatesCached,
-	useEntityAutocomplete,
-} from "../web/hooks/useEntityAutocomplete.ts";
+import type { Document as BacklogDocument, Decision, Task } from "../types/index.ts";
 import { EntityLinkAutocompleteMenu } from "../web/components/EntityLinkAutocomplete.tsx";
 import { PasteAwareMDEditor } from "../web/components/PasteAwareMDEditor.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { TaskIdIndexProvider } from "../web/contexts/TaskIdIndexContext.tsx";
+import {
+	computeAutocompleteCandidates,
+	createCandidateCache,
+	ENTITY_AUTOCOMPLETE_DEBOUNCE_MS,
+	queryCandidatesCached,
+	useEntityAutocomplete,
+} from "../web/hooks/useEntityAutocomplete.ts";
+import { buildEntityIndex, type EntityIndex } from "../web/utils/task-id-links.ts";
 
 const taskFixtures = (...ids: string[]): Task[] =>
 	ids.map((id) => ({
@@ -62,7 +62,12 @@ describe("computeAutocompleteCandidates", () => {
 	it("returns hits for a task prefix in ascending ID order", () => {
 		const candidates = computeAutocompleteCandidates(buildIndex(), "BACK");
 
-		expect(candidates.map((c) => `${c.kind}:${c.id}`)).toEqual(["task:BACK-1", "task:BACK-10", "task:BACK-12", "task:BACK-14"]);
+		expect(candidates.map((c) => `${c.kind}:${c.id}`)).toEqual([
+			"task:BACK-1",
+			"task:BACK-10",
+			"task:BACK-12",
+			"task:BACK-14",
+		]);
 	});
 
 	it("merges kinds in task/doc/decision/draft order", () => {
@@ -236,7 +241,11 @@ const renderHarness = (
 	activeRoot = createRoot(container as HTMLElement);
 	act(() => {
 		activeRoot?.render(
-			<Harness index={options.index ?? buildIndex()} debounceMs={options.debounceMs ?? 5} onChange={options.onChange} />,
+			<Harness
+				index={options.index ?? buildIndex()}
+				debounceMs={options.debounceMs ?? 5}
+				onChange={options.onChange}
+			/>,
 		);
 	});
 	return container as HTMLElement;
@@ -347,7 +356,13 @@ describe("useEntityAutocomplete menu", () => {
 		const options = menuOptions(container);
 		expect(options).toHaveLength(5);
 		expect(options[0]).toContain("TASK");
-		expect(options.map((o) => o.replace("TASK", "").trim())).toEqual(["BACK-1", "BACK-2", "BACK-3", "BACK-4", "BACK-5"]);
+		expect(options.map((o) => o.replace("TASK", "").trim())).toEqual([
+			"BACK-1",
+			"BACK-2",
+			"BACK-3",
+			"BACK-4",
+			"BACK-5",
+		]);
 	});
 
 	it("moves the selection with ArrowDown and ArrowUp, wrapping around", async () => {
@@ -439,8 +454,8 @@ describe("useEntityAutocomplete menu", () => {
 		await typeText(container, "Ref BACK-1");
 		expect(menuIsOpen(container)).toBe(true);
 
-		const escape = await pressKey(container, "Escape");
-		expect(escape.defaultPrevented).toBe(true);
+		const escapeKey = await pressKey(container, "Escape");
+		expect(escapeKey.defaultPrevented).toBe(true);
 		expect(menuIsOpen(container)).toBe(false);
 
 		const enter = await pressKey(container, "Enter");
@@ -551,12 +566,13 @@ describe("PasteAwareMDEditor integration", () => {
 	const renderEditor = (onChange: (value: string) => void): HTMLElement => {
 		captureOriginalGlobals();
 		setupDom();
-		globalThis.fetch = (async (_input: RequestInfo | URL) => ({
-			ok: true,
-			status: 200,
-			statusText: "OK",
-			json: async () => ({ projectName: "T", statuses: ["To Do"], labels: [], dateFormat: "yyyy-mm-dd" }),
-		}) as Response) as typeof fetch;
+		globalThis.fetch = (async (_input: RequestInfo | URL) =>
+			({
+				ok: true,
+				status: 200,
+				statusText: "OK",
+				json: async () => ({ projectName: "T", statuses: ["To Do"], labels: [], dateFormat: "yyyy-mm-dd" }),
+			}) as Response) as typeof fetch;
 		const container = document.getElementById("root");
 		expect(container).toBeTruthy();
 		activeRoot = createRoot(container as HTMLElement);

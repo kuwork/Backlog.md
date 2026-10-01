@@ -5,14 +5,14 @@ import type {
 	StatusCategory,
 	StatusDefinition,
 	StatusExitChannel,
-	StatusTransition,
 	StatusesConfig,
+	StatusTransition,
 } from "../../types/index.ts";
-import { useI18n } from "../hooks/useI18n";
 import { useOptionalTheme } from "../contexts/ThemeContext";
+import { useI18n } from "../hooks/useI18n";
+import { buildStateMachineTreeSource } from "../utils/state-machine-tree.ts";
 import MermaidDiagram from "./MermaidDiagram";
 import TabButton from "./TabButton";
-import { buildStateMachineTreeSource } from "../utils/state-machine-tree.ts";
 
 interface StateMachineEditorProps {
 	/** Current (possibly unsaved) `statuses` value from the settings form. */
@@ -228,8 +228,12 @@ export default function StateMachineEditor({
 			</div>
 
 			{tab === "statuses" && (
-				<div role="tabpanel" id="state-machine-panel-statuses" aria-labelledby={tabId("statuses")} className="space-y-4">
-
+				<div
+					role="tabpanel"
+					id="state-machine-panel-statuses"
+					aria-labelledby={tabId("statuses")}
+					className="space-y-4"
+				>
 					{!definitions && (
 						<div className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
 							<p className="text-sm text-gray-700 dark:text-gray-200">{t.stateMachine.legacyTitle}</p>
@@ -250,10 +254,7 @@ export default function StateMachineEditor({
 					)}
 
 					{definitions?.map((status, statusIndex) => (
-						<div
-							key={`status-${statusIndex}`}
-							className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg space-y-3"
-						>
+						<div key={status.name} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg space-y-3">
 							<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 								<div>
 									<label className={LABEL_CLASS} htmlFor={`status-name-${statusIndex}`}>
@@ -315,9 +316,7 @@ export default function StateMachineEditor({
 									id={`status-display-${statusIndex}`}
 									type="checkbox"
 									checked={status.display !== false}
-									onChange={(event) =>
-										updateStatus(statusIndex, { display: event.target.checked ? undefined : false })
-									}
+									onChange={(event) => updateStatus(statusIndex, { display: event.target.checked ? undefined : false })}
 									className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-stone-600 dark:text-stone-400 focus:ring-stone-500 dark:focus:ring-stone-400"
 								/>
 								<label htmlFor={`status-display-${statusIndex}`} className="text-sm text-gray-700 dark:text-gray-200">
@@ -342,7 +341,7 @@ export default function StateMachineEditor({
 
 								{(status.next ?? []).map((transition, transitionIndex) => (
 									<div
-										key={`transition-${statusIndex}-${transitionIndex}`}
+										key={`${status.name}-${transition.to}`}
 										className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg space-y-2"
 									>
 										<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -485,12 +484,7 @@ export default function StateMachineEditor({
 			)}
 
 			{tab === "preview" && (
-				<div
-					role="tabpanel"
-					id="state-machine-panel-preview"
-					aria-labelledby={tabId("preview")}
-					className="space-y-3"
-				>
+				<div role="tabpanel" id="state-machine-panel-preview" aria-labelledby={tabId("preview")} className="space-y-3">
 					<div className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg overflow-x-auto">
 						{definitions && treeSource.includes("-->") ? (
 							<MermaidDiagram source={treeSource} mode={mode} />
@@ -505,8 +499,11 @@ export default function StateMachineEditor({
 				<div className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
 					<h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.stateMachine.lintTitle}</h3>
 					<ul className="mt-2 space-y-1">
-						{lint.map((issue, index) => (
-							<li key={`lint-${index}`} className="text-sm text-amber-700 dark:text-amber-300">
+						{lint.map((issue) => (
+							<li
+								key={`${issue.code}-${issue.args.status ?? ""}-${issue.args.target ?? ""}`}
+								className="text-sm text-amber-700 dark:text-amber-300"
+							>
 								{renderLintMessage(t, issue)}
 							</li>
 						))}
@@ -519,7 +516,10 @@ export default function StateMachineEditor({
 
 type LintTranslator = ReturnType<typeof useI18n>["t"];
 
-function renderLintMessage(t: LintTranslator, issue: { code: string; args: { status?: string; target?: string; value?: string } }) {
+function renderLintMessage(
+	t: LintTranslator,
+	issue: { code: string; args: { status?: string; target?: string; value?: string } },
+) {
 	const status = issue.args.status ?? "";
 	const target = issue.args.target ?? "";
 	const value = issue.args.value ?? "";

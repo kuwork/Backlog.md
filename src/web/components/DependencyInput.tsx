@@ -1,253 +1,279 @@
-import React, { useState, useRef, useEffect, useMemo, type KeyboardEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { type Task } from '../../types';
-import { useI18n } from '../hooks/useI18n';
-import { stripAnyPrefix } from '../../utils/prefix-config';
-import { buildEntityIndex, resolveEntityReference } from '../utils/task-id-links';
-import { canonicalTaskId } from '../../utils/task-id';
-import CompletedBadge from './CompletedBadge';
+import React, { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import type { Task } from "../../types";
+import { stripAnyPrefix } from "../../utils/prefix-config";
+import { canonicalTaskId } from "../../utils/task-id";
+import { useI18n } from "../hooks/useI18n";
+import { buildEntityIndex, resolveEntityReference } from "../utils/task-id-links";
+import CompletedBadge from "./CompletedBadge";
 
 interface DependencyInputProps {
-  value: string[];
-  onChange: (values: string[]) => void;
-  availableTasks: Task[];
-  currentTaskId?: string;
-  label?: string; // optional label; render only if provided
-  disabled?: boolean;
-  onTaskClick?: (taskId: string) => void;
-  /** Searches records that left the board corpus (completed predecessors) for the typed text. */
-  searchCompletedTasks?: (query: string) => Promise<Task[]>;
+	value: string[];
+	onChange: (values: string[]) => void;
+	availableTasks: Task[];
+	currentTaskId?: string;
+	label?: string; // optional label; render only if provided
+	disabled?: boolean;
+	onTaskClick?: (taskId: string) => void;
+	/** Searches records that left the board corpus (completed predecessors) for the typed text. */
+	searchCompletedTasks?: (query: string) => Promise<Task[]>;
 }
 
-const DependencyInput: React.FC<DependencyInputProps> = ({ value, onChange, availableTasks, currentTaskId, label, disabled, onTaskClick, searchCompletedTasks }) => {
-  const [inputValue, setInputValue] = useState('');
-  const [offBoardMatches, setOffBoardMatches] = useState<Task[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const inputId = 'dependency-input';
-  const { t } = useI18n();
+const DependencyInput: React.FC<DependencyInputProps> = ({
+	value,
+	onChange,
+	availableTasks,
+	currentTaskId,
+	label,
+	disabled,
+	onTaskClick,
+	searchCompletedTasks,
+}) => {
+	const [inputValue, setInputValue] = useState("");
+	const [offBoardMatches, setOffBoardMatches] = useState<Task[]>([]);
+	const [selectedIndex, setSelectedIndex] = useState(0);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const inputId = "dependency-input";
+	const { t } = useI18n();
 
-  // Resolve chips through the same canonical identity the markdown auto-links use, so
-  // case and zero-padding differences still resolve and ambiguous IDs stay unlinked
-  const taskIdIndex = useMemo(() => buildEntityIndex({ tasks: availableTasks }), [availableTasks]);
+	// Resolve chips through the same canonical identity the markdown auto-links use, so
+	// case and zero-padding differences still resolve and ambiguous IDs stay unlinked
+	const taskIdIndex = useMemo(() => buildEntityIndex({ tasks: availableTasks }), [availableTasks]);
 
-  // Board tasks matching the typed text
-  const localSuggestions = useMemo(() => {
-    const query = inputValue.trim().toLowerCase();
-    if (!query) return [];
-    return availableTasks.filter(task =>
-      task.id !== currentTaskId && // Don't suggest current task
-      !value.includes(task.id) && // Don't suggest already added tasks
-      (task.id.toLowerCase().includes(query) ||
-       task.title.toLowerCase().includes(query))
-    );
-  }, [inputValue, availableTasks, value, currentTaskId]);
+	// Board tasks matching the typed text
+	const localSuggestions = useMemo(() => {
+		const query = inputValue.trim().toLowerCase();
+		if (!query) return [];
+		return availableTasks.filter(
+			(task) =>
+				task.id !== currentTaskId && // Don't suggest current task
+				!value.includes(task.id) && // Don't suggest already added tasks
+				(task.id.toLowerCase().includes(query) || task.title.toLowerCase().includes(query)),
+		);
+	}, [inputValue, availableTasks, value, currentTaskId]);
 
-  // A completed predecessor left the board corpus, so the caller searches those records on the
-  // side and the dropdown shows both sources as one keyboard-navigable list.
-  const suggestions = useMemo(() => {
-    const known = new Set(localSuggestions.map(task => canonicalTaskId(task.id)));
-    const extra = offBoardMatches.filter(task =>
-      task.id !== currentTaskId &&
-      !value.includes(task.id) &&
-      !known.has(canonicalTaskId(task.id))
-    );
-    return extra.length === 0 ? localSuggestions : [...localSuggestions, ...extra];
-  }, [localSuggestions, offBoardMatches, value, currentTaskId]);
+	// A completed predecessor left the board corpus, so the caller searches those records on the
+	// side and the dropdown shows both sources as one keyboard-navigable list.
+	const suggestions = useMemo(() => {
+		const known = new Set(localSuggestions.map((task) => canonicalTaskId(task.id)));
+		const extra = offBoardMatches.filter(
+			(task) => task.id !== currentTaskId && !value.includes(task.id) && !known.has(canonicalTaskId(task.id)),
+		);
+		return extra.length === 0 ? localSuggestions : [...localSuggestions, ...extra];
+	}, [localSuggestions, offBoardMatches, value, currentTaskId]);
 
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [inputValue]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
+	useEffect(() => {
+		setSelectedIndex(0);
+	}, [inputValue]);
 
-  // Debounced so typing a title does not issue a search per keystroke; clearing the input drops
-  // the previous matches instead of leaving a stale list behind.
-  useEffect(() => {
-    if (!searchCompletedTasks || !inputValue.trim()) {
-      setOffBoardMatches(current => (current.length === 0 ? current : []));
-      return;
-    }
-    let cancelled = false;
-    const handle = setTimeout(() => {
-      searchCompletedTasks(inputValue.trim())
-        .then(matches => {
-          if (!cancelled) setOffBoardMatches(matches);
-        })
-        .catch(() => {
-          if (!cancelled) setOffBoardMatches([]);
-        });
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [inputValue, searchCompletedTasks]);
+	// Debounced so typing a title does not issue a search per keystroke; clearing the input drops
+	// the previous matches instead of leaving a stale list behind.
+	useEffect(() => {
+		if (!searchCompletedTasks || !inputValue.trim()) {
+			setOffBoardMatches((current) => (current.length === 0 ? current : []));
+			return;
+		}
+		let cancelled = false;
+		const handle = setTimeout(() => {
+			searchCompletedTasks(inputValue.trim())
+				.then((matches) => {
+					if (!cancelled) setOffBoardMatches(matches);
+				})
+				.catch(() => {
+					if (!cancelled) setOffBoardMatches([]);
+				});
+		}, 250);
+		return () => {
+			cancelled = true;
+			clearTimeout(handle);
+		};
+	}, [inputValue, searchCompletedTasks]);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
-  }, [value]);
+	// Auto-resize textarea
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
+	useEffect(() => {
+		if (textareaRef.current) {
+			textareaRef.current.style.height = "auto";
+			textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+		}
+	}, [value]);
 
-  // Suggestions are derived from the input, so dropping them means dropping the typed text and the
-  // asynchronously fetched matches together.
-  const clearSuggestions = () => {
-    setInputValue('');
-    setOffBoardMatches(current => (current.length === 0 ? current : []));
-  };
+	// Suggestions are derived from the input, so dropping them means dropping the typed text and the
+	// asynchronously fetched matches together.
+	const clearSuggestions = () => {
+		setInputValue("");
+		setOffBoardMatches((current) => (current.length === 0 ? current : []));
+	};
 
-  const addDependency = (taskId: string) => {
-    if (disabled) return;
-    if (!value.includes(taskId)) {
-      onChange([...value, taskId]);
-      clearSuggestions();
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    }
-  };
+	const addDependency = (taskId: string) => {
+		if (disabled) return;
+		if (!value.includes(taskId)) {
+			onChange([...value, taskId]);
+			clearSuggestions();
+			if (textareaRef.current) {
+				textareaRef.current.focus();
+			}
+		}
+	};
 
-  const removeDependency = (index: number) => {
-    if (disabled) return;
-    onChange(value.filter((_, i) => i !== index));
-  };
+	const removeDependency = (index: number) => {
+		if (disabled) return;
+		onChange(value.filter((_, i) => i !== index));
+	};
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (disabled) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex(prev => (prev + 1) % suggestions.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if ((e.key === 'Enter' || e.key === ',') && inputValue.trim()) {
-      e.preventDefault();
-      if (suggestions.length > 0 && suggestions[selectedIndex]) {
-        addDependency(suggestions[selectedIndex].id);
-      }
-    } else if (e.key === 'Backspace' && !inputValue && value.length > 0) {
-      // Remove last dependency when backspace on empty input
-      onChange(value.slice(0, -1));
-    } else if (e.key === 'Escape') {
-      clearSuggestions();
-    }
-  };
+	const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+		if (disabled) return;
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			setSelectedIndex((prev) => (prev + 1) % suggestions.length);
+		} else if (e.key === "ArrowUp") {
+			e.preventDefault();
+			setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+		} else if ((e.key === "Enter" || e.key === ",") && inputValue.trim()) {
+			e.preventDefault();
+			if (suggestions.length > 0 && suggestions[selectedIndex]) {
+				addDependency(suggestions[selectedIndex].id);
+			}
+		} else if (e.key === "Backspace" && !inputValue && value.length > 0) {
+			// Remove last dependency when backspace on empty input
+			onChange(value.slice(0, -1));
+		} else if (e.key === "Escape") {
+			clearSuggestions();
+		}
+	};
 
-  // onInput rather than onChange: for a text control React's onChange *is* the input event, and the
-  // binding is driven directly in tests the way the milestone search field already is.
-  const handleInputChange = (e: React.FormEvent<HTMLTextAreaElement>) => {
-    if (disabled) return;
-    const newValue = (e.target as HTMLTextAreaElement).value;
-    // Check if user typed a comma
-    if (newValue.endsWith(',')) {
-      const searchValue = newValue.slice(0, -1).trim();
-      if (searchValue && suggestions.length > 0 && suggestions[selectedIndex]) {
-        addDependency(suggestions[selectedIndex].id);
-      }
-    } else {
-      setInputValue(newValue);
-    }
-  };
+	// onInput rather than onChange: for a text control React's onChange *is* the input event, and the
+	// binding is driven directly in tests the way the milestone search field already is.
+	const handleInputChange = (e: React.FormEvent<HTMLTextAreaElement>) => {
+		if (disabled) return;
+		const newValue = (e.target as HTMLTextAreaElement).value;
+		// Check if user typed a comma
+		if (newValue.endsWith(",")) {
+			const searchValue = newValue.slice(0, -1).trim();
+			if (searchValue && suggestions.length > 0 && suggestions[selectedIndex]) {
+				addDependency(suggestions[selectedIndex].id);
+			}
+		} else {
+			setInputValue(newValue);
+		}
+	};
 
-  return (
-    <div>
-      {label ? (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-200">
-          {label}
-        </label>
-      ) : (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-200">
-          {t.dependencyInput.label}
-        </label>
-      )}
-      <div className="relative w-full">
-        <div className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-md focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 focus-within:border-transparent transition-colors duration-200 max-h-60 overflow-auto pr-2 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
-          {/* Display selected dependencies */}
-          {value.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {value.map((taskId, index) => {
-                const dependency = resolveEntityReference(taskIdIndex, 'task', taskId);
-                const display = dependency ? `${dependency.id} - ${dependency.title}` : taskId;
-                return (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-md transition-colors duration-200 min-w-0 max-w-full"
-                >
-                  {dependency ? (
-                    <Link
-                      to={`/task/${stripAnyPrefix(dependency.id)}`}
-                      onClick={onTaskClick ? (e) => { e.preventDefault(); onTaskClick(dependency.id); } : undefined}
-                      className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem] text-left hover:underline"
-                      title={display}
-                    >
-                      {display}
-                    </Link>
-                  ) : (
-                    <span className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem]" title={display}>{display}</span>
-                  )}
-                  {!disabled && (
-                    <button
-                      type="button"
-                      onClick={() => removeDependency(index)}
-                      className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-sm p-0.5 transition-colors duration-200"
-                      aria-label={`${t.common.remove} ${taskId}`}
-                    >
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </span>
-                );
-              })}
-            </div>
-          )}
-          
-          {/* Input field */}
-          <textarea
-            ref={textareaRef}
-            id={inputId}
-            value={inputValue}
-            onInput={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={value.length === 0 ? t.dependencyInput.placeholderEmpty : t.dependencyInput.placeholderAddMore}
-            className="w-full outline-none text-sm bg-transparent resize-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-            rows={1}
-            disabled={disabled}
-          />
-        </div>
+	return (
+		<div>
+			{label ? (
+				<label
+					htmlFor={inputId}
+					className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-200"
+				>
+					{label}
+				</label>
+			) : (
+				<label
+					htmlFor={inputId}
+					className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-200"
+				>
+					{t.dependencyInput.label}
+				</label>
+			)}
+			<div className="relative w-full">
+				<div
+					className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-md focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 focus-within:border-transparent transition-colors duration-200 max-h-60 overflow-auto pr-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+				>
+					{/* Display selected dependencies */}
+					{value.length > 0 && (
+						<div className="flex flex-wrap gap-2 mb-2">
+							{value.map((taskId, index) => {
+								const dependency = resolveEntityReference(taskIdIndex, "task", taskId);
+								const display = dependency ? `${dependency.id} - ${dependency.title}` : taskId;
+								return (
+									<span
+										key={taskId}
+										className="inline-flex items-center gap-1 px-2 py-0.5 text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-md transition-colors duration-200 min-w-0 max-w-full"
+									>
+										{dependency ? (
+											<Link
+												to={`/task/${stripAnyPrefix(dependency.id)}`}
+												onClick={
+													onTaskClick
+														? (e) => {
+																e.preventDefault();
+																onTaskClick(dependency.id);
+															}
+														: undefined
+												}
+												className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem] text-left hover:underline"
+												title={display}
+											>
+												{display}
+											</Link>
+										) : (
+											<span className="truncate max-w-[16rem] sm:max-w-[20rem] md:max-w-[24rem]" title={display}>
+												{display}
+											</span>
+										)}
+										{!disabled && (
+											<button
+												type="button"
+												onClick={() => removeDependency(index)}
+												className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-sm p-0.5 transition-colors duration-200"
+												aria-label={`${t.common.remove} ${taskId}`}
+											>
+												<svg aria-hidden="true" className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+													<path
+														fillRule="evenodd"
+														d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+														clipRule="evenodd"
+													/>
+												</svg>
+											</button>
+										)}
+									</span>
+								);
+							})}
+						</div>
+					)}
 
-        {/* Suggestions dropdown */}
-        {suggestions.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-64 overflow-auto overscroll-contain transition-colors duration-200">
-            {suggestions.map((task, index) => (
-              <button
-                key={task.id}
-                type="button"
-                onClick={() => addDependency(task.id)}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 ${
-                  index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white">
-                  <span>{task.id}</span>
-                  {task.source === 'completed' && (
-                    <CompletedBadge className="rounded-circle px-1.5 py-0.5 text-[10px] font-medium" />
-                  )}
-                </div>
-                <div className="text-gray-600 dark:text-gray-300 break-words whitespace-normal">{task.title}</div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+					{/* Input field */}
+					<textarea
+						ref={textareaRef}
+						id={inputId}
+						value={inputValue}
+						onInput={handleInputChange}
+						onKeyDown={handleKeyDown}
+						placeholder={value.length === 0 ? t.dependencyInput.placeholderEmpty : t.dependencyInput.placeholderAddMore}
+						className="w-full outline-none text-sm bg-transparent resize-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+						rows={1}
+						disabled={disabled}
+					/>
+				</div>
+
+				{/* Suggestions dropdown */}
+				{suggestions.length > 0 && (
+					<div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-64 overflow-auto overscroll-contain transition-colors duration-200">
+						{suggestions.map((task, index) => (
+							<button
+								key={task.id}
+								type="button"
+								onClick={() => addDependency(task.id)}
+								className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 ${
+									index === selectedIndex ? "bg-gray-100 dark:bg-gray-700" : ""
+								}`}
+							>
+								<div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white">
+									<span>{task.id}</span>
+									{task.source === "completed" && (
+										<CompletedBadge className="rounded-circle px-1.5 py-0.5 text-[10px] font-medium" />
+									)}
+								</div>
+								<div className="text-gray-600 dark:text-gray-300 break-words whitespace-normal">{task.title}</div>
+							</button>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
 };
 
 export default DependencyInput;

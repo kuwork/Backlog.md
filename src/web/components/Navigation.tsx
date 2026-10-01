@@ -1,42 +1,42 @@
-import React from 'react';
-import { useI18n } from '../hooks/useI18n';
-import { BranchIndexingIndicator } from './BranchIndexingIndicator';
-import { GraphStatusIndicator } from './GraphStatusIndicator';
-import ThemeToggle from './ThemeToggle';
-import TocButton from './TocButton';
+import type React from "react";
+import { useI18n } from "../hooks/useI18n";
+import { BranchIndexingIndicator } from "./BranchIndexingIndicator";
+import { GraphStatusIndicator } from "./GraphStatusIndicator";
+import ThemeToggle from "./ThemeToggle";
+import TocButton from "./TocButton";
 
 interface NavigationProps {
-    projectName: string;
-    loadingMessage?: string | null;
-    graphStatus?: "building" | "ready" | null;
+	projectName: string;
+	loadingMessage?: string | null;
+	graphStatus?: "building" | "ready" | null;
 }
 
-const Navigation: React.FC<NavigationProps> = ({projectName, loadingMessage, graphStatus}) => {
-    const { t } = useI18n();
-    return (
-        <nav className="relative z-20 px-8 h-18 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
-            <div className="h-full flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{projectName || t.common.loading}</h1>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{t.nav.poweredBy}</span>
-                    <a
-                        href="https://backlog.md"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-stone-600 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-300 hover:underline transition-colors duration-200"
-                    >
-                        Backlog.md
-                    </a>
-                </div>
-                <div className="flex items-center gap-1">
-                    <BranchIndexingIndicator message={loadingMessage} />
-                    <GraphStatusIndicator status={graphStatus ?? null} />
-                    <TocButton />
-                    <ThemeToggle />
-                </div>
-            </div>
-        </nav>
-    );
+const Navigation: React.FC<NavigationProps> = ({ projectName, loadingMessage, graphStatus }) => {
+	const { t } = useI18n();
+	return (
+		<nav className="relative z-20 px-8 h-18 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
+			<div className="h-full flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{projectName || t.common.loading}</h1>
+					<span className="text-sm text-gray-500 dark:text-gray-400">{t.nav.poweredBy}</span>
+					<a
+						href="https://backlog.md"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-sm text-stone-600 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-300 hover:underline transition-colors duration-200"
+					>
+						Backlog.md
+					</a>
+				</div>
+				<div className="flex items-center gap-1">
+					<BranchIndexingIndicator message={loadingMessage} />
+					<GraphStatusIndicator status={graphStatus ?? null} />
+					<TocButton />
+					<ThemeToggle />
+				</div>
+			</div>
+		</nav>
+	);
 };
 
 export default Navigation;

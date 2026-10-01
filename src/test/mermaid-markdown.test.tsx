@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import React from "react";
-import { act } from "react";
-import { renderToString } from "react-dom/server";
-import { createRoot, type Root } from "react-dom/client";
 import { JSDOM } from "jsdom";
+import type React from "react";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import type { Document as BacklogDocument, Decision, Task } from "../types/index.ts";
 import MermaidMarkdown, { parseLocalUrl } from "../web/components/MermaidMarkdown.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { TaskIdIndexProvider } from "../web/contexts/TaskIdIndexContext.tsx";
 import { ThemeProvider, useTheme } from "../web/contexts/ThemeContext.tsx";
-import type { Decision, Document as BacklogDocument, Task } from "../types/index.ts";
 
 const originalFetch = globalThis.fetch;
 const originalWindowGlobal = (globalThis as { window?: typeof window }).window;
@@ -68,8 +68,7 @@ const render = (source: string, props?: Partial<React.ComponentProps<typeof Merm
 
 describe("MermaidMarkdown", () => {
 	it("renders angle-bracket type strings without throwing", () => {
-		const source =
-			"Implemented contracts: getDishesByMenu(String menuId) -> Result<List<MenuItem>>";
+		const source = "Implemented contracts: getDishesByMenu(String menuId) -> Result<List<MenuItem>>";
 
 		expect(() => render(source)).not.toThrow();
 
@@ -108,10 +107,7 @@ describe("MermaidMarkdown", () => {
 
 		expect(renderedDocument.querySelector("#first-heading")).toBeTruthy();
 		expect(renderedDocument.querySelector("#second-heading")).toBeTruthy();
-		expect(links).toEqual([
-			"/tasks/BACK-536?view=detail#first-heading",
-			"/tasks/BACK-536?view=detail#second-heading",
-		]);
+		expect(links).toEqual(["/tasks/BACK-536?view=detail#first-heading", "/tasks/BACK-536?view=detail#second-heading"]);
 	});
 
 	describe("heading github-slugger IDs with prefix metadata", () => {
@@ -333,7 +329,9 @@ describe("MermaidMarkdown", () => {
 			});
 
 			it("parses full same-origin task URLs", () => {
-				const result = parseLocalUrl("http://localhost:6420/task/506/Fix-CLI-actualStart-actualEnd-missing-local-to-UTC-conversion");
+				const result = parseLocalUrl(
+					"http://localhost:6420/task/506/Fix-CLI-actualStart-actualEnd-missing-local-to-UTC-conversion",
+				);
 				expect(result).toEqual({ type: "task", id: "506", alias: "TASK#506" });
 			});
 
@@ -364,7 +362,12 @@ describe("MermaidMarkdown", () => {
 
 			it("parses line range on wiki links", () => {
 				const result = parseLocalUrl("/wiki/concepts/demo:10-20");
-				expect(result).toEqual({ type: "wiki", id: "concepts/demo", alias: "WIKI#concepts/demo:10-20", range: { lineStart: 10, lineEnd: 20 } });
+				expect(result).toEqual({
+					type: "wiki",
+					id: "concepts/demo",
+					alias: "WIKI#concepts/demo:10-20",
+					range: { lineStart: 10, lineEnd: 20 },
+				});
 			});
 
 			it("returns no range for plain local links", () => {
@@ -379,7 +382,12 @@ describe("MermaidMarkdown", () => {
 
 			it("parses line range on decision links", () => {
 				const result = parseLocalUrl("/decisions/7:5-10");
-				expect(result).toEqual({ type: "decision", id: "7", alias: "Decisions#7:5-10", range: { lineStart: 5, lineEnd: 10 } });
+				expect(result).toEqual({
+					type: "decision",
+					id: "7",
+					alias: "Decisions#7:5-10",
+					range: { lineStart: 5, lineEnd: 10 },
+				});
 			});
 		});
 	});
@@ -398,18 +406,18 @@ describe("MermaidMarkdown", () => {
 			const source = "![[assets/demo.mp4|Demo video]]";
 			const html = render(source, { wikilinkBasePath: "index.md" });
 
-			expect(html).toContain('<video');
+			expect(html).toContain("<video");
 			expect(html).toContain('src="/assets/demo.mp4"');
-			expect(html).toContain('controls');
+			expect(html).toContain("controls");
 		});
 
 		it("renders audio wikilink as audio tag", () => {
 			const source = "![[assets/demo.mp3]]";
 			const html = render(source, { wikilinkBasePath: "index.md" });
 
-			expect(html).toContain('<audio');
+			expect(html).toContain("<audio");
 			expect(html).toContain('src="/assets/demo.mp3"');
-			expect(html).toContain('controls');
+			expect(html).toContain("controls");
 		});
 
 		it("applies dimensions to image wikilink", () => {
@@ -425,7 +433,7 @@ describe("MermaidMarkdown", () => {
 			const html = render(source, { wikilinkBasePath: "index.md" });
 
 			expect(html).toContain('width="200"');
-			expect(html).not.toContain('height=');
+			expect(html).not.toContain("height=");
 		});
 
 		it("applies shorthand width to video wikilink", () => {
@@ -434,7 +442,7 @@ describe("MermaidMarkdown", () => {
 
 			expect(html).toContain('src="/assets/demo.mp4"');
 			expect(html).toContain('width="200"');
-			expect(html).not.toContain('height=');
+			expect(html).not.toContain("height=");
 		});
 
 		it("does not render media wikilinks without wikilinkBasePath", () => {
@@ -705,12 +713,7 @@ describe("MermaidMarkdown", () => {
 			renderToString(
 				<I18nProvider initialLocale="en">
 					<ImageLightboxProvider>
-						<TaskIdIndexProvider
-							tasks={tasks}
-							docs={knownDocs}
-							decisions={knownDecisions}
-							drafts={knownDrafts}
-						>
+						<TaskIdIndexProvider tasks={tasks} docs={knownDocs} decisions={knownDecisions} drafts={knownDrafts}>
 							<MermaidMarkdown source={source} />
 						</TaskIdIndexProvider>
 					</ImageLightboxProvider>
@@ -725,12 +728,7 @@ describe("MermaidMarkdown", () => {
 		it("links bare entity IDs of every kind to the singular routes", () => {
 			const html = renderLinked("See BACK-123, doc-9, decision-1 and DRAFT-104.");
 
-			expect(hrefs(html)).toEqual([
-				"/task/123",
-				"/documentation/9",
-				"/decisions/1",
-				"/draft/104",
-			]);
+			expect(hrefs(html)).toEqual(["/task/123", "/documentation/9", "/decisions/1", "/draft/104"]);
 		});
 
 		it("links lowercase and zero-padded references to the canonical href", () => {
@@ -753,7 +751,9 @@ describe("MermaidMarkdown", () => {
 		});
 
 		it("does not auto-link tokens that only look like entity IDs", () => {
-			const html = renderLinked("Encoding UTF-8, dates in ISO-8601, release v1.2.3, file BACK-1.md, branch my-task-100.");
+			const html = renderLinked(
+				"Encoding UTF-8, dates in ISO-8601, release v1.2.3, file BACK-1.md, branch my-task-100.",
+			);
 
 			expect(hrefs(html)).toEqual([]);
 		});
@@ -765,7 +765,10 @@ describe("MermaidMarkdown", () => {
 		});
 
 		it("does not auto-link ambiguous canonical IDs", () => {
-			const html = renderLinked("Ambiguous BACK-1 and unambiguous BACK-2.", taskFixtures("BACK-1", "BACK-01", "BACK-2"));
+			const html = renderLinked(
+				"Ambiguous BACK-1 and unambiguous BACK-2.",
+				taskFixtures("BACK-1", "BACK-01", "BACK-2"),
+			);
 
 			expect(hrefs(html)).toEqual(["/task/2"]);
 		});

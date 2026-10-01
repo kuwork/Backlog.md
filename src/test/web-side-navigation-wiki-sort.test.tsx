@@ -165,16 +165,7 @@ describe("SideNavigation wiki tree sorting", () => {
 
 		expect(sortIndicators(container, FILE_HINT)).toEqual({ up: true, down: false });
 		expect(sortIndicators(container, TITLE_HINT)).toEqual({ up: false, down: false });
-		expectWikiOrder(container, [
-			"archive",
-			"guides",
-			"auto-port",
-			"deploy",
-			"zeta",
-			"index",
-			"log",
-			"overview",
-		]);
+		expectWikiOrder(container, ["archive", "guides", "auto-port", "deploy", "zeta", "index", "log", "overview"]);
 		// The list prints the field it is sorted by: the titles are gone, the file names are in.
 		expect(wikiRegion(container)).not.toContain("Charlie runbook");
 	});
@@ -185,16 +176,7 @@ describe("SideNavigation wiki tree sorting", () => {
 		clickSort(container, FILE_HINT);
 
 		expect(sortIndicators(container, FILE_HINT)).toEqual({ up: false, down: true });
-		expectWikiOrder(container, [
-			"guides",
-			"zeta",
-			"deploy",
-			"auto-port",
-			"archive",
-			"overview",
-			"log",
-			"index",
-		]);
+		expectWikiOrder(container, ["guides", "zeta", "deploy", "auto-port", "archive", "overview", "log", "index"]);
 	});
 
 	it("restarts ascending when the other column is selected", () => {

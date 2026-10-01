@@ -1,30 +1,25 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { apiClient } from "../lib/api";
-import type {
-	Milestone,
-	SearchPriorityFilter,
-	StatusesConfig,
-	Task,
-	TaskSearchResult,
-} from "../../types";
+import type { Milestone, SearchPriorityFilter, StatusesConfig, Task, TaskSearchResult } from "../../types";
 import { collectAvailableLabels } from "../../utils/label-filter.ts";
+import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import { isTerminalStatus } from "../../utils/terminal-status.ts";
-import { collectArchivedMilestoneKeys, getMilestoneLabel, milestoneKey } from "../utils/milestones";
+import { useCompletedTasks } from "../hooks/useCompletedTasks";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
 import { parseStoredUtcDate } from "../utils/date-display";
+import { collectArchivedMilestoneKeys, getMilestoneLabel, milestoneKey } from "../utils/milestones";
 import { getPriorityBadgeColor, getStatusBadgeColor } from "../utils/task-badge-colors";
-import CleanupModal from "./CleanupModal";
 import AcceptanceCriteriaProgress from "./AcceptanceCriteriaProgress";
+import CleanupModal from "./CleanupModal";
 import CompletedBadge from "./CompletedBadge";
-import StoredDate from "./StoredDate";
 import CompletedFilterToggle from "./CompletedFilterToggle";
 import LabelFilterDropdown from "./LabelFilterDropdown";
 import StatusExcludeDropdown from "./StatusExcludeDropdown";
 import StatusFilterDropdown from "./StatusFilterDropdown";
+import StoredDate from "./StoredDate";
 import { SuccessToast } from "./SuccessToast";
-import { useI18n } from "../hooks/useI18n";
-import { useCompletedTasks } from "../hooks/useCompletedTasks";
-import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 
 interface TaskListProps {
 	onEditTask: (task: Task) => void;
@@ -104,6 +99,7 @@ const TaskList: React.FC<TaskListProps> = ({
 }) => {
 	const { t } = useI18n();
 	const [searchParams, setSearchParams] = useSearchParams();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const initialStatusParams = useMemo(() => {
 		return searchParams
 			.getAll("status")
@@ -111,6 +107,7 @@ const TaskList: React.FC<TaskListProps> = ({
 			.map((status) => status.trim())
 			.filter((status) => status.length > 0);
 	}, []);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const initialStatusExcludedParams = useMemo(() => {
 		return searchParams
 			.getAll("statusExcluded")
@@ -130,6 +127,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		() => (searchParams.get("priority") as SearchPriorityFilter | null) ?? "",
 	);
 	const [milestoneFilter, setMilestoneFilter] = useState(() => searchParams.get("milestone") ?? "");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const initialLabelParams = useMemo(() => {
 		const labels = [...searchParams.getAll("label"), ...searchParams.getAll("labels")];
 		const labelsCsv = searchParams.get("labels");
@@ -150,7 +148,8 @@ const TaskList: React.FC<TaskListProps> = ({
 	const tableBodyScrollRef = useRef<HTMLDivElement | null>(null);
 	const isSyncingTableScrollRef = useRef(false);
 	const isFilteringTerminalStatus =
-		statusFilter.length > 0 && statusFilter.every((status) => isTerminalStatus(status, statusesConfig ?? availableStatuses));
+		statusFilter.length > 0 &&
+		statusFilter.every((status) => isTerminalStatus(status, statusesConfig ?? availableStatuses));
 	const milestoneAliasToCanonical = useMemo(() => {
 		const aliasMap = new Map<string, string>();
 		const collectIdAliasKeys = (value: string): string[] => {
@@ -219,7 +218,7 @@ const TaskList: React.FC<TaskListProps> = ({
 			if (!title) continue;
 			const titleKey = title.toLowerCase();
 			activeTitleCounts.set(titleKey, (activeTitleCounts.get(titleKey) ?? 0) + 1);
-		};
+		}
 		const activeTitleKeys = new Set(activeTitleCounts.keys());
 		for (const milestone of milestoneEntities ?? []) {
 			const id = milestone.id.trim();
@@ -261,7 +260,8 @@ const TaskList: React.FC<TaskListProps> = ({
 		return aliasMap;
 	}, [milestoneEntities, archivedMilestones]);
 	const archivedMilestoneKeys = useMemo(
-		() => new Set(collectArchivedMilestoneKeys(archivedMilestones, milestoneEntities).map((value) => milestoneKey(value))),
+		() =>
+			new Set(collectArchivedMilestoneKeys(archivedMilestones, milestoneEntities).map((value) => milestoneKey(value))),
 		[archivedMilestones, milestoneEntities],
 	);
 	const canonicalizeMilestone = (value?: string | null): string => {
@@ -275,11 +275,15 @@ const TaskList: React.FC<TaskListProps> = ({
 		const idMatch = normalized.match(/^m-(\d+)$/i);
 		if (idMatch?.[1]) {
 			const numericAlias = String(Number.parseInt(idMatch[1], 10));
-			return milestoneAliasToCanonical.get(`m-${numericAlias}`) ?? milestoneAliasToCanonical.get(numericAlias) ?? normalized;
+			return (
+				milestoneAliasToCanonical.get(`m-${numericAlias}`) ?? milestoneAliasToCanonical.get(numericAlias) ?? normalized
+			);
 		}
 		if (/^\d+$/.test(normalized)) {
 			const numericAlias = String(Number.parseInt(normalized, 10));
-			return milestoneAliasToCanonical.get(`m-${numericAlias}`) ?? milestoneAliasToCanonical.get(numericAlias) ?? normalized;
+			return (
+				milestoneAliasToCanonical.get(`m-${numericAlias}`) ?? milestoneAliasToCanonical.get(numericAlias) ?? normalized
+			);
 		}
 		return normalized;
 	};
@@ -309,6 +313,7 @@ const TaskList: React.FC<TaskListProps> = ({
 	);
 	const totalTasks = sortedBaseTasks.length;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const normalizedStatuses = searchParams
 			.getAll("status")
@@ -357,6 +362,7 @@ const TaskList: React.FC<TaskListProps> = ({
 		}
 	}, [hasActiveFilters, sortedBaseTasks]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const filterByMilestone = (list: Task[]): Task[] => {
 			const normalized = canonicalizeMilestone(milestoneFilter);
@@ -645,6 +651,7 @@ const TaskList: React.FC<TaskListProps> = ({
 
 	const currentCount = sortedDisplayTasks.length;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const headerEl = tableHeaderScrollRef.current;
 		const bodyEl = tableBodyScrollRef.current;
@@ -674,12 +681,13 @@ const TaskList: React.FC<TaskListProps> = ({
 		<div className="page-shell transition-colors duration-200">
 			<div className="flex flex-col gap-4 mb-6">
 				<div className="flex items-center justify-between gap-3">
-						<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.taskList.title}</h1>
-						<button
-							className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
-							onClick={onNewTask}
-						>
-							{t.taskList.newTask}
+					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.taskList.title}</h1>
+					<button
+						type="button"
+						className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
+						onClick={onNewTask}
+					>
+						{t.taskList.newTask}
 					</button>
 				</div>
 
@@ -757,8 +765,20 @@ const TaskList: React.FC<TaskListProps> = ({
 								className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
 								title={t.taskColumn.cleanUpTitle}
 							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								<svg
+									aria-hidden="true"
+									className="w-4 h-4"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
 								</svg>
 								{t.taskColumn.cleanUp}
 							</button>
@@ -779,23 +799,35 @@ const TaskList: React.FC<TaskListProps> = ({
 
 			{currentCount === 0 ? (
 				<div className="text-center py-12">
-					<svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+					<svg
+						aria-hidden="true"
+						className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+						/>
 					</svg>
 					<h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
 						{hasActiveFilters ? t.taskList.noTasksMatchFilters : t.taskList.noTasks}
 					</h3>
 					<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-						{hasActiveFilters
-							? t.taskList.tryAdjustingFilters
-							: t.taskList.getStarted}
+						{hasActiveFilters ? t.taskList.tryAdjustingFilters : t.taskList.getStarted}
 					</p>
 				</div>
 			) : (
 				<div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 					<div className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/95 backdrop-blur supports-[backdrop-filter]:bg-gray-50/90 supports-[backdrop-filter]:dark:bg-gray-700/85">
 						<div ref={tableHeaderScrollRef} className="overflow-x-auto" style={{ overflowY: "hidden" }}>
-							<table className="w-full table-fixed border-collapse" style={{ minWidth: `${TASK_TABLE_MIN_WIDTH_REM}rem` }}>
+							<table
+								className="w-full table-fixed border-collapse"
+								style={{ minWidth: `${TASK_TABLE_MIN_WIDTH_REM}rem` }}
+							>
 								{renderColumnGroup()}
 								<thead>
 									<tr className="text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
@@ -813,7 +845,10 @@ const TaskList: React.FC<TaskListProps> = ({
 						</div>
 					</div>
 					<div ref={tableBodyScrollRef} className="overflow-x-auto" style={{ overflowY: "hidden" }}>
-						<table className="w-full table-fixed border-collapse" style={{ minWidth: `${TASK_TABLE_MIN_WIDTH_REM}rem` }}>
+						<table
+							className="w-full table-fixed border-collapse"
+							style={{ minWidth: `${TASK_TABLE_MIN_WIDTH_REM}rem` }}
+						>
 							{renderColumnGroup()}
 							<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 								{sortedDisplayTasks.map((task) => {
@@ -865,7 +900,9 @@ const TaskList: React.FC<TaskListProps> = ({
 												</div>
 											</td>
 											<td className="px-3 py-2.5">
-												<span className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${getStatusColor(task.status)}`}>
+												<span
+													className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${getStatusColor(task.status)}`}
+												>
 													{task.status}
 												</span>
 											</td>
@@ -920,7 +957,10 @@ const TaskList: React.FC<TaskListProps> = ({
 													<span className="text-xs text-gray-300 dark:text-gray-600">—</span>
 												)}
 											</td>
-											<td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 truncate" title={milestoneLabel}>
+											<td
+												className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 truncate"
+												title={milestoneLabel}
+											>
 												{milestoneLabel}
 											</td>
 											<td className="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -948,8 +988,13 @@ const TaskList: React.FC<TaskListProps> = ({
 					message={cleanupSuccessMessage}
 					onDismiss={() => setCleanupSuccessMessage(null)}
 					icon={
-						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+						<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
 						</svg>
 					}
 				/>

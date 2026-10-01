@@ -1,13 +1,14 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useI18n } from '../hooks/useI18n';
-import { apiClient } from '../lib/api';
-import { type Milestone, type SearchPriorityFilter, type Task } from '../../types';
-import LabelFilterDropdown from './LabelFilterDropdown';
-import { collectAvailableLabels } from '../../utils/label-filter.ts';
-import { getMilestoneLabel } from '../utils/milestones';
-import { getPriorityBadgeColor } from '../utils/task-badge-colors';
-import StoredDate from './StoredDate';
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import type { Milestone, SearchPriorityFilter, Task } from "../../types";
+import { collectAvailableLabels } from "../../utils/label-filter.ts";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import { getMilestoneLabel } from "../utils/milestones";
+import { getPriorityBadgeColor } from "../utils/task-badge-colors";
+import LabelFilterDropdown from "./LabelFilterDropdown";
+import StoredDate from "./StoredDate";
 
 interface DraftsListProps {
 	onEditTask: (task: Task) => void;
@@ -38,6 +39,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 		() => (searchParams.get("priority") as SearchPriorityFilter | null) ?? "",
 	);
 	const [milestoneFilter, setMilestoneFilter] = useState(() => searchParams.get("milestone") ?? "");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const initialLabelParams = useMemo(() => {
 		const labels = [...searchParams.getAll("label"), ...searchParams.getAll("labels")];
 		const labelsCsv = searchParams.get("labels");
@@ -47,6 +49,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 	const [labelFilter, setLabelFilter] = useState<string[]>(initialLabelParams);
 	const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		loadDrafts();
 
@@ -54,13 +57,14 @@ const DraftsList: React.FC<DraftsListProps> = ({
 			loadDrafts();
 		};
 
-		window.addEventListener('drafts-updated', handleDraftsUpdated);
+		window.addEventListener("drafts-updated", handleDraftsUpdated);
 		return () => {
-			window.removeEventListener('drafts-updated', handleDraftsUpdated);
+			window.removeEventListener("drafts-updated", handleDraftsUpdated);
 		};
 	}, []);
 
 	// Sync URL params -> state on external navigation
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const paramStatus = searchParams.get("status") ?? "";
 		const paramPriority = (searchParams.get("priority") as SearchPriorityFilter | null) ?? "";
@@ -81,20 +85,20 @@ const DraftsList: React.FC<DraftsListProps> = ({
 	const loadDrafts = async () => {
 		try {
 			setLoading(true);
-			const response = await fetch('/api/drafts');
+			const response = await fetch("/api/drafts");
 			if (!response.ok) {
 				throw new Error(`Failed to load drafts: ${response.statusText}`);
 			}
 			const draftsData = await response.json();
 			const sortedDrafts = [...draftsData].sort((a: Task, b: Task) => {
-				const idA = parseInt(a.id.replace(/^\D+/, ''), 10);
-				const idB = parseInt(b.id.replace(/^\D+/, ''), 10);
+				const idA = Number.parseInt(a.id.replace(/^\D+/, ""), 10);
+				const idB = Number.parseInt(b.id.replace(/^\D+/, ""), 10);
 				return idB - idA;
 			});
 			setDrafts(sortedDrafts);
 			setError(null);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to load drafts');
+			setError(err instanceof Error ? err.message : "Failed to load drafts");
 		} finally {
 			setLoading(false);
 		}
@@ -105,10 +109,10 @@ const DraftsList: React.FC<DraftsListProps> = ({
 		try {
 			const newTask = await apiClient.promoteDraft(draftId);
 			await loadDrafts();
-			window.dispatchEvent(new CustomEvent('drafts-updated'));
+			window.dispatchEvent(new CustomEvent("drafts-updated"));
 			onEditTask(newTask);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to promote draft');
+			setError(err instanceof Error ? err.message : "Failed to promote draft");
 		}
 	};
 
@@ -135,9 +139,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 		if (query) {
 			const normalizedQuery = query.toLowerCase();
 			result = result.filter(
-				(d) =>
-					d.id.toLowerCase().includes(normalizedQuery) ||
-					d.title.toLowerCase().includes(normalizedQuery),
+				(d) => d.id.toLowerCase().includes(normalizedQuery) || d.title.toLowerCase().includes(normalizedQuery),
 			);
 		}
 		return result;
@@ -223,8 +225,11 @@ const DraftsList: React.FC<DraftsListProps> = ({
 	if (error) {
 		return (
 			<div className="flex-1 flex items-center justify-center">
-				<div className="text-red-600 dark:text-red-400">{t.common.error}: {error}</div>
+				<div className="text-red-600 dark:text-red-400">
+					{t.common.error}: {error}
+				</div>
 				<button
+					type="button"
 					onClick={loadDrafts}
 					className="ml-4 inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
 				>
@@ -240,6 +245,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 				<div className="flex items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.drafts.title}</h1>
 					<button
+						type="button"
 						className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
 						onClick={onNewDraft}
 					>
@@ -251,8 +257,13 @@ const DraftsList: React.FC<DraftsListProps> = ({
 					<div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
 						<div className="relative w-full min-w-[200px] max-w-[320px]">
 							<span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
-								<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+								<svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
 								</svg>
 							</span>
 							<input
@@ -268,7 +279,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 									onClick={() => handleSearchChange("")}
 									className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
 								>
-									<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 									</svg>
 								</button>
@@ -282,7 +293,9 @@ const DraftsList: React.FC<DraftsListProps> = ({
 						>
 							<option value="">{t.taskList.allStatuses}</option>
 							{availableStatuses.map((status) => (
-								<option key={status} value={status}>{status}</option>
+								<option key={status} value={status}>
+									{status}
+								</option>
 							))}
 						</select>
 
@@ -324,7 +337,7 @@ const DraftsList: React.FC<DraftsListProps> = ({
 							type="button"
 							onClick={handleClearFilters}
 							className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 whitespace-nowrap"
-							style={{ visibility: hasActiveFilters ? 'visible' : 'hidden' }}
+							style={{ visibility: hasActiveFilters ? "visible" : "hidden" }}
 						>
 							{t.common.clear}
 						</button>
@@ -337,8 +350,19 @@ const DraftsList: React.FC<DraftsListProps> = ({
 
 			{filteredDrafts.length === 0 ? (
 				<div className="text-center py-12">
-					<svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+					<svg
+						aria-hidden="true"
+						className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+						/>
 					</svg>
 					<h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
 						{hasActiveFilters ? t.drafts.noDraftsMatchFilters : t.drafts.noDrafts}
@@ -355,20 +379,26 @@ const DraftsList: React.FC<DraftsListProps> = ({
 							className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
 						>
 							<div className="flex items-start justify-between">
-								<div className="flex-1 cursor-pointer" onClick={() => onEditTask(draft)}>
+								<button type="button" className="text-left flex-1 cursor-pointer" onClick={() => onEditTask(draft)}>
 									<div className="flex items-center space-x-3 mb-2">
 										<h3 className="text-lg font-medium text-gray-900 dark:text-white">{draft.title}</h3>
 										{draft.priority && (
-											<span className={`px-2 py-1 text-xs font-medium rounded-circle ${getPriorityColor(draft.priority)}`}>
+											<span
+												className={`px-2 py-1 text-xs font-medium rounded-circle ${getPriorityColor(draft.priority)}`}
+											>
 												{draft.priority}
 											</span>
 										)}
 									</div>
 									<div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
 										<span>{draft.id}</span>
-										<span>{t.drafts.created}: <StoredDate value={draft.createdDate} /></span>
+										<span>
+											{t.drafts.created}: <StoredDate value={draft.createdDate} />
+										</span>
 										{draft.updatedDate && (
-											<span>{t.drafts.updated}: <StoredDate value={draft.updatedDate} /></span>
+											<span>
+												{t.drafts.updated}: <StoredDate value={draft.updatedDate} />
+											</span>
 										)}
 									</div>
 									{draft.assignee && draft.assignee.length > 0 && (
@@ -376,7 +406,10 @@ const DraftsList: React.FC<DraftsListProps> = ({
 											<span className="text-sm text-gray-500 dark:text-gray-400">{t.drafts.assignedTo}:</span>
 											<div className="flex flex-wrap gap-1">
 												{draft.assignee.map((person) => (
-													<span key={person} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 rounded-circle">
+													<span
+														key={person}
+														className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 rounded-circle"
+													>
 														{person}
 													</span>
 												))}
@@ -386,15 +419,19 @@ const DraftsList: React.FC<DraftsListProps> = ({
 									{draft.labels && draft.labels.length > 0 && (
 										<div className="flex flex-wrap gap-1">
 											{draft.labels.map((label) => (
-												<span key={label} className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-circle">
+												<span
+													key={label}
+													className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-circle"
+												>
 													{label}
 												</span>
 											))}
 										</div>
 									)}
-								</div>
+								</button>
 								<div className="ml-4">
 									<button
+										type="button"
 										onClick={(e) => {
 											e.stopPropagation();
 											handlePromoteDraft(draft.id);

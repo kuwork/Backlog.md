@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAutoFocus } from "../hooks/useAutoFocus";
+import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
+import { dateTimeLocalToStoredUtc, storedUtcToDateTimeLocal } from "../utils/date-display";
+import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
-import { apiClient } from "../lib/api";
-import { useTheme } from "../contexts/ThemeContext";
-import { useI18n } from "../hooks/useI18n";
-import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
-import { dateTimeLocalToStoredUtc, storedUtcToDateTimeLocal } from "../utils/date-display";
 
 interface Props {
 	isOpen: boolean;
@@ -27,6 +29,7 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const [name, setName] = useState("");
+	const nameInputRef = useAutoFocus<HTMLInputElement>();
 	const [description, setDescription] = useState("");
 	const [dueDate, setDueDate] = useState("");
 	const [plannedStart, setPlannedStart] = useState("");
@@ -110,22 +113,33 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 			<form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
 				<div className="space-y-4 md:col-span-2">
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.milestones.nameLabel}</label>
+						<label
+							htmlFor="milestone-add-modal-name-label"
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+						>
+							{t.milestones.nameLabel}
+						</label>
 						<input
+							id="milestone-add-modal-name-label"
 							type="text"
 							value={name}
 							onChange={(e) => {
 								setName(e.target.value);
 								if (error) setError(null);
 							}}
+							ref={nameInputRef}
 							placeholder={t.milestones.namePlaceholder}
-							autoFocus
 							className={inputClass}
 						/>
 						{error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 					</div>
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.milestones.descriptionLabel}</label>
+						<label
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+							htmlFor="milestone-add-modal-description"
+						>
+							{t.milestones.descriptionLabel}
+						</label>
 						<div className="border border-gray-200 dark:border-gray-700 rounded-md">
 							<PasteAwareMDEditor
 								value={description}
@@ -133,6 +147,7 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 								preview="edit"
 								height={260}
 								data-color-mode={theme}
+								textareaProps={{ id: "milestone-add-modal-description" }}
 							/>
 						</div>
 					</div>
@@ -142,7 +157,7 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 							{documentation.length > 0 ? (
 								<ul className="space-y-2">
 									{documentation.map((doc, idx) => (
-										<li key={idx} className="flex items-center gap-3 group">
+										<li key={doc} className="flex items-center gap-3 group">
 											<span className="flex-1 min-w-0">
 												{doc.startsWith("http://") || doc.startsWith("https://") ? (
 													<a
@@ -165,7 +180,13 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 												className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
 												title={t.taskDetails.removeDocumentation}
 											>
-												<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<svg
+													aria-hidden="true"
+													className="w-4 h-4"
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+												>
 													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 												</svg>
 											</button>
@@ -184,7 +205,9 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 								<button
 									type="button"
 									onClick={(e) => {
-										const input = (e.currentTarget.parentElement?.querySelector("input[name='newDoc']") as HTMLInputElement | null);
+										const input = e.currentTarget.parentElement?.querySelector(
+											"input[name='newDoc']",
+										) as HTMLInputElement | null;
 										const value = input?.value.trim() ?? "";
 										if (value && !documentation.includes(value)) {
 											setDocumentation([...documentation, value]);
@@ -201,14 +224,29 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 				</div>
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.taskDetails.section.dueDate}</label>
-						<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+						<label
+							htmlFor="milestone-add-modal-due-date"
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+						>
+							{t.taskDetails.section.dueDate}
+						</label>
+						<input
+							id="milestone-add-modal-due-date"
+							type="date"
+							value={dueDate}
+							onChange={(e) => setDueDate(e.target.value)}
+							className={inputClass}
+						/>
 					</div>
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+						<label
+							htmlFor="milestone-add-modal-planned-start"
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+						>
 							{t.taskDetails.section.plannedStart}
 						</label>
 						<input
+							id="milestone-add-modal-planned-start"
 							type="date"
 							value={plannedStart}
 							onChange={(e) => setPlannedStart(e.target.value)}
@@ -216,16 +254,29 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 						/>
 					</div>
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+						<label
+							htmlFor="milestone-add-modal-planned-end"
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+						>
 							{t.taskDetails.section.plannedEnd}
 						</label>
-						<input type="date" value={plannedEnd} onChange={(e) => setPlannedEnd(e.target.value)} className={inputClass} />
+						<input
+							id="milestone-add-modal-planned-end"
+							type="date"
+							value={plannedEnd}
+							onChange={(e) => setPlannedEnd(e.target.value)}
+							className={inputClass}
+						/>
 					</div>
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+						<label
+							htmlFor="milestone-add-modal-actual-start"
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+						>
 							{t.taskDetails.section.actualStart}
 						</label>
 						<input
+							id="milestone-add-modal-actual-start"
 							type="datetime-local"
 							value={storedUtcToDateTimeLocal(actualStart)}
 							onChange={(e) => setActualStart(dateTimeLocalToStoredUtc(e.target.value))}
@@ -233,10 +284,14 @@ const MilestoneAddModal: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
 						/>
 					</div>
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+						<label
+							htmlFor="milestone-add-modal-actual-end"
+							className="text-sm font-medium text-gray-900 dark:text-gray-100"
+						>
 							{t.taskDetails.section.actualEnd}
 						</label>
 						<input
+							id="milestone-add-modal-actual-end"
 							type="datetime-local"
 							value={storedUtcToDateTimeLocal(actualEnd)}
 							onChange={(e) => setActualEnd(dateTimeLocalToStoredUtc(e.target.value))}

@@ -25,7 +25,7 @@ export interface EntityLinkAutocompleteMenuProps {
  * @uiw/react-md-editor's inner textarea.
  */
 export function EntityLinkAutocompleteMenu({ menu, textarea, onSelect }: EntityLinkAutocompleteMenuProps) {
-	const listRef = useRef<HTMLUListElement | null>(null);
+	const listRef = useRef<HTMLDivElement | null>(null);
 	const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
 	useLayoutEffect(() => {
@@ -44,7 +44,7 @@ export function EntityLinkAutocompleteMenu({ menu, textarea, onSelect }: EntityL
 	}, [menu, textarea]);
 
 	return (
-		<ul
+		<div
 			ref={listRef}
 			role="listbox"
 			aria-label="Insert entity link"
@@ -54,7 +54,7 @@ export function EntityLinkAutocompleteMenu({ menu, textarea, onSelect }: EntityL
 			{menu.candidates.map((candidate, index) => {
 				const selected = index === menu.selectedIndex;
 				return (
-					<li key={`${candidate.kind}:${candidate.id}`} role="option" aria-selected={selected}>
+					<div key={`${candidate.kind}:${candidate.id}`} role="option" aria-selected={selected} tabIndex={-1}>
 						<button
 							type="button"
 							className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
@@ -70,9 +70,9 @@ export function EntityLinkAutocompleteMenu({ menu, textarea, onSelect }: EntityL
 							</span>
 							<span className="truncate font-mono">{candidate.id}</span>
 						</button>
-					</li>
+					</div>
 				);
 			})}
-		</ul>
+		</div>
 	);
 }

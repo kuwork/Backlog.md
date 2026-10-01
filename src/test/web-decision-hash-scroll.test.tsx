@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { JSDOM } from "jsdom";
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { JSDOM } from "jsdom";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import type { Decision as BacklogDecision } from "../types/index.ts";
 import DecisionDetail from "../web/components/DecisionDetail.tsx";
-import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import { TocProvider } from "../web/contexts/TocContext.tsx";
+import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
+import { TocProvider } from "../web/contexts/TocContext.tsx";
 import { useHashScroll } from "../web/hooks/useHashScroll.ts";
 
 const originalFetch = globalThis.fetch;
@@ -46,7 +46,11 @@ function setupInteractiveDom() {
 	globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => setTimeout(callback, 0) as unknown as number;
 	globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);
 	if (!window.matchMedia) {
-		window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as never;
+		window.matchMedia = (() => ({
+			matches: false,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		})) as never;
 	}
 	return dom;
 }

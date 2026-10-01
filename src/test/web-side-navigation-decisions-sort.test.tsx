@@ -120,9 +120,7 @@ const renderNavigation = (locale: Locale = "en"): HTMLElement => {
 // The documents and wiki sections render sort buttons with the same labels, so every lookup has to be
 // scoped to the decisions section rather than to the whole sidebar.
 const decisionsSection = (container: HTMLElement, heading = "Decisions"): HTMLElement => {
-	const label = [...container.querySelectorAll("span")].find((span) =>
-		(span.textContent ?? "").startsWith(heading),
-	);
+	const label = [...container.querySelectorAll("span")].find((span) => (span.textContent ?? "").startsWith(heading));
 	const section = label?.closest(".px-4");
 	if (!section) throw new Error(`no section headed "${heading}"`);
 	return section as HTMLElement;

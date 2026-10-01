@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { SearchResult, SearchResultType, TaskSearchResult } from "../../../types";
-import { apiClient } from "../../lib/api";
 import { useI18n } from "../../hooks/useI18n";
-import { Icons } from "../SideNavigation";
+import { apiClient } from "../../lib/api";
 import {
 	buildSearchRows,
 	getIdMatchIndices,
@@ -13,14 +13,15 @@ import {
 	isModalSearchTarget,
 	mergeHighlightRanges,
 	parseSearchTypeParam,
-	serializeSearchTypeParam,
 	type SearchDialogLocationState,
 	type SearchFilterType,
 	type SearchRow,
+	serializeSearchTypeParam,
 } from "../../utils/search-results";
 import { getPriorityBadgeColor, getStatusBadgeColor } from "../../utils/task-badge-colors";
-import VirtualList, { type VirtualListHandle } from "./VirtualList";
+import { Icons } from "../SideNavigation";
 import Switch from "../Switch";
+import VirtualList, { type VirtualListHandle } from "./VirtualList";
 
 const DESKTOP_ITEM_HEIGHT = 56;
 const DESKTOP_HEADER_HEIGHT = 28;
@@ -47,16 +48,43 @@ const TYPE_ICON_COLORS: Record<SearchResultType, string> = {
 	wiki: "text-blue-600 dark:text-blue-400",
 };
 
-const SearchTypeIcon: React.FC<{ type: SearchResultType | "all"; className?: string }> = ({ type, className = "w-4 h-4" }) => {
+const SearchTypeIcon: React.FC<{ type: SearchResultType | "all"; className?: string }> = ({
+	type,
+	className = "w-4 h-4",
+}) => {
 	// The sidebar SVGs carry their own hardcoded sizes (w-4/w-5); normalize them
 	// to the requested box and center them so they sit mid-line in tabs and rows.
 	const iconClass = `shrink-0 inline-flex items-center justify-center ${className} [&>svg]:w-full [&>svg]:h-full`;
 	// Reuse the established sidebar search icons (same SVG components as SideNavigation)
-	if (type === "document") return <span className={iconClass}><Icons.Document /></span>;
-	if (type === "decision") return <span className={iconClass}><Icons.Decision /></span>;
-	if (type === "wiki") return <span className={iconClass}><Icons.WikiPage /></span>;
-	if (type === "task") return <span className={iconClass}><Icons.Tasks /></span>;
-	return <span className={iconClass}><Icons.Search /></span>;
+	if (type === "document")
+		return (
+			<span className={iconClass}>
+				<Icons.Document />
+			</span>
+		);
+	if (type === "decision")
+		return (
+			<span className={iconClass}>
+				<Icons.Decision />
+			</span>
+		);
+	if (type === "wiki")
+		return (
+			<span className={iconClass}>
+				<Icons.WikiPage />
+			</span>
+		);
+	if (type === "task")
+		return (
+			<span className={iconClass}>
+				<Icons.Tasks />
+			</span>
+		);
+	return (
+		<span className={iconClass}>
+			<Icons.Search />
+		</span>
+	);
 };
 
 const HighlightedText: React.FC<{ text: string; indices: Array<[number, number]> }> = ({ text, indices }) => {
@@ -230,6 +258,7 @@ const SearchDialog: React.FC = () => {
 	}, []);
 
 	// New result set: select the first item row
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const index = rows.findIndex((row) => row.kind === "item");
 		setSelectedRow(index === -1 ? 0 : index);
@@ -488,6 +517,7 @@ const SearchDialog: React.FC = () => {
 					style={{ height: headerHeight }}
 				>
 					<svg
+						aria-hidden="true"
 						className={`w-3 h-3 shrink-0 transition-transform duration-150 ${row.collapsed ? "-rotate-90" : ""}`}
 						fill="none"
 						stroke="currentColor"
@@ -505,7 +535,9 @@ const SearchDialog: React.FC = () => {
 		const idHighlight = getIdMatchIndices(row.result, meta.id);
 		const ordinal = itemOrdinals[rowIndex] ?? null;
 		const isSelected = rowIndex === selectedRow;
-		const rowBaseClass = isNarrow ? "w-full h-full flex items-start flex-col justify-center gap-1 px-4 py-2 text-left" : "w-full h-full flex items-center gap-3 px-4 text-left";
+		const rowBaseClass = isNarrow
+			? "w-full h-full flex items-start flex-col justify-center gap-1 px-4 py-2 text-left"
+			: "w-full h-full flex items-center gap-3 px-4 text-left";
 		const selectedClass = isSelected
 			? "bg-gray-100 border-l-2 border-blue-500 dark:bg-gray-700/70 dark:border-blue-400"
 			: "border-l-2 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40";
@@ -598,7 +630,12 @@ const SearchDialog: React.FC = () => {
 	return (
 		<div className="fixed inset-0 z-50" role="presentation">
 			{!isNarrow && (
-				<div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={close} role="presentation" />
+				<button
+					type="button"
+					aria-label={t.common.close}
+					className="absolute inset-0 bg-black/40 dark:bg-black/60"
+					onClick={close}
+				/>
 			)}
 			<div
 				ref={dialogRef}
@@ -612,7 +649,11 @@ const SearchDialog: React.FC = () => {
 						: "absolute top-[12vh] left-1/2 -translate-x-1/2 w-[800px] max-w-[calc(100vw-2rem)] max-h-[75vh] bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col overflow-hidden"
 				}
 			>
-				<div className={isNarrow ? "flex items-center gap-2 px-3 pt-3 shrink-0" : "flex items-center gap-2 px-4 pt-4 shrink-0"}>
+				<div
+					className={
+						isNarrow ? "flex items-center gap-2 px-3 pt-3 shrink-0" : "flex items-center gap-2 px-4 pt-4 shrink-0"
+					}
+				>
 					<input
 						ref={inputRef}
 						type="text"
@@ -655,12 +696,14 @@ const SearchDialog: React.FC = () => {
 						);
 					})}
 					<label
+						htmlFor="search-dialog-show-completed"
 						className={`ml-auto flex items-center gap-1.5 shrink-0 pl-3 pr-1 py-1.5 text-xs cursor-pointer select-none transition-colors duration-200 ${
 							completed ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
 						}`}
 					>
 						{t.common.showCompleted}
 						<Switch
+							id="search-dialog-show-completed"
 							checked={completed}
 							onChange={(next) => syncUrlTo(draft, type, next)}
 							ariaLabel={t.common.showCompleted}
@@ -674,7 +717,9 @@ const SearchDialog: React.FC = () => {
 						</div>
 					)}
 					{!hasQuery ? (
-						<div className="flex-1 flex items-center justify-center px-4 py-8 text-sm text-gray-500">{t.searchDialog.emptyHint}</div>
+						<div className="flex-1 flex items-center justify-center px-4 py-8 text-sm text-gray-500">
+							{t.searchDialog.emptyHint}
+						</div>
 					) : isLoading && items.length === 0 ? (
 						// Keep the empty-state height while the first results load so
 						// the dialog doesn't collapse and jump when typing starts.
@@ -682,9 +727,13 @@ const SearchDialog: React.FC = () => {
 							{t.searchDialog.emptyHint}
 						</div>
 					) : searchError ? (
-						<div className="flex-1 flex items-center justify-center px-4 text-sm text-red-600 dark:text-red-400">{t.nav.searchFailed}</div>
+						<div className="flex-1 flex items-center justify-center px-4 text-sm text-red-600 dark:text-red-400">
+							{t.nav.searchFailed}
+						</div>
 					) : items.length === 0 && !isLoading ? (
-						<div className="flex-1 flex items-center justify-center px-4 text-sm text-gray-500">{t.nav.noSearchResults}</div>
+						<div className="flex-1 flex items-center justify-center px-4 text-sm text-gray-500">
+							{t.nav.noSearchResults}
+						</div>
 					) : (
 						<VirtualList
 							ref={listRef}

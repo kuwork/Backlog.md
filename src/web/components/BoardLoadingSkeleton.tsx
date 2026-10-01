@@ -1,4 +1,4 @@
-import { useI18n } from '../hooks/useI18n';
+import { useI18n } from "../hooks/useI18n";
 
 interface BoardLoadingSkeletonProps {
 	/** Ghost columns to render; pass the configured status count so the real board mounts without a width jump. */
@@ -25,7 +25,7 @@ export function BoardLoadingSkeleton({ columnCount }: BoardLoadingSkeletonProps)
 		<div className="relative" role="status" aria-label={t.board.loading}>
 			<div className="overflow-x-auto pb-2" aria-hidden="true">
 				<div className="flex flex-row flex-nowrap gap-4 w-full">
-					{Array.from({ length: columns }, (_, column) => (
+					{Array.from({ length: columns }, (_, position) => position).map((column) => (
 						<div key={column} className="flex-1 min-w-[16rem]">
 							{/* min-h-24 is the floor every real column has (TaskColumn), so the board only
 							    ever grows from here - it never contracts, even on an empty project. */}

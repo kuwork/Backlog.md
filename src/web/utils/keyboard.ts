@@ -1,3 +1,5 @@
+import type React from "react";
+
 interface TypableElement {
 	tagName: string;
 	isContentEditable: boolean;
@@ -27,4 +29,16 @@ export function isTypingTarget(event: KeyboardEvent): boolean {
 	}
 
 	return el.isContentEditable === true;
+}
+
+/**
+ * Keyboard equivalent of a click for elements that are only clickable by mouse
+ * (cards, rows, chart cells). Enter and Space both activate; Space is prevented
+ * so the page does not scroll instead.
+ */
+export function activateOnKey(event: React.KeyboardEvent, onActivate: (event: React.KeyboardEvent) => void) {
+	if (event.key !== "Enter" && event.key !== " ") return;
+	// Space would scroll the page instead of activating.
+	event.preventDefault();
+	onActivate(event);
 }

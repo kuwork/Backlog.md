@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { JSDOM } from "jsdom";
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { JSDOM } from "jsdom";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import type { Document as BacklogDocument } from "../types/index.ts";
 import { contentFingerprint } from "../utils/content-fingerprint.ts";
 import DocumentationDetail from "../web/components/DocumentationDetail.tsx";
-import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
-import { TocProvider } from "../web/contexts/TocContext.tsx";
+import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
+import { TocProvider } from "../web/contexts/TocContext.tsx";
 import { useHashScroll } from "../web/hooks/useHashScroll.ts";
 
 const originalFetch = globalThis.fetch;

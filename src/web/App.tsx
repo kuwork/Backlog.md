@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
+import type { DuplicateRepairPlan } from "../core/duplicate-task-repair.ts";
+import { hiddenStatusNames } from "../core/state-machine.ts";
 import type {
 	BacklogConfig,
 	Decision,
@@ -13,14 +15,14 @@ import type {
 	TaskSearchResult,
 	WikiTreeNode,
 } from "../types";
-import { collectAvailableLabels } from "../utils/label-filter";
 import { parseBrowserLoadingState } from "../utils/browser-loading-state";
+import { collectAvailableLabels } from "../utils/label-filter";
 import { stripAnyPrefix } from "../utils/prefix-config";
 import BoardPage from "./components/BoardPage";
-import { hiddenStatusNames } from "../core/state-machine.ts";
 import DecisionDetail from "./components/DecisionDetail";
 import DocumentationDetail from "./components/DocumentationDetail";
 import DraftsList from "./components/DraftsList";
+import DuplicateTaskRepairModal from "./components/DuplicateTaskRepairModal";
 import GanttView from "./components/GanttView";
 import GraphView from "./components/GraphView";
 import InitializationScreen from "./components/InitializationScreen";
@@ -29,21 +31,19 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import MilestoneDetailsModal from "./components/MilestoneDetailsModal";
 import MilestonesPage from "./components/MilestonesPage";
 import Settings from "./components/Settings";
-import SearchDialog from "./components/search/SearchDialog";
 import Statistics from "./components/Statistics";
-import DuplicateTaskRepairModal from "./components/DuplicateTaskRepairModal";
 import { SuccessToast } from "./components/SuccessToast";
+import SearchDialog from "./components/search/SearchDialog";
 import TaskDetailsModal from "./components/TaskDetailsModal";
 import TaskList from "./components/TaskList";
 import WikiDetail from "./components/WikiDetail";
-import type { DuplicateRepairPlan } from "../core/duplicate-task-repair.ts";
 import { useHealthCheckContext } from "./contexts/HealthCheckContext";
-import { useHashScroll } from "./hooks/useHashScroll";
-import { useI18n } from "./hooks/useI18n";
 import { useI18nContext } from "./contexts/I18nContext";
 import { ImageLightboxProvider } from "./contexts/ImageLightboxContext";
 import { TaskIdIndexProvider } from "./contexts/TaskIdIndexContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useHashScroll } from "./hooks/useHashScroll";
+import { useI18n } from "./hooks/useI18n";
 import { apiClient } from "./lib/api";
 import { isValidLocale } from "./locales";
 import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from "./utils/milestones";
@@ -402,6 +402,7 @@ function AppContent() {
 	// completes, and a ref change alone would not retrigger it.
 	const [hasCompletedFirstLoad, setHasCompletedFirstLoad] = useState(false);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	const loadAllData = useCallback(async () => {
 		const isFirstLoad = !hasLoadedRef.current;
 		const requestId = ++dataRequestRef.current;
@@ -626,6 +627,7 @@ function AppContent() {
 	}, []);
 
 	// Sync modal state with URL /task/:id and /draft/:id
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const idFromUrl = taskIdFromUrl || draftIdFromUrl;
 		if (!idFromUrl) {
@@ -686,7 +688,9 @@ function AppContent() {
 					setTaskHistory((prev) => prev.slice(0, -1));
 					setEditingTask(topOfStack || null);
 					setIsDraftMode(topOfStack?.id?.startsWith("DRAFT-") ?? false);
-				} else if (taskHistoryRef.current.some((entry) => stripAnyPrefix(entry.id) === idFromUrl || entry.id === matchedTask.id)) {
+				} else if (
+					taskHistoryRef.current.some((entry) => stripAnyPrefix(entry.id) === idFromUrl || entry.id === matchedTask.id)
+				) {
 					// Navigated back to a task deeper in the stack (multi-step pop):
 					// drop the entries above it instead of pushing a duplicate.
 					const stackIndex = taskHistoryRef.current.findIndex(
@@ -873,8 +877,13 @@ function AppContent() {
 				apiClient.search({ types: ["document"] }),
 				apiClient.fetchDocsTree(),
 			]);
-			const documentResults = searchResults.filter((result): result is DocumentSearchResult => result.type === "document");
-			const nextDocs = reconcileById(docsRef.current, documentResults.map((result) => result.document));
+			const documentResults = searchResults.filter(
+				(result): result is DocumentSearchResult => result.type === "document",
+			);
+			const nextDocs = reconcileById(
+				docsRef.current,
+				documentResults.map((result) => result.document),
+			);
 			docsRef.current = nextDocs;
 			setDocs(nextDocs);
 			setDocsTree((current) => (deepEqual(current, docsTreeData) ? current : docsTreeData));
@@ -932,6 +941,7 @@ function AppContent() {
 	// editor changed a file) or by this client's own writes. Surfaces that cache an answer keyed to
 	// the corpus, like the popup's dependency closure, use it to refetch.
 	const [tasksVersion, setTasksVersion] = useState(0);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		setTasksVersion((version) => version + 1);
 	}, [tasks]);
@@ -964,26 +974,34 @@ function AppContent() {
 				setGraphStatus(null);
 			} else {
 				const loadingState = parseBrowserLoadingState(event.data);
-			if (loadingState?.type === "loading") {
-				// Once content is on screen it stays interactive; the header indexing
-				// indicator (driven by loadingMessage) is the only loading signal. A new
-				// loading attempt always clears a stale terminal error, so a passive client
-				// shows its cached content instead of the obsolete failure.
-				if (!hasLoadedDataRef.current) setIsLoading(true);
-				applyLoadError(null);
-				setLoadingMessage(loadingState.message);
-			} else if (loadingState?.type === "loaded") {
-				setIsLoading(false);
-				setLoadingMessage(null);
-			} else if (loadingState?.type === "error") {
-				setIsLoading(false);
-				setLoadingMessage(null);
-				applyLoadError(new Error(loadingState.message));
-			}
+				if (loadingState?.type === "loading") {
+					// Once content is on screen it stays interactive; the header indexing
+					// indicator (driven by loadingMessage) is the only loading signal. A new
+					// loading attempt always clears a stale terminal error, so a passive client
+					// shows its cached content instead of the obsolete failure.
+					if (!hasLoadedDataRef.current) setIsLoading(true);
+					applyLoadError(null);
+					setLoadingMessage(loadingState.message);
+				} else if (loadingState?.type === "loaded") {
+					setIsLoading(false);
+					setLoadingMessage(null);
+				} else if (loadingState?.type === "error") {
+					setIsLoading(false);
+					setLoadingMessage(null);
+					applyLoadError(new Error(loadingState.message));
+				}
 			}
 		};
 		return () => ws.close();
-	}, [refreshData, refreshMilestoneData, refreshDocumentsData, refreshDecisionsData, refreshWikisData, loadAllData, applyLoadError]);
+	}, [
+		refreshData,
+		refreshMilestoneData,
+		refreshDocumentsData,
+		refreshDecisionsData,
+		refreshWikisData,
+		loadAllData,
+		applyLoadError,
+	]);
 
 	const handleSubmitTask = async (taskData: Partial<Task>) => {
 		// Don't catch errors here - let TaskDetailsModal handle them
@@ -1097,8 +1115,7 @@ function AppContent() {
 	}
 
 	return (
-		<>
-			<TaskIdIndexProvider tasks={tasks} docs={docs} decisions={decisions} drafts={drafts} wikiPaths={entityWikiPaths}>
+		<TaskIdIndexProvider tasks={tasks} docs={docs} decisions={decisions} drafts={drafts} wikiPaths={entityWikiPaths}>
 			{duplicatePlan && duplicatePlan.groups.length > 0 && (
 				<div className="fixed top-0 left-0 right-0 z-40 bg-yellow-50 dark:bg-yellow-900/40 border-b border-yellow-200 dark:border-yellow-700 px-4 py-2">
 					<div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -1189,14 +1206,17 @@ function AppContent() {
 					    restores its own persisted picture. */}
 					<Route
 						path="graph"
-						element={
-							<GraphView key="task-graph" graphVersion={graphVersion} onEditTask={handleOpenTask} />
-						}
+						element={<GraphView key="task-graph" graphVersion={graphVersion} onEditTask={handleOpenTask} />}
 					/>
 					<Route
 						path="knowledge"
 						element={
-							<GraphView key="knowledge-graph" graphVersion={graphVersion} onEditTask={handleOpenTask} variant="knowledge" />
+							<GraphView
+								key="knowledge-graph"
+								graphVersion={graphVersion}
+								onEditTask={handleOpenTask}
+								variant="knowledge"
+							/>
 						}
 					/>
 					<Route path="settings" element={<Settings />} />
@@ -1284,7 +1304,7 @@ function AppContent() {
 					message={`${taskConfirmation.isDraft ? "Draft" : "Task"} "${taskConfirmation.task.title}" created successfully! (${taskConfirmation.task.id.replace("task-", "")})`}
 					onDismiss={() => setTaskConfirmation(null)}
 					icon={
-						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								strokeLinecap="round"
 								strokeLinejoin="round"
@@ -1295,8 +1315,7 @@ function AppContent() {
 					}
 				/>
 			)}
-			</TaskIdIndexProvider>
-		</>
+		</TaskIdIndexProvider>
 	);
 }
 
