@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Memo } from "../../core/memos.ts";
 import { createMemo, listMemos, nextMemoId } from "../../core/memos.ts";
+import { localDateTimeToStoredUtc } from "../../utils/date-utc.ts";
 import {
 	appendMemoPage,
 	collectMemoTags,
@@ -16,11 +17,13 @@ import {
 	prependMemo,
 	removeMemo,
 	replaceMemo,
+	toggleTaskInMarkdown,
 } from "./memos";
 
+/** `createdDate` is stored UTC, so the default fixture is a local 2026-10-01 09:00. */
 const makeMemo = (id: string, overrides: Partial<Memo> = {}): Memo => ({
 	id,
-	createdDate: "2026-10-01 09:00",
+	createdDate: localDateTimeToStoredUtc("2026-10-01 09:00"),
 	tags: [],
 	displayTitle: id,
 	rawContent: id,
@@ -111,13 +114,26 @@ describe("tag helpers", () => {
 	});
 
 	it("keeps a memo only when it matches both the day and the tag filter", () => {
-		const memo = makeMemo("a", { createdDate: "2026-10-01 09:00", tags: ["idea"] });
+		const memo = makeMemo("a", { createdDate: localDateTimeToStoredUtc("2026-10-01 09:00"), tags: ["idea"] });
 		expect(memoCreatedOnDate(memo, "2026-10-01")).toBe(true);
 		expect(memoCreatedOnDate(memo, null)).toBe(true);
 		expect(memoCreatedOnDate(memo, "2026-10-02")).toBe(false);
 		expect(memoMatchesFilters(memo, "2026-10-01", [])).toBe(true);
 		expect(memoMatchesFilters(memo, "2026-10-01", ["meeting"])).toBe(false);
 		expect(memoMatchesFilters(memo, "2026-10-02", [])).toBe(false);
+	});
+
+	it("reads the day off the memo's local time, not off the stored UTC date", () => {
+		// 23:00 on the 1st is stored under the 2nd UTC on any machine west of Greenwich.
+		const memo = makeMemo("a", { createdDate: localDateTimeToStoredUtc("2026-10-01 23:00") });
+		expect(memoCreatedOnDate(memo, "2026-10-01")).toBe(true);
+
+		// In UTC the stored date is the same day, so there is nothing to tell apart there. The
+		// pinned-zone cases in test/memo-local-day-timezone.test.ts force the two apart.
+		const storedDay = memo.createdDate.slice(0, 10);
+		if (storedDay !== "2026-10-01") {
+			expect(memoCreatedOnDate(memo, storedDay)).toBe(false);
+		}
 	});
 });
 
@@ -135,18 +151,20 @@ describe("extractInlineTags", () => {
 
 describe("back-dated creation", () => {
 	const root = mkdtempSync(join(tmpdir(), "memo-backdate-"));
+	/** The stored value a back-dated capture carries. An id is named for this value's UTC date. */
+	const pinnedStored = "2024-02-03 10:00";
 
 	it("allocates the id prefix from the pinned date, not today", async () => {
-		const id = await nextMemoId(root, "2024-02-03 10:00");
+		const id = await nextMemoId(root, pinnedStored);
 		expect(id).toBe("20240203-1");
 	});
 
 	it("writes the pinned createdDate and bumps updatedDate", async () => {
-		const memo = await createMemo(root, "a past note", ["retro"], "2024-02-03 10:00");
+		const memo = await createMemo(root, "a past note", ["retro"], pinnedStored);
 		expect(memo.id).toBe("20240203-1");
-		expect(memo.createdDate).toBe("2024-02-03 10:00");
+		expect(memo.createdDate).toBe(pinnedStored);
 		expect(memo.tags).toEqual(["retro"]);
-		expect(memo.updatedDate).not.toBe("2024-02-03 10:00");
+		expect(memo.updatedDate).not.toBe(pinnedStored);
 	});
 
 	it("falls back to now when the date is malformed", async () => {
@@ -158,6 +176,44 @@ describe("back-dated creation", () => {
 		const all = await listMemos(root);
 		expect(all.length).toBeGreaterThan(0);
 		expect(all[0]?.createdDate).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
-		expect(all.some((memo) => memo.createdDate === "2024-02-03 10:00")).toBe(true);
+		expect(all.some((memo) => memo.createdDate === pinnedStored)).toBe(true);
+	});
+});
+
+describe("toggleTaskInMarkdown", () => {
+	it("ticks the marker the rendered checkbox stands for", () => {
+		const source = "- [ ] alpha\n- [ ] beta\n- [ ] gamma";
+		expect(toggleTaskInMarkdown(source, 1)).toBe("- [ ] alpha\n- [x] beta\n- [ ] gamma");
+	});
+
+	it("unticks a checked marker, and accepts an uppercase X", () => {
+		expect(toggleTaskInMarkdown("- [x] done\n- [X] also done", 0)).toBe("- [ ] done\n- [X] also done");
+		expect(toggleTaskInMarkdown("- [x] done\n- [X] also done", 1)).toBe("- [x] done\n- [ ] also done");
+	});
+
+	it("keeps the indentation, spacing and trailing text of the line", () => {
+		// The shape a pasted acceptance list arrives in: one leading space, two after the marker.
+		expect(toggleTaskInMarkdown(" - [ ]  A valid prototype exists.", 0)).toBe(" - [x]  A valid prototype exists.");
+	});
+
+	it("does not count a marker inside a fenced code block", () => {
+		const source = "```\n- [ ] in code\n```\n- [ ] real";
+		expect(toggleTaskInMarkdown(source, 0)).toBe("```\n- [ ] in code\n```\n- [x] real");
+	});
+
+	it("counts ordered lists, nested items and blockquotes like the renderer does", () => {
+		const source = "1. [ ] first\n   - [ ] nested\n> - [ ] quoted";
+		expect(toggleTaskInMarkdown(source, 2)).toBe("1. [ ] first\n   - [ ] nested\n> - [x] quoted");
+	});
+
+	it("leaves the source untouched for an out-of-range index", () => {
+		const source = "- [ ] only";
+		expect(toggleTaskInMarkdown(source, 5)).toBe(source);
+		expect(toggleTaskInMarkdown(source, -1)).toBe(source);
+	});
+
+	it("ignores a bare [ ] that is not a list item", () => {
+		const source = "A [ ] bracket pair\n- [ ] real item";
+		expect(toggleTaskInMarkdown(source, 0)).toBe("A [ ] bracket pair\n- [x] real item");
 	});
 });

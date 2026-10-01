@@ -15,6 +15,7 @@ import {
 	updateMemo,
 } from "../core/memos.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
+import { formatLocalDateKey, localDateTimeToStoredUtc } from "../utils/date-utc.ts";
 
 /**
  * Memo storage tests run against a scratch project built with mkdtemp OUTSIDE the repo. The scratch
@@ -33,13 +34,34 @@ describe("memo storage", () => {
 		await rm(root, { recursive: true, force: true });
 	});
 
+	/** The machine-local day - which is the day the feed's `date` filter and the calendar ask about. */
 	function today(): string {
-		return new Date().toISOString().slice(0, 10);
+		return formatLocalDateKey(new Date());
 	}
 
+	/** The UTC `YYYYMMDD` an id is allocated under. Deliberately not the local day - see nextMemoId. */
 	function todayStamp(): string {
-		return today().replace(/-/g, "");
+		return new Date().toISOString().slice(0, 10).replace(/-/g, "");
 	}
+
+	/** A local day `offsetDays` before today, for the "another day" fixtures. */
+	function daysAgo(offsetDays: number): string {
+		const date = new Date();
+		date.setDate(date.getDate() - offsetDays);
+		return formatLocalDateKey(date);
+	}
+
+	/**
+	 * A stored value whose LOCAL day is `day`. Stored timestamps are UTC, so hand-writing
+	 * `${day} 09:00` would land on `day` only on a UTC machine; going through the same conversion the
+	 * app uses keeps the assertion true everywhere - and is exactly the conversion being tested.
+	 */
+	function storedAt(day: string, time: string): string {
+		return localDateTimeToStoredUtc(`${day} ${time}`);
+	}
+
+	const pastDay = daysAgo(3);
+	const pastStamp = pastDay.replace(/-/g, "");
 
 	/** Writes a memo file by hand so tests can pin createdDate instead of "now". */
 	async function seedMemo(id: string, createdDate: string, body: string, tags: string[] = []): Promise<Memo> {
@@ -64,7 +86,7 @@ describe("memo storage", () => {
 	});
 
 	it("sequences ids per day and restarts on a new day", async () => {
-		await seedMemo("20260930-5", "2026-09-30 09:00", "yesterday note");
+		await seedMemo(`${pastStamp}-5`, storedAt(pastDay, "09:00"), "past note");
 
 		expect(await nextMemoId(root)).toBe(`${todayStamp()}-1`);
 
@@ -77,7 +99,7 @@ describe("memo storage", () => {
 		expect(second.id).toBe(`${todayStamp()}-2`);
 
 		const all = await listMemos(root);
-		expect(all.map((memo) => memo.id).sort()).toEqual(["20260930-5", `${todayStamp()}-1`, `${todayStamp()}-2`]);
+		expect(all.map((memo) => memo.id).sort()).toEqual([`${pastStamp}-5`, `${todayStamp()}-1`, `${todayStamp()}-2`]);
 	});
 
 	it("creates the memos directory when it does not exist and writes LF endings", async () => {
@@ -126,29 +148,29 @@ describe("memo storage", () => {
 		expect(blankStart.displayTitle).toBe("body after blanks");
 
 		// Body starts blank, so there is no heading line: fall back to a 40-character preview.
-		const preview = await seedMemo(`${todayStamp()}-90`, `${today()} 08:00`, `\n\n${"x".repeat(80)}`);
+		const preview = await seedMemo(`${todayStamp()}-90`, storedAt(today(), "08:00"), `\n\n${"x".repeat(80)}`);
 		expect(preview.displayTitle).toBe("x".repeat(40));
 	});
 
 	it("sorts newest first with id as tiebreaker", async () => {
-		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "oldest");
-		await seedMemo(`${todayStamp()}-2`, `${today()} 09:00`, "newest");
-		await seedMemo(`${todayStamp()}-3`, `${today()} 09:00`, "same minute, higher id");
-		await seedMemo("20260930-1", "2026-09-30 09:00", "yesterday");
+		await seedMemo(`${todayStamp()}-1`, storedAt(today(), "08:00"), "oldest");
+		await seedMemo(`${todayStamp()}-2`, storedAt(today(), "09:00"), "newest");
+		await seedMemo(`${todayStamp()}-3`, storedAt(today(), "09:00"), "same minute, higher id");
+		await seedMemo(`${pastStamp}-1`, storedAt(pastDay, "09:00"), "another day");
 
 		const all = await listMemos(root);
 		expect(all.map((memo) => memo.id)).toEqual([
 			`${todayStamp()}-3`,
 			`${todayStamp()}-2`,
 			`${todayStamp()}-1`,
-			"20260930-1",
+			`${pastStamp}-1`,
 		]);
 	});
 
 	it("paginates with limit and cursor and returns nextCursor null at the end", async () => {
-		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "one");
-		await seedMemo(`${todayStamp()}-2`, `${today()} 09:00`, "two");
-		await seedMemo(`${todayStamp()}-3`, `${today()} 10:00`, "three");
+		await seedMemo(`${todayStamp()}-1`, storedAt(today(), "08:00"), "one");
+		await seedMemo(`${todayStamp()}-2`, storedAt(today(), "09:00"), "two");
+		await seedMemo(`${todayStamp()}-3`, storedAt(today(), "10:00"), "three");
 
 		const firstPage = await listMemosPage(root, { limit: 2 });
 		expect(firstPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-3`, `${todayStamp()}-2`]);
@@ -181,9 +203,9 @@ describe("memo storage", () => {
 	});
 
 	it("filters by date", async () => {
-		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "today one");
-		await seedMemo(`${todayStamp()}-2`, `${today()} 09:00`, "today two");
-		await seedMemo("20260930-1", "2026-09-30 09:00", "yesterday");
+		await seedMemo(`${todayStamp()}-1`, storedAt(today(), "08:00"), "today one");
+		await seedMemo(`${todayStamp()}-2`, storedAt(today(), "09:00"), "today two");
+		await seedMemo(`${pastStamp}-1`, storedAt(pastDay, "09:00"), "another day");
 
 		const todayPage = await listMemosPage(root, { date: today() });
 		expect(todayPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-2`, `${todayStamp()}-1`]);
@@ -193,17 +215,50 @@ describe("memo storage", () => {
 		expect(onePerPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-2`]);
 		expect(onePerPage.nextCursor).toBe(`${todayStamp()}-2`);
 
-		const pastPage = await listMemosPage(root, { date: "2026-09-30" });
-		expect(pastPage.items.map((memo) => memo.id)).toEqual(["20260930-1"]);
+		const pastPage = await listMemosPage(root, { date: pastDay });
+		expect(pastPage.items.map((memo) => memo.id)).toEqual([`${pastStamp}-1`]);
 
 		const nonePage = await listMemosPage(root, { date: "2020-01-01" });
 		expect(nonePage.items).toEqual([]);
 	});
 
+	/**
+	 * The shape the bug was reported in: a note captured late in the evening is stored under the NEXT
+	 * UTC date, so anything reading the stored string's prefix files it under tomorrow and the day the
+	 * user wrote it looks empty. Both the calendar and the feed mean the local day.
+	 *
+	 * `bun test` runs in UTC, where the two dates coincide and this cannot fail - the pinned-zone cases
+	 * in memo-local-day-timezone.test.ts are what actually force the difference. This keeps the shape
+	 * on record next to the rest of the storage suite.
+	 */
+	it("matches the local day, not the stored UTC date, when the two differ", async () => {
+		const lateDay = daysAgo(1);
+		const lateStamp = lateDay.replace(/-/g, "");
+		const stored = storedAt(lateDay, "23:00");
+		await seedMemo(`${lateStamp}-1`, stored, "late note");
+
+		expect((await listMemosPage(root, { date: lateDay })).items.map((memo) => memo.id)).toEqual([`${lateStamp}-1`]);
+
+		// On a UTC machine the two dates coincide and there is nothing to tell apart; anywhere else the
+		// stored prefix is a different day and must no longer match.
+		const utcDay = stored.slice(0, 10);
+		if (utcDay !== lateDay) {
+			expect((await listMemosPage(root, { date: utcDay })).items).toEqual([]);
+		}
+	});
+
+	it("names a memo after its stored UTC date, not the local day the feed files it under", async () => {
+		const lateDay = daysAgo(1);
+		const stored = storedAt(lateDay, "23:00");
+		// An id is a filename and stays stable, so it keeps the UTC date the value is stored under;
+		// `lateDay` is what the feed and the calendar use, and the two differ west of Greenwich.
+		expect(await nextMemoId(root, stored)).toBe(`${stored.slice(0, 10).replace(/-/g, "")}-1`);
+	});
+
 	it("filters by tags, case-insensitively, matching any of the given tags", async () => {
-		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "idea note", ["Idea"]);
-		await seedMemo(`${todayStamp()}-2`, `${today()} 09:00`, "cli note", ["cli", "tool"]);
-		await seedMemo(`${todayStamp()}-3`, `${today()} 10:00`, "untagged");
+		await seedMemo(`${todayStamp()}-1`, storedAt(today(), "08:00"), "idea note", ["Idea"]);
+		await seedMemo(`${todayStamp()}-2`, storedAt(today(), "09:00"), "cli note", ["cli", "tool"]);
+		await seedMemo(`${todayStamp()}-3`, storedAt(today(), "10:00"), "untagged");
 
 		const ideaPage = await listMemosPage(root, { tags: ["idea"] });
 		expect(ideaPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-1`]);
@@ -219,7 +274,7 @@ describe("memo storage", () => {
 	});
 
 	it("skips memo files without a usable id instead of listing a blank row", async () => {
-		await seedMemo(`${todayStamp()}-1`, `${today()} 08:00`, "real note");
+		await seedMemo(`${todayStamp()}-1`, storedAt(today(), "08:00"), "real note");
 		await Bun.write(
 			join(memoDir(root), "corrupt.md"),
 			stringifyFrontmatter("Acceptance Criteria\n\n- [x] junk", { id: "", created_date: "" }),

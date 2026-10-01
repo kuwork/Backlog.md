@@ -2,6 +2,7 @@ import { mkdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
+import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 
 /**
  * Lightweight, file-backed storage for memos: throwaway notes that must not be forced into the
@@ -30,7 +31,10 @@ export interface MemoPageOptions {
 	limit?: number;
 	/** id of the last memo of the previous page */
 	cursor?: string;
-	/** `YYYY-MM-DD` — when set, only memos created on that date are returned */
+	/**
+	 * `YYYY-MM-DD` — a LOCAL day. When set, only memos whose stored UTC timestamp falls on that day in
+	 * the machine's own timezone are returned, which is the day the calendar and the feed show.
+	 */
 	date?: string;
 	/** when set, only memos carrying at least one of these tags (case-insensitive) are returned */
 	tags?: string[];
@@ -150,11 +154,15 @@ function sortMemos(memos: Memo[]): Memo[] {
 /**
  * Cursor pagination over the newest-first memo list. `cursor` is the id of the last memo of the
  * previous page; `nextCursor` is null once the end of the (optionally filtered) set is reached.
+ *
+ * `date` is a local day and the comparison is against the local date part of the memo's converted
+ * timestamp: a note captured at 23:00 local is stored under the next UTC date, and filtering on the
+ * stored string's first ten characters would file it under tomorrow.
  */
 export async function listMemosPage(root: string, options: MemoPageOptions = {}): Promise<MemoPage> {
 	let all = await listMemos(root);
 	if (options.date) {
-		all = all.filter((memo) => memo.createdDate.slice(0, 10) === options.date);
+		all = all.filter((memo) => localDateKeyFromStoredUtc(memo.createdDate) === options.date);
 	}
 	if (options.tags && options.tags.length > 0) {
 		const wanted = new Set(options.tags.map((tag) => tag.toLowerCase()));

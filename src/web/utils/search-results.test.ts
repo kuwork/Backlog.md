@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import type { DecisionSearchResult, DocumentSearchResult, TaskSearchResult, WikiSearchResult } from "../../types";
+import type {
+	DecisionSearchResult,
+	DocumentSearchResult,
+	MemoSearchResult,
+	TaskSearchResult,
+	WikiSearchResult,
+} from "../../types";
+import { localDateTimeToStoredUtc } from "../../utils/date-utc";
 import {
 	buildSearchRows,
 	clampRestoreIndex,
@@ -52,6 +59,19 @@ const makeWiki = (path: string, title: string): WikiSearchResult => ({
 	wiki: { content: "", path, frontmatter: { title } },
 });
 
+const makeMemo = (id: string, createdDate: string): MemoSearchResult => ({
+	type: "memo",
+	score: 0.5,
+	memo: {
+		id,
+		createdDate,
+		tags: [],
+		displayTitle: id,
+		rawContent: id,
+		path: `/repo/backlog/memos/${id}.md`,
+	} as MemoSearchResult["memo"],
+});
+
 describe("parseSearchTypeParam / serializeSearchTypeParam", () => {
 	it("parses known types and defaults to all", () => {
 		expect(parseSearchTypeParam("task")).toBe("task");
@@ -90,6 +110,15 @@ describe("getSearchResultLink", () => {
 
 	it("builds wiki link with encoded path keeping the .md suffix", () => {
 		expect(getSearchResultLink(makeWiki("concepts/foo bar.md", "Foo"))).toBe("/wiki/concepts/foo%20bar.md");
+	});
+
+	it("filters the memo feed to the memo's local day, not its stored UTC date", () => {
+		// 23:00 on the 1st is stored under the 2nd UTC on any machine west of Greenwich; the feed's
+		// `?date=` is a local day, so the link has to say the 1st everywhere.
+		expect(getSearchResultLink(makeMemo("20261001-1", localDateTimeToStoredUtc("2026-10-01 23:00")))).toBe(
+			"/memos?date=2026-10-01",
+		);
+		expect(getSearchResultLink(makeMemo("20261001-2", "2026-10-01"))).toBe("/memos?date=2026-10-01");
 	});
 });
 

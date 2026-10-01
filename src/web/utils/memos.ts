@@ -1,4 +1,5 @@
 import type { Memo } from "../../core/memos.ts";
+import { localDateKeyFromStoredUtc } from "../../utils/date-utc.ts";
 
 /**
  * Pure helpers shared by the memos feed (`/memos`). They are kept out of the component so the
@@ -88,14 +89,63 @@ export function filterMemosByTags(memos: Memo[], selectedTags: string[]): Memo[]
 	return memos.filter((memo) => tagsToLower(memo.tags ?? []).some((tag) => selected.has(tag)));
 }
 
+/**
+ * Whether a memo belongs to the feed's selected day. `date` is a local day, while `createdDate` is
+ * stored UTC, so the two meet on the local date part of the converted timestamp - comparing the
+ * stored string's first ten characters would file a 23:00 capture under the next day.
+ */
 export function memoCreatedOnDate(memo: Memo, date: string | null | undefined): boolean {
 	if (!date) return true;
-	return memo.createdDate.slice(0, 10) === date;
+	return localDateKeyFromStoredUtc(memo.createdDate) === date;
 }
 
 /** Whether a freshly captured memo belongs in the feed as currently filtered. */
 export function memoMatchesFilters(memo: Memo, date: string | null, selectedTags: string[]): boolean {
 	return memoCreatedOnDate(memo, date) && filterMemosByTags([memo], selectedTags).length > 0;
+}
+
+/**
+ * A GFM task-list marker: an optional blockquote prefix, a bullet or ordered list marker, then
+ * `[ ]`, `[x]` or `[X]`. Only list items produce a checkbox, so a bare `[ ]` in a paragraph is not
+ * one — the same rule the renderer follows.
+ */
+const TASK_MARKER_PATTERN = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\])/;
+const FENCE_PATTERN = /^\s*(`{3,}|~{3,})/;
+
+/**
+ * Flip the nth task-list checkbox, counting in the same document order the rendered checkboxes
+ * appear. Fenced code blocks are skipped: their `- [ ]` is shown as code and never becomes a
+ * checkbox, so counting it would shift every later index. An out-of-range index returns the source
+ * untouched, which makes a stale click after an edit a no-op instead of a corruption.
+ */
+export function toggleTaskInMarkdown(source: string, index: number): string {
+	if (index < 0) return source;
+	const lines = source.split("\n");
+	let seen = 0;
+	let fenceChar: string | null = null;
+
+	for (let i = 0; i < lines.length; i += 1) {
+		const line = lines[i] ?? "";
+		const fenceMarker = FENCE_PATTERN.exec(line)?.[1]?.[0];
+		if (fenceMarker) {
+			if (fenceChar === null) fenceChar = fenceMarker;
+			else if (fenceMarker === fenceChar) fenceChar = null;
+			continue;
+		}
+		if (fenceChar !== null) continue;
+
+		const marker = TASK_MARKER_PATTERN.exec(line);
+		if (!marker) continue;
+		if (seen !== index) {
+			seen += 1;
+			continue;
+		}
+		const [matched, before = "", state = " ", bracket = "]"] = marker;
+		const flipped = state === " " ? "x" : " ";
+		lines[i] = `${before}${flipped}${bracket}${line.slice(matched?.length ?? 0)}`;
+		return lines.join("\n");
+	}
+	return source;
 }
 
 /**

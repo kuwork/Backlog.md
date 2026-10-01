@@ -305,3 +305,262 @@
         opacity: 0.08;
     }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   /memos note body (MemoCard's `.memo-body`)
+
+   The shared markdown renderer ships GitHub *document* defaults - h1 at 2em, 16px block margins,
+   a -1.6em checkbox indent, canvas-coloured code blocks. Inside a note card that reads like a
+   spec sheet, so this block rescales it to note prose: one text size, looser leading, compact
+   block rhythm, headings that never outgrow the card, and a checklist that looks like a checklist.
+
+   Two things to keep in mind when editing:
+
+   1. These rules are intentionally NOT in an `@layer`. The imported
+      `@uiw/react-markdown-preview/markdown.css` is unlayered, and unlayered styles beat every
+      layer regardless of specificity or order - so a layer here would simply lose. Being
+      unlayered *and* last, plus one class more specific than the preview's `.wmde-markdown x`,
+      is what makes these win.
+   2. Every colour is declared twice, in `.memo-body` and in `.dark .memo-body`. The app ships a
+      light and a dark set, so a rule that fills in only one of them turns into an unreadable
+      patch the moment the other theme is on. The values are Tailwind v4's own, so a neighbouring
+      utility class can never disagree with them.
+   --------------------------------------------------------------------------------------------- */
+
+.memo-body {
+	--memo-fg: oklch(37.3% 0.034 259.733); /* gray-700 */
+	--memo-strong: oklch(21% 0.034 264.665); /* gray-900 */
+	--memo-line: oklch(92.8% 0.006 264.531); /* gray-200 */
+	--memo-surface: oklch(98.5% 0.002 247.839); /* gray-50 */
+	--memo-code-bg: oklch(98.5% 0.002 247.839); /* gray-50 */
+	--memo-chip-bg: oklch(96.7% 0.003 264.542); /* gray-100 */
+	--memo-chip-bg-hover: oklch(92.8% 0.006 264.531); /* gray-200 */
+	--memo-chip-fg: oklch(44.6% 0.03 256.802); /* gray-600 */
+	--memo-check-border: oklch(87.2% 0.01 258.338); /* gray-300 */
+	--memo-check-bg: #fff;
+	--memo-accent-fg: oklch(54.6% 0.245 262.881); /* blue-600 */
+	--memo-accent-solid: oklch(62.3% 0.214 259.815); /* blue-500 */
+}
+
+.dark .memo-body {
+	--memo-fg: oklch(92.9% 0.013 255.508); /* slate-200 */
+	--memo-strong: oklch(98.4% 0.003 247.858); /* slate-50 */
+	--memo-line: oklch(37.2% 0.044 257.287); /* slate-700 */
+	--memo-surface: oklch(27.9% 0.041 260.031); /* slate-800 */
+	--memo-code-bg: oklch(20.8% 0.042 265.755); /* slate-900 */
+	--memo-chip-bg: oklch(37.2% 0.044 257.287); /* slate-700 */
+	--memo-chip-bg-hover: oklch(44.6% 0.043 257.281); /* slate-600 */
+	--memo-chip-fg: oklch(86.9% 0.022 252.894); /* slate-300 */
+	--memo-check-border: oklch(44.6% 0.043 257.281); /* slate-600 */
+	--memo-check-bg: oklch(37.2% 0.044 257.287); /* slate-700 */
+	--memo-accent-fg: oklch(70.7% 0.165 254.624); /* blue-400 */
+	--memo-accent-solid: oklch(62.3% 0.214 259.815); /* blue-500 */
+}
+
+/* Let the card's own surface show through instead of the renderer's canvas colour. */
+.memo-body .wmde-markdown {
+	background-color: transparent;
+	color: var(--memo-fg);
+	font-size: 1rem;
+	line-height: 1.7;
+}
+
+/* The card supplies the outer rhythm; the first and last block must not add their own. */
+.memo-body .wmde-markdown > :first-child {
+	margin-top: 0;
+}
+
+.memo-body .wmde-markdown > :last-child {
+	margin-bottom: 0;
+}
+
+.memo-body .wmde-markdown p,
+.memo-body .wmde-markdown ul,
+.memo-body .wmde-markdown ol,
+.memo-body .wmde-markdown blockquote,
+.memo-body .wmde-markdown pre,
+.memo-body .wmde-markdown table,
+.memo-body .wmde-markdown details {
+	margin: 0 0 0.75rem;
+}
+
+/* Headings: quiet and proportional. The preview's 2em h1 with a rule under it belongs in a README. */
+.memo-body .wmde-markdown h1,
+.memo-body .wmde-markdown h2,
+.memo-body .wmde-markdown h3,
+.memo-body .wmde-markdown h4,
+.memo-body .wmde-markdown h5,
+.memo-body .wmde-markdown h6 {
+	color: var(--memo-strong);
+	font-weight: 600;
+	line-height: 1.35;
+	margin: 1.25rem 0 0.5rem;
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+
+.memo-body .wmde-markdown h1 {
+	font-size: 1.25rem;
+}
+
+.memo-body .wmde-markdown h2 {
+	font-size: 1.125rem;
+}
+
+.memo-body .wmde-markdown h3,
+.memo-body .wmde-markdown h4,
+.memo-body .wmde-markdown h5,
+.memo-body .wmde-markdown h6 {
+	font-size: 1rem;
+}
+
+.memo-body .wmde-markdown li {
+	margin: 0.1875rem 0;
+}
+
+/* A loose list wraps each item in a paragraph; that paragraph must not re-add the block gap. */
+.memo-body .wmde-markdown li > p {
+	margin-bottom: 0.375rem;
+}
+
+.memo-body .wmde-markdown li > p:last-child {
+	margin-bottom: 0;
+}
+
+.memo-body .wmde-markdown a {
+	color: var(--memo-accent-fg);
+	font-weight: 500;
+	text-decoration: none;
+}
+
+.memo-body .wmde-markdown a:hover {
+	text-decoration: underline;
+}
+
+/* Inline code is a chip; its block twin is reset further down. */
+.memo-body .wmde-markdown code {
+	background-color: var(--memo-chip-bg);
+	color: var(--memo-strong);
+	border-radius: 0.25rem;
+	padding: 0.1em 0.35em;
+	font-size: 0.875em;
+}
+
+.memo-body .wmde-markdown pre {
+	background-color: var(--memo-code-bg);
+	color: var(--memo-fg);
+	border: 1px solid var(--memo-line);
+	border-radius: 0.5rem;
+	padding: 0.75rem 0.875rem;
+	font-size: 0.875rem;
+	line-height: 1.6;
+}
+
+.memo-body .wmde-markdown pre code {
+	background-color: transparent;
+	padding: 0;
+	font-size: inherit;
+}
+
+/* Quotes read as a soft panel, the way the reference design frames a quoted memo. */
+.memo-body .wmde-markdown blockquote {
+	background-color: var(--memo-surface);
+	border-left: 3px solid var(--memo-accent-fg);
+	border-radius: 0 0.5rem 0.5rem 0;
+	padding: 0.5rem 0.75rem;
+	color: var(--memo-fg);
+}
+
+.memo-body .wmde-markdown blockquote > :last-child {
+	margin-bottom: 0;
+}
+
+.memo-body .wmde-markdown hr {
+	border-color: var(--memo-line);
+	margin: 1rem 0;
+}
+
+.memo-body .wmde-markdown img {
+	border-radius: 0.5rem;
+}
+
+.memo-body .wmde-markdown th,
+.memo-body .wmde-markdown td {
+	border-color: var(--memo-line);
+}
+
+/* `#tag` tokens (rendered by MermaidMarkdown's inlineTagChips pass): a chip, and the filter it
+   stands for is one click away, so it has to look pressable. */
+.memo-body .wmde-markdown .inline-tag {
+	background-color: var(--memo-chip-bg);
+	color: var(--memo-chip-fg);
+	border-radius: 0.375rem;
+	padding: 0.0625rem 0.375rem;
+	font-size: 0.8125em;
+	font-weight: 500;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+.memo-body .wmde-markdown .inline-tag:hover {
+	background-color: var(--memo-chip-bg-hover);
+	color: var(--memo-strong);
+}
+
+/* Checklist: a rounded box that reads as a control (blue when ticked, hairline when not) and a
+   struck-through, muted label once ticked - the state has to be legible without hovering.
+
+   The box rules name `.contains-task-list` on purpose. The renderer's stylesheet is emitted TWICE
+   (imported directly, and again through the markdown editor's CSS), so its own
+   `.wmde-markdown .contains-task-list input[type=checkbox]` rule both ties with a two-class
+   selector and lands *after* this block. One extra class is what makes the margin here win -
+   and that margin matters: the renderer pulls every box 1.6em to the left, which reaches past the
+   markdown container's `overflow-x: hidden` edge and clips the box's left border off. */
+.memo-body .wmde-markdown li.task-list-item {
+	margin: 0.375rem 0;
+	line-height: 1.6;
+}
+
+.memo-body .wmde-markdown li.task-list-item + li.task-list-item {
+	margin-top: 0.5rem;
+}
+
+.memo-body .wmde-markdown .contains-task-list input[type="checkbox"] {
+	appearance: none;
+	-webkit-appearance: none;
+	background-color: var(--memo-check-bg);
+	border: 1px solid var(--memo-check-border);
+	border-radius: 0.25rem;
+	width: 1.125rem;
+	height: 1.125rem;
+	/* -1.5rem cancels the list padding so the box sits flush with the paragraph above it. */
+	margin: 0 0.5rem 0 -1.5rem;
+	vertical-align: middle;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease;
+}
+
+.memo-body .wmde-markdown .contains-task-list input[type="checkbox"]:checked {
+	background-color: var(--memo-accent-solid);
+	border-color: var(--memo-accent-solid);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.75 8.5l2.75 2.75 5.75-5.75'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 0.75rem;
+}
+
+.memo-body .wmde-markdown .contains-task-list input[type="checkbox"]:focus-visible {
+	outline: 2px solid var(--memo-accent-solid);
+	outline-offset: 2px;
+}
+
+.memo-body .wmde-markdown .task-list-item:has(input[type="checkbox"]:checked) {
+	color: var(--memo-chip-fg);
+	text-decoration: line-through;
+	text-decoration-thickness: 1px;
+}
