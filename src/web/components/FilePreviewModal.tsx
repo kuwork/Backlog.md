@@ -118,7 +118,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 	const startLineNumber = (lineStart ?? 1) - 1;
 
 	return (
-		<Modal isOpen onClose={onClose} title={title} maxWidthClass="max-w-4xl">
+		<Modal isOpen onClose={onClose} title={title} maxWidthClass="max-w-6xl" toc>
 			{loading && <div className="text-sm text-gray-500 dark:text-gray-400">{t.filePreview.loading}</div>}
 			{error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
 			{!loading && !error && (

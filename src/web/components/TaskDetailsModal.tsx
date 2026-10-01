@@ -1569,6 +1569,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 						: `${displayId} — ${task.title}`
 				}
 				maxWidthClass="max-w-5xl"
+				toc
 				disableEscapeClose={mode === "edit" || mode === "create" || demoting || showGraph}
 				leftActions={
 					// The graph is a step into this task, so the arrow that leaves it sits where a drill-down
