@@ -445,7 +445,7 @@ const Statistics: React.FC<StatisticsProps> = ({
 		const dateLabel =
 			showDate === "created" ? t.common.created : showDate === "dueDate" ? t.common.dueBy : t.common.updated;
 
-		const className = `flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg transition-colors duration-200 ${
+		const className = `flex w-full items-center space-x-3 p-3 text-left bg-gray-50 dark:bg-gray-700/50 rounded-lg transition-colors duration-200 ${
 			onClick ? "hover:bg-gray-100 dark:hover:bg-gray-600/50 cursor-pointer" : ""
 		}`;
 		const body = (

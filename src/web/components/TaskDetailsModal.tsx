@@ -12,6 +12,7 @@ import { useI18n } from "../hooks/useI18n";
 import { ApiError, apiClient, NetworkError } from "../lib/api";
 import type { TranslationDict } from "../locales/types";
 import { dateTimeLocalToStoredUtc, storedUtcToDateTimeLocal } from "../utils/date-display";
+import { areJsonEqual, preserveDirtyRefreshValue } from "../utils/form-refresh";
 import { isTypingTarget } from "../utils/keyboard";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath } from "../utils/urlHelpers";
@@ -122,18 +123,9 @@ type TaskDetailsFormState = {
 	actualEnd: string;
 };
 
-const areJsonEqual = (first: unknown, second: unknown): boolean => JSON.stringify(first) === JSON.stringify(second);
-
 // A modified file is a path from the project root, so the References form's URL branch has no
 // counterpart here: a scheme-looking value is refused rather than stored as a path.
 const looksLikeUrl = (value: string): boolean => /^[a-z][a-z0-9+.-]*:\/\//i.test(value.trim());
-
-const preserveDirtyRefreshValue = <T,>(
-	current: T,
-	previous: T,
-	next: T,
-	isEqual: (first: T, second: T) => boolean = Object.is,
-): T => (isEqual(current, previous) ? next : current);
 
 const buildTaskDetailsFormState = ({
 	task,

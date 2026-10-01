@@ -24,7 +24,7 @@ const Modal: React.FC<ModalProps> = ({
 	leftActions,
 }) => {
 	const { t } = useI18n();
-	const panelRef = useRef<HTMLDivElement | null>(null);
+	const overlayRef = useRef<HTMLDivElement | null>(null);
 	const onCloseRef = useRef(onClose);
 	onCloseRef.current = onClose;
 	useEffect(() => {
@@ -51,12 +51,13 @@ const Modal: React.FC<ModalProps> = ({
 
 	// Backdrop close is wired at the document level instead of with an onClick on the
 	// overlay: a click handler on a plain <div> is invisible to keyboard users, and
-	// Escape already covers them. Clicks inside the panel are ignored.
+	// Escape already covers them. Only a click landing on the overlay itself closes
+	// the modal — the panel is ignored, and so is the click that opened the modal,
+	// which can still be bubbling to document when this listener is registered.
 	useEffect(() => {
 		if (!isOpen || disableEscapeClose) return undefined;
 		const handleBackdropClick = (event: MouseEvent) => {
-			const target = event.target as Node | null;
-			if (!target || panelRef.current?.contains(target)) return;
+			if (event.target !== overlayRef.current) return;
 			onCloseRef.current();
 		};
 		document.addEventListener("click", handleBackdropClick);
@@ -67,11 +68,11 @@ const Modal: React.FC<ModalProps> = ({
 
 	return (
 		<div
+			ref={overlayRef}
 			className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4"
 			role="presentation"
 		>
 			<div
-				ref={panelRef}
 				className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-2xl ${maxWidthClass} w-full max-h-[94vh] overflow-y-auto transition-colors duration-200`}
 				role="dialog"
 				aria-modal="true"

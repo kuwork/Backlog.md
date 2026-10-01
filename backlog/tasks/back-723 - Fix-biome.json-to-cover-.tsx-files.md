@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-09-30 20:17'
-updated_date: '2026-10-01 05:03'
+updated_date: '2026-10-01 05:41'
 labels:
   - tooling
   - biome
@@ -50,4 +50,6 @@ biome.json files.includes only matched src/**/*.ts, so 100+ .tsx files (src/web 
 Extended biome.json includes to src/**/*.{ts,tsx}. Cleared all lint diagnostics: noNonNullAssertion fixed via code rewrites + test-dir override in biome.json; useExhaustiveDependencies silenced with 50 biome-ignore comments matching the repo's existing convention. bun run check . exits 0 (0 diagnostics/warnings); bunx tsc --noEmit passes; scoped component tests green. 2 pre-existing unused biome-ignore suppressions (Board.tsx, MilestoneDetailsModal.tsx) removed.
 
 Review follow-up: TaskColumn.tsx semantic-tag refactor (div->fieldset/ul/li) broke 12 tests via stale .space-y-3 > div.relative selectors; test selectors updated to li.relative. Audited all 50 useExhaustiveDependencies biome-ignore comments: 40 SAFE, 8 RISKY (cosmetic i18n/comment issues), 2 real bugs fixed - DocumentationDetail.tsx handleSave now lists originalDocTitle (rename-back-to-original was silently dropped), TaskDetailsModal.tsx keydown listener now uses shortcutHandlersRef latest-ref pattern (Cmd+S previously could save stale milestone/dates); one biome-ignore removed as a result. Final verification: bun run check . clean, tsc clean, bun test 3119 pass / 0 fail.
+
+Post-merge regression fixes (found by visual check): (1) Modal.tsx document-level backdrop listener closed modals immediately - the click that opened the modal kept bubbling to document and hit the newly registered listener; fixed with overlayRef, closing only when the click lands on the overlay itself, plus regression tests in src/test/web-modal-backdrop.test.tsx. (2) MilestoneTaskRow div->button conversion made rows shrink-to-fit and broke column alignment on the milestones page; fixed with w-full. Audited all other div->button/fieldset conversions (TaskCard, DraftsList, Statistics, GanttView, SearchDialog) - safe. Lesson: semantic-tag refactors need visual verification; tests only caught DOM-selector breakage.
 <!-- SECTION:NOTES:END -->
