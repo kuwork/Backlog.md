@@ -1,6 +1,7 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useI18n } from "../hooks/useI18n";
+import TocDrawer from "./TocDrawer";
 
 interface ModalProps {
 	isOpen: boolean;
@@ -11,6 +12,7 @@ interface ModalProps {
 	disableEscapeClose?: boolean; // when true, Escape and backdrop click won't close (child can handle it)
 	actions?: React.ReactNode; // optional actions rendered in header before close
 	leftActions?: React.ReactNode; // optional actions rendered in header before title
+	toc?: boolean; // when true, a bookmark tab on the left edge opens a floating outline of the content headings
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -22,9 +24,11 @@ const Modal: React.FC<ModalProps> = ({
 	disableEscapeClose,
 	actions,
 	leftActions,
+	toc,
 }) => {
 	const { t } = useI18n();
 	const overlayRef = useRef<HTMLDivElement | null>(null);
+	const contentRef = useRef<HTMLDivElement | null>(null);
 	const onCloseRef = useRef(onClose);
 	onCloseRef.current = onClose;
 	useEffect(() => {
@@ -73,12 +77,13 @@ const Modal: React.FC<ModalProps> = ({
 			role="presentation"
 		>
 			<div
-				className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-2xl ${maxWidthClass} w-full max-h-[94vh] overflow-y-auto transition-colors duration-200`}
+				className={`relative flex max-h-[94vh] w-full flex-col rounded-lg border border-gray-200 bg-white shadow-2xl transition-colors duration-200 dark:border-gray-600 dark:bg-gray-800 ${maxWidthClass}`}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="modal-title"
 			>
-				<div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-white/75 supports-[backdrop-filter]:dark:bg-gray-800/75">
+				{toc && <TocDrawer containerRef={contentRef} />}
+				<div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-6 pt-4 pb-3 dark:border-gray-700">
 					<div className="flex items-center gap-2 flex-1 min-w-0 mr-4">
 						{leftActions}
 						<h2
@@ -100,7 +105,9 @@ const Modal: React.FC<ModalProps> = ({
 						</button>
 					</div>
 				</div>
-				<div className="px-6 pt-4 pb-6">{children}</div>
+				<div ref={contentRef} className="min-h-0 overflow-y-auto px-6 pt-4 pb-6">
+					{children}
+				</div>
 			</div>
 		</div>
 	);

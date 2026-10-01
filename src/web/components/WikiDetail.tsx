@@ -133,7 +133,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 			: path.split("/").pop()?.replace(/\.md$/i, "") || path;
 
 	return (
-		<Modal isOpen={true} onClose={onClose} title={previewTitle} maxWidthClass="max-w-3xl">
+		<Modal isOpen={true} onClose={onClose} title={previewTitle} maxWidthClass="max-w-3xl" toc>
 			{previewLoading ? (
 				<div className="text-gray-500 dark:text-gray-400 py-8 text-center">{t.common.loading}</div>
 			) : previewError || !previewPage ? (
