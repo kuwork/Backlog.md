@@ -1,6 +1,19 @@
-import { DATE_TIME_REGEX, localDateTimeToStoredUtc, parseStoredUtcDate } from "../../utils/date-utc.ts";
+import {
+	DATE_TIME_REGEX,
+	formatLocalDateKey,
+	formatLocalTimeStamp,
+	localDateKeyFromStoredUtc,
+	localDateTimeToStoredUtc,
+	parseStoredUtcDate,
+} from "../../utils/date-utc.ts";
 
-export { localDateTimeToStoredUtc as dateTimeLocalToStoredUtc, parseStoredUtcDate };
+export {
+	formatLocalDateKey,
+	formatLocalTimeStamp,
+	localDateKeyFromStoredUtc,
+	localDateTimeToStoredUtc as dateTimeLocalToStoredUtc,
+	parseStoredUtcDate,
+};
 
 /** A rendered stored date: the visible text plus, when the record has a time, the canonical UTC value for hover. */
 export interface StoredDateDisplay {

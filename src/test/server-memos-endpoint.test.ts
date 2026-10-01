@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import { BacklogServer } from "../server/index.ts";
+import { formatLocalDateKey, localDateTimeToStoredUtc } from "../utils/date-utc.ts";
 import { createUniqueTestDir, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
@@ -11,7 +12,22 @@ let server: BacklogServer | null = null;
 let serverPort = 0;
 let socket: WebSocket | null = null;
 
-/** Seeds a memo exactly like createMemo does, but with a backdated created_date. */
+/**
+ * Seeds a memo exactly like `createMemo` does, but for a chosen LOCAL day. `created_date` is stored
+ * UTC, so the local day has to be converted rather than hand-written: the calendar, the `?date=`
+ * filter and the day a memo's id points at are all local-day questions.
+ */
+async function seedMemoOnDay(
+	id: string,
+	localDay: string,
+	time: string,
+	body: string,
+	tags: string[] = [],
+): Promise<void> {
+	return seedMemo(id, localDateTimeToStoredUtc(`${localDay} ${time}`), body, tags);
+}
+
+/** Writes a memo file by hand with the stored `created_date` value given verbatim. */
 async function seedMemo(id: string, createdDate: string, body: string, tags: string[] = []): Promise<void> {
 	const filePath = join(testDir, "backlog", "memos", `${id}.md`);
 	await Bun.write(
@@ -68,9 +84,9 @@ beforeEach(async () => {
 	});
 
 	// A fixed month well away from "now", so the calendar defaults test cannot collide with it.
-	await seedMemo("20190305-1", "2019-03-05 09:00", "first memo", ["idea"]);
-	await seedMemo("20190305-2", "2019-03-05 18:12", "second memo");
-	await seedMemo("20190401-1", "2019-04-01 08:00", "third memo");
+	await seedMemoOnDay("20190305-1", "2019-03-05", "09:00", "first memo", ["idea"]);
+	await seedMemoOnDay("20190305-2", "2019-03-05", "18:12", "second memo");
+	await seedMemoOnDay("20190401-1", "2019-04-01", "08:00", "third memo");
 
 	server = new BacklogServer(testDir);
 	await server.start(0, false);
@@ -147,10 +163,25 @@ describe("GET /api/memos/calendar", () => {
 		expect(body).toEqual({ "2019-03-05": 2 });
 	});
 
+	it("counts a late-evening memo on its local day even when it is stored under the next UTC date", async () => {
+		const lateStored = localDateTimeToStoredUtc("2019-03-05 23:00");
+		await seedMemo("20190305-3", lateStored, "late memo");
+
+		const { body } = await fetchJson("/api/memos/calendar?year=2019&month=3");
+		expect(body["2019-03-05"]).toBe(3);
+
+		// In UTC the stored date is the same day and there is nothing to tell apart; anywhere else it
+		// is a different day and must not collect a bucket of its own. The pinned-zone cases in
+		// memo-local-day-timezone.test.ts are what force the two apart on a UTC test runner.
+		const utcDay = lateStored.slice(0, 10);
+		if (utcDay !== "2019-03-05") {
+			expect(body[utcDay]).toBeUndefined();
+		}
+	});
+
 	it("defaults to the current month", async () => {
-		const now = new Date();
-		const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-		await seedMemo("20990101-1", `${today} 12:00`, "memo written today");
+		const today = formatLocalDateKey(new Date());
+		await seedMemoOnDay("20990101-1", today, "12:00", "memo written today");
 
 		const { status, body } = await fetchJson("/api/memos/calendar");
 
@@ -163,6 +194,14 @@ describe("GET /api/memos/calendar", () => {
 		expect((await fetchJson("/api/memos/calendar?year=2019&month=13")).status).toBe(400);
 		expect((await fetchJson("/api/memos/calendar?year=2019&month=Mar")).status).toBe(400);
 		expect((await fetchJson("/api/memos/calendar?year=2019&month=0")).status).toBe(400);
+	});
+});
+
+describe("SPA fallback", () => {
+	it("serves the app shell when /memos is refreshed", async () => {
+		const response = await request("/memos");
+		expect(response.status).toBe(200);
+		expect(response.headers.get("content-type") ?? "").toContain("text/html");
 	});
 });
 

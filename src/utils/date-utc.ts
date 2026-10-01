@@ -65,6 +65,34 @@ export function getStoredUtcTimestamp(dateStr: string): number {
 	return parsed ? parsed.getTime() : 0;
 }
 
+/** `YYYY-MM-DD` for a Date, read on the machine's own clock. */
+export function formatLocalDateKey(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+/**
+ * The local calendar day (`YYYY-MM-DD`) that a stored UTC value falls on.
+ *
+ * Stored date-times are UTC - `toISOString()` is what every writer in this repo calls - but every
+ * day-shaped question (a calendar's density buckets, a `?date=` feed filter, a search deep link) is
+ * asked in the user's own day, so the stored value has to be converted before its date is read. A
+ * date-only value carries no time to shift and is returned untouched, which matches how the card
+ * timestamp renders one; an unparsable value falls back to its literal date prefix, so a corrupt
+ * record is grouped by what it literally says instead of vanishing.
+ */
+export function localDateKeyFromStoredUtc(value: string): string {
+	if (typeof value !== "string") return "";
+	const normalized = value.trim();
+	if (!normalized) return "";
+	if (DATE_ONLY_REGEX.test(normalized)) return normalized;
+	const parsed = parseStoredUtcDate(normalized);
+	if (!parsed) return normalized.slice(0, 10);
+	return formatLocalDateKey(parsed);
+}
+
 /**
  * Converts a user-local datetime string to a stored UTC string.
  *
@@ -113,4 +141,15 @@ export function localDateTimeToStoredUtc(dateStr: string): string {
 	}
 
 	return normalized;
+}
+
+/**
+ * `HH:mm` on the machine's own clock. Pinning a back-dated capture to a day needs exactly this: the
+ * picked day is a local day, so its time-of-day has to come from the local clock before the pair is
+ * converted to the stored UTC shape.
+ */
+export function formatLocalTimeStamp(date: Date = new Date()): string {
+	const hours = String(date.getHours()).padStart(2, "0");
+	const minutes = String(date.getMinutes()).padStart(2, "0");
+	return `${hours}:${minutes}`;
 }

@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import type { Memo } from "../core/memos.ts";
 import type { Decision, Document as DocEntity, Task } from "../types";
+import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import MemosPage, { MemoCard } from "../web/components/MemosPage.tsx";
+import MermaidMarkdown from "../web/components/MermaidMarkdown.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ImageLightboxProvider } from "../web/contexts/ImageLightboxContext";
 import { TaskIdIndexProvider } from "../web/contexts/TaskIdIndexContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext";
+import type { Locale } from "../web/locales";
 
 /**
  * The `/memos` feed end to end in jsdom: first page on mount, quick capture through the composer,
@@ -26,6 +29,12 @@ const makeMemo = (id: string, content: string, tags: string[] = []): Memo => ({
 	path: `/repo/backlog/memos/${id}.md`,
 });
 
+/** A `YYYY-MM-DD HH:mm` UTC string (the stored shape) for a given instant. */
+const storedUtc = (date: Date): string => {
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+};
+
 /** Two pages behind one cursor, so a component that ignores the sentinel stops at 2 rows. */
 const PAGE_ONE = [
 	makeMemo("20261001-3", "Newest memo #idea", ["idea"]),
@@ -36,7 +45,7 @@ const PAGE_TWO = [makeMemo("20261001-1", "Oldest memo #idea", ["idea"])];
 const originalFetch = globalThis.fetch;
 let root: Root | null = null;
 let requests: string[] = [];
-let created: { content: string; tags: string[] } | null = null;
+let created: { content: string; tags: string[]; createdDate?: string } | null = null;
 /** Set false to make every mutation answer 500 and prove errors surface instead of dropping notes. */
 let failWrites = false;
 /** Set true to make the SECOND feed fetch (the live refresh) answer 500, proving it is swallowed. */
@@ -60,8 +69,11 @@ function serveApi(): void {
 		if (url.pathname === "/api/memos" && (init?.method ?? "GET") === "POST") {
 			if (failWrites) return json({ error: "boom" }, 500);
 			const body = JSON.parse(String(init?.body ?? "{}"));
-			created = { content: body.content, tags: body.tags ?? [] };
-			return json(makeMemo("20261001-4", body.content, created.tags), 201);
+			created = { content: body.content, tags: body.tags ?? [], createdDate: body.createdDate };
+			// Echo the stored stamp back the way the server does, so the composer's optimistic
+			// calendar bump works off the same value the page just sent.
+			const saved = makeMemo("20261001-4", body.content, created.tags);
+			return json(body.createdDate ? { ...saved, createdDate: body.createdDate } : saved, 201);
 		}
 
 		if (url.pathname === "/api/memos") {
@@ -88,7 +100,8 @@ function serveApi(): void {
 		if (url.pathname === "/api/memos/calendar") {
 			const year = Number(url.searchParams.get("year"));
 			const month = Number(url.searchParams.get("month"));
-			if (year === 2026 && month === 10) return json({ "2026-10-01": 2, "2026-10-15": 5 });
+			if (year === 2026 && month === 10)
+				return json({ "2026-10-01": 2, "2026-10-03": 1, "2026-10-15": 5, "2026-10-20": 9 });
 			return json({});
 		}
 
@@ -160,14 +173,14 @@ async function flush(): Promise<void> {
 	});
 }
 
-async function renderMemos(path = "/memos"): Promise<HTMLElement> {
+async function renderMemos(path = "/memos", locale: Locale = "en"): Promise<HTMLElement> {
 	const container = setupDom(path);
 	serveApi();
 	root = createRoot(container);
 	await act(async () => {
 		root?.render(
 			<ThemeProvider>
-				<I18nProvider initialLocale="en">
+				<I18nProvider initialLocale={locale}>
 					<ImageLightboxProvider>
 						<BrowserRouter>
 							<MemosPage />
@@ -204,6 +217,15 @@ async function clickButton(container: HTMLElement, text: string): Promise<void> 
 	expect(button).toBeTruthy();
 	await act(async () => {
 		reactProps(button as Element).onClick?.({});
+		await Promise.resolve();
+	});
+	await flush();
+}
+
+async function clickElement(element: Element | null): Promise<void> {
+	expect(element).toBeTruthy();
+	await act(async () => {
+		reactProps(element as Element).onClick?.({});
 		await Promise.resolve();
 	});
 	await flush();
@@ -306,12 +328,30 @@ describe("MemosPage feed", () => {
 		expect(cardTexts(container)).toHaveLength(2);
 	});
 
-	it("reads ?view= from the URL so a feed link opens the feed mode", async () => {
+	it("keeps edit and delete behind the card's ⋮ menu", async () => {
+		const container = await renderMemos();
+		// Nothing is offered until the menu opens.
+		expect(buttonByText(container, "Edit")).toBeNull();
+		expect(buttonByText(container, "Delete")).toBeNull();
+
+		const more = container.querySelector('[aria-label="More actions"]');
+		expect(more).toBeTruthy();
+		await clickElement(more);
+
+		const menu = container.querySelector('[role="menu"]');
+		expect(menu).toBeTruthy();
+		expect(buttonByText(menu as HTMLElement, "Edit")).toBeTruthy();
+		expect(buttonByText(menu as HTMLElement, "Delete")).toBeTruthy();
+
+		// Choosing Edit dismisses the menu and swaps the card body for the editor.
+		await clickButton(menu as HTMLElement, "Edit");
+		expect(container.querySelector('[role="menu"]')).toBeNull();
+		expect(container.querySelector('[data-testid="memo-card"] textarea')).toBeTruthy();
+	});
+
+	it("leaves the calendar popover shut when the URL does not ask for it", async () => {
 		const container = await renderMemos("/memos?view=feed");
-		const feedTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
-			(tab) => tab.textContent?.trim() === "Feed",
-		);
-		expect(feedTab?.getAttribute("aria-selected")).toBe("true");
+		expect(container.querySelector("#memos-calendar-popover")).toBeNull();
 		expect(cardTexts(container).length).toBeGreaterThan(0);
 	});
 });
@@ -329,7 +369,7 @@ async function clickCalendarDay(container: HTMLElement, date: string): Promise<v
 	await flush();
 }
 
-describe("MemosPage calendar", () => {
+describe("MemosPage calendar popover", () => {
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
 		failWrites = false;
@@ -339,76 +379,101 @@ describe("MemosPage calendar", () => {
 		root = null;
 	});
 
-	it("renders the month grid with per-day counts and prev/next navigation", async () => {
-		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
-		expect(calendarDay(container, "2026-10-01")).toBeTruthy();
-		expect(calendarDay(container, "2026-10-15")).toBeTruthy();
-		// Two memos were reported for the first; the count badge shows the number.
-		expect(calendarDay(container, "2026-10-01")?.textContent).toContain("2");
+	const popover = (container: HTMLElement): HTMLElement | null => container.querySelector("#memos-calendar-popover");
+	const calendarButton = (container: HTMLElement): HTMLElement | null =>
+		container.querySelector('[aria-controls="memos-calendar-popover"]');
+
+	it("opens the month grid from the composer's calendar button and closes it on Escape", async () => {
+		const container = await renderMemos();
+		expect(popover(container)).toBeNull();
+
+		await clickElement(calendarButton(container));
+		expect(popover(container)).toBeTruthy();
+		// The grid follows the current month and marks a day with memos by a dot.
+		expect(calendarDay(container, "2026-10-15")?.querySelector('[data-testid="calendar-dot"]')).toBeTruthy();
 		expect(container.querySelector('[aria-label="Previous month"]')).toBeTruthy();
 		expect(container.querySelector('[aria-label="Next month"]')).toBeTruthy();
+
+		await act(async () => {
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+			await Promise.resolve();
+		});
+		await flush();
+		expect(popover(container)).toBeNull();
 	});
 
-	it("opens a day panel when a day is clicked and collapses it on the second click", async () => {
+	it("marks memo density with a coloured dot instead of a count", async () => {
 		const container = await renderMemos("/memos?view=calendar");
-		expect(container.querySelector('[data-testid="day-panel"]')).toBeNull();
-		await clickCalendarDay(container, "2026-10-01");
-		expect(container.querySelector('[data-testid="day-panel"]')).toBeTruthy();
-		await clickCalendarDay(container, "2026-10-01");
-		expect(container.querySelector('[data-testid="day-panel"]')).toBeNull();
+		const dot = (date: string) =>
+			calendarDay(container, date)?.querySelector<HTMLElement>('[data-testid="calendar-dot"]');
+		expect(dot("2026-10-03")?.className).toContain("bg-green");
+		expect(dot("2026-10-01")?.className).toContain("bg-blue");
+		expect(dot("2026-10-20")?.className).toContain("bg-red");
+		// The count itself is never printed; a day with no memos has no dot.
+		expect(calendarDay(container, "2026-10-20")?.textContent).toBe("20");
+		expect(dot("2026-10-10")).toBeNull();
 	});
 
-	it("deep-links ?view=calendar&date= straight to that day's panel", async () => {
+	it("deep-links ?view=calendar&date= to the open popover with that day selected", async () => {
 		const container = await renderMemos("/memos?view=calendar&date=2026-10-15");
-		const panel = container.querySelector('[data-testid="day-panel"]');
-		expect(panel).toBeTruthy();
-		expect(panel?.getAttribute("data-date")).toBe("2026-10-15");
+		expect(popover(container)).toBeTruthy();
+		expect(calendarDay(container, "2026-10-15")?.getAttribute("aria-pressed")).toBe("true");
+		// The date chip sits on the composer.
+		expect(container.textContent).toContain("October 15, 2026");
 	});
 
-	it("saves a back-dated memo from the day panel pinned to that day", async () => {
+	it("picking a day parks a closable date chip on the composer and filters the feed", async () => {
 		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
-		const panel = container.querySelector('[data-testid="day-panel"]');
-		expect(panel).toBeTruthy();
+		await clickCalendarDay(container, "2026-10-15");
 
-		const textarea = panel?.querySelector("textarea");
-		expect(textarea).toBeTruthy();
-		await act(async () => {
-			const props = reactProps(textarea as Element);
-			const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-			setter?.call(textarea, "Backdated note #retro");
-			props.onChange?.({ target: textarea });
-			await Promise.resolve();
-		});
-		await flush();
+		// Choosing a day dismisses the popover and reloads the feed filtered to it.
+		expect(popover(container)).toBeNull();
+		expect(requests.some((request) => request.includes("date=2026-10-15"))).toBe(true);
+		expect(container.textContent).toContain("October 15, 2026");
 
-		const saveButton = Array.from((panel as HTMLElement).querySelectorAll("button")).find(
-			(button) => button.textContent?.trim() === "Save",
-		);
-		expect(saveButton).toBeTruthy();
-		await act(async () => {
-			reactProps(saveButton as Element).onClick?.({});
-			await Promise.resolve();
-		});
-		await flush();
+		// The chip's clear button drops the filter.
+		const clear = container.querySelector('[aria-label="Clear date filter"]');
+		expect(clear).toBeTruthy();
+		await clickElement(clear);
+		expect(container.querySelector('[aria-label="Clear date filter"]')).toBeNull();
+	});
+
+	it("captures into the selected day (back-dated) from the single composer", async () => {
+		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
+		await typeIntoComposer(container, "Backdated note #retro");
+		await clickButton(container, "Save");
 
 		expect(created?.content).toBe("Backdated note #retro");
 		expect(created?.tags).toEqual(["retro"]);
-		// The panel composer pins the capture to the selected day.
-		expect(requests.some((request) => request.includes("2026-10-01"))).toBe(true);
+		// The single composer pins the capture to the day on the chip, with the current LOCAL time,
+		// and sends it in the stored UTC shape. The chip's day is therefore what the local date part
+		// of the sent value must be - the stored string itself is a different day east or west of UTC.
+		expect(localDateKeyFromStoredUtc(String(created?.createdDate))).toBe("2026-10-01");
 	});
 
-	it("switches to feed filtered to the day from the panel", async () => {
-		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
-		const panel = container.querySelector('[data-testid="day-panel"]');
-		const viewInFeed = buttonByText(panel as HTMLElement, "View in feed");
-		expect(viewInFeed).toBeTruthy();
-		await clickButton(panel as HTMLElement, "View in feed");
-		// The feed mode is selected and the date chip is shown.
-		const feedTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
-			(tab) => tab.textContent?.trim() === "Feed",
-		);
-		expect(feedTab?.getAttribute("aria-selected")).toBe("true");
-		expect(container.textContent).toContain("2026-10-01");
+	it("counts a back-dated capture on the local day, not on its stored UTC date", async () => {
+		const container = await renderMemos("/memos?view=calendar");
+		// A day the stubbed grid has no memos for, so a dot can only come from the optimistic bump.
+		await clickCalendarDay(container, "2026-10-07");
+		await typeIntoComposer(container, "Late note #late");
+		await clickButton(container, "Save");
+
+		// `bun test` runs in UTC, so the sent value and its local day agree here; the conversion itself
+		// is forced apart on a real zone by test/memo-local-day-timezone.test.ts.
+		const stored = String(created?.createdDate ?? "");
+		expect(stored).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+		expect(localDateKeyFromStoredUtc(stored)).toBe("2026-10-07");
+
+		await clickElement(calendarButton(container));
+		expect(calendarDay(container, "2026-10-07")?.querySelector('[data-testid="calendar-dot"]')).toBeTruthy();
+	});
+
+	it("renders the month and weekday headings in the app locale", async () => {
+		const container = await renderMemos("/memos?view=calendar&date=2026-10-01", "zh-CN");
+		const gridText = popover(container)?.textContent ?? "";
+		expect(gridText).toContain("2026年10月");
+		expect(gridText).not.toContain("Sun");
+		expect(gridText).toContain("周");
 	});
 });
 
@@ -429,7 +494,7 @@ describe("MemoCard knowledge web (BACK-734)", () => {
 		root = null;
 	});
 
-	async function renderCard(content: string, withIndex = true): Promise<HTMLElement> {
+	async function renderCard(content: string, withIndex = true, createdDate?: string): Promise<HTMLElement> {
 		const container = setupDom("/memos");
 		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
 		root = createRoot(container);
@@ -445,9 +510,10 @@ describe("MemoCard knowledge web (BACK-734)", () => {
 									decisions={withIndex ? index.decisions : []}
 								>
 									<MemoCard
-										memo={makeMemo("20261001-3", content, [])}
+										memo={{ ...makeMemo("20261001-3", content, []), ...(createdDate ? { createdDate } : {}) }}
 										onUpdate={async () => {}}
 										onDelete={async () => {}}
+										onTagClick={() => {}}
 									/>
 								</TaskIdIndexProvider>
 							</BrowserRouter>
@@ -497,6 +563,326 @@ describe("MemoCard knowledge web (BACK-734)", () => {
 		await flush();
 		// SPA navigation: the location moved client-side; a full reload would 404 in jsdom.
 		expect(globalThis.window.location.pathname).toBe("/task/123");
+	});
+
+	it("shows the elapsed minutes for a recent memo instead of a persistent 'just now'", async () => {
+		const container = await renderCard("Recent note", false, storedUtc(new Date(Date.now() - 5 * 60000)));
+		expect(container.textContent).toContain("5 min ago");
+		expect(container.textContent).not.toContain("just now");
+	});
+
+	it("reads the first minute as '1 min ago', never 'just now'", async () => {
+		const container = await renderCard("Brand new", false, storedUtc(new Date(Date.now() - 20000)));
+		expect(container.textContent).toContain("1 min ago");
+		expect(container.textContent).not.toContain("just now");
+	});
+
+	it("reads the under-an-hour bucket as 'Today'", async () => {
+		const container = await renderCard("Half an hour old", false, storedUtc(new Date(Date.now() - 30 * 60000)));
+		expect(container.textContent).toContain("Today");
+		expect(container.textContent).not.toContain("min ago");
+	});
+
+	it("falls back to the concrete clock time once past an hour", async () => {
+		const container = await renderCard("Older", false, storedUtc(new Date(Date.now() - 2 * 60 * 60000)));
+		expect(container.textContent).not.toContain("Today");
+		expect(container.textContent).not.toContain("min ago");
+		// The shared renderer prints a clock time (H:MM) for a stored datetime.
+		expect(/\d{1,2}:\d{2}/.test(container.textContent ?? "")).toBe(true);
+	});
+
+	it("renders a date-only memo as that exact day, with no UTC shift", async () => {
+		const container = await renderCard("Back-dated", false, "2026-10-15");
+		expect(container.textContent).toContain("October 15, 2026");
+		expect(container.textContent).not.toContain("October 14, 2026");
+	});
+});
+
+describe("MemoCard task list", () => {
+	/** The shape a pasted acceptance list arrives in: indented items, blank lines between them. */
+	const CHECKLIST = " Acceptance Criteria\n\n - [ ] first item\n\n - [ ] second item";
+
+	let updates: Array<{ id: string; content: string; tags: string[] }> = [];
+	let failUpdate = false;
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		updates = [];
+		failUpdate = false;
+		act(() => root?.unmount());
+		root = null;
+	});
+
+	async function renderCard(content: string): Promise<HTMLElement> {
+		const container = setupDom("/memos");
+		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
+		root = createRoot(container);
+		await act(async () => {
+			root?.render(
+				<ThemeProvider>
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<BrowserRouter>
+								<TaskIdIndexProvider tasks={[]} docs={[]} decisions={[]}>
+									<MemoCard
+										memo={makeMemo("20261001-3", content, [])}
+										onUpdate={async (id, next, tags) => {
+											if (failUpdate) throw new Error("nope");
+											updates.push({ id, content: next, tags });
+										}}
+										onDelete={async () => {}}
+										onTagClick={() => {}}
+									/>
+								</TaskIdIndexProvider>
+							</BrowserRouter>
+						</ImageLightboxProvider>
+					</I18nProvider>
+				</ThemeProvider>,
+			);
+		});
+		await flush();
+		return container;
+	}
+
+	async function clickCheckbox(container: HTMLElement, index: number): Promise<void> {
+		const box = container.querySelectorAll('input[type="checkbox"]')[index] as HTMLInputElement | undefined;
+		expect(box).toBeTruthy();
+		await act(async () => {
+			reactProps(box as Element).onChange?.({ currentTarget: box });
+			await Promise.resolve();
+		});
+		await flush();
+	}
+
+	it("renders the checklist as enabled checkboxes, not a dead read-only list", async () => {
+		const container = await renderCard(CHECKLIST);
+		const boxes = Array.from(container.querySelectorAll('input[type="checkbox"]')) as HTMLInputElement[];
+		expect(boxes).toHaveLength(2);
+		expect(boxes.every((box) => !box.disabled)).toBe(true);
+		expect(boxes.map((box) => box.checked)).toEqual([false, false]);
+	});
+
+	it("saves the memo with the clicked marker ticked, leaving the others alone", async () => {
+		const container = await renderCard(CHECKLIST);
+		await clickCheckbox(container, 1);
+		expect(updates).toHaveLength(1);
+		expect(updates[0]?.id).toBe("20261001-3");
+		expect(updates[0]?.content).toBe(" Acceptance Criteria\n\n - [ ] first item\n\n - [x] second item");
+	});
+
+	it("untick a rendered box that is already checked", async () => {
+		const container = await renderCard(" - [x] done thing");
+		await clickCheckbox(container, 0);
+		expect(updates[0]?.content).toBe(" - [ ] done thing");
+	});
+
+	it("ends up genuinely unticked when the host feeds the save back, as the page does", async () => {
+		// The regression this guards: react-markdown emits `checked` only for a ticked item, and React
+		// re-applies that prop only while it exists. A box that went ticked -> unticked therefore kept
+		// the tick React had restored, even though the save had already flipped the marker.
+		const container = setupDom("/memos");
+		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
+		root = createRoot(container);
+		function Host() {
+			const [memo, setMemo] = useState(makeMemo("20261001-3", " - [x] done thing", []));
+			return (
+				<ThemeProvider>
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<BrowserRouter>
+								<TaskIdIndexProvider tasks={[]} docs={[]} decisions={[]}>
+									<MemoCard
+										memo={memo}
+										onUpdate={async (id, content, tags) => {
+											setMemo(makeMemo(id, content, tags));
+										}}
+										onDelete={async () => {}}
+										onTagClick={() => {}}
+									/>
+								</TaskIdIndexProvider>
+							</BrowserRouter>
+						</ImageLightboxProvider>
+					</I18nProvider>
+				</ThemeProvider>
+			);
+		}
+		await act(async () => {
+			root?.render(<Host />);
+		});
+		await flush();
+
+		const boxOf = () => container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+		expect(boxOf().checked).toBe(true);
+
+		await act(async () => {
+			boxOf().click();
+			await Promise.resolve();
+		});
+		await flush();
+		expect(boxOf().checked).toBe(false);
+
+		// And the other direction still works on a host that keeps feeding the memo back.
+		await act(async () => {
+			boxOf().click();
+			await Promise.resolve();
+		});
+		await flush();
+		expect(boxOf().checked).toBe(true);
+	});
+
+	it("surfaces a save failure instead of pretending the box moved", async () => {
+		failUpdate = true;
+		const container = await renderCard(" - [ ] first item");
+		await clickCheckbox(container, 0);
+		expect(container.textContent).toContain("Could not save the changes to this memo");
+		expect((container.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+	});
+
+	it("keeps the boxes read-only when the renderer is used without a toggle handler", async () => {
+		// The other markdown surfaces (task and doc bodies) pass no handler, so their checklists
+		// must stay exactly as GitHub draws them.
+		const container = setupDom("/memos");
+		root = createRoot(container);
+		await act(async () => {
+			root?.render(
+				<ThemeProvider>
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<TaskIdIndexProvider tasks={[]} docs={[]} decisions={[]}>
+								<MermaidMarkdown source={" - [ ] first item"} />
+							</TaskIdIndexProvider>
+						</ImageLightboxProvider>
+					</I18nProvider>
+				</ThemeProvider>,
+			);
+		});
+		await flush();
+		const box = container.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+		expect(box).toBeTruthy();
+		expect(box?.disabled).toBe(true);
+	});
+});
+
+describe("MemoCard body: note typography and tag chips", () => {
+	let tagClicks: string[] = [];
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		tagClicks = [];
+		act(() => root?.unmount());
+		root = null;
+	});
+
+	async function renderBody(content: string, chips = true): Promise<HTMLElement> {
+		const container = setupDom("/memos");
+		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
+		root = createRoot(container);
+		await act(async () => {
+			root?.render(
+				<ThemeProvider>
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<BrowserRouter>
+								<TaskIdIndexProvider tasks={[]} docs={[]} decisions={[]}>
+									{chips ? (
+										<MemoCard
+											memo={makeMemo("20261001-3", content, [])}
+											onUpdate={async () => {}}
+											onDelete={async () => {}}
+											onTagClick={(tag) => tagClicks.push(tag)}
+										/>
+									) : (
+										<MermaidMarkdown source={content} />
+									)}
+								</TaskIdIndexProvider>
+							</BrowserRouter>
+						</ImageLightboxProvider>
+					</I18nProvider>
+				</ThemeProvider>,
+			);
+		});
+		await flush();
+		return container;
+	}
+
+	const chip = (container: HTMLElement, tag: string): HTMLElement | null =>
+		container.querySelector<HTMLElement>(`[data-memo-tag="${tag}"]`);
+
+	it("marks the body with the class the note typography is scoped to", async () => {
+		const container = await renderBody("Just a note");
+		const body = container.querySelector(".memo-body");
+		expect(body).toBeTruthy();
+		// The dead `prose` classes are gone; nothing defines them, so they styled nothing.
+		expect(body?.className).not.toContain("prose");
+	});
+
+	it("renders a #tag in the body as a chip instead of leaving it as plain text", async () => {
+		const container = await renderBody("And here are my tasks. #todo");
+		const el = chip(container, "todo");
+		expect(el).toBeTruthy();
+		expect(el?.textContent).toBe("#todo");
+		expect(el?.className).toContain("inline-tag");
+		// A chip stands for a filter, so it is reachable and activatable without a mouse.
+		expect(el?.getAttribute("role")).toBe("button");
+		expect(el?.getAttribute("tabindex")).toBe("0");
+	});
+
+	it("keeps the separating space outside the chip so the text still reads normally", async () => {
+		const container = await renderBody("tasks #todo next");
+		expect(container.textContent).toContain("tasks #todo next");
+	});
+
+	it("chips every tag a bare token can produce, including one alone on its line", async () => {
+		const container = await renderBody("#标签\n\nbody #todo");
+		expect(chip(container, "标签")?.textContent).toBe("#标签");
+		expect(chip(container, "todo")).toBeTruthy();
+	});
+
+	it("leaves a real heading alone: the no-space form is a tag, `# ` is a title", async () => {
+		const container = await renderBody("# Title text");
+		expect(container.querySelector("h1")?.textContent).toBe("Title text");
+		expect(chip(container, "Title")).toBeNull();
+	});
+
+	it("does not chip a #token inside code, inline or fenced", async () => {
+		const container = await renderBody("Try `#inline` and\n\n```\n#fenced\n```\n\nbut #real");
+		expect(chip(container, "inline")).toBeNull();
+		expect(chip(container, "fenced")).toBeNull();
+		expect(chip(container, "real")).toBeTruthy();
+	});
+
+	it("leaves tags as literal text where the caller did not opt in", async () => {
+		const container = await renderBody("Just #todo here", false);
+		expect(container.querySelector(".inline-tag")).toBeNull();
+		expect(container.textContent).toContain("#todo");
+	});
+
+	it("filters the feed when a chip is clicked", async () => {
+		const container = await renderBody("tasks #todo");
+		await act(async () => {
+			chip(container, "todo")?.dispatchEvent(new Event("click", { bubbles: true }));
+			await Promise.resolve();
+		});
+		expect(tagClicks).toEqual(["todo"]);
+	});
+
+	it("activates a chip from the keyboard, since it is a role=button", async () => {
+		const container = await renderBody("tasks #todo");
+		await act(async () => {
+			chip(container, "todo")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+			await Promise.resolve();
+		});
+		expect(tagClicks).toEqual(["todo"]);
+	});
+
+	it("ignores other keys and clicks that miss a chip", async () => {
+		const container = await renderBody("tasks #todo");
+		await act(async () => {
+			chip(container, "todo")?.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+			container.querySelector(".memo-body")?.dispatchEvent(new Event("click", { bubbles: true }));
+			await Promise.resolve();
+		});
+		expect(tagClicks).toEqual([]);
 	});
 });
 

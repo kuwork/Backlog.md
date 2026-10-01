@@ -5,6 +5,14 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import {
+	dateTimeLocalToStoredUtc,
+	formatLocalDateKey,
+	formatLocalTimeStamp,
+	localDateKeyFromStoredUtc,
+	parseStoredUtcDate,
+	storedUtcHoverTitle,
+} from "../utils/date-display";
+import {
 	appendMemoPage,
 	collectMemoTags,
 	EMPTY_MEMO_FEED,
@@ -16,18 +24,17 @@ import {
 	prependMemo,
 	removeMemo,
 	replaceMemo,
+	toggleTaskInMarkdown,
 } from "../utils/memos";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
-import StoredDate from "./StoredDate";
 
 /**
- * The two faces of this page share one composer and one selectedDate, so picking a day in the
- * calendar filters the feed and clearing the chip returns to everything.
+ * One composer, one selectedDate. The calendar is a popover hung off the composer's calendar
+ * button: picking a day filters the feed to it and parks a closable date chip on the composer.
  */
-export type MemosView = "feed" | "calendar";
 
 function ErrorBanner({
 	title,
@@ -63,14 +70,104 @@ function ErrorBanner({
 	);
 }
 
+/** A small inline calendar glyph for the composer's calendar button. */
+function CalendarIcon() {
+	return (
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+			<rect x="3" y="5" width="18" height="16" rx="2" />
+			<path strokeLinecap="round" d="M3 10h18M8 3v4M16 3v4" />
+		</svg>
+	);
+}
+
+/** A vertical three-dot glyph for the memo card's actions menu. */
+function KebabIcon() {
+	return (
+		<svg aria-hidden="true" className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+			<circle cx="12" cy="5" r="1.7" />
+			<circle cx="12" cy="12" r="1.7" />
+			<circle cx="12" cy="19" r="1.7" />
+		</svg>
+	);
+}
+
+/** `YYYY-MM-DD` rendered for the current app locale, e.g. 2026年10月1日. */
+function formatDayLabel(day: string, locale: string): string {
+	const [year, month, date] = day.split("-").map((part) => Number.parseInt(part, 10));
+	if (!year || !month || !date) return day;
+	return new Date(year, month - 1, date).toLocaleDateString(locale, {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+	});
+}
+
+/** A `now` that advances on a timer, so a relative label never freezes at its first value. */
+function useRelativeNow(intervalMs = 30000): Date {
+	const [now, setNow] = useState(() => new Date());
+	useEffect(() => {
+		const id = setInterval(() => setNow(new Date()), intervalMs);
+		return () => clearInterval(id);
+	}, [intervalMs]);
+	return now;
+}
+
+/**
+ * The card's timestamp, in three elapsed-time buckets: under 15 minutes the minutes ("N min ago"),
+ * under an hour "Today", and beyond that the concrete stored time. The first minute reads
+ * "1 min ago" rather than a "just now" label, so it keeps advancing instead of sitting still.
+ */
+function MemoTimestamp({ value }: { value: string }) {
+	const { t, locale } = useI18n();
+	const now = useRelativeNow();
+	const className = "text-xs text-gray-500 dark:text-gray-400";
+	const trimmed = value.trim();
+
+	// A plain date - the calendar's picked day, like a due date - is shown for the app locale
+	// as-is, never pushed through a UTC conversion that would land it on the previous day.
+	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+		return <span className={className}>{formatDayLabel(trimmed, locale)}</span>;
+	}
+
+	const parsed = parseStoredUtcDate(value);
+	if (!parsed) return <span className={className}>{value}</span>;
+
+	const diffMinutes = Math.floor((now.getTime() - parsed.getTime()) / 60000);
+	if (diffMinutes >= 0 && diffMinutes < 15) {
+		const minutes = Math.max(1, diffMinutes);
+		return (
+			<span className={className} title={storedUtcHoverTitle(value)}>
+				{t.memos.minutesAgo.replace("{n}", String(minutes))}
+			</span>
+		);
+	}
+	if (diffMinutes >= 0 && diffMinutes < 60) {
+		return (
+			<span className={className} title={storedUtcHoverTitle(value)}>
+				{t.memos.today}
+			</span>
+		);
+	}
+
+	// Older than the "Today" bucket: the concrete stored time, localized for the APP locale (not
+	// the browser's), so an English UI never shows a Chinese-formatted timestamp.
+	return (
+		<span className={className} title={storedUtcHoverTitle(value)}>
+			{parsed.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
+		</span>
+	);
+}
+
 interface MemoCardProps {
 	memo: Memo;
 	onUpdate: (id: string, content: string, tags: string[]) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
+	/** Toggle the feed's tag filter - the body's `#tag` chips and the card's tag row share it. */
+	onTagClick: (tag: string) => void;
 }
 
-/** One memo in the feed or day panel: stored date, markdown body, read-only tags. */
-export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
+/** One memo in the feed: relative date, markdown body, read-only tags, inline edit/delete. */
+export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
@@ -79,7 +176,17 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [error, setError] = useState<{ title: string; detail: string | null } | null>(null);
+	const [menuOpen, setMenuOpen] = useState(false);
 	const busy = isSaving || isDeleting;
+	const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+	const menuRef = useRef<HTMLDivElement | null>(null);
+	const bodyRef = useRef<HTMLDivElement | null>(null);
+	// The callback is read through a ref so the listener below can depend only on `isEditing`:
+	// the page re-renders on every keystroke in the composer, and re-attaching per render is waste.
+	const tagClickRef = useRef(onTagClick);
+	useEffect(() => {
+		tagClickRef.current = onTagClick;
+	}, [onTagClick]);
 
 	const handleStartEdit = () => {
 		setDraft(memo.rawContent);
@@ -115,34 +222,132 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 		}
 	};
 
+	/**
+	 * A rendered `- [ ]` checkbox is a view of the body, so ticking it rewrites the marker and
+	 * saves the whole memo through the same path the editor uses. The server round-trip is what
+	 * moves the tick: the input stays controlled by `memo.rawContent`, so a failed save simply
+	 * leaves the checkbox where it was.
+	 */
+	const handleToggleTask = async (index: number) => {
+		const next = toggleTaskInMarkdown(memo.rawContent, index);
+		if (next === memo.rawContent) return;
+		setError(null);
+		try {
+			await onUpdate(memo.id, next, extractInlineTags(next));
+		} catch (err) {
+			setError({ title: t.memos.updateFailed, detail: err instanceof Error ? err.message : null });
+		}
+	};
+
+	// The actions menu closes on an outside click or Escape, like the page's calendar popover.
+	useEffect(() => {
+		if (!menuOpen) return;
+		const handleClickOutside = (event: MouseEvent) => {
+			const target = event.target as Node;
+			if (
+				menuButtonRef.current &&
+				!menuButtonRef.current.contains(target) &&
+				menuRef.current &&
+				!menuRef.current.contains(target)
+			) {
+				setMenuOpen(false);
+			}
+		};
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setMenuOpen(false);
+		};
+		document.addEventListener("mousedown", handleClickOutside);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [menuOpen]);
+
+	/**
+	 * The body's `#tag` chips are markdown the renderer owns, so React never sees them - their
+	 * events arrive at the wrapper, which delegates. A native listener rather than `onClick` keeps
+	 * a handler off a passive container (React's a11y lint rightly flags that) and lets the chips
+	 * answer Enter and Space, since they carry `role="button"`.
+	 */
+	useEffect(() => {
+		// While editing there is no rendered body to delegate from, and the effect re-runs when the
+		// editor hands the body back, which is also when `bodyRef` points at a fresh node.
+		if (isEditing) return;
+		const node = bodyRef.current;
+		if (!node) return;
+		const activate = (event: Event) => {
+			const chip = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-memo-tag]");
+			const tag = chip?.dataset.memoTag;
+			if (!tag) return;
+			if (event.type === "keydown") {
+				const { key } = event as KeyboardEvent;
+				if (key !== "Enter" && key !== " ") return;
+				event.preventDefault();
+			}
+			tagClickRef.current(tag);
+		};
+		node.addEventListener("click", activate);
+		node.addEventListener("keydown", activate);
+		return () => {
+			node.removeEventListener("click", activate);
+			node.removeEventListener("keydown", activate);
+		};
+		// `isEditing` re-attaches after the body is swapped back in from the editor.
+	}, [isEditing]);
+
 	return (
 		<article
 			data-testid="memo-card"
 			data-memo-id={memo.id}
-			className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4 transition-colors duration-200"
+			className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm dark:shadow-none transition-colors duration-200"
 		>
 			<div className="flex items-center justify-between gap-3 mb-2">
-				<StoredDate value={memo.createdDate} className="text-xs text-gray-500 dark:text-gray-400" />
+				<MemoTimestamp value={memo.createdDate} />
 				{!isEditing && (
-					<div className="flex items-center gap-2">
+					<div className="relative">
 						<button
 							type="button"
-							onClick={handleStartEdit}
+							ref={menuButtonRef}
+							onClick={() => setMenuOpen((open) => !open)}
 							disabled={busy}
-							aria-label={t.memos.editMemo}
-							className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+							aria-haspopup="menu"
+							aria-expanded={menuOpen}
+							aria-label={t.memos.moreActions}
+							className="p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
 						>
-							{t.common.edit}
+							<KebabIcon />
 						</button>
-						<button
-							type="button"
-							onClick={() => void handleDelete()}
-							disabled={busy}
-							aria-label={t.memos.confirmDelete}
-							className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 transition-colors"
-						>
-							{isDeleting ? t.common.removing : t.common.delete}
-						</button>
+						{menuOpen && (
+							<div
+								ref={menuRef}
+								role="menu"
+								className="absolute right-0 top-full mt-1 z-20 min-w-[7rem] rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1"
+							>
+								<button
+									type="button"
+									role="menuitem"
+									onClick={() => {
+										setMenuOpen(false);
+										handleStartEdit();
+									}}
+									className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								>
+									{t.common.edit}
+								</button>
+								<button
+									type="button"
+									role="menuitem"
+									onClick={() => {
+										setMenuOpen(false);
+										void handleDelete();
+									}}
+									className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+								>
+									{isDeleting ? t.common.removing : t.common.delete}
+								</button>
+							</div>
+						)}
 					</div>
 				)}
 			</div>
@@ -167,10 +372,14 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 					/>
 				</div>
 			) : (
-				<div className="prose prose-sm !max-w-none w-full" data-color-mode={theme}>
+				/* `memo-body` carries the note-prose typography (see source.css) - the renderer's own
+				   GitHub-document defaults are far too loud inside a card. */
+				<div className="memo-body w-full" data-color-mode={theme} ref={bodyRef}>
 					<MermaidMarkdown
 						source={memo.rawContent}
 						wikilinkBasePath="index.md"
+						inlineTagChips={true}
+						onToggleTask={(index) => void handleToggleTask(index)}
 						onTaskClick={(taskId) => navigate(`/task/${taskId}`)}
 						onDraftClick={(draftId) => navigate(`/draft/${draftId}`)}
 						onDocClick={(docId) => navigate(`/documentation/${docId}`)}
@@ -201,20 +410,6 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 				</div>
 			)}
 
-			{memo.tags.length > 0 && (
-				<div className="flex flex-wrap gap-1.5 mt-3">
-					{memo.tags.map((tag) => (
-						<span
-							key={tag}
-							data-testid="memo-tag"
-							className="px-2 py-0.5 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-						>
-							#{tag}
-						</span>
-					))}
-				</div>
-			)}
-
 			{error && <ErrorBanner title={error.title} detail={error.detail} />}
 		</article>
 	);
@@ -222,9 +417,9 @@ export function MemoCard({ memo, onUpdate, onDelete }: MemoCardProps) {
 
 const pad = (value: number): string => String(value).padStart(2, "0");
 
+/** The machine's own day, which is the day the grid highlights and the feed filters on. */
 function todayString(): string {
-	const now = new Date();
-	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+	return formatLocalDateKey(new Date());
 }
 
 interface MonthCell {
@@ -248,15 +443,22 @@ function buildMonthMatrix(year: number, month: number): MonthCell[] {
 
 /** Intensity buckets over the month's max count; blue shades that survive dark mode. */
 function countClass(count: number, max: number): string {
-	if (count <= 0) return "bg-gray-50 dark:bg-gray-800/40";
+	if (count <= 0) return "bg-gray-50 dark:bg-gray-800/40 text-gray-700 dark:text-gray-300";
 	const ratio = max > 0 ? count / max : 0;
 	if (ratio >= 0.66) return "bg-blue-200 dark:bg-blue-700/70 text-blue-900 dark:text-blue-50";
 	if (ratio >= 0.33) return "bg-blue-100 dark:bg-blue-700/40 text-blue-900 dark:text-blue-100";
 	return "bg-blue-50 dark:bg-blue-700/20 text-blue-800 dark:text-blue-200";
 }
 
-function weekdayHeadings(): string[] {
-	const formatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+/** Memo-density dot in a day cell: one memo green, two to five blue, six or more red. */
+function dotClass(count: number): string {
+	if (count <= 1) return "bg-green-500 dark:bg-green-400";
+	if (count <= 5) return "bg-blue-500 dark:bg-blue-400";
+	return "bg-red-500 dark:bg-red-400";
+}
+
+function weekdayHeadings(locale: string): string[] {
+	const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
 	return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2023, 0, 1 + index)));
 }
 
@@ -283,14 +485,14 @@ function CalendarGrid({
 	onNextMonth,
 	onToday,
 }: CalendarGridProps) {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const cells = useMemo(() => buildMonthMatrix(year, month), [year, month]);
 	const max = useMemo(() => Object.values(counts).reduce((acc, value) => Math.max(acc, value), 0), [counts]);
 	const monthTitle = useMemo(
-		() => new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1)),
-		[year, month],
+		() => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1)),
+		[year, month, locale],
 	);
-	const headings = useMemo(() => weekdayHeadings(), []);
+	const headings = useMemo(() => weekdayHeadings(locale), [locale]);
 
 	return (
 		<section
@@ -303,20 +505,40 @@ function CalendarGrid({
 						type="button"
 						onClick={onPrevMonth}
 						aria-label={t.memos.prevMonth}
-						className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+						className="p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 					>
-						‹
+						<svg
+							aria-hidden="true"
+							className="w-5 h-5"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth={2}
+							viewBox="0 0 24 24"
+						>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+						</svg>
 					</button>
 					<button
 						type="button"
 						onClick={onNextMonth}
 						aria-label={t.memos.nextMonth}
-						className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+						className="p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 					>
-						›
+						<svg
+							aria-hidden="true"
+							className="w-5 h-5"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth={2}
+							viewBox="0 0 24 24"
+						>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+						</svg>
 					</button>
 				</div>
-				<h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthTitle}</h2>
+				<h2 className="min-w-0 flex-1 text-center whitespace-nowrap text-base font-semibold text-gray-900 dark:text-white">
+					{monthTitle}
+				</h2>
 				<button
 					type="button"
 					onClick={onToday}
@@ -352,7 +574,7 @@ function CalendarGrid({
 							aria-pressed={isSelected}
 							aria-label={`${date}: ${count} ${t.memos.title}`}
 							onClick={() => onSelectDay(date)}
-							className={`aspect-square flex flex-col items-center justify-center rounded text-sm border transition-colors ${countClass(
+							className={`relative aspect-square flex items-center justify-center rounded text-sm border transition-colors ${countClass(
 								count,
 								max,
 							)} ${
@@ -362,7 +584,13 @@ function CalendarGrid({
 							} ${isToday ? "font-bold underline" : ""}`}
 						>
 							<span>{cell.day}</span>
-							{count > 0 && <span className="text-[10px] leading-none mt-0.5 opacity-80">{count}</span>}
+							{count > 0 && (
+								<span
+									aria-hidden="true"
+									data-testid="calendar-dot"
+									className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${dotClass(count)}`}
+								/>
+							)}
 						</button>
 					);
 				})}
@@ -371,136 +599,16 @@ function CalendarGrid({
 	);
 }
 
-interface DayPanelProps {
-	day: string;
-	memos: Memo[];
-	loading: boolean;
-	error: string | null;
-	onClose: () => void;
-	onViewInFeed: () => void;
-	onSaved: (memo: Memo) => void;
-	onUpdate: (id: string, content: string, tags: string[]) => Promise<void>;
-	onDelete: (id: string) => Promise<void>;
-}
-
-function DayPanel({ day, memos, loading, error, onClose, onViewInFeed, onSaved, onUpdate, onDelete }: DayPanelProps) {
-	const { t } = useI18n();
-	const { theme } = useTheme();
-	const [draft, setDraft] = useState("");
-	const [isSaving, setIsSaving] = useState(false);
-	const [composerError, setComposerError] = useState<string | null>(null);
-
-	const handleSave = async () => {
-		const content = draft.trim();
-		if (!content || isSaving) return;
-		setIsSaving(true);
-		setComposerError(null);
-		try {
-			const memo = await apiClient.createMemo(content, extractInlineTags(draft), day);
-			onSaved(memo);
-			setDraft("");
-		} catch (err) {
-			setComposerError(err instanceof Error ? err.message : t.memos.saveFailed);
-		} finally {
-			setIsSaving(false);
-		}
-	};
-
-	return (
-		<section
-			data-testid="day-panel"
-			data-date={day}
-			className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4"
-		>
-			<div className="flex items-center justify-between gap-3 mb-3">
-				<h3 className="text-base font-semibold text-gray-900 dark:text-white">
-					{t.memos.title} · <StoredDate value={`${day} 00:00`} className="text-gray-500 dark:text-gray-400" />
-				</h3>
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						onClick={onViewInFeed}
-						className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-					>
-						{t.memos.viewInFeed}
-					</button>
-					<button
-						type="button"
-						onClick={onClose}
-						aria-label={t.memos.clearDate}
-						className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-					>
-						✕
-					</button>
-				</div>
-			</div>
-
-			<div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-md p-3 mb-3">
-				<div className="h-32">
-					<PasteAwareMDEditor
-						value={draft}
-						onChange={(value) => setDraft(value ?? "")}
-						preview="edit"
-						height="100%"
-						hideToolbar={true}
-						data-color-mode={theme}
-						textareaProps={{
-							placeholder: t.memos.composerPlaceholder,
-							onKeyDown: (event) => {
-								if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-									event.preventDefault();
-									void handleSave();
-								}
-							},
-						}}
-					/>
-				</div>
-				<div className="flex items-center justify-end mt-2">
-					<button
-						type="button"
-						onClick={() => void handleSave()}
-						disabled={isSaving || draft.trim().length === 0}
-						className="px-3 py-1.5 text-sm rounded bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-					>
-						{isSaving ? t.common.saving : t.common.save}
-					</button>
-				</div>
-				{composerError && <ErrorBanner title={t.memos.saveFailed} detail={composerError} />}
-			</div>
-
-			{loading ? (
-				<p role="status" className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-					{t.memos.loading}
-				</p>
-			) : error ? (
-				<ErrorBanner title={error} />
-			) : memos.length === 0 ? (
-				<p className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">{t.memos.noMemosThisDay}</p>
-			) : (
-				<div className="flex flex-col gap-3">
-					{memos.map((memo) => (
-						<MemoCard key={memo.id} memo={memo} onUpdate={onUpdate} onDelete={onDelete} />
-					))}
-				</div>
-			)}
-		</section>
-	);
-}
-
-function viewFromParam(value: string | null): MemosView {
-	return value === "calendar" ? "calendar" : "feed";
-}
-
 export default function MemosPage() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const { theme } = useTheme();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const viewParam = searchParams.get("view");
 	const dateParam = searchParams.get("date");
 
-	const [view, setView] = useState<MemosView>(() => viewFromParam(viewParam));
 	const [selectedDate, setSelectedDate] = useState<string | null>(() => dateParam || null);
 	const [activeTags, setActiveTags] = useState<string[]>([]);
+	const [calendarOpen, setCalendarOpen] = useState<boolean>(() => viewParam === "calendar");
 
 	const today = useMemo(() => todayString(), []);
 	const [calendarYear, setCalendarYear] = useState<number>(() => {
@@ -518,10 +626,6 @@ export default function MemosPage() {
 		return new Date().getMonth() + 1;
 	});
 	const [calendarCounts, setCalendarCounts] = useState<Record<string, number>>({});
-	const [selectedDay, setSelectedDay] = useState<string | null>(() => (viewParam === "calendar" ? dateParam : null));
-	const [dayPanelMemos, setDayPanelMemos] = useState<Memo[]>([]);
-	const [dayPanelLoading, setDayPanelLoading] = useState(false);
-	const [dayPanelError, setDayPanelError] = useState<string | null>(null);
 
 	const [feed, setFeed] = useState<MemoFeedState>(EMPTY_MEMO_FEED);
 	const [initialLoading, setInitialLoading] = useState(true);
@@ -539,20 +643,15 @@ export default function MemosPage() {
 	const cursorRef = useRef<string | null>(null);
 	const loadingMoreRef = useRef(false);
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
+	const calendarButtonRef = useRef<HTMLButtonElement | null>(null);
+	const calendarMenuRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
 		cursorRef.current = feed.nextCursor;
 	}, [feed.nextCursor]);
 
-	// Deep links win: `/memos?view=calendar` (and `?date=YYYY-MM-DD`, which global search emits for
-	// memo hits) drive the mode and the day filter from the outside as well as from the toggle.
-	useEffect(() => {
-		setView((current) => {
-			const next = viewFromParam(viewParam);
-			return current === next ? current : next;
-		});
-	}, [viewParam]);
-
+	// Deep links win: `?date=YYYY-MM-DD` (which global search emits for memo hits) drives the day
+	// filter from the outside. `?view=calendar` only decides whether the popover starts open.
 	useEffect(() => {
 		setSelectedDate((current) => {
 			const next = dateParam || null;
@@ -564,9 +663,33 @@ export default function MemosPage() {
 				setCalendarYear(Number(parts[0]));
 				setCalendarMonth(Number(parts[1]));
 			}
-			if (viewParam === "calendar") setSelectedDay(dateParam);
 		}
-	}, [dateParam, viewParam]);
+	}, [dateParam]);
+
+	// The calendar popover closes on an outside click or on Escape, like the label dropdown.
+	useEffect(() => {
+		if (!calendarOpen) return;
+		const handleClickOutside = (event: MouseEvent) => {
+			const target = event.target as Node;
+			if (
+				calendarButtonRef.current &&
+				calendarMenuRef.current &&
+				!calendarButtonRef.current.contains(target) &&
+				!calendarMenuRef.current.contains(target)
+			) {
+				setCalendarOpen(false);
+			}
+		};
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setCalendarOpen(false);
+		};
+		document.addEventListener("mousedown", handleClickOutside);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [calendarOpen]);
 
 	const loadFirstPage = useCallback(
 		async (date: string | null) => {
@@ -624,7 +747,7 @@ export default function MemosPage() {
 	// The page itself does not scroll - <main> does - so the viewport root is the right observer
 	// root, and the margin starts the next fetch before the sentinel is actually on screen.
 	useEffect(() => {
-		if (view !== "feed" || initialLoading || loadingMore || !hasMore) return;
+		if (initialLoading || loadingMore || !hasMore) return;
 		const sentinel = sentinelRef.current;
 		if (!sentinel || typeof IntersectionObserver === "undefined") return;
 		const observer = new IntersectionObserver(
@@ -635,7 +758,7 @@ export default function MemosPage() {
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
-	}, [view, initialLoading, loadingMore, hasMore, loadMore]);
+	}, [initialLoading, loadingMore, hasMore, loadMore]);
 
 	const loadCalendar = useCallback(async (year: number, month: number) => {
 		try {
@@ -649,30 +772,14 @@ export default function MemosPage() {
 		void loadCalendar(calendarYear, calendarMonth);
 	}, [calendarYear, calendarMonth, loadCalendar]);
 
-	const loadDayPanel = useCallback(
-		async (day: string) => {
-			setDayPanelLoading(true);
-			setDayPanelError(null);
-			try {
-				const page = await apiClient.fetchMemosPage({ limit: 100, date: day });
-				setDayPanelMemos(page.items);
-			} catch (error) {
-				setDayPanelError(error instanceof Error && error.message ? error.message : t.memos.loadFailed);
-			} finally {
-				setDayPanelLoading(false);
-			}
-		},
-		[t.memos.loadFailed],
-	);
-
 	/**
 	 * Live refresh triggered by the server's `memos-updated` broadcast (an API write or an
 	 * out-of-band file edit). It re-pulls the window the user is already looking at and drops it
-	 * into place, so the view, the selected date and the scroll position are preserved - no return
-	 * to page one, no full reload.
+	 * into place, so the selected date and the scroll position are preserved - no return to page
+	 * one, no full reload.
 	 */
 	const refreshInPlace = useCallback(async () => {
-		// The calendar grid is always visible in its mode; keep its counts honest.
+		// The popover calendar is not always on screen, but its counts must stay honest.
 		void loadCalendar(calendarYear, calendarMonth);
 		const requestId = ++feedRequestRef.current;
 		try {
@@ -698,20 +805,13 @@ export default function MemosPage() {
 			// and swallow it, logging only.
 			console.warn("Failed to refresh memos after a memos-updated broadcast:", error);
 		}
-		// The open day panel is a slice of the same corpus; refresh it too.
-		if (selectedDay) void loadDayPanel(selectedDay);
-	}, [calendarYear, calendarMonth, feed.memos.length, loadCalendar, loadDayPanel, selectedDate, selectedDay]);
+	}, [calendarYear, calendarMonth, feed.memos.length, loadCalendar, selectedDate]);
 
 	useEffect(() => {
 		const onUpdated = () => void refreshInPlace();
 		window.addEventListener("memos-updated", onUpdated);
 		return () => window.removeEventListener("memos-updated", onUpdated);
 	}, [refreshInPlace]);
-
-	useEffect(() => {
-		if (selectedDay) void loadDayPanel(selectedDay);
-		else setDayPanelMemos([]);
-	}, [selectedDay, loadDayPanel]);
 
 	const goMonth = useCallback(
 		(delta: number) => {
@@ -740,37 +840,33 @@ export default function MemosPage() {
 		);
 	};
 
-	const selectView = useCallback(
-		(next: MemosView) => {
-			setView(next);
-			const nextParams = new URLSearchParams(searchParams);
-			if (next === "calendar") nextParams.set("view", "calendar");
-			else nextParams.delete("view");
-			setSearchParams(nextParams, { replace: true });
-		},
-		[searchParams, setSearchParams],
-	);
-
 	const clearSelectedDate = useCallback(() => {
 		setSelectedDate(null);
 		const nextParams = new URLSearchParams(searchParams);
 		nextParams.delete("date");
+		nextParams.delete("view");
 		setSearchParams(nextParams, { replace: true });
 	}, [searchParams, setSearchParams]);
 
-	const handleSelectDay = useCallback((day: string) => {
-		setSelectedDay((current) => (current === day ? null : day));
-	}, []);
+	// Picking a day filters the feed to it (the single composer then captures into that date) and
+	// dismisses the popover.
+	const handlePickDay = useCallback(
+		(day: string) => {
+			setSelectedDate(day);
+			const nextParams = new URLSearchParams(searchParams);
+			nextParams.set("date", day);
+			nextParams.delete("view");
+			setSearchParams(nextParams, { replace: true });
+			setCalendarOpen(false);
+		},
+		[searchParams, setSearchParams],
+	);
 
-	const handleViewDayInFeed = useCallback(() => {
-		if (!selectedDay) return;
-		setSelectedDate(selectedDay);
-		const nextParams = new URLSearchParams(searchParams);
-		nextParams.set("date", selectedDay);
-		nextParams.delete("view");
-		setSearchParams(nextParams, { replace: true });
-		setView("feed");
-	}, [selectedDay, searchParams, setSearchParams]);
+	const handleToday = useCallback(() => {
+		const now = new Date();
+		setCalendarYear(now.getFullYear());
+		setCalendarMonth(now.getMonth() + 1);
+	}, []);
 
 	const handleCapture = useCallback(async () => {
 		const content = draft.trim();
@@ -787,10 +883,20 @@ export default function MemosPage() {
 				saveContent = replaceTempImageUrls(saveContent, mapping);
 				setDraft(saveContent);
 			}
-			const memo = await apiClient.createMemo(saveContent, extractInlineTags(saveContent));
+			// A date chip pins the capture to that day; the time stays "now" so the card reads
+			// naturally. The chip holds a LOCAL day, so the time-of-day has to come from the local
+			// clock too, and the pair is converted to the UTC shape the backend stores - pinning a
+			// local day to a UTC clock time would store an instant the calendar never shows.
+			const createdDate = selectedDate
+				? dateTimeLocalToStoredUtc(`${selectedDate} ${formatLocalTimeStamp()}`)
+				: undefined;
+			const memo = await apiClient.createMemo(saveContent, extractInlineTags(saveContent), createdDate);
 			if (memoMatchesFilters(memo, selectedDate, activeTags)) {
 				setFeed((current) => prependMemo(current, memo));
 			}
+			// The grid's buckets are local days, so the optimistic bump has to land on one.
+			const day = localDateKeyFromStoredUtc(memo.createdDate);
+			setCalendarCounts((current) => ({ ...current, [day]: (current[day] ?? 0) + 1 }));
 			setDraft("");
 		} catch (error) {
 			setComposerError(error instanceof Error && error.message ? error.message : t.memos.saveFailed);
@@ -798,14 +904,6 @@ export default function MemosPage() {
 			setIsSaving(false);
 		}
 	}, [activeTags, draft, isSaving, selectedDate, t.memos.saveFailed]);
-
-	const handleDaySaved = useCallback((memo: Memo) => {
-		setDayPanelMemos((current) => prependMemo({ memos: current, nextCursor: null }, memo).memos);
-		setCalendarCounts((current) => ({
-			...current,
-			[memo.createdDate.slice(0, 10)]: (current[memo.createdDate.slice(0, 10)] ?? 0) + 1,
-		}));
-	}, []);
 
 	const handleUpdate = useCallback(async (id: string, content: string, tags: string[]) => {
 		let saveContent = content;
@@ -816,20 +914,20 @@ export default function MemosPage() {
 		}
 		const memo = await apiClient.updateMemo(id, { content: saveContent, tags });
 		setFeed((current) => replaceMemo(current, memo));
-		setDayPanelMemos((current) => replaceMemo({ memos: current, nextCursor: null }, memo).memos);
 	}, []);
 
 	const handleDelete = useCallback(
 		async (id: string) => {
+			// The grid's buckets are local days, so decrement the day the memo was actually shown under.
+			const target = feed.memos.find((memo) => memo.id === id);
+			const day = target ? localDateKeyFromStoredUtc(target.createdDate) : undefined;
 			await apiClient.deleteMemo(id);
-			const day = dayPanelMemos.find((memo) => memo.id === id)?.createdDate.slice(0, 10);
 			setFeed((current) => removeMemo(current, id));
-			setDayPanelMemos((current) => removeMemo({ memos: current, nextCursor: null }, id).memos);
 			if (day) {
 				setCalendarCounts((current) => ({ ...current, [day]: Math.max(0, (current[day] ?? 1) - 1) }));
 			}
 		},
-		[dayPanelMemos],
+		[feed.memos],
 	);
 
 	const visibleMemos = useMemo(() => filterMemosByTags(feed.memos, activeTags), [feed.memos, activeTags]);
@@ -838,37 +936,28 @@ export default function MemosPage() {
 	return (
 		<div className="page-shell transition-colors duration-200">
 			<div className="mx-auto max-w-3xl flex flex-col gap-4">
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.memos.title}</h1>
-					<div
-						role="tablist"
-						aria-label={t.memos.title}
-						className="mt-3 inline-flex rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5"
-					>
-						{(["feed", "calendar"] as MemosView[]).map((option) => (
-							<button
-								key={option}
-								type="button"
-								role="tab"
-								aria-selected={view === option}
-								onClick={() => selectView(option)}
-								className={`px-3 py-1.5 text-sm rounded transition-colors ${
-									view === option
-										? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium shadow-sm"
-										: "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-								}`}
-							>
-								{option === "feed" ? t.memos.feed : t.memos.calendar}
-							</button>
-						))}
-					</div>
-				</div>
+				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.memos.title}</h1>
 
-				{/* The capture box stays mounted in both modes: any view has to accept a new note. */}
 				<section
 					aria-label={t.memos.composerPlaceholder}
 					className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3"
 				>
+					{selectedDate && (
+						<div className="mb-2">
+							<span className="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+								<CalendarIcon />
+								<span>{formatDayLabel(selectedDate, locale)}</span>
+								<button
+									type="button"
+									onClick={clearSelectedDate}
+									aria-label={t.memos.clearDate}
+									className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/60"
+								>
+									✕
+								</button>
+							</span>
+						</div>
+					)}
 					<div className="h-40">
 						<PasteAwareMDEditor
 							value={draft}
@@ -890,134 +979,125 @@ export default function MemosPage() {
 					</div>
 					<div className="flex items-center justify-between gap-3 mt-3">
 						<p className="text-xs text-gray-500 dark:text-gray-400">{t.memos.composerHint}</p>
-						<button
-							type="button"
-							onClick={() => void handleCapture()}
-							disabled={isSaving || draft.trim().length === 0}
-							className="shrink-0 px-3 py-1.5 text-sm rounded bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-						>
-							{isSaving ? t.common.saving : t.common.save}
-						</button>
+						<div className="flex items-center gap-2">
+							<div className="relative">
+								<button
+									type="button"
+									ref={calendarButtonRef}
+									onClick={() => setCalendarOpen((open) => !open)}
+									aria-expanded={calendarOpen}
+									aria-controls="memos-calendar-popover"
+									aria-label={t.memos.calendarIcon}
+									className={`p-2 rounded border transition-colors ${
+										selectedDate
+											? "border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30"
+											: "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+									}`}
+								>
+									<CalendarIcon />
+								</button>
+								{calendarOpen && (
+									<div
+										id="memos-calendar-popover"
+										ref={calendarMenuRef}
+										className="absolute right-0 top-full mt-2 z-50 w-[340px] rounded-md shadow-lg"
+									>
+										<CalendarGrid
+											year={calendarYear}
+											month={calendarMonth}
+											counts={calendarCounts}
+											selectedDay={selectedDate}
+											today={today}
+											onSelectDay={handlePickDay}
+											onPrevMonth={() => goMonth(-1)}
+											onNextMonth={() => goMonth(1)}
+											onToday={handleToday}
+										/>
+									</div>
+								)}
+							</div>
+							<button
+								type="button"
+								onClick={() => void handleCapture()}
+								disabled={isSaving || draft.trim().length === 0}
+								className="shrink-0 px-3 py-1.5 text-sm rounded bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+							>
+								{isSaving ? t.common.saving : t.common.save}
+							</button>
+						</div>
 					</div>
 				</section>
 
 				{composerError && <ErrorBanner title={t.memos.saveFailed} detail={composerError} />}
 
-				{view === "calendar" ? (
-					<>
-						<CalendarGrid
-							year={calendarYear}
-							month={calendarMonth}
-							counts={calendarCounts}
-							selectedDay={selectedDay}
-							today={today}
-							onSelectDay={handleSelectDay}
-							onPrevMonth={() => goMonth(-1)}
-							onNextMonth={() => goMonth(1)}
-							onToday={() => {
-								const now = new Date();
-								setCalendarYear(now.getFullYear());
-								setCalendarMonth(now.getMonth() + 1);
-								setSelectedDay(todayString());
-							}}
-						/>
-						{selectedDay && (
-							<DayPanel
-								day={selectedDay}
-								memos={dayPanelMemos}
-								loading={dayPanelLoading}
-								error={dayPanelError}
-								onClose={() => setSelectedDay(null)}
-								onViewInFeed={handleViewDayInFeed}
-								onSaved={handleDaySaved}
+				{availableTags.length > 0 && (
+					<div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+						{availableTags.map((tag) => {
+							const isActive = activeTags.some((item) => item.toLowerCase() === tag.toLowerCase());
+							return (
+								<button
+									key={tag}
+									type="button"
+									onClick={() => toggleTag(tag)}
+									aria-pressed={isActive}
+									className={`shrink-0 whitespace-nowrap px-2 py-1 text-xs rounded-full border transition-colors ${
+										isActive
+											? "bg-blue-500 dark:bg-blue-600 border-blue-500 dark:border-blue-600 text-white"
+											: "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+									}`}
+								>
+									#{tag}
+								</button>
+							);
+						})}
+						{activeTags.length > 0 && (
+							<button
+								type="button"
+								onClick={() => setActiveTags([])}
+								className="shrink-0 whitespace-nowrap px-2 py-1 text-xs rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+							>
+								{t.memos.clearTags}
+							</button>
+						)}
+					</div>
+				)}
+
+				{initialLoading ? (
+					<p role="status" className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+						{t.memos.loading}
+					</p>
+				) : loadError ? (
+					<ErrorBanner title={t.memos.loadFailed} detail={loadError} onRetry={() => void loadFirstPage(selectedDate)} />
+				) : visibleMemos.length === 0 ? (
+					<p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+						{feed.memos.length === 0 ? (selectedDate ? t.memos.noMemosThisDay : t.memos.empty) : t.memos.emptyFiltered}
+					</p>
+				) : (
+					<div className="flex flex-col gap-3">
+						{visibleMemos.map((memo) => (
+							<MemoCard
+								key={memo.id}
+								memo={memo}
 								onUpdate={handleUpdate}
 								onDelete={handleDelete}
+								onTagClick={toggleTag}
 							/>
-						)}
-					</>
-				) : (
-					<>
-						{(selectedDate || availableTags.length > 0) && (
-							<div className="flex flex-wrap items-center gap-2">
-								{selectedDate && (
-									<span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-										<span>{selectedDate}</span>
-										<button
-											type="button"
-											onClick={clearSelectedDate}
-											aria-label={t.memos.clearDate}
-											className="hover:text-blue-900 dark:hover:text-blue-100"
-										>
-											✕
-										</button>
-									</span>
-								)}
-								{availableTags.map((tag) => {
-									const isActive = activeTags.some((item) => item.toLowerCase() === tag.toLowerCase());
-									return (
-										<button
-											key={tag}
-											type="button"
-											onClick={() => toggleTag(tag)}
-											aria-pressed={isActive}
-											className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-												isActive
-													? "bg-blue-500 dark:bg-blue-600 border-blue-500 dark:border-blue-600 text-white"
-													: "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-											}`}
-										>
-											#{tag}
-										</button>
-									);
-								})}
-								{activeTags.length > 0 && (
-									<button
-										type="button"
-										onClick={() => setActiveTags([])}
-										className="px-2 py-1 text-xs rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-									>
-										{t.memos.clearTags}
-									</button>
-								)}
-							</div>
-						)}
+						))}
+					</div>
+				)}
 
-						{initialLoading ? (
-							<p role="status" className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-								{t.memos.loading}
-							</p>
-						) : loadError ? (
-							<ErrorBanner
-								title={t.memos.loadFailed}
-								detail={loadError}
-								onRetry={() => void loadFirstPage(selectedDate)}
-							/>
-						) : visibleMemos.length === 0 ? (
-							<p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-								{feed.memos.length === 0 ? t.memos.empty : t.memos.emptyFiltered}
-							</p>
-						) : (
-							<div className="flex flex-col gap-3">
-								{visibleMemos.map((memo) => (
-									<MemoCard key={memo.id} memo={memo} onUpdate={handleUpdate} onDelete={handleDelete} />
-								))}
-							</div>
-						)}
+				{!initialLoading && !loadError && visibleMemos.length > 0 && (
+					<div ref={sentinelRef} data-testid="memos-sentinel" className="h-px" />
+				)}
 
-						{!initialLoading && !loadError && visibleMemos.length > 0 && (
-							<div ref={sentinelRef} data-testid="memos-sentinel" className="h-px" />
-						)}
-
-						{loadingMore && (
-							<p role="status" className="text-center text-sm text-gray-500 dark:text-gray-400">
-								{t.memos.loadingMore}
-							</p>
-						)}
-						{appendError && <ErrorBanner title={appendError} onRetry={() => void loadMore()} />}
-						{!hasMore && !initialLoading && visibleMemos.length > 0 && !loadingMore && (
-							<p className="text-center text-xs text-gray-500 dark:text-gray-400">{t.memos.endOfList}</p>
-						)}
-					</>
+				{loadingMore && (
+					<p role="status" className="text-center text-sm text-gray-500 dark:text-gray-400">
+						{t.memos.loadingMore}
+					</p>
+				)}
+				{appendError && <ErrorBanner title={appendError} onRetry={() => void loadMore()} />}
+				{!hasMore && !initialLoading && visibleMemos.length > 0 && !loadingMore && (
+					<p className="text-center text-xs text-gray-500 dark:text-gray-400">{t.memos.endOfList}</p>
 				)}
 			</div>
 		</div>

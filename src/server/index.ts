@@ -47,6 +47,7 @@ import {
 import { launchBrowser } from "../utils/browser-launch.ts";
 import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
+import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import { DependencyQuery } from "../utils/dependency-query.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
@@ -634,6 +635,7 @@ export class BacklogServer {
 					"/milestones": spaIndexHtml,
 					"/drafts": spaIndexHtml,
 					"/gantt": spaIndexHtml,
+					"/memos": spaIndexHtml,
 					"/documentation": spaIndexHtml,
 					"/documentation/*": spaIndexHtml,
 					"/decisions": spaIndexHtml,
@@ -2063,8 +2065,10 @@ export class BacklogServer {
 		try {
 			const memos = await listMemos(this.core.filesystem.rootDir);
 			const counts: Record<string, number> = {};
+			// Buckets are local days (the grid's own days), so a memo stored under the next UTC date
+			// still counts on the day the user wrote it. See localDateKeyFromStoredUtc.
 			for (const memo of memos) {
-				const day = memo.createdDate.slice(0, 10);
+				const day = localDateKeyFromStoredUtc(memo.createdDate);
 				if (!day.startsWith(monthPrefix)) continue;
 				counts[day] = (counts[day] ?? 0) + 1;
 			}

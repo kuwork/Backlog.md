@@ -7,6 +7,7 @@ import type {
 	TaskSearchResult,
 	WikiSearchResult,
 } from "../../types";
+import { localDateKeyFromStoredUtc } from "../../utils/date-utc";
 import { stripAnyPrefix } from "../../utils/prefix-config";
 import { encodeWikiPath, sanitizeUrlTitle } from "./urlHelpers";
 
@@ -71,10 +72,11 @@ export function getSearchResultLink(result: SearchResult): string {
 		return `/wiki/${encodeWikiPath((result as WikiSearchResult).wiki.path)}`;
 	}
 	// Memos have no detail route of their own: they are read in the feed, so land on the memos page
-	// already filtered to the day the memo was captured.
+	// already filtered to the day the memo was captured. The feed's `?date=` is a local day, so the
+	// stored UTC timestamp has to be converted before its date can be used.
 	if (result.type === "memo") {
 		const memo = (result as MemoSearchResult).memo;
-		const day = memo.createdDate.slice(0, 10);
+		const day = localDateKeyFromStoredUtc(memo.createdDate);
 		return day ? `/memos?date=${day}` : "/memos";
 	}
 	const task = (result as TaskSearchResult).task;
