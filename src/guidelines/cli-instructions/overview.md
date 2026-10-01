@@ -100,6 +100,8 @@ If the block says the project declares no transitions (a plain string array), th
   -> Read when creating or listing decisions: create status, list output modes, and key rules
 - `backlog instructions drafts`
   -> Read when creating, promoting, demoting, or archiving drafts: full workflow and ID handling
+- `backlog instructions memos`
+  -> Read when capturing or managing memos: quick notes, stdin capture, listing, updating, and deleting
 
 Use `backlog <command> --help` before unfamiliar operations. Command help includes input fields, read/write behavior, output shape, and examples.
 
@@ -116,6 +118,7 @@ Important: Do not edit Backlog task, draft, document, decision, or milestone mar
 - Markdown task files live under **`backlog/tasks/`** (drafts under **`backlog/drafts/`**)
 - Project documentation is in **`backlog/docs/`**
 - Project decisions are in **`backlog/decisions/`**
+- Quick-capture memos are in **`backlog/memos/`** (date + sequence IDs, no title; full guide: `backlog instructions memos`)
 - Local images and assets are in **`backlog/assets/`**
 - Milestones are stored as Markdown files in **`backlog/milestones/`**
 - Completed tasks are moved to **`backlog/completed/`**

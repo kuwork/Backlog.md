@@ -3,6 +3,7 @@ import {
 	CLI_DOCUMENTS_GUIDE,
 	CLI_DRAFTS_GUIDE,
 	CLI_INIT_REQUIRED_GUIDE,
+	CLI_MEMOS_GUIDE,
 	CLI_MILESTONES_GUIDE,
 	CLI_TASK_CREATION_GUIDE,
 	CLI_TASK_EXECUTION_GUIDE,
@@ -31,7 +32,7 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"decisions",
 	"drafts",
 ] as const;
-export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
+export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "memos", "init-required"] as const;
 
 export type WorkflowGuideKey = (typeof WORKFLOW_GUIDE_KEYS)[number];
 export type InstructionGuideKey = (typeof INSTRUCTION_GUIDE_KEYS)[number];
@@ -132,6 +133,14 @@ export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [
 		resourceText: CLI_INSTRUCTION_TEXT_BY_KEY[guide.key],
 		toolText: undefined,
 	})),
+	{
+		key: "memos",
+		uri: "backlog://instructions/memos",
+		name: "Memos Guide",
+		description: "How to create, list, view, update, and delete quick-capture memos",
+		mimeType: "text/markdown",
+		resourceText: CLI_MEMOS_GUIDE,
+	},
 	{
 		key: "init-required",
 		uri: "backlog://init-required",
