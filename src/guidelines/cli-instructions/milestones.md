@@ -35,6 +35,14 @@ backlog milestone list --plain
 # Additionally include tasks from the completed/ folder (finished milestones get sections)
 backlog milestone list --show-completed --plain
 
+# Page a long list: --max-count/--skip apply to the milestones in the order they print
+backlog milestone list --max-count 5 --plain
+backlog milestone list --max-count 5 --skip 5 --show-completed --plain
+backlog milestone list --count
+# Tasks without a milestone are hidden by default; pass --with-no-milestone to prepend them
+backlog milestone list --with-no-milestone --plain
+backlog milestone list --max-count 5 --with-no-milestone --plain
+
 # Remove a milestone and clear, keep, or reassign its tasks
 backlog milestone remove "Release 2.0"
 backlog milestone remove "Release 2.0" --task-handling keep
@@ -74,4 +82,5 @@ backlog board --milestones
 - Milestone files carry automatic `created_date`/`updated_date` metadata (stamped like task fields); the milestone list shows them in the interactive detail view.
 - `documentation` holds documentation URLs or file paths (same semantics as task documentation): `--doc` replaces the list, `--add-doc` appends unique values, `--remove-doc` removes by value, `--clear-docs` empties it.
 - Archiving unbinds tasks but does not delete them; tasks revert to the unassigned pool.
+- `milestone list` omits unassigned (no-milestone) tasks by default; pass `--with-no-milestone` to include them as a `## No Milestone (n tasks)` header at the top of **every** page. The header never counts toward `--max-count`/`--limit` or `--count`.
 - Prefer CLI or MCP APIs over ad-hoc file writes so frontmatter and metadata remain valid.

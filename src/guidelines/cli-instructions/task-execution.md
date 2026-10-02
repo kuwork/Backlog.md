@@ -183,6 +183,8 @@ Use CLI commands for Backlog changes:
 - Read: `backlog task view {{TASK_ID:123}} --plain`
 - Search: `backlog search "query" --plain`
 - List with task filters: `backlog task list --status "<active status>" --assignee @your-name --labels backend --search "auth" --limit 20 --plain`
+- Page a long list: `backlog task list --status "<active status>" --max-count 20 --plain`, then the `Next:` command it prints
+- Count matches without listing them: `backlog task list --status "<active status>" --count`
 - List unassigned tasks: `backlog task list --unassigned --plain`
 - List with multi-status selection: `backlog task list --status "To Do,In Progress" --plain`
 - List excluding statuses: `backlog task list --exclude-status "Done,Blocked" --plain`

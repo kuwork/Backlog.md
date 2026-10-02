@@ -5,7 +5,7 @@ import { stdin as input } from "node:process";
 import { createInterface } from "node:readline/promises";
 import * as clack from "@clack/prompts";
 import { Command, type OptionValues } from "commander";
-import { generateMilestoneGroupedBoard } from "./board.ts";
+import { generateMilestoneGroupedBoard, generateMilestoneSection } from "./board.ts";
 import { runAdvancedConfigWizard } from "./commands/advanced-config-wizard.ts";
 import { type CompletionInstallResult, installCompletion, registerCompletionCommand } from "./commands/completion.ts";
 import { configureAdvancedSettings } from "./commands/configure-advanced-settings.ts";
@@ -97,6 +97,17 @@ import {
 import { isAmbiguousIdError } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
+import {
+	addListWindowOptions,
+	LIST_WINDOW_HELP_FIELDS,
+	LIST_WINDOW_OUTPUT_HELP,
+	type ListWindow,
+	type ListWindowOptions,
+	parseListWindow,
+	parsePositiveIntegerOption,
+	printListWindow,
+	selectListWindow,
+} from "./utils/list-window.ts";
 import {
 	formatMcpClientSetupCommand,
 	getMcpClientSetupCommand,
@@ -252,17 +263,6 @@ function createMultiValueAccumulator() {
 function printMissingRequiredArgument(argumentName: string): void {
 	console.error(`error: missing required argument '${argumentName}'`);
 	process.exitCode = 1;
-}
-
-function parsePositiveIntegerOption(value: unknown, optionName: string, helpCommand?: string): number | null {
-	const rawValue = String(value).trim();
-	if (!/^[1-9]\d*$/.test(rawValue)) {
-		const helpHint = helpCommand ? ` Try '${helpCommand}' for options.` : "";
-		console.error(`${optionName} must be a positive integer (1 or greater).${helpHint}`);
-		process.exitCode = 1;
-		return null;
-	}
-	return Number.parseInt(rawValue, 10);
 }
 
 /**
@@ -812,6 +812,34 @@ function getReadOutputMode(options: { json?: boolean; plain?: boolean }): ReadOu
 		process.exitCode = 1;
 		return null;
 	}
+}
+
+/** The window of a command that got no window option: the whole list, no footer, text mode untouched. */
+const EMPTY_LIST_WINDOW: ListWindow = {
+	skip: 0,
+	maxCount: undefined,
+	count: false,
+	forcesText: false,
+	commandArgs: process.argv.slice(2),
+	valueFlags: new Set<string>(),
+};
+
+/**
+ * Resolves how a listing command prints and which window of its list it prints. Every command that
+ * lists tasks, drafts, milestones, documents, decisions, or search results starts here. Window and
+ * count options print text, so they never open an interactive view. Returns null after reporting
+ * invalid options.
+ */
+function resolveListOutput(
+	options: ListWindowOptions & { json?: boolean; plain?: boolean },
+	command: Command,
+): { outputMode: ReadOutputMode; listWindow: ListWindow } | null {
+	const readOutputMode = getReadOutputMode(options);
+	if (!readOutputMode) return null;
+	const listWindow = parseListWindow(options, command, process.argv.slice(2));
+	if (!listWindow) return null;
+	const outputMode = readOutputMode === "interactive" && listWindow.forcesText ? "plain" : readOutputMode;
+	return { outputMode, listWindow };
 }
 
 // Temporarily isolate BUN_OPTIONS during CLI parsing to prevent conflicts
@@ -1837,10 +1865,18 @@ export async function generateNextDocId(core: Core): Promise<string> {
 
 const taskCmd = program.command("task").aliases(["tasks"]);
 
+/**
+ * Whether `backlog task ...` asks for JSON. Commander attributes `--json` to the `task` parent and
+ * leaves the subcommand without it, so the parent's value is what decides it.
+ */
+function isTaskJsonRequested(options: { json?: boolean }): boolean {
+	return Boolean(options.json || taskCmd.opts<{ json?: boolean }>().json);
+}
+
 function getTaskReadOutputMode(options: { json?: boolean; plain?: boolean }): ReadOutputMode | null {
 	const taskOptions = taskCmd.opts<{ json?: boolean; plain?: boolean }>();
 	return getReadOutputMode({
-		json: Boolean(options.json || taskOptions.json),
+		json: isTaskJsonRequested(options),
 		plain: Boolean(options.plain || taskOptions.plain),
 	});
 }
@@ -2073,7 +2109,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 		}
 	});
 
-addHelpSchema(program.command("search [query]"), {
+const searchCommand = addHelpSchema(program.command("search [query]"), {
 	reads: "Tasks, documents, decisions, and wiki from the configured backlog directory",
 	required: [],
 	optional: [
@@ -2105,12 +2141,14 @@ addHelpSchema(program.command("search [query]"), {
 			type: "Boolean",
 			description: "Widen the task source corpus with completed tasks; results carry source completed",
 		},
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output: "Interactive search UI or plain text with --plain",
+	output: `Interactive search UI or plain text with --plain. ${LIST_WINDOW_OUTPUT_HELP}`,
 	examples: [
 		'backlog search "auth" --plain',
 		'backlog search "api" --type task --status "<active status>"',
 		'backlog search "auth" --completed --type task --status "Done" --plain',
+		'backlog search "auth" --max-count 20 --skip 20 --plain',
 	],
 })
 	.description("search tasks, documents, decisions, and wiki using the shared index")
@@ -2134,190 +2172,195 @@ addHelpSchema(program.command("search [query]"), {
 	.option("--limit <number>", "limit total results returned")
 	.option("--completed", "include completed-corpus tasks in the results")
 	.option("--plain", "print plain text output instead of interactive UI")
-	.option("--json", "print versioned machine-readable JSON output")
-	.action(async (query: string | undefined, options) => {
-		const outputMode = getReadOutputMode(options);
-		if (!outputMode) return;
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		const searchService = await core.getSearchService();
-		const contentStore = await core.getContentStore();
-		const cleanup = () => {
-			searchService.dispose();
-			contentStore.dispose();
-		};
+	.option("--json", "print versioned machine-readable JSON output");
+addListWindowOptions(searchCommand).action(async (query: string | undefined, options) => {
+	const listOutput = resolveListOutput(options, searchCommand);
+	if (!listOutput) return;
+	const { outputMode, listWindow } = listOutput;
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	const searchService = await core.getSearchService();
+	const contentStore = await core.getContentStore();
+	const cleanup = () => {
+		searchService.dispose();
+		contentStore.dispose();
+	};
 
-		const modifiedFileFilters = parseDelimitedStringList(options.modifiedFile);
-		const rawTypes = options.type ? (Array.isArray(options.type) ? options.type : [options.type]) : undefined;
-		const allowedTypes: SearchResultType[] = ["task", "document", "decision", "wiki"];
-		const types = rawTypes
-			? rawTypes
-					.map((value: string) => value.toLowerCase())
-					.filter((value: string): value is SearchResultType => {
-						if (!allowedTypes.includes(value as SearchResultType)) {
-							console.warn(`Ignoring unsupported type '${value}'. Supported: task, document, decision, wiki`);
-							return false;
-						}
-						return true;
-					})
-			: modifiedFileFilters?.length
-				? ["task"]
-				: allowedTypes;
+	const modifiedFileFilters = parseDelimitedStringList(options.modifiedFile);
+	const rawTypes = options.type ? (Array.isArray(options.type) ? options.type : [options.type]) : undefined;
+	const allowedTypes: SearchResultType[] = ["task", "document", "decision", "wiki"];
+	const types = rawTypes
+		? rawTypes
+				.map((value: string) => value.toLowerCase())
+				.filter((value: string): value is SearchResultType => {
+					if (!allowedTypes.includes(value as SearchResultType)) {
+						console.warn(`Ignoring unsupported type '${value}'. Supported: task, document, decision, wiki`);
+						return false;
+					}
+					return true;
+				})
+		: modifiedFileFilters?.length
+			? ["task"]
+			: allowedTypes;
 
-		const rawStatuses = parseDelimitedStringList(options.status) ?? [];
-		const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
-		let canonicalStatuses: string[] = [];
-		if (rawStatuses.length > 0) {
-			const result = await normalizeCliStatusList(core, rawStatuses, "--status");
-			if (result === null) {
-				process.exitCode = 1;
-				cleanup();
-				return;
-			}
-			canonicalStatuses = result;
-		}
-		let canonicalExcludeStatuses: string[] = [];
-		if (rawExcludeStatuses.length > 0) {
-			const result = await normalizeCliStatusList(core, rawExcludeStatuses, "--exclude-status");
-			if (result === null) {
-				process.exitCode = 1;
-				cleanup();
-				return;
-			}
-			canonicalExcludeStatuses = result;
-		}
-
-		const filters: {
-			status?: string | string[];
-			statusExcluded?: string | string[];
-			priority?: SearchPriorityFilter;
-			modifiedFiles?: string[];
-		} = {};
-		if (canonicalStatuses.length > 0) {
-			filters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
-		}
-		if (canonicalExcludeStatuses.length > 0) {
-			filters.statusExcluded = canonicalExcludeStatuses;
-		}
-		if (options.priority) {
-			const priorityLower = String(options.priority).toLowerCase();
-			const validPriorities: SearchPriorityFilter[] = ["high", "medium", "low"];
-			if (!validPriorities.includes(priorityLower as SearchPriorityFilter)) {
-				console.error("Invalid priority. Valid values: high, medium, low");
-				cleanup();
-				process.exitCode = 1;
-				return;
-			}
-			filters.priority = priorityLower as SearchPriorityFilter;
-		}
-		if (modifiedFileFilters?.length) {
-			filters.modifiedFiles = modifiedFileFilters;
-		}
-
-		let limit: number | undefined;
-		if (options.limit !== undefined) {
-			const parsed = parsePositiveIntegerOption(options.limit, "--limit", "backlog search --help");
-			if (parsed === null) {
-				cleanup();
-				return;
-			}
-			limit = parsed;
-		}
-
-		const searchResults = searchService
-			.search({
-				query: query ?? "",
-				limit,
-				types,
-				filters,
-				includeCompleted: options.completed === true,
-			})
-			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45);
-		if (outputMode === "json") {
-			// Readiness is derived from the completed corpus, which a plain list read does not load, so
-			// only the JSON output pays for it, and only once a task result actually needs it. Each
-			// verdict stays on the record it was read for rather than being rejoined by task ID: two
-			// files can claim one identity with different dependencies, and each keeps its own answer.
-			const payload: SearchResultInput[] = [];
-			let readinessGraph: ReadinessGraph | null = null;
-			for (const result of searchResults) {
-				if (result.type !== "task") {
-					payload.push(result);
-					continue;
-				}
-				readinessGraph ??= await loadReadinessGraph(core);
-				payload.push({
-					...result,
-					task: { ...result.task, isReady: getTaskReadiness(result.task, readinessGraph).isReady },
-				});
-			}
-			printJson(searchJson(payload, cwd, core.filesystem.docsDir));
+	const rawStatuses = parseDelimitedStringList(options.status) ?? [];
+	const rawExcludeStatuses = parseDelimitedStringList(options.excludeStatus) ?? [];
+	let canonicalStatuses: string[] = [];
+	if (rawStatuses.length > 0) {
+		const result = await normalizeCliStatusList(core, rawStatuses, "--status");
+		if (result === null) {
+			process.exitCode = 1;
 			cleanup();
 			return;
 		}
-
-		if (outputMode === "plain") {
-			printSearchResults(searchResults);
+		canonicalStatuses = result;
+	}
+	let canonicalExcludeStatuses: string[] = [];
+	if (rawExcludeStatuses.length > 0) {
+		const result = await normalizeCliStatusList(core, rawExcludeStatuses, "--exclude-status");
+		if (result === null) {
+			process.exitCode = 1;
 			cleanup();
 			return;
 		}
+		canonicalExcludeStatuses = result;
+	}
 
-		const taskResults = searchResults.filter(isTaskSearchResult);
-		const searchResultTasks = taskResults.map((result) => result.task);
-		// The interactive pool feeds the TUI's own re-filtering, so it must be widened by the same
-		// flag as the plain/JSON search above or --completed would be lost as soon as the TUI opens.
-		const allTasks = (await core.queryTasks({ includeCompleted: options.completed === true })).filter(
-			(task) => task.id && task.id.trim() !== "" && hasAnyPrefix(task.id),
-		);
-		// If no tasks exist at all, show plain text results
-		if (allTasks.length === 0) {
-			printSearchResults(searchResults);
+	const filters: {
+		status?: string | string[];
+		statusExcluded?: string | string[];
+		priority?: SearchPriorityFilter;
+		modifiedFiles?: string[];
+	} = {};
+	if (canonicalStatuses.length > 0) {
+		filters.status = canonicalStatuses.length === 1 ? canonicalStatuses[0] : canonicalStatuses;
+	}
+	if (canonicalExcludeStatuses.length > 0) {
+		filters.statusExcluded = canonicalExcludeStatuses;
+	}
+	if (options.priority) {
+		const priorityLower = String(options.priority).toLowerCase();
+		const validPriorities: SearchPriorityFilter[] = ["high", "medium", "low"];
+		if (!validPriorities.includes(priorityLower as SearchPriorityFilter)) {
+			console.error("Invalid priority. Valid values: high, medium, low");
+			cleanup();
+			process.exitCode = 1;
+			return;
+		}
+		filters.priority = priorityLower as SearchPriorityFilter;
+	}
+	if (modifiedFileFilters?.length) {
+		filters.modifiedFiles = modifiedFileFilters;
+	}
+
+	let limit: number | undefined;
+	if (options.limit !== undefined) {
+		const parsed = parsePositiveIntegerOption(options.limit, "--limit", "backlog search --help");
+		if (parsed === null) {
 			cleanup();
 			return;
 		}
+		limit = parsed;
+	}
 
-		const hasModifiedFileFilter = Boolean(modifiedFileFilters?.length);
-		const interactiveTasks = hasModifiedFileFilter ? searchResultTasks : allTasks;
-		if (interactiveTasks.length === 0) {
-			printSearchResults(searchResults);
-			cleanup();
-			return;
+	const searchResults = searchService
+		.search({
+			query: query ?? "",
+			limit,
+			types,
+			filters,
+			includeCompleted: options.completed === true,
+		})
+		.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45);
+	if (outputMode === "json") {
+		const window = selectListWindow(searchResults, listWindow);
+		// Readiness is derived from the completed corpus, which a plain list read does not load, so
+		// only the JSON output pays for it, and only once a task result actually needs it, and only
+		// for the results the window keeps. Each verdict stays on the record it was read for rather
+		// than being rejoined by task ID: two files can claim one identity with different
+		// dependencies, and each keeps its own answer.
+		const payload: SearchResultInput[] = [];
+		let readinessGraph: ReadinessGraph | null = null;
+		for (const result of window.items) {
+			if (result.type !== "task") {
+				payload.push(result);
+				continue;
+			}
+			readinessGraph ??= await loadReadinessGraph(core);
+			payload.push({
+				...result,
+				task: { ...result.task, isReady: getTaskReadiness(result.task, readinessGraph).isReady },
+			});
 		}
+		printJson(searchJson(payload, cwd, core.filesystem.docsDir, window));
+		cleanup();
+		return;
+	}
 
-		// Use the first search result as the selected task, or first available task if no results
-		const firstTask = searchResultTasks[0] || interactiveTasks[0];
-		const priorityFilter = filters.priority ? filters.priority : undefined;
-		// Keep the whole selection: a repeated or comma-separated --status has to reach the view as
-		// it reached the search results, or the interactive filter contradicts --plain output.
-		const statusFilter = filters.status;
-		const statusExcludedFilter = Array.isArray(filters.statusExcluded)
-			? filters.statusExcluded
-			: filters.statusExcluded
-				? [filters.statusExcluded]
-				: undefined;
-		const { runUnifiedView } = await import("./ui/unified-view.ts");
-		await runUnifiedView({
-			core,
-			initialView: "task-list",
-			selectedTask: firstTask,
-			tasks: interactiveTasks,
-			filter: {
-				title: query ? `Search: ${query}` : "Search",
-				filterDescription: buildSearchFilterDescription({
-					status: statusFilter,
-					statusExcluded: statusExcludedFilter,
-					priority: priorityFilter,
-					query: query ?? "",
-					modifiedFiles: modifiedFileFilters ?? [],
-				}),
+	if (outputMode === "plain") {
+		printListWindow(searchResults, listWindow, (items) => {
+			printSearchResults(items);
+		});
+		cleanup();
+		return;
+	}
+
+	const taskResults = searchResults.filter(isTaskSearchResult);
+	const searchResultTasks = taskResults.map((result) => result.task);
+	// The interactive pool feeds the TUI's own re-filtering, so it must be widened by the same
+	// flag as the plain/JSON search above or --completed would be lost as soon as the TUI opens.
+	const allTasks = (await core.queryTasks({ includeCompleted: options.completed === true })).filter(
+		(task) => task.id && task.id.trim() !== "" && hasAnyPrefix(task.id),
+	);
+	// If no tasks exist at all, show plain text results
+	if (allTasks.length === 0) {
+		printSearchResults(searchResults);
+		cleanup();
+		return;
+	}
+
+	const hasModifiedFileFilter = Boolean(modifiedFileFilters?.length);
+	const interactiveTasks = hasModifiedFileFilter ? searchResultTasks : allTasks;
+	if (interactiveTasks.length === 0) {
+		printSearchResults(searchResults);
+		cleanup();
+		return;
+	}
+
+	// Use the first search result as the selected task, or first available task if no results
+	const firstTask = searchResultTasks[0] || interactiveTasks[0];
+	const priorityFilter = filters.priority ? filters.priority : undefined;
+	// Keep the whole selection: a repeated or comma-separated --status has to reach the view as
+	// it reached the search results, or the interactive filter contradicts --plain output.
+	const statusFilter = filters.status;
+	const statusExcludedFilter = Array.isArray(filters.statusExcluded)
+		? filters.statusExcluded
+		: filters.statusExcluded
+			? [filters.statusExcluded]
+			: undefined;
+	const { runUnifiedView } = await import("./ui/unified-view.ts");
+	await runUnifiedView({
+		core,
+		initialView: "task-list",
+		selectedTask: firstTask,
+		tasks: interactiveTasks,
+		filter: {
+			title: query ? `Search: ${query}` : "Search",
+			filterDescription: buildSearchFilterDescription({
 				status: statusFilter,
 				statusExcluded: statusExcludedFilter,
 				priority: priorityFilter,
-				searchQuery: query ?? "", // Pre-populate search with the query
-			},
-		});
-		cleanup();
+				query: query ?? "",
+				modifiedFiles: modifiedFileFilters ?? [],
+			}),
+			status: statusFilter,
+			statusExcluded: statusExcludedFilter,
+			priority: priorityFilter,
+			searchQuery: query ?? "", // Pre-populate search with the query
+		},
 	});
+	cleanup();
+});
 
 function buildSearchFilterDescription(filters: {
 	status?: string | string[];
@@ -2490,9 +2533,12 @@ async function printDuplicateIntegrityWarning(core: Core): Promise<boolean> {
 async function runTaskList(
 	options: OptionValues,
 	emitJson: (value: ReturnType<typeof taskListJson>) => void = printJson,
+	listWindow: ListWindow = EMPTY_LIST_WINDOW,
 ) {
-	const outputMode = getTaskReadOutputMode(options);
-	if (!outputMode) return;
+	const requestedOutputMode = getTaskReadOutputMode(options);
+	if (!requestedOutputMode) return;
+	// Window and count options print text, so they never open an interactive view.
+	const outputMode = requestedOutputMode === "interactive" && listWindow.forcesText ? "plain" : requestedOutputMode;
 	const cwd = await requireProjectRoot();
 	const core = new Core(cwd);
 	const hasDuplicateIds = await printDuplicateIntegrityWarning(core);
@@ -2660,7 +2706,8 @@ async function runTaskList(
 			if (outputMode === "json") {
 				// The rows the verdict selected are the rows serialized: one pass, one answer. An empty
 				// result is still a response, so a subscriber always gets a list to replace.
-				emitJson(taskListJson(narrowed.display));
+				const page = selectListWindow(narrowed.display, listWindow);
+				emitJson(taskListJson(page.items, page));
 				cleanup();
 				return;
 			}
@@ -2677,14 +2724,20 @@ async function runTaskList(
 			return;
 		}
 
+		const printTaskRow = (task: Task, withStatus: boolean): void => {
+			const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
+			const statusIndicator = withStatus && task.status ? ` (${task.status})` : "";
+			const acceptanceCriteria = formatAcceptanceCriteriaSummarySuffix(task);
+			console.log(`  ${priorityIndicator}${task.id} - ${task.title}${statusIndicator}${acceptanceCriteria}`);
+		};
+
 		if (options.sort && options.sort.toLowerCase() === "priority") {
-			console.log("Tasks (sorted by priority):");
-			for (const t of displayTasks) {
-				const priorityIndicator = t.priority ? `[${t.priority.toUpperCase()}] ` : "";
-				const statusIndicator = t.status ? ` (${t.status})` : "";
-				const acceptanceCriteria = formatAcceptanceCriteriaSummarySuffix(t);
-				console.log(`  ${priorityIndicator}${t.id} - ${t.title}${statusIndicator}${acceptanceCriteria}`);
-			}
+			printListWindow(displayTasks, listWindow, (items) => {
+				console.log("Tasks (sorted by priority):");
+				for (const task of items) {
+					printTaskRow(task, true);
+				}
+			});
 			cleanup();
 			return;
 		}
@@ -2709,17 +2762,26 @@ async function runTaskList(
 			...Array.from(groups.keys()).filter((status) => !statuses.includes(status)),
 		];
 
+		// A window follows the printed order, so the status groups are flattened first: consecutive
+		// windows of an unchanged backlog then join into the same grouped output.
+		const orderedTasks: Task[] = [];
 		for (const status of orderedStatuses) {
-			const list = groups.get(status);
-			if (!list) continue;
-			console.log(`${status || "No Status"}:`);
-			list.forEach((task) => {
-				const priorityIndicator = task.priority ? `[${task.priority.toUpperCase()}] ` : "";
-				const acceptanceCriteria = formatAcceptanceCriteriaSummarySuffix(task);
-				console.log(`  ${priorityIndicator}${task.id} - ${task.title}${acceptanceCriteria}`);
-			});
-			console.log();
+			for (const task of groups.get(status) ?? []) {
+				orderedTasks.push(task);
+			}
 		}
+		printListWindow(orderedTasks, listWindow, (items) => {
+			const shown = new Set(items);
+			for (const status of orderedStatuses) {
+				const list = (groups.get(status) ?? []).filter((task) => shown.has(task));
+				if (list.length === 0) continue;
+				console.log(`${status || "No Status"}:`);
+				list.forEach((task) => {
+					printTaskRow(task, false);
+				});
+				console.log();
+			}
+		});
 		cleanup();
 		return;
 	}
@@ -2859,7 +2921,7 @@ async function runTaskList(
 	cleanup();
 }
 
-addHelpSchema(taskCmd.command("list"), {
+const taskListCommand = addHelpSchema(taskCmd.command("list"), {
 	reads: "Local editable tasks from the configured backlog directory",
 	required: [],
 	optional: [
@@ -2905,9 +2967,9 @@ addHelpSchema(taskCmd.command("list"), {
 			type: "Boolean",
 			description: "Requires --json; emit an initial full list and changed replacements until stopped",
 		},
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output:
-		"Interactive task list or plain text with --plain. With --json --watch, successive complete JSON values use the same formatting; replace the previous list with each value. Restart for a fresh snapshot; intermediate edits may be coalesced.",
+	output: `Interactive task list or plain text with --plain. With --json --watch, successive complete JSON values use the same formatting; replace the previous list with each value. Restart for a fresh snapshot; intermediate edits may be coalesced. ${LIST_WINDOW_OUTPUT_HELP}`,
 	examples: [
 		'backlog task list --status "<todo status>" --plain',
 		"backlog task list --ready --plain",
@@ -2915,6 +2977,8 @@ addHelpSchema(taskCmd.command("list"), {
 		"backlog task list --parent {{TASK_ID:1}}",
 		'backlog task list --labels frontend,bug --search "login" --limit 10 --plain',
 		'backlog task list --completed --status "Done" --plain',
+		"backlog task list --max-count 20 --skip 20 --plain",
+		'backlog task list --status "<todo status>" --count',
 	],
 })
 	.description("list tasks grouped by status")
@@ -2945,31 +3009,41 @@ addHelpSchema(taskCmd.command("list"), {
 	.option("--sort <field>", "sort tasks by field (priority, id, ordinal)")
 	.option("--plain", "use plain text output instead of interactive UI")
 	.option("--json", "print versioned machine-readable JSON output")
-	.option("--watch", "keep emitting changed full JSON lists (requires --json)")
-	.action(async (options) => {
-		if (!options.watch) {
-			await runTaskList(options);
-			return;
-		}
-		if (getTaskReadOutputMode(options) !== "json") {
-			console.error("--watch requires --json and cannot be combined with --plain.");
-			process.exitCode = 1;
-			return;
-		}
-		const cwd = await requireProjectRoot();
-		const filesystem = new Core(cwd).filesystem;
-		await watchJson([filesystem.backlogDir, dirname(filesystem.configFilePath)], async () => {
-			let result: string | undefined;
-			await runTaskList(options, (value) => {
+	.option("--watch", "keep emitting changed full JSON lists (requires --json)");
+addListWindowOptions(taskListCommand).action(async (options) => {
+	const listWindow = parseListWindow(
+		{ ...options, json: isTaskJsonRequested(options) },
+		taskListCommand,
+		process.argv.slice(2),
+	);
+	if (!listWindow) return;
+	if (!options.watch) {
+		await runTaskList(options, printJson, listWindow);
+		return;
+	}
+	if (getTaskReadOutputMode(options) !== "json") {
+		console.error("--watch requires --json and cannot be combined with --plain.");
+		process.exitCode = 1;
+		return;
+	}
+	const cwd = await requireProjectRoot();
+	const filesystem = new Core(cwd).filesystem;
+	await watchJson([filesystem.backlogDir, dirname(filesystem.configFilePath)], async () => {
+		let result: string | undefined;
+		await runTaskList(
+			options,
+			(value) => {
 				result = formatJson(value);
-			});
-			return result;
-		});
-		// Bun can retain a native stdout write after stream destruction when the reader stops
-		// draining a pipe. Watch cleanup has finished; do not wait for that reader after an
-		// explicit termination request.
-		if (process.exitCode === 130 || process.exitCode === 143) process.exit(process.exitCode);
+			},
+			listWindow,
+		);
+		return result;
 	});
+	// Bun can retain a native stdout write after stream destruction when the reader stops
+	// draining a pipe. Watch cleanup has finished; do not wait for that reader after an
+	// explicit termination request.
+	if (process.exitCode === 130 || process.exitCode === 143) process.exit(process.exitCode);
+});
 
 /**
  * One help list for the shared edit fields, so `task edit` and `draft edit` cannot describe the
@@ -4083,67 +4157,82 @@ taskCmd
 
 const draftCmd = program.command("draft");
 
-draftCmd
+const draftListCommand = draftCmd
 	.command("list")
 	.description("list all drafts")
 	.option("--sort <field>", "sort drafts by field (priority, id)")
+	.option("--limit <number>", "limit drafts displayed")
 	.option("--plain", "use plain text output")
-	.action(async (options: { plain?: boolean; sort?: string }) => {
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		await core.ensureConfigLoaded();
-		const drafts = await core.filesystem.listDrafts();
-		if (!drafts || drafts.length === 0) {
-			console.log("No drafts found.");
+	.addHelpText(
+		"after",
+		"\nExamples:\n  backlog draft list --max-count 20 --plain\n  backlog draft list --max-count 20 --skip 20 --plain\n  backlog draft list --count\n",
+	);
+addListWindowOptions(draftListCommand).action(async (options) => {
+	const listOutput = resolveListOutput({ ...options, plain: isPlainRequested(options) }, draftListCommand);
+	if (!listOutput) return;
+	const { outputMode, listWindow } = listOutput;
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	await core.ensureConfigLoaded();
+	let drafts = await core.filesystem.listDrafts();
+	if (options.limit !== undefined) {
+		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog draft list --help");
+		if (parsedLimit === null) return;
+		drafts = drafts.slice(0, parsedLimit);
+	}
+
+	// Apply sorting - default to priority sorting like the web UI
+	const { sortTasks } = await import("./utils/task-sorting.ts");
+	let sortedDrafts = drafts;
+
+	if (options.sort) {
+		const validSortFields = ["priority", "id"];
+		const sortField = options.sort.toLowerCase();
+		if (!validSortFields.includes(sortField)) {
+			console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id`);
+			process.exitCode = 1;
 			return;
 		}
+		sortedDrafts = sortTasks(drafts, sortField);
+	} else {
+		// Default to priority sorting to match web UI behavior
+		sortedDrafts = sortTasks(drafts, "priority");
+	}
 
-		// Apply sorting - default to priority sorting like the web UI
-		const { sortTasks } = await import("./utils/task-sorting.ts");
-		let sortedDrafts = drafts;
-
-		if (options.sort) {
-			const validSortFields = ["priority", "id"];
-			const sortField = options.sort.toLowerCase();
-			if (!validSortFields.includes(sortField)) {
-				console.error(`Invalid sort field: ${options.sort}. Valid values are: priority, id`);
-				process.exitCode = 1;
+	if (outputMode === "plain" || !sortedDrafts || sortedDrafts.length === 0) {
+		printListWindow(sortedDrafts ?? [], listWindow, (items, page) => {
+			if (page.total === 0) {
+				console.log("No drafts found.");
 				return;
 			}
-			sortedDrafts = sortTasks(drafts, sortField);
-		} else {
-			// Default to priority sorting to match web UI behavior
-			sortedDrafts = sortTasks(drafts, "priority");
-		}
-
-		const usePlainOutput = isPlainRequested(options) || shouldAutoPlain;
-		if (usePlainOutput) {
 			// Plain text output for non-interactive environments
 			console.log("Drafts:");
-			for (const draft of sortedDrafts) {
+			for (const draft of items) {
 				const priorityIndicator = draft.priority ? `[${draft.priority.toUpperCase()}] ` : "";
 				console.log(`  ${priorityIndicator}${draft.id} - ${draft.title}`);
 			}
-		} else {
-			// Interactive UI - use unified view with draft support
-			const firstDraft = sortedDrafts[0];
-			if (!firstDraft) return;
-			const { runUnifiedView } = await import("./ui/unified-view.ts");
-			await runUnifiedView({
-				core,
-				initialView: "task-list",
-				selectedTask: firstDraft,
-				tasks: sortedDrafts,
-				filter: {
-					filterDescription: "All Drafts",
-				},
-				title: "Drafts",
-				// This session is about drafts, so its create key makes a draft and the created draft
-				// joins the session instead of being reported as a record the board does not hold.
-				draftSession: true,
-			});
-		}
+		});
+		return;
+	}
+
+	// Interactive UI - use unified view with draft support
+	const firstDraft = sortedDrafts[0];
+	if (!firstDraft) return;
+	const { runUnifiedView } = await import("./ui/unified-view.ts");
+	await runUnifiedView({
+		core,
+		initialView: "task-list",
+		selectedTask: firstDraft,
+		tasks: sortedDrafts,
+		filter: {
+			filterDescription: "All Drafts",
+		},
+		title: "Drafts",
+		// This session is about drafts, so its create key makes a draft and the created draft
+		// joins the session instead of being reported as a record the board does not hold.
+		draftSession: true,
 	});
+});
 
 draftCmd
 	.command("create <title>")
@@ -4366,71 +4455,139 @@ draftCmd
 
 const milestoneCmd = program.command("milestone").aliases(["milestones"]);
 
-addHelpSchema(milestoneCmd.command("list"), {
+/**
+ * The tasks a windowed milestone list may group. The board derives its sections from both the
+ * milestone files and the milestone values of the tasks, so a window over the milestones only holds
+ * when tasks naming a milestone outside the window are dropped as well.
+ */
+function tasksWithinMilestones(tasks: Task[], milestones: { id: string; title: string }[]): Task[] {
+	const keys = new Set<string>();
+	const addNumericAliases = (id: string) => {
+		const match = id.match(/^m-(\d+)$/i);
+		const digits = match?.[1] ?? (/^\d+$/.test(id) ? id : undefined);
+		if (digits === undefined) return;
+		const numeric = String(Number.parseInt(digits, 10));
+		keys.add(`m-${numeric}`);
+		keys.add(numeric);
+	};
+	for (const milestone of milestones) {
+		const id = milestone.id.trim().toLowerCase();
+		const title = milestone.title.trim().toLowerCase();
+		if (id) {
+			keys.add(id);
+			addNumericAliases(id);
+		}
+		if (title) keys.add(title);
+	}
+	return tasks.filter((task) => keys.has((task.milestone ?? "").trim().toLowerCase()));
+}
+
+const milestoneListCommand = addHelpSchema(milestoneCmd.command("list"), {
 	reads: "Milestone files and local task milestone values",
 	required: [],
 	optional: [
 		{ name: "show-completed", type: "Boolean", description: "List completed milestones in the plain text output" },
+		{ name: "limit", type: "Positive integer", description: "Print at most this many milestones" },
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
+		{
+			name: "with-no-milestone",
+			type: "Boolean",
+			description: "Also list tasks that have no milestone; off by default so the board stays focused on milestones",
+		},
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output:
-		"Interactive milestone list with a kanban board for the highlighted milestone (every milestone is listed, completed ones marked), or the text summary with --plain",
-	examples: ["backlog milestone list --plain"],
+	output: `Interactive milestone list with a kanban board for the highlighted milestone (every milestone is listed, completed ones marked), or the text summary with --plain. ${LIST_WINDOW_OUTPUT_HELP}`,
+	examples: [
+		"backlog milestone list --plain",
+		"backlog milestone list --max-count 5 --plain",
+		"backlog milestone list --with-no-milestone --plain",
+	],
 })
 	.description("list milestones with completion status")
 	.option("--show-completed", "show completed milestones in plain text output")
+	.option("--limit <number>", "limit milestones displayed")
 	.option("--plain", "use plain text output")
-	.action(async (options: { showCompleted?: boolean; plain?: boolean }) => {
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		await core.ensureConfigLoaded();
-		const [tasks, milestones, archivedMilestones, config] = await Promise.all([
-			core.queryTasks({ includeCrossBranch: false }),
-			core.filesystem.listMilestones(),
-			core.filesystem.listArchivedMilestones(),
-			core.filesystem.loadConfig(),
-		]);
-		const statuses = config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"];
-		const hiddenStatuses = hiddenStatusNames(config?.statuses);
-		const showCompleted = Boolean(options.showCompleted || process.argv.includes("--show-completed"));
+	.option("--with-no-milestone", "also list tasks without a milestone (off by default)");
+addListWindowOptions(milestoneListCommand).action(async (options) => {
+	const listOutput = resolveListOutput({ ...options, plain: isPlainRequested(options) }, milestoneListCommand);
+	if (!listOutput) return;
+	const { outputMode, listWindow } = listOutput;
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	await core.ensureConfigLoaded();
+	const [tasks, milestones, archivedMilestones, config] = await Promise.all([
+		core.queryTasks({ includeCrossBranch: false }),
+		core.filesystem.listMilestones(),
+		core.filesystem.listArchivedMilestones(),
+		core.filesystem.loadConfig(),
+	]);
+	const statuses = config?.statuses ? statusNames(config.statuses) : ["To Do", "In Progress", "Done"];
+	const hiddenStatuses = hiddenStatusNames(config?.statuses);
+	const showCompleted = Boolean(options.showCompleted || process.argv.includes("--show-completed"));
+	const withNoMilestone = Boolean(options.withNoMilestone || process.argv.includes("--with-no-milestone"));
+	// The window counts milestones, so No Milestone is never a window item and never fills the
+	// --max-count or --limit quota. It prints only when --with-no-milestone is set, then as a
+	// fixed header on every window. --limit is the silent form of --max-count.
+	let window = listWindow;
+	if (options.maxCount === undefined && options.limit !== undefined) {
+		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog milestone list --help");
+		if (parsedLimit === null) return;
+		window = { ...window, maxCount: parsedLimit, silent: true };
+	}
 
-		if (!isPlainRequested(options) && !shouldAutoPlain) {
-			const { renderMilestonesTui } = await import("./ui/milestones.ts");
-			await renderMilestonesTui({
-				core,
-				tasks,
-				milestones,
-				archivedMilestones,
-				statuses,
-				layout: "horizontal",
-				maxColumnWidth: config?.maxColumnWidth || 20,
-				projectName: config?.projectName,
-				hideEmptyColumns: config?.hideEmptyColumns ?? false,
-				hiddenStatuses,
-			});
+	if (outputMode === "interactive") {
+		const { renderMilestonesTui } = await import("./ui/milestones.ts");
+		await renderMilestonesTui({
+			core,
+			tasks,
+			milestones,
+			archivedMilestones,
+			statuses,
+			layout: "horizontal",
+			maxColumnWidth: config?.maxColumnWidth || 20,
+			projectName: config?.projectName,
+			hideEmptyColumns: config?.hideEmptyColumns ?? false,
+			hiddenStatuses,
+		});
+		return;
+	}
+
+	const plainTasks = showCompleted
+		? await core.queryTasks({ includeCrossBranch: false, includeCompleted: true })
+		: tasks;
+	const groupedTasks = foldArchivedMilestoneTasks(plainTasks, milestones, archivedMilestones);
+	const { filterVisibleColumns, prepareBoardColumns } = await import("./ui/board.ts");
+	const boardStatuses =
+		hiddenStatuses.length > 0 ? statuses.filter((status) => !hiddenStatuses.includes(status)) : statuses;
+	// These generators rebuild columns from the tasks, so hidden-status tasks must be dropped too.
+	const visibleTasks =
+		hiddenStatuses.length > 0
+			? groupedTasks.filter((task) => !hiddenStatuses.includes((task.status ?? "").trim()))
+			: groupedTasks;
+	const visibleStatuses = config?.hideEmptyColumns
+		? filterVisibleColumns(prepareBoardColumns(visibleTasks, boardStatuses), true, false).map((column) => column.status)
+		: boardStatuses;
+	const noMilestoneTasks = visibleTasks.filter((task) => !task.milestone?.trim());
+	const projectName = config?.projectName?.trim() || "Project";
+	printListWindow(milestones, window, (items, page) => {
+		if (!page.cut) {
+			console.log(
+				generateMilestoneGroupedBoard(visibleTasks, visibleStatuses, items, projectName, {
+					includeNoMilestone: withNoMilestone,
+				}),
+			);
 			return;
 		}
-
-		const plainTasks = showCompleted
-			? await core.queryTasks({ includeCrossBranch: false, includeCompleted: true })
-			: tasks;
-		const groupedTasks = foldArchivedMilestoneTasks(plainTasks, milestones, archivedMilestones);
-		const { filterVisibleColumns, prepareBoardColumns } = await import("./ui/board.ts");
-		const boardStatuses =
-			hiddenStatuses.length > 0 ? statuses.filter((status) => !hiddenStatuses.includes(status)) : statuses;
-		// These generators rebuild columns from the tasks, so hidden-status tasks must be dropped too.
-		const visibleTasks =
-			hiddenStatuses.length > 0
-				? groupedTasks.filter((task) => !hiddenStatuses.includes((task.status ?? "").trim()))
-				: groupedTasks;
-		const visibleStatuses = config?.hideEmptyColumns
-			? filterVisibleColumns(prepareBoardColumns(visibleTasks, boardStatuses), true, false).map(
-					(column) => column.status,
-				)
-			: boardStatuses;
-		const projectName = config?.projectName?.trim() || "Project";
-		console.log(generateMilestoneGroupedBoard(visibleTasks, visibleStatuses, milestones, projectName));
+		const boardTasks = tasksWithinMilestones(visibleTasks, items);
+		// Every window that lists milestones also leads with the No Milestone header when --with-no-milestone is set.
+		if (withNoMilestone && noMilestoneTasks.length > 0) {
+			console.log(generateMilestoneSection("No Milestone", noMilestoneTasks, visibleStatuses));
+		}
+		console.log(
+			generateMilestoneGroupedBoard(boardTasks, visibleStatuses, items, projectName, { includeNoMilestone: false }),
+		);
 	});
+});
 
 addHelpSchema(milestoneCmd.command("edit <name>"), {
 	reads: "Active and archived milestone files, plus local tasks when the title changes and task updates are enabled",
@@ -4857,58 +5014,72 @@ addHelpSchema(docCmd.command("update <docId>"), {
 		}
 	});
 
-addHelpSchema(docCmd.command("list"), {
+const docListCommand = addHelpSchema(docCmd.command("list"), {
 	reads: "Documents under the configured docs directory",
 	required: [],
 	optional: [
+		{ name: "limit", type: "Positive integer", description: "Print at most this many documents" },
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output: "Document list with IDs, titles, types, paths, and tags (or versioned JSON with --json)",
-	examples: ["backlog doc list --plain", "backlog doc list --json"],
+	output: `Document list with IDs, titles, types, paths, and tags (or versioned JSON with --json). ${LIST_WINDOW_OUTPUT_HELP}`,
+	examples: [
+		"backlog doc list --plain",
+		"backlog doc list --json",
+		"backlog doc list --max-count 20 --skip 20 --plain",
+	],
 })
+	.option("--limit <number>", "limit documents displayed")
 	.option("--plain", "use plain text output instead of interactive UI")
-	.option("--json", "print versioned machine-readable JSON output")
-	.action(async (options) => {
-		const outputMode = getReadOutputMode(options);
-		if (!outputMode) return;
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		const docs = await core.filesystem.listDocuments();
-		if (outputMode === "json") {
-			printJson(documentListJson(docs, cwd, core.filesystem.docsDir));
-			return;
-		}
+	.option("--json", "print versioned machine-readable JSON output");
+addListWindowOptions(docListCommand).action(async (options) => {
+	const listOutput = resolveListOutput({ ...options, plain: isPlainRequested(options) }, docListCommand);
+	if (!listOutput) return;
+	const { outputMode, listWindow } = listOutput;
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	let docs = await core.filesystem.listDocuments();
+	if (options.limit !== undefined) {
+		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog doc list --help");
+		if (parsedLimit === null) return;
+		docs = docs.slice(0, parsedLimit);
+	}
+	if (outputMode === "json") {
+		const page = selectListWindow(docs, listWindow);
+		printJson(documentListJson(page.items, cwd, core.filesystem.docsDir));
+		return;
+	}
 
-		if (docs.length === 0) {
-			console.log("No docs found.");
-			return;
-		}
-
-		// Plain text output for non-interactive environments
-		if (outputMode === "plain") {
-			for (const d of docs) {
+	if (outputMode === "plain" || docs.length === 0) {
+		printListWindow(docs, listWindow, (items, page) => {
+			if (page.total === 0) {
+				console.log("No docs found.");
+				return;
+			}
+			for (const d of items) {
 				console.log(`${d.id} - ${d.title}`);
 			}
-			return;
-		}
+		});
+		return;
+	}
 
-		// Interactive UI: two-pane browser (list left, details right).
-		// Falls back to plain text if the terminal size is unavailable.
-		try {
-			await runDocumentListViewer(docs, core);
-		} catch (error) {
-			const isTerminalSizeError = error instanceof Error && error.name === "TerminalSizeError";
-			if (!isTerminalSizeError) {
-				console.error(error instanceof Error ? error.message : String(error));
-			}
-			for (const d of docs) {
-				console.log(`${d.id} - ${d.title}`);
-			}
+	// Interactive UI: two-pane browser (list left, details right).
+	// Falls back to plain text if the terminal size is unavailable.
+	try {
+		await runDocumentListViewer(docs, core);
+	} catch (error) {
+		const isTerminalSizeError = error instanceof Error && error.name === "TerminalSizeError";
+		if (!isTerminalSizeError) {
+			console.error(error instanceof Error ? error.message : String(error));
 		}
-	});
+		for (const d of docs) {
+			console.log(`${d.id} - ${d.title}`);
+		}
+	}
+});
 
-addHelpSchema(docCmd.command("search <query>"), {
+const docSearchCommand = addHelpSchema(docCmd.command("search <query>"), {
 	reads: "Documents under the configured docs directory using the shared fuzzy search index",
 	writes: "None; this is a read-only command",
 	required: [{ name: "query", type: "String", description: "Search text, 1-200 characters" }],
@@ -4918,49 +5089,60 @@ addHelpSchema(docCmd.command("search <query>"), {
 			type: "Integer",
 			description: `Maximum matching documents to return, 1-${DOCUMENT_SEARCH_LIMIT_MAX}`,
 		},
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output: "Plain text Documents list with id, title, path, type, tags, score, and a follow-up doc view command",
-	examples: ['backlog doc search "architecture"', 'backlog doc search "runbook" --limit 5'],
+	output: `Plain text Documents list with id, title, path, type, tags, score, and a follow-up doc view command. ${LIST_WINDOW_OUTPUT_HELP}`,
+	examples: [
+		'backlog doc search "architecture"',
+		'backlog doc search "runbook" --limit 5',
+		'backlog doc search "runbook" --max-count 20 --skip 20',
+	],
 })
 	.description("search documents using the shared fuzzy index")
-	.option("-l, --limit <number>", `limit results returned (1-${DOCUMENT_SEARCH_LIMIT_MAX})`)
-	.action(async (query: string, options) => {
-		const normalizedQuery = query.trim();
-		if (normalizedQuery.length === 0) {
-			console.error('Query is required. Provide non-empty text, for example: backlog doc search "architecture"');
-			process.exitCode = 1;
-			return;
-		}
-		if (normalizedQuery.length > DOCUMENT_SEARCH_QUERY_MAX_LENGTH) {
-			console.error(`Query must be ${DOCUMENT_SEARCH_QUERY_MAX_LENGTH} characters or fewer.`);
-			process.exitCode = 1;
-			return;
-		}
+	.option("-l, --limit <number>", `limit results returned (1-${DOCUMENT_SEARCH_LIMIT_MAX})`);
+addListWindowOptions(docSearchCommand).action(async (query: string, options) => {
+	const normalizedQuery = query.trim();
+	if (normalizedQuery.length === 0) {
+		console.error('Query is required. Provide non-empty text, for example: backlog doc search "architecture"');
+		process.exitCode = 1;
+		return;
+	}
+	if (normalizedQuery.length > DOCUMENT_SEARCH_QUERY_MAX_LENGTH) {
+		console.error(`Query must be ${DOCUMENT_SEARCH_QUERY_MAX_LENGTH} characters or fewer.`);
+		process.exitCode = 1;
+		return;
+	}
 
-		const limit = parseDocumentSearchLimit(options.limit);
-		if (limit === null) {
-			return;
-		}
+	const limit = parseDocumentSearchLimit(options.limit);
+	if (limit === null) {
+		return;
+	}
+	const listOutput = resolveListOutput(options, docSearchCommand);
+	if (!listOutput) return;
+	// Document search always prints text.
+	const { listWindow } = listOutput;
 
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		const searchService = await core.getSearchService();
-		const contentStore = await core.getContentStore();
-		const cleanup = () => {
-			searchService.dispose();
-			contentStore.dispose();
-		};
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	const searchService = await core.getSearchService();
+	const contentStore = await core.getContentStore();
+	const cleanup = () => {
+		searchService.dispose();
+		contentStore.dispose();
+	};
 
-		const results = searchService
-			.search({
-				query: normalizedQuery,
-				limit,
-				types: ["document"],
-			})
-			.filter(isDocumentSearchResult);
-		printDocumentSearchResults(results, normalizedQuery);
-		cleanup();
+	const results = searchService
+		.search({
+			query: normalizedQuery,
+			limit,
+			types: ["document"],
+		})
+		.filter(isDocumentSearchResult);
+	printListWindow(results, listWindow, (items) => {
+		printDocumentSearchResults(items, normalizedQuery);
 	});
+	cleanup();
+});
 
 /** Suggests ready-to-run doc view references so an ambiguous ID needs no rename to inspect files. */
 function printDocumentViewHints(candidates: readonly string[]): void {
@@ -5050,60 +5232,73 @@ addHelpSchema(decisionCmd.command("create <title>"), {
 		console.log(`Created decision ${id}`);
 	});
 
-addHelpSchema(decisionCmd.command("list"), {
+const decisionListCommand = addHelpSchema(decisionCmd.command("list"), {
 	reads: "Decisions under the configured decisions directory",
 	writes: "None; this is a read-only command",
 	required: [],
 	optional: [
+		{ name: "limit", type: "Positive integer", description: "Print at most this many decisions" },
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output: "Decision list with IDs, titles, and statuses; versioned JSON with --json; interactive viewer in TTY",
-	examples: ["backlog decision list --plain", "backlog decision list --json"],
+	output: `Decision list with IDs, titles, and statuses; versioned JSON with --json; interactive viewer in TTY. ${LIST_WINDOW_OUTPUT_HELP}`,
+	examples: [
+		"backlog decision list --plain",
+		"backlog decision list --json",
+		"backlog decision list --max-count 20 --skip 20 --plain",
+	],
 })
 	.description("list decisions")
+	.option("--limit <number>", "limit decisions displayed")
 	.option("--plain", "use plain text output instead of interactive UI")
-	.option("--json", "print versioned machine-readable JSON output")
-	.action(async (options) => {
-		const outputMode = getReadOutputMode(options);
-		if (!outputMode) return;
-		const cwd = await requireProjectRoot();
-		const core = new Core(cwd);
-		const decisions = await core.filesystem.listDecisions();
-		if (outputMode === "json") {
-			printJson(decisionListJson(decisions));
-			return;
-		}
-
-		if (decisions.length === 0) {
-			console.log("No decisions found.");
-			return;
-		}
-
-		// Plain text output for non-interactive environments
-		if (outputMode === "plain") {
-			for (const decision of decisions) {
+	.option("--json", "print versioned machine-readable JSON output");
+addListWindowOptions(decisionListCommand).action(async (options) => {
+	const listOutput = resolveListOutput(options, decisionListCommand);
+	if (!listOutput) return;
+	const { outputMode, listWindow } = listOutput;
+	const cwd = await requireProjectRoot();
+	const core = new Core(cwd);
+	let decisions = await core.filesystem.listDecisions();
+	if (options.limit !== undefined) {
+		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog decision list --help");
+		if (parsedLimit === null) return;
+		decisions = decisions.slice(0, parsedLimit);
+	}
+	if (outputMode === "json") {
+		const page = selectListWindow(decisions, listWindow);
+		printJson(decisionListJson(page.items, page));
+		return;
+	}
+	if (outputMode === "plain") {
+		printListWindow(decisions, listWindow, (items, page) => {
+			if (page.total === 0) {
+				console.log("No decisions found.");
+				return;
+			}
+			for (const decision of items) {
 				const status = decision.status ? ` (${decision.status})` : "";
 				console.log(`${decision.id} - ${decision.title}${status}`);
 			}
-			return;
-		}
+		});
+		return;
+	}
 
-		// Interactive UI: two-pane browser (list left, details right).
-		// Falls back to plain text if the terminal size is unavailable.
-		try {
-			await runDecisionListViewer(decisions, core);
-		} catch (error) {
-			const isTerminalSizeError = error instanceof Error && error.name === "TerminalSizeError";
-			if (!isTerminalSizeError) {
-				console.error(error instanceof Error ? error.message : String(error));
-			}
-			for (const decision of decisions) {
-				const status = decision.status ? ` (${decision.status})` : "";
-				console.log(`${decision.id} - ${decision.title}${status}`);
-			}
+	// Interactive UI: two-pane browser (list left, details right).
+	// Falls back to plain text if the terminal size is unavailable.
+	try {
+		await runDecisionListViewer(decisions, core);
+	} catch (error) {
+		const isTerminalSizeError = error instanceof Error && error.name === "TerminalSizeError";
+		if (!isTerminalSizeError) {
+			console.error(error instanceof Error ? error.message : String(error));
 		}
-	});
+		for (const decision of decisions) {
+			const status = decision.status ? ` (${decision.status})` : "";
+			console.log(`${decision.id} - ${decision.title}${status}`);
+		}
+	}
+});
 
 addHelpSchema(decisionCmd.command("view <decisionId>"), {
 	reads: "Decision metadata and markdown body",
@@ -5285,13 +5480,12 @@ addHelpSchema(memoCmd.command("create"), {
 		console.log(`Created memo ${memo.id}`);
 	});
 
-addHelpSchema(memoCmd.command("list"), {
+const memoListCommand = addHelpSchema(memoCmd.command("list"), {
 	reads: "Memos under the configured memos directory",
 	writes: "None; this is a read-only command",
 	required: [],
 	optional: [
-		{ name: "limit", type: "Number", description: "Page size (default 30)" },
-		{ name: "cursor", type: "Memo ID", description: "Resume after the memo with this id" },
+		{ name: "limit", type: "Number", description: "Print at most this many memos; every memo is listed by default" },
 		{ name: "date", type: "String", description: "Only memos created on this date (YYYY-MM-DD)" },
 		{
 			name: "tags",
@@ -5303,57 +5497,65 @@ addHelpSchema(memoCmd.command("list"), {
 			type: "Boolean",
 			description: "Accepted for script consistency; memo list output is already plain text",
 		},
+		...LIST_WINDOW_HELP_FIELDS,
 	],
-	output:
-		"One line per memo as '<id>\\t<preview>' (first 20 characters of the body, newlines stripped), newest first, plus a next-cursor hint when more remain",
+	output: `One line per memo as '<id>\\t<preview>' (first 20 characters of the body, newlines stripped), newest first. ${LIST_WINDOW_OUTPUT_HELP}`,
 	examples: [
 		"backlog memo list",
 		"backlog memo list --limit 5",
 		"backlog memo list --plain",
 		"backlog memo list --date 2026-10-01",
 		"backlog memo list --tags idea,cli",
+		"backlog memo list --max-count 20 --skip 20",
 	],
 })
 	.description("list memos")
-	.option("-l, --limit <limit>", "number of memos to print (default 30)", "30")
-	.option("--cursor <memoId>", "resume listing after this memo id (see the next-cursor hint)")
+	.option("-l, --limit <limit>", "number of memos to print")
 	.option("--date <date>", "only memos created on this date (YYYY-MM-DD)")
 	.option(
 		"--tags <tags>",
 		"only memos with at least one of these tags (comma-separated or repeatable)",
 		createMultiValueAccumulator(),
 	)
-	.option("--plain", "use plain text output (memo list output is already plain text)")
-	.action(async (options) => {
-		const cwd = await requireProjectRoot();
-		const limit = parsePositiveIntegerOption(options.limit, "--limit", "backlog memo list");
-		if (limit === null) return;
-		const date = typeof options.date === "string" ? options.date : undefined;
-		if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-			console.error(`Invalid --date "${date}". Use YYYY-MM-DD.`);
-			process.exitCode = 1;
-			return;
-		}
-		const { items, nextCursor } = await listMemosPage(cwd, {
-			limit,
-			cursor: typeof options.cursor === "string" ? options.cursor : undefined,
-			date,
-			tags: parseDelimitedStringList(options.tags),
-		});
-		if (items.length === 0) {
+	.option("--plain", "use plain text output (memo list output is already plain text)");
+addListWindowOptions(memoListCommand).action(async (options) => {
+	const listOutput = resolveListOutput(options, memoListCommand);
+	if (!listOutput) return;
+	// Memo list is always text, and pages with the shared window instead of a cursor.
+	const { listWindow } = listOutput;
+	const cwd = await requireProjectRoot();
+	let limit: number | undefined;
+	if (options.limit !== undefined) {
+		const parsed = parsePositiveIntegerOption(options.limit, "--limit", "backlog memo list --help");
+		if (parsed === null) return;
+		limit = parsed;
+	}
+	const date = typeof options.date === "string" ? options.date : undefined;
+	if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+		console.error(`Invalid --date "${date}". Use YYYY-MM-DD.`);
+		process.exitCode = 1;
+		return;
+	}
+	// `listMemosPage` caps an absent limit at its page size for the MCP tools and the server API,
+	// which page with a cursor; the CLI lists every memo unless `--limit` says otherwise.
+	const { items } = await listMemosPage(cwd, {
+		limit: limit ?? Number.MAX_SAFE_INTEGER,
+		date,
+		tags: parseDelimitedStringList(options.tags),
+	});
+	printListWindow(items, listWindow, (pageItems, page) => {
+		if (page.total === 0) {
 			console.log("No memos found.");
 			return;
 		}
-		for (const memo of items) {
+		for (const memo of pageItems) {
 			// One-line preview: strip newlines and keep the first 20 characters.
 			const flat = memo.rawContent.replace(/\n/g, "");
 			const preview = flat.length > 20 ? `${flat.slice(0, 20)}…` : flat;
 			console.log(`${memo.id}\t${preview}`);
 		}
-		if (nextCursor) {
-			console.log(`More memos available. Next page: backlog memo list --limit ${limit} --cursor ${nextCursor}`);
-		}
 	});
+});
 
 addHelpSchema(memoCmd.command("view <memoId>"), {
 	reads: "Memo metadata and markdown body",

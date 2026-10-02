@@ -188,6 +188,7 @@ export function generateMilestoneGroupedBoard(
 	statuses: string[],
 	milestoneEntities: Milestone[],
 	projectName: string,
+	options?: { includeNoMilestone?: boolean },
 ): string {
 	const now = new Date();
 	const timestamp = now.toISOString().replace("T", " ").substring(0, 19);
@@ -271,10 +272,11 @@ Project: ${projectName}
 `;
 
 	const sections: string[] = [];
+	const includeNoMilestone = options?.includeNoMilestone ?? false;
 
-	// No milestone section
+	// No milestone section — opt-in: pass includeNoMilestone: true to list unassigned (no-milestone) tasks
 	const noMilestoneTasks = tasks.filter((t) => !t.milestone?.trim());
-	if (noMilestoneTasks.length > 0) {
+	if (includeNoMilestone && noMilestoneTasks.length > 0) {
 		sections.push(generateMilestoneSection("No Milestone", noMilestoneTasks, statuses));
 	}
 
@@ -296,7 +298,11 @@ Project: ${projectName}
 	return `${header}${sections.join("\n\n")}\n`;
 }
 
-function generateMilestoneSection(milestone: string, tasks: Task[], statuses: string[]): string {
+/**
+ * One milestone section of a grouped board: its heading with the task count, then its statuses.
+ * Exported so a paged list can print the No Milestone section on its own, ahead of the page.
+ */
+export function generateMilestoneSection(milestone: string, tasks: Task[], statuses: string[]): string {
 	const { orderedStatuses, groupedTasks } = buildKanbanStatusGroups(tasks, statuses);
 
 	const sectionHeader = `## ${milestone} (${tasks.length} tasks)\n`;

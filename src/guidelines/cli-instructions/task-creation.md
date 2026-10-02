@@ -12,11 +12,14 @@ Recommended CLI commands:
 - `backlog task list --status "<todo status>" --plain`
 - `backlog task list --status "<active status>" --plain`
 - `backlog task list --search "desktop app" --labels frontend,bug --limit 20 --plain`
+- `backlog task list --status "To Do" --max-count 20 --plain`
 - `backlog task list --status "To Do,In Progress" --plain` (multi-select; repeat or comma-separate)
 - `backlog task list --exclude-status "Done" --plain` (exclude one or more statuses)
 - `backlog task list --status "To Do,In Progress" --exclude-status "Blocked" --plain` (combine multi-select with exclusion)
 
 Avoid broad unfiltered listing when the project may have many tasks. Use `--status`, `--assignee`, `--unassigned`, `--parent`, `--priority`, `--labels`, `--search`, `--exclude-status`, or `--limit` where applicable.
+
+When a filtered list is still long, page it with `--max-count <n>` and `--skip <n>` instead of reading it all. A window applies after filtering, sorting and `--limit`, in the order the output prints, so consecutive windows of an unchanged backlog join into the complete output. A cut list ends with `Showing <first>-<last> of <total> items. Next: <command>`; run that command for the following tasks and stop when the footer has no `Next:` part. `--count` prints only how many tasks match and cannot be combined with `--json`. Each window prints text rather than opening the interactive view.
 
 Use `backlog task view {{TASK_ID:123}} --plain` to read full context for likely matches.
 

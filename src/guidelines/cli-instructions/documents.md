@@ -23,6 +23,8 @@ Always use Backlog.md CLI commands to create and update documents so IDs, frontm
 
 Pass `--plain` to print one document per line (`id - title`) for scripts and pipes. Pass `--json` for a versioned machine-readable JSON envelope. When stdout is not a TTY, plain output is emitted automatically.
 
+Paging works here as it does on every list command: `--limit <n>` caps the list silently, and `--max-count <n>`, `--skip <n>` and `--count` page it. A window applies after filtering and sorting, in the order the output prints, so consecutive windows join into the complete output. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog doc list --max-count <n> --skip <m>`; run that command for the following documents and stop when the footer has no `Next:` part. `--count` prints only how many documents match and cannot be combined with `--json` — a window option also forces text, so no interactive browser opens.
+
 ### Viewing Documents
 
 `backlog doc view <docId>` opens an interactive scrollable viewer by default. Pass `--plain` to print the raw document content to stdout instead (useful for agents, scripts, pipes, and CI). When stdout is not a TTY, plain output is emitted automatically, so scripts never get trapped in the interactive viewer.
@@ -173,6 +175,10 @@ Rules:
 ```
 
 An item link opens the item modal; a code file link opens the file preview. Add the suffix whenever the reader only needs part of a file — a bare path opens it from line 1.
+
+### Searching Documents
+
+`backlog doc search <query>` lists matches across the document tree with id, title, path, type, tags, score, and a follow-up `backlog doc view` command for each hit. Add `--plain` for one line per hit, or `--json` for a versioned envelope. Paging works as it does on `doc list`: `--limit <n>` caps the list silently, and `--max-count <n>`, `--skip <n>` and `--count` page it. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog doc search <query> --max-count <n> --skip <m>`; run that command for the following hits and stop when the footer has no `Next:` part. `--count` prints only how many documents match and cannot be combined with `--json`.
 
 ### Key Rules
 

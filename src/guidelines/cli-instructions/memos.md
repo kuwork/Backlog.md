@@ -39,10 +39,17 @@ backlog memo list --date 2026-10-01
 backlog memo list --tags idea,cli
 ```
 
-Output is one line per memo as `<id>\t<preview>`, newest first — the preview is the first 20 characters of the body with newlines stripped (truncated previews end with `…`); the list never prints full bodies. `--plain` is accepted for script consistency and produces the same output, since the list is already plain text. `--date` narrows the list to one day (`YYYY-MM-DD`), `--tags` keeps memos carrying at least one of the given tags (comma-separated or repeatable, case-insensitive); both combine with pagination. When more memos remain, the last line prints a next-cursor hint; resume from there with `--cursor`:
+Output is one line per memo as `<id>\t<preview>`, newest first — the preview is the first 20 characters of the body with newlines stripped (truncated previews end with `…`); the list never prints full bodies. `--plain` is accepted for script consistency and produces the same output, since the list is already plain text. `--date` narrows the list to one day (`YYYY-MM-DD`), `--tags` keeps memos carrying at least one of the given tags (comma-separated or repeatable, case-insensitive); both combine with paging.
+
+`--limit` caps the list silently, and `--max-count`, `--skip` and `--count` page it like every other list command: the window applies after `--date` and `--tags` filtering and after sorting, in the order the output prints. A `--max-count` or `--skip` cut prints the shared footer `Showing <first>-<last> of <total> items. Next: backlog memo list --limit <n> --skip <m>`; run that command for the following memos, and stop when the footer has no `Next:` part. `--count` prints only how many memos match.
 
 ```bash
-backlog memo list --cursor 20261001-5
+# Count matching memos without listing them
+backlog memo list --tags idea --count
+
+# The first three memos, then the next three
+backlog memo list --max-count 3
+backlog memo list --max-count 3 --skip 3
 ```
 
 #### Viewing a memo

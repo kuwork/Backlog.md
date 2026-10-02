@@ -440,7 +440,9 @@ export async function renderBoardTui(
 		const projectName = options?.projectName?.trim() || "Project";
 		if (options?.milestoneMode) {
 			console.log(
-				generateMilestoneGroupedBoard(pipedTasks, visibleStatuses, options.milestoneEntities ?? [], projectName),
+				generateMilestoneGroupedBoard(pipedTasks, visibleStatuses, options.milestoneEntities ?? [], projectName, {
+					includeNoMilestone: true,
+				}),
 			);
 		} else {
 			console.log(generateKanbanBoardWithMetadata(pipedTasks, visibleStatuses, projectName));
