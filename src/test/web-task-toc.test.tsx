@@ -56,11 +56,13 @@ function installElementRects(dom: JSDOM): void {
 		return {
 			top,
 			bottom: top + 20,
-			left: 0,
-			right: 0,
+			// A generous left gap keeps the TOC drawer in its docked mode; the floating
+			// narrow-window mode is covered in web-toc-drawer.test.tsx.
+			left: 500,
+			right: 500,
 			width: 0,
 			height: 20,
-			x: 0,
+			x: 500,
 			y: top,
 			toJSON: () => ({}),
 		} as DOMRect;
@@ -263,7 +265,8 @@ describe("sectioned task outline", () => {
 	let root: Root | null = null;
 
 	beforeEach(() => {
-		setupInteractiveDom();
+		const dom = setupInteractiveDom();
+		installElementRects(dom);
 		root = createRoot(document.getElementById("root") as HTMLElement);
 	});
 
