@@ -2,7 +2,12 @@ import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildKanbanStatusGroups, exportKanbanBoardToFile, generateMilestoneGroupedBoard } from "../board.ts";
+import {
+	buildKanbanStatusGroups,
+	exportKanbanBoardToFile,
+	generateMilestoneGroupedBoard,
+	generateMilestoneSection,
+} from "../board.ts";
 import type { Milestone, Task } from "../types/index.ts";
 
 describe("exportKanbanBoardToFile", () => {
@@ -474,5 +479,67 @@ describe("generateMilestoneGroupedBoard", () => {
 
 		const board = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project");
 		expect(board.match(/## Shared \(\d+ tasks\)/g)?.length).toBe(2);
+	});
+
+	it("excludes the No Milestone section by default and includes it only when asked", () => {
+		const tasks: Task[] = [
+			{
+				id: "task-1",
+				title: "Loose task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-01-01",
+				labels: [],
+				dependencies: [],
+			},
+			{
+				id: "task-2",
+				title: "Milestone task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-01-01",
+				labels: [],
+				dependencies: [],
+				milestone: "m-0",
+			},
+		];
+		const milestones: Milestone[] = [
+			{
+				id: "m-0",
+				title: "Release 1.0",
+				description: "Milestone: Release 1.0",
+				rawContent: "## Description\n\nMilestone: Release 1.0",
+			},
+		];
+
+		// Default contract: the No Milestone lane is opt-in, so an unassigned task is hidden
+		// unless the caller passes includeNoMilestone: true.
+		const board = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project");
+		expect(board).not.toContain("## No Milestone");
+		expect(board).toContain("## Release 1.0 (1 tasks)");
+
+		const withNoMilestone = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project", {
+			includeNoMilestone: true,
+		});
+		expect(withNoMilestone).toContain("## No Milestone (1 tasks)");
+		expect(withNoMilestone).toContain("## Release 1.0 (1 tasks)");
+		expect(withNoMilestone).toContain("**TASK-2** - Milestone task");
+	});
+
+	it("exports the section builder a header is printed with", () => {
+		const tasks: Task[] = [
+			{
+				id: "task-1",
+				title: "Loose task",
+				status: "To Do",
+				assignee: [],
+				createdDate: "2026-01-01",
+				labels: [],
+				dependencies: [],
+			},
+		];
+
+		const section = generateMilestoneSection("No Milestone", tasks, ["To Do"]);
+		expect(section).toBe("## No Milestone (1 tasks)\n\n### To Do (1)\n  - **TASK-1** - Loose task");
 	});
 });

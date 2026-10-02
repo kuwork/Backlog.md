@@ -51,7 +51,12 @@ Examples:
 ```bash
 backlog decision list --plain
 backlog decision list --json
+backlog decision list --max-count 20 --plain
+backlog decision list --max-count 20 --skip 20 --plain
+backlog decision list --count
 ```
+
+`--max-count <n>`, `--skip <n>` and `--count` page the list like every other list command: the window applies after sorting, in the order the output prints, so consecutive windows join into the complete output. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog decision list --max-count <n> --skip <m>`; run that command for the following decisions and stop when the footer has no `Next:` part. `--count` prints only how many decisions match and cannot be combined with `--json`. When a window cuts the list, the JSON envelope also carries `total` and `nextSkip`.
 
 ### Viewing Decisions
 

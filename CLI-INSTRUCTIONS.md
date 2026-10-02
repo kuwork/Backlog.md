@@ -86,7 +86,7 @@ Humans and agents can run `backlog instructions` for workflow guides and `backlo
 | Set actual dates | `backlog task edit 7 --actual-start "2026-06-02 09:00" --actual-end "2026-06-09 17:00"` |
 | Clear dates | `backlog task edit 7 --clear-due-date --clear-planned-start --clear-planned-end --clear-actual-start --clear-actual-end` |
 
-`backlog task list --json --watch` streams a live view of the filtered list: it writes the full JSON result immediately, then a full replacement whenever the result changes. Every response uses the same fields, envelope, indentation, and trailing newline as `task list --json`, so read successive complete JSON values and replace the previous list — do not parse individual lines or read the whole stream as one document. For example, `backlog task list --json --watch --status "In Progress" --assignee @sara` follows one assignee's active queue. Filters, sorting, limits, and local editable task scope are unchanged; completed storage, archives, drafts, and other branches are not added to the list. Dependency and configuration changes can update derived fields or which tasks match. Unchanged results are suppressed, rapid edits or slow consumers may coalesce intermediate states, and the command reconciles periodically as well as on file notifications, so it is a current-state subscription rather than an edit history. `--watch` requires `--json` and cannot be combined with `--plain`. Stop it with Ctrl+C, by terminating the process, or by closing the output pipe. A failure after earlier responses writes a diagnostic to stderr and exits nonzero without emitting a replacement for that failed read.
+`backlog task list --json --watch` streams a live view of the filtered list: it writes the full JSON result immediately, then a full replacement whenever the result changes. Every response uses the same fields, envelope, indentation, and trailing newline as `task list --json`, so read successive complete JSON values and replace the previous list — do not parse individual lines or read the whole stream as one document. For example, `backlog task list --json --watch --status "In Progress" --assignee @sara` follows one assignee's active queue. Filters, sorting, limits, and local editable task scope are unchanged; when a list is cut by `--skip` or `--max-count`, the envelope carries `total` and `nextSkip` so the next window can be requested explicitly; completed storage, archives, drafts, and other branches are not added to the list. Dependency and configuration changes can update derived fields or which tasks match. Unchanged results are suppressed, rapid edits or slow consumers may coalesce intermediate states, and the command reconciles periodically as well as on file notifications, so it is a current-state subscription rather than an edit history. `--watch` requires `--json` and cannot be combined with `--plain`. Stop it with Ctrl+C, by terminating the process, or by closing the output pipe. A failure after earlier responses writes a diagnostic to stderr and exits nonzero without emitting a replacement for that failed read.
 
 Task comments are append-only discussion entries with optional author labels. Use comments for review questions and collaboration notes; use implementation notes for execution progress and final summary for PR-ready completion notes.
 
@@ -191,6 +191,24 @@ Find tasks, documents, and decisions across your entire backlog with fuzzy searc
 - **Fuzzy matching** -- finds "authentication" when searching for "auth"
 - **Interactive filters** -- refine your search in real-time with the TUI
 - **Live filtering** -- see results update as you type (no Enter needed)
+
+## Paging Long Lists
+
+Every list command (`search`, `doc search`, `task list`, `draft list`, `milestone list`, `doc list`, `decision list`, `memo list`) pages the same way, so one set of options and one footer covers them all.
+
+- `--limit <n>` caps the list silently and never prints a footer by itself.
+- `--max-count <n>` prints at most n items (as `git log --max-count` does).
+- `--skip <n>` leaves out the first n items (as `git log --skip` does).
+- `--count` prints only the number of matching items; it cannot be combined with `--json`.
+
+A window applies after filtering, sorting and `--limit`, in the order the output prints, so consecutive windows of an unchanged backlog neither overlap nor leave items out. A cut list ends with `Showing <first>-<last> of <total> items. Next: <command>` where `<command>` is the one you typed with a new `--skip`; the last window prints the range and total without `Next:`, and a `--skip` past the end prints `Showing 0 of <total> items.` Any window option prints text instead of opening the interactive view. `memo list` dropped `--cursor` in favor of `--skip`.
+
+```bash
+backlog task list --status "To Do" --max-count 20 --plain
+backlog task list --status "To Do" --max-count 20 --skip 20 --plain
+backlog task list --status "To Do" --count
+backlog search "auth" --max-count 20 --plain
+```
 
 ## Draft Workflow
 

@@ -24,6 +24,7 @@ Search and read before changing anything. On the first interaction of a new sess
 - `backlog task list --status "<todo status>" --plain`
 - `backlog task list --status "<active status>" --plain`
 - `backlog task list --search "login" --labels frontend,bug --limit 20 --plain`
+- `backlog task list --status "To Do" --max-count 20 --plain` — page a long list instead of reading it all; the printed `Next:` command resumes where this one stopped
 - `backlog task list --ready --plain` — only tasks whose dependencies are all completed; tasks with unfinished or unresolvable dependencies are excluded (fail-closed). Combine with `--status`/`--assignee` to answer "what can I pick up now".
 - `backlog task list --completed --status "Done" --plain` — widen the source corpus with the completed folder; widened rows carry `source: completed` so they can be told apart from active work. `backlog search "query" --type task --completed --plain` does the same for search.
 - `backlog task view {{TASK_ID:123}} --plain`
@@ -218,6 +219,64 @@ backlog search --modified-file src/server/api.ts --plain
 - Also searches `modified_files`; `--modified-file` applies a case-insensitive path substring filter
 - Also searches documents and decisions unless filtered with `--type task`
 - Always use `--plain` flag for AI-readable output
+
+## List Paging Quick Reference
+
+Long lists are paged, not truncated. Every list command takes the same four options, so one set of rules covers them all.
+
+| Command | Paging options |
+|---------|----------------|
+| `backlog search`, `backlog doc search` | `--limit`, `--max-count`, `--skip`, `--count` |
+| `backlog task list` | `--limit`, `--max-count`, `--skip`, `--count` |
+| `backlog draft list` | `--max-count`, `--skip`, `--count` (+ `--limit`) |
+| `backlog milestone list` | `--max-count`, `--skip`, `--count` (+ `--limit`) |
+| `backlog doc list` | `--max-count`, `--skip`, `--count` (+ `--limit`) |
+| `backlog decision list` | `--max-count`, `--skip`, `--count` (+ `--limit`) |
+| `backlog memo list` | `--max-count`, `--skip`, `--count` (+ `--limit`) |
+
+```bash
+# The first 20 tasks matching a filter, with a footer that names the next command
+backlog task list --status "To Do" --max-count 20 --plain
+# The next 20, or resume from whatever `Next:` the first run printed
+backlog task list --status "To Do" --max-count 20 --skip 20 --plain
+# How many tasks match, and only that
+backlog task list --status "To Do" --count
+
+# Same options on search
+backlog search "auth" --max-count 20 --plain
+backlog search "auth" --count
+
+# Same options on memos (`memo list` has no --cursor; it pages with --skip)
+backlog memo list --max-count 20 --plain
+backlog memo list --max-count 20 --skip 20 --plain
+backlog memo list --count
+
+# milestone list pages milestones (not tasks); tasks without a milestone are hidden unless --with-no-milestone
+backlog milestone list --max-count 5 --plain
+backlog milestone list --max-count 5 --with-no-milestone --plain
+backlog milestone list --count
+```
+
+**What each option does:**
+
+- `--limit <n>` — cap the list silently. It shortens the list on its own and never prints a footer.
+- `--max-count <n>` — print at most `n` items, like `git log --max-count`.
+- `--skip <n>` — leave out the first `n` items, like `git log --skip`.
+- `--count` — print only the number of items the same command would list, as a bare number; it cannot be combined with `--json`.
+
+A window applies **after** filtering and sorting, and after `--limit`, in the order the output prints. Consecutive windows of an unchanged backlog therefore neither overlap nor leave items out, so following the printed `Next:` command walks the whole list exactly once.
+
+**Reading the footer.** A list that a window cut ends with `Showing <first>-<last> of <total> items. Next: <command>`; the `Next:` command is the one you typed with a new `--skip`, so copy and run it. The last window prints the range and total without a `Next:` part — that is the end of the list, not an error. A `--skip` past the end prints `Showing 0 of <total> items.` A list the window did not cut prints no footer at all.
+
+**`milestone list` pages its milestones, not its tasks.** A window counts milestone sections: `--max-count 2` prints two milestones, `--count` prints the number of milestones, and `--skip` resumes at that milestone. Tasks without a milestone are not one of those items — by default they are omitted entirely, so a focused milestone board is the default. Pass `--with-no-milestone` to prepend them as a fixed `## No Milestone (n tasks)` header; that header is not counted or paginated by any window option and leads **every** window that lists milestones, so it appears on each page when you follow the `Next:` command.
+
+**Other rules:**
+
+- Any window option (`--max-count`, `--skip`, `--count`) prints text instead of opening the interactive view, so a piped or scripted run never gets trapped in a TUI.
+- In JSON (`--json`), `total` and `nextSkip` appear **only** when the window cut the list; uncut JSON output is unchanged.
+- No short forms exist for these options; no existing short flag was reused for them. `--skip` replaced `memo list --cursor`, which no longer exists.
+- `--count` is rejected with a diagnostic and a nonzero exit when combined with `--json`, because one run cannot be both a number and a document.
+- `config list` and `sequence list` are not paged.
 
 ## Sequences Quick Reference
 

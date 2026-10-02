@@ -373,7 +373,12 @@ describe("CLI milestone management", () => {
 		await $`bun ${cliPath} task create "Task B" --milestone "Release B" --plain`.cwd(TEST_DIR).quiet();
 		await $`bun ${cliPath} task create "Unassigned" --plain`.cwd(TEST_DIR).quiet();
 
-		const list = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		const hiddenByDefault = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		expect(hiddenByDefault.exitCode).toBe(0);
+		expect(hiddenByDefault.stdout.toString()).not.toContain("## No Milestone");
+		expect(hiddenByDefault.stdout.toString()).not.toContain("TASK-3");
+
+		const list = await $`bun ${cliPath} milestone list --plain --with-no-milestone`.cwd(TEST_DIR).quiet();
 		expect(list.exitCode).toBe(0);
 		const output = list.stdout.toString();
 		expect(output).toContain("# Kanban Board by Milestone");
@@ -439,7 +444,7 @@ describe("CLI milestone management", () => {
 		const archive = await $`bun ${cliPath} milestone archive "Release A"`.cwd(TEST_DIR).quiet();
 		expect(archive.exitCode).toBe(0);
 
-		const list = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
+		const list = await $`bun ${cliPath} milestone list --plain --with-no-milestone`.cwd(TEST_DIR).quiet();
 		const output = list.stdout.toString();
 		expect(output).toContain("## No Milestone (1 tasks)");
 		expect(output).toContain("- **TASK-1** - Task A");

@@ -48,7 +48,14 @@ backlog task create "Spike GraphQL resolver" --draft \
 ```bash
 backlog draft list --plain
 backlog draft view DRAFT-1 --plain
+
+# Page a long list; the window applies after filtering and sorting
+backlog draft list --max-count 20 --plain
+backlog draft list --max-count 20 --skip 20 --plain
+backlog draft list --count
 ```
+
+`--max-count <n>`, `--skip <n>` and `--count` page the list like every other list command: the window applies after filtering and sorting, in the order the output prints, so consecutive windows join into the complete output. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog draft list --max-count <n> --skip <m>`; run that command for the following drafts and stop when the footer has no `Next:` part. `--count` prints only how many drafts match and cannot be combined with `--json`.
 
 You can use either the bare number (`1`) or the full prefixed ID (`DRAFT-1`) in draft commands.
 
