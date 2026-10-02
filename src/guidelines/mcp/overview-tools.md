@@ -25,7 +25,7 @@ Your client is using Backlog.md via tools. Use the following MCP tools to retrie
 
 Use this tool to retrieve the required Backlog.md guidance in markdown form:
 
-- `get_backlog_instructions` — Returns workflow guidance. Leave `instruction` empty for the overview, or select `task-creation`, `task-execution`, `task-finalization`, `milestones`, or `drafts`.
+- `get_backlog_instructions` — Returns workflow guidance. Leave `instruction` empty for the overview, or select `task-creation`, `task-execution`, `task-finalization`, `milestones`, `drafts`, or `memos`.
 
 The tool returns the same content that resource-capable clients read via `backlog://workflow/...` URIs. The overview response is tool-oriented when `instruction` is omitted or set to `overview`.
 
@@ -59,6 +59,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `document_list`, `document_view`, `document_create`, `document_update`, `document_search`
 - `document_create` and `document_update` support docs-directory-relative `path` values such as `guides/setup`; absolute paths and `..` traversal are rejected
 - `decision_update` updates a decision's status and/or body by id (`status` alone changes only the status; `content` replaces the body and `appendContent` appends to it); for the full decision workflow read the `decisions` guide via `get_backlog_instructions`
+- `memo_create`, `memo_list`, `memo_view`, `memo_update`, `memo_delete` — quick-capture notes with `YYYYMMDD-N` IDs; for the full memo workflow read the `memos` guide via `get_backlog_instructions`
 - `definition_of_done_defaults_get`, `definition_of_done_defaults_upsert`
 
 **Definition of Done support**
@@ -71,7 +72,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 
 **Task images:** place image files under `backlog/assets/` and reference them in task content with `assets/<relative-path>`. Supported formats: png, jpg, jpeg, gif, svg, webp, avif.
 
-**Backlog directory layout:** tasks in `backlog/tasks/`, drafts in `backlog/drafts/`, docs in `backlog/docs/`, decisions in `backlog/decisions/`, assets in `backlog/assets/`, milestones in `backlog/milestones/`, completed in `backlog/completed/`, archive in `backlog/archive/`, wiki in `backlog/wiki/` (LLM-managed, do not edit manually), wiki output in `backlog/wiki_output/`.
+**Backlog directory layout:** tasks in `backlog/tasks/`, drafts in `backlog/drafts/`, docs in `backlog/docs/`, decisions in `backlog/decisions/`, memos in `backlog/memos/`, assets in `backlog/assets/`, milestones in `backlog/milestones/`, completed in `backlog/completed/`, archive in `backlog/archive/`, wiki in `backlog/wiki/` (LLM-managed, do not edit manually), wiki output in `backlog/wiki_output/`.
 
 **Always operate through the MCP tools above. Never edit markdown files directly; use the tools so relationships, metadata, and history stay consistent.**
 

@@ -70,6 +70,7 @@ describe("McpServer bootstrap", () => {
 						"documents",
 						"decisions",
 						"drafts",
+						"memos",
 					],
 				},
 			},
@@ -87,6 +88,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/documents",
 			"backlog://workflow/decisions",
 			"backlog://workflow/drafts",
+			"backlog://workflow/memos",
 		]);
 
 		const prompts = await server.testInterface.listPrompts();
@@ -269,6 +271,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/documents",
 			"backlog://workflow/decisions",
 			"backlog://workflow/drafts",
+			"backlog://workflow/memos",
 		]);
 		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");
 
@@ -314,6 +317,11 @@ describe("McpServer bootstrap", () => {
 			"document_update",
 			"document_search",
 			"decision_update",
+			"memo_list",
+			"memo_view",
+			"memo_create",
+			"memo_update",
+			"memo_delete",
 		]);
 
 		const resources = await server.testInterface.listResources();
@@ -326,6 +334,7 @@ describe("McpServer bootstrap", () => {
 			"backlog://workflow/documents",
 			"backlog://workflow/decisions",
 			"backlog://workflow/drafts",
+			"backlog://workflow/memos",
 		]);
 		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");
 
