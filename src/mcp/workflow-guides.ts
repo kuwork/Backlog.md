@@ -14,6 +14,7 @@ import {
 	MCP_DECISIONS_GUIDE,
 	MCP_DOCUMENTS_GUIDE,
 	MCP_DRAFTS_GUIDE,
+	MCP_MEMOS_GUIDE,
 	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
 	MCP_TASK_EXECUTION_GUIDE,
@@ -31,8 +32,9 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"documents",
 	"decisions",
 	"drafts",
+	"memos",
 ] as const;
-export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "memos", "init-required"] as const;
+export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
 
 export type WorkflowGuideKey = (typeof WORKFLOW_GUIDE_KEYS)[number];
 export type InstructionGuideKey = (typeof INSTRUCTION_GUIDE_KEYS)[number];
@@ -113,6 +115,14 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 		mimeType: "text/markdown",
 		resourceText: MCP_DRAFTS_GUIDE,
 	},
+	{
+		key: "memos",
+		uri: "backlog://workflow/memos",
+		name: "Memos Guide",
+		description: "How to create, list, view, update, and delete quick-capture memos",
+		mimeType: "text/markdown",
+		resourceText: MCP_MEMOS_GUIDE,
+	},
 ];
 
 const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
@@ -124,6 +134,7 @@ const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
 	documents: CLI_DOCUMENTS_GUIDE,
 	decisions: CLI_DECISIONS_GUIDE,
 	drafts: CLI_DRAFTS_GUIDE,
+	memos: CLI_MEMOS_GUIDE,
 };
 
 export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [
@@ -133,14 +144,6 @@ export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [
 		resourceText: CLI_INSTRUCTION_TEXT_BY_KEY[guide.key],
 		toolText: undefined,
 	})),
-	{
-		key: "memos",
-		uri: "backlog://instructions/memos",
-		name: "Memos Guide",
-		description: "How to create, list, view, update, and delete quick-capture memos",
-		mimeType: "text/markdown",
-		resourceText: CLI_MEMOS_GUIDE,
-	},
 	{
 		key: "init-required",
 		uri: "backlog://init-required",
