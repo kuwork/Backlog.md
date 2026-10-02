@@ -183,6 +183,37 @@
         animation: slide-in-down 0.3s ease-out;
     }
 
+    /* Floating TOC drawer: slides out from the panel's left edge over the dimmed content */
+    @keyframes toc-drawer-slide-in {
+        from {
+            transform: translateX(-0.75rem);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .animate-toc-drawer-slide-in {
+        animation: toc-drawer-slide-in 0.15s ease-out;
+    }
+
+    @keyframes toc-backdrop-fade-in {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .animate-toc-backdrop-fade-in {
+        animation: toc-backdrop-fade-in 0.15s ease-out;
+    }
+
     /* Branch indexing indicator: hairline segment sweeping along the header border */
     @keyframes indexing-sweep {
         from {

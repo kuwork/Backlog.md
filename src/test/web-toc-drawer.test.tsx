@@ -44,6 +44,26 @@ function installScrollSpy(dom: JSDOM): HTMLElement[] {
 	return scrolled;
 }
 
+/**
+ * jsdom has no layout, so every rect is all-zero and the drawer would always think the panel
+ * hugs the viewport's left edge. Stub the left gap the drawer measures against: 500 keeps the
+ * docked mode, 8 forces the floating mode.
+ */
+function stubLeftGap(dom: JSDOM, left: number): void {
+	const proto = dom.window.HTMLElement.prototype as unknown as { getBoundingClientRect?: () => unknown };
+	proto.getBoundingClientRect = () => ({
+		left,
+		right: left + 100,
+		top: 0,
+		bottom: 100,
+		width: 100,
+		height: 100,
+		x: left,
+		y: 0,
+		toJSON: () => ({}),
+	});
+}
+
 function DrawerHarness({ source }: { source: string }) {
 	return (
 		<Modal isOpen onClose={() => {}} title="Preview" toc>
@@ -73,10 +93,12 @@ async function clickElement(element: Element | null | undefined) {
 describe("TocDrawer", () => {
 	let root: Root | null = null;
 	let scrolled: HTMLElement[] = [];
+	let dom: JSDOM;
 
 	beforeEach(() => {
-		const dom = setupInteractiveDom();
+		dom = setupInteractiveDom();
 		scrolled = installScrollSpy(dom);
+		stubLeftGap(dom, 500);
 		root = createRoot(document.getElementById("root") as HTMLElement);
 	});
 
@@ -147,5 +169,67 @@ describe("TocDrawer", () => {
 
 		expect(bookmark()).toBeNull();
 		expect(drawerPanel()).toBeNull();
+	});
+
+	it("floats over the panel without a close button when the outside gap is too small", async () => {
+		stubLeftGap(dom, 8);
+		await renderDrawer(SOURCE);
+
+		await clickElement(bookmark());
+		const panel = drawerPanel();
+		expect(panel?.dataset.tocMode).toBe("floating");
+		// No close button in floating mode: picking an entry is the way out.
+		expect(panel?.querySelector("button[aria-label='Close modal']")).toBeNull();
+	});
+
+	it("closes after an entry is picked in floating mode", async () => {
+		stubLeftGap(dom, 8);
+		await renderDrawer(SOURCE);
+		await clickElement(bookmark());
+
+		const betaLink = drawerLinks().find((link) => link.textContent === "Beta");
+		await clickElement(betaLink);
+
+		expect(scrolled.some((element) => element.tagName === "H2" && element.textContent === "Beta")).toBe(true);
+		expect(drawerPanel()).toBeNull();
+		// The bookmark comes back once the drawer is gone.
+		expect(bookmark()).toBeTruthy();
+	});
+
+	it("docks outside and keeps its close button when the gap is wide", async () => {
+		await renderDrawer(SOURCE);
+		expect(bookmark()?.dataset.tocTab).toBe("outside");
+
+		await clickElement(bookmark());
+		const panel = drawerPanel();
+		expect(panel?.dataset.tocMode).toBe("docked");
+		expect(panel?.querySelector("button[aria-label='Close modal']")).toBeTruthy();
+	});
+
+	it("dims the panel in floating mode and closes when the dim is clicked", async () => {
+		stubLeftGap(dom, 8);
+		await renderDrawer(SOURCE);
+		await clickElement(bookmark());
+		expect(document.querySelector("[data-toc-backdrop]")).toBeTruthy();
+
+		await clickElement(document.querySelector("[data-toc-backdrop]"));
+		expect(drawerPanel()).toBeNull();
+		expect(document.querySelector("[data-toc-backdrop]")).toBeNull();
+		expect(bookmark()).toBeTruthy();
+	});
+
+	it("keeps the panel undimmed in docked mode", async () => {
+		await renderDrawer(SOURCE);
+		await clickElement(bookmark());
+
+		expect(drawerPanel()?.dataset.tocMode).toBe("docked");
+		expect(document.querySelector("[data-toc-backdrop]")).toBeNull();
+	});
+
+	it("moves the bookmark inside the panel edge in a narrow window", async () => {
+		stubLeftGap(dom, 8);
+		await renderDrawer(SOURCE);
+
+		expect(bookmark()?.dataset.tocTab).toBe("inside");
 	});
 });
