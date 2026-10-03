@@ -2,6 +2,7 @@
 title: MCP 工作流
 labels: [usermanual]
 created_date: 2026-05-07 00:00
+updated_date: '2026-10-03 01:14'
 ---
 
 
@@ -97,7 +98,25 @@ backlog task edit <id> -s Done
 
 - 创建和更新项目文档
 - 创建架构决策记录（ADR）
-- 查看文档列表和决策列表
+- 查看文档列表和决策列表（`decision_list` 支持状态 / 关键词过滤，BACK-742）
+
+### 快速笔记
+
+- `memo_create` / `memo_view` / `memo_update` / `memo_delete` 读写备忘
+- `memo_list` 按日期、标签过滤并分页
+- 与 CLI、Web 共享同一 ID 方案（`YYYYMMDD-N`）与文件格式，详见[快速笔记](../70-快速笔记/00-Memos简介.md)
+
+### 列表分页
+
+所有 MCP 列表工具统一支持 `offset` + `limit` 分页（BACK-742），结构化结果通过统一信封返回：
+
+```json
+{ "items": [], "total": 128, "offset": 0, "limit": 50, "hasMore": true }
+```
+
+- `task_list`、`task_search`、`document_search`、`document_list`、`milestone_list`、`memo_list`、`decision_list` 均遵循该信封；文本输出附加 CLI 风格的 `Showing X-Y of N items` 提示
+- `hasMore` / `total` 让代理能判断拿到的是否完整列表，并据此循环翻页——不再静默截断
+- `task_list` 按状态桶的有序序列分页后再按桶重组渲染，桶顺序不变；`milestone_list` 的 unconfigured / archived 诊断段不参与分页，保证警告不丢失
 
 ### 里程碑与看板
 
@@ -113,7 +132,7 @@ backlog task edit <id> -s Done
 
 ### 工作流与配置
 
-- 获取工作流指令和指南
+- 获取工作流指令和指南（overview 末尾自动渲染当前项目的完整状态机：状态表、类别、迁移边、终态表，BACK-716）
 - 读取项目配置
 - 查看项目统计概览
 

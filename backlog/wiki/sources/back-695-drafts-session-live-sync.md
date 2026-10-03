@@ -1,7 +1,7 @@
 ---
 title: BACK-695 Keep the drafts session in sync with live draft changes
 created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
+updated_date: '2026-10-03 01:14'
 labels:
   - source
   - tui
@@ -35,6 +35,7 @@ The drafts session rendered drafts through the same board and list views as task
 - [[concepts/cli-tui]] — unified view session wiring and the board update funnel
 - [[concepts/task-lifecycle]] — promotion as a removal event from the drafts session's point of view
 - [[concepts/task-identity]] — prefix-aware filename parsing in the folder snapshot
+- [[concepts/live-sync-pattern]] — the web-side live-sync reuse pattern (window event forwarding + debounced broadcast + refreshInPlace); this task is the TUI watcher variant
 
 ## Related Sources
 

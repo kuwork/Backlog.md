@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-09-26 22:25'
+updated_date: '2026-10-03 09:25'
 ---
 
 # Knowledge Base Overview
@@ -23,6 +23,7 @@ updated_date: '2026-09-26 22:25'
 - **本地文件预览**：任务 References 和 Markdown 中的本地路径点击预览，支持语法高亮和行范围
 - **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹；Wikilink 点击弹出预览模态框，标准 Markdown 相对链接在 wiki 页面内支持 SPA 导航预览
 - **Wiki Install**：`backlog wiki install <agent>` 将内置 skill 安装到 Claude/Codex/Agents
+- **快速笔记 Memos**：`backlog/memos/` 下第五种文件实体，极简捕获 + Feed/Calendar 双模式，接入全局搜索、知识网 wikilink 与实时同步（BACK-728~740 / m-10）
 - **功能机会分析**：基于现有架构的功能增强建议（Wiki CLI 桥接、任务模板、时间追踪、批量操作等），详见 [[../wiki_output/reports/feature-opportunities]]
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
 - **Web UI 国际化**：零依赖自定义 i18n（React Context + Hook），4 种语言（en/ja/zh-CN/zh-TW），~300 翻译键编译时嵌入二进制
@@ -140,6 +141,32 @@ updated_date: '2026-09-26 22:25'
 - **TUI 增强簇**（BACK-648/675~696）：Unicode 安全插入、emoji 双宽、ASCII AC 进度条、help 弹窗抗 resize、composer 鼠标/极端尺寸、shift+方向键多选与批量状态移动、里程碑看板视图、composer 日期、draft 创建窗口
 - **搜索单源化**（BACK-685/686）：任务搜索配置与过滤器收敛到 core，TUI 与里程碑页走共享搜索
 
+### Memos 快速笔记子系统（BACK-728~740，m-10，2026-10-01~02 单日完成）
+- **新实体线**：`backlog/memos/` 下第五种文件实体——BACK-728 存储层（`src/core/memos.ts`）→ BACK-729 HTTP API → BACK-730 CLI memo 子命令 → BACK-740 MCP memo_create/list/view/update/delete；一行会议记录无需套用任务/文档的 ID 方案、标题与段落结构
+- **/memos 页面**：Feed 快速捕获 + Calendar 日历联动双模式（BACK-731/732），UI 打磨与卡片菜单复制 ID（BACK-737/738）
+- **既有管线接入**：全局搜索纳入 memos（BACK-733）、知识网 wikilink 接线（BACK-734）、实时同步复用三件套模式（BACK-735，见 [[concepts/live-sync-pattern]]）
+- **里程碑验收**：BACK-736 回归与验收 pass；设计文档 doc-20
+
+### 状态机语义化（doc-17~19 + BACK-715~721）
+- **doc-17 诊断**：`statuses` 只是显示层列定义，终态=数组末位、进行中=硬编码 `inprogress` 的约定在自定义状态列下静默失效；关键洞察"命令即门禁"（阶段推进从 AI 工具集交还人类命令）；引擎选型为自研 ~150 行零依赖校验器而非 XState（见 [[decisions/hand-rolled-state-machine-validator-over-engine]]）
+- **doc-19 PRD**：默认 7 列状态机、三审查点落位、可重置、指引优先
+- **落地**：设置页状态机编辑器与卡片置顶重排（BACK-715/717）、AI 指引静态 overview + 动态注入及 i18n（BACK-716/721）、task create/edit --help 指向 workflow overview（BACK-718）、config list 接受 --plain（BACK-719）
+
+### 列表分页双模型（BACK-741/742）
+- **CLI 窗口模型**：grep/git 风格 `--max-count/--skip/--count` 面向人类/代理翻页，`memo list` 移除不透明 `--cursor`（见 [[decisions/cli-list-window-over-cursor]]）
+- **MCP/REST 偏移信封模型**：`{items,total,offset,limit,hasMore}` 面向程序化遍历，贯通 core/MCP/REST/web，`decision_list` 补建，废弃 cursor 参数 400 拒绝
+- 两套模型**刻意不统一**，接线约定见 [[execution/two-list-paging-models-wiring]]
+
+### watch 生命周期改进（BACK-743/744）
+- 启动方进程退出时停止 task list watcher（BACK-743）；空闲 watcher 以 stat 签名抑制恒定 CPU 占用（BACK-744）；契约见 [[concepts/json-watch]]
+
+### Memo 搜索语料签名门控（BACK-745）
+- memo 刷新从「无条件全量重读」改为「stat 签名 + 500ms TTL 双门控」：签名未变只重置时钟，变化才全量重建索引；store 事件不再空转重载 memo 语料；`filesSignature` 抽为 `src/utils` 与 watch-json 共享；含 dispose 状态残留修复。见 [[sources/back-745-memo-corpus-signature-gate]]
+
+### 上游迁移（v1.52.0 .. v1.53.0）— 第五波，已完成
+- **doc-21 差异分类** 与 **doc-22 按领域分析** 为本波迁移文档
+- **波后增量**：图视图迁移 Canvas 2D 渲染与 hover 延迟（BACK-720）、亮主题可读性（BACK-727）、里程碑模态框 fetch 回退表单填充修复（BACK-724）、平均完成耗时统计（BACK-725，语料范围语义见 [[concepts/statistics-corpus-scope]]）、模态框 TOC 抽屉与悬浮模式（BACK-726/739，见 [[concepts/toc-scrollspy]]）、测试基建（BACK-722 flaky 修复、BACK-723 Biome 覆盖 .tsx）；归档历史页 back-222 补建
+
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
 - **数据流**：Markdown 文件 → `FileSystem` → `ContentStore`（内存缓存 + 文件监视）→ `SearchService`（Fuse.js 索引）
@@ -174,11 +201,11 @@ updated_date: '2026-09-26 22:25'
 
 ## 统计
 
-- Sources ingested: 283
-- Concepts extracted: 34
+- Sources ingested: 323
+- Concepts extracted: 41
 - Entities catalogued: 2
-- Execution notes: 24
-- Decisions recorded: 71
+- Execution notes: 25
+- Decisions recorded: 73
 - Patterns: 6
 - Reasoning traces: 5
 - Retrospectives: 1
