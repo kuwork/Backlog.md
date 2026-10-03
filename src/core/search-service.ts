@@ -80,14 +80,18 @@ export class SearchService {
 	private version = 0;
 	private memosLoadedAt = 0;
 	private memosRefreshing: Promise<void> | null = null;
+	private memosSignatureSeen: string | undefined;
 
 	/**
 	 * @param store Source of truth for tasks/documents/decisions/wikis.
 	 * @param loadMemos Reads the memo corpus; memos are deliberately not part of the store snapshot.
+	 * @param memosSignature Stat signature of the memo corpus; when it matches the last load, a
+	 * refresh skips the full read and only resets the freshness clock.
 	 */
 	constructor(
 		private readonly store: ContentStore,
 		private readonly loadMemos: () => Promise<Memo[]> = () => Promise.resolve([]),
+		private readonly memosSignature?: () => string,
 	) {}
 
 	async ensureInitialized(): Promise<void> {
@@ -117,6 +121,8 @@ export class SearchService {
 		this.decisions = [];
 		this.wikis = [];
 		this.memos = [];
+		this.memosLoadedAt = 0;
+		this.memosSignatureSeen = undefined;
 		this.initialized = false;
 		this.initializing = null;
 	}
@@ -204,18 +210,27 @@ export class SearchService {
 
 	/**
 	 * Reloads the memo corpus through the injected loader and rebuilds the index. Concurrent
-	 * callers share one reload. Exposed so a memo write path can invalidate explicitly; every other
-	 * path (initialize, store events, aged-out searches) ends up here too.
+	 * callers share one reload. When a signature function is injected and the corpus is untouched,
+	 * the full read is skipped: the last good corpus stays in place and only the freshness clock
+	 * resets. Exposed so a memo write path can invalidate explicitly; every other path (initialize,
+	 * aged-out searches, gated store events) ends up here too.
 	 */
 	async refreshMemos(): Promise<void> {
 		if (this.memosRefreshing) {
 			return this.memosRefreshing;
 		}
 
+		const signature = this.memosSignature?.();
+		if (this.memosLoadedAt > 0 && signature !== undefined && signature === this.memosSignatureSeen) {
+			this.memosLoadedAt = Date.now();
+			return;
+		}
+
 		const refresh = this.loadMemos()
 			.then((memos) => {
 				this.memos = memos.map((memo) => this.toMemoEntity(memo));
 				this.memosLoadedAt = Date.now();
+				this.memosSignatureSeen = signature;
 				this.rebuildIndex();
 			})
 			.finally(() => {
@@ -269,9 +284,10 @@ export class SearchService {
 			event.snapshot.wikis,
 			event.snapshot.taskCorpus?.completedTasks ?? [],
 		);
-		void this.refreshMemos().catch(() => {
-			// A failed memo reload leaves the last good corpus in place.
-		});
+		// Memo changes never surface as store events, so this is only a reconciliation fallback for
+		// writes the watchers missed; it goes through the same gate as searches instead of reloading
+		// the whole memo corpus on every task edit (BACK-745).
+		this.refreshMemosWhenStale();
 	}
 
 	private applySnapshot(

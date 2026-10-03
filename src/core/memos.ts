@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
+import { filesSignature } from "../utils/files-signature.ts";
 import { type ListPage, selectListPage } from "../utils/list-page.ts";
 
 /**
@@ -45,6 +46,15 @@ export const MEMO_PAGE_SIZE = 30;
 /** Absolute path of the memo directory for a project root. */
 export function memoDir(root: string): string {
 	return join(root, DEFAULT_DIRECTORIES.BACKLOG, DEFAULT_DIRECTORIES.MEMOS);
+}
+
+/**
+ * Stat signature of the memo corpus: names, sizes and change times one level deep. A stat pass is
+ * far cheaper than the full read `listMemos` does, so refreshers can compare this before reloading
+ * and skip the read entirely while the corpus is untouched (BACK-745).
+ */
+export function memosSignature(root: string): string {
+	return filesSignature([memoDir(root)]);
 }
 
 /**

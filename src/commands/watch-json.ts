@@ -1,7 +1,7 @@
-import { type FSWatcher, readdirSync, statSync, watch } from "node:fs";
-import { join } from "node:path";
+import { type FSWatcher, watch } from "node:fs";
 import type { Writable } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
+import { filesSignature } from "../utils/files-signature.ts";
 
 // The process that started this one: the parent, and also the launcher's parent when the npm launcher is the parent.
 // Captured when the CLI loads, before parsing and project lookup, so a starter that exits during setup still counts.
@@ -26,36 +26,11 @@ function isRunning(pid: number | undefined): boolean {
 }
 
 /**
- * Sizes and change times of what the read loads: the given files, and the entries of the given
+ * Sizes and change times of what a read loads: the given files, and the entries of the given
  * directories one level deep, following symlinks like the loaders. This stat pass is far cheaper
  * than a full read and repairs missed notifications. The ctime also moves when a copy keeps the mtime.
  */
-export function filesSignature(inputs: string[]): string {
-	const describe = (path: string, name: string) => {
-		try {
-			const stats = statSync(path);
-			return `${name}\0${stats.size}\0${stats.mtimeMs}\0${stats.ctimeMs}`;
-		} catch {
-			// Missing, dangling or looping entries count by name only.
-			return name;
-		}
-	};
-	return inputs
-		.flatMap((input) => {
-			try {
-				return [
-					input,
-					...readdirSync(input)
-						.sort()
-						.map((name) => describe(join(input, name), name)),
-				];
-			} catch {
-				// A file, or a directory that does not exist yet.
-				return [describe(input, input)];
-			}
-		})
-		.join("\n");
-}
+export { filesSignature };
 
 /** Stream the canonical read's bytes. Notifications are hints; a periodic stat pass repairs missed events. */
 export async function watchJson(

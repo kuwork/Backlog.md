@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ContentStore } from "../core/content-store.ts";
-import { createMemo, listMemos } from "../core/memos.ts";
+import { createMemo, deleteMemo, listMemos, memosSignature } from "../core/memos.ts";
 import { SearchService } from "../core/search-service.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { BacklogServer } from "../server/index.ts";
@@ -121,6 +121,120 @@ describe("SearchService memos", () => {
 
 		expect(search.search().filter(isMemoResult)).toEqual([]);
 		expect(search.search({ query: "anything", types: ["memo"] })).toEqual([]);
+	});
+
+	it("skips the full memo read while the corpus signature is unchanged", async () => {
+		let loads = 0;
+		const signature = memosSignature(root);
+		const counting = new SearchService(
+			store,
+			async () => {
+				loads++;
+				return listMemos(root);
+			},
+			() => signature,
+		);
+		try {
+			await counting.ensureInitialized();
+			expect(loads).toBe(1);
+			// Explicit refresh with an untouched corpus: the read is skipped and the TTL clock resets.
+			await counting.refreshMemos();
+			expect(loads).toBe(1);
+		} finally {
+			counting.dispose();
+		}
+	});
+
+	it("reloads when the signature changes and surfaces a newly captured memo", async () => {
+		let loads = 0;
+		let signature = memosSignature(root);
+		const counting = new SearchService(
+			store,
+			async () => {
+				loads++;
+				return listMemos(root);
+			},
+			() => signature,
+		);
+		try {
+			await counting.ensureInitialized();
+			await createMemo(root, "Signature gate fresh memo");
+			signature = memosSignature(root);
+			await counting.refreshMemos();
+			expect(loads).toBe(2);
+			expect(counting.search({ query: "Signature gate fresh" }).filter(isMemoResult)).toHaveLength(1);
+		} finally {
+			counting.dispose();
+		}
+	});
+
+	it("reloads when the signature changes and drops a deleted memo", async () => {
+		let loads = 0;
+		let signature = memosSignature(root);
+		const counting = new SearchService(
+			store,
+			async () => {
+				loads++;
+				return listMemos(root);
+			},
+			() => signature,
+		);
+		try {
+			const memo = await createMemo(root, "Signature gate doomed memo");
+			signature = memosSignature(root);
+			await counting.ensureInitialized();
+			await deleteMemo(root, memo.id);
+			signature = memosSignature(root);
+			await counting.refreshMemos();
+			expect(loads).toBe(2);
+			expect(counting.search({ query: "doomed" }).filter(isMemoResult)).toHaveLength(0);
+		} finally {
+			counting.dispose();
+		}
+	});
+
+	it("reloads the corpus after dispose and re-initialization", async () => {
+		let signature = memosSignature(root);
+		await createMemo(root, "Dispose resilience memo");
+		signature = memosSignature(root);
+		const counting = new SearchService(
+			store,
+			() => listMemos(root),
+			() => signature,
+		);
+		try {
+			await counting.ensureInitialized();
+			expect(counting.search({ query: "Dispose resilience" }).filter(isMemoResult)).toHaveLength(1);
+			counting.dispose();
+			await counting.ensureInitialized();
+			expect(counting.search({ query: "Dispose resilience" }).filter(isMemoResult)).toHaveLength(1);
+		} finally {
+			counting.dispose();
+		}
+	});
+
+	it("store events do not reload a fresh memo corpus", async () => {
+		let loads = 0;
+		const counting = new SearchService(
+			store,
+			async () => {
+				loads++;
+				return listMemos(root);
+			},
+			() => memosSignature(root),
+		);
+		try {
+			await counting.ensureInitialized();
+			expect(loads).toBe(1);
+			// Task edits fire store events; the memo corpus is fresh, so no reload may happen.
+			// Even if a watcher event lands past the 500ms TTL, the unchanged signature skips the read.
+			await filesystem.saveTask(baseTask);
+			await filesystem.saveTask({ ...baseTask, id: "task-2", title: "Second alpha task" });
+			await sleep(100);
+			expect(loads).toBe(1);
+		} finally {
+			counting.dispose();
+		}
 	});
 });
 
