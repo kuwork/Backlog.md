@@ -316,7 +316,7 @@ backlog task list --json --watch --status "In Progress" --assignee @sara
 backlog wiki install claude
 ```
 
-`task list --json --watch` keeps a live view of one filtered scenario, such as a single assignee's In Progress queue: read each complete JSON value and replace the previous list with it, rather than parsing lines. Filters, sorting, limits, and local task scope are unchanged, and unchanged results are suppressed. Dependency or configuration changes can update derived fields or which tasks match. `--watch` requires `--json` and cannot be combined with `--plain`; stop it with Ctrl+C, by terminating the process, or by closing the output pipe.
+`task list --json --watch` keeps a live view of one filtered scenario, such as a single assignee's In Progress queue: read each complete JSON value and replace the previous list with it, rather than parsing lines. Filters, sorting, limits, and local task scope are unchanged, and unchanged results are suppressed. Dependency or configuration changes can update derived fields or which tasks match. `--watch` requires `--json` and cannot be combined with `--plain`; stop it with Ctrl+C, by terminating the process, or by closing the output pipe. The watch ends when the process that started it ends.
 
 ## Common Issues
 

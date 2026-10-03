@@ -1,8 +1,9 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createLauncherInstall } from "./test-utils.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { getCandidatePackageNames } = require("../../scripts/resolveBinary.cjs");
@@ -10,31 +11,17 @@ const { getCandidatePackageNames } = require("../../scripts/resolveBinary.cjs");
 const { isBinaryInstallError } = require("../../scripts/cli.cjs");
 
 const isWindows = process.platform === "win32";
-const scriptsDir = join(import.meta.dir, "..", "..", "scripts");
 const tempDirs: string[] = [];
 
 /** Copy the launcher scripts into a temp dir with an optional fixture platform binary. */
 async function createLauncherDir(binaryContent?: string, binaryMode = 0o755): Promise<string> {
 	const dir = await mkdtemp(join(tmpdir(), "backlog-launcher-"));
 	tempDirs.push(dir);
-	await cp(join(scriptsDir, "cli.cjs"), join(dir, "cli.cjs"));
-	await cp(join(scriptsDir, "resolveBinary.cjs"), join(dir, "resolveBinary.cjs"));
-	// The fixture main package carries the repo's real name so the copied resolver
-	// derives the same package-name prefix, and a node_modules dir keeps Bun's
-	// auto-install from resolving real packages.
-	const repoPackage = JSON.parse(await readFile(join(import.meta.dir, "..", "..", "package.json"), "utf8")) as {
-		name?: string;
-	};
-	await writeFile(join(dir, "package.json"), JSON.stringify({ name: repoPackage.name }));
-	await mkdir(join(dir, "node_modules"), { recursive: true });
-	if (binaryContent !== undefined) {
-		const [packageName] = getCandidatePackageNames();
-		const packageDir = join(dir, "node_modules", ...packageName.split("/"));
-		await mkdir(packageDir, { recursive: true });
-		const binaryPath = join(packageDir, isWindows ? "backlog.exe" : "backlog");
-		await writeFile(binaryPath, binaryContent);
-		await chmod(binaryPath, binaryMode);
-	}
+	await createLauncherInstall(
+		dir,
+		binaryContent === undefined ? undefined : (path) => writeFile(path, binaryContent),
+		binaryMode,
+	);
 	return dir;
 }
 

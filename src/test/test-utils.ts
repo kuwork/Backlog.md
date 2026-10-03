@@ -7,7 +7,7 @@ import { spyOn } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import * as nodeFs from "node:fs";
-import { rename, rm } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Core } from "../core/backlog.ts";
 import { initializeProject as initializeProjectShared } from "../core/init.ts";
@@ -117,6 +117,40 @@ export async function safeCleanup(dir: string): Promise<void> {
  */
 export function isWindows(): boolean {
 	return process.platform === "win32";
+}
+
+/**
+ * Lays out an npm install of the launcher in dir. writeBinary, when given, creates the platform
+ * package binary at the path it receives. Returns the launcher script path.
+ */
+export async function createLauncherInstall(
+	dir: string,
+	writeBinary?: (path: string) => Promise<void>,
+	binaryMode = 0o755,
+): Promise<string> {
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const { getCandidatePackageNames } = require("../../scripts/resolveBinary.cjs");
+	const scriptsDir = join(import.meta.dir, "..", "..", "scripts");
+	await mkdir(dir, { recursive: true });
+	await copyFile(join(scriptsDir, "cli.cjs"), join(dir, "cli.cjs"));
+	await copyFile(join(scriptsDir, "resolveBinary.cjs"), join(dir, "resolveBinary.cjs"));
+	// The fixture main package carries the repo's real name so the copied resolver
+	// derives the same package-name prefix, and a node_modules dir keeps Bun's
+	// auto-install from resolving real packages.
+	const repoPackage = JSON.parse(await readFile(join(import.meta.dir, "..", "..", "package.json"), "utf8")) as {
+		name?: string;
+	};
+	await writeFile(join(dir, "package.json"), JSON.stringify({ name: repoPackage.name }));
+	await mkdir(join(dir, "node_modules"), { recursive: true });
+	if (writeBinary) {
+		const [packageName] = getCandidatePackageNames();
+		const packageDir = join(dir, "node_modules", ...packageName.split("/"));
+		await mkdir(packageDir, { recursive: true });
+		const binaryPath = join(packageDir, isWindows() ? "backlog.exe" : "backlog");
+		await writeBinary(binaryPath);
+		await chmod(binaryPath, binaryMode);
+	}
+	return join(dir, "cli.cjs");
 }
 
 /**

@@ -2965,7 +2965,8 @@ const taskListCommand = addHelpSchema(taskCmd.command("list"), {
 		{
 			name: "watch",
 			type: "Boolean",
-			description: "Requires --json; emit an initial full list and changed replacements until stopped",
+			description:
+				"Requires --json; emit an initial full list and changed replacements until stopped or the process that started it ends",
 		},
 		...LIST_WINDOW_HELP_FIELDS,
 	],
