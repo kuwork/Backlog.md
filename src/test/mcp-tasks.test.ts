@@ -1273,5 +1273,51 @@ describe("MCP task tools (MVP)", () => {
 			const task = await mcpServer.getTask("task-1");
 			expect(task?.assignee).toEqual([]);
 		});
+
+		describe("task list paging envelope (BACK-742)", () => {
+			it("returns the structured envelope with total and hasMore", async () => {
+				await mcpServer.testInterface.callTool({
+					params: { name: "task_create", arguments: { title: "Paged one", status: "To Do" } },
+				});
+				await mcpServer.testInterface.callTool({
+					params: { name: "task_create", arguments: { title: "Paged two", status: "To Do" } },
+				});
+				await mcpServer.testInterface.callTool({
+					params: { name: "task_create", arguments: { title: "Paged three", status: "To Do" } },
+				});
+
+				const first = await mcpServer.testInterface.callTool({
+					params: { name: "task_list", arguments: { status: "To Do", limit: 2 } },
+				});
+				const firstStructured = first.structuredContent as {
+					items: { id: string }[];
+					total: number;
+					offset: number;
+					limit: number;
+					hasMore: boolean;
+				};
+				expect(firstStructured.total).toBe(3);
+				expect(firstStructured.hasMore).toBe(true);
+				expect(firstStructured.limit).toBe(2);
+				expect(firstStructured.items.length).toBe(2);
+				expect(getText(first.content)).toContain("Showing 1-2 of 3 tasks.");
+
+				const second = await mcpServer.testInterface.callTool({
+					params: { name: "task_list", arguments: { status: "To Do", limit: 2, offset: 2 } },
+				});
+				const secondStructured = second.structuredContent as {
+					items: { id: string }[];
+					total: number;
+					offset: number;
+					limit: number;
+					hasMore: boolean;
+				};
+				expect(secondStructured.total).toBe(3);
+				expect(secondStructured.offset).toBe(2);
+				expect(secondStructured.limit).toBe(2);
+				expect(secondStructured.hasMore).toBe(false);
+				expect(secondStructured.items.length).toBe(1);
+			});
+		});
 	});
 });

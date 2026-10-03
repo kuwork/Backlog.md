@@ -1984,6 +1984,9 @@ export class BacklogServer {
 
 	private async handleListMemos(req: Request): Promise<Response> {
 		const url = new URL(req.url);
+		if (url.searchParams.get("cursor")?.trim()) {
+			return Response.json({ error: "cursor is no longer supported; use offset" }, { status: 400 });
+		}
 		const rawLimit = url.searchParams.get("limit")?.trim() || undefined;
 		let limit = MEMO_PAGE_SIZE;
 		if (rawLimit !== undefined) {
@@ -1996,15 +1999,25 @@ export class BacklogServer {
 			}
 			limit = Math.min(parsed, MAX_MEMO_PAGE_SIZE);
 		}
-		// cursor is opaque: it is the id of the last memo of the previous page, nothing more.
-		const cursor = url.searchParams.get("cursor")?.trim() || undefined;
+		const rawOffset = url.searchParams.get("offset")?.trim() || undefined;
+		let offset = 0;
+		if (rawOffset !== undefined) {
+			if (!/^\d+$/.test(rawOffset)) {
+				return Response.json({ error: "offset must be a non-negative integer" }, { status: 400 });
+			}
+			const parsed = Number.parseInt(rawOffset, 10);
+			if (!Number.isFinite(parsed) || parsed < 0) {
+				return Response.json({ error: "offset must be a non-negative integer" }, { status: 400 });
+			}
+			offset = parsed;
+		}
 		const date = url.searchParams.get("date")?.trim() || undefined;
 		if (date !== undefined && !DATE_ONLY_PATTERN.test(date)) {
 			return Response.json({ error: "date must be formatted as YYYY-MM-DD" }, { status: 400 });
 		}
 
 		try {
-			const page = await listMemosPage(this.core.filesystem.rootDir, { limit, cursor, date });
+			const page = await listMemosPage(this.core.filesystem.rootDir, { limit, offset, date });
 			return Response.json(page);
 		} catch (error) {
 			console.error("Error listing memos:", error);

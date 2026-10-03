@@ -24,6 +24,7 @@ import { getTerminalStatus, isTerminalStatus } from "../../../utils/terminal-sta
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
+import { buildListResult, selectListPage } from "../../utils/list-page.ts";
 import { formatTaskCallResult } from "../../utils/task-response.ts";
 
 export type TaskCreateArgs = {
@@ -62,6 +63,7 @@ export type TaskListArgs = {
 	ready?: boolean;
 	completed?: boolean;
 	limit?: number;
+	offset?: number;
 };
 
 export type TaskSearchArgs = {
@@ -72,6 +74,7 @@ export type TaskSearchArgs = {
 	modifiedFiles?: string[];
 	completed?: boolean;
 	limit?: number;
+	offset?: number;
 };
 
 export class TaskHandlers {
@@ -208,23 +211,16 @@ export class TaskHandlers {
 				};
 			}
 
-			let sortedDrafts = sortByOrdinalAndPriority(drafts);
-			if (typeof args.limit === "number" && args.limit >= 0) {
-				sortedDrafts = sortedDrafts.slice(0, args.limit);
-			}
+			const draftPage = selectListPage(sortByOrdinalAndPriority(drafts), {
+				limit: args.limit,
+				offset: args.offset,
+			});
 			const lines = ["Draft:"];
-			for (const draft of sortedDrafts) {
+			for (const draft of draftPage.items) {
 				lines.push(this.formatTaskSummaryLine(draft));
 			}
 
-			return {
-				content: [
-					{
-						type: "text",
-						text: lines.join("\n"),
-					},
-				],
-			};
+			return buildListResult([{ type: "text", text: lines.join("\n") }], draftPage, { label: "draft" });
 		}
 
 		const filters: TaskListFilter = {};
@@ -264,14 +260,11 @@ export class TaskHandlers {
 		const filteredByLabels = tasks.filter((task) => isLocalEditableTask(task));
 
 		if (filteredByLabels.length === 0) {
-			return {
-				content: [
-					{
-						type: "text",
-						text: "No tasks found.",
-					},
-				],
-			};
+			return buildListResult(
+				[{ type: "text", text: "No tasks found." }],
+				{ items: [], total: 0, offset: 0, limit: 0, hasMore: false },
+				{ label: "task" },
+			);
 		}
 
 		const config = await this.core.filesystem.loadConfig();
@@ -297,20 +290,32 @@ export class TaskHandlers {
 			...Array.from(grouped.keys()).filter((status) => !statuses.includes(status)),
 		];
 
-		const contentItems: Array<{ type: "text"; text: string }> = [];
-		let remaining = typeof args.limit === "number" && args.limit >= 0 ? args.limit : undefined;
+		// Flatten the grouped, status-ordered tasks into one sequence, then window it so
+		// offset/limit paginate across the whole list regardless of status buckets.
+		const orderedTasks: Task[] = [];
 		for (const status of orderedStatuses) {
-			const bucket = grouped.get(status) ?? [];
-			const sortedBucket = sortByOrdinalAndPriority(bucket);
-			const limitedBucket = remaining !== undefined ? sortedBucket.slice(0, remaining) : sortedBucket;
-			if (remaining !== undefined) {
-				remaining -= limitedBucket.length;
-			}
-			if (limitedBucket.length === 0) {
+			orderedTasks.push(...sortByOrdinalAndPriority(grouped.get(status) ?? []));
+		}
+		const page = selectListPage(orderedTasks, { limit: args.limit, offset: args.offset });
+
+		const pageGrouped = new Map<string, Task[]>();
+		for (const task of page.items) {
+			const rawStatus = (task.status ?? "").trim();
+			const canonicalStatus = canonicalByLower.get(rawStatus.toLowerCase()) ?? rawStatus;
+			const key = canonicalStatus || "";
+			const bucket = pageGrouped.get(key) ?? [];
+			bucket.push(task);
+			pageGrouped.set(key, bucket);
+		}
+
+		const contentItems: Array<{ type: "text"; text: string }> = [];
+		for (const status of orderedStatuses) {
+			const bucket = pageGrouped.get(status) ?? [];
+			if (bucket.length === 0) {
 				continue;
 			}
 			const sectionLines: string[] = [`${status || "No Status"}:`];
-			for (const task of limitedBucket) {
+			for (const task of bucket) {
 				sectionLines.push(this.formatTaskSummaryLine(task));
 			}
 			contentItems.push({
@@ -326,9 +331,7 @@ export class TaskHandlers {
 			});
 		}
 
-		return {
-			content: contentItems,
-		};
+		return buildListResult(contentItems, page, { label: "task" });
 	}
 
 	async searchTasks(args: TaskSearchArgs): Promise<CallToolResult> {
@@ -341,41 +344,28 @@ export class TaskHandlers {
 		if (this.isDraftStatus(args.status)) {
 			const drafts = await this.core.filesystem.listDrafts();
 			const searchIndex = createTaskSearchIndex(drafts);
-			let draftMatches = searchIndex.search({
+			const draftMatches = searchIndex.search({
 				query,
 				status: "Draft",
 				priority: args.priority,
 				modifiedFiles,
 				scoreThreshold: 0.45,
 			});
-			if (typeof args.limit === "number" && args.limit >= 0) {
-				draftMatches = draftMatches.slice(0, args.limit);
-			}
-
-			if (draftMatches.length === 0) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `No tasks found for "${query || modifiedFiles?.join(", ")}".`,
-						},
-					],
-				};
+			const draftPage = selectListPage(draftMatches, { limit: args.limit, offset: args.offset });
+			if (draftPage.total === 0) {
+				return buildListResult(
+					[{ type: "text", text: `No tasks found for "${query || modifiedFiles?.join(", ")}".` }],
+					draftPage,
+					{ label: "task" },
+				);
 			}
 
 			const lines: string[] = ["Tasks:"];
-			for (const draft of draftMatches) {
+			for (const draft of draftPage.items) {
 				lines.push(this.formatTaskSummaryLine(draft, { includeStatus: true }));
 			}
 
-			return {
-				content: [
-					{
-						type: "text",
-						text: lines.join("\n"),
-					},
-				],
-			};
+			return buildListResult([{ type: "text", text: lines.join("\n") }], draftPage, { label: "task" });
 		}
 
 		// Aligned with the other read surfaces: completed tasks only appear when the caller
@@ -387,7 +377,7 @@ export class TaskHandlers {
 			: args.statusExcluded
 				? [args.statusExcluded]
 				: [];
-		let taskMatches = searchIndex.search({
+		const taskMatches = searchIndex.search({
 			query,
 			status: args.status,
 			statusExcluded: excludeStatuses,
@@ -395,20 +385,14 @@ export class TaskHandlers {
 			modifiedFiles,
 			scoreThreshold: 0.45,
 		});
-		if (typeof args.limit === "number" && args.limit >= 0) {
-			taskMatches = taskMatches.slice(0, args.limit);
-		}
-
-		const taskResults = taskMatches.filter((task) => isLocalEditableTask(task));
+		const taskPage = selectListPage(taskMatches, { limit: args.limit, offset: args.offset });
+		const taskResults = taskPage.items.filter((task) => isLocalEditableTask(task));
 		if (taskResults.length === 0) {
-			return {
-				content: [
-					{
-						type: "text",
-						text: `No tasks found for "${query || modifiedFiles?.join(", ")}".`,
-					},
-				],
-			};
+			return buildListResult(
+				[{ type: "text", text: `No tasks found for "${query || modifiedFiles?.join(", ")}".` }],
+				taskPage,
+				{ label: "task" },
+			);
 		}
 
 		const lines: string[] = ["Tasks:"];
@@ -416,14 +400,7 @@ export class TaskHandlers {
 			lines.push(this.formatTaskSummaryLine(task, { includeStatus: true }));
 		}
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: lines.join("\n"),
-				},
-			],
-		};
+		return buildListResult([{ type: "text", text: lines.join("\n") }], taskPage, { label: "task" });
 	}
 
 	async viewTask(args: { id: string }): Promise<CallToolResult> {

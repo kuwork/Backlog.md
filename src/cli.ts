@@ -5537,7 +5537,7 @@ addListWindowOptions(memoListCommand).action(async (options) => {
 		return;
 	}
 	// `listMemosPage` caps an absent limit at its page size for the MCP tools and the server API,
-	// which page with a cursor; the CLI lists every memo unless `--limit` says otherwise.
+	// which page with an offset window; the CLI lists every memo unless `--limit` says otherwise.
 	const { items } = await listMemosPage(cwd, {
 		limit: limit ?? Number.MAX_SAFE_INTEGER,
 		date,

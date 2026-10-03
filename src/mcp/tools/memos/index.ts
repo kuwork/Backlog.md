@@ -13,7 +13,7 @@ export function registerMemoTools(server: McpServer, _config: BacklogConfig): vo
 		{
 			name: "memo_list",
 			description:
-				"List Backlog.md memos (throwaway notes), newest first, with optional date/tag filtering and cursor pagination",
+				"List Backlog.md memos (throwaway notes), newest first, with optional date/tag filtering and offset/limit pagination ({ items, total, offset, limit, hasMore })",
 			inputSchema: memoListSchema,
 			annotations: { title: "List Memos", readOnlyHint: true, destructiveHint: false },
 		},

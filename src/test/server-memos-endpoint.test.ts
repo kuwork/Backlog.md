@@ -106,17 +106,21 @@ afterEach(async () => {
 });
 
 describe("GET /api/memos", () => {
-	it("paginates newest first and reports the next cursor", async () => {
+	it("paginates newest first and reports the envelope", async () => {
 		const { status, body } = await fetchJson("/api/memos?limit=2");
 
 		expect(status).toBe(200);
 		expect(body.items).toHaveLength(2);
 		expect((body.items as { id: string }[]).map((memo) => memo.id)).toEqual(["20190401-1", "20190305-2"]);
-		expect(body.nextCursor).toBe("20190305-2");
+		expect(body.total).toBe(3);
+		expect(body.offset).toBe(0);
+		expect(body.limit).toBe(2);
+		expect(body.hasMore).toBe(true);
 
-		const second = await fetchJson(`/api/memos?limit=2&cursor=${body.nextCursor}`);
+		const second = await fetchJson("/api/memos?limit=2&offset=2");
 		expect((second.body.items as { id: string }[]).map((memo) => memo.id)).toEqual(["20190305-1"]);
-		expect(second.body.nextCursor).toBeNull();
+		expect(second.body.offset).toBe(2);
+		expect(second.body.hasMore).toBe(false);
 	});
 
 	it("filters by date and still paginates", async () => {
@@ -124,17 +128,26 @@ describe("GET /api/memos", () => {
 
 		expect(status).toBe(200);
 		expect((body.items as { id: string }[]).map((memo) => memo.id)).toEqual(["20190305-2"]);
-		expect(body.nextCursor).toBe("20190305-2");
+		expect(body.total).toBe(2);
+		expect(body.hasMore).toBe(true);
 
 		const empty = await fetchJson("/api/memos?date=2019-03-06");
 		expect(empty.body.items).toEqual([]);
-		expect(empty.body.nextCursor).toBeNull();
+		expect(empty.body.hasMore).toBe(false);
 	});
 
 	it("answers 400 for malformed query values", async () => {
 		expect((await fetchJson("/api/memos?limit=abc")).status).toBe(400);
 		expect((await fetchJson("/api/memos?limit=0")).status).toBe(400);
 		expect((await fetchJson("/api/memos?date=2026/10/01")).status).toBe(400);
+		expect((await fetchJson("/api/memos?offset=-1")).status).toBe(400);
+		expect((await fetchJson("/api/memos?offset=abc")).status).toBe(400);
+	});
+
+	it("rejects the retired cursor parameter instead of ignoring it", async () => {
+		const { status, body } = await fetchJson("/api/memos?cursor=20190305-2");
+		expect(status).toBe(400);
+		expect(String(body.error)).toContain("offset");
 	});
 });
 

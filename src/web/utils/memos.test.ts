@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { Memo } from "../../core/memos.ts";
 import { createMemo, listMemos, nextMemoId } from "../../core/memos.ts";
 import { localDateTimeToStoredUtc } from "../../utils/date-utc.ts";
+import type { ListPage } from "../../utils/list-page.ts";
 import {
 	appendMemoPage,
 	collectMemoTags,
@@ -32,17 +33,29 @@ const makeMemo = (id: string, overrides: Partial<Memo> = {}): Memo => ({
 });
 
 describe("appendMemoPage", () => {
-	const pageA = { items: [makeMemo("20261001-2"), makeMemo("20261001-1")], nextCursor: "20261001-1" };
-	const pageB = { items: [makeMemo("20260930-2"), makeMemo("20260930-1")], nextCursor: "20260930-1" };
+	const pageA: ListPage<Memo> = {
+		items: [makeMemo("20261001-2"), makeMemo("20261001-1")],
+		total: 4,
+		offset: 0,
+		limit: 2,
+		hasMore: true,
+	};
+	const pageB: ListPage<Memo> = {
+		items: [makeMemo("20260930-2"), makeMemo("20260930-1")],
+		total: 4,
+		offset: 2,
+		limit: 2,
+		hasMore: false,
+	};
 
 	it("appends behind the rows already loaded", () => {
 		const first = appendMemoPage(EMPTY_MEMO_FEED, pageA);
 		expect(first.memos.map((memo) => memo.id)).toEqual(["20261001-2", "20261001-1"]);
-		expect(first.nextCursor).toBe("20261001-1");
+		expect(first.hasMore).toBe(true);
 
 		const second = appendMemoPage(first, pageB);
 		expect(second.memos.map((memo) => memo.id)).toEqual(["20261001-2", "20261001-1", "20260930-2", "20260930-1"]);
-		expect(second.nextCursor).toBe("20260930-1");
+		expect(second.hasMore).toBe(false);
 	});
 
 	it("keeps the identity of already-loaded rows so scroll position survives", () => {
@@ -53,22 +66,40 @@ describe("appendMemoPage", () => {
 		}
 	});
 
-	it("drops rows that overlap across cursors instead of duplicating them", () => {
+	it("drops rows an overlapping offset window returns again instead of duplicating them", () => {
 		const first = appendMemoPage(EMPTY_MEMO_FEED, pageA);
-		const overlapping = { items: [makeMemo("20261001-1"), makeMemo("20260930-2")], nextCursor: null };
+		const overlapping: ListPage<Memo> = {
+			items: [makeMemo("20261001-1"), makeMemo("20260930-2")],
+			total: 3,
+			offset: 1,
+			limit: 2,
+			hasMore: false,
+		};
 		const second = appendMemoPage(first, overlapping);
 		expect(second.memos.map((memo) => memo.id)).toEqual(["20261001-2", "20261001-1", "20260930-2"]);
 	});
 
-	it("ends the list when the server reports a null cursor, even for a non-empty page", () => {
-		const last = appendMemoPage(EMPTY_MEMO_FEED, { items: [makeMemo("20261001-1")], nextCursor: null });
-		expect(last.nextCursor).toBeNull();
+	it("ends the list when the server reports hasMore false, even for a non-empty page", () => {
+		const last = appendMemoPage(EMPTY_MEMO_FEED, {
+			items: [makeMemo("20261001-1")],
+			total: 1,
+			offset: 0,
+			limit: 1,
+			hasMore: false,
+		});
+		expect(last.hasMore).toBe(false);
 	});
 });
 
 describe("feed mutations", () => {
 	it("puts a captured memo first and ignores one already in the feed", () => {
-		const feed = appendMemoPage(EMPTY_MEMO_FEED, { items: [makeMemo("20261001-1")], nextCursor: null });
+		const feed = appendMemoPage(EMPTY_MEMO_FEED, {
+			items: [makeMemo("20261001-1")],
+			total: 1,
+			offset: 0,
+			limit: 1,
+			hasMore: false,
+		});
 		const captured = makeMemo("20261001-2");
 		expect(prependMemo(feed, captured).memos[0]).toBe(captured);
 		expect(prependMemo(feed, feed.memos[0] as Memo)).toBe(feed);
@@ -77,7 +108,10 @@ describe("feed mutations", () => {
 	it("replaces an edited memo in place", () => {
 		const feed = appendMemoPage(EMPTY_MEMO_FEED, {
 			items: [makeMemo("20261001-2"), makeMemo("20261001-1")],
-			nextCursor: null,
+			total: 2,
+			offset: 0,
+			limit: 2,
+			hasMore: false,
 		});
 		const edited = makeMemo("20261001-1", { rawContent: "edited body" });
 		const next = replaceMemo(feed, edited);
@@ -88,11 +122,14 @@ describe("feed mutations", () => {
 	it("removes a deleted memo without touching the rest", () => {
 		const feed = appendMemoPage(EMPTY_MEMO_FEED, {
 			items: [makeMemo("20261001-2"), makeMemo("20261001-1")],
-			nextCursor: "20261001-1",
+			total: 3,
+			offset: 0,
+			limit: 2,
+			hasMore: true,
 		});
 		const next = removeMemo(feed, "20261001-2");
 		expect(next.memos.map((memo) => memo.id)).toEqual(["20261001-1"]);
-		expect(next.nextCursor).toBe("20261001-1");
+		expect(next.hasMore).toBe(true);
 	});
 });
 

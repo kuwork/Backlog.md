@@ -56,13 +56,13 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 
 **Note:** "Done" tasks stay in the Done column until periodic cleanup moves them to the completed folder. Don't use `task_complete` immediately after finishing—it's for batch cleanup, not per-task workflow.
 
-- `task_list` — list tasks with optional filtering by status (or `statusExcluded` to exclude one or more statuses), assignee (or `unassigned: true`), milestone, labels, search, `ready: true` for unblocked tasks, `completed: true` to widen the corpus with the completed folder, or limit
+- `task_list` — list tasks with optional filtering by status (or `statusExcluded` to exclude one or more statuses), assignee (or `unassigned: true`), milestone, labels, search, `ready: true` for unblocked tasks, `completed: true` to widen the corpus with the completed folder, or paging via `limit` and `offset`
 - `task_search` — search tasks by title and description, or use `modifiedFiles` to filter by project-root-relative modified file path substrings
 - `task_list` and `task_search` accept `completed: true` to widen the source corpus with the completed folder; widened rows carry `source: "completed"` so they can be told apart from active work. The default reads active tasks only.
 - `task_view` — read full task context (description, plan, notes, comments, final summary, acceptance criteria, Definition of Done)
 - `definition_of_done_defaults_get` — read project-level Definition of Done defaults from config
 - `definition_of_done_defaults_upsert` — replace project-level Definition of Done defaults in config
-- `document_list` — list documents, including type, path, timestamps, and tags
+- `document_list` — list documents, including type, path, timestamps, and tags, with optional `limit`/`offset` paging
 - `document_view` — view document metadata and markdown content
 - `document_create` — create a document with title, content, optional type/tags, and optional docs-directory-relative path
 - `document_update` — update document content, append content blocks, optional title/type/tags, and optional docs-directory-relative path
@@ -132,7 +132,7 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 ## Search Quick Reference
 
 - `task_search` — fuzzy search by title and description; supports `query`, `status`, `priority`, `modifiedFiles`, `limit`, and `completed: true` to widen the corpus with the completed folder (widened rows carry `source: "completed"`)
-- `task_list` — list tasks with filters: `status`, `assignee` (or `unassigned: true`), `milestone`, `labels`, `search`, `ready`, `limit`, and `completed: true` to widen the source corpus with the completed folder
+- `task_list` — list tasks with filters: `status`, `assignee` (or `unassigned: true`), `milestone`, `labels`, `search`, `ready`, `limit`, `offset`, and `completed: true` to widen the source corpus with the completed folder
 - `search` (global) — searches tasks, docs, and decisions; supports `--type task`, `--status`, `--priority`, `--modified-file`, and `--completed`
 
 `status` accepts a single string or an array for multi-select (e.g., `"status": ["To Do", "In Progress"]`); `statusExcluded` accepts a string or array to exclude one or more statuses (e.g., `"statusExcluded": ["Done", "Blocked"]`), combinable with `status`.
@@ -147,10 +147,16 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 - `task_archive` — archive a task that should not be completed (duplicate, canceled, invalid)
 - `task_complete` — move a Done task to the completed folder (cleanup, not finalization)
 - `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_remove`, `milestone_archive` — milestone management
+- `decision_list` — list decisions with optional `status` (exact, case-insensitive) and `search` (substring over id/title) filtering plus `limit`/`offset` paging
 - `definition_of_done_defaults_get` / `definition_of_done_defaults_upsert` — project-level DoD defaults
+
+### List Paging
+
+`task_list`, `task_search`, `document_list`, `document_search`, `milestone_list`, `memo_list`, and `decision_list` all accept `offset` (how many rows to skip, 0-based, default 0) and `limit` (page size; omit it or pass 0 to get the whole filtered list). Each returns a structured envelope `{ items, total, offset, limit, hasMore }` and appends a `Showing X-Y of N items` hint to its text output, so you can page through a list without guessing whether more rows exist.
 
 For milestone details, read `backlog://workflow/milestones`.
 For draft details, read `backlog://workflow/drafts`.
+For decision details, read `backlog://workflow/decisions`.
 
 ## Common Issues
 

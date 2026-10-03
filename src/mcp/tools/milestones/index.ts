@@ -1,7 +1,13 @@
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
-import type { MilestoneAddArgs, MilestoneArchiveArgs, MilestoneEditArgs, MilestoneRemoveArgs } from "./handlers.ts";
+import type {
+	MilestoneAddArgs,
+	MilestoneArchiveArgs,
+	MilestoneEditArgs,
+	MilestoneListArgs,
+	MilestoneRemoveArgs,
+} from "./handlers.ts";
 import { MilestoneHandlers } from "./handlers.ts";
 import {
 	milestoneAddSchema,
@@ -22,7 +28,7 @@ export function registerMilestoneTools(server: McpServer): void {
 			annotations: { title: "List Milestones", readOnlyHint: true, destructiveHint: false },
 		},
 		milestoneListSchema,
-		async () => handlers.listMilestones(),
+		async (input) => handlers.listMilestones(input as MilestoneListArgs),
 	);
 
 	const addTool: McpToolHandler = createSimpleValidatedTool(

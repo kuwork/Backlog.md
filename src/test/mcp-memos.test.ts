@@ -8,6 +8,7 @@ import { stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerMemoTools } from "../mcp/tools/memos/index.ts";
 import type { BacklogConfig } from "../types/index.ts";
+import { formatLocalDateKey, localDateTimeToStoredUtc } from "../utils/date-utc.ts";
 import { initializeTestProject } from "./test-utils.ts";
 
 /**
@@ -26,16 +27,23 @@ let TEST_DIR: string;
 let mcpServer: McpServer;
 
 function today(): string {
-	return new Date().toISOString().slice(0, 10);
+	return formatLocalDateKey(new Date());
 }
 
-async function seedOldMemo(id: string, createdDate: string, body: string, tags: string[] = []): Promise<void> {
+/** Seeds a memo for a chosen day; `created_date` is stored UTC, so the local day is converted. */
+async function seedOldMemo(
+	id: string,
+	localDay: string,
+	time: string,
+	body: string,
+	tags: string[] = [],
+): Promise<void> {
 	await Bun.write(
 		join(memoDir(TEST_DIR), `${id}.md`),
 		stringifyFrontmatter(body, {
 			id,
-			created_date: createdDate,
-			updated_date: createdDate,
+			created_date: localDateTimeToStoredUtc(`${localDay} ${time}`),
+			updated_date: localDateTimeToStoredUtc(`${localDay} ${time}`),
 			...(tags.length > 0 && { tags }),
 		}),
 	);
@@ -119,12 +127,21 @@ describe("MCP memo tools", () => {
 			params: { name: "memo_list", arguments: {} },
 		});
 		expect(getText(listResult.content)).toContain("No memos found.");
-		const structured = listResult.structuredContent as { items?: unknown[]; nextCursor?: string | null };
+		const structured = listResult.structuredContent as {
+			items: unknown[];
+			total: number;
+			offset: number;
+			limit: number;
+			hasMore: boolean;
+		};
 		expect(structured.items).toEqual([]);
-		expect(structured.nextCursor).toBeNull();
+		expect(structured.total).toBe(0);
+		expect(structured.offset).toBe(0);
+		expect(structured.limit).toBe(0);
+		expect(structured.hasMore).toBe(false);
 	});
 
-	it("paginates with limit and cursor and exposes items plus nextCursor", async () => {
+	it("paginates with limit and offset and exposes items plus hasMore", async () => {
 		for (const body of ["one", "two", "three"]) {
 			await mcpServer.testInterface.callTool({
 				params: { name: "memo_create", arguments: { content: body } },
@@ -136,21 +153,34 @@ describe("MCP memo tools", () => {
 		});
 		const firstStructured = firstPage.structuredContent as {
 			items: { id: string; displayTitle: string }[];
-			nextCursor: string | null;
+			total: number;
+			offset: number;
+			limit: number;
+			hasMore: boolean;
 		};
 		expect(firstStructured.items.map((memo) => memo.displayTitle)).toEqual(["three", "two"]);
-		expect(firstStructured.nextCursor).not.toBeNull();
-		expect(getText(firstPage.content)).toContain(`Next cursor: ${firstStructured.nextCursor}`);
+		expect(firstStructured.total).toBe(3);
+		expect(firstStructured.offset).toBe(0);
+		expect(firstStructured.limit).toBe(2);
+		expect(firstStructured.hasMore).toBe(true);
+		expect(getText(firstPage.content)).toContain("Showing 1-2 of 3 memos.");
 
 		const secondPage = await mcpServer.testInterface.callTool({
-			params: { name: "memo_list", arguments: { limit: 2, cursor: firstStructured.nextCursor } },
+			params: { name: "memo_list", arguments: { limit: 2, offset: 2 } },
 		});
 		const secondStructured = secondPage.structuredContent as {
 			items: { id: string; displayTitle: string }[];
-			nextCursor: string | null;
+			total: number;
+			offset: number;
+			limit: number;
+			hasMore: boolean;
 		};
 		expect(secondStructured.items.map((memo) => memo.displayTitle)).toEqual(["one"]);
-		expect(secondStructured.nextCursor).toBeNull();
+		expect(secondStructured.total).toBe(3);
+		expect(secondStructured.offset).toBe(2);
+		expect(secondStructured.limit).toBe(2);
+		expect(secondStructured.hasMore).toBe(false);
+		expect(getText(secondPage.content)).toContain("Showing 3-3 of 3 memos.");
 	});
 
 	it("filters by date and tags", async () => {
@@ -160,7 +190,7 @@ describe("MCP memo tools", () => {
 		await mcpServer.testInterface.callTool({
 			params: { name: "memo_create", arguments: { content: "untagged note" } },
 		});
-		await seedOldMemo("20200101-1", "2020-01-01 09:00", "old note", ["idea"]);
+		await seedOldMemo("20200101-1", "2020-01-01", "09:00", "old note", ["idea"]);
 
 		const dateFiltered = await mcpServer.testInterface.callTool({
 			params: { name: "memo_list", arguments: { date: today() } },

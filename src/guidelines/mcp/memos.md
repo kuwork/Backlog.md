@@ -26,16 +26,16 @@ Memos have their own tool group: `memo_create`, `memo_list`, `memo_view`, `memo_
 
 ```json
 // memo_list — first page
-{ "limit": 20 }
+{ "limit": 20, "offset": 0 }
 
 // memo_list — filtered
 { "date": "2026-10-01", "tags": ["idea"] }
 
-// memo_list — next page, using the returned cursor
-{ "limit": 20, "cursor": "20261001-5" }
+// memo_list — next page
+{ "limit": 20, "offset": 20 }
 ```
 
-Results come newest first with a `nextCursor`; it is `null` at the end of the list. `date` narrows to one day (`YYYY-MM-DD`); `tags` keeps memos carrying at least one of the given tags (case-insensitive). List rows are previews, not full bodies — use `memo_view` for the complete memo.
+Results come newest first and carry a structured envelope `{ items, total, offset, limit, hasMore }` plus a `Showing X-Y of N memos` hint in the text, so you can page without guessing whether more rows exist. Page with `offset` (how many memos to skip, 0-based) and `limit` (page size; omit it or pass 0 for the whole list). `date` narrows to one day (`YYYY-MM-DD`); `tags` keeps memos carrying at least one of the given tags (case-insensitive). List rows are previews, not full bodies — use `memo_view` for the complete memo.
 
 #### Viewing a memo
 
@@ -72,6 +72,7 @@ Deleting an unknown ID returns a not-found error.
 ### Key Rules
 
 - Memo files live under `backlog/memos/`; the ID is `YYYYMMDD-N` (date + per-day sequence) and stays stable for the life of the memo.
+- The ID's date is the **UTC** date the memo is stored under, so it can be one day ahead of the day you wrote it near midnight. The `date` filter, the CLI's `--date`, and the `/memos` calendar all mean the **local** day the memo was captured on this machine - use those, not the ID's digits, to answer "what did I write today".
 - Memos have no title: listings show a short preview of the body; use `memo_view` to read the full body.
 - The MCP tools, the `backlog memo` CLI commands, and the `/memos` web page share the same storage and ID scheme, so a memo captured through one surface shows up in the others immediately.
 - Do not edit memo markdown files directly. Use the `memo_*` tools (or the CLI / web UI) so metadata and file naming stay consistent.

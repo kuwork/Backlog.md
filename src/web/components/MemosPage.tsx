@@ -678,15 +678,15 @@ export default function MemosPage() {
 	// Request epochs: anything in flight from a previous date filter must not land on the current
 	// list, so every reload bumps the epoch and stale responses are dropped.
 	const feedRequestRef = useRef(0);
-	const cursorRef = useRef<string | null>(null);
+	const offsetRef = useRef(0);
 	const loadingMoreRef = useRef(false);
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
 	const calendarButtonRef = useRef<HTMLButtonElement | null>(null);
 	const calendarMenuRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
-		cursorRef.current = feed.nextCursor;
-	}, [feed.nextCursor]);
+		offsetRef.current = feed.memos.length;
+	}, [feed.memos.length]);
 
 	// Deep links win: `?date=YYYY-MM-DD` (which global search emits for memo hits) drives the day
 	// filter from the outside. `?view=calendar` only decides whether the popover starts open.
@@ -739,7 +739,7 @@ export default function MemosPage() {
 			try {
 				const page = await apiClient.fetchMemosPage({ limit: MEMO_FEED_PAGE_SIZE, date: date ?? undefined });
 				if (requestId !== feedRequestRef.current) return;
-				setFeed({ memos: page.items, nextCursor: page.nextCursor });
+				setFeed({ memos: page.items, hasMore: page.hasMore });
 			} catch (error) {
 				if (requestId !== feedRequestRef.current) return;
 				setLoadError(error instanceof Error && error.message ? error.message : t.memos.loadFailed);
@@ -754,10 +754,11 @@ export default function MemosPage() {
 		void loadFirstPage(selectedDate);
 	}, [selectedDate, loadFirstPage]);
 
+	const hasMore = feed.hasMore;
+
 	const loadMore = useCallback(async () => {
 		if (loadingMoreRef.current) return;
-		const cursor = cursorRef.current;
-		if (!cursor) return;
+		if (!hasMore) return;
 		const requestId = feedRequestRef.current;
 		loadingMoreRef.current = true;
 		setLoadingMore(true);
@@ -765,7 +766,7 @@ export default function MemosPage() {
 		try {
 			const page = await apiClient.fetchMemosPage({
 				limit: MEMO_FEED_PAGE_SIZE,
-				cursor,
+				offset: offsetRef.current,
 				date: selectedDate ?? undefined,
 			});
 			if (requestId !== feedRequestRef.current) return;
@@ -778,9 +779,7 @@ export default function MemosPage() {
 			loadingMoreRef.current = false;
 			if (requestId === feedRequestRef.current) setLoadingMore(false);
 		}
-	}, [selectedDate, t.memos.loadMoreFailed]);
-
-	const hasMore = feed.nextCursor !== null;
+	}, [selectedDate, hasMore, t.memos.loadMoreFailed]);
 
 	// The page itself does not scroll - <main> does - so the viewport root is the right observer
 	// root, and the margin starts the next fetch before the sentinel is actually on screen.
@@ -821,21 +820,24 @@ export default function MemosPage() {
 		void loadCalendar(calendarYear, calendarMonth);
 		const requestId = ++feedRequestRef.current;
 		try {
-			let cursor: string | null = null;
 			const target = feed.memos.length;
 			const collected: Memo[] = [];
+			let offset = 0;
+			let more = false;
 			do {
 				const page = await apiClient.fetchMemosPage({
 					limit: MEMO_FEED_PAGE_SIZE,
-					cursor: cursor ?? undefined,
+					offset,
 					date: selectedDate ?? undefined,
 				});
 				collected.push(...page.items);
-				cursor = page.nextCursor;
+				offset += page.items.length;
+				more = page.hasMore;
+				if (page.items.length === 0) break;
 				if (collected.length >= target) break;
-			} while (cursor);
+			} while (more);
 			if (requestId !== feedRequestRef.current) return;
-			setFeed({ memos: collected, nextCursor: cursor });
+			setFeed({ memos: collected, hasMore: more });
 			setLoadError(null);
 		} catch (error) {
 			// A background refresh is not something the user asked for, so a failure must not blank

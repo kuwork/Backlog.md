@@ -8,9 +8,10 @@ export const memoListSchema: JsonSchema = {
 			minimum: 1,
 			maximum: 100,
 		},
-		cursor: {
-			type: "string",
-			maxLength: 100,
+		offset: {
+			type: "number",
+			minimum: 0,
+			description: "Skip this many memos before returning the window (0-based).",
 		},
 		date: {
 			type: "string",
