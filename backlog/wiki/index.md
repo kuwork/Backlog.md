@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-09-26 22:25'
+updated_date: '2026-10-03 09:25'
 ---
 
 
@@ -277,8 +277,8 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-699-findidentity-nonpublishing-fallback]] | BACK-699 findIdentity rename 回退不发布 freshness | source, core, bug |
 | [[sources/back-700-content-entity-broadcast-refresh]] | BACK-700 内容实体（文档/决策/wiki）变更广播并原地刷新 | source, web-ui, live-sync |
 | [[sources/back-701-fix-server-test-keep-alive-misroute]] | BACK-701 本地 server 套件 Connection: close 假失败修复 | source, test, server |
-| [[sources/back-702-kuzu-graph-foundation]] | BACK-702 Kuzu 图谱地基：schema、fail-closed 解析器、指纹冷启动 | source, kuzu, graph, core |
-| [[sources/back-703-graph-incremental-sync]] | BACK-703 图谱增量重建与热更新同步（Graph Service） | source, kuzu, graph, core |
+| [[sources/back-702-kuzu-graph-foundation]] | BACK-702 Kuzu graph foundation — schema, fail-closed parser, fingerprint cold start | source, graph, kuzu |
+| [[sources/back-703-graph-incremental-sync]] | BACK-703 Incremental rebuild and hot-update sync (Graph Service) | source, graph, kuzu, web-ui |
 | [[sources/back-704-graph-view-web-ui]] | BACK-704 Web UI D3.js 任务图谱可视化页 | source, kuzu, graph, web-ui |
 | [[sources/back-705-graph-control-cluster-styling]] | BACK-705 图谱控制簇样式统一 | source, web-ui, graph |
 | [[sources/back-706-milestone-actual-end-stamp]] | BACK-706 里程碑最后任务进入终态时打 actualEnd | source, milestones, core |
@@ -293,11 +293,51 @@ Read this file FIRST on any wiki operation.
 | [[sources/doc-11-todo-tasks-vs-upstream-migration-cross-check]] | doc-11 To-Do 任务与上游迁移（v1.47.1-v1.50.1）对照分析 | source, doc, migration, backlog-hygiene |
 | [[sources/doc-12-upstream-v1-50-1-to-v1-52-0-migration-diff-classification]] | doc-12 上游 v1.50.1→v1.52.0 差异分类 | source, doc, migration, upstream |
 | [[sources/doc-13-upstream-v1-50-1-to-v1-52-0-migration-analysis-by-domain]] | doc-13 上游 v1.50.1→v1.52.0 按领域迁移分析 | source, doc, migration, upstream |
-| [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] | doc-14 Kuzu 任务图谱冷启动校验与热更新设计 | source, doc, kuzu, graph, design |
-| [[sources/doc-15-wiki-knowledge-graph-relation-design]] | doc-15 Wiki 知识图谱关系设计（doc-14 第三期） | source, doc, kuzu, graph, wiki, design |
+| [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] | doc-14 Kuzu 任务图谱：冷启动校验与热更新设计 | source, graph, kuzu, design |
+| [[sources/doc-15-wiki-knowledge-graph-relation-design]] | doc-15 Wiki 知识图谱关系设计（doc-14 第三期） | source, graph, wiki, kuzu, design |
 | [[sources/m-9-kuzu-task-graph-phase-1]] | m-9 Kuzu Task Graph Phase 1 里程碑 | source, milestone, kuzu, graph |
 | [[sources/doc-002-configuring-vim-neovim-default-editor]] | doc-002 配置 VIM/Neovim 为默认编辑器 | source, doc, config |
 | [[sources/doc-003-running-backlog-browser-as-a-service]] | doc-003 将 backlog browser 作为服务运行 | source, doc, ops |
+| [[sources/back-222-subtask-visualization-web-ui]] | BACK-222 - Improve task and subtask visualization in web UI | source, web-ui, enhancement, archived |
+| [[sources/back-420-task-content-toc-scrollspy]] | BACK-420 - Add task content TOC and scrollspy in Web UI | source, web-ui, enhancement |
+| [[sources/back-715-state-machine-editor-settings]] | BACK-715 - Add a state machine editor to the settings page | source, feature, web-ui |
+| [[sources/back-716-state-machine-guidance-overviews]] | BACK-716 - State machine guidance: static overview sections + dynamic injection | source, agents, cli, mcp |
+| [[sources/back-717-settings-page-reorder]] | BACK-717 - Reorder the settings page: state machine card above Workflow Settings | source, web-ui |
+| [[sources/back-718-task-help-workflow-overview-hint]] | BACK-718 - Point task create/edit --help at the workflow overview | source, cli |
+| [[sources/back-719-config-list-plain-flag]] | BACK-719 - Make backlog config list accept the --plain flag the overview prints | source, cli |
+| [[sources/back-720-graph-canvas-2d-renderer]] | BACK-720 - Optimize GraphView rendering performance and hover experience | source, web-ui |
+| [[sources/back-721-state-machine-localization-guidance]] | BACK-721 - Optimize State Machine Guidance | source, state-machine, guidelines, i18n |
+| [[sources/back-722-flaky-test-failures-fix]] | BACK-722 - Fix pre-existing and flaky test failures across the suite | source, tests, tooling |
+| [[sources/back-723-biome-tsx-coverage]] | BACK-723 - Extend Biome coverage to .tsx files | source, tooling, biome, web-ui |
+| [[sources/back-724-milestone-modal-fetch-fallback-fix]] | BACK-724 - Fix MilestoneDetailsModal form not populating on fetch fallback | source, web-ui, bug |
+| [[sources/back-725-average-completion-time-statistics]] | BACK-725 - Add average task completion time to project statistics | source, statistics, cli, web-ui, gantt |
+| [[sources/back-726-modal-toc-drawer]] | BACK-726 - Modal markdown outline drawer: bookmark-style TOC entry for task/doc/wiki preview modals | source, web-ui, markdown, wiki |
+| [[sources/back-727-graph-view-light-theme-readability]] | BACK-727 - Improve graph view readability in light theme | source, web-ui, graph |
+| [[sources/back-728-memo-storage-layer]] | BACK-728 - Memo storage layer: src/core/memos.ts | source, feature, cli, web-ui |
+| [[sources/back-729-memo-http-api]] | BACK-729 - Memo HTTP API: /api/memos routes | source, feature, web-ui, api |
+| [[sources/back-730-cli-memo-subcommand]] | BACK-730 - CLI memo subcommand | source, cli, feature |
+| [[sources/back-731-memos-feed-page]] | BACK-731 - Memos feed page with quick capture | source, web-ui, feature |
+| [[sources/back-732-memos-calendar-mode]] | BACK-732 - Calendar mode and feed/calendar linkage on /memos | source, web-ui, feature |
+| [[sources/back-733-include-memos-in-global-search]] | BACK-733 - Include memos in global search | source, feature, web-ui, cli |
+| [[sources/back-734-memos-knowledge-web-links]] | BACK-734 - Wire memos into the knowledge web | source, feature, web-ui |
+| [[sources/back-735-memos-realtime-sync]] | BACK-735 - Realtime sync for memos | source, feature, web-ui |
+| [[sources/back-736-memos-milestone-acceptance-pass]] | BACK-736 - Memos milestone regression and acceptance pass | source, feature, testing |
+| [[sources/back-737-memos-ui-polish]] | BACK-737 - Memos UI polish: calendar popover, note typography, checklist and tag chips | source, feature, web-ui |
+| [[sources/back-738-memo-card-copy-id-modal-background]] | BACK-738 - Memo card menu: copy ID action and fix entity-link modal losing the /memos background | source, bug, web-ui |
+| [[sources/back-739-toc-drawer-floating-mode]] | BACK-739 - TOC drawer: float over the modal when the outside dock would leave the screen | source, web-ui |
+| [[sources/back-740-memo-mcp-tools]] | BACK-740 - Memo MCP tools: memo_create/list/view/update/delete | source, mcp |
+| [[sources/back-741-cli-list-paging]] | BACK-741 - Page long CLI lists with grep-style options | source, cli |
+| [[sources/back-742-mcp-list-pagination]] | Add pagination to MCP list tools and decision_list | source, mcp, web |
+| [[sources/back-743-watch-starter-liveness]] | Stop task list watchers when the process that started them exits | source, cli, watch |
+| [[sources/back-744-watch-idle-cpu-signature]] | Keep idle task list watchers from using constant CPU | source, cli, watch |
+| [[sources/back-745-memo-corpus-signature-gate]] | Gate memo search corpus refreshes behind a stat signature | source, core, memos, search, performance |
+| [[sources/doc-17-state-machine-semantics-diagnosis]] | doc-17 - 状态机语义缺失与 AI 协同：完整诊断、方案与引擎选型 | source, design, mcp, state-machine |
+| [[sources/doc-18-differentiation-gap-analysis]] | doc-18 - 差异化管理机制横向差距分析：七层模型与五个缺口 | source, design |
+| [[sources/doc-19-default-state-machine-prd]] | doc-19 - PRD：默认状态机（7 列 · 三审查点落位 · 可重置 · 指引优先） | source, specification, state-machine, web-ui |
+| [[sources/doc-20-memos-integration]] | doc-20 - 快速笔记：Memos 集成 | source, web-ui, design |
+| [[sources/doc-21-upstream-v1-52-0-to-v1-53-0-migration-diff-classification]] | doc-21 - Upstream v1.52.0 to v1.53.0 Migration Diff Classification | source, migration, cli |
+| [[sources/doc-22-upstream-v1-52-0-to-v1-53-0-migration-analysis-by-domain]] | doc-22 - v1.52.0 至 v1.53.0 上游任务迁移分析报告（按领域） | source, migration, cli |
+| [[sources/m-10-memos-integration]] | m-10 Memos Integration 里程碑 | source, milestone, memos |
 
 ## Execution Notes
 
@@ -327,6 +367,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/revert-matrix-verification]] | 回退矩阵验证法（revert-probe / red-green matrix） | 通过回退探针与先红后绿矩阵定位并确认回归根因 |
 | [[execution/blessed-tui-test-harness]] | blessed TUI 真实屏幕测试模式 | 用真实 blessed screen 驱动 TUI 交互断言的测试搭建 |
 | [[execution/cdp-live-verification]] | headless Chrome CDP 实况验证 | 用 Chrome DevTools Protocol 对 Web UI 做端到端实况验证 |
+| [[execution/two-list-paging-models-wiring]] | 两套列表分页模型的接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
 
 ## Decisions
 
@@ -403,6 +444,8 @@ Read this file FIRST on any wiki operation.
 | [[decisions/always-animate-loading-over-motion-reduce]] | 加载指示器始终动画，优先于 motion-reduce 抑制 | BACK-670 加载反馈的可感知性优先 |
 | [[decisions/toc-entries-from-rendered-dom]] | TOC 条目读渲染后 DOM，而非解析 markdown 源 | BACK-638 大纲与真实渲染保持一致 |
 | [[decisions/free-text-status-storage]] | 决策状态值自由文本存储，不做固定集校验 | BACK-635 状态可扩展性优先于枚举约束 |
+| [[decisions/hand-rolled-state-machine-validator-over-engine]] | 自研零依赖状态机校验器而非引入引擎 | doc-17 现成引擎只覆盖需求 30%，出边权限列出与教学式报错无引擎提供 |
+| [[decisions/cli-list-window-over-cursor]] | CLI 列表分页用窗口模型并移除不透明 cursor | BACK-741 grep/git 风格 --max-count/--skip，memo list 的 --cursor 被否决 |
 
 ## Concepts
 
@@ -442,6 +485,13 @@ Read this file FIRST on any wiki operation.
 | [[concepts/task-locking]] | 任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
 | [[concepts/spotlight-search]] | 全局搜索对话框（Spotlight Search） | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
 | [[concepts/kuzu-graph]] | Kuzu 任务图谱 | FileNode 图模型、MemoryGraphStore 默认后端、冷启动指纹校验、/graph 与 /knowledge 视图、wiki LinksTo |
+| [[concepts/memos]] | 快速笔记（Memos）子系统 | `backlog/memos/` 下第五种文件实体，极简捕获 + 日历，刻意与 ContentStore 重量级体系保持边界 |
+| [[concepts/state-machine]] | 状态机语义 | `statuses` 配置从显示层列定义升级为带语义的状态机：状态类别、转换条件、AI 可读指引 |
+| [[concepts/list-paging]] | 两个刻意不同的列表分页模型 | CLI 窗口模型面向人类/代理翻页阅读，MCP/REST 偏移信封模型面向程序化遍历，故意不统一 |
+| [[concepts/json-watch]] | task list --watch 生命周期契约 | JSON 行流能力：全量替换帧 + 启动方存活性 + 空转成本控制 |
+| [[concepts/statistics-corpus-scope]] | 统计语料范围（completed opt-in） | 项目统计默认活跃语料、completed 显式 opt-in，语料范围是所有统计读数的前置参数 |
+| [[concepts/toc-scrollspy]] | 模态框 TOC 抽屉与 scrollspy | 书签式大纲抽屉 + scrollspy 高亮，解决 Modal 类弹窗无大纲问题 |
+| [[concepts/live-sync-pattern]] | Web UI 实时同步复用模式 | window 事件转发 + 防抖广播 + refreshInPlace 原地刷新三件套，memos/drafts/board 复用 |
 
 ## Entities
 

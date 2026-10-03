@@ -1,13 +1,13 @@
 ---
 title: doc-14 Kuzu 任务图谱：冷启动校验与热更新设计
 created_date: '2026-09-26 14:15'
-updated_date: '2026-09-26 14:15'
+updated_date: '2026-10-03 01:10'
 labels:
   - source
   - graph
   - kuzu
   - design
-source_path: backlog/docs/BRDS/doc-14 - Kuzu-任务图谱：冷启动校验与热更新设计.md
+source_path: backlog/docs/PRDS/kuzu/doc-14 - Kuzu-任务图谱：冷启动校验与热更新设计.md
 ---
 
 # doc-14 Kuzu 任务图谱：冷启动校验与热更新设计
@@ -28,6 +28,13 @@ Design doc (v1, archived copy of `KUZU-GRAPH-SYNC.md`) for embedding a KuzuDB ta
 ## Acceptance Criteria
 
 - Not applicable (design document); phase plan: phase 1 fingerprint cold-start + notify/watch hot update co-located with Web UI, phase 2 IPC hardening + 10k-task bulk-import benchmarks, phase 3 (done) wiki/decisions/docs per doc-15 with `schemaVersion` 2.
+
+## 更新记录（2026-10-03 同步源文档）
+
+- 源文档已从 `backlog/docs/BRDS/` 移至 `backlog/docs/PRDS/kuzu/`（本页 `source_path` 已修正）；内容保持为根目录 `KUZU-GRAPH-SYNC.md` 的归档副本。
+- Schema 版本历史补全：`schemaVersion` 1 = BACK-713 把节点表从 `Task(id)` 改名为 `FileNode(path)` 之后的形状；2 = 三期新增 `Tag` 与三条知识关系边表（当前）。`SCHEMA_VERSION` 常量在 `src/graph/store.ts`，改 DDL 只升常量、不写迁移代码。
+- 版本比对验证方式：用 `bun build src/graph/store.ts --target=node --external kuzu` 转译后以 Node 驱动真实 store（Bun 载入 kuzu 原生绑定会崩），覆盖改名前文件被清、当前版本数据不丢、高版本文件重建、全新文件盖章四种输入。
+- `PARSER_VERSION`（`src/graph/fingerprint.ts`，管文件解析形状）与 `SCHEMA_VERSION`（管图 DDL 形状）分工互不替代，两者都会触发重建。
 
 ## Related Concepts
 

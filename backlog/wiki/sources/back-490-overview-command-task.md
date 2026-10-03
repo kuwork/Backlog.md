@@ -3,7 +3,7 @@ title: BACK-490 CLI overview 命令（项目级统计）
 labels: [source, feature, cli, statistics, health]
 source_path: backlog/tasks/back-490 - Add-CLI-overview-command-for-project-level-task-statistics.md
 created_date: 2026-05-26 23:42
-updated_date: 2026-05-26 23:42
+updated_date: '2026-10-03 01:14'
 ---
 
 # BACK-490 CLI overview 命令（项目级统计）
@@ -91,6 +91,7 @@ At Risk Tasks: (due soon, require immediate attention)
 ## Related Concepts
 - [[concepts/cli-entry]] — CLI 命令体系与 TTY 检测
 - [[concepts/project-health]] — 项目健康度指标计算逻辑
+- [[concepts/statistics-corpus-scope]] — overview 统计输出的语料 scope 参数（--completed opt-in，back-725 指标挂接处）
 
 ## Related Sources
 - [[sources/back-489-health-indicators-task]] — BACK-489 健康指标分类实现

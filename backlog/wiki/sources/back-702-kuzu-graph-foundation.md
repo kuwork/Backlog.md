@@ -1,7 +1,7 @@
 ---
 title: BACK-702 Kuzu graph foundation — schema, fail-closed parser, fingerprint cold start
 created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
+updated_date: '2026-10-03 01:07'
 labels:
   - source
   - graph
@@ -22,6 +22,7 @@ Phase 1 of the doc-014 design: stand up a dependency graph over the backlog corp
 - Cold start: stat-only scan, reuse cached per-file hashes when size+mtime match, aggregate fingerprint = sha256(PARSER_VERSION + sorted relPath|hash); a match reuses the graph with zero parsing, a mismatch/corrupt cache rebuilds; PARSER_VERSION mixed in so parser upgrades force a rebuild
 - Key decision: the kuzu 0.11.3 native binding SEGFAULTS under Bun 1.3.14 on Windows (the doc-014 §5 risk), so `GraphStore` is an abstraction with two backends — opt-in native `KuzuGraphStore` (`BACKLOG_GRAPH_BACKEND=kuzu`) and the default pure-JS `MemoryGraphStore` (the doc's degraded mode), with process singletons keyed by project root
 - 18 tests in `src/test/graph-foundation.test.ts`; Kuzu SQL shapes validated end-to-end through a Node smoke run since Bun cannot load the binding
+- Task closed Done (actual 2026-09-24 07:01→14:25, milestone m-9); full-suite run was deferred to the post-BACK-703 gate per plan
 
 ## Acceptance Criteria
 
