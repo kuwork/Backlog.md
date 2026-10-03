@@ -1,7 +1,7 @@
 ---
 title: To-Do Tasks vs Upstream Migration (v1.47.1–v1.50.1) Cross-Check Report
 created_date: '2026-09-08 17:00'
-updated_date: '2026-09-08 17:00'
+updated_date: '2026-10-03 01:25'
 labels:
   - source
   - migration
@@ -10,6 +10,8 @@ source_path: backlog/docs/migration/doc-16 - To-Do-任务与上游迁移v1.47.1-
 ---
 
 # To-Do Tasks vs Upstream Migration (v1.47.1–v1.50.1) Cross-Check Report
+
+> **源文件已不存在（2026-10-03 lint）**：`source_path` 指向的 `backlog/docs/migration/doc-16 - To-Do-任务与上游迁移v1.47.1-v1.50.1对照分析报告.md` 已于 2026-09-15 被 commit `720d58ad`（"1.50.1到1.52.0升级分析"）删除，git 中无改名记录，`backlog/` 下按 doc-16 精确匹配无同名文件。本页保留作为该报告的 wiki 摘要，不再做 source_path 改写。
 
 Reconciliation report that cross-checked all open To-Do tasks against the three completed upstream migration waves (doc-4/doc-7/doc-9, covering v1.47.1..v1.50.1). Of 42 open tasks at analysis time, 13 were archived as already implemented by migration work, 2 archived as decided skips, 4 flagged as partially implemented pending manual AC comparison, and 25 confirmed still unimplemented. Every "already implemented" claim was verified with grep evidence in `src/`, not just documentation.
 
