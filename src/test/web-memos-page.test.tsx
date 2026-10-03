@@ -16,7 +16,7 @@ import type { Locale } from "../web/locales";
 
 /**
  * The `/memos` feed end to end in jsdom: first page on mount, quick capture through the composer,
- * and cursor pagination through a stubbed IntersectionObserver. `globalThis.fetch` is stubbed
+ * and offset pagination through a stubbed IntersectionObserver. `globalThis.fetch` is stubbed
  * instead of the api module, which would be process-wide in Bun and poison every other suite.
  */
 
@@ -35,7 +35,7 @@ const storedUtc = (date: Date): string => {
 	return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 };
 
-/** Two pages behind one cursor, so a component that ignores the sentinel stops at 2 rows. */
+/** Two pages behind one offset window, so a component that ignores the sentinel stops at 2 rows. */
 const PAGE_ONE = [
 	makeMemo("20261001-3", "Newest memo #idea", ["idea"]),
 	makeMemo("20261001-2", "Middle memo #meeting", ["meeting"]),
@@ -58,7 +58,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 function serveApi(): void {
-	let noCursorFeedFetches = 0;
+	let firstPageFetches = 0;
 	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 		const url = new URL(raw, "http://localhost");
@@ -77,24 +77,33 @@ function serveApi(): void {
 		}
 
 		if (url.pathname === "/api/memos") {
-			const cursor = url.searchParams.get("cursor");
+			const offset = Number(url.searchParams.get("offset") ?? "0");
 			const limit = Number(url.searchParams.get("limit") ?? "30");
 			expect(limit).toBeGreaterThan(0);
-			if (!cursor) {
-				// The first no-cursor fetch is the page load; any later one is the live refresh
+			if (offset === 0) {
+				// The first offset-0 fetch is the page load; any later one is the live refresh
 				// triggered by the memos-updated broadcast. The refresh surfaces a freshly written
 				// memo so the test can prove the list updated in place.
-				noCursorFeedFetches += 1;
-				if (failRefreshes && noCursorFeedFetches > 1) return json({ error: "refresh failed" }, 500);
-				if (noCursorFeedFetches > 1) {
+				firstPageFetches += 1;
+				if (failRefreshes && firstPageFetches > 1) return json({ error: "refresh failed" }, 500);
+				if (firstPageFetches > 1) {
 					return json({
 						items: [...PAGE_ONE, makeMemo("20261001-5", "Refreshed memo #live", ["live"])],
-						nextCursor: "20261001-2",
+						total: PAGE_ONE.length + 1 + PAGE_TWO.length,
+						offset: 0,
+						limit,
+						hasMore: true,
 					});
 				}
-				return json({ items: PAGE_ONE, nextCursor: "20261001-2" });
+				return json({
+					items: PAGE_ONE,
+					total: PAGE_ONE.length + PAGE_TWO.length,
+					offset: 0,
+					limit,
+					hasMore: true,
+				});
 			}
-			return json({ items: PAGE_TWO, nextCursor: null });
+			return json({ items: PAGE_TWO, total: PAGE_ONE.length + PAGE_TWO.length, offset, limit, hasMore: false });
 		}
 
 		if (url.pathname === "/api/memos/calendar") {
@@ -304,7 +313,7 @@ describe("MemosPage feed", () => {
 
 		expect(cardTexts(container)).toHaveLength(3);
 		expect(cardTexts(container).join(" ")).toContain("Oldest memo");
-		expect(requests.some((request) => request.includes("cursor=20261001-2"))).toBe(true);
+		expect(requests.some((request) => request.includes("offset=2"))).toBe(true);
 		expect(container.textContent).toContain("That is every memo");
 	});
 

@@ -4,9 +4,12 @@ import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
 import { formatDocumentCallResult } from "../../utils/document-response.ts";
+import { buildListResult, selectListPage } from "../../utils/list-page.ts";
 
 export type DocumentListArgs = {
 	search?: string;
+	limit?: number;
+	offset?: number;
 };
 
 export type DocumentViewArgs = {
@@ -34,6 +37,7 @@ export type DocumentUpdateArgs = {
 export type DocumentSearchArgs = {
 	query: string;
 	limit?: number;
+	offset?: number;
 };
 
 export class DocumentHandlers {
@@ -85,29 +89,20 @@ export class DocumentHandlers {
 				: documents;
 
 		if (filtered.length === 0) {
-			return {
-				content: [
-					{
-						type: "text",
-						text: "No documents found.",
-					},
-				],
-			};
+			return buildListResult(
+				[{ type: "text", text: "No documents found." }],
+				{ items: [], total: 0, offset: 0, limit: 0, hasMore: false },
+				{ label: "document" },
+			);
 		}
 
+		const page = selectListPage(filtered, { limit: args.limit, offset: args.offset });
 		const lines: string[] = ["Documents:"];
-		for (const document of filtered) {
+		for (const document of page.items) {
 			lines.push(this.formatDocumentSummaryLine(document));
 		}
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: lines.join("\n"),
-				},
-			],
-		};
+		return buildListResult([{ type: "text", text: lines.join("\n") }], page, { label: "document" });
 	}
 
 	async viewDocument(args: DocumentViewArgs): Promise<CallToolResult> {
@@ -173,30 +168,21 @@ export class DocumentHandlers {
 			.filter((result) => result.score === null || result.score === undefined || result.score <= 0.45)
 			.filter((result): result is DocumentSearchResult => result.type === "document");
 		if (documents.length === 0) {
-			return {
-				content: [
-					{
-						type: "text",
-						text: `No documents found for "${args.query}".`,
-					},
-				],
-			};
+			return buildListResult(
+				[{ type: "text", text: `No documents found for "${args.query}".` }],
+				{ items: [], total: 0, offset: 0, limit: 0, hasMore: false },
+				{ label: "document" },
+			);
 		}
 
+		const page = selectListPage(documents, { limit: args.limit, offset: args.offset });
 		const lines: string[] = ["Documents:"];
-		for (const result of documents) {
+		for (const result of page.items) {
 			const { document } = result;
 			const scoreText = this.formatScore(result.score);
 			lines.push(`  ${document.id} - ${document.title} (${document.path ?? "(unknown)"})${scoreText}`);
 		}
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: lines.join("\n"),
-				},
-			],
-		};
+		return buildListResult([{ type: "text", text: lines.join("\n") }], page, { label: "document" });
 	}
 }

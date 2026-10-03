@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
+import { type ListPage, selectListPage } from "../utils/list-page.ts";
 
 /**
  * Lightweight, file-backed storage for memos: throwaway notes that must not be forced into the
@@ -29,8 +30,8 @@ export interface Memo {
 
 export interface MemoPageOptions {
 	limit?: number;
-	/** id of the last memo of the previous page */
-	cursor?: string;
+	/** how many memos to skip before the window (0-based) */
+	offset?: number;
 	/**
 	 * `YYYY-MM-DD` — a LOCAL day. When set, only memos whose stored UTC timestamp falls on that day in
 	 * the machine's own timezone are returned, which is the day the calendar and the feed show.
@@ -39,12 +40,6 @@ export interface MemoPageOptions {
 	/** when set, only memos carrying at least one of these tags (case-insensitive) are returned */
 	tags?: string[];
 }
-
-export interface MemoPage {
-	items: Memo[];
-	nextCursor: string | null;
-}
-
 export const MEMO_PAGE_SIZE = 30;
 
 /** Absolute path of the memo directory for a project root. */
@@ -52,15 +47,29 @@ export function memoDir(root: string): string {
 	return join(root, DEFAULT_DIRECTORIES.BACKLOG, DEFAULT_DIRECTORIES.MEMOS);
 }
 
+/**
+ * The stored (UTC) stamp for "now", the shape `YYYY-MM-DD HH:mm`.
+ *
+ * Deliberately UTC: it is what every other writer in this repo produces, and `localDateKeyFromStoredUtc`
+ * is the one place that turns it back into the local day a day-shaped question is really asking about.
+ */
 function nowStamp(): string {
 	return new Date().toISOString().slice(0, 16).replace("T", " ");
 }
 
+/** `YYYYMMDD` for the current UTC day, the day an id is allocated under. */
 function dateStamp(): string {
 	return new Date().toISOString().slice(0, 10).replace(/-/g, "");
 }
 
-/** `YYYYMMDD` from a stored `YYYY-MM-DD` or `YYYY-MM-DD HH:mm` value, defaulting to today. */
+/**
+ * `YYYYMMDD` from the stored value's own UTC date, defaulting to today.
+ *
+ * An id is a filename and stays stable for the life of the memo, so it is taken from the stored
+ * value rather than from the local day a day-shaped question would use: a note captured at 23:00
+ * local is stored under the next UTC date and is named for that date. `listMemosPage`'s `date`
+ * filter and the calendar are the surfaces that mean the local day - see `localDateKeyFromStoredUtc`.
+ */
 function dateStampFrom(value: string): string {
 	const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
 	if (!match) return dateStamp();
@@ -124,8 +133,8 @@ async function toMemo(file: string): Promise<Memo> {
 }
 
 /**
- * `YYYYMMDD-N` where N is the highest sequence already used on `date` (default today) plus one.
- * A new day (or a back-dated day) restarts at 1.
+ * `YYYYMMDD-N` where N is the highest sequence already used under the stored `date`'s UTC day
+ * (default today) plus one. A new day (or a back-dated day) restarts at 1.
  */
 export async function nextMemoId(root: string, date?: string): Promise<string> {
 	const day = date ? dateStampFrom(date) : dateStamp();
@@ -152,14 +161,14 @@ function sortMemos(memos: Memo[]): Memo[] {
 }
 
 /**
- * Cursor pagination over the newest-first memo list. `cursor` is the id of the last memo of the
- * previous page; `nextCursor` is null once the end of the (optionally filtered) set is reached.
+ * One offset window over the newest-first memo list, after the optional `date`/`tags` filters.
+ * `offset` is how many memos to skip (0-based); the returned `hasMore` says whether any remain.
  *
  * `date` is a local day and the comparison is against the local date part of the memo's converted
  * timestamp: a note captured at 23:00 local is stored under the next UTC date, and filtering on the
  * stored string's first ten characters would file it under tomorrow.
  */
-export async function listMemosPage(root: string, options: MemoPageOptions = {}): Promise<MemoPage> {
+export async function listMemosPage(root: string, options: MemoPageOptions = {}): Promise<ListPage<Memo>> {
 	let all = await listMemos(root);
 	if (options.date) {
 		all = all.filter((memo) => localDateKeyFromStoredUtc(memo.createdDate) === options.date);
@@ -168,12 +177,7 @@ export async function listMemosPage(root: string, options: MemoPageOptions = {})
 		const wanted = new Set(options.tags.map((tag) => tag.toLowerCase()));
 		all = all.filter((memo) => memo.tags.some((tag) => wanted.has(tag.toLowerCase())));
 	}
-	const limit = options.limit ?? MEMO_PAGE_SIZE;
-	const start = options.cursor ? all.findIndex((memo) => memo.id === options.cursor) + 1 : 0;
-	const items = all.slice(start, start + limit);
-	const last = items[items.length - 1];
-	const nextCursor = last && start + limit < all.length ? last.id : null;
-	return { items, nextCursor };
+	return selectListPage(all, { limit: options.limit ?? MEMO_PAGE_SIZE, offset: options.offset });
 }
 
 /** Read a single memo by id, or null when no such file exists. */

@@ -1,5 +1,6 @@
 import type { Memo } from "../../core/memos.ts";
 import { localDateKeyFromStoredUtc } from "../../utils/date-utc.ts";
+import type { ListPage } from "../../utils/list-page.ts";
 
 /**
  * Pure helpers shared by the memos feed (`/memos`). They are kept out of the component so the
@@ -13,46 +14,42 @@ export const MEMO_FEED_PAGE_SIZE = 30;
 export interface MemoFeedState {
 	/** Every page loaded so far, newest first. */
 	memos: Memo[];
-	/** Where the next page starts, or null once the last page is loaded. */
-	nextCursor: string | null;
+	/** Whether the server reported rows beyond the loaded window. */
+	hasMore: boolean;
 }
 
-export const EMPTY_MEMO_FEED: MemoFeedState = { memos: [], nextCursor: null };
+export const EMPTY_MEMO_FEED: MemoFeedState = { memos: [], hasMore: false };
 
 export function tagsToLower(tags: string[]): string[] {
 	return tags.map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0);
 }
 
 /**
- * Append one page behind the rows already loaded: existing rows keep their identity and position
- * (so the browser keeps the scroll offset) and a row that overlaps across cursors is dropped
- * instead of rendered twice. `nextCursor` always comes from the newest page: a server that reports
- * `null` ends the list even when the page itself was not empty.
+ * Append one offset window behind the rows already loaded: existing rows keep their identity and
+ * position (so the browser keeps the scroll offset) and a row an overlapping window returns again is
+ * dropped instead of rendered twice. `hasMore` always comes from the newest window: a server that
+ * reports `false` ends the list even when the window itself was not empty.
  */
-export function appendMemoPage(
-	state: MemoFeedState,
-	page: { items: Memo[]; nextCursor: string | null },
-): MemoFeedState {
-	const nextCursor = page.nextCursor ?? null;
+export function appendMemoPage(state: MemoFeedState, page: ListPage<Memo>): MemoFeedState {
 	const seen = new Set(state.memos.map((memo) => memo.id));
 	const appended = page.items.filter((memo) => !seen.has(memo.id));
 	if (appended.length === 0) {
-		return state.nextCursor === nextCursor ? state : { memos: state.memos, nextCursor };
+		return state.hasMore === page.hasMore ? state : { memos: state.memos, hasMore: page.hasMore };
 	}
-	return { memos: [...state.memos, ...appended], nextCursor };
+	return { memos: [...state.memos, ...appended], hasMore: page.hasMore };
 }
 
 /** Put a just-captured memo at the top of the feed, ignoring ids the feed already carries. */
 export function prependMemo(state: MemoFeedState, memo: Memo): MemoFeedState {
 	if (state.memos.some((existing) => existing.id === memo.id)) return state;
-	return { memos: [memo, ...state.memos], nextCursor: state.nextCursor };
+	return { memos: [memo, ...state.memos], hasMore: state.hasMore };
 }
 
 /** Replace an edited memo in place, keeping its position in the feed. */
 export function replaceMemo(state: MemoFeedState, memo: Memo): MemoFeedState {
 	return {
 		memos: state.memos.map((existing) => (existing.id === memo.id ? memo : existing)),
-		nextCursor: state.nextCursor,
+		hasMore: state.hasMore,
 	};
 }
 
@@ -60,7 +57,7 @@ export function replaceMemo(state: MemoFeedState, memo: Memo): MemoFeedState {
 export function removeMemo(state: MemoFeedState, id: string): MemoFeedState {
 	return {
 		memos: state.memos.filter((memo) => memo.id !== id),
-		nextCursor: state.nextCursor,
+		hasMore: state.hasMore,
 	};
 }
 

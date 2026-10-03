@@ -51,6 +51,11 @@ export const taskListSchema: JsonSchema = {
 			minimum: 1,
 			maximum: 1000,
 		},
+		offset: {
+			type: "number",
+			minimum: 0,
+			description: "Skip this many tasks before returning the window (0-based).",
+		},
 	},
 	required: [],
 	additionalProperties: false,
@@ -90,6 +95,11 @@ export const taskSearchSchema: JsonSchema = {
 			type: "number",
 			minimum: 1,
 			maximum: 100,
+		},
+		offset: {
+			type: "number",
+			minimum: 0,
+			description: "Skip this many tasks before returning the window (0-based).",
 		},
 		completed: {
 			type: "boolean",

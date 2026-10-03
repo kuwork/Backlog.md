@@ -167,28 +167,32 @@ describe("memo storage", () => {
 		]);
 	});
 
-	it("paginates with limit and cursor and returns nextCursor null at the end", async () => {
+	it("paginates with limit and offset and reports hasMore", async () => {
 		await seedMemo(`${todayStamp()}-1`, storedAt(today(), "08:00"), "one");
 		await seedMemo(`${todayStamp()}-2`, storedAt(today(), "09:00"), "two");
 		await seedMemo(`${todayStamp()}-3`, storedAt(today(), "10:00"), "three");
 
 		const firstPage = await listMemosPage(root, { limit: 2 });
 		expect(firstPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-3`, `${todayStamp()}-2`]);
-		expect(firstPage.nextCursor).toBe(`${todayStamp()}-2`);
+		expect(firstPage.total).toBe(3);
+		expect(firstPage.offset).toBe(0);
+		expect(firstPage.hasMore).toBe(true);
 
-		const secondPage = await listMemosPage(root, { limit: 2, cursor: firstPage.nextCursor ?? undefined });
+		const secondPage = await listMemosPage(root, { limit: 2, offset: 2 });
 		expect(secondPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-1`]);
-		expect(secondPage.nextCursor).toBeNull();
+		expect(secondPage.offset).toBe(2);
+		expect(secondPage.hasMore).toBe(false);
 
 		const wholeSet = await listMemosPage(root, { limit: 3 });
 		expect(wholeSet.items).toHaveLength(3);
-		expect(wholeSet.nextCursor).toBeNull();
+		expect(wholeSet.hasMore).toBe(false);
 	});
 
 	it("defaults the page size and returns an empty page when there are no memos", async () => {
 		const empty = await listMemosPage(root);
 		expect(empty.items).toEqual([]);
-		expect(empty.nextCursor).toBeNull();
+		expect(empty.total).toBe(0);
+		expect(empty.hasMore).toBe(false);
 	});
 
 	it("treats a project with no memo directory as empty instead of throwing", async () => {
@@ -209,11 +213,11 @@ describe("memo storage", () => {
 
 		const todayPage = await listMemosPage(root, { date: today() });
 		expect(todayPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-2`, `${todayStamp()}-1`]);
-		expect(todayPage.nextCursor).toBeNull();
+		expect(todayPage.hasMore).toBe(false);
 
 		const onePerPage = await listMemosPage(root, { date: today(), limit: 1 });
 		expect(onePerPage.items.map((memo) => memo.id)).toEqual([`${todayStamp()}-2`]);
-		expect(onePerPage.nextCursor).toBe(`${todayStamp()}-2`);
+		expect(onePerPage.hasMore).toBe(true);
 
 		const pastPage = await listMemosPage(root, { date: pastDay });
 		expect(pastPage.items.map((memo) => memo.id)).toEqual([`${pastStamp}-1`]);

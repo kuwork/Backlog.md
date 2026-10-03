@@ -8,9 +8,34 @@ Always use Backlog.md interfaces to create, list and update decisions so IDs, fr
 
 | Action | Tool |
 |--------|------|
+| List decisions | `decision_list` |
 | Update a decision | `decision_update` |
 
-Creating, listing and viewing decisions are **not exposed over MCP**: use the CLI (`backlog decision create`, `backlog decision list`, `backlog decision view`) for those, or read the `decisions` workflow guide served by the CLI instructions. `decision_update` is provided over MCP because agents frequently need to record the outcome (status) of a decision they are implementing.
+Creating and viewing decisions are done through the CLI (`backlog decision create`, `backlog decision view`) or the `decisions` workflow guide. Listing decisions **is** exposed over MCP via `decision_list`, and `decision_update` records the outcome (status) of a decision an agent is implementing.
+
+### Listing Decisions
+
+Use `decision_list` to read decisions with optional filtering and paging while keeping IDs, frontmatter and search metadata consistent:
+
+```json
+{
+  "limit": 20,
+  "offset": 0,
+  "status": "accepted",
+  "search": "runtime"
+}
+```
+
+Parameters:
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `limit` | No | Page size (1-100). Omit or 0 to return the whole filtered list. |
+| `offset` | No | Number of decisions to skip before the window (0-based). |
+| `status` | No | Exact, case-insensitive status filter (e.g. `proposed`, `accepted`, `rejected`, `superseded`). |
+| `search` | No | Case-insensitive substring match against the decision id or title. |
+
+The result returns a structured envelope `{ items, total, offset, limit, hasMore }` plus a `Showing X-Y of N decisions` text hint, so an agent can paginate without guessing whether more rows exist.
 
 ### Updating Decisions
 

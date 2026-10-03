@@ -10,6 +10,16 @@ export const documentListSchema: JsonSchema = {
 			type: "string",
 			maxLength: 200,
 		},
+		limit: {
+			type: "number",
+			minimum: 1,
+			maximum: 100,
+		},
+		offset: {
+			type: "number",
+			minimum: 0,
+			description: "Skip this many documents before returning the window (0-based).",
+		},
 	},
 	required: [],
 	additionalProperties: false,
@@ -110,6 +120,11 @@ export const documentSearchSchema: JsonSchema = {
 			type: "number",
 			minimum: 1,
 			maximum: 100,
+		},
+		offset: {
+			type: "number",
+			minimum: 0,
+			description: "Skip this many documents before returning the window (0-based).",
 		},
 	},
 	required: ["query"],

@@ -4,6 +4,7 @@ import type { Milestone, Task } from "../../../types/index.ts";
 import { normalizeStringList, stringArraysEqual } from "../../../utils/task-builders.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { CallToolResult } from "../../types.ts";
+import { buildListResult, selectListPage } from "../../utils/list-page.ts";
 import {
 	buildMilestoneMatchKeys,
 	keySetsIntersect,
@@ -11,6 +12,11 @@ import {
 	normalizeMilestoneName,
 	resolveMilestoneStorageValue,
 } from "../../utils/milestone-resolution.ts";
+
+export type MilestoneListArgs = {
+	limit?: number;
+	offset?: number;
+};
 
 export type MilestoneAddArgs = {
 	name: string;
@@ -329,7 +335,7 @@ export class MilestoneHandlers {
 		return await this.core.filesystem.listArchivedMilestones();
 	}
 
-	async listMilestones(): Promise<CallToolResult> {
+	async listMilestones(args: MilestoneListArgs = {}): Promise<CallToolResult> {
 		// Get file-based milestones
 		const fileMilestones = await this.listFileMilestones();
 		const archivedMilestones = await this.listArchivedMilestones();
@@ -379,8 +385,9 @@ export class MilestoneHandlers {
 			.map(([, value]) => value)
 			.sort((a, b) => a.localeCompare(b));
 
+		const page = selectListPage(fileMilestones, { limit: args.limit, offset: args.offset });
+		const milestoneLines = page.items.map((m) => `${m.id}: ${m.title}${formatMilestoneDates(m)}`);
 		const blocks: string[] = [];
-		const milestoneLines = fileMilestones.map((m) => `${m.id}: ${m.title}${formatMilestoneDates(m)}`);
 		blocks.push(formatListBlock(`Milestones (${fileMilestones.length}):`, milestoneLines));
 		blocks.push(formatListBlock(`Milestones found on tasks without files (${unconfigured.length}):`, unconfigured));
 		blocks.push(
@@ -390,14 +397,7 @@ export class MilestoneHandlers {
 			"Hint: use milestone_add to create milestone files, milestone_edit / milestone_remove to manage, milestone_archive to archive.",
 		);
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: blocks.join("\n\n"),
-				},
-			],
-		};
+		return buildListResult([{ type: "text", text: blocks.join("\n\n") }], page, { label: "milestone" });
 	}
 
 	async addMilestone(args: MilestoneAddArgs): Promise<CallToolResult> {

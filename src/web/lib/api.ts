@@ -16,6 +16,7 @@ import type {
 	WikiTreeNode,
 } from "../../types/index.ts";
 import type { DependencyQueryAnswer } from "../../utils/dependency-query.ts";
+import type { ListPage } from "../../utils/list-page.ts";
 import { encodeWikiPath } from "../utils/urlHelpers.ts";
 
 export function isAmbiguousIdConflict(error: unknown): error is ApiError {
@@ -651,15 +652,13 @@ export class ApiClient {
 
 	// Memo endpoints mirror /api/docs but stay out of the doc channel (see core/memos.ts): ids are
 	// `YYYYMMDD-N` and there is no title, so nothing here goes through the document helpers.
-	async fetchMemosPage(
-		options: { limit?: number; cursor?: string; date?: string } = {},
-	): Promise<{ items: Memo[]; nextCursor: string | null }> {
+	async fetchMemosPage(options: { limit?: number; offset?: number; date?: string } = {}): Promise<ListPage<Memo>> {
 		const params = new URLSearchParams();
 		if (options.limit !== undefined) params.set("limit", String(options.limit));
-		if (options.cursor) params.set("cursor", options.cursor);
+		if (options.offset) params.set("offset", String(options.offset));
 		if (options.date) params.set("date", options.date);
 		const query = params.toString();
-		return this.fetchJson<{ items: Memo[]; nextCursor: string | null }>(`${API_BASE}/memos${query ? `?${query}` : ""}`);
+		return this.fetchJson<ListPage<Memo>>(`${API_BASE}/memos${query ? `?${query}` : ""}`);
 	}
 
 	async fetchMemoCalendar(year?: number, month?: number): Promise<Record<string, number>> {

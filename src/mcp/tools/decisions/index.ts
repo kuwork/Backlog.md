@@ -1,12 +1,23 @@
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
-import type { DecisionUpdateArgs } from "./handlers.ts";
+import type { DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
 import { DecisionHandlers } from "./handlers.ts";
-import { decisionUpdateSchema } from "./schemas.ts";
+import { decisionListSchema, decisionUpdateSchema } from "./schemas.ts";
 
 export function registerDecisionTools(server: McpServer): void {
 	const handlers = new DecisionHandlers(server);
+
+	const listDecisionTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "decision_list",
+			description: "List Backlog.md decisions with optional status/search filtering and offset+limit paging",
+			inputSchema: decisionListSchema,
+			annotations: { title: "List Decisions", readOnlyHint: true, destructiveHint: false },
+		},
+		decisionListSchema,
+		async (input) => handlers.listDecisions(input as DecisionListArgs),
+	);
 
 	const updateDecisionTool: McpToolHandler = createSimpleValidatedTool(
 		{
@@ -19,8 +30,9 @@ export function registerDecisionTools(server: McpServer): void {
 		async (input) => handlers.updateDecision(input as DecisionUpdateArgs),
 	);
 
+	server.addTool(listDecisionTool);
 	server.addTool(updateDecisionTool);
 }
 
-export type { DecisionUpdateArgs } from "./handlers.ts";
-export { decisionUpdateSchema } from "./schemas.ts";
+export type { DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
+export { decisionListSchema, decisionUpdateSchema } from "./schemas.ts";

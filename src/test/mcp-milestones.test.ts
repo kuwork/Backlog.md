@@ -1147,4 +1147,44 @@ Milestone: Legacy frontmatter ID
 		expect(text).toContain("Archived milestone values still on tasks (1):");
 		expect(text).toContain("- m-0");
 	});
+
+	describe("milestone list paging envelope (BACK-742)", () => {
+		it("returns the structured envelope with total and hasMore", async () => {
+			await server.testInterface.callTool({ params: { name: "milestone_add", arguments: { name: "Milestone A" } } });
+			await server.testInterface.callTool({ params: { name: "milestone_add", arguments: { name: "Milestone B" } } });
+			await server.testInterface.callTool({ params: { name: "milestone_add", arguments: { name: "Milestone C" } } });
+
+			const first = await server.testInterface.callTool({
+				params: { name: "milestone_list", arguments: { limit: 2 } },
+			});
+			const firstStructured = first.structuredContent as {
+				items: { id: string }[];
+				total: number;
+				offset: number;
+				limit: number;
+				hasMore: boolean;
+			};
+			expect(firstStructured.total).toBe(3);
+			expect(firstStructured.hasMore).toBe(true);
+			expect(firstStructured.limit).toBe(2);
+			expect(firstStructured.items.length).toBe(2);
+			expect(getText(first.content)).toContain("Showing 1-2 of 3 milestones.");
+
+			const second = await server.testInterface.callTool({
+				params: { name: "milestone_list", arguments: { limit: 2, offset: 2 } },
+			});
+			const secondStructured = second.structuredContent as {
+				items: { id: string }[];
+				total: number;
+				offset: number;
+				limit: number;
+				hasMore: boolean;
+			};
+			expect(secondStructured.total).toBe(3);
+			expect(secondStructured.offset).toBe(2);
+			expect(secondStructured.limit).toBe(2);
+			expect(secondStructured.hasMore).toBe(false);
+			expect(secondStructured.items.length).toBe(1);
+		});
+	});
 });

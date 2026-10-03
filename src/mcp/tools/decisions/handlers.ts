@@ -3,12 +3,20 @@ import { isAmbiguousIdError } from "../../../utils/entity-id.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
+import { buildListResult, selectListPage } from "../../utils/list-page.ts";
 
 export type DecisionUpdateArgs = {
 	id: string;
 	content?: string;
 	appendContent?: string[];
 	status?: string;
+};
+
+export type DecisionListArgs = {
+	limit?: number;
+	offset?: number;
+	status?: string;
+	search?: string;
 };
 
 export class DecisionHandlers {
@@ -60,5 +68,36 @@ export class DecisionHandlers {
 			}
 			throw new BacklogToolError("Failed to update decision.", "OPERATION_FAILED");
 		}
+	}
+
+	private formatDecisionSummaryLine(decision: Decision): string {
+		const meta: string[] = [`status: ${decision.status ?? "(unknown)"}`];
+		if (decision.date) {
+			meta.push(`date: ${decision.date}`);
+		}
+		return `  ${decision.id} - ${decision.title} (${meta.join(", ")})`;
+	}
+
+	async listDecisions(args: DecisionListArgs = {}): Promise<CallToolResult> {
+		let decisions = await this.core.filesystem.listDecisions();
+		if (args.status) {
+			const wanted = args.status.toLowerCase();
+			decisions = decisions.filter((decision) => (decision.status ?? "").toLowerCase() === wanted);
+		}
+		if (args.search) {
+			const needle = args.search.toLowerCase();
+			decisions = decisions.filter((decision) => {
+				const haystacks = [decision.id, decision.title];
+				return haystacks.some((value) => value.toLowerCase().includes(needle));
+			});
+		}
+
+		const page = selectListPage(decisions, { limit: args.limit, offset: args.offset });
+		const text =
+			page.items.length === 0
+				? "No decisions found."
+				: ["Decisions:", ...page.items.map((decision) => this.formatDecisionSummaryLine(decision))].join("\n");
+
+		return buildListResult([{ type: "text", text }], page, { label: "decision" });
 	}
 }

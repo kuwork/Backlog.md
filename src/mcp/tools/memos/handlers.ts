@@ -1,11 +1,12 @@
-import { createMemo, deleteMemo, getMemo, listMemosPage, type Memo, updateMemo } from "../../../core/memos.ts";
+import { createMemo, deleteMemo, getMemo, listMemos, type Memo, updateMemo } from "../../../core/memos.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
+import { buildListResult, selectListPage } from "../../utils/list-page.ts";
 
 export type MemoListArgs = {
 	limit?: number;
-	cursor?: string;
+	offset?: number;
 	date?: string;
 	tags?: string[];
 };
@@ -67,33 +68,22 @@ export class MemoHandlers {
 	}
 
 	async listMemos(args: MemoListArgs = {}): Promise<CallToolResult> {
-		const page = await listMemosPage(this.root, {
-			limit: args.limit,
-			cursor: args.cursor,
-			date: args.date,
-			tags: args.tags,
-		});
+		let all = await listMemos(this.root);
+		if (args.date) {
+			all = all.filter((memo) => memo.createdDate.slice(0, 10) === args.date);
+		}
+		if (args.tags && args.tags.length > 0) {
+			const wanted = new Set(args.tags.map((tag) => tag.toLowerCase()));
+			all = all.filter((memo) => memo.tags.some((tag) => wanted.has(tag.toLowerCase())));
+		}
 
+		const page = selectListPage(all, { limit: args.limit, offset: args.offset });
 		const lines: string[] =
 			page.items.length === 0
 				? ["No memos found."]
 				: ["Memos:", ...page.items.map((memo) => formatMemoSummaryLine(memo))];
-		if (page.nextCursor) {
-			lines.push(`More memos available. Next cursor: ${page.nextCursor}`);
-		}
 
-		return {
-			content: [
-				{
-					type: "text",
-					text: lines.join("\n"),
-				},
-			],
-			structuredContent: {
-				items: page.items,
-				nextCursor: page.nextCursor,
-			},
-		};
+		return buildListResult([{ type: "text", text: lines.join("\n") }], page, { label: "memo" });
 	}
 
 	async viewMemo(args: MemoViewArgs): Promise<CallToolResult> {

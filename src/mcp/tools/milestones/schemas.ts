@@ -2,7 +2,18 @@ import type { JsonSchema } from "../../validation/validators.ts";
 
 export const milestoneListSchema: JsonSchema = {
 	type: "object",
-	properties: {},
+	properties: {
+		limit: {
+			type: "number",
+			minimum: 1,
+			maximum: 100,
+		},
+		offset: {
+			type: "number",
+			minimum: 0,
+			description: "Skip this many milestones before returning the window (0-based).",
+		},
+	},
 	required: [],
 	additionalProperties: false,
 };

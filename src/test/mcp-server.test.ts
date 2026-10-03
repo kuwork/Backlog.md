@@ -316,6 +316,7 @@ describe("McpServer bootstrap", () => {
 			"document_create",
 			"document_update",
 			"document_search",
+			"decision_list",
 			"decision_update",
 			"memo_list",
 			"memo_view",
