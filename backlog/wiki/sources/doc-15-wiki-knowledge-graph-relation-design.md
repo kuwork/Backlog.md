@@ -1,14 +1,14 @@
 ---
 title: doc-15 Wiki 知识图谱关系设计（doc-14 第三期）
 created_date: '2026-09-26 14:15'
-updated_date: '2026-09-26 14:15'
+updated_date: '2026-10-03 01:10'
 labels:
   - source
   - graph
   - wiki
   - kuzu
   - design
-source_path: backlog/docs/BRDS/doc-15 - Wiki-知识图谱关系设计（doc-14-第三期）.md
+source_path: backlog/docs/PRDS/kuzu/doc-15 - Wiki-知识图谱关系设计（doc-14-第三期）.md
 ---
 
 # doc-15 Wiki 知识图谱关系设计（doc-14 第三期）
@@ -28,6 +28,11 @@ Detailed phase-3 design extending the doc-14 Kuzu task graph with knowledge file
 ## Acceptance Criteria
 
 - Not applicable (design document); migration order keeps existing wiki usable while adding `file_type` declarations, label normalization, mechanical edge generation, and lint checks (the doc ships the mechanism and reports, not the data migration).
+
+## 更新记录（2026-10-03 同步源文档）
+
+- 源文档已从 `backlog/docs/BRDS/` 移至 `backlog/docs/PRDS/kuzu/`（本页 `source_path` 已修正），`updated_date` 已推进至 2026-09-30。
+- **标签剔除规则变更（BACK-720，2026-09-29 修订）**：§4 的"隐藏载体则 Tag 一并剔除"规则作废。现行规则：Tag 只有在整个语料中没有任何 `TaggedWith` 边时才被剔除（真孤儿）；载体仅被图例隐藏时 Tag 保留显示——图例亮着即节点可见，边仍只在两端都可见时绘制。实现见 `src/web/components/GraphLegend.tsx` 的 `selectVisibleGraph`。
 
 ## Related Concepts
 
