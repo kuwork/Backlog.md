@@ -1,7 +1,7 @@
 ---
 title: BACK-657 Watch task lists with the existing JSON output
 created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
+updated_date: '2026-10-03 01:14'
 labels:
   - source
   - cli
@@ -37,6 +37,7 @@ Subscribers needed a live task list: a complete initial list and refreshed full 
 - [[concepts/json-output]] — the versioned JSON contract the watch stream reuses verbatim
 - [[concepts/cli-instructions]] — where the watch contract is documented in this fork
 - [[concepts/upstream-migration]] — ports upstream BACK-686 (39912b864)
+- [[concepts/json-watch]] — the `task list --watch` lifecycle contract (stream format, starter liveness, idle stat signature)
 
 ## Related Sources
 
