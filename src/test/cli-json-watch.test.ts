@@ -1,16 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Core } from "../index.ts";
 import type { Task } from "../types/index.ts";
-import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup, waitUntil } from "./test-utils.ts";
+import {
+	createLauncherInstall,
+	createUniqueTestDir,
+	getPlatformTimeout,
+	initializeFilesystemTestProject,
+	isWindows,
+	safeCleanup,
+	waitUntil,
+	withTimeout,
+} from "./test-utils.ts";
 
 const CLI = join(process.cwd(), "src", "cli.ts");
+const WATCH = ["task", "list", "--json", "--watch"];
 let directory: string;
 let core: Core;
 const processes: ReturnType<typeof startWatch>[] = [];
 
-type StreamCollector = { read: () => string; settled: Promise<void> };
+type StreamCollector = { read: () => string; settled: Promise<void>; ended: Promise<void> };
 
 /**
  * Collect a child stream into text, settling when the stream ends **or** the process is gone.
@@ -38,6 +48,8 @@ function collect(stream: ReadableStream<Uint8Array>, until: Promise<unknown>, on
 	const collector: StreamCollector = {
 		read: () => text,
 		settled: Promise.race([draining, until]).then(() => undefined),
+		// Resolves only when the stream truly ends or fails, never on `until`.
+		ended: draining.then(() => undefined),
 	};
 	return collector;
 }
@@ -62,17 +74,42 @@ function spawnCli(args: string[]) {
 	});
 }
 
-function startWatch(args: string[] = []): {
+function startWatch(args: string[] = []) {
+	return follow(spawnCli(["--json", "--watch", ...args]));
+}
+
+/** Start the watch from a throwaway process that hands it stdout and stderr, as a script or agent harness would. */
+function startWatchFrom(command: string[]) {
+	// The starter is node, not bun: on Windows bun assigns spawned children to a kill-on-close job
+	// object, so a bun starter's whole tree would die with it and the test could not tell whether
+	// the watch ended by itself. node leaves no such job, so only the watch's own liveness check
+	// can end it. It also runs everywhere the launcher case needs it.
+	const starter = `require("node:child_process").spawn(${JSON.stringify(command[0])}, ${JSON.stringify(command.slice(1))}, { stdio: ["ignore", "inherit", "inherit"] })`;
+	return follow(
+		Bun.spawn(["node", "-e", starter], {
+			cwd: process.cwd(),
+			env: { ...process.env, BACKLOG_CWD: directory },
+			stdin: "ignore",
+			stdout: "pipe",
+			stderr: "pipe",
+			// A POSIX process group lets cleanup stop anything the starter left behind.
+			detached: !isWindows(),
+		}),
+	);
+}
+
+function follow(child: Bun.Subprocess<"ignore", "pipe", "pipe">): {
 	process: Bun.Subprocess<"ignore", "pipe", "pipe">;
 	snapshots: string[];
 	stderr: StreamCollector;
 	reading: Promise<void>;
+	/** Settles when the child's stdout truly ends: no starter, launcher or watch still holds it. */
+	stdoutEnd: Promise<void>;
 } {
-	const process = spawnCli(["--json", "--watch", ...args]);
 	const snapshots: string[] = [];
 	let buffer = "";
-	const stderr = collect(process.stderr, process.exited);
-	const stdout = collect(process.stdout, process.exited, (chunk) => {
+	const stderr = collect(child.stderr, child.exited);
+	const stdout = collect(child.stdout, child.exited, (chunk) => {
 		buffer += chunk;
 		// The existing pretty-printed envelope ends with an unindented closing brace.
 		let end = buffer.indexOf("\n}\n");
@@ -82,7 +119,7 @@ function startWatch(args: string[] = []): {
 			end = buffer.indexOf("\n}\n");
 		}
 	});
-	const result = { process, snapshots, stderr, reading: stdout.settled };
+	const result = { process: child, snapshots, stderr, reading: stdout.settled, stdoutEnd: stdout.ended };
 	processes.push(result);
 	return result;
 }
@@ -261,6 +298,68 @@ describe("CLI JSON watch", () => {
 			if (!exited) child.kill("SIGKILL");
 			await exit;
 		}
+	});
+
+	async function expectWatchToEndWithItsStarter(command: string[]) {
+		// On Windows, bun puts spawned children in a job object whose members all die when the
+		// starter's handle closes, so a plain chain would pass even without the fix. Routing the
+		// command through `cmd /c` breaks that linkage one level down: cmd dies with the starter,
+		// but everything it started keeps running, so only the watch's own liveness check can end it.
+		const watch = startWatchFrom(isWindows() ? ["cmd", "/c", ...command] : command);
+		const tasks = () => JSON.parse(watch.snapshots.at(-1) ?? "{}").tasks?.length;
+		try {
+			await waitUntil(() => tasks() === 0, "initial watch response", getPlatformTimeout(5000));
+			// Outlive at least one liveness check, then keep following changes.
+			await Bun.sleep(1100);
+			await create("TASK-1");
+			await waitUntil(() => tasks() === 1, "watch response after a task change", getPlatformTimeout(5000));
+			watch.process.kill("SIGKILL");
+			await watch.process.exited;
+			// End of output means no starter, launcher or watch process holds it any longer.
+			await withTimeout(watch.stdoutEnd, "watch exit after its starter was killed", getPlatformTimeout(5000));
+			await watch.stderr.settled;
+			expect(watch.stderr.read()).toBe("");
+		} finally {
+			if (!isWindows()) {
+				try {
+					process.kill(-watch.process.pid, "SIGKILL");
+				} catch {
+					// Nothing was left behind.
+				}
+			}
+		}
+	}
+
+	it("ends when the process that started it is killed", async () => {
+		await expectWatchToEndWithItsStarter([process.execPath, CLI, ...WATCH]);
+	});
+
+	it("ends with the launcher when the process that started the npm launcher is killed", async () => {
+		// The platform binary is this Bun, so the launched binary runs the CLI path it is given.
+		const launcher = await createLauncherInstall(join(directory, "launcher"), (path) =>
+			copyFile(process.execPath, path),
+		);
+		await expectWatchToEndWithItsStarter(["node", launcher, CLI, ...WATCH]);
+	});
+
+	it("ignores a stale launcher marker inherited through unrelated processes", async () => {
+		const child = Bun.spawn([process.execPath, CLI, ...WATCH], {
+			cwd: process.cwd(),
+			env: { ...process.env, BACKLOG_CWD: directory, BACKLOG_LAUNCHER: "1:2" },
+			stdin: "ignore",
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		const watch = follow(child);
+		await expectCurrent(watch);
+		// The marker names neither this watch's parent nor any live starter, so it must be ignored:
+		// the watch outlives a liveness tick and still follows changes.
+		await Bun.sleep(1100);
+		expect(watch.process.exitCode).toBeNull();
+		await create("TASK-1");
+		await expectCurrent(watch);
+		watch.process.kill("SIGTERM");
+		await watch.process.exited;
 	});
 
 	it("requires JSON and rejects invalid options without writing a snapshot", async () => {
