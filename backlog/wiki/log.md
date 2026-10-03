@@ -912,3 +912,11 @@ Chronological, append-only record of all wiki operations.
 - `doc-15` 仍停留在 frontmatter `file_type` 版，与实现（目录决定）**相反**；属 `backlog/docs/` 正式文档，须经 Core/CLI 改，已列入待办待用户确认
 - 代码注释 3 处过时仍写 frontmatter：`fingerprint.ts:28`、`import.ts:21`、`incremental.ts:88`
 - `backlog/wiki/usermanual/` 下新出现 `package.json` + `node_modules`（22:04，非本 agent 所为）：虽被 `.gitignore` 忽略，但 **wiki 扫描与图谱 scanner 会递归 `wiki/` 目录**，381 个第三方 md 会被当成 wiki 节点入图，建议移除或迁出 `wiki/` 根目录
+
+## [2026-10-03 01:30:25] batch-ingest | 增量摄取 BACK-715~744、doc-17~22、m-10（Memos 功能线 + 状态机语义化 + 列表分页双模型）
+
+登记：Sources +39（BACK-715~744 共 30、doc-17~22 共 6、back-222/back-420 归档历史补建、m-10 里程碑页新建），Concepts +7（memos / state-machine / list-paging / json-watch / statistics-corpus-scope / toc-scrollspy / live-sync-pattern），Decisions +2（[[decisions/hand-rolled-state-machine-validator-over-engine]]、[[decisions/cli-list-window-over-cursor]]），Execution +1（[[execution/two-list-paging-models-wiring]]）。draft-170~172 按用户裁决不收录。index.md Sources 行同步 back-702/703、doc-14/15 的新 frontmatter title/labels；overview.md 新增 Memos / 状态机语义化 / 列表分页双模型 / watch 生命周期 / v1.52.0→v1.53.0 第五波五节，统计 283→322 sources、34→41 concepts、24→25 execution、71→73 decisions。source_path 健康检查 322 页：4 个失效路径——doc-16（源文件 2026-09-15 被 commit 720d58ad 删除、无改名记录，正文加"源文件已不存在"说明）、config-docs 与 tracking-gantt-design-doc（2026-09-26 lint 已有溯源存疑标注，保留）、src-architecture（`src/` 为目录型 source，存在即有效）。配对记忆：reasoning 无（本批为规范文档无分解规划）；patterns 无新建建议（memos 线是既有 [[patterns/cross-surface-feature-addition]] 的教科书实例）；retrospectives 跳过（距 2026-09-08 不足一月）。
+
+## [2026-10-03 01:30:25] usermanual-update | 更新用户手册：新增 70-快速笔记 章节，覆盖 Memos/分页/状态机编辑器/watch 改进
+## [2026-10-03 09:29:12] batch-ingest | 增量摄取 BACK-745（memo 搜索语料签名门控）、修正 back-742 描述修复注记与 memo 搜索刷新语义（签名+TTL 双门控），重新合并用户手册
+## [2026-10-03 09:44:38] wiki-recovery | 恢复 usermanual/10-任务管理/00-任务生命周期.md：stash-pop 期间 blob a76f97ea 损坏导致页面被误删，从 HEAD 基线重建并按 concepts/state-machine.md 重写「状态机」节，已重新合并手册
