@@ -1,7 +1,7 @@
 ---
 title: BACK-662 Add completed-corpus option to queryTasks and SearchService
 created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
+updated_date: '2026-10-03 01:14'
 labels:
   - source
   - core
@@ -40,6 +40,7 @@ source_path: backlog/tasks/back-662 - Add-completed-corpus-option-to-queryTasks-
 - [[concepts/json-output]] — `TaskSummaryJson` gained the nullable `source` field
 - [[concepts/mcp-server]] — MCP contract gained the `completed` parameter
 - [[concepts/task-lifecycle]] — completed archive as a queryable corpus
+- [[concepts/statistics-corpus-scope]] — the completed-corpus opt-in as the scope parameter for statistics metrics
 
 ## Related Sources
 

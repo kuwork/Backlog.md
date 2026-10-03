@@ -1,7 +1,7 @@
 ---
 title: BACK-703 Incremental rebuild and hot-update sync (Graph Service)
 created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
+updated_date: '2026-10-03 01:07'
 labels:
   - source
   - graph
@@ -23,6 +23,7 @@ Phase 1 sync engine from doc-014 on top of BACK-702: keep the graph live as the 
 - Server: eager fire-and-forget start on boot (lock loss never blocks), `GET /api/graph` returns `{status, backend, nodes, edges, reports, nodeCount}` with `building` during first import and 503 when another process holds the lock; updates pushed over the existing WebSocket channel (`graph-updated`), not SSE
 - Validation (`src/graph/validation.ts`): millisecond count checks after cold start; lazy DFS cycle detection off the critical path; `isReady`/`isBlocked` delegated to `readiness.ts`, never re-implemented in Cypher
 - Tests: 11 new in `graph-sync.test.ts` plus a real-repo Node+kuzu E2E (744 nodes / 125 edges)
+- Task closed Done (actual 2026-09-24 07:43→08:40, milestone m-9, dependency BACK-702); updates reach the Web UI over the existing WebSocket channel (`graph-updated`) rather than the SSE originally sketched in doc-014
 
 ## Acceptance Criteria
 

@@ -1,7 +1,7 @@
 ---
 title: BACK-665 Add a completed-corpus checkbox to the web board and task list filter bars
 created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
+updated_date: '2026-10-03 01:14'
 labels:
   - source
   - web-ui
@@ -37,6 +37,7 @@ The web UI could already read the completed corpus (BACK-662 widened the search 
 - [[concepts/web-ui-features]] — board and task list filter-bar conventions this control joins
 - [[concepts/task-lifecycle]] — the completed corpus as a destination distinct from Done status
 - [[concepts/web-ui-i18n]] — four-locale label requirement for every filter control
+- [[concepts/statistics-corpus-scope]] — CompletedFilterToggle as the shared corpus-scope switch surface for statistics
 
 ## Related Sources
 
