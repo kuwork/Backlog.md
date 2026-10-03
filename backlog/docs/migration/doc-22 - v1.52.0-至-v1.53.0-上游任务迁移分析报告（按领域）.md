@@ -3,7 +3,7 @@ id: doc-22
 title: v1.52.0 至 v1.53.0 上游任务迁移分析报告（按领域）
 type: guide
 created_date: '2026-10-02 05:47'
-updated_date: '2026-10-02 05:55'
+updated_date: '2026-10-03 05:00'
 ---
 # 上游任务迁移分析报告（v1.52.0 .. v1.53.0，按领域）
 
@@ -17,7 +17,7 @@ updated_date: '2026-10-02 05:55'
 
 # 一、CLI / Core（命令行与核心数据）
 
-## CLI-1：BACK-687 Page long CLI lists with grep-style options（draft-170）
+## CLI-1：BACK-687 Page long CLI lists with grep-style options（[BACK-741](/task/741)）
 
 | 分析维度 | 内容 |
 |----------|------|
@@ -25,7 +25,7 @@ updated_date: '2026-10-02 05:55'
 | **变更内容摘要** | 三个线性提交 `aded8e25 → 01fadcbf → 26c897d4`，**终态是 `26c897d4`**（不是同标题重复，`git log --parents` 串成一条链）。新增 `src/utils/list-window.ts`（终态 214 行）：`:44` `LIST_WINDOW_OUTPUT_HELP`、`:47` `LIST_WINDOW_HELP_FIELDS`、`:57` `addListWindowOptions`、`:72` `parsePositiveIntegerOption`（由 `src/cli.ts` 迁入）、`:90` `parseListWindow`、`:123` `selectListWindow`、`:141` `milestoneSectionsInWindow`（从回调抽出的纯函数）、`:161` `nextPageCommand`、`:186` `formatListWindowFooter`、`:198` `printListWindow`。接入面：`src/cli.ts` 经统一入口 `resolveListOutput` 串起 `task list` / `search` / `draft list` / `milestone list` / `doc list` / `doc search` / `decision list` 七个命令；`src/formatters/json-output.ts:220-221` 新增 `cutListJson`（被窗口切开时才加 `total` 与 `nextSkip`）；`src/file-system/operations.ts`（同标题文档按 path 稳定排序，使相邻窗口不重叠也不漏项）；`CLI-INSTRUCTIONS.md` 与 `src/guidelines/cli-instructions/{overview,task-creation}.md` 补帮助契约；新增 `src/test/list-window.test.ts` 与 `src/test/cli-list-window.test.ts`。三次提交的 cli.ts 改动量分别为 506 / 72 / 186 行。 |
 | **与当前定制代码的交集风险** | 中高 — fork **完全没有这套机制**：无 `src/utils/list-window.ts`，全仓无 `--max-count` / `--skip` / `--count`。但汇入点冲突实际在三处：① `src/cli.ts` 是所有列表命令的汇聚点，fork 6595 行 vs 上游 5934（+661），改动不能用 hunk 对齐、只能逐个命令重接；② `parsePositiveIntegerOption` 在 fork 是 `src/cli.ts:257` 的**模块私有函数**（服务于 `--limit`），而上游在本次把它搬去了 `list-window.ts` 并导出，迁移时要处理这个搬迁关系，不能让两处并存；③ **fork 自研的 `memo list` 另有一套 cursor 分页** —— `src/cli.ts:5318` 的 `-l, --limit`（默认 30）+ `--cursor`，`:5354` 打印 `More memos available. Next page: backlog memo list --limit <n> --cursor <nextCursor>`。它与上游的 offset 窗口是**两套语义**（游标 vs 偏移），不能混为一谈；已决定按**分层并存**接入（与上游 `task list` 同构，见文末决策记录）：`--limit`/`--cursor` 原样保留为第一层，窗口选项叠在其上为第二层，不动 cursor 语义。此外 fork 另有 `config list`（`:6014`）等上游没有的列表命令，接入与否需单独决定。 |
 | **适合迁移的内容** | 「截断即告知」这个契约本身：切开的纯文本输出尾部 `Showing <first>-<last> of <total> items. Next: <command>`、`--count` 只打数字、JSON 仅在切开时附 `total` / `nextSkip`、窗口在过滤排序之后再按打印顺序切（相邻窗口能拼回完整输出）。以及「同标题文档按 path 破平」这条稳定排序补丁。这些都是对 agent 读取体验的净增量，且不与排除清单任何一节冲突。 |
-| **需要排除/调整的内容** | ① 不改 `memo list` 的 cursor 语义；② 不把 `parsePositiveIntegerOption` 在 fork 的 `src/cli.ts:257` 副本与新位置并存，按 fork 结构选一处；③ milestone 列的「被切开时只打印实际有里程碑的小节」分支需按 fork 的 `milestone list`（`src/cli.ts:4369`）现有打印结构重排，不能照抄 `milestoneSectionsInWindow` 的调用点；④ upstream 选了「长选项、无短标志」的理由是 `-m` 已被 `--milestone` 占用——fork 同样占用，故必须沿用长选项。**占用者是 `task` 主命令**（不是某个冷门子命令）：`task create` `src/cli.ts:1919`、`task list` `:2933`（filter tasks by milestone —— 就在本条要加 `--max-count` 的同一命令上）、`task edit` `:3641` 经共享的 `addEditFieldOptions`（`:3112`，fork 在 `:3136`）也带 `-m`，`draft edit` `:4203` 复用同一辅助函数；此外 `board` 用 `-m, --milestones`（复数，`:4665`）。上游 v1.53.0 同构：`:1955` / `:2971` / `:3794`+`:3576` / `:4478`。上游任务原文 AC #4 的原话是 `No short flags are added because -m already means --milestone.`（见 [draft-170](/draft/170)）。**已决定**：fork 侧主动放弃 `--milestone` 的 `-m` 短称（`:1919` / `:2933` / `:3136`），并**直接移除 `board` 的 `-m, --milestones`**（`:4665`）——后者是整体移除、不是只去短称。腾出的 `-m` **不分配给 `--max-count`**：`--max-count` 与 `--skip` 骨架借自 `git log`（git 的 `--max-count` 短称是 `-n` 而非 `-m`，且 `--skip` 在 git 里也无短标志），只有 `--count` 借自 grep（`-c`），故窗口选项一律沿用长选项。**本条不涉及排除清单任何一节**（不碰日期、里程碑 actual 字段、甘特图、统计页、task edit 的 set/add 语义）。 |
+| **需要排除/调整的内容** | ① 不改 `memo list` 的 cursor 语义；② 不把 `parsePositiveIntegerOption` 在 fork 的 `src/cli.ts:257` 副本与新位置并存，按 fork 结构选一处；③ milestone 列的「被切开时只打印实际有里程碑的小节」分支需按 fork 的 `milestone list`（`src/cli.ts:4369`）现有打印结构重排，不能照抄 `milestoneSectionsInWindow` 的调用点；④ upstream 选了「长选项、无短标志」的理由是 `-m` 已被 `--milestone` 占用——fork 同样占用，故必须沿用长选项。**占用者是 `task` 主命令**（不是某个冷门子命令）：`task create` `src/cli.ts:1919`、`task list` `:2933`（filter tasks by milestone —— 就在本条要加 `--max-count` 的同一命令上）、`task edit` `:3641` 经共享的 `addEditFieldOptions`（`:3112`，fork 在 `:3136`）也带 `-m`，`draft edit` `:4203` 复用同一辅助函数；此外 `board` 用 `-m, --milestones`（复数，`:4665`）。上游 v1.53.0 同构：`:1955` / `:2971` / `:3794`+`:3576` / `:4478`。上游任务原文 AC #4 的原话是 `No short flags are added because -m already means --milestone.`（现为 fork 任务 [BACK-741](/task/741)，原文见 `git show v1.53.0:backlog/tasks/back-687 - Page-long-CLI-lists-with-grep-style-options.md`）。**最终定案：不动 `-m`** —— `task create` `:1919` / `task list` `:2933` / 共享的 `addEditFieldOptions` `:3136` / `board` `:4665` 全部保持原样（此前 D2 / D3 记录的「放弃 `-m`」「移除 `--milestones`」**已作废**，见第六节）。腾出的说法不再成立，`-m` **不分配给 `--max-count`**：`--max-count` 与 `--skip` 骨架借自 `git log`（git 的 `--max-count` 短称是 `-n` 而非 `-m`，且 `--skip` 在 git 里也无短标志），只有 `--count` 借自 grep（`-c`），故窗口选项一律沿用长选项。**本条不涉及排除清单任何一节**（不碰日期、里程碑 actual 字段、甘特图、统计页、task edit 的 set/add 语义）。 |
 | **迁移优先级** | B类（评估合入）。依据：纯新增能力，不是安全修复也不是缺陷纠正，按 `doc-12` 既定的「新增能力即便 fork 净空白也归 B 类」口径判 B。它的价值在 agent 契约（fork 一贯把 `addHelpSchema` 与 `src/guidelines/**` 当作机器可读契约维护），值得合但不是必须。 |
 | **迁移建议** | ②参考重写。理由：`src/cli.ts` 是 fork 变更最密集的文件之一，七个命令的落点要逐个按 fork 现状重建，直接套 hunk 必冲突；`list-window.ts` 这个新模块本身反而可以近乎原样引入（它不依赖 fork 定制面），重写的是「接线」而非「窗口逻辑」。 |
 
@@ -47,7 +47,7 @@ fork **独有**、上游没有对应物、需单独决定接不接的列表命�
 
 | 命令 | fork 落点 | 现状 | 建议 |
 |------|-----------|------|------|
-| `memo list` | `:5288` | 已有**自研 cursor 分页**：`-l, --limit`（默认 30）+ `--cursor`，`:5354` 打印 `Next page: backlog memo list --limit <n> --cursor <x>` | **接入（分层并存）** —— `--limit`/`--cursor` 保留为第一层，`--max-count`/`--skip`/`--count` 叠在其上为第二层，与上游 `task list` 同构。无 CLI 测试牵制 |
+| `memo list` | `:5288` | 原有**自研 cursor 分页**：`-l, --limit`（默认 30）+ `--cursor`，`:5354` 打印 `Next page: backlog memo list --limit <n> --cursor <x>` | **接入，且用 `--skip` 取代 `--cursor`** —— 移除 `--cursor` 与默认 30 的 `--limit`，改走统一窗口尾部。`listMemosPage` 的 `cursor` 保留给 MCP 与 server API。无 CLI 测试牵制 |
 | `config list` | `:6014` | 无分页 | 视输出规模定，优先级最低 |
 | `sequence list` | `:5654` | 只有 `--plain`，无分页 | fork 自研命令，上游无对等物；按需单独评估 |
 | `wiki` 子命令 | — | fork 自研子系统 | 同上 |
@@ -60,7 +60,7 @@ fork **独有**、上游没有对应物、需单独决定接不接的列表命�
 
 > 本域两条都建立在 [BACK-657](/task/657) 迁移进来的 watch 管线上。**实测**：fork 的 `src/commands/watch-json.ts` 与上游 `v1.52.0` 版本**逐字节一致**（`diff` 空），`src/test/watch-json.test.ts` 同样逐字节一致 —— 两条修复瞄准的缺陷在 fork 原样存在；需要按 fork 现状改写的是测试脚手架，不是实现本体。
 
-## SRV-1：BACK-688 Stop task list watchers when the process that started them exits（draft-171）
+## SRV-1：BACK-688 Stop task list watchers when the process that started them exits（[BACK-743](/task/743)）
 
 | 分析维度 | 内容 |
 |----------|------|
@@ -74,7 +74,7 @@ fork **独有**、上游没有对应物、需单独决定接不接的列表命�
 
 ---
 
-## SRV-2：BACK-689 Keep idle task list watchers from using constant CPU（draft-172）
+## SRV-2：BACK-689 Keep idle task list watchers from using constant CPU（[BACK-744](/task/744)）
 
 | 分析维度 | 内容 |
 |----------|------|
@@ -122,9 +122,9 @@ fork **独有**、上游没有对应物、需单独决定接不接的列表命�
 
 | # | 决策 | 内容 | 依据 |
 |---|------|------|------|
-| D1 | `memo list` 接入方式 | **分层并存**：`-l, --limit`（默认 30）+ `--cursor` 原样保留为第一层，`--max-count` / `--skip` / `--count` 叠加为第二层（作用于已过滤、已排序、已被 `--limit` 截断的列表），尾部仍打 `Next page` 提示 | 与上游 `task list` 同构 —— 上游 v1.53.0 `src/cli.ts:2991` 保留 `--limit`，`:2993` 才追加窗口选项；draft-170:63 原文 "windows its already filtered, sorted and **--limit-shortened** list"，测试清单含 `--limit unchanged` |
-| D2 | `--milestone` 短称 | **放弃 `-m`**：`task create` `:1919` / `task list` `:2933` / `task edit` 与 `draft edit` 共享的 `addEditFieldOptions` `:3136`。长选项保留 | 消除与 grep `-m`（--max-count）的语义混淆 |
-| D3 | `board` 的里程碑选项 | **整体移除** `-m, --milestones`（`:4665`），包括其分组分支与 help schema 字段，**不只是去短称** | 用户指定。注意这是功能删减，若本意只是去短称需回退此条 |
+| D1 | `memo list` 接入方式 | **用 `--skip` 取代 `--cursor`**（已改，原为「分层并存」）：`--cursor <memoId>`（`:5319`）与 `Next page: ... --cursor <x>` 提示（`:5354`）**移除**，`--limit` 的默认值 30（`:5318`）**取消**（否则窗口永远只看得到最新 30 条，`--skip` 取不到后面的），改走与其他 7 条命令相同的窗口尾部 `Showing <first>-<last> of <total> items. Next: backlog memo list --limit <n> --skip <m>`。`listMemosPage` 的 `cursor` 参数保留给 MCP memo 工具与 server API | 与上游 `task list` 同构 —— 上游 v1.53.0 `src/cli.ts:2991` 保留 `--limit`，`:2993` 才追加窗口选项；上游任务原文 Implementation Notes："windows its already filtered, sorted and **--limit-shortened** list"（`git show v1.53.0:backlog/tasks/back-687 - Page-long-CLI-lists-with-grep-style-options.md`；draft-170 已升级为 [BACK-741](/task/741)，正文已按 fork 范围重写，故不再引用草稿行号），测试清单含 `--limit unchanged` |
+| D2 | `--milestone` 短称 | ~~放弃 `-m`~~ **已作废** → 现为**不动 `-m`**：`task create` `:1919` / `task list` `:2933` / 共享的 `addEditFieldOptions` `:3136` 全部保持原样 | 消除与 grep `-m`（--max-count）的语义混淆 |
+| D3 | `board` 的里程碑选项 | ~~整体移除 `-m, --milestones`~~ **已作废** → 现为**保留** `-m, --milestones`（`:4665`）及其分组分支与 help schema 字段，一行都不动 | 用户最终定案「不修改原有 `-m` 参数」 |
 | D4 | 腾出的 `-m` | **不分配给 `--max-count`**；窗口选项一律沿用长选项 | BACK-687 的骨架借自 `git log`（`--max-count` / `--skip`），git 的 `--max-count` 短称是 `-n` 而非 `-m`，`--skip` 在 git 亦无短标志；仅 `--count` 借自 grep（`-c`） |
 
 ### grep / git 短称惯例对照

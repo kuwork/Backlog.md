@@ -3,7 +3,7 @@ id: doc-21
 title: Upstream v1.52.0 to v1.53.0 Migration Diff Classification
 type: guide
 created_date: '2026-10-02 05:47'
-updated_date: '2026-10-02 05:55'
+updated_date: '2026-10-03 05:00'
 ---
 # 上游变更差异分类（v1.52.0 .. v1.53.0）
 
@@ -27,7 +27,7 @@ updated_date: '2026-10-02 05:55'
 
 > ⚠️ **深度分析已执行**（2026-10-01）：下表为深度分析的**最终分类**，逐条以上游 merge commit 与当前 fork 工作树的 file:line 对照为依据。
 > **分类口径**（沿用 `doc-12`）：A 类仅限安全漏洞、严重性能瓶颈、与当前 fork 共用模块的关键缺陷；新增能力、展示优化归 B 类评估。**初筛 → 深度分析 = CLI-1 B→B、SRV-1 A→A、SRV-2 A→A，无升降档。**
-> **「原始/迁移任务」列**：上游任务文件已按技能「原始任务文件导入规范」导入为 draft —— 3 条分别填 `[DRAFT#170](/draft/170)`、`[DRAFT#171](/draft/171)`、`[DRAFT#172](/draft/172)`。升级为当前 fork 任务后替换为 `[BACK-XXX](/task/XXX)`。**「分析报告」列**指向 `doc-22` 的对应小节。
+> **「原始/迁移任务」列**：上游任务文件已按技能「原始任务文件导入规范」导入为 draft —— 3 条分别为 `draft-170` / `draft-171` / `draft-172`。其中 **CLI-1 的 `draft-170` 已升级为 fork 任务 [BACK-741](/task/741)**（正文按 fork 范围用英文重写，12 条 AC 全部未勾选），**SRV-1 的 `draft-171` 已升级为 fork 任务 [BACK-743](/task/743)**（同样按 fork 范围重写，7 条 AC 全部未勾选），故该列分别改为 `[BACK-741](/task/741)` / `[BACK-743](/task/743)`；`draft-172`（SRV-2）已升级为 fork 任务 [BACK-744](/task/744)（同样按 fork 范围重写，6 条 AC 全部未勾选），故该列分别改为 `[BACK-741](/task/741)` / `[BACK-743](/task/743)` / `[BACK-744](/task/744)`。**「分析报告」列**指向 `doc-22` 的对应小节。
 > **表内两类 `BACK-nnn` 含义不同**：「标题」列的是上游任务，「原始/迁移任务」列的 `[BACK-nnn](/task/nnn)` 是 fork 迁移任务。fork 任务号按 fork 自己的分配器给号，与上游编号体系无关，可能同号不同事；判断以链接指向为准。
 
 ## 清单口径与数据质量备注
@@ -44,7 +44,7 @@ updated_date: '2026-10-02 05:55'
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 优先级 | 迁移建议 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|--------|----------|----------|----------|
-| CLI-1 | **BACK-687 Page long CLI lists with grep-style options** | 给 `task list` / `search` / `draft list` / `milestone list` / `doc list` / `doc search` / `decision list` 七个列表命令加 grep 风格的 `--max-count <n>` / `--skip <n>` / `--count`；切开的纯文本尾部打印 `Showing <first>-<last> of <total> items. Next: <command>`，JSON 仅在切开时附 `total` 与 `nextSkip` | 解决 `--limit` 静默截断、agent 读到不完整列表也不自知的问题，是 agent 契约层的净增量；新增 `src/utils/list-window.ts`（214 行）+ 统一入口 `resolveListOutput`，并从 `src/cli.ts` 把 `parsePositiveIntegerOption` 迁出导出 | 中高 | B | ②参考重写 | [DRAFT#170](/draft/170) | [doc-22 CLI-1 主段+盘点](/documentation/22:20-55) · [实施决策记录](/documentation/22:119-166) · [输出语义核对](/documentation/22:154-166) |
+| CLI-1 | **BACK-687 Page long CLI lists with grep-style options** | 给 `task list` / `search` / `draft list` / `milestone list` / `doc list` / `doc search` / `decision list` 七个列表命令加 grep 风格的 `--max-count <n>` / `--skip <n>` / `--count`；切开的纯文本尾部打印 `Showing <first>-<last> of <total> items. Next: <command>`，JSON 仅在切开时附 `total` 与 `nextSkip` | 解决 `--limit` 静默截断、agent 读到不完整列表也不自知的问题，是 agent 契约层的净增量；新增 `src/utils/list-window.ts`（214 行）+ 统一入口 `resolveListOutput`，并从 `src/cli.ts` 把 `parsePositiveIntegerOption` 迁出导出 | 中高 | B | ②参考重写 | [BACK-741](/task/741) | [doc-22 CLI-1 主段+盘点](/documentation/22:20-55) · [实施决策记录](/documentation/22:119-166) · [输出语义核对](/documentation/22:154-166) |
 
 ---
 
@@ -54,8 +54,8 @@ updated_date: '2026-10-02 05:55'
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 优先级 | 迁移建议 | 原始/迁移任务 | 分析报告 |
 |---|------|----------|------|----------|--------|----------|----------|----------|
-| SRV-1 | **BACK-688 Stop task list watchers when the process that started them exits（#1037）** | npm launcher 向原生二进制注入内部 env `BACKLOG_LAUNCHER=<pid>:<ppid>`；watch 在 CLI 加载时记录启动进程，在既有 1 秒对账 tick 上以 `ppid` 变化或 `kill(pid, 0)` 返回 `ESRCH` 判定启动方已死，随即按 exit 143 强退 | 资源泄漏型缺陷：启动方被杀后 watcher 变孤儿（PPID 1）无限运行，安静仓库里永不退出。fork 逐字节复刻了该缺陷代码，`task list --json --watch` 也是 fork 的已发布命令 | 低 | **A** | ①直接复用 | [DRAFT#171](/draft/171) | [doc-22 SRV-1](/documentation/22:63-73) |
-| SRV-2 | **BACK-689 Keep idle task list watchers from using constant CPU（#1036）** | 空闲时不再每秒重跑完整任务列表读取；改为对「规范读取真正读到的一级路径」取 stat 签名（名字 + size + mtime + ctime），签名变了才触发读；通知路径不变，仍 1 秒内修复被漏掉的通知 | 严重性能瓶颈：上游实测 645 条目的仓库上空闲占用 35.8%，修复后 0.68%。**fork 的 `backlog/` 下有 1379 个 md 文件，是上游基线的两倍多**，收益更大 | 低 | **A** | ①直接复用 | [DRAFT#172](/draft/172) | [doc-22 SRV-2](/documentation/22:77-87) |
+| SRV-1 | **BACK-688 Stop task list watchers when the process that started them exits（#1037）** | npm launcher 向原生二进制注入内部 env `BACKLOG_LAUNCHER=<pid>:<ppid>`；watch 在 CLI 加载时记录启动进程，在既有 1 秒对账 tick 上以 `ppid` 变化或 `kill(pid, 0)` 返回 `ESRCH` 判定启动方已死，随即按 exit 143 强退 | 资源泄漏型缺陷：启动方被杀后 watcher 变孤儿（PPID 1）无限运行，安静仓库里永不退出。fork 逐字节复刻了该缺陷代码，`task list --json --watch` 也是 fork 的已发布命令 | 低 | **A** | ①直接复用 | [BACK-743](/task/743) | [doc-22 SRV-1](/documentation/22:63-73) |
+| SRV-2 | **BACK-689 Keep idle task list watchers from using constant CPU（#1036）** | 空闲时不再每秒重跑完整任务列表读取；改为对「规范读取真正读到的一级路径」取 stat 签名（名字 + size + mtime + ctime），签名变了才触发读；通知路径不变，仍 1 秒内修复被漏掉的通知 | 严重性能瓶颈：上游实测 645 条目的仓库上空闲占用 35.8%，修复后 0.68%。**fork 的 `backlog/` 下有 1379 个 md 文件，是上游基线的两倍多**，收益更大 | 低 | **A** | ①直接复用 | [BACK-744](/task/744) | [doc-22 SRV-2](/documentation/22:77-87) |
 
 ---
 
@@ -72,7 +72,7 @@ updated_date: '2026-10-02 05:55'
 
 ## 交叉依赖与建议迁移顺序
 
-- **第一波（连续演进，同文件、低冲突、缺陷修复）**：SRV-1（BACK-688 启动方退出即停）→ SRV-2（BACK-689 空闲 CPU）。**强依赖**：SRV-2 的 diff 直接建在 SRV-1 改过的那行 `setInterval` 上，不先合 SRV-1 就没有插入点。两者依赖的源文件与 `v1.52.0` 逐字节一致，`scripts/cli.cjs` 的插入点也一致，是本范围唯一可以「近乎原样吸收」的一组。
+- **第一波（连续演进，同文件、低冲突、缺陷修复）**：~~SRV-1~~（BACK-688 启动方退出即停，已由 [BACK-743](/task/743) 落地）→ ~~SRV-2~~（BACK-689 空闲 CPU，已由 [BACK-744](/task/744) 落地）。**强依赖**：SRV-2 的 diff 直接建在 SRV-1 改过的那行 `setInterval` 上，不先合 SRV-1 就没有插入点。两者依赖的源文件与 `v1.52.0` 逐字节一致，`scripts/cli.cjs` 的插入点也一致，是本范围唯一可以「近乎原样吸收」的一组。
 - **第二波（改动面大、纯增量）**：CLI-1（BACK-687 列表分页）。独立于第一波。排后的理由是 `src/cli.ts` 七个命令的接线要逐个按 fork 现状重建，另加 `memo list` 的分层并存接入（保留 `--limit` / `--cursor`，只叠窗口层，不动其语义），工作量集中在一个文件，不宜并行。
 - **CLI-1 的覆盖面不是「只 task」**：上游 `resolveListOutput` 串起 7 个命令（`search` / `task list` / `draft list` / `milestone list` / `doc list` / `doc search` / `decision list`）。fork 侧逐个现状见 [doc-22 CLI-1 补充盘点](/documentation/22:32-55) —— 7 个对等命令里 3 个是「有 `--limit` 但静默截断」，4 个是「完全无分页、全量输出」；另有 `memo list` / `config list` / `sequence list` / `wiki` 四条 fork 独有列表命令上游未覆盖（`memo list` 按**分层并存**接入，其余单独评估）。
 - **fork 相对上游的四条自主决策**（D1 `memo list` 分层并存 / D2 `--milestone` 放弃 `-m` / D3 `board` 整体移除 `-m, --milestones` / D4 腾出的 `-m` 不分配给 `--max-count`）见 [doc-22 CLI-1 实施决策记录](/documentation/22:119-166)。
@@ -81,7 +81,10 @@ updated_date: '2026-10-02 05:55'
 
 ## 迁移任务状态
 
-尚未创建迁移任务。上游三个任务文件已按技能规范导入为 `backlog/drafts/` 下的 draft（`DRAFT#170` / `DRAFT#171` / `DRAFT#172`），等待用户挑选条目后 `backlog draft promote` 升级为 fork 任务，届时本表的「原始/迁移任务」列相应替换为 `[BACK-XXX](/task/XXX)`。
+CLI-1、SRV-1、SRV-2 已分别升级为 [BACK-741](/task/741)、[BACK-743](/task/743) 与 [BACK-744](/task/744)，三条上游 draft 均已随 promote 删除。
 
 | 迁移任务 | 对应条目 | 状态 |
 |----------|----------|------|
+| [BACK-741](/task/741) | CLI-1 | Done |
+| [BACK-743](/task/743) | SRV-1 | Done |
+| [BACK-744](/task/744) | SRV-2 | Done |
