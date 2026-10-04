@@ -1030,6 +1030,12 @@ export const en = {
 		copied: "Copied",
 		saveChanges: "Save",
 		confirmDelete: "Delete this memo permanently?",
+		viewList: "List",
+		viewBoard: "Pinboard",
+		webglUnavailable: "The pinboard needs WebGL, which this browser does not support — switch back to the list view.",
+		fullscreen: "Fullscreen",
+		exitFullscreen: "Exit fullscreen",
+		noteModalTitle: "Note",
 	},
 	loadingPhases: {
 		loadingLocalTasks: "Loading local tasks...",
