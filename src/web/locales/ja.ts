@@ -1022,6 +1022,13 @@ export const ja: TranslationDict = {
 		copied: "コピーしました",
 		saveChanges: "保存",
 		confirmDelete: "このメモを完全に削除しますか？",
+		viewList: "リスト",
+		viewBoard: "ピンボード",
+		webglUnavailable:
+			"ピンボードビューには WebGL が必要です。このブラウザは未対応のため、リストビューに切り替えてください。",
+		fullscreen: "全画面",
+		exitFullscreen: "全画面を終了",
+		noteModalTitle: "メモの内容",
 	},
 	loadingPhases: {
 		loadingLocalTasks: "ローカルタスクを読み込み中...",

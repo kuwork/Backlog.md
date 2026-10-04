@@ -1001,6 +1001,12 @@ export const zhTW: TranslationDict = {
 		copied: "已複製",
 		saveChanges: "儲存",
 		confirmDelete: "確定要永久刪除這則隨手記嗎？",
+		viewList: "列表",
+		viewBoard: "釘板",
+		webglUnavailable: "釘板視圖需要 WebGL 支援，目前瀏覽器不支援 —— 請切換回列表視圖。",
+		fullscreen: "全螢幕",
+		exitFullscreen: "離開全螢幕",
+		noteModalTitle: "便箋內容",
 	},
 	loadingPhases: {
 		loadingLocalTasks: "正在載入本機任務...",

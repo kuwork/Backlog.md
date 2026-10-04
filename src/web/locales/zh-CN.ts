@@ -1001,6 +1001,12 @@ export const zhCN: TranslationDict = {
 		copied: "已复制",
 		saveChanges: "保存",
 		confirmDelete: "确定要永久删除这条随手记吗？",
+		viewList: "列表",
+		viewBoard: "钉板",
+		webglUnavailable: "钉板视图需要 WebGL 支持，当前浏览器不支持 —— 请切换回列表视图。",
+		fullscreen: "全屏",
+		exitFullscreen: "退出全屏",
+		noteModalTitle: "便签内容",
 	},
 	loadingPhases: {
 		loadingLocalTasks: "正在加载本地任务...",
