@@ -2,7 +2,7 @@
 title: Web 备忘页面
 labels: [usermanual]
 created_date: 2026-10-03 01:14
-updated_date: '2026-10-03 01:14'
+updated_date: '2026-10-05 08:35'
 ---
 
 
@@ -23,8 +23,12 @@ updated_date: '2026-10-03 01:14'
 ### 卡片流
 
 - 卡片显示创建时间、正文渲染结果（Markdown、Mermaid 图表、`[[wiki]]` 链接与实体 ID 自动链接）与只读标签 chips
-- 标签栏提供按标签过滤；卡片支持内联编辑与删除
+- 标签栏提供按标签过滤；卡片支持内联编辑、归档与删除（归档详见[钉板视图与归档](04-钉板视图与归档.md)）
 - 无限滚动基于 IntersectionObserver 哨兵自动加载后续分页；memo 变更通过 WebSocket `memos-updated` 广播实时同步到所有打开的标签页
+
+## 钉板模式
+
+`/memos` 还有第三种视图——WebGL 便利贴钉板：`?view=board` 直达，便签落点确定、黑板固定不滚动、支持全屏，hover 便签可归档、点击打开编辑弹窗。详见[钉板视图与归档](04-钉板视图与归档.md)。
 
 ## 日历模式
 

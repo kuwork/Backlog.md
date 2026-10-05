@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-10-03 09:25'
+updated_date: '2026-10-05 08:30'
 ---
 
 
@@ -331,6 +331,8 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-743-watch-starter-liveness]] | Stop task list watchers when the process that started them exits | source, cli, watch |
 | [[sources/back-744-watch-idle-cpu-signature]] | Keep idle task list watchers from using constant CPU | source, cli, watch |
 | [[sources/back-745-memo-corpus-signature-gate]] | Gate memo search corpus refreshes behind a stat signature | source, core, memos, search, performance |
+| [[sources/back-746-memo-board-webgl-pinboard]] | Memo board: WebGL sticky-note pinboard view | source, web-ui, memos, webgl, feature |
+| [[sources/back-747-memo-archiving]] | Memo archiving: move a note to backlog/archive/memos | source, memos, feature, web-ui |
 | [[sources/doc-17-state-machine-semantics-diagnosis]] | doc-17 - 状态机语义缺失与 AI 协同：完整诊断、方案与引擎选型 | source, design, mcp, state-machine |
 | [[sources/doc-18-differentiation-gap-analysis]] | doc-18 - 差异化管理机制横向差距分析：七层模型与五个缺口 | source, design |
 | [[sources/doc-19-default-state-machine-prd]] | doc-19 - PRD：默认状态机（7 列 · 三审查点落位 · 可重置 · 指引优先） | source, specification, state-machine, web-ui |
@@ -368,6 +370,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/blessed-tui-test-harness]] | blessed TUI 真实屏幕测试模式 | 用真实 blessed screen 驱动 TUI 交互断言的测试搭建 |
 | [[execution/cdp-live-verification]] | headless Chrome CDP 实况验证 | 用 Chrome DevTools Protocol 对 Web UI 做端到端实况验证 |
 | [[execution/two-list-paging-models-wiring]] | 两套列表分页模型的接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
+| [[execution/webgl-html-overlay-hover-control]] | WebGL canvas 上挂 HTML 控件的模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
 
 ## Decisions
 
@@ -446,6 +449,9 @@ Read this file FIRST on any wiki operation.
 | [[decisions/free-text-status-storage]] | 决策状态值自由文本存储，不做固定集校验 | BACK-635 状态可扩展性优先于枚举约束 |
 | [[decisions/hand-rolled-state-machine-validator-over-engine]] | 自研零依赖状态机校验器而非引入引擎 | doc-17 现成引擎只覆盖需求 30%，出边权限列出与教学式报错无引擎提供 |
 | [[decisions/cli-list-window-over-cursor]] | CLI 列表分页用窗口模型并移除不透明 cursor | BACK-741 grep/git 风格 --max-count/--skip，memo list 的 --cursor 被否决 |
+| [[decisions/board-hover-archive-overlay]] | 钉板归档按钮用 hover-only HTML overlay | BACK-747 指针追踪挂容器层、按钮内缩，常驻显示被否决 |
+| [[decisions/memo-archive-rename-not-rewrite]] | Memo 归档用 verbatim rename 而非重写 | BACK-747 逐字节移动天然可逆，拒绝覆盖目标，无取消归档 |
+| [[decisions/init-memos-dirs-symmetric]] | init 对称创建 backlog/memos 与 archive/memos | BACK-747 目录清单完整契约优先于按需创建 |
 
 ## Concepts
 
@@ -486,6 +492,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/spotlight-search]] | 全局搜索对话框（Spotlight Search） | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
 | [[concepts/kuzu-graph]] | Kuzu 任务图谱 | FileNode 图模型、MemoryGraphStore 默认后端、冷启动指纹校验、/graph 与 /knowledge 视图、wiki LinksTo |
 | [[concepts/memos]] | 快速笔记（Memos）子系统 | `backlog/memos/` 下第五种文件实体，极简捕获 + 日历，刻意与 ContentStore 重量级体系保持边界 |
+| [[concepts/memo-board]] | Memo 钉板视图（WebGL 便利贴） | 离屏 canvas 烘焙 + 裸 WebGL 单 quad，FNV-1a 三层确定性布局，固定黑板无平移缩放 |
 | [[concepts/state-machine]] | 状态机语义 | `statuses` 配置从显示层列定义升级为带语义的状态机：状态类别、转换条件、AI 可读指引 |
 | [[concepts/list-paging]] | 两个刻意不同的列表分页模型 | CLI 窗口模型面向人类/代理翻页阅读，MCP/REST 偏移信封模型面向程序化遍历，故意不统一 |
 | [[concepts/json-watch]] | task list --watch 生命周期契约 | JSON 行流能力：全量替换帧 + 启动方存活性 + 空转成本控制 |
