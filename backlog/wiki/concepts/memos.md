@@ -4,7 +4,7 @@ labels:
   - concept
   - memos
 created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 09:25'
+updated_date: '2026-10-05 08:30'
 ---
 
 # 快速笔记（Memos）子系统
@@ -28,6 +28,11 @@ CLI、HTTP API、MCP 三方共享同一存储模块、同一 ID 方案、同一�
 - **MCP**：memo_create / memo_list / memo_view / memo_update / memo_delete 五工具，完全镜像 documents 工具组结构，注册到双引导路径（[[sources/back-740-memo-mcp-tools]]）。
 - **Web UI**：/memos 单页信息流 + 日历双模式，共享单一 selectedDate；feed 分页基于游标 + IntersectionObserver 哨兵自动加载（[[sources/back-731-memos-feed-page]]、[[sources/back-732-memos-calendar-mode]]）。
 
+## 钉板与归档
+
+- **钉板视图**：`?view=board` 进入 WebGL 便利贴钉板，与信息流/日历三态共存；渲染、三层确定性布局与交互模型详见 [[concepts/memo-board]]（[[sources/back-746-memo-board-webgl-pinboard]]）。
+- **归档**：卡片菜单（Copy ID 与 Delete 之间）与钉板 hover 按钮均可归档——memo 文件从 `backlog/memos/` 逐字节 rename 到 `backlog/archive/memos/`（见 [[decisions/memo-archive-rename-not-rewrite]]），归档后从 feed、日历、标签过滤与钉板全部消失；显式不做取消归档。init 对称创建两个 memo 目录（见 [[decisions/init-memos-dirs-symmetric]]）（[[sources/back-747-memo-archiving]]）。
+
 ## 全局搜索与知识网
 
 - memo 成为全局搜索的一种结果类型（与任务/文档/决策/wiki 并列）。因刻意不进 ContentStore 快照，SearchService 通过注入式 loader 获取 memo 语料；刷新走「stat 签名 + 500ms 语料 TTL」双门控——签名未变只重置时钟，签名变化（增删改）才后台全量重载重建索引（[[sources/back-733-include-memos-in-global-search]]、[[sources/back-745-memo-corpus-signature-gate]]）。
@@ -39,6 +44,7 @@ memos 是纯 markdown 文件，web UI 之外的编辑（编辑器、脚本、CLI
 
 ## Related Concepts
 
+- [[concepts/memo-board]] — WebGL 钉板视图的渲染、布局与交互
 - [[concepts/live-sync-pattern]] — memos-updated 的 window 事件转发 + 原地刷新复用模式
 - [[concepts/spotlight-search]] — 全局搜索的 Fuse 索引架构，memo 经注入式 loader 接入
 - [[concepts/wikilink]] — memo 出站 [[wiki/path]] 链接复用的 wiki 链接机制
@@ -61,6 +67,8 @@ memos 是纯 markdown 文件，web UI 之外的编辑（编辑器、脚本、CLI
 - [[sources/back-737-memos-ui-polish]] — 23:00 错日修复与 UTC/本地日约定
 - [[sources/back-738-memo-card-copy-id-modal-background]] — 卡片菜单与模态返回修复
 - [[sources/back-740-memo-mcp-tools]] — memo MCP 五工具
+- [[sources/back-746-memo-board-webgl-pinboard]] — WebGL 钉板视图
+- [[sources/back-747-memo-archiving]] — 归档到 archive/memos 与 init 目录修复
 - [[sources/doc-20-memos-integration]] — Memos 集成的设计输入稿
 
 ## Related Entities
