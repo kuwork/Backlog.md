@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-10-03 09:25'
+updated_date: '2026-10-05 08:30'
 ---
 
 # Knowledge Base Overview
@@ -23,7 +23,7 @@ updated_date: '2026-10-03 09:25'
 - **本地文件预览**：任务 References 和 Markdown 中的本地路径点击预览，支持语法高亮和行范围
 - **Wiki Web UI**：浏览器中浏览和编辑 `backlog/wiki/` 文件树，实时同步，支持创建/重命名文件和文件夹；Wikilink 点击弹出预览模态框，标准 Markdown 相对链接在 wiki 页面内支持 SPA 导航预览
 - **Wiki Install**：`backlog wiki install <agent>` 将内置 skill 安装到 Claude/Codex/Agents
-- **快速笔记 Memos**：`backlog/memos/` 下第五种文件实体，极简捕获 + Feed/Calendar 双模式，接入全局搜索、知识网 wikilink 与实时同步（BACK-728~740 / m-10）
+- **快速笔记 Memos**：`backlog/memos/` 下第五种文件实体，极简捕获 + Feed/Calendar 双模式，接入全局搜索、知识网 wikilink 与实时同步（BACK-728~740 / m-10）；新增 WebGL 便利贴钉板视图与归档（BACK-746/747，见 [[concepts/memo-board]]）
 - **功能机会分析**：基于现有架构的功能增强建议（Wiki CLI 桥接、任务模板、时间追踪、批量操作等），详见 [[../wiki_output/reports/feature-opportunities]]
 - **Word 文档转换**：`.docx` 上传、Markdown 转换、内嵌图片提取与 promote
 - **Web UI 国际化**：零依赖自定义 i18n（React Context + Hook），4 种语言（en/ja/zh-CN/zh-TW），~300 翻译键编译时嵌入二进制
@@ -146,6 +146,10 @@ updated_date: '2026-10-03 09:25'
 - **/memos 页面**：Feed 快速捕获 + Calendar 日历联动双模式（BACK-731/732），UI 打磨与卡片菜单复制 ID（BACK-737/738）
 - **既有管线接入**：全局搜索纳入 memos（BACK-733）、知识网 wikilink 接线（BACK-734）、实时同步复用三件套模式（BACK-735，见 [[concepts/live-sync-pattern]]）
 - **里程碑验收**：BACK-736 回归与验收 pass；设计文档 doc-20
+
+### Memo 钉板与归档（BACK-746/747，2026-10-04~05）
+- **WebGL 钉板**：便签外观离屏 2D canvas 一次性烘焙 + 裸 WebGL 单 quad 绘制（零新依赖），FNV-1a 哈希驱动三层确定性布局（base grid / seam / corner pile），固定黑板无平移缩放，`?view=board` 与信息流/日历三态共存（见 [[concepts/memo-board]]）
+- **归档**：memo 逐字节 rename 到 `backlog/archive/memos/`，卡片菜单与钉板 hover 按钮双入口，REST `POST /api/memos/:id/archive`（200/404/409）；显式不做取消归档；init 对称创建两个 memo 目录（见 [[decisions/memo-archive-rename-not-rewrite]]、[[decisions/init-memos-dirs-symmetric]]）
 
 ### 状态机语义化（doc-17~19 + BACK-715~721）
 - **doc-17 诊断**：`statuses` 只是显示层列定义，终态=数组末位、进行中=硬编码 `inprogress` 的约定在自定义状态列下静默失效；关键洞察"命令即门禁"（阶段推进从 AI 工具集交还人类命令）；引擎选型为自研 ~150 行零依赖校验器而非 XState（见 [[decisions/hand-rolled-state-machine-validator-over-engine]]）
