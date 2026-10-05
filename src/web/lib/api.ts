@@ -710,6 +710,19 @@ export class ApiClient {
 		}
 	}
 
+	async archiveMemo(id: string): Promise<Memo> {
+		const response = await fetch(`${API_BASE}/memos/${encodeURIComponent(id)}/archive`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to archive memo");
+		}
+		return response.json();
+	}
+
 	async fetchDecisions(): Promise<Decision[]> {
 		const response = await fetch(`${API_BASE}/decisions`);
 		if (!response.ok) {

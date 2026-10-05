@@ -605,12 +605,15 @@ export default function MemosPage() {
 		setBoardMemos((current) => current.map((existing) => (existing.id === id ? memo : existing)));
 	}, []);
 
-	const handleDelete = useCallback(
-		async (id: string) => {
-			// The grid's buckets are local days, so decrement the day the memo was actually shown under.
+	/**
+	 * Drop a memo the server has just removed (deleted or archived) from every local view: the
+	 * feed, the board and the calendar bucket of the local day it was shown under.
+	 */
+	const dropMemoFromView = useCallback(
+		(id: string) => {
 			const target = feed.memos.find((memo) => memo.id === id) ?? boardMemos.find((memo) => memo.id === id);
+			// The grid's buckets are local days, so decrement the day the memo was actually shown under.
 			const day = target ? localDateKeyFromStoredUtc(target.createdDate) : undefined;
-			await apiClient.deleteMemo(id);
 			setFeed((current) => removeMemo(current, id));
 			setBoardMemos((current) => current.filter((memo) => memo.id !== id));
 			if (day) {
@@ -618,6 +621,22 @@ export default function MemosPage() {
 			}
 		},
 		[feed.memos, boardMemos],
+	);
+
+	const handleDelete = useCallback(
+		async (id: string) => {
+			await apiClient.deleteMemo(id);
+			dropMemoFromView(id);
+		},
+		[dropMemoFromView],
+	);
+
+	const handleArchive = useCallback(
+		async (id: string) => {
+			await apiClient.archiveMemo(id);
+			dropMemoFromView(id);
+		},
+		[dropMemoFromView],
 	);
 
 	const visibleMemos = useMemo(() => filterMemosByTags(feed.memos, activeTags), [feed.memos, activeTags]);
@@ -799,6 +818,7 @@ export default function MemosPage() {
 								memos={boardVisibleMemos}
 								onUpdate={handleUpdate}
 								onDelete={handleDelete}
+								onArchive={handleArchive}
 								onTagClick={toggleTag}
 							/>
 						)}
@@ -821,6 +841,7 @@ export default function MemosPage() {
 								memo={memo}
 								onUpdate={handleUpdate}
 								onDelete={handleDelete}
+								onArchive={handleArchive}
 								onTagClick={toggleTag}
 							/>
 						))}

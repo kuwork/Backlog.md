@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../core/backlog.ts";
@@ -53,6 +54,14 @@ describe("Core", () => {
 				"Dropped",
 			]);
 			expect(config?.defaultStatus).toBe("To Do");
+		});
+
+		it("creates the memo directories alongside the other backlog folders", async () => {
+			await initializeTestProject(core, "Memo Dirs Project", true);
+
+			for (const dir of ["tasks", "archive/tasks", "memos", "archive/memos"]) {
+				expect(existsSync(join(TEST_DIR, "backlog", ...dir.split("/")))).toBe(true);
+			}
 		});
 
 		it("should use root backlog.config.yml for custom backlog directories", async () => {

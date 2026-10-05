@@ -125,12 +125,14 @@ export interface MemoCardProps {
 	memo: Memo;
 	onUpdate: (id: string, content: string, tags: string[]) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
+	/** Move the memo to the archive folder; the owner reloads the feed. */
+	onArchive: (id: string) => Promise<void>;
 	/** Toggle the feed's tag filter - the body's `#tag` chips and the card's tag row share it. */
 	onTagClick: (tag: string) => void;
 }
 
 /** One memo in the feed: relative date, markdown body, read-only tags, inline edit/delete. */
-export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps) {
+export function MemoCard({ memo, onUpdate, onDelete, onArchive, onTagClick }: MemoCardProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
@@ -139,10 +141,11 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 	const [draft, setDraft] = useState(memo.rawContent);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [isArchiving, setIsArchiving] = useState(false);
 	const [error, setError] = useState<{ title: string; detail: string | null } | null>(null);
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [idCopied, setIdCopied] = useState(false);
-	const busy = isSaving || isDeleting;
+	const busy = isSaving || isDeleting || isArchiving;
 	const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
 	const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -184,6 +187,23 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 			setError({ title: t.memos.deleteFailed, detail: err instanceof Error ? err.message : null });
 		} finally {
 			setIsDeleting(false);
+		}
+	};
+
+	/**
+	 * Archiving moves the file rather than destroying it, so unlike delete it asks nothing: the
+	 * note leaves the feed and the move is reversible. Only a failed call has to be reported.
+	 */
+	const handleArchive = async () => {
+		if (busy) return;
+		setIsArchiving(true);
+		setError(null);
+		try {
+			await onArchive(memo.id);
+		} catch (err) {
+			setError({ title: t.memos.archiveFailed, detail: err instanceof Error ? err.message : null });
+		} finally {
+			setIsArchiving(false);
 		}
 	};
 
@@ -335,6 +355,17 @@ export function MemoCard({ memo, onUpdate, onDelete, onTagClick }: MemoCardProps
 									className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 								>
 									{idCopied ? t.memos.copied : t.memos.copyId}
+								</button>
+								<button
+									type="button"
+									role="menuitem"
+									onClick={() => {
+										setMenuOpen(false);
+										void handleArchive();
+									}}
+									className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								>
+									{t.memos.archive}
 								</button>
 								<button
 									type="button"

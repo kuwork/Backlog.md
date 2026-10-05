@@ -16,6 +16,7 @@ import {
 } from "../core/duplicate-task-repair.ts";
 import { initializeProject } from "../core/init.ts";
 import {
+	archiveMemo,
 	createMemo,
 	deleteMemo,
 	getMemo,
@@ -710,6 +711,11 @@ export class BacklogServer {
 					// by the param route (same reason /api/docs/tree sits next to /api/docs/:id).
 					"/api/memos/calendar": {
 						GET: async (req: Request) => await this.handleGetMemoCalendar(req),
+					},
+					// Registered ahead of /api/memos/:id so the literal segment cannot be swallowed
+					// by the param route (same reason /api/memos/calendar sits next to /api/memos/:id).
+					"/api/memos/:id/archive": {
+						POST: async (req: Request & { params: { id: string } }) => await this.handleArchiveMemo(req.params.id),
 					},
 					"/api/memos/:id": {
 						GET: async (req: Request & { params: { id: string } }) => await this.handleGetMemo(req.params.id),
@@ -2158,6 +2164,26 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error deleting memo:", error);
 			return Response.json({ error: "Failed to delete memo" }, { status: 500 });
+		}
+	}
+
+	private async handleArchiveMemo(id: string): Promise<Response> {
+		const invalid = this.memoIdError(id);
+		if (invalid) return invalid;
+
+		try {
+			const result = await archiveMemo(this.core.filesystem.rootDir, id);
+			if (result === "missing") {
+				return Response.json({ error: "Memo not found" }, { status: 404 });
+			}
+			if (result === "collision") {
+				return Response.json({ error: "An archived memo with this id already exists" }, { status: 409 });
+			}
+			this.broadcastDataUpdated("memos");
+			return Response.json(result);
+		} catch (error) {
+			console.error("Error archiving memo:", error);
+			return Response.json({ error: "Failed to archive memo" }, { status: 500 });
 		}
 	}
 

@@ -106,6 +106,12 @@ function serveApi(): void {
 			return json({ items: PAGE_TWO, total: PAGE_ONE.length + PAGE_TWO.length, offset, limit, hasMore: false });
 		}
 
+		if (url.pathname.startsWith("/api/memos/") && url.pathname.endsWith("/archive")) {
+			if (failWrites) return json({ error: "boom" }, 500);
+			const id = decodeURIComponent(url.pathname.slice("/api/memos/".length, -"/archive".length));
+			return json(makeMemo(id, "Archived memo", []));
+		}
+
 		if (url.pathname === "/api/memos/calendar") {
 			const year = Number(url.searchParams.get("year"));
 			const month = Number(url.searchParams.get("month"));
@@ -388,6 +394,31 @@ describe("MemosPage feed", () => {
 		// The menu stays open for a beat showing the confirmation before closing itself.
 		expect(buttonByText(menu, "Copied")).toBeTruthy();
 	});
+
+	it("archives a memo from the card menu and drops it from the feed", async () => {
+		const container = await renderMemos();
+		expect(cardTexts(container)).toHaveLength(2);
+
+		await clickElement(container.querySelector('[aria-label="More actions"]'));
+		const menu = container.querySelector('[role="menu"]') as HTMLElement;
+		expect(buttonByText(menu, "Archive")).toBeTruthy();
+
+		await clickButton(menu, "Archive");
+		// The first card's menu is the newest memo, so that is the id sent to the archive route.
+		expect(requests).toContain("POST /api/memos/20261001-3/archive");
+		expect(cardTexts(container)).toHaveLength(1);
+	});
+
+	it("reports a failed archive instead of dropping the card", async () => {
+		failWrites = true;
+		const container = await renderMemos();
+
+		await clickElement(container.querySelector('[aria-label="More actions"]'));
+		await clickButton(container.querySelector('[role="menu"]') as HTMLElement, "Archive");
+
+		expect(container.querySelector("[role='alert']")?.textContent).toContain("Could not archive this memo");
+		expect(cardTexts(container)).toHaveLength(2);
+	});
 });
 
 const calendarDay = (container: HTMLElement, date: string): HTMLElement | null =>
@@ -547,6 +578,7 @@ describe("MemoCard knowledge web (BACK-734)", () => {
 										memo={{ ...makeMemo("20261001-3", content, []), ...(createdDate ? { createdDate } : {}) }}
 										onUpdate={async () => {}}
 										onDelete={async () => {}}
+										onArchive={async () => {}}
 										onTagClick={() => {}}
 									/>
 								</TaskIdIndexProvider>
@@ -678,6 +710,7 @@ describe("MemoCard task list", () => {
 											updates.push({ id, content: next, tags });
 										}}
 										onDelete={async () => {}}
+										onArchive={async () => {}}
 										onTagClick={() => {}}
 									/>
 								</TaskIdIndexProvider>
@@ -744,6 +777,7 @@ describe("MemoCard task list", () => {
 											setMemo(makeMemo(id, content, tags));
 										}}
 										onDelete={async () => {}}
+										onArchive={async () => {}}
 										onTagClick={() => {}}
 									/>
 								</TaskIdIndexProvider>
@@ -836,6 +870,7 @@ describe("MemoCard body: note typography and tag chips", () => {
 											memo={makeMemo("20261001-3", content, [])}
 											onUpdate={async () => {}}
 											onDelete={async () => {}}
+											onArchive={async () => {}}
 											onTagClick={(tag) => tagClicks.push(tag)}
 										/>
 									) : (

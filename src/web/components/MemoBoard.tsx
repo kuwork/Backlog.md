@@ -12,7 +12,7 @@ import {
 	NOTE_WIDTH,
 	wrapEstimate,
 } from "../utils/memo-board";
-import { MemoCard, type MemoCardProps } from "./MemoCard";
+import { ErrorBanner, MemoCard, type MemoCardProps } from "./MemoCard";
 import Modal from "./Modal";
 
 /**
@@ -30,6 +30,12 @@ const TEX_SCALE = 2;
 const TEX_WORLD_W = NOTE_WIDTH + TEX_PAD * 2;
 /** How much a note grows while hovered. */
 const HOVER_GROW = 0.06;
+/**
+ * Where the hovered note's archive button sits, measured in from the paper's top-right corner.
+ * Inside the paper rather than on its edge, so the pointer stays on the note - and therefore on
+ * the hover - while travelling to the button.
+ */
+const ARCHIVE_INSET = 22;
 
 const VERTEX_SHADER = `
 attribute vec2 a_corner;
@@ -299,11 +305,20 @@ function initGl(canvas: HTMLCanvasElement): GlState | null {
 	};
 }
 
+/** A box-with-a-lid glyph for the hovered note's archive button. */
+function ArchiveIcon() {
+	return (
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+			<path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18v4H3zM5 11h14v9H5zM10 15h4" />
+		</svg>
+	);
+}
+
 interface MemoBoardProps extends Omit<MemoCardProps, "memo"> {
 	memos: Memo[];
 }
 
-export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: MemoBoardProps) {
+export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagClick }: MemoBoardProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -313,6 +328,8 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: Mem
 	const [unsupported, setUnsupported] = useState(false);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
+	const [hoveredId, setHoveredId] = useState<string | null>(null);
+	const [archiveError, setArchiveError] = useState<string | null>(null);
 
 	const glRef = useRef<GlState | null>(null);
 	const notesRef = useRef<BoardNote[]>([]);
@@ -327,6 +344,16 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: Mem
 	const boardHeight = containerHeight > 0 ? containerHeight : 600;
 	const layout = useMemo(() => layoutBoard(memos, boardWidth, boardHeight), [memos, boardWidth, boardHeight]);
 	const selectedMemo = selectedId ? (memos.find((memo) => memo.id === selectedId) ?? null) : null;
+	const hoveredNote = hoveredId ? (layout.notes.find((note) => note.memo.id === hoveredId) ?? null) : null;
+
+	const archiveNote = async (id: string) => {
+		setArchiveError(null);
+		try {
+			await onArchive(id);
+		} catch (_error) {
+			setArchiveError(t.memos.archiveFailed);
+		}
+	};
 
 	const toggleFullscreen = () => {
 		const container = containerRef.current;
@@ -430,18 +457,24 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: Mem
 		const observer = new ResizeObserver(resize);
 		observer.observe(container);
 
+		const setHover = (id: string | null) => {
+			hoveredRef.current = id;
+			setHoveredId(id);
+			canvas.style.cursor = id ? "pointer" : "default";
+		};
+		// Hover is tracked on the container, not the canvas: the archive button floats above the
+		// canvas, so a canvas-level leave would hide it the moment the pointer moved onto it.
 		const onPointerMove = (event: PointerEvent) => {
 			const rect = canvas.getBoundingClientRect();
 			const id = hitTest(notesRef.current, event.clientX - rect.left, event.clientY - rect.top)?.memo.id ?? null;
 			if (id !== hoveredRef.current) {
-				hoveredRef.current = id;
-				canvas.style.cursor = id ? "pointer" : "default";
+				setHover(id);
 				scheduleLift();
 			}
 		};
 		const onPointerLeave = () => {
-			hoveredRef.current = null;
-			canvas.style.cursor = "default";
+			if (hoveredRef.current === null) return;
+			setHover(null);
 			scheduleLift();
 		};
 		let downAt: { x: number; y: number } | null = null;
@@ -456,16 +489,16 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: Mem
 			if (hit) setSelectedId(hit.memo.id);
 		};
 
-		canvas.addEventListener("pointermove", onPointerMove);
-		canvas.addEventListener("pointerleave", onPointerLeave);
+		container.addEventListener("pointermove", onPointerMove);
+		container.addEventListener("pointerleave", onPointerLeave);
 		canvas.addEventListener("pointerdown", onPointerDown);
 		canvas.addEventListener("click", onClick);
 
 		scheduleDraw();
 		return () => {
 			observer.disconnect();
-			canvas.removeEventListener("pointermove", onPointerMove);
-			canvas.removeEventListener("pointerleave", onPointerLeave);
+			container.removeEventListener("pointermove", onPointerMove);
+			container.removeEventListener("pointerleave", onPointerLeave);
 			canvas.removeEventListener("pointerdown", onPointerDown);
 			canvas.removeEventListener("click", onClick);
 			if (drawHandle !== null) cancelAnimationFrame(drawHandle);
@@ -554,6 +587,31 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: Mem
 			style={corkStyle}
 		>
 			<canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+			{hoveredNote && (
+				/* A note is a baked texture with no DOM of its own, so its only control is an
+				   overlay: it sits inside the board container, which is the fullscreen element.
+				   It is a sibling of the canvas, so pressing it never reaches the canvas click
+				   that opens the note modal. */
+				<button
+					type="button"
+					data-testid="board-archive-button"
+					aria-label={t.memos.archiveNote}
+					title={t.memos.archiveNote}
+					onClick={() => void archiveNote(hoveredNote.memo.id)}
+					style={{
+						left: hoveredNote.x + NOTE_WIDTH / 2 - ARCHIVE_INSET,
+						top: hoveredNote.y - hoveredNote.h / 2 + ARCHIVE_INSET,
+					}}
+					className="absolute z-10 -translate-x-1/2 -translate-y-1/2 p-1.5 rounded-md bg-black/30 hover:bg-black/50 text-amber-50 transition-colors"
+				>
+					<ArchiveIcon />
+				</button>
+			)}
+			{archiveError && (
+				<div className="absolute top-3 left-3 z-10">
+					<ErrorBanner title={archiveError} onRetry={() => setArchiveError(null)} retryLabel={t.common.close} />
+				</div>
+			)}
 			<button
 				type="button"
 				onClick={toggleFullscreen}
@@ -604,6 +662,10 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onTagClick }: Mem
 						onUpdate={onUpdate}
 						onDelete={async (id) => {
 							await onDelete(id);
+							setSelectedId(null);
+						}}
+						onArchive={async (id) => {
+							await onArchive(id);
 							setSelectedId(null);
 						}}
 						onTagClick={onTagClick}

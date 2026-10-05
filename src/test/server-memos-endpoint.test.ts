@@ -258,6 +258,24 @@ describe("/api/memos/:id", () => {
 		expect(again.status).toBe(404);
 	});
 
+	it("archives a memo, drops it from the list and answers 404 or 409 when it cannot", async () => {
+		const archived = await request("/api/memos/20190305-1/archive", { method: "POST" });
+		expect(archived.status).toBe(200);
+		expect(await Bun.file(join(testDir, "backlog", "memos", "20190305-1.md")).exists()).toBe(false);
+		expect(await Bun.file(join(testDir, "backlog", "archive", "memos", "20190305-1.md")).exists()).toBe(true);
+
+		const list = (await fetchJson("/api/memos")).body as { items: Array<{ id: string }> };
+		expect(list.items.some((memo) => memo.id === "20190305-1")).toBe(false);
+
+		const missing = await request("/api/memos/20190305-1/archive", { method: "POST" });
+		expect(missing.status).toBe(404);
+
+		// A copy already sitting in the archive collides instead of being overwritten.
+		await Bun.write(join(testDir, "backlog", "archive", "memos", "20190305-2.md"), "archived before\n");
+		expect((await request("/api/memos/20190305-2/archive", { method: "POST" })).status).toBe(409);
+		expect(await Bun.file(join(testDir, "backlog", "memos", "20190305-2.md")).exists()).toBe(true);
+	});
+
 	it("refuses an id that would escape the memo directory", async () => {
 		expect((await fetchJson("/api/memos/..%2F..%2Fconfig")).status).toBe(400);
 	});

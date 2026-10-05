@@ -4,12 +4,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	archiveMemo,
 	createMemo,
 	deleteMemo,
 	getMemo,
 	listMemos,
 	listMemosPage,
 	type Memo,
+	memoArchiveDir,
 	memoDir,
 	nextMemoId,
 	updateMemo,
@@ -328,6 +330,36 @@ describe("memo storage", () => {
 		expect(await getMemo(root, created.id)).toBeNull();
 
 		expect(await deleteMemo(root, created.id)).toBe(false);
+	});
+
+	it("archiveMemo moves the file to the archive folder and drops it from the listing", async () => {
+		const created = await createMemo(root, "put me away", ["later"]);
+		const body = await Bun.file(created.path).text();
+
+		const archived = await archiveMemo(root, created.id);
+		expect(archived).not.toBe("missing");
+		expect(archived).not.toBe("collision");
+		const moved = archived as Memo;
+
+		expect(moved.id).toBe(created.id);
+		expect(moved.rawContent).toBe("put me away");
+		expect(moved.tags).toEqual(["later"]);
+		expect(await Bun.file(created.path).exists()).toBe(false);
+		expect(await Bun.file(join(memoArchiveDir(root), `${created.id}.md`)).exists()).toBe(true);
+		// The move is a rename, not a rewrite: the bytes and the frontmatter survive untouched.
+		expect(await Bun.file(moved.path).text()).toBe(body);
+		expect(await listMemos(root)).toEqual([]);
+	});
+
+	it("archiveMemo reports an unknown id and never overwrites an archived memo", async () => {
+		expect(await archiveMemo(root, "20991231-1")).toBe("missing");
+
+		const created = await createMemo(root, "first");
+		await archiveMemo(root, created.id);
+		// The same id captured again is a different file in the active folder.
+		const recreated = await createMemo(root, "second");
+		expect(await archiveMemo(root, recreated.id)).toBe("collision");
+		expect(await Bun.file(join(memoDir(root), `${recreated.id}.md`)).exists()).toBe(true);
 	});
 
 	it("getMemo returns null for an unknown id", async () => {

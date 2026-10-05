@@ -563,6 +563,8 @@ export class FileSystem {
 			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_DRAFTS),
 			join(backlogDir, DEFAULT_DIRECTORIES.MILESTONES),
 			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES),
+			join(backlogDir, DEFAULT_DIRECTORIES.MEMOS),
+			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_MEMOS),
 			join(backlogDir, DEFAULT_DIRECTORIES.DOCS),
 			join(backlogDir, DEFAULT_DIRECTORIES.DECISIONS),
 		];

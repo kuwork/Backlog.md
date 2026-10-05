@@ -1,4 +1,4 @@
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, rename, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
@@ -46,6 +46,11 @@ export const MEMO_PAGE_SIZE = 30;
 /** Absolute path of the memo directory for a project root. */
 export function memoDir(root: string): string {
 	return join(root, DEFAULT_DIRECTORIES.BACKLOG, DEFAULT_DIRECTORIES.MEMOS);
+}
+
+/** Absolute path of the archived memo directory for a project root. */
+export function memoArchiveDir(root: string): string {
+	return join(root, DEFAULT_DIRECTORIES.BACKLOG, DEFAULT_DIRECTORIES.ARCHIVE_MEMOS);
 }
 
 /**
@@ -252,4 +257,23 @@ export async function deleteMemo(root: string, id: string): Promise<boolean> {
 	if (!(await Bun.file(file).exists())) return false;
 	await Bun.file(file).delete();
 	return true;
+}
+
+/**
+ * Move a memo out of the active corpus into `backlog/archive/memos/`.
+ *
+ * The file is renamed, never rewritten, so the id, dates, tags and body survive byte for byte and
+ * the move stays reversible. Archived memos are simply outside the directory every reader scans.
+ *
+ * Returns the archived memo, `"missing"` when no active memo carries the id, or `"collision"` when
+ * an archived file with that id already exists - it is never overwritten.
+ */
+export async function archiveMemo(root: string, id: string): Promise<Memo | "missing" | "collision"> {
+	const source = join(memoDir(root), `${id}.md`);
+	if (!(await Bun.file(source).exists())) return "missing";
+	const target = join(memoArchiveDir(root), `${id}.md`);
+	if (await Bun.file(target).exists()) return "collision";
+	await ensureDir(memoArchiveDir(root));
+	await rename(source, target);
+	return toMemo(target);
 }
