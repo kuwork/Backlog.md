@@ -920,3 +920,9 @@ Chronological, append-only record of all wiki operations.
 ## [2026-10-03 01:30:25] usermanual-update | 更新用户手册：新增 70-快速笔记 章节，覆盖 Memos/分页/状态机编辑器/watch 改进
 ## [2026-10-03 09:29:12] batch-ingest | 增量摄取 BACK-745（memo 搜索语料签名门控）、修正 back-742 描述修复注记与 memo 搜索刷新语义（签名+TTL 双门控），重新合并用户手册
 ## [2026-10-03 09:44:38] wiki-recovery | 恢复 usermanual/10-任务管理/00-任务生命周期.md：stash-pop 期间 blob a76f97ea 损坏导致页面被误删，从 HEAD 基线重建并按 concepts/state-machine.md 重写「状态机」节，已重新合并手册
+
+## [2026-10-05 08:40:00] batch-ingest | 增量摄取 BACK-746~747（Memo 钉板 + 归档）
+登记：Sources +2（[[sources/back-746-memo-board-webgl-pinboard]]、[[sources/back-747-memo-archiving]]），Concepts +1（[[concepts/memo-board]]），Decisions +3（[[decisions/board-hover-archive-overlay]]、[[decisions/memo-archive-rename-not-rewrite]]、[[decisions/init-memos-dirs-symmetric]]），Execution +1（[[execution/webgl-html-overlay-hover-control]]）。concepts/memos 扩展「钉板与归档」节；overview.md 顶部 Memos 行与「Memos 快速笔记子系统」节同步。基线 2026-10-03 09:44 之后的唯一变更源为 BACK-746/747 两个任务（746/747 提交在 wiki-tmp 工作流中基于 release 线 cherry-pick 后纳入）。reasoning 无（两个任务均为直实现无分解规划）；patterns 无新建；retrospectives 跳过。
+
+## [2026-10-05 08:40:00] usermanual-update | 快速笔记章节新增「钉板视图与归档」页，重新合并手册
+70-快速笔记 新增 04-钉板视图与归档.md（SUMMARY.md 同步），02-Web备忘页面 补钉板模式节与卡片归档说明。运行 merge.py 重新生成 wiki_output/用户手册/manual.md。
