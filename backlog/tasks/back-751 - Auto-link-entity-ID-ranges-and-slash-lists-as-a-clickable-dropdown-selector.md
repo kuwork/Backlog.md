@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-06 08:18'
-updated_date: '2026-10-06 09:22'
+updated_date: '2026-10-06 15:49'
 labels:
   - web-ui
   - enhancement
@@ -31,6 +31,7 @@ modified_files:
   - src/web/locales/zh-CN.ts
   - src/web/locales/zh-TW.ts
   - src/web/locales/ja.ts
+parent_task_id: BACK-239
 priority: medium
 ordinal: 314502
 actual_start: '2026-10-06 08:23'
@@ -146,4 +147,3 @@ Files changed: src/web/utils/task-id-links.ts + .test.ts, src/web/components/Ent
 - `src/test/mermaid-markdown.test.tsx` — remark integration: range and slash-list produce a single dropdown trigger; no `entity-range:` scheme leakage.
 - `src/test/web-memos-page.test.tsx` — default-view cases (empty -> list, content -> board, explicit view wins).
 - `src/web/locales/{en,zh-CN,zh-TW,ja}.ts` — locale strings for the dropdown and memos surfaces.
-

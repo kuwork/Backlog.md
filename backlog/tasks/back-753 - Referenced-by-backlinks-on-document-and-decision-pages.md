@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-06 13:20'
-updated_date: '2026-10-06 15:28'
+updated_date: '2026-10-06 15:49'
 labels:
   - web-ui
 dependencies:
@@ -22,6 +22,7 @@ modified_files:
   - src/web/locales/zh-CN.ts
   - src/web/locales/zh-TW.ts
   - src/web/locales/ja.ts
+parent_task_id: BACK-239
 priority: medium
 ordinal: 317000
 actual_start: '2026-10-06 13:58'

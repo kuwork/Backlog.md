@@ -352,6 +352,21 @@ backlog task edit 42 \
   --ref "backlog/decisions/adr-001 - Use-Postgres.md"
 ```
 
+### Referencing Tasks and Docs in Content
+
+Write a task or document id directly in any markdown body — a task's description, plan, notes, comments, and final summary, as well as documents and decisions — and the web UI renders it as a link. No explicit `[title](url)` is needed. References inside code blocks or inline code stay literal.
+
+| Form | Example | Result |
+|------|---------|--------|
+| Single | `<TASK-PREFIX>-123`, `doc-12` | links straight to that task / document |
+| List | `<TASK-PREFIX>-743/744/745`, `doc-10/11/12` | one trigger that opens a dropdown of the listed entities |
+| Range | `<TASK-PREFIX>-715~747`, `doc-10~12`, `doc-10~doc-12` | one trigger that opens a dropdown of every entity in the range |
+
+- `<TASK-PREFIX>` in the examples stands in for the task prefix configured for your project (e.g. `BACK`), which differs per project. Documents use `doc-`, decisions `decision-`, drafts `DRAFT-`. An optional leading `#` is accepted (`#doc-1`).
+- Matching is fail-closed: an id that names no known entity stays plain text and is never guessed.
+- A list or a range links only when every id in it resolves; otherwise the whole token stays literal.
+- The dropdown trigger shows each target's title, so you can pick the right one before navigating.
+
 ## Remember: The Golden Rule
 
 **🎯 If you want to change ANYTHING in a task, use the `backlog task edit` command.**

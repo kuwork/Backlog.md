@@ -6,7 +6,7 @@ assignee:
   - '@Kimi Code CLI'
   - '@kimi'
 created_date: '2026-08-07 21:10'
-updated_date: '2026-09-07 02:53'
+updated_date: '2026-10-06 15:49'
 labels:
   - web-ui
 dependencies:
@@ -18,6 +18,7 @@ references:
   - src/web/components/DependencyInput.tsx
   - src/web/components/TaskDetailsModal.tsx
   - src/web/App.tsx
+parent_task_id: BACK-239
 priority: medium
 due_date: '2026-09-07'
 planned_start: '2026-09-07'
