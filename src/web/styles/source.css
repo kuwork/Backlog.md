@@ -367,6 +367,8 @@
 	--memo-chip-bg: oklch(96.7% 0.003 264.542); /* gray-100 */
 	--memo-chip-bg-hover: oklch(92.8% 0.006 264.531); /* gray-200 */
 	--memo-chip-fg: oklch(44.6% 0.03 256.802); /* gray-600 */
+	--memo-chip-on-bg: oklch(97.1% 0.014 254.604); /* blue-50 */
+	--memo-chip-on-fg: oklch(48.8% 0.243 264.376); /* blue-700 */
 	--memo-check-border: oklch(87.2% 0.01 258.338); /* gray-300 */
 	--memo-check-bg: #fff;
 	--memo-accent-fg: oklch(54.6% 0.245 262.881); /* blue-600 */
@@ -382,6 +384,8 @@
 	--memo-chip-bg: oklch(37.2% 0.044 257.287); /* slate-700 */
 	--memo-chip-bg-hover: oklch(44.6% 0.043 257.281); /* slate-600 */
 	--memo-chip-fg: oklch(86.9% 0.022 252.894); /* slate-300 */
+	--memo-chip-on-bg: oklch(37.9% 0.137 265.522 / 0.45); /* blue-900 @ 45% */
+	--memo-chip-on-fg: oklch(88.2% 0.059 254.128); /* blue-200 */
 	--memo-check-border: oklch(44.6% 0.043 257.281); /* slate-600 */
 	--memo-check-bg: oklch(37.2% 0.044 257.287); /* slate-700 */
 	--memo-accent-fg: oklch(70.7% 0.165 254.624); /* blue-400 */
@@ -539,6 +543,37 @@
 .memo-body .wmde-markdown .inline-tag:hover {
 	background-color: var(--memo-chip-bg-hover);
 	color: var(--memo-strong);
+}
+
+/* A chip whose tag is the one the view is narrowed by. Colour only - the chip is inline in a
+   paragraph, so anything that changes its box would reflow the line when a filter is applied. */
+.memo-body .wmde-markdown .inline-tag-active {
+	background-color: var(--memo-chip-on-bg);
+	color: var(--memo-chip-on-fg);
+}
+
+.memo-body .wmde-markdown .inline-tag-active:hover {
+	background-color: var(--memo-chip-on-bg);
+	color: var(--memo-chip-on-fg);
+}
+
+/* The composer's highlight overlay paints the topic being typed with the same chip palette the
+   saved card uses, so the editor shows what the memo will show. Colours only: the overlay pre is
+   glyph-aligned with the textarea on top of it, so padding or font changes would skew the caret. */
+.topic-aware {
+	--topic-chip-bg: oklch(96.7% 0.003 264.542); /* gray-100 */
+	--topic-chip-fg: oklch(44.6% 0.03 256.802); /* gray-600 */
+}
+
+.dark .topic-aware {
+	--topic-chip-bg: oklch(37.2% 0.044 257.287); /* slate-700 */
+	--topic-chip-fg: oklch(86.9% 0.022 252.894); /* slate-300 */
+}
+
+.topic-aware .w-md-editor-text-pre .token.topic {
+	background-color: var(--topic-chip-bg) !important;
+	border-radius: 0.375rem;
+	color: var(--topic-chip-fg) !important;
 }
 
 /* Checklist: a rounded box that reads as a control (blue when ticked, hairline when not) and a

@@ -129,10 +129,22 @@ export interface MemoCardProps {
 	onArchive: (id: string) => Promise<void>;
 	/** Toggle the feed's tag filter - the body's `#tag` chips and the card's tag row share it. */
 	onTagClick: (tag: string) => void;
+	/** Active filter tags, so the card's bottom tag row can mirror the trigger's highlight. */
+	activeTags?: string[];
+	/** Topics already in use, offered by the composer's `#topic#` autocomplete. */
+	topicSuggestions?: string[];
 }
 
 /** One memo in the feed: relative date, markdown body, read-only tags, inline edit/delete. */
-export function MemoCard({ memo, onUpdate, onDelete, onArchive, onTagClick }: MemoCardProps) {
+export function MemoCard({
+	memo,
+	onUpdate,
+	onDelete,
+	onArchive,
+	onTagClick,
+	activeTags,
+	topicSuggestions,
+}: MemoCardProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
@@ -392,6 +404,7 @@ export function MemoCard({ memo, onUpdate, onDelete, onArchive, onTagClick }: Me
 						preview="edit"
 						height="100%"
 						hideToolbar={true}
+						topicSuggestions={topicSuggestions}
 						data-color-mode={theme}
 						textareaProps={{
 							onKeyDown: (event) => {
@@ -411,6 +424,7 @@ export function MemoCard({ memo, onUpdate, onDelete, onArchive, onTagClick }: Me
 						source={memo.rawContent}
 						wikilinkBasePath="index.md"
 						inlineTagChips={true}
+						activeTags={activeTags}
 						onToggleTask={(index) => void handleToggleTask(index)}
 						onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
 						onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
@@ -418,6 +432,30 @@ export function MemoCard({ memo, onUpdate, onDelete, onArchive, onTagClick }: Me
 						onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
 						onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
 					/>
+				</div>
+			)}
+
+			{memo.tags.length > 0 && (
+				<div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-gray-100 dark:border-gray-700 pt-2.5">
+					{memo.tags.map((tag) => {
+						const isActive = activeTags?.some((item) => item.toLowerCase() === tag.toLowerCase()) ?? false;
+						return (
+							<button
+								key={tag}
+								type="button"
+								data-testid="memo-tag-chip"
+								onClick={() => onTagClick(tag)}
+								aria-pressed={isActive}
+								className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+									isActive
+										? "border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200"
+										: "border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+								}`}
+							>
+								{tag}
+							</button>
+						);
+					})}
 				</div>
 			)}
 

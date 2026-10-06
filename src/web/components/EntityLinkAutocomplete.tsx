@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCaretPopupPosition } from "../hooks/useCaretPopupPosition";
 import type { AutocompleteCandidate, EntityAutocompleteMenuState } from "../hooks/useEntityAutocomplete";
 
 /** BACK-511 style short-name badges shown next to each candidate. */
@@ -25,23 +25,7 @@ export interface EntityLinkAutocompleteMenuProps {
  * @uiw/react-md-editor's inner textarea.
  */
 export function EntityLinkAutocompleteMenu({ menu, textarea, onSelect }: EntityLinkAutocompleteMenuProps) {
-	const listRef = useRef<HTMLDivElement | null>(null);
-	const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
-
-	useLayoutEffect(() => {
-		const list = listRef.current;
-		const anchor = list?.offsetParent as HTMLElement | null;
-		if (!list || !anchor || typeof anchor.getBoundingClientRect !== "function" || !textarea || !menu.caret) {
-			setPosition(null);
-			return;
-		}
-		const anchorRect = anchor.getBoundingClientRect();
-		const textareaRect = textarea.getBoundingClientRect();
-		setPosition({
-			top: textareaRect.top - anchorRect.top + menu.caret.top + menu.caret.height,
-			left: textareaRect.left - anchorRect.left + menu.caret.left,
-		});
-	}, [menu, textarea]);
+	const { listRef, position } = useCaretPopupPosition(menu.caret, textarea);
 
 	return (
 		<div

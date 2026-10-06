@@ -230,6 +230,95 @@ function CalendarGrid({
 	);
 }
 
+interface TagHistoryProps {
+	availableTags: string[];
+	activeTags: string[];
+	onToggleTag: (tag: string) => void;
+	onClear: () => void;
+}
+
+function tagChipClass(isActive: boolean): string {
+	return `shrink-0 whitespace-nowrap px-2 py-1 text-xs rounded-full border transition-colors ${
+		isActive
+			? "bg-blue-500 dark:bg-blue-600 border-blue-500 dark:border-blue-600 text-white"
+			: "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+	}`;
+}
+
+/**
+ * The tag filter as a flow of chips (the "tag history" strip), and it is one row: the chips fill
+ * it and the collapse toggle rides along at the end rather than owning a line of its own, so
+ * collapsing never costs vertical space - the chip flow simply clips to its first line
+ * (`overflow-hidden` + `max-height`) with the active tags floated to the front, so a filtered view
+ * still shows what it is narrowed by. Expanding restores the original order and reveals the rest.
+ * Chips read as pills of their own, so they carry the bare tag; the `#` belongs to the body syntax.
+ */
+function TagHistory({ availableTags, activeTags, onToggleTag, onClear }: TagHistoryProps) {
+	const { t } = useI18n();
+	const [collapsed, setCollapsed] = useState(false);
+	const activeSet = useMemo(() => new Set(activeTags.map((item) => item.toLowerCase())), [activeTags]);
+
+	const orderedTags = useMemo(() => {
+		if (!collapsed) return availableTags;
+		const active = availableTags.filter((tag) => activeSet.has(tag.toLowerCase()));
+		const rest = availableTags.filter((tag) => !activeSet.has(tag.toLowerCase()));
+		return [...active, ...rest];
+	}, [availableTags, collapsed, activeSet]);
+
+	return (
+		<div className="flex items-start gap-2" data-testid="memos-tag-history">
+			<div
+				className={`flex flex-1 flex-wrap items-center gap-2 overflow-hidden transition-[max-height] duration-200 ease-in-out ${
+					collapsed ? "max-h-8" : "max-h-64"
+				}`}
+			>
+				{orderedTags.map((tag) => {
+					const isActive = activeSet.has(tag.toLowerCase());
+					return (
+						<button
+							key={tag}
+							type="button"
+							data-testid="memos-tag-chip"
+							onClick={() => onToggleTag(tag)}
+							aria-pressed={isActive}
+							className={tagChipClass(isActive)}
+						>
+							{tag}
+						</button>
+					);
+				})}
+				{activeTags.length > 0 && (
+					<button
+						type="button"
+						onClick={onClear}
+						className="shrink-0 whitespace-nowrap px-2 py-1 text-xs rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+					>
+						{t.memos.clearTags}
+					</button>
+				)}
+			</div>
+			<button
+				type="button"
+				onClick={() => setCollapsed((value) => !value)}
+				aria-expanded={!collapsed}
+				className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+			>
+				<span>{collapsed ? t.memos.tagExpand : t.memos.tagCollapse}</span>
+				<svg
+					aria-hidden="true"
+					className={`w-3.5 h-3.5 transition-transform duration-200 ${collapsed ? "" : "rotate-180"}`}
+					fill="none"
+					stroke="currentColor"
+					strokeWidth={2}
+					viewBox="0 0 24 24"
+				>
+					<path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+				</svg>
+			</button>
+		</div>
+	);
+}
+
 export default function MemosPage() {
 	const { t, locale } = useI18n();
 	const { theme } = useTheme();
@@ -707,6 +796,7 @@ export default function MemosPage() {
 								preview="edit"
 								height="100%"
 								hideToolbar={true}
+								topicSuggestions={availableTags}
 								data-color-mode={theme}
 								textareaProps={{
 									placeholder: t.memos.composerPlaceholder,
@@ -774,35 +864,12 @@ export default function MemosPage() {
 				{!boardView && composerError && <ErrorBanner title={t.memos.saveFailed} detail={composerError} />}
 
 				{!boardView && availableTags.length > 0 && (
-					<div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
-						{availableTags.map((tag) => {
-							const isActive = activeTags.some((item) => item.toLowerCase() === tag.toLowerCase());
-							return (
-								<button
-									key={tag}
-									type="button"
-									onClick={() => toggleTag(tag)}
-									aria-pressed={isActive}
-									className={`shrink-0 whitespace-nowrap px-2 py-1 text-xs rounded-full border transition-colors ${
-										isActive
-											? "bg-blue-500 dark:bg-blue-600 border-blue-500 dark:border-blue-600 text-white"
-											: "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-									}`}
-								>
-									#{tag}
-								</button>
-							);
-						})}
-						{activeTags.length > 0 && (
-							<button
-								type="button"
-								onClick={() => setActiveTags([])}
-								className="shrink-0 whitespace-nowrap px-2 py-1 text-xs rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-							>
-								{t.memos.clearTags}
-							</button>
-						)}
-					</div>
+					<TagHistory
+						availableTags={availableTags}
+						activeTags={activeTags}
+						onToggleTag={toggleTag}
+						onClear={() => setActiveTags([])}
+					/>
 				)}
 
 				{boardView ? (
@@ -816,6 +883,7 @@ export default function MemosPage() {
 						) : (
 							<MemoBoard
 								memos={boardVisibleMemos}
+								activeTags={activeTags}
 								onUpdate={handleUpdate}
 								onDelete={handleDelete}
 								onArchive={handleArchive}
@@ -839,6 +907,8 @@ export default function MemosPage() {
 							<MemoCard
 								key={memo.id}
 								memo={memo}
+								activeTags={activeTags}
+								topicSuggestions={availableTags}
 								onUpdate={handleUpdate}
 								onDelete={handleDelete}
 								onArchive={handleArchive}

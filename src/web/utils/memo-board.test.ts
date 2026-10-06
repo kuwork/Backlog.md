@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type { Memo } from "../../core/memos.ts";
+import type { InkSegment } from "./memo-board.ts";
 import {
 	approxInkWidth,
 	estimateNoteHeight,
+	FOOTER_TAG_GAP,
+	FOOTER_TAG_LIMIT,
+	footerTagBoxes,
 	hashString,
 	hitTest,
+	inkRunBoxes,
 	layoutBoard,
 	layoutInkLines,
 	memoInkDepth,
@@ -17,6 +22,7 @@ import {
 	noteVariantFor,
 	PAPER_COLORS,
 	PIN_COLORS,
+	splitInkRuns,
 	wrapEstimate,
 } from "./memo-board.ts";
 
@@ -66,6 +72,104 @@ describe("wrapEstimate", () => {
 		expect(wrapped.length).toBeGreaterThan(1);
 		for (const line of wrapped) expect(line.length).toBeLessThanOrEqual(8);
 	});
+
+	test("keeps a closed #topic# on one line, since a chip split across lines is not a chip", () => {
+		// Narrow enough that the topic has to move to the next line rather than break inside.
+		const wrapped = wrapEstimate("前面有一些文字铺垫 #灵感# 后面还有", 60, 15);
+		expect(wrapped.some((line) => line === "#灵感#")).toBe(true);
+		for (const line of wrapped) {
+			// A hash appears on a line only as part of the whole topic: never a half of one.
+			expect(line.includes("#")).toBe(line === "#灵感#");
+		}
+	});
+});
+
+describe("footerTagBoxes", () => {
+	// 6px per character is close enough to lay the list out; the geometry is what is under test.
+	const measure = (text: string) => text.length * 6;
+	const rightEdge = 200;
+
+	test("lays the tags out right to left and right-aligns the block", () => {
+		const boxes = footerTagBoxes(["todo", "done"], rightEdge, measure, new Set());
+		expect(boxes.map((box) => box.text)).toEqual(["#todo", "#done"]);
+		// The block ends exactly at the inset, with the gap between the two labels.
+		const last = boxes.at(-1);
+		expect((last?.x ?? 0) + (last?.width ?? 0)).toBe(rightEdge);
+		expect(boxes[1]?.x).toBe((boxes[0]?.x ?? 0) + (boxes[0]?.width ?? 0) + FOOTER_TAG_GAP);
+	});
+
+	test("marks only the tag the view is narrowed by - a filter is not a blanket highlight", () => {
+		const boxes = footerTagBoxes(["todo", "done", "idea"], rightEdge, measure, new Set(["todo"]));
+		// Only the first FOOTER_TAG_LIMIT tags are shown at all.
+		expect(boxes).toHaveLength(FOOTER_TAG_LIMIT);
+		expect(boxes.map((box) => box.on)).toEqual([true, false]);
+		// Nothing is on when nothing is selected.
+		expect(footerTagBoxes(["todo", "done"], rightEdge, measure, new Set()).some((box) => box.on)).toBe(false);
+	});
+});
+
+describe("inkRunBoxes", () => {
+	const measure = (text: string, fontSize: number, bold: boolean) => approxInkWidth(text, fontSize, bold);
+	const segmentOf = (text: string): InkSegment => {
+		const layout = layoutInkLines(memoOf("f", `标题\n${text}`), 400, 42, 120, measure);
+		const seg = layout.segments.find((item) => !item.bold);
+		if (!seg) throw new Error(`no body segment was laid out for: ${text}`);
+		return seg;
+	};
+
+	test("places each run after the one before it, so a chip lands behind its own text", () => {
+		// No spaces in the fixture: the ink wrapper drops them the way it always has, and a run's
+		// placement is what is under test here.
+		const boxes = inkRunBoxes(segmentOf("第#todo#尾"), 16, measure, new Set());
+		expect(boxes.map((box) => box.text)).toEqual(["第", "#todo#", "尾"]);
+		expect(boxes[0]?.x).toBe(16);
+		expect(boxes[1]?.x).toBe(16 + (boxes[0]?.width ?? 0));
+		expect(boxes[2]?.x).toBe(16 + (boxes[0]?.width ?? 0) + (boxes[1]?.width ?? 0));
+		// Only the topic is dressed; the rest is plain ink.
+		expect(boxes.map((box) => box.tag)).toEqual([null, "todo", null]);
+	});
+
+	test("marks a run on only when its tag is the one the view is narrowed by", () => {
+		const seg = segmentOf("#todo# #done#");
+		expect(inkRunBoxes(seg, 0, measure, new Set(["todo"])).map((box) => box.on)).toEqual([true, false]);
+		// Case-insensitive, like the filter itself.
+		expect(inkRunBoxes(seg, 0, measure, new Set(["TODO"])).map((box) => box.on)).toEqual([true, false]);
+		// With nothing selected nothing is on - including a run with no tag at all.
+		expect(inkRunBoxes(seg, 0, measure, new Set()).some((box) => box.on)).toBe(false);
+	});
+});
+
+describe("splitInkRuns", () => {
+	test("splits a line into plain runs and one run per closed topic", () => {
+		expect(splitInkRuns("tasks #todo# and #done#")).toEqual([
+			{ text: "tasks ", tag: null },
+			{ text: "#todo#", tag: "todo" },
+			{ text: " and ", tag: null },
+			{ text: "#done#", tag: "done" },
+		]);
+	});
+
+	test("leaves a line without a topic as a single plain run", () => {
+		expect(splitInkRuns("just ink")).toEqual([{ text: "just ink", tag: null }]);
+		expect(splitInkRuns("")).toEqual([]);
+	});
+
+	test("leaves an unclosed token alone, so an ordinary reference is never chipped", () => {
+		expect(splitInkRuns("审查 PR #268，还有 #todo 没写").every((run) => run.tag === null)).toBe(true);
+	});
+
+	test("chips CJK topics and a topic alone on its line", () => {
+		expect(splitInkRuns("#标签#")).toEqual([{ text: "#标签#", tag: "标签" }]);
+	});
+
+	test("keeps the run text summing back to the line it came from", () => {
+		const line = "开 #todo# 中 #done# 收";
+		expect(
+			splitInkRuns(line)
+				.map((run) => run.text)
+				.join(""),
+		).toBe(line);
+	});
 });
 
 describe("estimateNoteHeight", () => {
@@ -108,6 +212,22 @@ describe("layoutInkLines", () => {
 		expect(last?.text.endsWith("…")).toBe(true);
 		// The trimmed final line must actually fit the width.
 		expect(approxInkWidth(last?.text ?? "", last?.fontSize ?? 0, last?.bold ?? false)).toBeLessThanOrEqual(maxWidth);
+	});
+
+	test("gives every segment runs that add back up to its text, chip or not", () => {
+		const layout = layoutInkLines(
+			memoOf("e", "标题 #标题标签#\n正文 #todo# 与未闭合 #268"),
+			maxWidth,
+			top,
+			bottom,
+			measure,
+		);
+		for (const seg of layout.segments) {
+			expect(seg.runs.map((run) => run.text).join("")).toBe(seg.text);
+		}
+		// The baker walks the runs to place chips, so a topic has to survive into them.
+		const body = layout.segments.filter((seg) => !seg.bold).flatMap((seg) => seg.runs);
+		expect(body.filter((run) => run.tag !== null).map((run) => run.tag)).toEqual(["todo"]);
 	});
 
 	test("never starts a line below the bottom of the fixed box", () => {

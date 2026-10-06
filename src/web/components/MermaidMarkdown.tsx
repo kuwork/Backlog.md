@@ -33,6 +33,12 @@ interface Props {
 	 * only the note surfaces dress them; a task or doc body keeps its literal `#word`.
 	 */
 	inlineTagChips?: boolean;
+	/**
+	 * The tags the surrounding view is narrowed by. A chip standing for one of them is marked
+	 * active, so the body reads as "this note is here because of this tag". Case-insensitive,
+	 * matching how the filter itself compares tags.
+	 */
+	activeTags?: string[];
 }
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/;
@@ -85,38 +91,43 @@ function rehypeTaskListIndex() {
 }
 
 /**
- * `#tag` tokens - the same shape `extractInlineTags` lifts into a memo's `tags`, so a chip always
- * has a filter it can stand for.
+ * Weibo-style `#topic#` tokens - the same shape `extractInlineTags` lifts into a memo's `tags`, so
+ * a chip always has a filter it can stand for. Closing the topic with a second hash is what makes
+ * it one, which keeps ordinary references (`PR #268`) out of the chip pass.
  */
-const INLINE_TAG_PATTERN = /(^|[\s(])#([^\s#`]+)/g;
+const INLINE_TAG_PATTERN = /#([^\s#`]+)#/g;
 /** Elements whose text must never be split: code is code, a label inside a link is a label. */
 const INLINE_TAG_SKIP_TAGS = new Set(["a", "code", "pre", "script", "style"]);
 
 /** Split one text node into plain runs and chip elements, or null when it holds no tag. */
-function splitInlineTags(value: string): ElementContent[] | null {
+function splitInlineTags(value: string, activeTags: ReadonlySet<string>): ElementContent[] | null {
 	let parts: ElementContent[] | null = null;
 	let cursor = 0;
 
 	INLINE_TAG_PATTERN.lastIndex = 0;
 	for (let match = INLINE_TAG_PATTERN.exec(value); match; match = INLINE_TAG_PATTERN.exec(value)) {
-		const tag = match[2];
+		const tag = match[1];
 		if (!tag) continue;
 		const start = match.index;
 		parts ??= [];
 		if (start > cursor) parts.push({ type: "text", value: value.slice(cursor, start) });
-		// Keep the separating space out of the chip, so the chip hugs the tag itself.
-		if (match[1]) parts.push({ type: "text", value: match[1] });
+		const isActive = activeTags.has(tag.toLowerCase());
 		parts.push({
 			type: "element",
 			tagName: "span",
 			properties: {
-				className: ["inline-tag"],
+				// `inline-tag-active` only ever changes colour: the chip sits inline in a
+				// paragraph, so padding or weight would reflow the line it is on.
+				className: isActive ? ["inline-tag", "inline-tag-active"] : ["inline-tag"],
 				"data-memo-tag": tag,
+				"data-memo-tag-active": isActive ? "true" : undefined,
 				// A chip stands for a filter, so it has to be reachable and activatable without a mouse.
 				role: "button",
 				tabIndex: 0,
+				"aria-pressed": isActive ? "true" : "false",
 			},
-			children: [{ type: "text", value: `#${tag}` }],
+			// The chip shows the topic exactly as it was typed, closing hash included.
+			children: [{ type: "text", value: match[0] }],
 		});
 		cursor = start + match[0].length;
 	}
@@ -129,19 +140,19 @@ function splitInlineTags(value: string): ElementContent[] | null {
  * Rebuild the children array while descending, the same way `linkEntityIds` does for entity IDs:
  * visits in place, so the markdown source never has to be rewritten.
  */
-function decorateInlineTags(node: Parent): void {
+function decorateInlineTags(node: Parent, activeTags: ReadonlySet<string>): void {
 	const rewritten: RootContent[] = [];
 	let changed = false;
 	for (const child of node.children) {
 		if (child.type === "text" && typeof child.value === "string") {
-			const parts = splitInlineTags(child.value);
+			const parts = splitInlineTags(child.value, activeTags);
 			if (parts) {
 				rewritten.push(...parts);
 				changed = true;
 				continue;
 			}
 		} else if (child.type === "element" && !INLINE_TAG_SKIP_TAGS.has(child.tagName)) {
-			decorateInlineTags(child);
+			decorateInlineTags(child, activeTags);
 		}
 		rewritten.push(child);
 	}
@@ -149,9 +160,9 @@ function decorateInlineTags(node: Parent): void {
 }
 
 /** Opt-in pass: turns `#tag` text into a chip element the memo styles can dress. */
-function rehypeInlineTags() {
-	return (tree: Root) => {
-		decorateInlineTags(tree);
+function rehypeInlineTags(activeTags: ReadonlySet<string>) {
+	return () => (tree: Root) => {
+		decorateInlineTags(tree, activeTags);
 	};
 }
 
@@ -391,6 +402,7 @@ export default function MermaidMarkdown({
 	wikilinkBasePath,
 	onToggleTask,
 	inlineTagChips,
+	activeTags,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = wikilinkBasePath
@@ -400,12 +412,13 @@ export default function MermaidMarkdown({
 	const theme = useOptionalTheme();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
+	const activeTagSet = useMemo(() => new Set((activeTags ?? []).map((tag) => tag.toLowerCase())), [activeTags]);
 	const rehypePlugins = useMemo(
 		() =>
 			inlineTagChips
-				? [rehypeHeadingMetadata, rehypeTaskListIndex, rehypeInlineTags]
+				? [rehypeHeadingMetadata, rehypeTaskListIndex, rehypeInlineTags(activeTagSet)]
 				: [rehypeHeadingMetadata, rehypeTaskListIndex],
-		[inlineTagChips],
+		[inlineTagChips, activeTagSet],
 	);
 
 	// react-markdown hands a component only the element's own hast props, so the page's toggle

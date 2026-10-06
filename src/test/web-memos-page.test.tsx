@@ -285,10 +285,11 @@ describe("MemosPage feed", () => {
 	it("captures through the composer and shows the saved memo at the top of the feed", async () => {
 		const container = await renderMemos();
 
-		await typeIntoComposer(container, "Captured note #smoke");
+		await typeIntoComposer(container, "Captured note #smoke#");
 		await clickButton(container, "Save");
 
-		expect(created?.content).toBe("Captured note #smoke");
+		expect(created?.content).toBe("Captured note #smoke#");
+		// The topic only counts because it is closed - that is what lifts it into `tags`.
 		expect(created?.tags).toEqual(["smoke"]);
 		expect(cardTexts(container)[0]).toContain("Captured note");
 		expect(cardTexts(container)).toHaveLength(3);
@@ -325,8 +326,11 @@ describe("MemosPage feed", () => {
 
 	it("narrows the feed by tag chip and restores it again", async () => {
 		const container = await renderMemos();
-		const meetingChip = Array.from(container.querySelectorAll("button[aria-pressed]")).find(
-			(button) => button.textContent?.trim() === "#meeting",
+		// The tag history renders its chips inline; clicking one narrows the feed.
+		const history = container.querySelector('[data-testid="memos-tag-history"]') as HTMLElement | null;
+		expect(history).toBeTruthy();
+		const meetingChip = Array.from(history?.querySelectorAll('[data-testid="memos-tag-chip"]') ?? []).find(
+			(button) => button.textContent?.trim() === "meeting",
 		);
 		expect(meetingChip).toBeTruthy();
 
@@ -341,6 +345,32 @@ describe("MemosPage feed", () => {
 
 		await clickButton(container, "Clear tag filter");
 		expect(cardTexts(container)).toHaveLength(2);
+	});
+
+	it("floats the active tag to the front when the history is collapsed", async () => {
+		const container = await renderMemos();
+		const history = container.querySelector('[data-testid="memos-tag-history"]') as HTMLElement;
+		// meeting is second in source order; make it the active filter first.
+		const meetingChip = Array.from(history.querySelectorAll('[data-testid="memos-tag-chip"]')).find(
+			(button) => button.textContent?.trim() === "meeting",
+		) as Element;
+		await act(async () => {
+			reactProps(meetingChip).onClick?.({});
+			await Promise.resolve();
+		});
+		await flush();
+		// Collapse the strip via its toggle (expanded → aria-expanded="true").
+		const toggle = history.querySelector('button[aria-expanded="true"]') as HTMLButtonElement | null;
+		expect(toggle).toBeTruthy();
+		await act(async () => {
+			reactProps(toggle as Element).onClick?.({});
+			await Promise.resolve();
+		});
+		await flush();
+		// Collapsed: the toggle now reads collapsed, and the active tag leads the row.
+		expect(history.querySelector('button[aria-expanded="false"]')).toBeTruthy();
+		const chips = Array.from(history.querySelectorAll('[data-testid="memos-tag-chip"]'));
+		expect(chips[0]?.textContent?.trim()).toBe("meeting");
 	});
 
 	it("keeps edit and delete behind the card's ⋮ menu", async () => {
@@ -505,10 +535,10 @@ describe("MemosPage calendar popover", () => {
 
 	it("captures into the selected day (back-dated) from the single composer", async () => {
 		const container = await renderMemos("/memos?view=calendar&date=2026-10-01");
-		await typeIntoComposer(container, "Backdated note #retro");
+		await typeIntoComposer(container, "Backdated note #retro#");
 		await clickButton(container, "Save");
 
-		expect(created?.content).toBe("Backdated note #retro");
+		expect(created?.content).toBe("Backdated note #retro#");
 		expect(created?.tags).toEqual(["retro"]);
 		// The single composer pins the capture to the day on the chip, with the current LOCAL time,
 		// and sends it in the stored UTC shape. The chip's day is therefore what the local date part
@@ -854,7 +884,7 @@ describe("MemoCard body: note typography and tag chips", () => {
 		root = null;
 	});
 
-	async function renderBody(content: string, chips = true): Promise<HTMLElement> {
+	async function renderBody(content: string, chips = true, activeTags: string[] = []): Promise<HTMLElement> {
 		const container = setupDom("/memos");
 		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
 		root = createRoot(container);
@@ -868,6 +898,7 @@ describe("MemoCard body: note typography and tag chips", () => {
 									{chips ? (
 										<MemoCard
 											memo={makeMemo("20261001-3", content, [])}
+											activeTags={activeTags}
 											onUpdate={async () => {}}
 											onDelete={async () => {}}
 											onArchive={async () => {}}
@@ -898,49 +929,77 @@ describe("MemoCard body: note typography and tag chips", () => {
 		expect(body?.className).not.toContain("prose");
 	});
 
-	it("renders a #tag in the body as a chip instead of leaving it as plain text", async () => {
-		const container = await renderBody("And here are my tasks. #todo");
+	it("renders a #topic# in the body as a chip instead of leaving it as plain text", async () => {
+		const container = await renderBody("And here are my tasks. #todo#");
 		const el = chip(container, "todo");
 		expect(el).toBeTruthy();
-		expect(el?.textContent).toBe("#todo");
+		// The chip shows the topic exactly as typed, closing hash included.
+		expect(el?.textContent).toBe("#todo#");
 		expect(el?.className).toContain("inline-tag");
 		// A chip stands for a filter, so it is reachable and activatable without a mouse.
 		expect(el?.getAttribute("role")).toBe("button");
 		expect(el?.getAttribute("tabindex")).toBe("0");
 	});
 
-	it("keeps the separating space outside the chip so the text still reads normally", async () => {
-		const container = await renderBody("tasks #todo next");
-		expect(container.textContent).toContain("tasks #todo next");
+	it("leaves an unclosed #token alone, so an ordinary reference is never chipped", async () => {
+		const container = await renderBody("审查 PR #268，还有 #todo 没写");
+		expect(chip(container, "268")).toBeNull();
+		expect(chip(container, "todo")).toBeNull();
+		// ...while the closed form right beside it still chips.
+		const closed = await renderBody("审查 PR #268，还有 #todo# 写好了");
+		expect(chip(closed, "268")).toBeNull();
+		expect(chip(closed, "todo")).toBeTruthy();
 	});
 
-	it("chips every tag a bare token can produce, including one alone on its line", async () => {
-		const container = await renderBody("#标签\n\nbody #todo");
-		expect(chip(container, "标签")?.textContent).toBe("#标签");
+	it("keeps the surrounding text outside the chip so the text still reads normally", async () => {
+		const container = await renderBody("tasks #todo# next");
+		expect(container.textContent).toContain("tasks #todo# next");
+	});
+
+	it("chips every closed topic, including one alone on its line", async () => {
+		const container = await renderBody("#标签#\n\nbody #todo#");
+		expect(chip(container, "标签")?.textContent).toBe("#标签#");
 		expect(chip(container, "todo")).toBeTruthy();
 	});
 
-	it("leaves a real heading alone: the no-space form is a tag, `# ` is a title", async () => {
+	it("leaves a real heading alone: only a closed #topic# chips, `# ` is a title", async () => {
 		const container = await renderBody("# Title text");
 		expect(container.querySelector("h1")?.textContent).toBe("Title text");
 		expect(chip(container, "Title")).toBeNull();
 	});
 
-	it("does not chip a #token inside code, inline or fenced", async () => {
-		const container = await renderBody("Try `#inline` and\n\n```\n#fenced\n```\n\nbut #real");
+	it("does not chip a #token# inside code, inline or fenced", async () => {
+		const container = await renderBody("Try `#inline#` and\n\n```\n#fenced#\n```\n\nbut #real#");
 		expect(chip(container, "inline")).toBeNull();
 		expect(chip(container, "fenced")).toBeNull();
 		expect(chip(container, "real")).toBeTruthy();
 	});
 
-	it("leaves tags as literal text where the caller did not opt in", async () => {
-		const container = await renderBody("Just #todo here", false);
+	it("marks a body chip active when its tag is the one the view is narrowed by", async () => {
+		const narrowed = await renderBody("tasks #todo# and #done#", true, ["todo"]);
+		expect(chip(narrowed, "todo")?.className).toContain("inline-tag-active");
+		expect(chip(narrowed, "todo")?.getAttribute("aria-pressed")).toBe("true");
+		// Its neighbours are chips of the same kind, just not the selected one.
+		expect(chip(narrowed, "done")?.className).not.toContain("inline-tag-active");
+		expect(chip(narrowed, "done")?.getAttribute("aria-pressed")).toBe("false");
+
+		// Matching is case-insensitive, like the filter itself.
+		const mixedCase = await renderBody("tasks #todo#", true, ["ToDo"]);
+		expect(chip(mixedCase, "todo")?.className).toContain("inline-tag-active");
+
+		// With nothing selected, no chip claims to be on.
+		const plain = await renderBody("tasks #todo#");
+		expect(chip(plain, "todo")?.className).not.toContain("inline-tag-active");
+	});
+
+	it("leaves topics as literal text where the caller did not opt in", async () => {
+		const container = await renderBody("Just #todo# here", false);
 		expect(container.querySelector(".inline-tag")).toBeNull();
-		expect(container.textContent).toContain("#todo");
+		expect(container.textContent).toContain("#todo#");
 	});
 
 	it("filters the feed when a chip is clicked", async () => {
-		const container = await renderBody("tasks #todo");
+		const container = await renderBody("tasks #todo#");
 		await act(async () => {
 			chip(container, "todo")?.dispatchEvent(new Event("click", { bubbles: true }));
 			await Promise.resolve();
@@ -949,7 +1008,7 @@ describe("MemoCard body: note typography and tag chips", () => {
 	});
 
 	it("activates a chip from the keyboard, since it is a role=button", async () => {
-		const container = await renderBody("tasks #todo");
+		const container = await renderBody("tasks #todo#");
 		await act(async () => {
 			chip(container, "todo")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 			await Promise.resolve();
@@ -958,13 +1017,76 @@ describe("MemoCard body: note typography and tag chips", () => {
 	});
 
 	it("ignores other keys and clicks that miss a chip", async () => {
-		const container = await renderBody("tasks #todo");
+		const container = await renderBody("tasks #todo#");
 		await act(async () => {
 			chip(container, "todo")?.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
 			container.querySelector(".memo-body")?.dispatchEvent(new Event("click", { bubbles: true }));
 			await Promise.resolve();
 		});
 		expect(tagClicks).toEqual([]);
+	});
+});
+
+describe("MemoCard bottom tag row", () => {
+	let tagClicks: string[] = [];
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		tagClicks = [];
+		act(() => root?.unmount());
+		root = null;
+	});
+
+	async function renderCard(tags: string[], active: string[] = []): Promise<HTMLElement> {
+		const container = setupDom("/memos");
+		globalThis.fetch = (async () => new Response("{}")) as unknown as typeof globalThis.fetch;
+		root = createRoot(container);
+		await act(async () => {
+			root?.render(
+				<ThemeProvider>
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<BrowserRouter>
+								<TaskIdIndexProvider tasks={[]} docs={[]} decisions={[]}>
+									<MemoCard
+										memo={makeMemo("20261001-3", "A note", tags)}
+										activeTags={active}
+										onUpdate={async () => {}}
+										onDelete={async () => {}}
+										onArchive={async () => {}}
+										onTagClick={(tag) => tagClicks.push(tag)}
+									/>
+								</TaskIdIndexProvider>
+							</BrowserRouter>
+						</ImageLightboxProvider>
+					</I18nProvider>
+				</ThemeProvider>,
+			);
+		});
+		await flush();
+		return container;
+	}
+
+	const bottomTagButtons = (container: HTMLElement): HTMLButtonElement[] =>
+		Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="memo-tag-chip"]'));
+
+	it("renders the memo's tags as a clickable row at the card bottom", async () => {
+		const container = await renderCard(["release", "bug"]);
+		// The pills are borders of their own, so the row reads the bare tag - the `#` is body syntax.
+		expect(bottomTagButtons(container).map((btn) => btn.textContent?.trim())).toEqual(["release", "bug"]);
+		await act(async () => {
+			reactProps(bottomTagButtons(container)[0] as Element).onClick?.({});
+			await Promise.resolve();
+		});
+		expect(tagClicks).toEqual(["release"]);
+	});
+
+	it("marks tags that match the active filter as pressed", async () => {
+		const container = await renderCard(["release", "bug"], ["bug"]);
+		const bugBtn = bottomTagButtons(container).find((btn) => btn.textContent?.trim() === "bug");
+		expect(bugBtn?.getAttribute("aria-pressed")).toBe("true");
+		const releaseBtn = bottomTagButtons(container).find((btn) => btn.textContent?.trim() === "release");
+		expect(releaseBtn?.getAttribute("aria-pressed")).toBe("false");
 	});
 });
 

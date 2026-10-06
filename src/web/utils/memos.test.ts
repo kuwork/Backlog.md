@@ -175,14 +175,29 @@ describe("tag helpers", () => {
 });
 
 describe("extractInlineTags", () => {
-	it("lifts #tokens out of the body, once each", () => {
-		expect(extractInlineTags("capture this #idea and #Idea again")).toEqual(["idea"]);
-		expect(extractInlineTags("standup notes #meeting #urgent")).toEqual(["meeting", "urgent"]);
+	it("lifts #topics# out of the body, once each", () => {
+		expect(extractInlineTags("capture this #idea# and #Idea# again")).toEqual(["idea"]);
+		expect(extractInlineTags("standup notes #meeting# #urgent#")).toEqual(["meeting", "urgent"]);
+	});
+
+	it("needs the closing hash, so a lone #tag is plain text", () => {
+		expect(extractInlineTags("capture this #idea and #Idea again")).toEqual([]);
+		expect(extractInlineTags("standup notes #meeting #urgent")).toEqual([]);
 	});
 
 	it("ignores markdown headings and code", () => {
 		expect(extractInlineTags("# Heading\nbody")).toEqual([]);
 		expect(extractInlineTags("npm install # not a tag")).toEqual([]);
+	});
+
+	it("leaves ordinary references alone - the reason the topic has to close", () => {
+		expect(extractInlineTags("待办：审查 PR #268，关于依赖图的环检测逻辑")).toEqual([]);
+		expect(extractInlineTags("fixed by issue #123 today")).toEqual([]);
+	});
+
+	it("lets a topic sit inside a sentence, Weibo style", () => {
+		expect(extractInlineTags("今天#天气#真好")).toEqual(["天气"]);
+		expect(extractInlineTags("ship(#release#)")).toEqual(["release"]);
 	});
 });
 

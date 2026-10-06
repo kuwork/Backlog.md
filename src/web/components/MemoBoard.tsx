@@ -5,7 +5,9 @@ import { useI18n } from "../hooks/useI18n";
 import {
 	type BoardNote,
 	type BoardNoteVariant,
+	footerTagBoxes,
 	hitTest,
+	inkRunBoxes,
 	layoutBoard,
 	layoutInkLines,
 	NOTE_INK,
@@ -80,6 +82,26 @@ const lighten = (hex: string, amount: number) => mixColor(hex, [255, 255, 255], 
 const darken = (hex: string, amount: number) => mixColor(hex, [0, 0, 0], amount);
 
 const INK_COLOR = "#4a4234";
+const INK_MUTED = "rgba(74, 66, 52, 0.82)";
+/** A topic's chip on the paper: a light wash, so a chip reads as a chip without leaving the paper.
+    Deliberately faint - it is what makes a topic findable, not the highlight; that is the blue. */
+const CHIP_BG = "rgba(255, 253, 240, 0.55)";
+const CHIP_FG = "rgba(74, 66, 52, 0.98)";
+/**
+ * The same chip when its tag is the one the board is narrowed by. Light blue on blue, never a
+ * saturated fill: the paper under it is always yellow, and a dark chip on yellow shouts.
+ */
+const CHIP_ON_BG = "#dbeafe"; /* blue-100 */
+const CHIP_ON_FG = "#1d4ed8"; /* blue-700 */
+/** The footer's tag list, in blue: it is a tag, not ink. The one the board is narrowed by reads
+    blue; every other tag stays in the muted meta colour. */
+const FOOTER_TAG_FG = "#2563eb"; /* blue-600 */
+const FOOTER_META_FG = "rgba(96, 84, 60, 0.65)";
+const FOOTER_FONT_SIZE = 10;
+/** Chip padding, in canvas pixels: enough to read as a chip, small enough not to crowd the ink. */
+const CHIP_PAD_X = 3;
+const CHIP_PAD_Y = 1.5;
+const CHIP_RADIUS = 3;
 const HAND_FONT = `"Segoe Print", "Bradley Hand", "Comic Sans MS", "Microsoft YaHei", "PingFang SC", cursive`;
 
 /** The paper's outline: a slightly rounded rectangle, optionally with the bottom-right corner cut. */
@@ -100,6 +122,18 @@ function paperPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 	ctx.arcTo(x, y + h, x, y + h - r, r);
 	ctx.lineTo(x, y + r);
 	ctx.arcTo(x, y, x + r, y, r);
+	ctx.closePath();
+}
+
+/** A rounded rectangle, drawn by hand: `roundRect` is too new to assume on a canvas. */
+function chipPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+	const radius = Math.min(r, w / 2, h / 2);
+	ctx.beginPath();
+	ctx.moveTo(x + radius, y);
+	ctx.arcTo(x + w, y, x + w, y + h, radius);
+	ctx.arcTo(x + w, y + h, x, y + h, radius);
+	ctx.arcTo(x, y + h, x, y, radius);
+	ctx.arcTo(x, y, x + w, y, radius);
 	ctx.closePath();
 }
 
@@ -144,8 +178,13 @@ function drawPin(ctx: CanvasRenderingContext2D, cx: number, cy: number, color: s
 	ctx.fill();
 }
 
-/** Bake one note's complete appearance (paper, full text, pin, shadow) into a texture canvas. */
-function bakeNoteTexture(memo: Memo, variant: BoardNoteVariant, height: number): HTMLCanvasElement {
+/** Bake one note's complete appearance (paper, full text, chips, pin, shadow) into a canvas. */
+function bakeNoteTexture(
+	memo: Memo,
+	variant: BoardNoteVariant,
+	height: number,
+	activeTags: ReadonlySet<string>,
+): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	canvas.width = TEX_WORLD_W * TEX_SCALE;
 	canvas.height = (height + TEX_PAD * 2) * TEX_SCALE;
@@ -206,10 +245,11 @@ function bakeNoteTexture(memo: Memo, variant: BoardNoteVariant, height: number):
 	const maxWidth = w - NOTE_INK.inset * 2;
 	const inkTop = y + NOTE_INK.pinClearance;
 	const inkBottom = y + h - NOTE_INK.bottomReserve;
-	const layout = layoutInkLines(memo, maxWidth, inkTop, inkBottom, (text, fontSize, bold) => {
+	const measureInk = (text: string, fontSize: number, bold: boolean) => {
 		ctx.font = `${bold ? "600 " : ""}${fontSize}px ${HAND_FONT}`;
 		return ctx.measureText(text).width;
-	});
+	};
+	const layout = layoutInkLines(memo, maxWidth, inkTop, inkBottom, measureInk);
 
 	let drawY = inkTop;
 	for (let i = 0; i < layout.segments.length; i++) {
@@ -217,21 +257,41 @@ function bakeNoteTexture(memo: Memo, variant: BoardNoteVariant, height: number):
 		if (!seg) break;
 		// A 4px gap separates the bold heading block from the body, wherever the boundary falls.
 		if (i > 0 && !seg.bold && layout.segments[i - 1]?.bold) drawY += 4;
-		ctx.fillStyle = seg.bold ? INK_COLOR : "rgba(74, 66, 52, 0.82)";
 		ctx.font = `${seg.bold ? "600 " : ""}${seg.fontSize}px ${HAND_FONT}`;
-		ctx.fillText(seg.text, textX, drawY);
+		const boxes = inkRunBoxes(seg, textX, measureInk, activeTags);
+		const chipTop = drawY - seg.fontSize * 0.82 - CHIP_PAD_Y;
+		const chipH = seg.fontSize * 1.05 + CHIP_PAD_Y * 2;
+		// Chips first, ink second: a chip is padded on both sides, so one painted after a
+		// neighbour's text would wash over the edge of it.
+		for (const box of boxes) {
+			if (!box.tag) continue;
+			ctx.fillStyle = box.on ? CHIP_ON_BG : CHIP_BG;
+			chipPath(ctx, box.x - CHIP_PAD_X, chipTop, box.width + CHIP_PAD_X * 2, chipH, CHIP_RADIUS);
+			ctx.fill();
+		}
+		for (const box of boxes) {
+			ctx.fillStyle = box.tag ? (box.on ? CHIP_ON_FG : CHIP_FG) : seg.bold ? INK_COLOR : INK_MUTED;
+			ctx.fillText(box.text, box.x, drawY);
+		}
 		drawY += seg.lineHeight;
 	}
-	ctx.font = `10px ${HAND_FONT}`;
-	ctx.fillStyle = "rgba(96, 84, 60, 0.65)";
+	ctx.font = `${FOOTER_FONT_SIZE}px ${HAND_FONT}`;
+	ctx.fillStyle = FOOTER_META_FG;
 	ctx.fillText(memo.createdDate.slice(0, 10), textX, y + h - 14);
+	// The footer's tag list carries no chip - the tag the board is narrowed by is simply blue
+	// text, and every other tag stays in the muted meta colour, so a filtered board highlights
+	// exactly one tag without painting a background.
 	if (memo.tags.length > 0) {
-		const tagLabel = memo.tags
-			.slice(0, 2)
-			.map((tag) => `#${tag}`)
-			.join(" ");
-		const tagWidth = ctx.measureText(tagLabel).width;
-		ctx.fillText(tagLabel, x + w - NOTE_INK.inset - tagWidth, y + h - 14);
+		const baseline = y + h - 14;
+		for (const box of footerTagBoxes(
+			memo.tags,
+			x + w - NOTE_INK.inset,
+			(label) => ctx.measureText(label).width,
+			activeTags,
+		)) {
+			ctx.fillStyle = box.on ? FOOTER_TAG_FG : FOOTER_META_FG;
+			ctx.fillText(box.text, box.x, baseline);
+		}
 	}
 
 	drawPin(ctx, x + w / 2, y - 2, variant.pin);
@@ -317,7 +377,7 @@ interface MemoBoardProps extends Omit<MemoCardProps, "memo"> {
 	memos: Memo[];
 }
 
-export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagClick }: MemoBoardProps) {
+export default function MemoBoard({ memos, activeTags, onUpdate, onDelete, onArchive, onTagClick }: MemoBoardProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -344,6 +404,10 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagC
 	const layout = useMemo(() => layoutBoard(memos, boardWidth, boardHeight), [memos, boardWidth, boardHeight]);
 	const selectedMemo = selectedId ? (memos.find((memo) => memo.id === selectedId) ?? null) : null;
 	const hoveredNote = hoveredId ? (layout.notes.find((note) => note.memo.id === hoveredId) ?? null) : null;
+	// Lowercased, like the filter compares them; the key is what makes a texture stale when the
+	// selection changes, so it has to be order-independent.
+	const activeTagSet = useMemo(() => new Set((activeTags ?? []).map((tag) => tag.toLowerCase())), [activeTags]);
+	const activeTagKey = useMemo(() => [...activeTagSet].sort().join("\u0000"), [activeTagSet]);
 
 	const archiveNote = async (id: string) => {
 		setArchiveError(null);
@@ -516,7 +580,7 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagC
 			const live = new Set<string>();
 			for (const note of layout.notes) {
 				live.add(note.memo.id);
-				const stamp = memoStamp(note.memo);
+				const stamp = memoStamp(note.memo, activeTagKey);
 				const cached = textures.get(note.memo.id);
 				if (cached && cached.stamp === stamp) continue;
 				if (cached) gl.deleteTexture(cached.texture);
@@ -529,7 +593,7 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagC
 					gl.RGBA,
 					gl.RGBA,
 					gl.UNSIGNED_BYTE,
-					bakeNoteTexture(note.memo, note.variant, note.h),
+					bakeNoteTexture(note.memo, note.variant, note.h, activeTagSet),
 				);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -545,7 +609,7 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagC
 			}
 		}
 		scheduleDrawRef.current();
-	}, [layout]);
+	}, [layout, activeTagKey, activeTagSet]);
 
 	// A theme flip only changes the dim uniform - a plain redraw, no rebake.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: theme is the trigger, the draw pass reads it via themeRef
@@ -658,6 +722,10 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagC
 				{selectedMemo && (
 					<MemoCard
 						memo={selectedMemo}
+						/* The note modal is the only place tags are visible while the board view is
+						   on - the strip is feed-only - so the active filter has to reach it, or a
+						   board narrowed by a tag shows a card with nothing marked. */
+						activeTags={activeTags}
 						onUpdate={onUpdate}
 						onDelete={async (id) => {
 							await onDelete(id);
@@ -675,7 +743,7 @@ export default function MemoBoard({ memos, onUpdate, onDelete, onArchive, onTagC
 	);
 }
 
-/** The texture changes only when the memo itself does. */
-function memoStamp(memo: Memo): string {
-	return `${memo.updatedDate ?? memo.createdDate}`;
+/** The texture changes when the memo does - and when the selected tags do, since they dress chips. */
+function memoStamp(memo: Memo, activeTagKey: string): string {
+	return `${memo.updatedDate ?? memo.createdDate}|${activeTagKey}`;
 }

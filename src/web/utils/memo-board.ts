@@ -114,11 +114,12 @@ function textWidthUnits(text: string, fontSize: number): number {
 
 /**
  * Wrap `text` by estimated width: latin words stay whole, every other character (CJK included) may
- * break anywhere. The texture baker draws exactly these lines, so the paper height the layout
- * reserves always fits the ink.
+ * break anywhere. A closed `#topic#` is one token - a chip has to stay on one line to be a chip, so
+ * it is never broken the way a CJK run is. The texture baker draws exactly these lines, so the
+ * paper height the layout reserves always fits the ink.
  */
 export function wrapEstimate(text: string, maxWidth: number, fontSize: number): string[] {
-	const tokens = text.match(/[A-Za-z0-9_'-]+|\S/gu) ?? [];
+	const tokens = text.match(/#(?:[^\s#`]+)#|[A-Za-z0-9_'-]+|\S/gu) ?? [];
 	const lines: string[] = [];
 	let current = "";
 	let currentWidth = 0;
@@ -148,12 +149,135 @@ export function memoInkLines(memo: Memo): { title: string; body: string[] } {
 	return { title, body: lines };
 }
 
+/**
+ * The closed `#topic#` form - the same shape the feed lifts into tags and chips, so a note's ink
+ * and a card's body read the same way. Closing it with a second hash is what keeps an ordinary
+ * reference (`PR #268`) out of the chip pass.
+ */
+const INK_TOPIC_PATTERN = /#([^\s#`]+)#/g;
+
+/** One run of ink on a note: plain text, or a `#topic#` that the baker dresses with a chip. */
+export interface InkRun {
+	text: string;
+	/** The topic the run stands for, or null for plain ink. */
+	tag: string | null;
+}
+
+/**
+ * Split an already-wrapped ink line into plain runs and topic runs. The baker draws them left to
+ * right with the measured widths, so a chip can be painted behind a run without knowing the font.
+ */
+export function splitInkRuns(line: string): InkRun[] {
+	if (line.length === 0) return [];
+	const runs: InkRun[] = [];
+	let cursor = 0;
+	INK_TOPIC_PATTERN.lastIndex = 0;
+	for (let match = INK_TOPIC_PATTERN.exec(line); match; match = INK_TOPIC_PATTERN.exec(line)) {
+		const tag = match[1];
+		if (!tag) continue;
+		if (match.index > cursor) runs.push({ text: line.slice(cursor, match.index), tag: null });
+		runs.push({ text: match[0], tag });
+		cursor = match.index + match[0].length;
+	}
+	if (cursor < line.length) runs.push({ text: line.slice(cursor), tag: null });
+	return runs.length > 0 ? runs : [{ text: line, tag: null }];
+}
+
 /** One laid-out ink line for the pinboard: bold heading or regular body, at its own font/size. */
 export interface InkSegment {
 	text: string;
+	/** `text` split into plain and topic runs; drawn left to right, widths measured per run. */
+	runs: InkRun[];
 	bold: boolean;
 	fontSize: number;
 	lineHeight: number;
+}
+
+/** One run placed on its line: where the baker paints the chip and then draws the text. */
+export interface InkBox {
+	text: string;
+	tag: string | null;
+	/** Left edge, in the same coordinates the line is drawn at. */
+	x: number;
+	width: number;
+	/** True when the run's tag is one the view is narrowed by. */
+	on: boolean;
+}
+
+/**
+ * Place a segment's runs left to right from `startX`. The baker walks the result: a chip behind
+ * every box that carries a tag, then the run's own text - so nothing here needs to know the font.
+ */
+export function inkRunBoxes(
+	segment: InkSegment,
+	startX: number,
+	measure: (text: string, fontSize: number, bold: boolean) => number,
+	activeTags: ReadonlySet<string>,
+): InkBox[] {
+	const active = new Set([...activeTags].map((tag) => tag.toLowerCase()));
+	const runs = segment.runs.length > 0 ? segment.runs : [{ text: segment.text, tag: null }];
+	const boxes: InkBox[] = [];
+	let x = startX;
+	for (const run of runs) {
+		const width = measure(run.text, segment.fontSize, segment.bold);
+		boxes.push({
+			text: run.text,
+			tag: run.tag,
+			x,
+			width,
+			on: run.tag ? active.has(run.tag.toLowerCase()) : false,
+		});
+		x += width;
+	}
+	return boxes;
+}
+
+/** One tag in the footer's list, placed right-to-left against the paper's inner right edge. */
+export interface FooterTagBox {
+	text: string;
+	tag: string;
+	/** Left edge, in the same coordinates the footer is drawn at. */
+	x: number;
+	width: number;
+	/** True when this tag is one the view is narrowed by. */
+	on: boolean;
+}
+
+/** How many tags the footer has room for. */
+export const FOOTER_TAG_LIMIT = 2;
+/** Space between two footer tags. */
+export const FOOTER_TAG_GAP = 6;
+
+/**
+ * Lay the footer's tag list out from the right: `#tag` labels in memo order, right-aligned as a
+ * block. Only the tags the view is narrowed by come back `on` - the rest are tags, not highlights.
+ */
+export function footerTagBoxes(
+	tags: string[],
+	rightEdge: number,
+	measure: (text: string) => number,
+	activeTags: ReadonlySet<string>,
+): FooterTagBox[] {
+	const active = new Set([...activeTags].map((tag) => tag.toLowerCase()));
+	const shown = tags.slice(0, FOOTER_TAG_LIMIT);
+	const labels = shown.map((tag) => `#${tag}`);
+	const widths = labels.map((label) => measure(label));
+	const total = widths.reduce((sum, item) => sum + item, 0) + FOOTER_TAG_GAP * (labels.length - 1);
+	const boxes: FooterTagBox[] = [];
+	let x = rightEdge - total;
+	for (let i = 0; i < labels.length; i++) {
+		const tag = shown[i] ?? "";
+		const width = widths[i] ?? 0;
+		boxes.push({
+			text: labels[i] ?? "",
+			tag,
+			x,
+			width,
+			on: active.has(tag.toLowerCase()),
+		});
+		x += width + FOOTER_TAG_GAP;
+	}
+	return boxes;
 }
 
 /** The result of fitting a memo's ink into a fixed-height box. */
@@ -189,15 +313,16 @@ export function layoutInkLines(
 			bodyLines.push(line);
 		}
 	}
+	const withRuns = (line: string) => ({ text: line, runs: splitInkRuns(line) });
 	const segments: InkSegment[] = [
 		...titleLines.map((line) => ({
-			text: line,
+			...withRuns(line),
 			bold: true,
 			fontSize: NOTE_INK.titleFontSize,
 			lineHeight: NOTE_INK.titleLineHeight,
 		})),
 		...bodyLines.map((line) => ({
-			text: line,
+			...withRuns(line),
 			bold: false,
 			fontSize: NOTE_INK.bodyFontSize,
 			lineHeight: NOTE_INK.bodyLineHeight,
@@ -222,7 +347,8 @@ export function layoutInkLines(
 				if (trimmed.length === 0 || width <= maxWidth) break;
 				trimmed = trimmed.slice(0, -1);
 			}
-			laid.push({ ...seg, text: `${trimmed}…` });
+			const clipped = `${trimmed}…`;
+			laid.push({ ...seg, text: clipped, runs: splitInkRuns(clipped) });
 			truncated = true;
 			break;
 		}

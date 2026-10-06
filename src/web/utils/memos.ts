@@ -146,15 +146,19 @@ export function toggleTaskInMarkdown(source: string, index: number): string {
 }
 
 /**
- * `#tag` tokens typed in the composer body. The body is stored verbatim — tags are the same words
- * lifted into the searchable `tags` field — and a `# heading` (space after the hash) is not a tag.
+ * Weibo-style `#topic#` tokens typed in the composer body: a topic is only a topic when a hash
+ * closes it, so an ordinary reference like `PR #268` is left alone. The body is stored verbatim —
+ * topics are the same words lifted into the searchable `tags` field — and a `# heading` (a space
+ * after the hash, which is what makes it a heading) never closes, so it is not a topic either.
+ * Topic text holds no spaces, so the closing hash is what terminates it and a topic can sit
+ * inside a sentence.
  */
 export function extractInlineTags(content: string): string[] {
 	const tags: string[] = [];
 	const seen = new Set<string>();
-	const pattern = /(^|[\s(])#([^\s#`]+)/g;
+	const pattern = /#([^\s#`]+)#/g;
 	for (const match of content.matchAll(pattern)) {
-		const tag = match[2]?.trim();
+		const tag = match[1]?.trim();
 		if (!tag) continue;
 		const normalized = tag.toLowerCase();
 		if (seen.has(normalized)) continue;

@@ -5,12 +5,23 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
 import { useI18n } from "../hooks/useI18n";
+import { useTopicAutocomplete } from "../hooks/useTopicAutocomplete";
 import { apiClient } from "../lib/api";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
+import { registerTopicHighlight } from "../utils/topic-highlight";
 import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
 import { MermaidAwarePre } from "./MermaidDiagram";
+import { TopicAutocompleteMenu } from "./TopicAutocompleteMenu";
 
 type MDEditorProps = React.ComponentProps<typeof MDEditor>;
+
+export interface PasteAwareMDEditorProps extends MDEditorProps {
+	/**
+	 * Topics already in use, offered by the `#topic#` autocomplete. Omit it to leave the topic
+	 * menu off - the plain markdown editors elsewhere have no topic vocabulary to suggest.
+	 */
+	topicSuggestions?: string[];
+}
 
 async function uploadImage(source: Blob | string): Promise<string | null> {
 	try {
@@ -64,12 +75,13 @@ function insertMarkdownAtCaret(
 	});
 }
 
-export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
+export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 	value,
 	onChange,
 	textareaProps,
 	extraCommands: propExtraCommands,
 	previewOptions,
+	topicSuggestions,
 	...rest
 }) => {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -80,6 +92,13 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [isConverting, setIsConverting] = useState(false);
 	const { t } = useI18n();
+
+	// A topic-aware editor (the memo surfaces, the only callers that pass topicSuggestions) needs
+	// the highlight overlay to know the topic token before its first render, which is why the
+	// registration happens here rather than in an effect. The patch is idempotent.
+	useMemo(() => {
+		if (topicSuggestions) registerTopicHighlight();
+	}, [topicSuggestions]);
 
 	// The editor's own preview panes ("Live code" / "Preview code") render markdown
 	// without going through MermaidMarkdown, so diagrams stayed raw code blocks
@@ -127,6 +146,13 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 		textarea: autocompleteTextarea,
 		value: value ?? "",
 		onChange: onChange ? (next: string) => onChange(next) : undefined,
+	});
+
+	const topicAutocomplete = useTopicAutocomplete({
+		textarea: autocompleteTextarea,
+		value: value ?? "",
+		onChange: onChange ? (next: string) => onChange(next) : undefined,
+		suggestions: topicSuggestions,
 	});
 
 	const handleDocxUpload = useCallback(
@@ -288,7 +314,9 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 			// itself with `height: 100%`, which collapses to its content when this wrapper
 			// is an auto-height block. That is invisible in edit/live mode (the textarea
 			// supplies a height) but it flattened the preview-only pane to a 20px strip.
-			className="min-w-0 relative h-full"
+			// `topic-aware` turns on the composer's topic chip styling (see source.css); editors
+			// without a topic vocabulary keep the overlay silent about the token.
+			className={`min-w-0 relative h-full${topicSuggestions ? " topic-aware" : ""}`}
 			onDragOver={(e) => e.preventDefault()}
 			onDrop={(e) => {
 				e.preventDefault();
@@ -332,6 +360,13 @@ export const PasteAwareMDEditor: React.FC<MDEditorProps> = ({
 					menu={entityAutocomplete.menu}
 					textarea={autocompleteTextarea}
 					onSelect={entityAutocomplete.insertCandidate}
+				/>
+			)}
+			{topicAutocomplete.menu && (
+				<TopicAutocompleteMenu
+					menu={topicAutocomplete.menu}
+					textarea={autocompleteTextarea}
+					onSelect={topicAutocomplete.selectCandidate}
 				/>
 			)}
 		</fieldset>
