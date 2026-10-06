@@ -156,6 +156,10 @@ After the code is done:
 
 * 🧠 **LLM Wiki Knowledge Base** -- AI-maintained pairing notebook with ingest, query, and lint
 
+* 🗂️ **Memos quick notes** -- Capture thoughts instantly with feed / calendar / pinboard views, Markdown & pasted images, archiving
+
+* 🎛️ **State-machine visual editor** -- Edit project state transitions in Settings with a live preview tree
+
 * 📄 **Rich-text paste & document upload** -- Paste from Word or web pages as Markdown, with .docx upload and auto image extraction
 
 * 📅 **Tracking Gantt chart** -- Visual timeline based on `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` date fields, with planned vs. actual dual-layer comparison
@@ -222,6 +226,21 @@ Trigger it in conversation with these keywords:
 The Wiki follows four principles: **informal, lightweight, AI-maintained, and challengeable**—it is not an enterprise knowledge base, but your "pairing notebook" with AI.
 
 ![Wiki as Pairing Memory](./backlog/assets/paste/Wiki-as-Pairing-Memory.png)
+
+---
+
+## 🗂️ Memos Quick Notes
+
+Memos are Backlog.md's fifth file entity: lightweight, title-less notes stored as plain Markdown files under `backlog/memos/` (`YYYYMMDD-N` date + serial ID). They are included in global search, automatically linked into the knowledge graph, and generate backlinks.
+
+- **Three views, one source** -- Feed, calendar (monthly navigation), and WebGL pinboard at a click
+- **Full Markdown** -- Inline `#tags` and `@task` parsing, paste images, save with ⌘/Ctrl+Enter
+- **End-to-end** -- Web, `backlog memo` CLI subcommands, and MCP tools read and write the same storage
+- **Archiving** -- Hover any card to archive to `backlog/archive/memos/`, history preserved
+
+![Memos Pinboard View](./.github/memos-pinboard.jpg)
+
+![Memos Feed & Calendar](./.github/memos-feed-calendar.jpg)
 
 ---
 
@@ -331,6 +350,7 @@ BROWSER="/path/to/browser" backlog browser
 - Interactive Kanban board with drag-and-drop
 - Task creation and editing with rich forms
 - Interactive acceptance criteria editor with checklists
+- TOC drawer inside task, wiki, and file modals -- scrollspy highlight, auto-floating on narrow screens
 - Real-time updates across all views
 - Responsive design for desktop and mobile
 - Task archiving with confirmation dialogs
@@ -364,6 +384,12 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 ![Gantt Chart View](./backlog/assets/paste/gantt.gif)
 
 ![Project Health](./backlog/assets/paste/0ca49969-1353-4303-820c-ea85df1cba65.png)
+
+### TOC Drawer
+
+Task, wiki, and file modals include a bookmark-style outline: a narrow tab peeks from the modal's left edge; clicking expands a floating panel as tall as the modal itself. Sections are organized by region (description / acceptance criteria / plan / notes / comments), scrollspy highlights the active section as you scroll, and clicking an item smooth-scrolls to it. When the panel edge is <300 px from the viewport, the drawer switches to floating mode so the outline remains usable on narrow windows.
+
+![TOC Drawer](./.github/toc-drawer.gif)
 
 To keep the Web UI running as an auto-starting local service, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
 

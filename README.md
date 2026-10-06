@@ -156,6 +156,8 @@ AI 研究代码库之后，把实施计划写进任务。
 - 🌐 **现代 Web 界面** —— `backlog browser` 启动精致的 Web UI，让任务管理一目了然
 - 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
 - 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
+- 🗂️ **Memos 快速笔记** —— 即想即记的第五种文件实体，信息流 / 日历 / 钉板三种视图，Markdown 与粘贴图片，可归档
+- 🎛️ **状态机可视化编辑器** —— 设置页中编辑项目状态流转，实时预览状态树
 - 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
 - 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
 - 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
@@ -214,6 +216,21 @@ backlog wiki install agents   # 通用 Agents 目录
 Wiki 遵循**非正式、轻量、AI 维护、可质疑**四大原则——它不是企业知识库，而是你和 AI 的"结对笔记本"。
 
 ![Backlog 从结对执行到知识结晶](./backlog/assets/paste/Backlog从结对执行到知识结晶.png)
+
+---
+
+## 🗂️ Memos 快速笔记
+
+Memos 是 Backlog.md 的第五种文件实体：即想即记、无需标题的轻量笔记，以纯 Markdown 文件保存在 `backlog/memos/` 下（`YYYYMMDD-N` 日期+序号 ID），纳入全局搜索、自动链入知识网并产生回链。
+
+- **三种视图，同一数据** —— 信息流、日历（按月定位）、WebGL 钉板随心切换
+- **完整 Markdown** —— 支持 `#标签` 与 `@任务` 内联解析、粘贴图片，⌘/Ctrl+Enter 即存
+- **全端贯通** —— Web、`backlog memo` CLI 子命令与 MCP 工具读写同一存储
+- **归档** —— 悬停卡片即可归档至 `backlog/archive/memos/`，历史不丢失
+
+![Memos 钉板视图](./.github/memos-pinboard.jpg)
+
+![Memos 信息流与日历](./.github/memos-feed-calendar.jpg)
 
 ---
 
@@ -328,6 +345,7 @@ BROWSER="/path/to/browser" backlog browser
 - 支持拖放的交互式看板
 - 带有丰富表单的任务创建和编辑
 - 带有检查清单的交互式验收标准编辑器
+- 任务与文档弹窗内的大纲（TOC）抽屉 —— scrollspy 高亮、窄屏自动悬浮
 - 所有视图的实时更新
 - 支持桌面和移动设备的响应式设计
 - 带确认对话框的任务归档
@@ -361,6 +379,12 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 ![甘特图视图](./backlog/assets/paste/gantt.gif)
 
 ![项目健康](./backlog/assets/paste/0ca49969-1353-4303-820c-ea85df1cba65.png)
+
+### 大纲（TOC）抽屉
+
+任务详情、Wiki 预览、文件预览三类弹窗内置书签式大纲：窄标签从弹窗左缘探出，点击展开与弹窗等高的浮动面板，条目按分区组织（描述 / 验收标准 / 计划 / 备注 / 评论等），scrollspy 随滚动高亮、点击平滑滚动；面板左缘距视口不足 300px 时自动切换为悬浮模式，窄窗口下大纲始终可用。
+
+![大纲抽屉](./.github/toc-drawer.gif)
 
 要使 Web UI 作为自动启动的本地服务持续运行，请参阅 [将 Backlog.md 作为服务运行](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md)。
 
