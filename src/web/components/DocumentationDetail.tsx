@@ -1,15 +1,18 @@
-import { memo, type Ref, useCallback, useEffect, useRef, useState } from "react";
+import { memo, type Ref, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { normalizeMarkdownHashLinks } from "../../markdown/hash-links";
 import type { Document } from "../../types";
 import ErrorBoundary from "../components/ErrorBoundary";
+import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePageToc } from "../contexts/TocContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, isAmbiguousIdConflict } from "../lib/api";
+import { buildBacklinkIndex, findBacklinks } from "../utils/backlinks";
 import { storedUtcHoverTitle } from "../utils/date-display";
 import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
 import { AmbiguousIdNotice } from "./AmbiguousIdNotice";
+import { BacklinkList } from "./BacklinkList";
 import FilePreviewModal from "./FilePreviewModal";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
@@ -143,6 +146,15 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	// Publishes the rendered headings to the header outline; empty while editing.
 	usePageToc(contentRef, isEditing ? null : content);
+
+	// Backlinks are the reverse of the auto-linker: tasks whose body mentions this
+	// document. Computed here from the tasks already in memory, never written back.
+	const entityIndex = useTaskIdIndex();
+	const backlinks = useMemo(() => buildBacklinkIndex(entityIndex.tasks.values(), entityIndex), [entityIndex]);
+	const referencedBy = useMemo(
+		() => (document ? findBacklinks(backlinks, "doc", document.id) : []),
+		[backlinks, document],
+	);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
@@ -569,9 +581,17 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 										{docTitle || document?.title || (title ? decodeURIComponent(title) : `Document ${id}`)}
 									</h1>
 								)}
-								<div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
+								{/* Line 1: short metas (ID · type · created). Created sits here so the
+								    filename below gets its own full-width row and stops wrapping in a grid cell. */}
+								<div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
 									<div className="flex items-center space-x-2">
-										<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<svg
+											aria-hidden="true"
+											className="w-4 h-4 shrink-0"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
 											<path
 												strokeLinecap="round"
 												strokeLinejoin="round"
@@ -582,7 +602,13 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 										<span>ID: {document?.id || `doc-${id}`}</span>
 									</div>
 									<div className="flex items-center space-x-2">
-										<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<svg
+											aria-hidden="true"
+											className="w-4 h-4 shrink-0"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
 											<path
 												strokeLinecap="round"
 												strokeLinejoin="round"
@@ -592,22 +618,15 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 										</svg>
 										<span>{t.common.documentation}</span>
 									</div>
-									{document?.path && (
-										<div className="flex items-center space-x-2">
-											<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
-												/>
-											</svg>
-											<span>{document.path}</span>
-										</div>
-									)}
 									{document?.createdDate && (
 										<div className="flex items-center space-x-2">
-											<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg
+												aria-hidden="true"
+												className="w-4 h-4 shrink-0"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
 												<path
 													strokeLinecap="round"
 													strokeLinejoin="round"
@@ -620,6 +639,36 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 											</span>
 										</div>
 									)}
+								</div>
+								{/* Line 2: filename / path on its own full-width row. */}
+								{document?.path && (
+									<div className="mt-2 flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
+										<svg
+											aria-hidden="true"
+											className="w-4 h-4 shrink-0"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M3 7h5l2 2h11v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+											/>
+										</svg>
+										<span className="break-words" title={document.path}>
+											{document.path}
+										</span>
+									</div>
+								)}
+								<div className="mt-3">
+									<BacklinkList
+										sources={referencedBy}
+										label={t.documents.referencedBy}
+										countLabel={t.documents.referenceCount}
+										onTaskClick={handleTaskClick}
+									/>
 								</div>
 							</div>
 							<div className="flex items-center space-x-3 ml-6">

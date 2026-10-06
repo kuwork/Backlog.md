@@ -427,6 +427,8 @@ export const zhTW: TranslationDict = {
 		placeholderPath: "guides/setup",
 		saveSuccessPrefix: "文檔",
 		saveSuccessSuffix: "保存成功！",
+		referencedBy: "任務引用：",
+		referenceCount: (count: number) => `${count}個任務`,
 	},
 
 	decisions: {
@@ -439,6 +441,8 @@ export const zhTW: TranslationDict = {
 		titleRequired: "決策標題不能為空",
 		saveSuccessPrefix: "決策",
 		saveSuccessSuffix: "保存成功！",
+		referencedBy: "任務引用：",
+		referenceCount: (count: number) => `${count}個任務`,
 		statusLabels: {
 			proposed: "已提出",
 			accepted: "已接受",

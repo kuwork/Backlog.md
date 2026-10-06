@@ -434,6 +434,8 @@ export const ja: TranslationDict = {
 		placeholderPath: "guides/setup",
 		saveSuccessPrefix: "ドキュメント",
 		saveSuccessSuffix: "が保存されました！",
+		referencedBy: "参照元：",
+		referenceCount: (count: number) => `${count} 件のタスク`,
 	},
 
 	decisions: {
@@ -446,6 +448,8 @@ export const ja: TranslationDict = {
 		titleRequired: "決定事項タイトルは必須です",
 		saveSuccessPrefix: "決定事項",
 		saveSuccessSuffix: "が保存されました！",
+		referencedBy: "参照元：",
+		referenceCount: (count: number) => `${count} 件のタスク`,
 		statusLabels: {
 			proposed: "提案中",
 			accepted: "承認済み",

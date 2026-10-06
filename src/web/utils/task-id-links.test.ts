@@ -6,6 +6,7 @@ import {
 	type EntityIndex,
 	parseMultiIdToken,
 	resolveEntityRangeToken,
+	scanEntityReferences,
 } from "./task-id-links";
 
 function task(id: string, title: string): Task {
@@ -185,5 +186,37 @@ describe("createEntityLinkPlugin multi-ID", () => {
 		const paragraph = (tree as { children: { children: { type: string }[] }[] }).children[0];
 		if (!paragraph) throw new Error("expected a paragraph node");
 		expect(paragraph.children[0]?.type).toBe("link");
+	});
+});
+
+describe("scanEntityReferences multi-ID", () => {
+	const docIndex = buildEntityIndex({
+		docs: [doc("doc-10", "Ten"), doc("doc-11", "Eleven"), doc("doc-12", "Twelve")],
+	});
+
+	it("expands a numeric-end range into one reference per entity", () => {
+		const found = scanEntityReferences("doc-10~12", docIndex);
+		expect(found.map((entry) => entry.id)).toEqual(["doc-10", "doc-11", "doc-12"]);
+	});
+
+	it("expands a full-end-id range into one reference per entity", () => {
+		const found = scanEntityReferences("doc-10~doc-12", docIndex);
+		expect(found.map((entry) => entry.id)).toEqual(["doc-10", "doc-11", "doc-12"]);
+	});
+
+	it("expands a slash-list into one reference per entry", () => {
+		const found = scanEntityReferences("doc-10/11/12", docIndex);
+		expect(found.map((entry) => entry.id)).toEqual(["doc-10", "doc-11", "doc-12"]);
+	});
+
+	it("still reports single IDs unchanged", () => {
+		const found = scanEntityReferences("doc-10 and doc-12", docIndex);
+		expect(found.map((entry) => entry.id)).toEqual(["doc-10", "doc-12"]);
+	});
+
+	it("fails closed on a range whose endpoints do not both resolve", () => {
+		// Only doc-10 exists; the span is not enumerated, so no reference leaks.
+		const sparse = buildEntityIndex({ docs: [doc("doc-10", "Ten")] });
+		expect(scanEntityReferences("doc-10~12", sparse)).toEqual([{ kind: "doc", id: "doc-10" }]);
 	});
 });

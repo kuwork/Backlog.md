@@ -1,16 +1,19 @@
-import { memo, type Ref, useEffect, useRef, useState } from "react";
+import { memo, type Ref, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { normalizeMarkdownHashLinks } from "../../markdown/hash-links";
 import type { Decision } from "../../types";
 import ErrorBoundary from "../components/ErrorBoundary";
+import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { usePageToc } from "../contexts/TocContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, isAmbiguousIdConflict } from "../lib/api";
+import { buildBacklinkIndex, findBacklinks } from "../utils/backlinks";
 import { storedUtcHoverTitle } from "../utils/date-display";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
 import { AmbiguousIdNotice } from "./AmbiguousIdNotice";
+import { BacklinkList } from "./BacklinkList";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { SuccessToast } from "./SuccessToast";
@@ -156,6 +159,15 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 	const [originalDecisionTitle, setOriginalDecisionTitle] = useState<string>("");
 	const [decisionStatus, setDecisionStatus] = useState<string>("proposed");
 	const [originalDecisionStatus, setOriginalDecisionStatus] = useState<string>("proposed");
+
+	// Backlinks are the reverse of the auto-linker: tasks whose body mentions this
+	// decision. Computed here from the tasks already in memory, never written back.
+	const entityIndex = useTaskIdIndex();
+	const backlinks = useMemo(() => buildBacklinkIndex(entityIndex.tasks.values(), entityIndex), [entityIndex]);
+	const referencedBy = useMemo(
+		() => (decision ? findBacklinks(backlinks, "decision", decision.id) : []),
+		[backlinks, decision],
+	);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
@@ -530,6 +542,14 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 											</span>
 										</div>
 									) : null}
+								</div>
+								<div className="mt-3">
+									<BacklinkList
+										sources={referencedBy}
+										label={t.decisions.referencedBy}
+										countLabel={t.decisions.referenceCount}
+										onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+									/>
 								</div>
 							</div>
 							<div className="flex items-center space-x-3 ml-6">

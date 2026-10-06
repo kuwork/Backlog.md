@@ -431,6 +431,8 @@ export const en = {
 		placeholderPath: "guides/setup",
 		saveSuccessPrefix: "Document",
 		saveSuccessSuffix: "saved successfully!",
+		referencedBy: "Referenced by:",
+		referenceCount: (count: number) => `${count} task${count === 1 ? "" : "s"}`,
 	},
 
 	decisions: {
@@ -443,6 +445,8 @@ export const en = {
 		titleRequired: "Decision title is required",
 		saveSuccessPrefix: "Decision",
 		saveSuccessSuffix: "saved successfully!",
+		referencedBy: "Referenced by:",
+		referenceCount: (count: number) => `${count} task${count === 1 ? "" : "s"}`,
 		statusLabels: {
 			proposed: "Proposed",
 			accepted: "Accepted",

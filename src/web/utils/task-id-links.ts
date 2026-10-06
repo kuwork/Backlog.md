@@ -215,6 +215,58 @@ function resolveCandidate(index: EntityIndex, candidate: string): { kind: Entity
 	return null;
 }
 
+/**
+ * Every entity reference in a plain markdown string, in the order they appear.
+ * Shares the candidate pattern and the boundary rules with the render-side linker,
+ * so a token that links is also a token that counts as a reference. Unlike the
+ * linker, multi-ID tokens are NOT collapsed: `doc-10~12` (a range) and
+ * `doc-10/11/12` (a slash-list) name several entities, and each of them is
+ * referenced — so a task citing `doc-10/11/12` shows up under doc-10, doc-11 and
+ * doc-12 alike. Code is the caller's responsibility — this scans whatever text it
+ * is given.
+ */
+export function scanEntityReferences(value: string, index: EntityIndex): Array<{ kind: EntityKind; id: string }> {
+	const found: Array<{ kind: EntityKind; id: string }> = [];
+	ENTITY_ID_CANDIDATE.lastIndex = 0;
+	let match = ENTITY_ID_CANDIDATE.exec(value);
+	while (match) {
+		const candidate = match[0];
+		const start = match.index;
+		const end = start + candidate.length;
+		// Slices, not single characters, so boundary tests see whole code points.
+		const preceding = value.slice(Math.max(0, start - 2), start);
+		const following = value.slice(end, end + 3);
+
+		// A range (doc-10~12 / doc-10~doc-12) or slash-list (doc-10/11/12) sharing this
+		// prefix names several entities; each is referenced. Consume the whole token so
+		// no single ID inside it is counted a second time.
+		const multi = detectMultiIdToken(value, start, end);
+		if (multi) {
+			const charAfterToken = value.slice(multi.endIndex, multi.endIndex + 3);
+			if (!PRECEDING_REJECT.test(preceding) && !FOLLOWING_REJECT.test(charAfterToken)) {
+				const resolved = resolveEntityRangeToken(index, multi.token);
+				if (resolved) {
+					for (const entry of resolved.entries) {
+						found.push({ kind: resolved.kind, id: entry.id });
+					}
+					// Resume past the whole token, not just its head, so no ID nested
+					// inside it (e.g. the doc-12 in doc-10~doc-12) is counted again.
+					ENTITY_ID_CANDIDATE.lastIndex = multi.endIndex;
+					match = ENTITY_ID_CANDIDATE.exec(value);
+					continue;
+				}
+			}
+		}
+
+		const target = resolveCandidate(index, candidate);
+		if (target && !PRECEDING_REJECT.test(preceding) && !FOLLOWING_REJECT.test(following)) {
+			found.push(target);
+		}
+		match = ENTITY_ID_CANDIDATE.exec(value);
+	}
+	return found;
+}
+
 function splitEntityIds(value: string, index: EntityIndex): MarkdownNode[] | null {
 	let parts: MarkdownNode[] | null = null;
 	let cursor = 0;
@@ -334,6 +386,10 @@ function detectMultiIdToken(value: string, start: number, end: number): { token:
 	const after = value.slice(end);
 	let m = after.match(/^~(\d+(?:\.\d+)*)/);
 	if (m) return { token: value.slice(start, end + m[0].length), endIndex: end + m[0].length };
+	// Full-end-ID range (doc-10~doc-12): the endpoint repeats the prefix so the span
+	// is unambiguous even for mixed-width bodies.
+	m = after.match(/^~[A-Za-z]+-(\d+(?:\.\d+)*)/);
+	if (m) return { token: value.slice(start, end + m[0].length), endIndex: end + m[0].length };
 	m = after.match(/^(?:\/(\d+(?:\.\d+)*))+/);
 	if (m) return { token: value.slice(start, end + m[0].length), endIndex: end + m[0].length };
 	return null;
@@ -346,6 +402,17 @@ export function parseMultiIdToken(
 	const range = token.match(/^([A-Za-z]+)-(\d+(?:\.\d+)*)~(\d+(?:\.\d+)*)$/);
 	if (range) {
 		return { prefix: range[1] as string, type: "range", start: range[2] as string, end: range[3] as string };
+	}
+	// Full-end-ID range (doc-10~doc-12): endpoint carries its own prefix; only the
+	// numeric body is kept, matching the numeric-end form above.
+	const rangeFull = token.match(/^([A-Za-z]+)-(\d+(?:\.\d+)*)~[A-Za-z]+-(\d+(?:\.\d+)*)$/);
+	if (rangeFull) {
+		return {
+			prefix: rangeFull[1] as string,
+			type: "range",
+			start: rangeFull[2] as string,
+			end: rangeFull[3] as string,
+		};
 	}
 	const list = token.match(/^([A-Za-z]+)-(\d+(?:\.\d+)*)((?:\/\d+(?:\.\d+)*)+)$/);
 	if (list) {
