@@ -1268,12 +1268,14 @@ const SideNavigation = memo(function SideNavigation({
 				className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-full z-30 ${isCollapsed ? "w-16 transition-all duration-300" : "transition-all duration-300"}`}
 				style={isCollapsed ? undefined : { width: sidebarWidth }}
 			>
-				{/* Resize Handle */}
+				{/* Resize Handle — h-full is required: Tailwind preflight sets hr{height:0},
+				    which beats the top-0/bottom-0 stretch and would collapse the handle. */}
 				{!isCollapsed && !isResizing && (
 					<hr
-						className="absolute right-0 top-0 bottom-0 w-1 border-0 cursor-col-resize hover:bg-blue-400/50 z-20 transition-colors"
+						className="absolute right-0 top-0 bottom-0 h-full w-1 border-0 cursor-col-resize hover:bg-blue-400/50 z-20 transition-colors"
 						onMouseDown={handleResizeStart}
 						title="Drag to resize sidebar"
+						aria-orientation="vertical"
 					/>
 				)}
 				{/* Resize Ghost Bar */}
