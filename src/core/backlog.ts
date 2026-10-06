@@ -1786,6 +1786,59 @@ export class Core {
 		return filePath;
 	}
 
+	/**
+	 * Resolve a proposed `parent_task_id` for `taskId`, answering the ID to store.
+	 *
+	 * A parent is minted at create time, but the edge itself is only the stored ID, so re-parenting
+	 * an existing task just rewrites that field and keeps the task's own identity. The target must
+	 * name exactly one existing task (or a completed one - Done is a normal end state and its record
+	 * stays editable), must not be the task itself, and must not sit below it in the tree: an edge
+	 * that would close a loop is refused with the offending relationship named. The matched record's
+	 * own ID comes back, so a re-parent normalizes the stored spelling instead of echoing the input.
+	 */
+	private async resolveParentTaskId(taskId: string, candidate: string): Promise<string> {
+		const [tasks, completed] = await Promise.all([this.queryTasks(), this.fs.listCompletedTasks()]);
+		const pool = [...tasks, ...completed];
+		const matches = pool.filter((record) => taskIdsEqual(candidate, record.id));
+
+		if (matches.length > 1) {
+			throw new Error(
+				`Parent ID ${candidate} is ambiguous: it matches ${matches.map((record) => record.id).join(", ")}.`,
+			);
+		}
+
+		const parent = matches[0];
+		if (!parent) {
+			throw new Error(`Parent task not found: ${candidate}. Create it first or verify the ID.`);
+		}
+		if (taskIdsEqual(parent.id, taskId)) {
+			throw new Error(`A task cannot be its own parent (${parent.id}).`);
+		}
+
+		// Walk up from the proposed parent through parent_task_id edges: reaching the edited task
+		// means the new edge would close a loop, so refuse before writing anything.
+		const byKey = new Map<string, Task>();
+		for (const record of pool) {
+			byKey.set(canonicalTaskId(record.id), record);
+		}
+		const seen = new Set<string>();
+		let cursor = parent.parentTaskId;
+		while (cursor) {
+			if (taskIdsEqual(cursor, taskId)) {
+				throw new Error(
+					`Cannot set ${parent.id} as the parent of ${taskId}: ${taskId} is already an ancestor of ${parent.id}, so the edge would create a cycle.`,
+				);
+			}
+			const key = canonicalTaskId(cursor);
+			// A cycle already present on disk must not make this walk spin forever.
+			if (seen.has(key)) break;
+			seen.add(key);
+			cursor = byKey.get(key)?.parentTaskId;
+		}
+
+		return parent.id;
+	}
+
 	private async applyTaskUpdateInput(
 		task: Task,
 		input: TaskUpdateInput,
@@ -1848,6 +1901,21 @@ export class Core {
 					delete task.milestone;
 				} else {
 					task.milestone = normalizedMilestone;
+				}
+				mutated = true;
+			}
+		}
+
+		if (input.parentTaskId !== undefined) {
+			const normalizedParent =
+				input.parentTaskId === null || input.parentTaskId.trim().length === 0
+					? undefined
+					: await this.resolveParentTaskId(task.id, input.parentTaskId.trim());
+			if ((task.parentTaskId ?? undefined) !== normalizedParent) {
+				if (normalizedParent === undefined) {
+					delete task.parentTaskId;
+				} else {
+					task.parentTaskId = normalizedParent;
 				}
 				mutated = true;
 			}

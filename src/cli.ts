@@ -397,6 +397,8 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 			options.ordinal !== undefined ||
 			options.milestone !== undefined ||
 			options.clearMilestone ||
+			options.parent !== undefined ||
+			options.clearParent ||
 			options.plain ||
 			options.addLabel !== undefined ||
 			options.removeLabel !== undefined ||
@@ -3220,6 +3222,8 @@ function addEditFieldOptions(command: Command): Command {
 		.option("--ordinal <number>", "set task ordinal for custom ordering")
 		.option("-m, --milestone <milestone>", "assign task to milestone by ID or title")
 		.option("--clear-milestone", "clear task milestone assignment")
+		.option("-p, --parent <taskId>", "set the parent task by ID (files this task under that task in the tree)")
+		.option("--clear-parent", "remove the parent task assignment (cannot combine with --parent)")
 		.option("--due-date <date>", "task due date (YYYY-MM-DD)")
 		.option("--actual-start <date>", "actual start date (YYYY-MM-DD HH:MM)")
 		.option("--actual-end <date>", "actual end date (YYYY-MM-DD HH:MM)")
@@ -3453,6 +3457,21 @@ async function buildEditArgs(
 		milestoneValue = null;
 	}
 
+	if (options.parent !== undefined && options.clearParent) {
+		throw new Error("Cannot use --parent and --clear-parent together.");
+	}
+
+	let parentValue: string | null | undefined;
+	if (typeof options.parent === "string") {
+		const trimmed = options.parent.trim();
+		if (trimmed.length === 0) {
+			throw new Error("error: --parent cannot be empty; use --clear-parent to remove the parent assignment");
+		}
+		parentValue = trimmed;
+	} else if (options.clearParent) {
+		parentValue = null;
+	}
+
 	const listFlagError = validateTaskListFlags(options, true);
 	if (listFlagError) {
 		throw new Error(listFlagError);
@@ -3580,6 +3599,9 @@ async function buildEditArgs(
 	}
 	if (milestoneValue !== undefined) {
 		editArgs.milestone = milestoneValue;
+	}
+	if (parentValue !== undefined) {
+		editArgs.parentTaskId = parentValue;
 	}
 	if (labelValues.length > 0) {
 		editArgs.labels = labelValues;

@@ -223,6 +223,13 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 				maxLength: 100,
 				description: "Set milestone label (string) or clear it (null).",
 			},
+			parentTaskId: {
+				type: "string",
+				minLength: 1,
+				maxLength: 50,
+				description:
+					"Set the parent task by ID (string) or clear it (null). The target must resolve to one existing task and must not create a cycle.",
+			},
 			labels: {
 				type: "array",
 				items: {

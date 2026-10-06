@@ -142,6 +142,7 @@ export interface TaskUpdateInput {
 	status?: TaskStatus;
 	priority?: "high" | "medium" | "low";
 	milestone?: string | null;
+	parentTaskId?: string | null;
 	labels?: string[];
 	addLabels?: string[];
 	removeLabels?: string[];

@@ -104,8 +104,12 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Add Documentation         | `backlog task edit {{TASK_ID:123}} --add-doc docs/extra.md` |
 | Clear Documentation     | `backlog task edit {{TASK_ID:123}} --clear-docs` |
 | Modified Files          | `backlog task edit {{TASK_ID:123}} --modified-file src/api.ts` |
+| Set Parent              | `backlog task edit {{TASK_ID:123}} --parent {{TASK_ID:239}}` |
+| Clear Parent            | `backlog task edit {{TASK_ID:123}} --clear-parent`       |
 
 `--modified-file` records project-root-relative paths of files changed by the task. Repeat the flag or use comma-separated values to record multiple files.
+
+`--parent` files an existing task under another task; `--clear-parent` removes the assignment. The child keeps its own ID — only the parent edge changes. The target must exist and the change must not create a cycle, so a task can never be its own parent or sit under one of its own descendants.
 
 ### Clearing List Fields
 
@@ -175,6 +179,8 @@ If you discover work that is outside the task's acceptance criteria, stop and as
 If the user assigns a parent task and all subtasks, complete subtasks one at a time. Each subtask should have its own plan, notes, checked acceptance criteria, and final summary.
 
 If the user assigns only one subtask, finish that subtask and ask before moving to the next one.
+
+To file an existing task under a parent after the fact, use `backlog task edit {{TASK_ID:123}} --parent {{TASK_ID:239}}`. The child keeps its ID; re-parenting only rewrites the parent edge. Use `--clear-parent` to detach it.
 
 ### Reading and Writing Backlog Data
 
