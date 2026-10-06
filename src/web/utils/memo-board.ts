@@ -17,8 +17,8 @@ import type { Memo } from "../../core/memos.ts";
 
 /** World width of a sticky note, in board pixels. The height grows with the memo's text. */
 export const NOTE_WIDTH = 220;
-/** Shortest a note gets, so even a one-liner still reads as a sticky note. */
-export const NOTE_MIN_HEIGHT = 150;
+/** Fixed paper height: the board fills the ink to this and truncates the rest with an ellipsis. */
+export const NOTE_HEIGHT = 150;
 /** Grid pitch; the slack over NOTE_WIDTH keeps the base layer airy and readable. */
 export const NOTE_PITCH_X = 245;
 export const NOTE_PITCH_Y = 250;
@@ -148,6 +148,90 @@ export function memoInkLines(memo: Memo): { title: string; body: string[] } {
 	return { title, body: lines };
 }
 
+/** One laid-out ink line for the pinboard: bold heading or regular body, at its own font/size. */
+export interface InkSegment {
+	text: string;
+	bold: boolean;
+	fontSize: number;
+	lineHeight: number;
+}
+
+/** The result of fitting a memo's ink into a fixed-height box. */
+export interface InkLayout {
+	segments: InkSegment[];
+	/** True when the last segment was trimmed and an ellipsis appended. */
+	truncated: boolean;
+}
+
+/** Approximate ink width, mirroring `wrapEstimate`, for layouts without a live canvas. */
+export function approxInkWidth(text: string, fontSize: number, _bold: boolean): number {
+	return textWidthUnits(text, fontSize);
+}
+
+/**
+ * Lay the memo's ink (bold heading + body) into the band between `top` and `bottom` at `maxWidth`,
+ * wrapping exactly the way `wrapEstimate` does. As many leading lines as fit are returned; if ink
+ * is left over, the final segment is trimmed to fit and an ellipsis appended, and `truncated` is
+ * true. `measureWidth` is injected so the same logic serves both the canvas baker and unit tests.
+ */
+export function layoutInkLines(
+	memo: Memo,
+	maxWidth: number,
+	top: number,
+	bottom: number,
+	measureWidth: (text: string, fontSize: number, bold: boolean) => number,
+): InkLayout {
+	const { title, body } = memoInkLines(memo);
+	const titleLines = wrapEstimate(title, maxWidth, NOTE_INK.titleFontSize);
+	const bodyLines: string[] = [];
+	for (const sourceLine of body) {
+		for (const line of wrapEstimate(sourceLine, maxWidth, NOTE_INK.bodyFontSize)) {
+			bodyLines.push(line);
+		}
+	}
+	const segments: InkSegment[] = [
+		...titleLines.map((line) => ({
+			text: line,
+			bold: true,
+			fontSize: NOTE_INK.titleFontSize,
+			lineHeight: NOTE_INK.titleLineHeight,
+		})),
+		...bodyLines.map((line) => ({
+			text: line,
+			bold: false,
+			fontSize: NOTE_INK.bodyFontSize,
+			lineHeight: NOTE_INK.bodyLineHeight,
+		})),
+	];
+
+	const laid: InkSegment[] = [];
+	let cursor = top;
+	let passedTitle = false;
+	let truncated = false;
+	for (let i = 0; i < segments.length; i++) {
+		const seg = segments[i];
+		if (!seg) break;
+		if (!passedTitle && i === titleLines.length) {
+			cursor += 4;
+			passedTitle = true;
+		}
+		if (cursor + seg.lineHeight > bottom) {
+			let trimmed = seg.text;
+			for (;;) {
+				const width = measureWidth(`${trimmed}…`, seg.fontSize, seg.bold);
+				if (trimmed.length === 0 || width <= maxWidth) break;
+				trimmed = trimmed.slice(0, -1);
+			}
+			laid.push({ ...seg, text: `${trimmed}…` });
+			truncated = true;
+			break;
+		}
+		laid.push(seg);
+		cursor += seg.lineHeight;
+	}
+	return { segments: laid, truncated };
+}
+
 /** Depth from the paper's top edge to the bottom of the last ink line (text only, no footer). */
 export function memoInkDepth(memo: Memo): number {
 	const maxWidth = NOTE_WIDTH - NOTE_INK.inset * 2;
@@ -165,9 +249,9 @@ export function memoInkDepth(memo: Memo): number {
 	);
 }
 
-/** Paper height that fits the memo's whole text - notes are never clamped to a line count. */
-export function estimateNoteHeight(memo: Memo): number {
-	return Math.max(NOTE_MIN_HEIGHT, Math.ceil(memoInkDepth(memo) + NOTE_INK.bottomReserve));
+/** Fixed paper height, independent of the memo's length - overflow is truncated with an ellipsis. */
+export function estimateNoteHeight(_memo: Memo): number {
+	return NOTE_HEIGHT;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -217,7 +301,9 @@ export function layoutBoard(memos: Memo[], boardW: number, boardH: number): Boar
 		// of the two notes above, and must end before the text of the two notes below starts; seams
 		// without enough vertical room stay empty.
 		const inkBottomOf = (note: BoardNote | null) =>
-			note === null ? Number.NEGATIVE_INFINITY : note.y - note.h / 2 + memoInkDepth(note.memo);
+			note === null
+				? Number.NEGATIVE_INFINITY
+				: Math.min(note.y - note.h / 2 + memoInkDepth(note.memo), note.y + note.h / 2);
 		const textTopOf = (note: BoardNote | null) =>
 			note === null ? Number.POSITIVE_INFINITY : note.y - note.h / 2 + NOTE_INK.pinClearance;
 		let next = baseCount;

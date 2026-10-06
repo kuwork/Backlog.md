@@ -7,10 +7,9 @@ import {
 	type BoardNoteVariant,
 	hitTest,
 	layoutBoard,
-	memoInkLines,
+	layoutInkLines,
 	NOTE_INK,
 	NOTE_WIDTH,
-	wrapEstimate,
 } from "../utils/memo-board";
 import { ErrorBanner, MemoCard, type MemoCardProps } from "./MemoCard";
 import Modal from "./Modal";
@@ -200,28 +199,28 @@ function bakeNoteTexture(memo: Memo, variant: BoardNoteVariant, height: number):
 		ctx.restore();
 	}
 
-	// Ink: the whole memo text, wrapped exactly the way the layout estimated it, so the paper
-	// always fits. First line is the heading, the rest the body; date and tags sit at the bottom.
-	const { title, body } = memoInkLines(memo);
+	// Ink: the paper is a fixed height, so fill it from the heading down and, when the text runs
+	// past the paper, trim the last visible line and append an ellipsis. First line is the bold
+	// heading; the rest is the body. Date and tags still occupy the reserved footer strip.
 	const textX = x + NOTE_INK.inset;
 	const maxWidth = w - NOTE_INK.inset * 2;
-	let textY = y + NOTE_INK.pinClearance;
-	ctx.fillStyle = INK_COLOR;
-	ctx.font = `600 ${NOTE_INK.titleFontSize}px ${HAND_FONT}`;
-	for (const line of wrapEstimate(title, maxWidth, NOTE_INK.titleFontSize)) {
-		ctx.fillText(line, textX, textY);
-		textY += NOTE_INK.titleLineHeight;
-	}
-	if (body.length > 0) {
-		ctx.font = `${NOTE_INK.bodyFontSize}px ${HAND_FONT}`;
-		ctx.fillStyle = "rgba(74, 66, 52, 0.82)";
-		textY += 4;
-		for (const sourceLine of body) {
-			for (const line of wrapEstimate(sourceLine, maxWidth, NOTE_INK.bodyFontSize)) {
-				ctx.fillText(line, textX, textY);
-				textY += NOTE_INK.bodyLineHeight;
-			}
-		}
+	const inkTop = y + NOTE_INK.pinClearance;
+	const inkBottom = y + h - NOTE_INK.bottomReserve;
+	const layout = layoutInkLines(memo, maxWidth, inkTop, inkBottom, (text, fontSize, bold) => {
+		ctx.font = `${bold ? "600 " : ""}${fontSize}px ${HAND_FONT}`;
+		return ctx.measureText(text).width;
+	});
+
+	let drawY = inkTop;
+	for (let i = 0; i < layout.segments.length; i++) {
+		const seg = layout.segments[i];
+		if (!seg) break;
+		// A 4px gap separates the bold heading block from the body, wherever the boundary falls.
+		if (i > 0 && !seg.bold && layout.segments[i - 1]?.bold) drawY += 4;
+		ctx.fillStyle = seg.bold ? INK_COLOR : "rgba(74, 66, 52, 0.82)";
+		ctx.font = `${seg.bold ? "600 " : ""}${seg.fontSize}px ${HAND_FONT}`;
+		ctx.fillText(seg.text, textX, drawY);
+		drawY += seg.lineHeight;
 	}
 	ctx.font = `10px ${HAND_FONT}`;
 	ctx.fillStyle = "rgba(96, 84, 60, 0.65)";

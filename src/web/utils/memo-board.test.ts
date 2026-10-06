@@ -1,13 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type { Memo } from "../../core/memos.ts";
 import {
+	approxInkWidth,
 	estimateNoteHeight,
 	hashString,
 	hitTest,
 	layoutBoard,
+	layoutInkLines,
 	memoInkDepth,
+	NOTE_HEIGHT,
 	NOTE_INK,
-	NOTE_MIN_HEIGHT,
 	NOTE_PITCH_X,
 	NOTE_PITCH_Y,
 	NOTE_TILT,
@@ -67,16 +69,58 @@ describe("wrapEstimate", () => {
 });
 
 describe("estimateNoteHeight", () => {
-	test("never shrinks below the minimum and grows with the text", () => {
-		expect(estimateNoteHeight(memoOf("a", "短"))).toBe(NOTE_MIN_HEIGHT);
-		const short = estimateNoteHeight(memoOf("b", "一行便签"));
-		const long = estimateNoteHeight(
-			memoOf(
-				"c",
-				"第一行内容\n第二行内容需要长一些的中文文本来触发折行处理，多写几个字确保一定折行\n第三行还有更多文字继续填充高度\n第四行\n第五行内容",
+	test("is a fixed height, regardless of how long the memo is", () => {
+		expect(estimateNoteHeight(memoOf("a", "短"))).toBe(NOTE_HEIGHT);
+		expect(estimateNoteHeight(memoOf("b", "一行便签"))).toBe(NOTE_HEIGHT);
+		expect(
+			estimateNoteHeight(
+				memoOf(
+					"c",
+					"第一行内容\n第二行内容需要长一些的中文文本来触发折行处理，多写几个字确保一定折行\n第三行还有更多文字继续填充高度\n第四行\n第五行内容",
+				),
 			),
+		).toBe(NOTE_HEIGHT);
+	});
+});
+
+describe("layoutInkLines", () => {
+	const maxWidth = NOTE_WIDTH - NOTE_INK.inset * 2;
+	const top = NOTE_INK.pinClearance;
+	const bottom = NOTE_HEIGHT - NOTE_INK.bottomReserve;
+	const measure = (text: string, fontSize: number, bold: boolean) => approxInkWidth(text, fontSize, bold);
+
+	test("keeps every line of a short memo and is not truncated", () => {
+		const layout = layoutInkLines(memoOf("a", "标题\n第一行\n第二行"), maxWidth, top, bottom, measure);
+		expect(layout.truncated).toBe(false);
+		expect(layout.segments).toHaveLength(3);
+		expect(layout.segments[0]?.bold).toBe(true);
+		expect(layout.segments.slice(1).every((s) => s.bold === false)).toBe(true);
+	});
+
+	test("truncates with an ellipsis when the text overflows the fixed height", () => {
+		const long = memoOf(
+			"c",
+			`标题行\n${Array.from({ length: 12 }, (_, i) => `这是第 ${i + 1} 行较长的中文正文用于触发省略号截断处理`).join("\n")}`,
 		);
-		expect(long).toBeGreaterThan(short);
+		const layout = layoutInkLines(long, maxWidth, top, bottom, measure);
+		expect(layout.truncated).toBe(true);
+		const last = layout.segments.at(-1);
+		expect(last?.text.endsWith("…")).toBe(true);
+		// The trimmed final line must actually fit the width.
+		expect(approxInkWidth(last?.text ?? "", last?.fontSize ?? 0, last?.bold ?? false)).toBeLessThanOrEqual(maxWidth);
+	});
+
+	test("never starts a line below the bottom of the fixed box", () => {
+		const long = memoOf("d", `标题\n${"内容行持续填充直到超出固定高度为止。\n".repeat(10)}`);
+		const layout = layoutInkLines(long, maxWidth, top, bottom, measure);
+		let y = top;
+		let prevBold = true;
+		for (const seg of layout.segments) {
+			if (!seg.bold && prevBold) y += 4;
+			expect(y).toBeLessThanOrEqual(bottom);
+			y += seg.lineHeight;
+			prevBold = seg.bold;
+		}
 	});
 });
 
@@ -199,8 +243,8 @@ describe("hitTest", () => {
 	});
 
 	test("returns the last note (topmost in draw order) when notes overlap", () => {
-		const a = { memo: memoOf("a"), x: 0, y: 0, h: NOTE_MIN_HEIGHT, layer: 0, variant: noteVariantFor(memoOf("a")) };
-		const b = { memo: memoOf("b"), x: 0, y: 0, h: NOTE_MIN_HEIGHT, layer: 1, variant: noteVariantFor(memoOf("b")) };
+		const a = { memo: memoOf("a"), x: 0, y: 0, h: NOTE_HEIGHT, layer: 0, variant: noteVariantFor(memoOf("a")) };
+		const b = { memo: memoOf("b"), x: 0, y: 0, h: NOTE_HEIGHT, layer: 1, variant: noteVariantFor(memoOf("b")) };
 		expect(hitTest([a, b], 0, 0)?.memo.id).toBe("b");
 	});
 });
