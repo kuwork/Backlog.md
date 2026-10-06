@@ -1003,7 +1003,7 @@ export const en = {
 		feed: "Feed",
 		calendar: "Calendar",
 		composerPlaceholder: "Capture something…",
-		composerHint: "⌘/Ctrl+Enter saves · Markdown, #tags and pasted images work",
+		composerHint: "⌘/Ctrl+Enter saves · Markdown, #tags# and pasted images work",
 		loadFailed: "Failed to load memos",
 		loadMoreFailed: "Could not load more memos",
 		saveFailed: "Could not save this memo — the text is still in the composer",

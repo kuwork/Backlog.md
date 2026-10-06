@@ -113,19 +113,30 @@ function textWidthUnits(text: string, fontSize: number): number {
 }
 
 /**
- * Wrap `text` by estimated width: latin words stay whole, every other character (CJK included) may
- * break anywhere. A closed `#topic#` is one token - a chip has to stay on one line to be a chip, so
- * it is never broken the way a CJK run is. The texture baker draws exactly these lines, so the
- * paper height the layout reserves always fits the ink.
+ * Wrap `text` by width: latin words stay whole, every other character (CJK included) may break
+ * anywhere. A closed `#topic#` is one token - a chip has to stay on one line to be a chip, so it is
+ * never broken the way a CJK run is. Width comes from `measure` when given (the canvas baker's real
+ * font metrics) and from the character-width estimate otherwise; the two must agree on where a line
+ * breaks, or a line the estimate thinks fits is drawn wider than the paper and spills out of it.
+ * `bold` only matters when `measure` is given - it is the baker's own weight flag.
  */
-export function wrapEstimate(text: string, maxWidth: number, fontSize: number): string[] {
+export function wrapEstimate(
+	text: string,
+	maxWidth: number,
+	fontSize: number,
+	measure?: (text: string, fontSize: number, bold: boolean) => number,
+	bold = false,
+): string[] {
+	const widthOf = measure
+		? (token: string) => measure(token, fontSize, bold)
+		: (token: string) => textWidthUnits(token, fontSize);
 	const tokens = text.match(/#(?:[^\s#`]+)#|[A-Za-z0-9_'-]+|\S/gu) ?? [];
 	const lines: string[] = [];
 	let current = "";
 	let currentWidth = 0;
 	for (const token of tokens) {
 		const latinJoin = current.length > 0 && /[A-Za-z0-9_'-]$/.test(current) && /^[A-Za-z0-9_'-]/.test(token);
-		const tokenWidth = textWidthUnits(token, fontSize) + (latinJoin ? fontSize * 0.3 : 0);
+		const tokenWidth = widthOf(token) + (latinJoin ? fontSize * 0.3 : 0);
 		if (currentWidth + tokenWidth <= maxWidth) {
 			current += (latinJoin ? " " : "") + token;
 			currentWidth += tokenWidth;
@@ -133,7 +144,7 @@ export function wrapEstimate(text: string, maxWidth: number, fontSize: number): 
 		}
 		if (current.length > 0) lines.push(current);
 		current = token;
-		currentWidth = textWidthUnits(token, fontSize);
+		currentWidth = widthOf(token);
 	}
 	if (current.length > 0) lines.push(current);
 	return lines;
@@ -306,10 +317,15 @@ export function layoutInkLines(
 	measureWidth: (text: string, fontSize: number, bold: boolean) => number,
 ): InkLayout {
 	const { title, body } = memoInkLines(memo);
-	const titleLines = wrapEstimate(title, maxWidth, NOTE_INK.titleFontSize);
+	// Wrap with the injected measure so the line breaks here match what the baker actually draws:
+	// estimating the break and then drawing with real glyph widths is what let a line the estimate
+	// called "fits" spill past the paper's right edge.
+	const wrapTitle = (line: string) => wrapEstimate(line, maxWidth, NOTE_INK.titleFontSize, measureWidth, true);
+	const wrapBody = (line: string) => wrapEstimate(line, maxWidth, NOTE_INK.bodyFontSize, measureWidth);
+	const titleLines = wrapTitle(title);
 	const bodyLines: string[] = [];
 	for (const sourceLine of body) {
-		for (const line of wrapEstimate(sourceLine, maxWidth, NOTE_INK.bodyFontSize)) {
+		for (const line of wrapBody(sourceLine)) {
 			bodyLines.push(line);
 		}
 	}
@@ -333,6 +349,28 @@ export function layoutInkLines(
 	let cursor = top;
 	let passedTitle = false;
 	let truncated = false;
+
+	// Trim a line to `maxWidth` with an ellipsis, using the same measure the baker draws with.
+	// Needed for a token that cannot break (a long latin word, a `#topic#`): wrapping leaves it
+	// alone even when it alone is wider than the paper, so it has to be cut here. Pass
+	// `ellipsis: true` to force one (the height-truncation case always cuts the line short).
+	const clampLine = (seg: InkSegment, forceEllipsis = false): InkSegment => {
+		let text = seg.text;
+		let clipped = forceEllipsis;
+		if (forceEllipsis && !text.endsWith("…")) text = `${text}…`;
+		if (measureWidth(text, seg.fontSize, seg.bold) > maxWidth) {
+			clipped = true;
+			let trimmed = seg.text;
+			for (;;) {
+				const width = measureWidth(`${trimmed}…`, seg.fontSize, seg.bold);
+				if (trimmed.length === 0 || width <= maxWidth) break;
+				trimmed = trimmed.slice(0, -1);
+			}
+			text = `${trimmed}…`;
+		}
+		return clipped ? { ...seg, text, runs: splitInkRuns(text) } : seg;
+	};
+
 	for (let i = 0; i < segments.length; i++) {
 		const seg = segments[i];
 		if (!seg) break;
@@ -341,18 +379,14 @@ export function layoutInkLines(
 			passedTitle = true;
 		}
 		if (cursor + seg.lineHeight > bottom) {
-			let trimmed = seg.text;
-			for (;;) {
-				const width = measureWidth(`${trimmed}…`, seg.fontSize, seg.bold);
-				if (trimmed.length === 0 || width <= maxWidth) break;
-				trimmed = trimmed.slice(0, -1);
-			}
-			const clipped = `${trimmed}…`;
-			laid.push({ ...seg, text: clipped, runs: splitInkRuns(clipped) });
+			// Past the bottom: the line is cut short, so it always ends with an ellipsis.
+			laid.push(clampLine(seg, true));
 			truncated = true;
 			break;
 		}
-		laid.push(seg);
+		const fitted = clampLine(seg);
+		laid.push(fitted);
+		if (fitted.text !== seg.text) truncated = true;
 		cursor += seg.lineHeight;
 	}
 	return { segments: laid, truncated };

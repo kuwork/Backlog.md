@@ -227,6 +227,36 @@ function splitEntityIds(value: string, index: EntityIndex): MarkdownNode[] | nul
 		const end = start + candidate.length;
 		// Slices, not single characters, so boundary tests see whole code points.
 		const preceding = value.slice(Math.max(0, start - 2), start);
+
+		// A range (BACK-715~747) or slash-list (BACK-743/744/745) sharing one prefix
+		// collapses into a single clickable token. The whole token is consumed here so
+		// no single ID inside it is linked separately.
+		const multi = detectMultiIdToken(value, start, end);
+		if (multi) {
+			const charAfterToken = value.slice(multi.endIndex, multi.endIndex + 3);
+			const precedingOk = !PRECEDING_REJECT.test(preceding);
+			const followingOk = !FOLLOWING_REJECT.test(charAfterToken);
+			if (precedingOk && followingOk) {
+				const resolved = resolveEntityRangeToken(index, multi.token);
+				parts ??= [];
+				if (start > cursor) parts.push({ type: "text", value: value.slice(cursor, start) });
+				// Valid range/list links as one token; otherwise the whole token stays
+				// plain text (fail-closed, so no inner ID is linked either).
+				parts.push(
+					resolved
+						? {
+								type: "link",
+								url: `entity-range:${resolved.kind}:${multi.token}`,
+								children: [{ type: "text", value: multi.token }],
+							}
+						: { type: "text", value: multi.token },
+				);
+				cursor = multi.endIndex;
+				match = ENTITY_ID_CANDIDATE.exec(value);
+				continue;
+			}
+		}
+
 		const following = value.slice(end, end + 3);
 		const target = resolveCandidate(index, candidate);
 
@@ -291,4 +321,101 @@ export function createEntityLinkPlugin(index: EntityIndex) {
 			linkEntityIds(tree, index);
 		}
 	};
+}
+
+/**
+ * Detects whether the entity ID candidate at `start..end` heads a multi-ID token: a
+ * range `BACK-715~747` (same prefix, numeric bodies joined by `~`) or a slash-list
+ * `BACK-743/744/745` (two or more same-prefix IDs joined by `/`). Returns the full
+ * token and its end index, or null. Scanning stops at the first non-numeric boundary,
+ * so trailing prose punctuation (`BACK-715~747.`) stays outside the token.
+ */
+function detectMultiIdToken(value: string, start: number, end: number): { token: string; endIndex: number } | null {
+	const after = value.slice(end);
+	let m = after.match(/^~(\d+(?:\.\d+)*)/);
+	if (m) return { token: value.slice(start, end + m[0].length), endIndex: end + m[0].length };
+	m = after.match(/^(?:\/(\d+(?:\.\d+)*))+/);
+	if (m) return { token: value.slice(start, end + m[0].length), endIndex: end + m[0].length };
+	return null;
+}
+
+/** Parse a multi-ID token into its prefix and the contained IDs. */
+export function parseMultiIdToken(
+	token: string,
+): { prefix: string; type: "range" | "list"; start?: string; end?: string; bodies?: string[] } | null {
+	const range = token.match(/^([A-Za-z]+)-(\d+(?:\.\d+)*)~(\d+(?:\.\d+)*)$/);
+	if (range) {
+		return { prefix: range[1] as string, type: "range", start: range[2] as string, end: range[3] as string };
+	}
+	const list = token.match(/^([A-Za-z]+)-(\d+(?:\.\d+)*)((?:\/\d+(?:\.\d+)*)+)$/);
+	if (list) {
+		const bodies = [list[2] as string, ...(list[3] as string).slice(1).split("/")];
+		return { prefix: list[1] as string, type: "list", bodies };
+	}
+	return null;
+}
+
+export interface EntityRangeEntry {
+	id: string;
+	title: string | null;
+}
+
+export interface EntityRangeResolution {
+	kind: EntityKind;
+	entries: EntityRangeEntry[];
+}
+
+/** Best-effort title extraction across the four entity shapes. */
+function entityTitle(entity: Task | Document | Decision): string | null {
+	return typeof (entity as { title?: unknown }).title === "string"
+		? ((entity as { title: string }).title as string)
+		: null;
+}
+
+/**
+ * Resolve a multi-ID token against the canonical index. A range requires both endpoints
+ * to resolve to the same kind (its span is then enumerated — every ID is listed even
+ * when it has no entity, with a title only when one exists). A slash-list requires every
+ * listed ID to resolve to the same kind. Any unknown ID or kind mismatch returns null,
+ * leaving the token as plain text (fail-closed). Performs no API calls.
+ */
+export function resolveEntityRangeToken(index: EntityIndex, token: string): EntityRangeResolution | null {
+	const parsed = parseMultiIdToken(token);
+	if (!parsed) return null;
+
+	if (parsed.type === "range") {
+		const startN = Number.parseInt(parsed.start ?? "", 10);
+		const endN = Number.parseInt(parsed.end ?? "", 10);
+		if (!Number.isFinite(startN) || !Number.isFinite(endN) || startN > endN) return null;
+		const startKind = resolveCandidate(index, `${parsed.prefix}-${parsed.start}`);
+		const endKind = resolveCandidate(index, `${parsed.prefix}-${parsed.end}`);
+		// Both endpoints must anchor the range to a real kind; otherwise the whole token
+		// stays plain text (fail-closed).
+		if (!startKind || !endKind || startKind.kind !== endKind.kind) return null;
+		const kind = startKind.kind;
+		// Only list entities that actually exist locally. A range is a span reference, not a
+		// guarantee that every ID in it was loaded, so absent IDs are simply omitted rather
+		// than shown as dead links. If nothing in the span resolves, the token is plain text.
+		const entries: EntityRangeEntry[] = [];
+		for (let n = startN; n <= endN; n++) {
+			const full = `${parsed.prefix}-${n}`;
+			const entity = resolveEntityReference(index, kind, full);
+			if (entity) entries.push({ id: entity.id, title: entityTitle(entity) });
+		}
+		if (entries.length === 0) return null;
+		return { kind, entries };
+	}
+
+	let kind: EntityKind | null = null;
+	const entries: EntityRangeEntry[] = [];
+	for (const body of parsed.bodies ?? []) {
+		const full = `${parsed.prefix}-${body}`;
+		const candidate = resolveCandidate(index, full);
+		if (!candidate) return null;
+		if (!kind) kind = candidate.kind;
+		else if (candidate.kind !== kind) return null;
+		const entity = resolveEntityReference(index, candidate.kind, full);
+		entries.push({ id: candidate.id, title: entity ? entityTitle(entity) : null });
+	}
+	return kind ? { kind, entries } : null;
 }

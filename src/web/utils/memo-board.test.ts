@@ -242,6 +242,23 @@ describe("layoutInkLines", () => {
 			prevBold = seg.bold;
 		}
 	});
+
+	test("keeps every laid line within the paper even when the real font is wider than the estimate", () => {
+		// The baker draws with real glyph metrics while the estimate models ~0.55em latin / 1em CJK,
+		// so a line the estimate calls a fit can still be drawn wider. Wrapping must therefore use
+		// the injected measure, not the estimate. Model a font 20% wider than the estimate: no line
+		// may exceed maxWidth.
+		const wide = (text: string, fontSize: number, bold: boolean) => approxInkWidth(text, fontSize, bold) * 1.2;
+		const memo = memoOf(
+			"f",
+			"Mixed README 中英双版（README.md/README.en.md）的 1.53 素材同步，定了四条改动对称落地：功能特性列表加粗说明",
+		);
+		const layout = layoutInkLines(memo, maxWidth, top, bottom, wide);
+		expect(layout.segments.length).toBeGreaterThan(0);
+		for (const seg of layout.segments) {
+			expect(wide(seg.text, seg.fontSize, seg.bold)).toBeLessThanOrEqual(maxWidth + 0.001);
+		}
+	});
 });
 
 describe("layoutBoard", () => {

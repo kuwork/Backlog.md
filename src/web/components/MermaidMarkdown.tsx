@@ -10,8 +10,9 @@ import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-target";
 import { renderMermaidIn } from "../utils/mermaid";
-import { createEntityLinkPlugin } from "../utils/task-id-links";
+import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
+import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
 
 interface Props {
 	source: string;
@@ -39,6 +40,12 @@ interface Props {
 	 * matching how the filter itself compares tags.
 	 */
 	activeTags?: string[];
+	/**
+	 * When provided, clicking an entry of a multi-ID range/list dropdown asks for confirmation
+	 * before leaving (e.g. to guard unsaved edits in the host modal). Receives no argument and
+	 * returns false to abort navigation. Defaults to allowing navigation.
+	 */
+	confirmNavigation?: () => boolean;
 }
 
 const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/;
@@ -403,6 +410,7 @@ export default function MermaidMarkdown({
 	onToggleTask,
 	inlineTagChips,
 	activeTags,
+	confirmNavigation,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const safeSource = wikilinkBasePath
@@ -493,6 +501,36 @@ export default function MermaidMarkdown({
 			id?: string;
 			"data-wikilink"?: string;
 		}) => {
+			// Multi-ID range/list tokens (BACK-715~747, BACK-743/744/745) are emitted by the
+			// render-side linker as `entity-range:<kind>:<token>` links. Collapse them into a
+			// single dropdown trigger instead of a plain anchor.
+			if (href?.startsWith("entity-range:")) {
+				const rangeMatch = href.match(/^entity-range:(\w+):(.+)$/);
+				if (rangeMatch) {
+					const kind = rangeMatch[1] as EntityKind;
+					const token = rangeMatch[2] ?? "";
+					const resolved = resolveEntityRangeToken(entityIndex, token);
+					if (resolved) {
+						return (
+							<EntityIdRangeDropdown
+								kind={kind}
+								token={token}
+								entries={resolved.entries}
+								onTaskClick={onTaskClick}
+								onDraftClick={onDraftClick}
+								onDocClick={onDocClick}
+								onDecisionClick={onDecisionClick}
+								confirmNavigation={confirmNavigation}
+								className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+							/>
+						);
+					}
+					// Resolved at link time but not at render time: degrade to plain text rather
+					// than leaking an `entity-range:` scheme as an external link.
+					return <span>{token}</span>;
+				}
+			}
+
 			const parsedStyle = typeof style === "string" ? parseStyleString(style) : style;
 			const combinedClassName = [className, "text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"]
 				.filter(Boolean)
@@ -684,7 +722,17 @@ export default function MermaidMarkdown({
 				</a>
 			);
 		},
-		[onFileClick, onTaskClick, onDraftClick, onDocClick, onDecisionClick, onWikiClick, t],
+		[
+			onFileClick,
+			onTaskClick,
+			onDraftClick,
+			onDocClick,
+			onDecisionClick,
+			onWikiClick,
+			t,
+			entityIndex,
+			confirmNavigation,
+		],
 	);
 
 	return (

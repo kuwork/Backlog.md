@@ -995,7 +995,7 @@ export const ja: TranslationDict = {
 		feed: "フィード",
 		calendar: "カレンダー",
 		composerPlaceholder: "思いついたことを書く…",
-		composerHint: "⌘/Ctrl+Enter で保存 · Markdown・#タグ・画像の貼り付けに対応",
+		composerHint: "⌘/Ctrl+Enter で保存 · Markdown・#タグ#・画像の貼り付けに対応",
 		loadFailed: "メモの読み込みに失敗しました",
 		loadMoreFailed: "続きのメモを読み込めませんでした",
 		saveFailed: "メモを保存できませんでした — 入力内容はそのまま残っています",

@@ -330,6 +330,12 @@ export default function MemosPage() {
 	const [activeTags, setActiveTags] = useState<string[]>([]);
 	const [calendarOpen, setCalendarOpen] = useState<boolean>(() => viewParam === "calendar");
 
+	// The view defaults by content: an empty inbox opens the list (where the composer lives), and
+	// once there is at least one memo the pinboard is the better landing view. This only applies on
+	// the first load and only when the URL carries no explicit `view`, so it never fights a user's
+	// toggle or a deep link. One decision per mount.
+	const viewDefaultedRef = useRef(false);
+
 	const today = useMemo(() => todayString(), []);
 	const [calendarYear, setCalendarYear] = useState<number>(() => {
 		if (dateParam) {
@@ -443,6 +449,24 @@ export default function MemosPage() {
 	useEffect(() => {
 		void loadFirstPage(selectedDate);
 	}, [selectedDate, loadFirstPage]);
+
+	// First successful load decides the landing view: memos present -> board, none -> list. Skipped
+	// when the URL already names a view (deep link / explicit choice) or when a date filter narrows
+	// the feed (a day with no memos should not bounce the user out of the board they were using).
+	useEffect(() => {
+		if (viewDefaultedRef.current) return;
+		if (initialLoading || loadError) return;
+		if (viewParam !== null || selectedDate !== null) {
+			viewDefaultedRef.current = true;
+			return;
+		}
+		viewDefaultedRef.current = true;
+		if (feed.memos.length > 0) {
+			const nextParams = new URLSearchParams(searchParams);
+			nextParams.set("view", "board");
+			setSearchParams(nextParams, { replace: true });
+		}
+	}, [initialLoading, loadError, feed.memos.length, viewParam, selectedDate, searchParams, setSearchParams]);
 
 	const hasMore = feed.hasMore;
 

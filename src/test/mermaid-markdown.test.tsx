@@ -779,6 +779,23 @@ describe("MermaidMarkdown", () => {
 			expect(hrefs(html)).toEqual([]);
 			expect(html).toContain("BACK-123");
 		});
+
+		it("collapses a range and a slash-list into clickable dropdown triggers without crashing", () => {
+			const html = renderLinked(
+				"see BACK-715~747 and BACK-743/744/745",
+				taskFixtures("BACK-715", "BACK-716", "BACK-747", "BACK-743", "BACK-744", "BACK-745"),
+			);
+
+			// Each multi-ID token becomes one trigger button (the popover is portalled and
+			// only opens on click); the bare token must no longer render as a plain link.
+			const rendered = new JSDOM(html).window.document;
+			const triggers = Array.from(rendered.querySelectorAll("button[aria-haspopup='menu']"));
+			expect(triggers).toHaveLength(2);
+			expect(triggers[0]?.textContent).toContain("BACK-715~747");
+			expect(triggers[1]?.textContent).toContain("BACK-743/744/745");
+			// No raw entity-range: scheme leaks out as a navigable anchor.
+			expect(hrefs(html).some((href) => href.startsWith("entity-range:"))).toBe(false);
+		});
 	});
 
 	describe("diagram color mode", () => {

@@ -974,7 +974,7 @@ export const zhTW: TranslationDict = {
 		feed: "資訊流",
 		calendar: "日曆",
 		composerPlaceholder: "隨手記點什麼…",
-		composerHint: "⌘/Ctrl+Enter 儲存 · 支援 Markdown、#標籤、貼上圖片",
+		composerHint: "⌘/Ctrl+Enter 儲存 · 支援 Markdown、#標籤#、貼上圖片",
 		loadFailed: "載入隨手記失敗",
 		loadMoreFailed: "無法載入更多隨手記",
 		saveFailed: "這則隨手記沒有儲存成功 —— 內容仍留在輸入框裡",

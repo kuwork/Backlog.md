@@ -50,6 +50,8 @@ let created: { content: string; tags: string[]; createdDate?: string } | null = 
 let failWrites = false;
 /** Set true to make the SECOND feed fetch (the live refresh) answer 500, proving it is swallowed. */
 let failRefreshes = false;
+/** Set true to make the feed return no memos, so the landing-view default can be exercised. */
+let feedEmpty = false;
 
 let observed: Array<(entries: Array<{ isIntersecting: boolean }>) => void> = [];
 
@@ -80,6 +82,9 @@ function serveApi(): void {
 			const offset = Number(url.searchParams.get("offset") ?? "0");
 			const limit = Number(url.searchParams.get("limit") ?? "30");
 			expect(limit).toBeGreaterThan(0);
+			if (feedEmpty) {
+				return json({ items: [], total: 0, offset, limit, hasMore: false });
+			}
 			if (offset === 0) {
 				// The first offset-0 fetch is the page load; any later one is the live refresh
 				// triggered by the memos-updated broadcast. The refresh surfaces a freshly written
@@ -263,6 +268,7 @@ describe("MemosPage feed", () => {
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
 		failWrites = false;
+		feedEmpty = false;
 		created = null;
 		requests = [];
 		act(() => root?.unmount());
@@ -270,7 +276,9 @@ describe("MemosPage feed", () => {
 	});
 
 	it("loads the first page on mount and renders each memo as a dated markdown card", async () => {
-		const container = await renderMemos();
+		// `view=feed` opts into the list explicitly: with memos present the page now defaults to
+		// the board, so a test exercising the feed asks for it the way a user would.
+		const container = await renderMemos("/memos?view=feed");
 
 		expect(cardTexts(container)).toHaveLength(2);
 		expect(cardTexts(container)[0]).toContain("Newest memo");
@@ -283,7 +291,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("captures through the composer and shows the saved memo at the top of the feed", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 
 		await typeIntoComposer(container, "Captured note #smoke#");
 		await clickButton(container, "Save");
@@ -297,7 +305,7 @@ describe("MemosPage feed", () => {
 
 	it("keeps the note in the composer when the write fails instead of dropping it", async () => {
 		failWrites = true;
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 
 		await typeIntoComposer(container, "Do not lose me");
 		await clickButton(container, "Save");
@@ -308,7 +316,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("appends the next page when the sentinel is reached, keeping the loaded pages", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		// The observer attaches once the first page is on screen.
 		expect(observed.length).toBeGreaterThan(0);
 
@@ -325,7 +333,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("narrows the feed by tag chip and restores it again", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		// The tag history renders its chips inline; clicking one narrows the feed.
 		const history = container.querySelector('[data-testid="memos-tag-history"]') as HTMLElement | null;
 		expect(history).toBeTruthy();
@@ -348,7 +356,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("floats the active tag to the front when the history is collapsed", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		const history = container.querySelector('[data-testid="memos-tag-history"]') as HTMLElement;
 		// meeting is second in source order; make it the active filter first.
 		const meetingChip = Array.from(history.querySelectorAll('[data-testid="memos-tag-chip"]')).find(
@@ -374,7 +382,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("keeps edit and delete behind the card's ⋮ menu", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		// Nothing is offered until the menu opens.
 		expect(buttonByText(container, "Edit")).toBeNull();
 		expect(buttonByText(container, "Delete")).toBeNull();
@@ -401,7 +409,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("copies the memo id from the card menu with a transient confirmation", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		// setupDom swaps in a fresh jsdom navigator, so the mock goes on after the render.
 		const written: string[] = [];
 		Object.defineProperty(globalThis.navigator, "clipboard", {
@@ -426,7 +434,7 @@ describe("MemosPage feed", () => {
 	});
 
 	it("archives a memo from the card menu and drops it from the feed", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		expect(cardTexts(container)).toHaveLength(2);
 
 		await clickElement(container.querySelector('[aria-label="More actions"]'));
@@ -441,13 +449,39 @@ describe("MemosPage feed", () => {
 
 	it("reports a failed archive instead of dropping the card", async () => {
 		failWrites = true;
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 
 		await clickElement(container.querySelector('[aria-label="More actions"]'));
 		await clickButton(container.querySelector('[role="menu"]') as HTMLElement, "Archive");
 
 		expect(container.querySelector("[role='alert']")?.textContent).toContain("Could not archive this memo");
 		expect(cardTexts(container)).toHaveLength(2);
+	});
+
+	it("lands on the board by default once there is at least one memo", async () => {
+		// No `view` in the URL: the page decides. Memos exist, so the pinboard is the landing view.
+		const container = await renderMemos("/memos");
+
+		expect(buttonByText(container, "Pinboard")?.getAttribute("aria-pressed")).toBe("true");
+		expect(buttonByText(container, "List")?.getAttribute("aria-pressed")).toBe("false");
+	});
+
+	it("lands on the list by default when the inbox is empty", async () => {
+		feedEmpty = true;
+		// An empty inbox keeps the list, so the composer (the whole point of an empty page) is there.
+		const container = await renderMemos("/memos");
+
+		expect(buttonByText(container, "List")?.getAttribute("aria-pressed")).toBe("true");
+		expect(buttonByText(container, "Pinboard")?.getAttribute("aria-pressed")).toBe("false");
+		expect(container.querySelector("textarea")).toBeTruthy();
+	});
+
+	it("honours an explicit list view over the board default", async () => {
+		// `view=feed` is a deliberate choice: memos exist, yet the list must win.
+		const container = await renderMemos("/memos?view=feed");
+
+		expect(buttonByText(container, "List")?.getAttribute("aria-pressed")).toBe("true");
+		expect(container.querySelector("textarea")).toBeTruthy();
 	});
 });
 
@@ -468,6 +502,7 @@ describe("MemosPage calendar popover", () => {
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
 		failWrites = false;
+		feedEmpty = false;
 		created = null;
 		requests = [];
 		act(() => root?.unmount());
@@ -479,7 +514,7 @@ describe("MemosPage calendar popover", () => {
 		container.querySelector('[aria-controls="memos-calendar-popover"]');
 
 	it("opens the month grid from the composer's calendar button and closes it on Escape", async () => {
-		const container = await renderMemos();
+		const container = await renderMemos("/memos?view=feed");
 		expect(popover(container)).toBeNull();
 
 		await clickElement(calendarButton(container));

@@ -974,7 +974,7 @@ export const zhCN: TranslationDict = {
 		feed: "信息流",
 		calendar: "日历",
 		composerPlaceholder: "随手记点什么…",
-		composerHint: "⌘/Ctrl+Enter 保存 · 支持 Markdown、#标签、粘贴图片",
+		composerHint: "⌘/Ctrl+Enter 保存 · 支持 Markdown、#标签#、粘贴图片",
 		loadFailed: "加载随手记失败",
 		loadMoreFailed: "无法加载更多随手记",
 		saveFailed: "这条随手记没能保存 —— 内容仍留在输入框里",
