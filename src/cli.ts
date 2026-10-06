@@ -5894,8 +5894,9 @@ sequenceCmd
 		}
 
 		// Interactive default: TUI view (215.01 + 215.02 navigation/detail)
+		const config = await core.filesystem.loadConfig();
 		const { runSequencesView } = await import("./ui/sequences.ts");
-		await runSequencesView({ unsequenced, sequences }, core);
+		await runSequencesView({ unsequenced, sequences }, core, { projectName: config?.projectName });
 	});
 
 const CONFIG_AVAILABLE_KEYS =

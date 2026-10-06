@@ -1,19 +1,179 @@
 import { stdout as output } from "node:process";
-import type { BoxInterface } from "neo-neo-bblessed";
-import { box, scrollablebox } from "neo-neo-bblessed";
+import type { BoxInterface, ListInterface } from "neo-neo-bblessed";
+import { box, list } from "neo-neo-bblessed";
+import {
+	adjustDependenciesForInsertBetween,
+	canMoveToUnsequenced,
+	computeSequences,
+	planMoveToSequence,
+	planMoveToUnsequenced,
+} from "../core/sequences.ts";
 import type { Core } from "../index.ts";
 import type { Sequence, Task } from "../types/index.ts";
 import { createTaskPopup } from "./task-viewer-with-search.ts";
-import { createScreen } from "./tui.ts";
+import { createScreen, formatTuiTitle, releaseSharedProgram } from "./tui.ts";
+
+/** A blessed list we drive ourselves: the items change as the cursor moves between groups. */
+type MutableList = ListInterface & {
+	setItems?: (items: string[]) => void;
+	select?: (index: number) => void;
+};
+
+export type SequencesViewData = { unsequenced: Task[]; sequences: Sequence[] };
 
 /**
- * Render a simple read-only TUI for sequences.
- * - Vertical layout: each sequence has a header and its tasks listed below.
- * - Exit with 'q' or 'Esc'.
+ * One row of the left pane: the Unsequenced bucket first, then every sequence in order.
+ * `tasks` is the pane's own copy, sorted the way the right pane shows it (ordinal first,
+ * then id), so the two panes can never disagree about what the Nth row is.
+ */
+export type SequenceRow = {
+	kind: "unsequenced" | "sequence";
+	/** -1 for the Unsequenced bucket, otherwise the sequence index. */
+	index: number;
+	key: string;
+	label: string;
+	tasks: Task[];
+};
+
+export type MoveTarget =
+	| { kind: "unsequenced" }
+	| { kind: "sequence"; seqIndex: number }
+	| { kind: "between"; k: number };
+
+/** Ordinal-first ordering, falling back to id: the order the right pane has always used. */
+function sortSequenceTasks(tasks: Task[]): Task[] {
+	return [...tasks].sort((a, b) => {
+		const ao = a.ordinal ?? Number.MAX_SAFE_INTEGER;
+		const bo = b.ordinal ?? Number.MAX_SAFE_INTEGER;
+		if (ao !== bo) return ao - bo;
+		return a.id.localeCompare(b.id);
+	});
+}
+
+export function buildSequenceRows(data: SequencesViewData): SequenceRow[] {
+	const rows: SequenceRow[] = [];
+	if (data.unsequenced.length > 0) {
+		rows.push({
+			kind: "unsequenced",
+			index: -1,
+			key: "unsequenced",
+			label: `Unsequenced (${data.unsequenced.length})`,
+			tasks: sortSequenceTasks(data.unsequenced),
+		});
+	}
+	for (const seq of data.sequences) {
+		rows.push({
+			kind: "sequence",
+			index: seq.index,
+			key: `sequence:${seq.index}`,
+			label: `Sequence ${seq.index} (${seq.tasks.length})`,
+			tasks: sortSequenceTasks(seq.tasks),
+		});
+	}
+	return rows;
+}
+
+/**
+ * The places a task can be dropped: the Unsequenced bucket when it exists, every sequence,
+ * and the gap between two consecutive sequences. No gap above the first or below the last
+ * sequence, because those are the same thing as dropping onto that sequence.
+ */
+export function buildMoveTargets(rows: SequenceRow[]): MoveTarget[] {
+	const targets: MoveTarget[] = [];
+	if (rows.some((row) => row.kind === "unsequenced")) targets.push({ kind: "unsequenced" });
+	const sequences = rows.filter((row) => row.kind === "sequence");
+	sequences.forEach((row, i) => {
+		targets.push({ kind: "sequence", seqIndex: row.index });
+		if (i < sequences.length - 1) targets.push({ kind: "between", k: row.index });
+	});
+	return targets;
+}
+
+export function moveTargetLabel(target: MoveTarget): string {
+	if (target.kind === "unsequenced") return "Unsequenced";
+	if (target.kind === "sequence") return `Sequence ${target.seqIndex}`;
+	return `Between Sequence ${target.k} and ${target.k + 1}`;
+}
+
+function summarizeIds(ids: string[]): string {
+	if (ids.length <= 3) return ids.join(", ");
+	return `${ids.slice(0, 3).join(", ")}, +${ids.length - 3} more`;
+}
+
+/**
+ * Spells out what Enter would write for the highlighted task and target.
+ *
+ * Moving is easy to misread: the drop targets look like "put it in this row", but a sequence
+ * is only the transitive layer its dependencies put it in, so the move rewrites the dependency
+ * list (join semantics: replaced, not appended) and says nothing about where the task sits
+ * inside the layer. The right pane is idle while the left pane owns the keyboard, so the
+ * preview lives there instead of in the footer.
+ */
+export function buildMovePreview(input: {
+	allTasks: Task[];
+	data: SequencesViewData;
+	rows: SequenceRow[];
+	task: Task | undefined;
+	target: MoveTarget | undefined;
+}): string[] {
+	const { allTasks, data, rows, task, target } = input;
+	if (!task || !target) return [" Pick a task and a target."];
+	const from = rows.find((row) => row.tasks.some((entry) => entry.id === task.id))?.label ?? "unknown group";
+	const lines = [`Moving: ${task.id}`, `From:   ${from}`, `To:     ${moveTargetLabel(target)}`, "", "Enter writes:"];
+
+	if (target.kind === "unsequenced") {
+		if (!canMoveToUnsequenced(allTasks, task.id)) {
+			lines.push("- blocked: it still has dependencies or dependents");
+			lines.push("- clear those first; nothing is written");
+		} else {
+			lines.push(`- ${task.id}.dependencies -> []`);
+			lines.push(`- ${task.id}.ordinal -> cleared`);
+		}
+	} else if (target.kind === "sequence") {
+		const prev = data.sequences.find((seq) => seq.index === target.seqIndex - 1);
+		if (prev) {
+			const ids = prev.tasks.map((entry) => entry.id).filter((id) => id !== task.id);
+			lines.push(`- dependencies -> all ${ids.length} of Sequence ${target.seqIndex - 1}`);
+			if (ids.length > 0) lines.push(`  (${summarizeIds(ids)})`);
+		} else {
+			lines.push("- dependencies -> []");
+			if (target.seqIndex === 1) lines.push("- ordinal -> 0 when unset (anchor)");
+		}
+		lines.push("- replaced, not appended (join semantics)");
+	} else {
+		const prev = data.sequences.find((seq) => seq.index === target.k);
+		const next = data.sequences.find((seq) => seq.index === target.k + 1);
+		if (prev) {
+			const ids = prev.tasks.map((entry) => entry.id).filter((id) => id !== task.id);
+			lines.push(`- dependencies -> all ${ids.length} of Sequence ${target.k}`);
+			if (ids.length > 0) lines.push(`  (${summarizeIds(ids)})`);
+		} else {
+			lines.push("- dependencies -> []");
+		}
+		if (next) lines.push(`- every Sequence ${target.k + 1} task depends on ${task.id}`);
+		else if (target.k === 0) lines.push("- ordinal -> 0 when unset (anchor)");
+		lines.push("- a new sequence is inserted above it");
+	}
+
+	lines.push("", "This sets the layer, not the order in it:", "rows inside a layer follow ordinal.");
+	return lines;
+}
+
+function clamp(value: number, total: number): number {
+	if (total <= 0) return 0;
+	return Math.max(0, Math.min(total - 1, value));
+}
+
+/**
+ * Render the sequences view.
+ * - Interactive: a left pane listing the buckets and sequences, a right pane listing the
+ *   tasks of the highlighted one, matching the shape the milestone list uses.
+ * - Headless (no TTY, CI, or BACKLOG_HEADLESS=1): the plain text listing, unchanged.
  */
 export async function runSequencesView(
-	data: { unsequenced: Task[]; sequences: Sequence[] },
+	data: SequencesViewData,
 	core?: Core,
+	options?: { projectName?: string },
 ): Promise<void> {
 	// Build content string first so we can also support headless environments (CI/tests)
 	const lines: string[] = [];
@@ -37,394 +197,435 @@ export async function runSequencesView(
 		return;
 	}
 
-	const screen = createScreen({ smartCSR: true });
-
-	const container = scrollablebox({
-		top: 0,
-		left: 0,
-		right: 0,
-		height: "100%-1",
-		keys: true,
-		alwaysScroll: true,
-		mouse: true,
-		vi: false,
-		tags: false,
-		border: { type: "line" },
-		label: " Sequences (read-only) ",
-		scrollbar: { ch: " ", inverse: true },
-		style: {
-			border: { fg: "gray" },
-			scrollbar: { bg: "gray" },
-		},
-	});
-
-	// Build bordered blocks for unsequenced and sequences, and individual task lines (for selection)
-	let y = 0;
-	type TaskLine = {
-		node: BoxInterface;
-		globalIndex: number;
-		seqIdx: number;
-		taskIdx: number;
-		absTop: number; // absolute top inside container
-	};
-	const taskLines: TaskLine[] = [];
-	// Keep references to sequence blocks for visual indicator during move mode
-	const seqBlocks: { node: BoxInterface; index: number; top: number; height: number }[] = [];
-	let global = 0;
-	// Unsequenced block first
-	if (data.unsequenced.length > 0) {
-		const h = Math.max(4, data.unsequenced.length + 4);
-		const block = box({
-			parent: container,
-			top: y,
-			left: 0,
-			right: 0,
-			height: h,
-			border: { type: "line" },
-			label: " Unsequenced ",
-			tags: false,
-			style: { border: { fg: "cyan" } },
-		});
-		// Track for move target highlighting using index -1
-		seqBlocks.push({ node: block, index: -1, top: y, height: h });
-		for (let t = 0; t < data.unsequenced.length; t++) {
-			const lineTop = t + 1;
-			const task = data.unsequenced[t];
-			if (!task) continue;
-			const node = box({
-				parent: block,
-				top: lineTop,
-				left: 1,
-				right: 1,
-				height: 1,
-				tags: true,
-				content: `  ${task.id} - ${task.title}`,
-			});
-			taskLines.push({ node, globalIndex: global++, seqIdx: -1, taskIdx: t, absTop: y + lineTop });
-		}
-		y += h + 1;
-	}
-
-	for (let s = 0; s < data.sequences.length; s++) {
-		const seq = data.sequences[s];
-		if (!seq) continue;
-		const tasksSorted = [...seq.tasks].sort((a, b) => {
-			const ao = a.ordinal ?? Number.MAX_SAFE_INTEGER;
-			const bo = b.ordinal ?? Number.MAX_SAFE_INTEGER;
-			if (ao !== bo) return ao - bo;
-			return a.id.localeCompare(b.id);
-		});
-		// Height calculation:
-		// - 2 lines for border
-		// - +1 top padding line, +1 bottom padding line so content doesn't overlap borders
-		const h = Math.max(4, tasksSorted.length + 4);
-		const block = box({
-			parent: container,
-			top: y,
-			left: 0,
-			right: 0,
-			height: h,
-			border: { type: "line" },
-			label: ` Sequence ${seq.index} `,
-			tags: false,
-			style: { border: { fg: "cyan" } },
-		});
-
-		seqBlocks.push({ node: block, index: seq.index, top: y, height: h });
-
-		for (let t = 0; t < tasksSorted.length; t++) {
-			// Render inside bordered content area
-			const lineTop = t + 1;
-			const task = tasksSorted[t];
-			if (!task) continue;
-			const node = box({
-				parent: block,
-				top: lineTop,
-				left: 1,
-				right: 1,
-				height: 1,
-				tags: true,
-				content: `  ${task.id} - ${task.title}`,
-			});
-			taskLines.push({ node, globalIndex: global++, seqIdx: s, taskIdx: t, absTop: y + lineTop });
-		}
-
-		y += h + 1; // 1 line gap between blocks
-	}
-
-	screen.append(container);
-
-	// Footer hint
-	const footer = box({
-		bottom: 0,
-		left: 0,
-		right: 0,
-		height: 1,
-		tags: true,
-		style: { bg: "black", fg: "gray" },
-		content: " ↑/↓ navigate · Enter view · m move · q quit · Esc close popup/quit ",
-	});
-	screen.append(footer);
-
-	// Navigation and keybindings
-	let selected = 0;
-	let popupOpen = false;
-	let moveMode = false;
-
-	type MoveTarget = { kind: "unsequenced" } | { kind: "sequence"; seqIndex: number } | { kind: "between"; k: number };
-
-	// Build move targets: optional Unsequenced, and interleaved sequence + between K and K+1 (no top/bottom)
-	const seqIdxs = data.sequences.map((s) => s.index);
-	const moveTargets: MoveTarget[] = [];
-	if (data.unsequenced.length > 0) moveTargets.push({ kind: "unsequenced" });
-	for (let i = 0; i < seqIdxs.length; i++) {
-		const seqIndex = seqIdxs[i] as number;
-		moveTargets.push({ kind: "sequence", seqIndex });
-		// Drop zone only between this sequence and the next
-		if (i < seqIdxs.length - 1) moveTargets.push({ kind: "between", k: seqIndex });
-	}
+	let rows = buildSequenceRows(data);
+	let moveTargets = buildMoveTargets(rows);
+	/** Snapshot taken when move mode opens, so the preview checks eligibility on the same tasks Enter will. */
+	let moveAllTasks: Task[] = [];
+	let groupIndex = 0;
+	let taskIndex = 0;
 	let targetPos = 0;
+	/** The left pane owns the keyboard until the user tabs or arrows into the task list. */
+	let focused: "groups" | "tasks" = "groups";
+	let moveMode = false;
+	let popupOpen = false;
+	let hint: string | null = null;
+	/**
+	 * `refresh` moves a list's cursor with `select`, and blessed answers every cursor move with a
+	 * "select item" event. Without this guard the listener would call `refresh` again, which
+	 * selects again, and the two drive each other until the stack blows.
+	 */
+	let syncingSelection = false;
 
-	// Drop zone overlay boxes (visible only in move mode)
-	const dropZoneBoxes = new Map<number, BoxInterface>();
+	// A terminal that does not report its size leaves blessed with one column, which collapses
+	// every percentage below. Fall back to a readable size instead of drawing nothing.
+	const stream = process.stdout as unknown as { columns?: number; rows?: number };
+	if (!stream.columns || stream.columns < 20) stream.columns = 80;
+	if (!stream.rows || stream.rows < 5) stream.rows = 24;
 
-	function hideDropZones() {
-		for (const [, node] of dropZoneBoxes) node.destroy();
-		dropZoneBoxes.clear();
-	}
-
-	function ensureDropZoneOverlays() {
-		hideDropZones();
-		if (!moveMode) return;
-		// Build overlays using sequence blocks only (index > 0)
-		const seqOnly = seqBlocks.filter((b) => b.index > 0).sort((a, b) => a.index - b.index);
-		if (seqOnly.length === 0) return;
-		// between each pair (k = index of upper sequence)
-		for (let i = 0; i < seqOnly.length - 1; i++) {
-			const prev = seqOnly[i];
-			if (!prev) continue;
-			const yPos = prev.top + prev.height; // gap line between blocks
-			const k = prev.index; // between Sequence k and k+1
-			const node = box({
-				parent: container,
-				top: yPos,
-				left: 0,
-				right: 0,
-				height: 1,
-				style: { bg: "black", fg: "gray" },
-				content: ` ▼ Drop between Sequence ${k} and ${k + 1} `,
-			});
-			dropZoneBoxes.set(k, node);
-		}
-		// No top/bottom overlays
-	}
-
-	function moveFooterText(): string {
-		const tgt = moveTargets[targetPos];
-		let suffix = "";
-		if (tgt) {
-			if (tgt.kind === "unsequenced") suffix = " · Target: Unsequenced";
-			else if (tgt.kind === "sequence") suffix = ` · Target: Sequence ${tgt.seqIndex}`;
-			else if (tgt.kind === "between") suffix = ` · Target: Between Sequence ${tgt.k} and ${tgt.k + 1}`;
-		}
-		return ` Move mode: ↑/↓ choose target · Enter apply · Esc cancel${suffix} `;
-	}
-	function refreshHighlight() {
-		for (const tl of taskLines) {
-			const seq = data.sequences[tl.seqIdx];
-			const isUnseq = tl.seqIdx === -1;
-			const task = isUnseq ? data.unsequenced[tl.taskIdx] : seq?.tasks[tl.taskIdx];
-			if (!task) continue;
-			const prefix = moveMode && tl.globalIndex === selected ? "->" : "  ";
-			const text = `${prefix} ${task.id} - ${task.title}`;
-			if (tl.globalIndex === selected && !moveMode) {
-				// Normal selection highlight when not in move mode
-				tl.node.setContent(`{inverse}${text}{/inverse}`);
-			} else {
-				tl.node.setContent(text);
-			}
-		}
-		// Ensure selected line is in view
-		const tl = taskLines.find((t) => t.globalIndex === selected);
-		if (tl) {
-			const viewTop = container.getScroll();
-			const viewHeight = typeof container.height === "number" ? (container.height as number) : 0;
-			if (tl.absTop < viewTop + 1) {
-				container.scrollTo(Math.max(0, tl.absTop - 1));
-			} else if (viewHeight && tl.absTop > viewTop + viewHeight - 4) {
-				container.scrollTo(Math.max(0, tl.absTop - viewHeight + 4));
-			}
-		}
-		screen.render();
-	}
-
-	function refreshMoveIndicators() {
-		// Reset all to default
-		for (const blk of seqBlocks) {
-			blk.node.style = { ...(blk.node.style || {}), border: { fg: "cyan" } } as unknown;
-		}
-		// Reset overlays
-		for (const [, dz] of dropZoneBoxes) dz.style = { ...(dz.style || {}), fg: "gray" } as unknown;
-		if (moveMode) {
-			const tgt = moveTargets[targetPos];
-			if (tgt?.kind === "sequence") {
-				for (const blk of seqBlocks) {
-					if (blk.index === tgt.seqIndex) {
-						blk.node.style = {
-							...(blk.node.style || {}),
-							border: { fg: "yellow", /* pseudo-thicker */ bold: true },
-						} as unknown;
-					}
-				}
-			} else if (tgt?.kind === "between") {
-				const k = tgt.k;
-				// Do not highlight adjacent sequences for drop-zones; only the drop-zone line itself
-				const dz = dropZoneBoxes.get(k);
-				if (dz) dz.style = { ...(dz.style || {}), fg: "yellow" } as unknown;
-			}
-		}
-		screen.render();
-	}
-
-	function move(delta: number) {
-		if (popupOpen) return;
-		if (moveMode) {
-			const nextPos = Math.max(0, Math.min(moveTargets.length - 1, targetPos + delta));
-			targetPos = nextPos;
-			refreshHighlight();
-			refreshMoveIndicators();
-			return;
-		}
-		if (taskLines.length === 0) return;
-		selected = Math.max(0, Math.min(taskLines.length - 1, selected + delta));
-		refreshHighlight();
-	}
-
-	async function openDetail() {
-		if (!core) return;
-		const item = taskLines.find((t) => t.globalIndex === selected);
-		if (!item) return;
-		const seq = data.sequences[item.seqIdx];
-		const task = item.seqIdx === -1 ? data.unsequenced[item.taskIdx] : seq?.tasks[item.taskIdx];
-		if (!task) return;
-		if (popupOpen) return;
-		popupOpen = true;
-
-		const popup = await createTaskPopup(screen, task);
-		if (!popup) {
-			popupOpen = false;
-			return;
-		}
-		const { contentArea, close } = popup;
-		contentArea.key(["escape", "q"], () => {
-			popupOpen = false;
-			close();
-			container.focus();
+	await new Promise<void>((resolve) => {
+		const screen = createScreen({
+			title: formatTuiTitle("Sequences", options?.projectName),
+			smartCSR: true,
 		});
-		screen.render();
-	}
+		let closed = false;
+		const close = () => {
+			if (closed) return;
+			closed = true;
+			// The screen shares blessed's process-wide program, and that program is what holds
+			// stdin in raw mode: only releasing it puts the terminal back, so quitting does not
+			// leave the shell hanging. Same teardown the other list viewers use.
+			screen.leave();
+			screen.destroy();
+			releaseSharedProgram();
+			resolve();
+		};
 
-	container.focus();
-	screen.key(["q", "C-c"], () => screen.destroy());
-	// Unified Esc: popup closes itself; else cancel move mode, else quit
-	screen.key(["escape"], () => {
-		if (popupOpen) return;
-		if (moveMode) {
-			moveMode = false;
-			footer.setContent(" ↑/↓ navigate · Enter view · m move · q quit · Esc close popup/quit ");
-			hideDropZones();
-			refreshHighlight();
-			refreshMoveIndicators();
-			return;
+		const groupsPane = box({
+			parent: screen,
+			top: 0,
+			left: 0,
+			width: "38%",
+			height: "100%-1",
+			border: { type: "line" },
+			tags: false,
+			style: { border: { fg: "yellow" } },
+		});
+		const groupsList = list({
+			parent: groupsPane,
+			top: 0,
+			left: 0,
+			width: "100%-2",
+			height: "100%-2",
+			items: [],
+			keys: false,
+			mouse: true,
+			scrollable: true,
+			tags: false,
+			invertSelected: true,
+			style: { selected: { inverse: true, bold: true } },
+		}) as MutableList;
+
+		const tasksPane = box({
+			parent: screen,
+			top: 0,
+			left: "38%",
+			width: "62%",
+			height: "100%-1",
+			border: { type: "line" },
+			tags: false,
+			style: { border: { fg: "gray" } },
+		});
+		const tasksList = list({
+			parent: tasksPane,
+			top: 0,
+			left: 0,
+			width: "100%-2",
+			height: "100%-2",
+			items: [],
+			keys: false,
+			mouse: true,
+			scrollable: true,
+			tags: false,
+			invertSelected: false,
+			style: { selected: { inverse: false, bold: true } },
+		}) as MutableList;
+
+		const footer = box({
+			parent: screen,
+			bottom: 0,
+			left: 0,
+			right: 0,
+			height: 1,
+			tags: false,
+			style: { bg: "black", fg: "gray" },
+		});
+
+		const setListStyle = (target: MutableList, focusedStyle: boolean) => {
+			const style = target.style as { selected?: { inverse?: boolean; bold?: boolean } } | undefined;
+			if (style?.selected) {
+				style.selected.inverse = focusedStyle;
+				style.selected.bold = true;
+			}
+			const listOptions = target.options as { invertSelected?: boolean } | undefined;
+			if (listOptions) listOptions.invertSelected = focusedStyle;
+		};
+
+		const setPaneFocus = (pane: BoxInterface, isFocused: boolean) => {
+			const style = pane.style as { border?: { fg?: string } } | undefined;
+			if (style?.border) style.border.fg = isFocused ? "yellow" : "gray";
+		};
+
+		function footerText(): string {
+			if (hint) return ` ${hint} `;
+			if (moveMode) {
+				const target = moveTargets[targetPos];
+				const suffix = target ? ` · Target: ${moveTargetLabel(target)}` : "";
+				return ` Move mode: ↑/↓ target · Enter apply · Esc cancel${suffix} `;
+			}
+			const focusHint = focused === "groups" ? "→/Tab tasks" : "←/Tab sequences";
+			return ` ↑/↓ navigate · ${focusHint} · Enter open · m move · q quit `;
 		}
-		screen.destroy();
-	});
-	screen.key(["up", "k"], () => move(-1));
-	screen.key(["down", "j"], () => move(1));
-	// Toggle move mode with 'm'
-	screen.key(["m", "M"], () => {
-		if (popupOpen) return;
-		moveMode = !moveMode;
-		// Default target is the selected task's current sequence
-		const item = taskLines.find((t) => t.globalIndex === selected);
-		if (item) {
-			if (item.seqIdx === -1) {
-				// If unsequenced, select Unsequenced target when available, else top-between
-				const pos = moveTargets.findIndex((t) => t.kind === "unsequenced");
-				targetPos =
-					pos >= 0
-						? pos
-						: Math.max(
-								0,
-								moveTargets.findIndex((t) => t.kind === "between" && t.k === 0),
-							);
-			} else {
-				const seqIndex = data.sequences[item.seqIdx]?.index;
-				const pos = moveTargets.findIndex((t) => t.kind === "sequence" && t.seqIndex === seqIndex);
-				targetPos = pos >= 0 ? pos : 0;
+
+		function refresh() {
+			syncingSelection = true;
+			try {
+				const row = rows[groupIndex];
+				const tasks = row?.tasks ?? [];
+				taskIndex = clamp(taskIndex, tasks.length);
+
+				if (moveMode) {
+					groupsPane.setLabel?.(" Move target ");
+					groupsList.setItems?.(padToPaneHeight(moveTargets.map((target) => ` ${moveTargetLabel(target)}`)));
+					groupsList.select?.(clamp(targetPos, moveTargets.length));
+					// The right pane is idle while the left one owns the keyboard, so it carries
+					// the preview of what Enter would write instead of a list nobody can reach.
+					const preview = buildMovePreview({
+						allTasks: moveAllTasks,
+						data,
+						rows,
+						task: rows[groupIndex]?.tasks[taskIndex],
+						target: moveTargets[targetPos],
+					});
+					tasksPane.setLabel?.(" What this move writes ");
+					tasksList.setItems?.(padToPaneHeight(preview.map((line) => ` ${line}`)));
+					tasksList.select?.(0);
+				} else {
+					const sequenceCount = rows.filter((entry) => entry.kind === "sequence").length;
+					groupsPane.setLabel?.(` Sequences (${sequenceCount}) `);
+					groupsList.setItems?.(padToPaneHeight(rows.map((entry) => ` ${entry.label}`)));
+					groupsList.select?.(clamp(groupIndex, rows.length));
+					tasksPane.setLabel?.(` ${row ? row.label : "No groups"} `);
+					tasksList.setItems?.(padToPaneHeight(tasks.map((task) => ` ${task.id} - ${task.title}`)));
+					tasksList.select?.(taskIndex);
+				}
+
+				// Move mode always drives the left pane; otherwise focus decides which pane is lit.
+				const groupsFocused = moveMode || focused === "groups";
+				setListStyle(groupsList, groupsFocused);
+				setListStyle(tasksList, !moveMode && focused === "tasks");
+				setPaneFocus(groupsPane, groupsFocused);
+				setPaneFocus(tasksPane, !moveMode && focused === "tasks");
+
+				footer.setContent(footerText());
+				screen.render();
+			} finally {
+				syncingSelection = false;
 			}
 		}
-		// Update footer to indicate mode and overlays
-		footer.setContent(
-			moveMode ? moveFooterText() : " ↑/↓ navigate · Enter view · m move · q quit · Esc close popup/quit ",
-		);
-		ensureDropZoneOverlays();
-		refreshHighlight();
-		refreshMoveIndicators();
-	});
-	screen.key(["enter"], async () => {
-		if (!moveMode) {
-			await openDetail();
-			return;
+
+		/**
+		 * A list that shrinks leaves its old rows behind: blessed redraws the rows it has and
+		 * never touches the ones below, so switching from a long group to a short one would
+		 * keep the tail of the previous group on screen. Padding the items up to the pane's
+		 * full height makes the list paint those rows as blanks instead.
+		 */
+		function padToPaneHeight(items: string[]): string[] {
+			const screenHeight = typeof screen.height === "number" ? screen.height : 24;
+			// One line for the footer, two for the pane's own border.
+			const bodyHeight = Math.max(1, screenHeight - 3);
+			if (items.length >= bodyHeight) return items;
+			return [...items, ...Array(bodyHeight - items.length).fill(" ")];
 		}
-		if (!core) return;
-		const item = taskLines.find((t) => t.globalIndex === selected);
-		if (!item) return;
-		const seq2 = data.sequences[item.seqIdx];
-		const task = item.seqIdx === -1 ? data.unsequenced[item.taskIdx] : seq2?.tasks[item.taskIdx];
-		if (!task) return;
-		// Persist changes based on target
-		const allTasks = await core.queryTasks();
-		const tgt = moveTargets[targetPos];
-		if (tgt?.kind === "unsequenced") {
-			const { planMoveToUnsequenced } = await import("../core/sequences.ts");
-			const res = planMoveToUnsequenced(allTasks, task.id);
-			if (!res.ok) {
-				footer.setContent(` ${res.error} · Esc cancel `);
-				screen.render();
+
+		/** Keep a broken key handler from taking the whole session down: show it in the footer. */
+		function safe(handler: () => void | Promise<void>) {
+			return () => {
+				try {
+					void Promise.resolve(handler()).catch((error: unknown) => {
+						hint = error instanceof Error ? error.message : String(error);
+						refresh();
+					});
+				} catch (error) {
+					hint = error instanceof Error ? error.message : String(error);
+					refresh();
+				}
+			};
+		}
+
+		function move(delta: number) {
+			if (popupOpen) return;
+			if (moveMode) {
+				targetPos = clamp(targetPos + delta, moveTargets.length);
+				refresh();
 				return;
 			}
-			await core.updateTasksBulk(res.changed, `Move ${task.id} to Unsequenced`);
-		} else if (tgt?.kind === "sequence") {
-			const { planMoveToSequence } = await import("../core/sequences.ts");
-			const changed = planMoveToSequence(allTasks, data.sequences, task.id, tgt.seqIndex);
-			if (changed.length > 0) await core.updateTasksBulk(changed, `Update dependencies/order for move of ${task.id}`);
-		} else if (tgt?.kind === "between") {
-			const { adjustDependenciesForInsertBetween } = await import("../core/sequences.ts");
-			const updated = adjustDependenciesForInsertBetween(allTasks, data.sequences, task.id, tgt.k);
-			const byIdOrig = new Map(allTasks.map((t) => [t.id, t]));
-			const changed: Task[] = [];
-			for (const u of updated) {
-				const orig = byIdOrig.get(u.id);
-				if (!orig) continue;
-				const depsChanged = JSON.stringify(orig.dependencies) !== JSON.stringify(u.dependencies);
-				const ordChanged = (orig.ordinal ?? null) !== (u.ordinal ?? null);
-				if (depsChanged || ordChanged) changed.push(u);
+			if (focused === "groups") {
+				const nextIndex = clamp(groupIndex + delta, rows.length);
+				if (nextIndex !== groupIndex) {
+					groupIndex = nextIndex;
+					taskIndex = 0;
+				}
+			} else {
+				const row = rows[groupIndex];
+				taskIndex = clamp(taskIndex + delta, row?.tasks.length ?? 0);
 			}
-			if (changed.length > 0) {
-				await core.updateTasksBulk(changed, `Insert new sequence via drop between for ${task.id}`);
-			}
+			refresh();
 		}
-		// Reload and rerender
-		const tasksNew = await core.queryTasks();
-		const active = tasksNew.filter((t) => (t.status || "").toLowerCase() !== "done");
-		const { computeSequences: recompute } = await import("../core/sequences.ts");
-		const next = recompute(active);
-		screen.destroy();
-		await runSequencesView(next, core);
-	});
 
-	refreshHighlight();
-	ensureDropZoneOverlays();
-	refreshMoveIndicators();
+		async function openDetail() {
+			if (!core || popupOpen) return;
+			const row = rows[groupIndex];
+			const task = row?.tasks[taskIndex];
+			if (!task) return;
+			popupOpen = true;
+			const popup = await createTaskPopup(screen, task);
+			if (!popup) {
+				popupOpen = false;
+				return;
+			}
+			const { contentArea, close: closePopup } = popup;
+			contentArea.key(["escape", "q"], () => {
+				popupOpen = false;
+				closePopup();
+				refresh();
+			});
+			screen.render();
+		}
+
+		async function applyMove() {
+			if (!core) return;
+			const row = rows[groupIndex];
+			const task = row?.tasks[taskIndex];
+			const target = moveTargets[targetPos];
+			if (!task || !target) return;
+			const allTasks = await core.queryTasks();
+			if (target.kind === "unsequenced") {
+				const res = planMoveToUnsequenced(allTasks, task.id);
+				if (!res.ok) {
+					hint = res.error;
+					refresh();
+					return;
+				}
+				if (res.changed.length > 0) {
+					await core.updateTasksBulk(res.changed, `Move ${task.id} to Unsequenced`);
+				}
+			} else if (target.kind === "sequence") {
+				const changed = planMoveToSequence(allTasks, data.sequences, task.id, target.seqIndex);
+				if (changed.length > 0) {
+					await core.updateTasksBulk(changed, `Update dependencies/order for move of ${task.id}`);
+				}
+			} else {
+				const updated = adjustDependenciesForInsertBetween(allTasks, data.sequences, task.id, target.k);
+				const byIdOrig = new Map(allTasks.map((entry) => [entry.id, entry]));
+				const changed: Task[] = [];
+				for (const candidate of updated) {
+					const orig = byIdOrig.get(candidate.id);
+					if (!orig) continue;
+					const depsChanged = JSON.stringify(orig.dependencies) !== JSON.stringify(candidate.dependencies);
+					const ordChanged = (orig.ordinal ?? null) !== (candidate.ordinal ?? null);
+					if (depsChanged || ordChanged) changed.push(candidate);
+				}
+				if (changed.length > 0) {
+					await core.updateTasksBulk(changed, `Insert new sequence via drop between for ${task.id}`);
+				}
+			}
+			// Recompute from disk: the move rewrote dependencies, so the layers moved.
+			const fresh = await core.queryTasks();
+			const active = fresh.filter((entry) => (entry.status || "").toLowerCase() !== "done");
+			const next = computeSequences(active);
+			data.unsequenced = next.unsequenced;
+			data.sequences = next.sequences;
+			rows = buildSequenceRows(data);
+			moveTargets = buildMoveTargets(rows);
+			moveMode = false;
+			const movedGroup = rows.findIndex((entry) => entry.tasks.some((entry2) => entry2.id === task.id));
+			groupIndex = movedGroup >= 0 ? movedGroup : clamp(groupIndex, rows.length);
+			const movedRow = rows[groupIndex];
+			taskIndex = movedRow
+				? Math.max(
+						0,
+						movedRow.tasks.findIndex((entry) => entry.id === task.id),
+					)
+				: 0;
+			targetPos = clamp(targetPos, moveTargets.length);
+			hint = `Moved ${task.id}`;
+			refresh();
+			setTimeout(() => {
+				hint = null;
+				refresh();
+			}, 4000);
+		}
+
+		// A click on either pane moves that pane's cursor, so the two panes stay in step with
+		// the mouse the same way they do with the arrow keys.
+		groupsList.on("select item", (_item: unknown, index: unknown) => {
+			if (syncingSelection || popupOpen || typeof index !== "number") return;
+			if (moveMode) targetPos = clamp(index, moveTargets.length);
+			else if (index !== groupIndex) {
+				groupIndex = clamp(index, rows.length);
+				taskIndex = 0;
+			}
+			refresh();
+		});
+		tasksList.on("select item", (_item: unknown, index: unknown) => {
+			if (syncingSelection || popupOpen || moveMode || typeof index !== "number") return;
+			taskIndex = clamp(index, rows[groupIndex]?.tasks.length ?? 0);
+			refresh();
+		});
+
+		screen.key(
+			["q", "C-c"],
+			safe(() => {
+				if (popupOpen) return;
+				close();
+			}),
+		);
+		screen.key(
+			["escape"],
+			safe(() => {
+				// An open popup closes itself; otherwise Esc cancels move mode, then quits.
+				if (popupOpen) return;
+				if (moveMode) {
+					moveMode = false;
+					hint = null;
+					refresh();
+					return;
+				}
+				close();
+			}),
+		);
+		screen.key(
+			["up", "k"],
+			safe(() => move(-1)),
+		);
+		screen.key(
+			["down", "j"],
+			safe(() => move(1)),
+		);
+		screen.key(
+			["tab"],
+			safe(() => {
+				if (popupOpen || moveMode) return;
+				focused = focused === "groups" ? "tasks" : "groups";
+				refresh();
+			}),
+		);
+		screen.key(
+			["right"],
+			safe(() => {
+				if (popupOpen || moveMode || focused === "tasks") return;
+				focused = "tasks";
+				refresh();
+			}),
+		);
+		screen.key(
+			["left"],
+			safe(() => {
+				if (popupOpen || moveMode || focused === "groups") return;
+				focused = "groups";
+				refresh();
+			}),
+		);
+		screen.key(
+			["m", "M"],
+			safe(async () => {
+				if (popupOpen) return;
+				const row = rows[groupIndex];
+				if (!row?.tasks.length) return;
+				moveMode = !moveMode;
+				if (moveMode) {
+					hint = null;
+					focused = "groups";
+					// Open on the target the task already sits in, so a no-op Enter is harmless.
+					const current =
+						row.kind === "unsequenced"
+							? moveTargets.findIndex((target) => target.kind === "unsequenced")
+							: moveTargets.findIndex((target) => target.kind === "sequence" && target.seqIndex === row.index);
+					targetPos = current >= 0 ? current : 0;
+					// Seed the preview from what is on screen and refine it once the full task
+					// list arrives: the target has to be set before the first paint, or a key
+					// pressed during the await would be undone when this handler resumes.
+					moveAllTasks = rows.flatMap((entry) => entry.tasks);
+					refresh();
+					const snapshot = await core?.queryTasks();
+					if (moveMode && snapshot) {
+						moveAllTasks = snapshot;
+						refresh();
+					}
+					return;
+				}
+				refresh();
+			}),
+		);
+		screen.key(
+			["enter"],
+			safe(async () => {
+				if (popupOpen) return;
+				if (moveMode) {
+					await applyMove();
+					return;
+				}
+				if (focused === "groups") {
+					focused = "tasks";
+					refresh();
+					return;
+				}
+				await openDetail();
+			}),
+		);
+
+		refresh();
+		if (focused === "groups") groupsList.focus();
+		else tasksList.focus();
+	});
 }
