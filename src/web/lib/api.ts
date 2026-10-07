@@ -244,12 +244,15 @@ export class ApiClient {
 		priority?: SearchPriorityFilter;
 		labels?: string[];
 		crossBranch?: boolean;
+		/** Widen the corpus with backlog/completed records; off by default, as everywhere else. */
+		completed?: boolean;
 	}): Promise<Task[]> {
 		const params = new URLSearchParams();
 		if (options?.status) params.append("status", options.status);
 		if (options?.assignee) params.append("assignee", options.assignee);
 		if (options?.parent) params.append("parent", options.parent);
 		if (options?.priority) params.append("priority", options.priority);
+		if (options?.completed === true) params.append("completed", "true");
 		if (options?.labels) {
 			for (const label of options.labels) {
 				if (label && label.trim().length > 0) {

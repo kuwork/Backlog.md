@@ -481,7 +481,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	const milestoneSelectionValue = resolveMilestoneToId(milestone);
 
 	const handleTaskClick = useCallback(
-		(taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
+		(taskId: string, range?: { lineStart?: number; lineEnd?: number }, knownTask?: Task) => {
 			if (range?.lineStart !== undefined) {
 				setPreviewTarget({
 					kind: "entity",
@@ -492,7 +492,9 @@ export const TaskDetailsModal: React.FC<Props> = ({
 				});
 				return;
 			}
-			const targetTask = availableTasks.find((t) => stripAnyPrefix(t.id) === taskId || t.id === taskId);
+			// `knownTask` comes from surfaces that already hold the record (the hierarchy section,
+			// whose archived relatives are absent from the active corpus below).
+			const targetTask = knownTask ?? availableTasks.find((t) => stripAnyPrefix(t.id) === taskId || t.id === taskId);
 			if (targetTask && onDrillDown) {
 				onDrillDown(targetTask);
 			} else {
@@ -501,6 +503,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		},
 		[availableTasks, onDrillDown, navigate],
 	);
+
+	const handleHierarchyTaskClick = useCallback(
+		(taskId: string, knownTask?: Task) => handleTaskClick(taskId, undefined, knownTask),
+		[handleTaskClick],
+	);
+
 	const handleDocClick = useCallback(
 		(docId: string, range?: { lineStart?: number; lineEnd?: number }) => {
 			if (range?.lineStart !== undefined) {
@@ -1719,7 +1727,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
 						{/* Parent/subtask hierarchy */}
 						{task && !isCreateMode && (
-							<TaskHierarchySection task={task} availableTasks={availableTasks} onTaskClick={handleTaskClick} />
+							<TaskHierarchySection
+								task={task}
+								availableTasks={availableTasks}
+								onTaskClick={handleHierarchyTaskClick}
+							/>
 						)}
 
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6" onClickCapture={confirmNavigationAwayFromEdits}>

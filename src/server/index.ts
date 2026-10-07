@@ -1188,6 +1188,9 @@ export class BacklogServer {
 				labels: labels.length > 0 ? labels : undefined,
 			},
 			includeCrossBranch: crossBranch,
+			// Opt-in, as on /api/search: the board and the task list keep completed records out of
+			// view by default, while a `parent` lookup must still reach an archived child.
+			includeCompleted: url.searchParams.get("completed") === "true",
 			refreshCrossBranch,
 		});
 

@@ -4,12 +4,15 @@ import type { Task } from "../../types";
 import { canonicalTaskId } from "../../utils/task-id";
 import { sortByTaskId } from "../../utils/task-sorting";
 import { useI18n } from "../hooks/useI18n";
+import { useTaskHierarchyCorpus } from "../hooks/useTaskHierarchyCorpus";
 import { getStatusBadgeColor } from "../utils/task-badge-colors";
 
 interface TaskHierarchySectionProps {
 	task: Task;
 	availableTasks: Task[];
-	onTaskClick: (taskId: string) => void;
+	// The record is passed along when the click comes from this section: a completed relative is
+	// never in the caller's corpus, so resolving it by id afterwards would fail.
+	onTaskClick: (taskId: string, task?: Task) => void;
 }
 
 const isTaskDone = (status?: string) => (status || "").toLowerCase().includes("done");
@@ -18,20 +21,36 @@ export const TaskHierarchySection: React.FC<TaskHierarchySectionProps> = ({ task
 	const { t } = useI18n();
 	const [isCollapsed, setIsCollapsed] = useState(false);
 
+	// The caller's corpus is active-only, so completed children and a completed parent are fetched
+	// on demand and joined here; the display list itself is never widened.
+	const completedRelatives = useTaskHierarchyCorpus(task, availableTasks);
+	const corpus = useMemo(() => {
+		if (completedRelatives.length === 0) return availableTasks;
+		// The completed lookup races the caller's own corpus: on a cold view it answers before the
+		// task list does and hands back children the corpus is about to hold as well. One entry per
+		// canonical id, corpus first, so the two views of the same task never both render.
+		const merged = new Map<string, Task>();
+		for (const candidate of [...availableTasks, ...completedRelatives]) {
+			const key = canonicalTaskId(candidate.id);
+			if (!merged.has(key)) merged.set(key, candidate);
+		}
+		return [...merged.values()];
+	}, [availableTasks, completedRelatives]);
+
 	const parentTask = useMemo(
 		() =>
 			task.parentTaskId
-				? availableTasks.find((candidate) => canonicalTaskId(candidate.id) === canonicalTaskId(task.parentTaskId ?? ""))
+				? corpus.find((candidate) => canonicalTaskId(candidate.id) === canonicalTaskId(task.parentTaskId ?? ""))
 				: undefined,
-		[task, availableTasks],
+		[task, corpus],
 	);
 
 	const subtaskTasks = useMemo(() => {
-		const children = availableTasks.filter(
+		const children = corpus.filter(
 			(candidate) => candidate.parentTaskId && canonicalTaskId(candidate.parentTaskId) === canonicalTaskId(task.id),
 		);
 		return sortByTaskId(children);
-	}, [task, availableTasks]);
+	}, [task, corpus]);
 
 	if (!parentTask && subtaskTasks.length === 0) return null;
 
@@ -43,7 +62,7 @@ export const TaskHierarchySection: React.FC<TaskHierarchySectionProps> = ({ task
 			{parentTask && (
 				<button
 					type="button"
-					onClick={() => onTaskClick(parentTask.id)}
+					onClick={() => onTaskClick(parentTask.id, parentTask)}
 					className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
 				>
 					<svg
@@ -113,7 +132,7 @@ export const TaskHierarchySection: React.FC<TaskHierarchySectionProps> = ({ task
 								<li key={subtask.id}>
 									<button
 										type="button"
-										onClick={() => onTaskClick(subtask.id)}
+										onClick={() => onTaskClick(subtask.id, subtask)}
 										className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
 									>
 										{isTaskDone(subtask.status) ? (

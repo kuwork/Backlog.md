@@ -27,6 +27,7 @@ import {
 	getTaskReadiness,
 	type ReadinessGraph,
 } from "../utils/readiness.ts";
+import { mergeCompletedIntoActive } from "../utils/task-corpus.ts";
 import { canonicalTaskId } from "../utils/task-id.ts";
 import { taskIdsEqual } from "../utils/task-path.ts";
 import { applyTaskFilters, createTaskSearchIndex, type LabelMatchMode } from "../utils/task-search.ts";
@@ -265,6 +266,11 @@ export async function viewTaskEnhanced(
 	// mutable because completing a task from this view moves it between them.
 	let readinessSnapshot = options.readinessTasks ? [...options.readinessTasks] : null;
 	const readinessCompletedTasks = [...completedTasks];
+	// A parent learns its children only from each child's parent_task_id, and that link outlives the
+	// child's move to backlog/completed. The completed corpus is already here for dependency
+	// readiness, so hierarchy reads widen with it instead of paying for a second scan - and the
+	// display list itself stays active-only.
+	const hierarchyTasks = () => mergeCompletedIntoActive(allTasks, readinessCompletedTasks);
 	const buildReadinessGraph = () => {
 		let tasks = allTasks;
 		if (readinessSnapshot) {
@@ -316,7 +322,7 @@ export async function viewTaskEnhanced(
 
 	const enrichTask = (candidate: Task | null): Task | null => {
 		if (!candidate) return null;
-		return attachSubtaskSummaries(candidate, allTasks);
+		return attachSubtaskSummaries(candidate, hierarchyTasks());
 	};
 
 	// Find the initial selected task
@@ -798,7 +804,7 @@ export async function viewTaskEnhanced(
 		const requestId = ++selectionRequestId;
 		refreshDetailPane();
 		screen.render();
-		const refreshed = await core.getTaskWithSubtasks(selectedTask.id, allTasks);
+		const refreshed = await core.getTaskWithSubtasks(selectedTask.id, hierarchyTasks());
 		if (requestId !== selectionRequestId) {
 			return;
 		}

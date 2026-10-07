@@ -3955,7 +3955,9 @@ addHelpSchema(taskCmd.command("view <taskId>"), {
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const localTasks = await core.fs.listTasks();
-		const task = await core.getTaskWithSubtasks(taskId, localTasks);
+		// No pool argument: children that moved to backlog/completed must still be found, and the
+		// detail read is one-shot, so it may build that wider corpus itself.
+		const task = await core.getTaskWithSubtasks(taskId);
 		if (!task) {
 			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;
@@ -4154,7 +4156,9 @@ taskCmd
 		}
 
 		const localTasks = await core.fs.listTasks();
-		const task = await core.getTaskWithSubtasks(taskId, localTasks);
+		// No pool argument: children that moved to backlog/completed must still be found, and the
+		// detail read is one-shot, so it may build that wider corpus itself.
+		const task = await core.getTaskWithSubtasks(taskId);
 		if (!task) {
 			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;

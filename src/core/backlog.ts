@@ -63,6 +63,7 @@ import {
 	stringArraysEqual,
 	validateDependencies,
 } from "../utils/task-builders.ts";
+import { mergeCompletedIntoActive } from "../utils/task-corpus.ts";
 import { canonicalTaskId } from "../utils/task-id.ts";
 import {
 	AmbiguousTaskIdError,
@@ -791,13 +792,7 @@ export class Core {
 					? await Promise.all([filesystem.listTasks(), filesystem.listCompletedTasks()])
 					: [await filesystem.listTasks(), [] as Task[]];
 				if (projectChanged()) continue;
-				// Completed tasks only widen the source corpus; active records win on an id clash.
-				const byId = new Map(localTasks.map((task) => [normalizeTaskId(task.id).toLowerCase(), task]));
-				for (const task of completedTasks) {
-					const key = normalizeTaskId(task.id).toLowerCase();
-					if (!byId.has(key)) byId.set(key, { ...task, source: "completed" as const });
-				}
-				const corpus = includeCompleted ? [...byId.values()] : localTasks;
+				const corpus = includeCompleted ? mergeCompletedIntoActive(localTasks, completedTasks) : localTasks;
 				const tasks = trimmedQuery ? createTaskSearchIndex(corpus).search({ query: trimmedQuery }) : corpus;
 				const filteredTasks = await applyFiltersAndLimit(tasks);
 				if (projectChanged()) continue;
@@ -913,7 +908,12 @@ export class Core {
 				continue;
 			if (!task) return null;
 
-			const tasks = localTasks ?? (await filesystem.listTasks());
+			// A parent learns its children only from the child's own parent_task_id, so the pool is
+			// the whole picture: a child that already reached a terminal status and moved to the
+			// completed corpus stays part of its parent's hierarchy. Callers that hold the completed
+			// corpus already should merge it into `localTasks` instead of paying for this read.
+			const tasks =
+				localTasks ?? mergeCompletedIntoActive(await filesystem.listTasks(), await filesystem.listCompletedTasks());
 			if (generation !== this.projectGeneration || filesystem !== this.fs || backlogRoot !== filesystem.backlogDir)
 				continue;
 			return attachSubtaskSummaries(task, tasks);
