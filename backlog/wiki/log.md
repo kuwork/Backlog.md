@@ -926,3 +926,55 @@ Chronological, append-only record of all wiki operations.
 
 ## [2026-10-05 08:40:00] usermanual-update | 快速笔记章节新增「钉板视图与归档」页，重新合并手册
 70-快速笔记 新增 04-钉板视图与归档.md（SUMMARY.md 同步），02-Web备忘页面 补钉板模式节与卡片归档说明。运行 merge.py 重新生成 wiki_output/用户手册/manual.md。
+
+## [2026-10-07 22:50:00] batch-ingest | 增量摄取 BACK-748~756（9 个新任务）
+
+**检测基线**: 2026-10-05 08:40:00（上次 batch-ingest，BACK-746/747）
+**Git 变更文件**: 9 个 backlog 任务（BACK-748~756）+ 其 src/ 变更
+
+**新 source 页面**: 9 个
+- `sources/back-748-fix-sidebar-resize-handle` — BACK-748 修复侧栏 resize handle 被 Tailwind v4 preflight `hr{height:0}` 坍缩
+- `sources/back-749-pinboard-fixed-height-ellipsis` — BACK-749 钉板便签固定高度 + 溢出省略号
+- `sources/back-750-memo-tag-bar` — BACK-750 Memo 标签历史条单行折叠与 `#topic#` 话题语法（含并入的 BACK-751 范围）
+- `sources/back-751-auto-link-entity-id-ranges` — BACK-751 实体 ID 区间与斜杠列表自动链接为下拉选择器
+- `sources/back-752-sequences-tui-two-pane` — BACK-752 Sequences TUI 双面板视图
+- `sources/back-753-referenced-by-backlinks` — BACK-753 文档与决策页反向链接
+- `sources/back-754-re-parent-task` — BACK-754 任务重定父
+- `sources/back-755-include-completed-subtasks` — BACK-755 父任务视图纳入已完成子任务
+- `sources/back-756-graph-canvas-high-dpi` — BACK-756 图谱 canvas 高 DPI 渲染加速
+
+**更新 concept 页面**: 6 个（交叉链接，未新增页）
+- `concepts/memo-board` — + back-749、back-750
+- `concepts/memos` — + back-749、back-750
+- `concepts/wikilink` — + back-751、back-753
+- `concepts/kuzu-graph` — + back-756
+- `concepts/task-identity` — + back-754、back-755
+- `concepts/cli-tui` — + back-752
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 无新增（本批为独立 UI/CLI 特性，无跨任务可复用模式达阈值）
+- [x] `wiki/decisions/` — 无新增微决策页（各任务决策点已写入 source 页正文）
+- [ ] `wiki/reasoning/` — 无复杂分解规划需记录
+- [ ] `wiki/patterns/` — 未达 3+ 同构阈值
+- [ ] `wiki/retrospectives/` — 距 2026-09-08 不足一月，跳过
+
+**更新导航**: `index.md`（Sources +9 行）、`overview.md`（新增本波段落、统计 323→334 sources、41→42 concepts、25→26 execution、73→76 decisions、34→41 user manual pages）
+
+**mini-lint**: 9 个新 source 页 `source_path` 全部解析到磁盘真实文件；全量 334 个 source 反向引用扫描 0 缺失。
+
+## [2026-10-07 22:50:00] usermanual-update | 更新用户手册，覆盖 BACK-748~756
+
+**更新页面**: 9 个
+- `70-快速笔记/04-钉板视图与归档` — 修正便签高度行为（固定 150px + 溢出省略号，替代原"随内容自动增长"）
+- `70-快速笔记/02-Web备忘页面` — 标签历史条单行折叠、active 置顶、`#topic#` 话题语法与 composer 自动补全、实体 ID 区间/斜杠列表链接
+- `70-快速笔记/03-搜索与知识互联` — 补充 `#topic#` 话题语法与实体 ID 区间链接
+- `40-Web界面/11-图谱视图` — 新增高 DPI 渲染性能说明（视口裁剪、批绘、MAX_DPR=2、文本 LOD）
+- `40-Web界面/02-任务列表` — 实体 ID 自动链接扩展区间 `BACK-715~747` 与斜杠列表 `BACK-743/744/745` 下拉
+- `40-Web界面/00-启动与访问` — 侧栏 resize handle 修复说明
+- `10-任务管理/03-子任务与依赖` — `task edit --parent/--clear-parent` 重定父、父视图纳入已完成子任务
+- `10-任务管理/04-搜索与序列` — `sequence list` TUI 双面板视图
+- `30-文档与决策/00-文档管理`、`30-文档与决策/01-决策记录` — 新增「反向链接」节
+
+**新增用户手册页面**: 0 个
+
+**重新生成**: `wiki_output/用户手册/manual.md`（merge.py）
