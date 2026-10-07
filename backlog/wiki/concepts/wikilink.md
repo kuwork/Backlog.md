@@ -2,7 +2,7 @@
 title: Wikilink
 labels: [concept]
 created_date: '2026-06-06 01:00'
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-07 22:50'
 ---
 
 # Wikilink
@@ -101,3 +101,5 @@ Wiki 页面中的 `[[wikilinks]]` 在 Web UI 中被替换为可点击的内部�
 - [[sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs]] — BACK-525 skill 文档同步
 - [[sources/doc-15-wiki-knowledge-graph-relation-design]] — doc-15 wikilink → LinksTo 边的解析规则
 - [[sources/back-714-knowledge-graph-ingest]] — BACK-714 LinksTo 边生成实现
+- [[sources/back-751-auto-link-entity-id-ranges]] — 渲染侧区间/斜杠列表多 ID 自动链接与 portal 下拉
+- [[sources/back-753-referenced-by-backlinks]] — 文档/决策页的「Referenced by」反向链接

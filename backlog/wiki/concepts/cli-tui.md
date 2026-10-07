@@ -2,7 +2,7 @@
 title: CLI 与 TUI 界面
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-07 22:50'
 ---
 
 
@@ -180,3 +180,4 @@ TUI 的 `E` 编辑键不再按任务状态推断目标路径，而是按文件�
 - [[sources/back-694-board-popup-live-sync]] — BACK-694 看板弹窗 live sync
 - [[sources/back-695-drafts-session-live-sync]] — BACK-695 drafts 会话 live sync
 - [[sources/back-696-milestone-popup-live-sync]] — BACK-696 里程碑弹窗 live sync
+- [[sources/back-752-sequences-tui-two-pane]] — `sequence list` 双面板 TUI（侧栏 + 任务列表，镜像里程碑列表）
