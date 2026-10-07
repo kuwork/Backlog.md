@@ -6,7 +6,7 @@ labels:
   - webgl
   - web-ui
 created_date: '2026-10-05 08:25'
-updated_date: '2026-10-05 08:25'
+updated_date: '2026-10-07 22:50'
 ---
 
 # Memo 钉板视图（WebGL 便利贴）
@@ -53,3 +53,5 @@ updated_date: '2026-10-05 08:25'
 
 - [[sources/back-746-memo-board-webgl-pinboard]] — 本视图的唯一实现来源
 - [[sources/back-747-memo-archiving]] — hover 归档按钮与钉板的集成
+- [[sources/back-749-pinboard-fixed-height-ellipsis]] — 钉板便签固定高度 + 溢出省略号
+- [[sources/back-750-memo-tag-bar]] — 标签历史条与 #topic# 话题语法、激活过滤芯片

@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-10-05 08:30'
+updated_date: '2026-10-07 22:50'
 ---
 
 
@@ -333,6 +333,15 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-745-memo-corpus-signature-gate]] | Gate memo search corpus refreshes behind a stat signature | source, core, memos, search, performance |
 | [[sources/back-746-memo-board-webgl-pinboard]] | Memo board: WebGL sticky-note pinboard view | source, web-ui, memos, webgl, feature |
 | [[sources/back-747-memo-archiving]] | Memo archiving: move a note to backlog/archive/memos | source, memos, feature, web-ui |
+| [[sources/back-748-fix-sidebar-resize-handle]] | BACK-748 - Fix sidebar resize handle collapsed by hr preflight height:0 | source, bug, web-ui |
+| [[sources/back-749-pinboard-fixed-height-ellipsis]] | BACK-749 - Pinboard notes: fixed height with ellipsis truncation on overflow | source, enhancement, web-ui, memos |
+| [[sources/back-750-memo-tag-bar]] | BACK-750 - Memo tag bar: single-line history strip and topic syntax | source, enhancement, web-ui, memos |
+| [[sources/back-751-auto-link-entity-id-ranges]] | BACK-751 - Auto-link entity ID ranges and slash-lists as a clickable dropdown selector | source, web-ui, enhancement, markdown |
+| [[sources/back-752-sequences-tui-two-pane]] | BACK-752 - Sequences TUI: two-pane view (sequence sidebar + task list) | source, cli, tui |
+| [[sources/back-753-referenced-by-backlinks]] | BACK-753 - Referenced by backlinks on document and decision pages | source, web-ui |
+| [[sources/back-754-re-parent-task]] | BACK-754 - Re-parent an existing task (task edit --parent / --clear-parent) | source, cli, mcp |
+| [[sources/back-755-include-completed-subtasks]] | BACK-755 - Include completed subtasks in parent task views | source, bug, subtasks |
+| [[sources/back-756-graph-canvas-high-dpi]] | BACK-756 - Speed up graph canvas rendering on high-DPI screens | source, web-ui |
 | [[sources/doc-17-state-machine-semantics-diagnosis]] | doc-17 - 状态机语义缺失与 AI 协同：完整诊断、方案与引擎选型 | source, design, mcp, state-machine |
 | [[sources/doc-18-differentiation-gap-analysis]] | doc-18 - 差异化管理机制横向差距分析：七层模型与五个缺口 | source, design |
 | [[sources/doc-19-default-state-machine-prd]] | doc-19 - PRD：默认状态机（7 列 · 三审查点落位 · 可重置 · 指引优先） | source, specification, state-machine, web-ui |

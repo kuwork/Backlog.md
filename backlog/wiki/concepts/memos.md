@@ -4,7 +4,7 @@ labels:
   - concept
   - memos
 created_date: '2026-10-03 01:13'
-updated_date: '2026-10-05 08:30'
+updated_date: '2026-10-07 22:50'
 ---
 
 # 快速笔记（Memos）子系统
@@ -70,5 +70,7 @@ memos 是纯 markdown 文件，web UI 之外的编辑（编辑器、脚本、CLI
 - [[sources/back-746-memo-board-webgl-pinboard]] — WebGL 钉板视图
 - [[sources/back-747-memo-archiving]] — 归档到 archive/memos 与 init 目录修复
 - [[sources/doc-20-memos-integration]] — Memos 集成的设计输入稿
+- [[sources/back-749-pinboard-fixed-height-ellipsis]] — 钉板便签固定高度 + 溢出省略号
+- [[sources/back-750-memo-tag-bar]] — 标签历史条与 #topic# 话题语法、composer 自动补全
 
 ## Related Entities
