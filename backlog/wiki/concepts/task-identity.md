@@ -1,7 +1,7 @@
 ---
 title: 共享任务身份
 created_date: '2026-08-17 23:00'
-updated_date: '2026-09-26 16:30'
+updated_date: '2026-10-07 22:50'
 labels: [concept, core, identity, git]
 ---
 
@@ -87,3 +87,5 @@ Kuzu 图节点表由 `Task(id)` 改为 `FileNode(path PRIMARY KEY, id, ...)`:文
 - [[sources/back-680-batch-status-move]] — BACK-680 批量移动的身份去重
 - [[sources/back-707-dependency-gate-cycles]] — BACK-707 依赖写入门禁
 - [[sources/back-713-filenode-rename]] — BACK-713 FileNode path PK 身份拆分
+- [[sources/back-754-re-parent-task]] — task edit --parent/--clear-parent 重定父（仅改边、归一化 ID）
+- [[sources/back-755-include-completed-subtasks]] — 父视图纳入 completed 子任务（canonical id 去重）

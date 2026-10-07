@@ -2,7 +2,7 @@
 title: Kuzu 任务图谱
 labels: [concept, graph, kuzu]
 created_date: '2026-09-26 14:45'
-updated_date: '2026-09-26 22:25'
+updated_date: '2026-10-07 22:50'
 ---
 
 # Kuzu 任务图谱
@@ -71,6 +71,7 @@ kuzu 0.11.3 原生绑定在 Bun 1.3.14（Windows）下段错误（BACK-702 实�
 - [[sources/back-711-modal-graph-alignment]] — 模态图对齐与共享 GraphLegend
 - [[sources/back-713-filenode-rename]] — FileNode(path PK) 重命名与自描述版本
 - [[sources/back-714-knowledge-graph-ingest]] — wiki/docs/decisions 入图与 /knowledge 视图
+- [[sources/back-756-graph-canvas-high-dpi]] — 高 DPI 下 canvas 裁剪/批绘/DPR 上限/文本 LOD
 
 ## Related Reasoning
 
