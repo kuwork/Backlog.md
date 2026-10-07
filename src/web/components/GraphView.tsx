@@ -22,9 +22,12 @@ import {
 	canvasThemeColors,
 	drawCaption,
 	drawEdgeLabel,
+	type EdgeBatchItem,
 	ensureZoomInterrupt,
+	type NodeBatchItem,
+	paintNodeBatch,
 	scaledRadius,
-	strokeEdge,
+	strokeEdgeBatch,
 } from "../utils/graph-canvas";
 import { captionFor, captionPlateWidth } from "../utils/graph-caption";
 import { knowledgeNodeHref } from "../utils/graph-node-links";
@@ -118,6 +121,40 @@ const FOCUS_FADE = 0.18;
 const HOVER_DELAY_MS = 300;
 
 /**
+ * Backing-store cap. A frame is fill-rate bound, and a 4K panel at dpr 3 paints nine times the
+ * pixels of dpr 1; past dpr 2 the extra sharpness is invisible in a 700-node hairball, so the
+ * cap buys back the frames.
+ */
+const MAX_DPR = 2;
+/**
+ * Text layers - captions and, above all, a rotated `fillText` per relation - are the expensive
+ * half of a frame and are unreadable while the picture is moving. A camera move drops them and
+ * repaints once the camera has been still for this long.
+ */
+const TEXT_SETTLE_MS = 140;
+/**
+ * How long after a focus reveal starts - the fly-in landing, a gesture lifting off, a node drag
+ * ending, the layout going quiet - the rest of the names come in. The focus cluster (the clicked
+ * node and its neighbours) shows from the start of the move, so the eye tracks the context it went
+ * to; the non-cluster names wait this long after the picture settles so they do not blur in while
+ * it is still sliding.
+ */
+const TEXT_CLUSTER_MS = 300;
+/**
+ * Culling slack around the viewport, in screen pixels: room for the largest circle plus the
+ * caption plate hanging below it, so a node half off-screen still paints its label.
+ */
+const CULL_PAD = 56;
+/**
+ * A drag does not change the picture, only where it is shown, so the gesture slides a copy of the
+ * frame already on screen - names included - instead of painting one: one drawImage a frame
+ * instead of a few thousand paths. The snapshot is taken at the live backing scale (full device
+ * dpr, never reduced) so sliding the picture never softens it; the blur would be the one thing the
+ * user can see mid-drag and the thing they notice first. What the drag uncovers stays blank until
+ * the pointer lifts, which keeps the bitmap at viewport size instead of paying for a margin.
+ */
+
+/**
  * Layout positions are persisted per view, because the layout is hundreds of milliseconds of
  * synchronous force ticks (measured: 250 ticks over 513 nodes and 2251 edges costs ~570 ms, and it
  * doubles with the edge count) and it only depends on the node set. A reload, or a return to the
@@ -207,6 +244,18 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 	const selectedIdRef = useRef<string | null>(null);
 	const scheduleDrawRef = useRef<() => void>(() => {});
 	const clearFocusRef = useRef<() => void>(() => {});
+	// True only while a *programmatic* camera move (fly-in, button zoom, fit, the initial frame)
+	// is driving d3-zoom, so its start/end events can be told apart from a real pointer/wheel
+	// gesture. A real gesture owns the snapshot and the text-reveal; a programmatic one does not.
+	const programmaticRef = useRef<boolean>(false);
+	const programmatic = useCallback((fn: () => void) => {
+		programmaticRef.current = true;
+		try {
+			fn();
+		} finally {
+			programmaticRef.current = false;
+		}
+	}, []);
 	const zoomCtlRef = useRef<{
 		canvas: HTMLCanvasElement;
 		zoom: ZoomBehavior<HTMLCanvasElement, unknown>;
@@ -217,10 +266,13 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		const ctl = zoomCtlRef.current;
 		if (ctl) select(ctl.canvas).call(ctl.zoom.translateBy, dx, dy);
 	}, []);
-	const zoomByFactor = useCallback((factor: number) => {
-		const ctl = zoomCtlRef.current;
-		if (ctl) select(ctl.canvas).call(ctl.zoom.scaleBy, factor);
-	}, []);
+	const zoomByFactor = useCallback(
+		(factor: number) => {
+			const ctl = zoomCtlRef.current;
+			if (ctl) programmatic(() => select(ctl.canvas).call(ctl.zoom.scaleBy, factor));
+		},
+		[programmatic],
+	);
 	const fitOverview = useCallback(() => {
 		fitToViewRef.current?.();
 	}, []);
@@ -517,10 +569,30 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		// Draw-on-demand: state changes (zoom frame, hover, drag tick, simulation tick) schedule a
 		// single rAF; nothing paints outside of it.
 		let drawHandle: number | null = null;
-		let dpr = window.devicePixelRatio || 1;
+		const fullDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
+		let dpr = fullDpr();
+		/**
+		 * Changing the backing store clears the canvas, so every caller repaints straight after.
+		 * Nothing else may touch `canvasEl.width/height` - a stray resize would blank a frame.
+		 */
+		const applyDpr = (next: number) => {
+			if (next === dpr) return;
+			dpr = next;
+			canvasEl.width = Math.round(cssWidth * dpr);
+			canvasEl.height = Math.round(cssHeight * dpr);
+		};
 		let cssWidth = 0;
 		let cssHeight = 0;
 		let quad: Quadtree<SimNode> = quadtree<SimNode>();
+		// The node a press-drag is moving (null while the gesture is a canvas pan or idle). Used to
+		// keep the simulation reheated and to gate the text stage so a drag does not blur to nothing,
+		// but it must NOT change which node is focused - the focus stays whatever was already pinned
+		// (or hovered), so a drag never switches the highlighted cluster to the dragged node.
+		let dragNode: SimNode | null = null;
+		let dragMoved = false;
+		// Focus-derived; rebuilt only when the focus changes, see `draw`.
+		let litFor: string | null = null;
+		let lit: Set<string> | null = null;
 		const syncQuadtree = () => {
 			quad = quadtree<SimNode>()
 				.x((d) => d.x ?? 0)
@@ -531,102 +603,386 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			if (drawHandle === null) drawHandle = requestAnimationFrame(draw);
 		}
 		const resize = () => {
-			dpr = window.devicePixelRatio || 1;
+			dpr = fullDpr();
 			cssWidth = container.clientWidth || 800;
 			cssHeight = container.clientHeight || 600;
 			canvasEl.width = Math.round(cssWidth * dpr);
 			canvasEl.height = Math.round(cssHeight * dpr);
+			// The snapshot is sized off the viewport, so a resize invalidates it.
+			snapTransform = null;
 			scheduleDraw();
+		};
+
+		// Text is revealed in three stages as a camera move plays out, so the eye is never asked
+		// to read a picture that is still sliding. "none" - the move is in flight: only the node
+		// being flown to keeps its name. "focus" - the move has just landed: that node and its
+		// neighbours light up. "all" - the picture has been still for a beat: every name that the
+		// zoom level allows. One-off repaints (a hover, a pinned focus) stay at "all".
+		type TextStage = "none" | "focus" | "all";
+		let textStage: TextStage = "all";
+		let settleTimer: ReturnType<typeof setTimeout> | null = null;
+		let clusterTimer: ReturnType<typeof setTimeout> | null = null;
+		const clearTextTimers = () => {
+			if (settleTimer !== null) clearTimeout(settleTimer);
+			if (clusterTimer !== null) clearTimeout(clusterTimer);
+			settleTimer = null;
+			clusterTimer = null;
+		};
+		// The camera is in motion: drop to the single name that matters (the fly target) and arm
+		// the backstop - a move with no definite end snaps to full text once it has been still a
+		// moment. A move that does end cancels this and runs the staged reveal instead.
+		const markCameraMoving = () => {
+			textStage = "none";
+			if (clusterTimer !== null) clearTimeout(clusterTimer);
+			clusterTimer = null;
+			if (settleTimer !== null) clearTimeout(settleTimer);
+			settleTimer = setTimeout(() => {
+				settleTimer = null;
+				textStage = "all";
+				scheduleDraw();
+			}, TEXT_SETTLE_MS);
+		};
+		// A move with a known end - the fly-in landing, a gesture lifting off, the layout going
+		// quiet - reveals the focus cluster at once and the rest of the names a beat later, rather
+		// than waiting the backstop out. The cluster-first beat is what made the labels feel late
+		// before; now they arrive the instant the camera stops.
+		const settleText = () => {
+			clearTextTimers();
+			// Force the cluster to rebuild from the live focus on the very next paint: a hover can
+			// have shifted focusId since the last rebuild, and the landing frame must show the
+			// clicked node's own neighbourhood, not a stale one.
+			litFor = null;
+			textStage = "focus";
+			// Paint the focus cluster on the landing frame itself, not on a queued rAF: any later
+			// state churn would otherwise push the reveal to the "all" beat and the neighbours
+			// would only show once the picture was already still.
+			draw();
+			clusterTimer = setTimeout(() => {
+				clusterTimer = null;
+				textStage = "all";
+				scheduleDraw();
+			}, TEXT_CLUSTER_MS);
+		};
+
+		// Paint batches: one reusable slot per link and per node, so a repaint allocates nothing.
+		// Edges bucket by (dash, alpha), nodes by (style, alpha); each bucket is one canvas path
+		// instead of one per element, which is the difference between thousands of draw calls a
+		// frame and a dozen.
+		const edgeGroups: Array<{ alpha: number; dash: string | undefined; items: EdgeBatchItem[] }> = [];
+		// Faded first, so a lit edge crossing a faded one stays on top. `EDGE_DASH` stores null for
+		// a solid line; normalised to undefined here so a group key reads the same for both.
+		const dashVariants: Array<string | undefined> = [
+			undefined,
+			...new Set(Object.values(EDGE_DASH).map((dash) => dash ?? undefined)),
+		];
+		for (const alpha of [FOCUS_FADE, 1]) {
+			for (const dash of dashVariants) {
+				edgeGroups.push({ alpha, dash, items: [] });
+			}
+		}
+		const edgeGroupFor = new Map<string, (typeof edgeGroups)[number]>();
+		for (const group of edgeGroups) edgeGroupFor.set(`${group.alpha}|${group.dash ?? ""}`, group);
+		const edgeSlots: EdgeBatchItem[] = linkEnds.map(() => ({
+			sx: 0,
+			sy: 0,
+			tx: 0,
+			ty: 0,
+			targetRadius: 0,
+			arrowSize: 0,
+			ex: 0,
+			ey: 0,
+			ux: 0,
+			uy: 0,
+		}));
+
+		const nodeGroups: Array<{ alpha: number; style: NodeStyle; items: NodeBatchItem[] }> = [];
+		for (const alpha of [FOCUS_FADE, 1]) {
+			for (const style of new Set(nodes.map((node) => node.style))) {
+				nodeGroups.push({ alpha, style, items: [] });
+			}
+		}
+		const nodeGroupFor = new Map<string, (typeof nodeGroups)[number]>();
+		for (const group of nodeGroups) nodeGroupFor.set(`${group.alpha}|${group.style}`, group);
+		const nodeSlots: NodeBatchItem[] = nodes.map(() => ({ x: 0, y: 0, radius: 0 }));
+
+		/**
+		 * One frame of the scene, in CSS pixels at the live backing scale. `textStage` is the level
+		 * of detail: the text layers are the expensive half of a frame and are unreadable while the
+		 * picture moves, so they arrive in stages (see TEXT_CLUSTER_MS) instead of all at once.
+		 */
+		const paintScene = (surface: CanvasRenderingContext2D, transform: ZoomTransform, textStage: TextStage) => {
+			const k = transform.k;
+			surface.setTransform(dpr, 0, 0, dpr, 0, 0);
+			surface.clearRect(0, 0, cssWidth, cssHeight);
+			surface.setTransform(dpr * k, 0, 0, dpr * k, dpr * transform.x, dpr * transform.y);
+			surface.lineJoin = "round";
+			// The slice of graph space the viewport shows; anything outside costs nothing to paint,
+			// and a fly-in ends zoomed in, where most of the corpus is off-screen.
+			const pad = CULL_PAD / k;
+			const minX = -transform.x / k - pad;
+			const maxX = (cssWidth - transform.x) / k + pad;
+			const minY = -transform.y / k - pad;
+			const maxY = (cssHeight - transform.y) / k + pad;
+			// The pinned selection owns the focus cluster; a hover only supplies one when nothing is
+			// pinned. A node drag deliberately does NOT contribute here - dragging or double-clicking
+			// a node must never switch the focused node, it only keeps whatever focus was already set.
+			const focusId = selectedIdRef.current ?? hoverIdRef.current;
+			// The lit set depends on the focus alone, not on a frame, so it is built once per focus
+			// rather than once per frame - a hub carries hundreds of neighbours.
+			if (focusId !== litFor) {
+				litFor = focusId;
+				lit = focusId ? new Set([focusId, ...(neighbours.get(focusId) ?? [])]) : null;
+			}
+			const alphaFor = (id: string) => (lit && !lit.has(id) ? FOCUS_FADE : 1);
+			const alphaForEdge = (a: string, b: string) => (lit && !(lit.has(a) && lit.has(b)) ? FOCUS_FADE : 1);
+			const focusNode = focusId;
+			const isCluster = (id: string) => id === focusNode || (lit?.has(id) ?? false);
+
+			// Edges: one path per (dash, alpha) bucket instead of one per edge. BelongsToMilestone
+			// is mere membership and stays plain (no arrowhead).
+			for (const group of edgeGroups) group.items.length = 0;
+			for (let index = 0; index < linkEnds.length; index++) {
+				const link = linkEnds[index] as (typeof linkEnds)[number];
+				const { source, target } = link;
+				const sx = source.x ?? 0;
+				const sy = source.y ?? 0;
+				const tx = target.x ?? 0;
+				const ty = target.y ?? 0;
+				// Both ends past the same side of the window: the segment cannot cross it.
+				if (Math.max(sx, tx) < minX || Math.min(sx, tx) > maxX) continue;
+				if (Math.max(sy, ty) < minY || Math.min(sy, ty) > maxY) continue;
+				const slot = edgeSlots[index] as EdgeBatchItem;
+				slot.sx = sx;
+				slot.sy = sy;
+				slot.tx = tx;
+				slot.ty = ty;
+				slot.targetRadius = scaledRadius(target.radius, k);
+				slot.arrowSize = link.type === "BelongsToMilestone" ? 0 : ARROW_SIZE;
+				const group = edgeGroupFor.get(`${alphaForEdge(source.id, target.id)}|${EDGE_DASH[link.type] ?? ""}`);
+				group?.items.push(slot);
+			}
+			for (const group of edgeGroups) {
+				strokeEdgeBatch(surface, group.items, {
+					k,
+					arrowGap: ARROW_GAP,
+					stroke: edgeStroke(theme),
+					dash: group.dash,
+					alpha: group.alpha,
+				});
+			}
+
+			// Nodes: uniform circles with a light tint of their own fill, one path per bucket.
+			const strokeWidth = Math.max(0.35, 1 / k);
+			for (const group of nodeGroups) group.items.length = 0;
+			for (let index = 0; index < nodes.length; index++) {
+				const node = nodes[index] as SimNode;
+				const x = node.x ?? 0;
+				const y = node.y ?? 0;
+				if (x < minX || x > maxX || y < minY || y > maxY) continue;
+				const slot = nodeSlots[index] as NodeBatchItem;
+				slot.x = x;
+				slot.y = y;
+				slot.radius = scaledRadius(node.radius, k);
+				nodeGroupFor.get(`${alphaFor(node.id)}|${node.style}`)?.items.push(slot);
+			}
+			for (const group of nodeGroups) {
+				paintNodeBatch(surface, group.items, {
+					fill: nodeFill(group.style, theme),
+					stroke: nodeStroke(group.style, theme),
+					lineWidth: strokeWidth,
+					alpha: group.alpha,
+				});
+			}
+
+			// Text arrives in stages (see TEXT_CLUSTER_MS). While the camera moves, the whole
+			// focus cluster - the node being flown to and its neighbours - keeps its names, so the
+			// eye tracks the context it went to. Once it has landed, the cluster is already on
+			// screen; everything else comes a beat later (TEXT_CLUSTER_MS), and the deep-zoom
+			// relation names come only with it.
+			if (textStage === "none") {
+				// The camera is in flight: the focus cluster (the flown-to node and its neighbours)
+				// keeps its names so the eye has the context it travelled for, while every other
+				// node stays hidden. The cluster is readable from the first frame of the move.
+				for (const node of nodes) {
+					if (!isCluster(node.id)) continue;
+					const x = node.x ?? 0;
+					const y = node.y ?? 0;
+					if (x < minX || x > maxX || y < minY || y > maxY) continue;
+					drawCaption(
+						surface,
+						node.caption,
+						x,
+						y,
+						scaledRadius(node.radius, k),
+						node.captionWidth,
+						k,
+						alphaFor(node.id),
+						colors,
+					);
+				}
+			} else {
+				// Captions: the code name on a plate under the circle. At the "focus" stage only the
+				// cluster (the focus node and its neighbours) is drawn - it is what the eye went
+				// looking for, so it lights up the moment the fly lands. At "all" the rest come in,
+				// gated by the zoom tier (see captionVisible). The cluster is exempt from that gate.
+				for (const node of nodes) {
+					const x = node.x ?? 0;
+					const y = node.y ?? 0;
+					if (x < minX || x > maxX || y < minY || y > maxY) continue;
+					if (textStage === "focus") {
+						if (!isCluster(node.id)) continue;
+					} else if (!isCluster(node.id) && !captionVisible(node, k)) {
+						continue;
+					}
+					drawCaption(
+						surface,
+						node.caption,
+						x,
+						y,
+						scaledRadius(node.radius, k),
+						node.captionWidth,
+						k,
+						alphaFor(node.id),
+						colors,
+					);
+				}
+
+				// Relation names are a deep-zoom detail and the single most expensive thing a frame
+				// does - a per-edge rotated fillText - so they wait for the full, settled picture.
+				if (textStage === "all" && k >= RELATION_ZOOM_THRESHOLD) {
+					for (const link of linkEnds) {
+						const { source, target } = link;
+						const sx = source.x ?? 0;
+						const sy = source.y ?? 0;
+						const tx = target.x ?? 0;
+						const ty = target.y ?? 0;
+						const mx = (sx + tx) / 2;
+						const my = (sy + ty) / 2;
+						if (mx < minX || mx > maxX || my < minY || my > maxY) continue;
+						drawEdgeLabel(
+							surface,
+							EDGE_LABEL[link.type],
+							sx,
+							sy,
+							tx,
+							ty,
+							k,
+							-3.5,
+							alphaForEdge(source.id, target.id),
+							edgeStroke(theme),
+							RELATION_FONT,
+						);
+					}
+				}
+			}
+			surface.globalAlpha = 1;
+		};
+
+		// -------------------------------------------------- gesture snapshot: dragging a picture
+		// A drag does not change the picture, only where it is shown. So the gesture slides a copy
+		// of the frame that is already on screen - names included - instead of painting one: one
+		// drawImage a frame instead of a few thousand paths. The live scene comes back on release.
+		//
+		// Two things follow from copying rather than painting, and both are deliberate:
+		// - The gesture starts on the frame it was asked for. A copy is one scaled blit, so no full
+		//   repaint - with every name in it - stands between the press and the picture moving.
+		// - What the drag uncovers is blank until the pointer lifts. Nothing is painted outside the
+		//   viewport to fill it, which keeps the snapshot at cssWidth * cssHeight * 4 bytes
+		//   (~8 MB at 1080p) instead of paying for a margin nobody has looked at yet.
+		let snapshot: HTMLCanvasElement | null = null;
+		let snapTransform: ZoomTransform | null = null;
+		let dragging = false;
+		// True while a press-drag gesture owns the snapshot; a wheel gesture is not, so the two
+		// restore their text differently on release (see the zoom end handler).
+		let lastGestureWasDrag = false;
+
+		/**
+		 * The snapshot is a copy of the frame already on screen, not a repaint of it: one scaled
+		 * blit, which is the difference between a gesture that starts on the press and one that
+		 * starts after a full frame - with every name in it - has been painted for it. The copy
+		 * is viewport-sized and taken at the live backing scale (full device dpr), so the drag
+		 * costs one bitmap instead of a padded one and never softens the picture (see the note
+		 * above); what it uncovers stays blank until the pointer lifts.
+		 */
+		const takeSnapshot = (transform: ZoomTransform): boolean => {
+			if (!snapshot) snapshot = document.createElement("canvas");
+			const snapDpr = fullDpr();
+			const pixelsW = Math.max(1, Math.round(cssWidth * snapDpr));
+			const pixelsH = Math.max(1, Math.round(cssHeight * snapDpr));
+			if (snapshot.width !== pixelsW || snapshot.height !== pixelsH) {
+				snapshot.width = pixelsW;
+				snapshot.height = pixelsH;
+			}
+			const snapCtx = snapshot.getContext("2d");
+			// Nothing painted yet, or a context the browser refused: fall back to painting live.
+			if (!snapCtx || !canvasEl.width || !canvasEl.height) return false;
+			snapCtx.setTransform(1, 0, 0, 1, 0, 0);
+			snapCtx.clearRect(0, 0, pixelsW, pixelsH);
+			// Full source into full destination, whatever the two backing scales are. The names
+			// come along for free: the frame on screen was painted at rest, text and all.
+			snapCtx.drawImage(canvasEl, 0, 0, pixelsW, pixelsH);
+			snapTransform = transform;
+			return true;
+		};
+
+		const blitSnapshot = (transform: ZoomTransform): boolean => {
+			if (!snapshot || !snapTransform) return false;
+			const factor = transform.k / snapTransform.k;
+			// Bitmap point s holds graph point (s - t0) / k0, and it has to land on screen at
+			// k * g + t.
+			const ox = transform.x - factor * snapTransform.x;
+			const oy = transform.y - factor * snapTransform.y;
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+			ctx.clearRect(0, 0, cssWidth, cssHeight);
+			ctx.setTransform(dpr * factor, 0, 0, dpr * factor, dpr * ox, dpr * oy);
+			ctx.drawImage(snapshot, 0, 0, cssWidth, cssHeight);
+			return true;
 		};
 
 		const draw = () => {
 			drawHandle = null;
 			const transform = transformRef.current;
-			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			ctx.clearRect(0, 0, cssWidth, cssHeight);
-			if (!transform) return;
-			const k = transform.k;
-			ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * transform.x, dpr * transform.y);
-			ctx.lineJoin = "round";
-			const focusId = hoverIdRef.current ?? selectedIdRef.current;
-			const lit = focusId ? new Set([focusId, ...(neighbours.get(focusId) ?? [])]) : null;
-			const alphaFor = (...ids: string[]) => (lit && !ids.every((id) => lit.has(id)) ? FOCUS_FADE : 1);
-
-			// Edges: BelongsToMilestone is mere membership and stays plain (no arrowhead).
-			for (const link of linkEnds) {
-				const { source, target } = link;
-				strokeEdge(ctx, source.x ?? 0, source.y ?? 0, target.x ?? 0, target.y ?? 0, {
-					k,
-					targetRadius: scaledRadius(target.radius, k),
-					arrowGap: ARROW_GAP,
-					arrowSize: link.type === "BelongsToMilestone" ? 0 : ARROW_SIZE,
-					stroke: edgeStroke(theme),
-					dash: EDGE_DASH[link.type] ?? undefined,
-					alpha: alphaFor(source.id, target.id),
-				});
+			if (dragging && transform && blitSnapshot(transform)) return;
+			if (!transform) {
+				ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+				ctx.clearRect(0, 0, cssWidth, cssHeight);
+				return;
 			}
-
-			// Nodes: uniform circles with a light tint of their own fill.
-			const strokeWidth = Math.max(0.35, 1 / k);
-			for (const node of nodes) {
-				ctx.globalAlpha = alphaFor(node.id);
-				ctx.beginPath();
-				ctx.arc(node.x ?? 0, node.y ?? 0, scaledRadius(node.radius, k), 0, Math.PI * 2);
-				ctx.fillStyle = nodeFill(node.style, theme);
-				ctx.fill();
-				ctx.lineWidth = strokeWidth;
-				ctx.strokeStyle = nodeStroke(node.style, theme);
-				ctx.stroke();
-			}
-
-			// Captions: the code name on a plate under the circle, disclosed in tiers as the zoom
-			// deepens (see captionVisible). Constant screen size via the shared helper.
-			for (const node of nodes) {
-				if (!captionVisible(node, k)) continue;
-				drawCaption(
-					ctx,
-					node.caption,
-					node.x ?? 0,
-					node.y ?? 0,
-					scaledRadius(node.radius, k),
-					node.captionWidth,
-					k,
-					alphaFor(node.id),
-					colors,
-				);
-			}
-
-			// Relation names are a deep-zoom detail: below the gate there is nothing to place.
-			if (k >= RELATION_ZOOM_THRESHOLD) {
-				for (const link of linkEnds) {
-					const { source, target } = link;
-					drawEdgeLabel(
-						ctx,
-						EDGE_LABEL[link.type],
-						source.x ?? 0,
-						source.y ?? 0,
-						target.x ?? 0,
-						target.y ?? 0,
-						k,
-						-3.5,
-						alphaFor(source.id, target.id),
-						edgeStroke(theme),
-						RELATION_FONT,
-					);
-				}
-			}
-			ctx.globalAlpha = 1;
+			paintScene(ctx, transform, textStage);
 		};
 		scheduleDrawRef.current = scheduleDraw;
 
+		// A tick only publishes coordinates and asks for a frame. The quadtree - a full rebuild over
+		// every node - is refreshed when the layout goes quiet instead of once per tick: it only
+		// serves hit-testing, and the pointer is captured by the drag while the layout runs.
+		let layoutRunning = false;
 		const renderPositions = () => {
 			for (const node of nodes) {
-				existing.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 });
+				const x = node.x ?? 0;
+				const y = node.y ?? 0;
+				const known = existing.get(node.id);
+				if (known) {
+					known.x = x;
+					known.y = y;
+				} else {
+					existing.set(node.id, { x, y });
+				}
 			}
-			syncQuadtree();
+			if (layoutRunning) {
+				// A drag (or any layout reheat) keeps the picture moving, so blur the text down to the
+				// focus cluster only - whatever was already pinned or hovered. A drag must never switch
+				// the focused node, hence the cluster here is the existing focus, not the dragged node.
+				markCameraMoving();
+			}
 			scheduleDraw();
 		};
 		simulation.on("tick", renderPositions);
+		simulation.on("end", () => {
+			layoutRunning = false;
+			syncQuadtree();
+			settleText();
+			scheduleDraw();
+		});
 
 		// Incremental precompute instead of animating: every node this view has already placed is
 		// pinned and reused, and only the newcomers are laid out. A rebuild that adds a handful of
@@ -695,6 +1051,8 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			node.fy = null;
 		}
 		renderPositions();
+		// Positions are final; publish them to the hit-test index now that the ticks are done.
+		syncQuadtree();
 		// The layout is a function of the node set alone, so it is worth keeping for the next visit.
 		storePositions(positionKey, existing);
 
@@ -714,6 +1072,11 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			return Math.hypot((found.x ?? 0) - gx, (found.y ?? 0) - gy) <= radius ? found : null;
 		};
 
+		// d3-zoom hands over the native event that opened the gesture, which is the only way to
+		// tell a drag from a wheel: both arrive here as a "start".
+		const isPressGesture = (event: Event) =>
+			event.type === "mousedown" || event.type === "touchstart" || event.type === "pointerdown";
+
 		const zoomBehavior = d3Zoom<HTMLCanvasElement, unknown>()
 			.scaleExtent([0.05, 4])
 			// Double-click zooms instantly (no d3 transition).
@@ -725,10 +1088,67 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 					// A gesture fires many events per frame; batch them into one rAF draw. A
 					// programmatic camera move applies immediately, because it has to be on screen
 					// by the frame that asked for it.
+					markCameraMoving();
 					scheduleDraw();
 				} else {
 					draw();
 				}
+			})
+			// A gesture has a definite end - pointer up, wheel inertia spent - so the text comes
+			// back on the next frame instead of waiting out the settle timer, and sharpness comes
+			// back with it. Programmatic moves carry no sourceEvent; the fly-in settles itself.
+			.on("start", (event) => {
+				if (programmaticRef.current) {
+					// A fly-in / button zoom / fit drives the camera itself, so it must never let a
+					// stale snapshot from a previously interrupted drag hijack its frames.
+					dragging = false;
+					snapTransform = null;
+					return;
+				}
+				if (!event.sourceEvent) return;
+				// Only a press that turns into a drag borrows the picture: a drag slides it
+				// around, which is exactly what a bitmap can do. A wheel rescales it, which a
+				// bitmap cannot do without stretching it or uncovering blank on every notch, so
+				// a wheel keeps painting (text dropped, see markCameraMoving above).
+				if (!isPressGesture(event.sourceEvent)) {
+					lastGestureWasDrag = false;
+					return;
+				}
+				lastGestureWasDrag = true;
+				const transform = transformRef.current;
+				if (!transform) return;
+				// Copy first: applyDpr resizes the canvas, and resizing clears it - the frame
+				// being copied is the one the pointer went down on. Both happen in this tick, so
+				// the first drag event already has a picture to move.
+				dragging = takeSnapshot(transform);
+				if (!dragging) return;
+				blitSnapshot(transform);
+			})
+			.on("end", () => {
+				// Always release the snapshot, whatever ended the gesture. A gesture that is
+				// interrupted (pointercancel, a d3 interrupt) still fires `end` but with a null
+				// sourceEvent; if we bailed on that, `dragging` would stay true and every later
+				// frame would blit the frozen bitmap instead of repainting - the canvas looks
+				// stuck. The flag below separates a real gesture's text-reveal from a programmatic
+				// move (fly-in, button zoom, fit), which drives the camera itself and must not have
+				// its own reveal clobbered by the per-frame `end` events it fires.
+				dragging = false;
+				snapTransform = null;
+				if (programmaticRef.current) return;
+				// Sharpness and text come back together, and immediately. A drag has been showing a
+				// full-fidelity snapshot the whole time, so its release restores every name at once;
+				// a wheel has been painting with text dropped, so it runs the staged reveal - the
+				// focus cluster now, the rest a beat later - which is what the fly-in does too.
+				clearTextTimers();
+				if (lastGestureWasDrag) {
+					textStage = "all";
+				} else {
+					settleText();
+				}
+				// applyDpr clears the canvas, so this repaints in the same tick rather than waiting
+				// for a rAF.
+				applyDpr(fullDpr());
+				draw();
 			});
 		// A mousedown that lands on a node belongs to the drag gesture, not to zoom's pan.
 		const defaultFilter = zoomBehavior.filter();
@@ -764,11 +1184,11 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			const transform: ZoomTransform = zoomIdentity
 				.translate(width / 2 - scale * ((minX + maxX) / 2), height / 2 - scale * ((minY + maxY) / 2))
 				.scale(scale);
-			select(canvasEl).call(zoomBehavior.transform, transform);
+			programmatic(() => select(canvasEl).call(zoomBehavior.transform, transform));
 		};
 		const savedTransform = transformRef.current;
 		if (savedTransform) {
-			select(canvasEl).call(zoomBehavior.transform, savedTransform);
+			programmatic(() => select(canvasEl).call(zoomBehavior.transform, savedTransform));
 		} else {
 			fitToView();
 		}
@@ -795,15 +1215,22 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 				// Whoever else moved the camera meanwhile (wheel, buttons, drag) wins over the fly.
 				const live = transformRef.current;
 				if (applied && (!live || live.k !== applied.k || live.x !== applied.x || live.y !== applied.y)) return;
+				// The fly is exactly the frame budget the text layers were eating.
+				markCameraMoving();
 				const u = Math.min(1, (now - start) / FLY_DURATION);
 				const e = easeInOutCubic(u);
 				const scale = from.k * (k / from.k) ** e;
 				const x = width / 2 - scale * (fromCx + (cx - fromCx) * e);
 				const y = height / 2 - scale * (fromCy + (cy - fromCy) * e);
 				const transform = zoomIdentity.translate(x, y).scale(scale);
-				select(canvasEl).call(zoomBehavior.transform, transform);
+				programmatic(() => select(canvasEl).call(zoomBehavior.transform, transform));
 				applied = transform;
-				if (u < 1) flyHandle = requestAnimationFrame(step);
+				if (u < 1) {
+					flyHandle = requestAnimationFrame(step);
+					return;
+				}
+				// Landed: the text is readable again from this frame, not one settle-timer later.
+				settleText();
 			};
 			flyHandle = requestAnimationFrame(step);
 		};
@@ -811,6 +1238,14 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		const releaseFocus = () => {
 			if (!selectedIdRef.current) return;
 			selectedIdRef.current = null;
+			// The pointer is usually still resting on the node that was focused, so its hover would
+			// otherwise take over `focusId` and the picture would look as if focus had never left.
+			// Clear it so Escape truly exits the focused view.
+			hoverIdRef.current = null;
+			setHover(null);
+			litFor = null;
+			lit = null;
+			textStage = "all";
 			scheduleDraw();
 		};
 		clearFocusRef.current = releaseFocus;
@@ -819,9 +1254,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		// the tooltip and the neighbour highlight only appear once the pointer has actually settled
 		// on a node, so a fast sweep across the canvas flashes nothing. Click pins the focus and
 		// flies in until the node is readable, double-click opens, drag moves the node with a
-		// simulation reheat.
-		let dragNode: SimNode | null = null;
-		let dragMoved = false;
+		// simulation reheat. (dragNode / dragMoved are declared above, next to the draw state.)
 		let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 		const clearHover = () => {
 			if (hoverTimer !== null) {
@@ -882,6 +1315,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			dragMoved = false;
 			canvasEl.setPointerCapture(event.pointerId);
 			// Reheat: the simulation wakes gently while the node is dragged.
+			layoutRunning = true;
 			simulation.alphaTarget(0.3).restart();
 			found.fx = found.x;
 			found.fy = found.y;
@@ -933,13 +1367,15 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			if (!found) {
 				// Empty canvas: the double-click zoom d3-zoom used to own.
 				const rect = canvasEl.getBoundingClientRect();
-				select(canvasEl).call(zoomBehavior.scaleBy, 2, [event.clientX - rect.left, event.clientY - rect.top]);
+				programmatic(() =>
+					select(canvasEl).call(zoomBehavior.scaleBy, 2, [event.clientX - rect.left, event.clientY - rect.top]),
+				);
 				return;
 			}
 			// Double-click opens: a task/draft record opens its modal, a knowledge page its own tab.
+			// It must NOT switch the focused node - opening is separate from focusing, so whatever was
+			// pinned (or hovered) stays focused and the cluster does not jump to the double-clicked node.
 			stopFly();
-			selectedIdRef.current = found.id;
-			scheduleDraw();
 			const record = payload.nodes.find((node: GraphNodeDto) => node.id === found.id);
 			if (record) openNodeRef.current(record);
 		};
@@ -958,6 +1394,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			simulation.stop();
 			stopFly();
 			if (hoverTimer !== null) clearTimeout(hoverTimer);
+			if (settleTimer !== null) clearTimeout(settleTimer);
 			if (drawHandle !== null) cancelAnimationFrame(drawHandle);
 			observer.disconnect();
 			fitToViewRef.current = null;
@@ -980,6 +1417,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		// carried over (and persisted), so only newly revealed nodes are laid out from scratch.
 		hiddenStyles,
 		positionKey,
+		programmatic,
 		t.graphView.edgeDependsOn,
 		t.graphView.edgeParentOf,
 		t.graphView.edgeMilestone,

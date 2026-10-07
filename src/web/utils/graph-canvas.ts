@@ -108,6 +108,105 @@ export function strokeEdge(
 	}
 }
 
+/**
+ * One reusable edge slot for a batched paint. The view keeps one item per link and rewrites the
+ * fields on every frame, so a repaint allocates nothing; `ex`/`ey`/`ux`/`uy` are filled in by
+ * `strokeEdgeBatch` for its arrowhead pass.
+ */
+export interface EdgeBatchItem {
+	sx: number;
+	sy: number;
+	tx: number;
+	ty: number;
+	/** Radius of the target node's circle on screen scale (already passed through scaledRadius). */
+	targetRadius: number;
+	/** Screen-space arrowhead size; 0 draws no arrowhead. */
+	arrowSize: number;
+	/** Trimmed line end and unit direction, written by the batch painter. */
+	ex: number;
+	ey: number;
+	ux: number;
+	uy: number;
+}
+
+/**
+ * Every edge of one style in a single path: `strokeEdge` costs one `beginPath`+`stroke`+`fill`
+ * per edge, which is a frame's whole budget once a corpus carries a few thousand relations.
+ * Batching collapses that to one stroke and one fill per (dash, alpha) group, all with the same
+ * geometry (the line still stops at the target's rim, the arrowhead still sits just outside it).
+ */
+export function strokeEdgeBatch(
+	ctx: CanvasRenderingContext2D,
+	items: EdgeBatchItem[],
+	{ k, arrowGap, stroke, dash, alpha }: { k: number; arrowGap: number; stroke: string; dash?: string; alpha: number },
+): void {
+	if (items.length === 0) return;
+	ctx.globalAlpha = alpha;
+	ctx.setLineDash(dashAtZoom(dash, k));
+	ctx.strokeStyle = stroke;
+	ctx.lineWidth = Math.max(0.35, 1 / k);
+	ctx.beginPath();
+	for (const item of items) {
+		const dx = item.tx - item.sx;
+		const dy = item.ty - item.sy;
+		const length = Math.hypot(dx, dy);
+		const u = length > 0 ? Math.max(0, (length - (item.targetRadius + arrowGap / k)) / length) : 1;
+		item.ex = item.sx + dx * u;
+		item.ey = item.sy + dy * u;
+		item.ux = length > 0 ? dx / length : 0;
+		item.uy = length > 0 ? dy / length : 0;
+		ctx.moveTo(item.sx, item.sy);
+		ctx.lineTo(item.ex, item.ey);
+	}
+	ctx.stroke();
+	ctx.setLineDash([]);
+	// Second pass: one fill covers every arrowhead of the batch.
+	ctx.fillStyle = stroke;
+	ctx.beginPath();
+	let heads = 0;
+	for (const item of items) {
+		if (item.arrowSize <= 0 || (item.ux === 0 && item.uy === 0)) continue;
+		const size = item.arrowSize / k;
+		ctx.moveTo(item.ex, item.ey);
+		ctx.lineTo(item.ex - item.ux * size - item.uy * size * 0.5, item.ey - item.uy * size + item.ux * size * 0.5);
+		ctx.lineTo(item.ex - item.ux * size + item.uy * size * 0.5, item.ey - item.uy * size - item.ux * size * 0.5);
+		ctx.closePath();
+		heads += 1;
+	}
+	if (heads > 0) ctx.fill();
+}
+
+/** One reusable node slot for a batched paint: a circle at graph-space `x`/`y`. */
+export interface NodeBatchItem {
+	x: number;
+	y: number;
+	radius: number;
+}
+
+/**
+ * Every circle of one style in a single path: fill and stroke once for the whole batch instead of
+ * per node. `moveTo` before each `arc` keeps sub-paths separate - without it canvas would draw a
+ * chord from the previous circle's end to this one's start.
+ */
+export function paintNodeBatch(
+	ctx: CanvasRenderingContext2D,
+	items: NodeBatchItem[],
+	{ fill, stroke, lineWidth, alpha }: { fill: string; stroke: string; lineWidth: number; alpha: number },
+): void {
+	if (items.length === 0) return;
+	ctx.globalAlpha = alpha;
+	ctx.beginPath();
+	for (const item of items) {
+		ctx.moveTo(item.x + item.radius, item.y);
+		ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+	}
+	ctx.fillStyle = fill;
+	ctx.fill();
+	ctx.lineWidth = lineWidth;
+	ctx.strokeStyle = stroke;
+	ctx.stroke();
+}
+
 /** The relation name along an edge: rotated with the line, flipped so it never reads upside-down. */
 export function drawEdgeLabel(
 	ctx: CanvasRenderingContext2D,
