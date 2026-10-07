@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-10-05 08:30'
+updated_date: '2026-10-07 22:50'
 ---
 
 # Knowledge Base Overview
@@ -151,6 +151,17 @@ updated_date: '2026-10-05 08:30'
 - **WebGL 钉板**：便签外观离屏 2D canvas 一次性烘焙 + 裸 WebGL 单 quad 绘制（零新依赖），FNV-1a 哈希驱动三层确定性布局（base grid / seam / corner pile），固定黑板无平移缩放，`?view=board` 与信息流/日历三态共存（见 [[concepts/memo-board]]）
 - **归档**：memo 逐字节 rename 到 `backlog/archive/memos/`，卡片菜单与钉板 hover 按钮双入口，REST `POST /api/memos/:id/archive`（200/404/409）；显式不做取消归档；init 对称创建两个 memo 目录（见 [[decisions/memo-archive-rename-not-rewrite]]、[[decisions/init-memos-dirs-symmetric]]）
 
+### 本波增量（BACK-748~756，2026-10-07）
+- **侧栏 resize handle 修复**（BACK-748）：BACK-723 将 resize handle 的 `<div>` 改为 `<hr>`，触发 Tailwind v4 preflight 的 `hr{height:0}` 使侧栏拖拽条坍缩；修复加 `h-full` 与 `aria-orientation` 属性，拖拽条恢复为贯穿侧栏全高的可拖拽把手
+- **钉板便签固定高度与溢出省略号**（BACK-749）：每张便签采用 `NOTE_HEIGHT=150` 固定高度，`layoutInkLines` 在内容超出时截断并以省略号收尾，长 memo 不再无限撑高钉板；原"纸面高度随内容自动增长"行为已改为固定高度
+- **Memo 标签历史条与 `#topic#` 话题语法**（BACK-750，含并入的 BACK-751 范围）：标签历史条折叠为单行、active 标签置顶；新增 `#topic#` 闭合话题语法（如 `#login#`）与 composer 自动补全，便于在 memo 中标注主题而不污染正文
+- **实体 ID 区间与斜杠列表自动链接**（BACK-751）：区间 `BACK-715~747` 与斜杠列表 `BACK-743/744/745` 渲染为单触发器 + portal 下拉选择器（`EntityIdRangeDropdown`），复用 BACK-614 短别名；折叠 memos 默认视图、侧栏图标、钉板墨迹溢出一并修复
+- **Sequences TUI 双面板视图**（BACK-752）：`sequence list` TUI 重写为双面板（侧栏 Unsequenced + Sequence 1..N 与任务列表），`buildSequenceRows`/`buildMovePreview` 抽为纯函数，修复 `select item` 递归栈溢出
+- **文档与决策页反向链接**（BACK-753）：`buildBacklinkIndex` 客户端反向链接索引，`BacklinkList` 复用 BACK-751 下拉样式，文档/决策页可查看被哪些任务、文档、决策或 Wiki 页面引用
+- **任务重定父**（BACK-754）：`task edit --parent/--clear-parent`，CLI 与 MCP 共享实现，仅改写 `parent_task_id` 边、归一化 ID、防止环
+- **父任务视图纳入已完成子任务**（BACK-755）：`getTaskWithSubtasks` 拓宽为 active + completed（`mergeCompletedIntoActive`），修复已完成子任务在父视图消失；约 100 个文件仍用旧 `task-` 前缀为范围外
+- **图谱 canvas 高 DPI 渲染加速**（BACK-756）：视口裁剪 + 按 (dash,alpha)/(style,alpha) 批绘 + `MAX_DPR=2` 限制 + 文本 LOD 三阶段（`textStage`）+ 手势快照，高 DPI 屏上大幅降低重绘开销
+
 ### 状态机语义化（doc-17~19 + BACK-715~721）
 - **doc-17 诊断**：`statuses` 只是显示层列定义，终态=数组末位、进行中=硬编码 `inprogress` 的约定在自定义状态列下静默失效；关键洞察"命令即门禁"（阶段推进从 AI 工具集交还人类命令）；引擎选型为自研 ~150 行零依赖校验器而非 XState（见 [[decisions/hand-rolled-state-machine-validator-over-engine]]）
 - **doc-19 PRD**：默认 7 列状态机、三审查点落位、可重置、指引优先
@@ -205,13 +216,13 @@ updated_date: '2026-10-05 08:30'
 
 ## 统计
 
-- Sources ingested: 323
-- Concepts extracted: 41
+- Sources ingested: 334
+- Concepts extracted: 42
 - Entities catalogued: 2
-- Execution notes: 25
-- Decisions recorded: 73
+- Execution notes: 26
+- Decisions recorded: 76
 - Patterns: 6
 - Reasoning traces: 5
 - Retrospectives: 1
-- User manual pages: 34
+- User manual pages: 41
 - Reports generated: 10
