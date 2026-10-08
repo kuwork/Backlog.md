@@ -111,7 +111,7 @@ jobs:
               .bin = {backlog:"cli.js"} |
               .files = ["cli.js","resolveBinary.cjs","postuninstall.cjs","package.json","README.md","LICENSE"] |
               .scripts = {"postuninstall": "node postuninstall.cjs"} |
-              .repository = {"type":"git","url":"https://github.com/MrLesk/Backlog.md"} |
+              .repository = {"type":"git","url":"https://github.com/kuwork/Backlog.md"} |
               .optionalDependencies |= map_values("'$TAG'")' package.json > dist/package.json
           cp LICENSE README.md dist/ 2>/dev/null || true
       - uses: actions/setup-node@v6
@@ -121,44 +121,58 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g npm@11.6.0
+          npm install -g npm@11.21.0
           npm --version
+      # --tag latest is required for this fork: its release tags are prerelease
+      # versions (v1.53.2-CN), and npm refuses to publish a prerelease without an
+      # explicit dist-tag. For a plain version (v1.53.2) it is a no-op.
       - name: Dry run trusted publish
         run: |
           cd dist
-          npm publish --access public --dry-run
+          npm publish --access public --tag latest --dry-run
       - name: Publish to npm
         run: |
           cd dist
-          npm publish --access public
+          npm publish --access public --tag latest
+      # Mirrors the historical manual flow (--tag cn --also-tag latest): the publish
+      # above moves `latest`, then the `cn` alias is pointed at the same version.
+      # `npm dist-tag` over OIDC needs npm >= 11.21.0 (the pin above) AND the
+      # "Allow npm dist-tag" permission on the npm trusted publisher. Without that
+      # permission npm returns 400; continue-on-error keeps the run green because
+      # `latest` is already correct.
+      - name: Point the cn dist-tag at this version
+        if: ${{ success() }}
+        continue-on-error: true
+        run: npm dist-tag add "@kuwork/backlog.md@${TAG}" cn
 
   publish-binaries:
     needs: build
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: bun-linux-x64-baseline
-            package: backlog.md-linux-x64
+            package: "@kuwork/backlog.md-linux-x64"
             os: linux
             cpu: x64
           - target: bun-linux-arm64
-            package: backlog.md-linux-arm64
+            package: "@kuwork/backlog.md-linux-arm64"
             os: linux
             cpu: arm64
           - target: bun-darwin-x64
-            package: backlog.md-darwin-x64
+            package: "@kuwork/backlog.md-darwin-x64"
             os: darwin
             cpu: x64
           - target: bun-darwin-arm64
-            package: backlog.md-darwin-arm64
+            package: "@kuwork/backlog.md-darwin-arm64"
             os: darwin
             cpu: arm64
           - target: bun-windows-x64-baseline
-            package: backlog.md-windows-x64
+            package: "@kuwork/backlog.md-windows-x64"
             os: win32
             cpu: x64
           - target: bun-windows-arm64
-            package: backlog.md-windows-arm64
+            package: "@kuwork/backlog.md-windows-arm64"
             os: win32
             cpu: arm64
     runs-on: ubuntu-latest
@@ -193,7 +207,7 @@ jobs:
             "files": ["backlog${{ contains(matrix.target,'windows') && '.exe' || '' }}","package.json","LICENSE"],
             "repository": {
               "type": "git",
-              "url": "https://github.com/MrLesk/Backlog.md"
+              "url": "https://github.com/kuwork/Backlog.md"
             }
           }
           EOF
@@ -209,16 +223,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g npm@11.6.0
+          npm install -g npm@11.21.0
           npm --version
       - name: Dry run platform publish
         run: |
           cd pkg
-          npm publish --access public --dry-run
+          npm publish --access public --tag latest --dry-run
       - name: Publish platform package
         run: |
           cd pkg
-          npm publish --access public
+          npm publish --access public --tag latest
+      # Same `cn` alias as the main package. Needs the "Allow npm dist-tag"
+      # permission on the npm trusted publisher; without it npm returns 400, so
+      # this step is continue-on-error — a hard failure here would otherwise fail
+      # the job and skip the downstream npm-publish / install-sanity jobs.
+      - name: Point the cn dist-tag at this version
+        if: ${{ success() }}
+        continue-on-error: true
+        run: npm dist-tag add "${{ matrix.package }}@${TAG}" cn
 
   verify-platform-packages:
     name: verify-platform-packages-${{ matrix.os }}
@@ -241,7 +263,7 @@ jobs:
           VERSION="${GITHUB_REF##refs/tags/v}"
           MAX_ATTEMPTS=40
           SLEEP_SECONDS=15
-          PACKAGE_NAME="$(node -e 'const map = { win32: "windows", darwin: "darwin", linux: "linux" }; const platform = map[process.platform]; const arch = process.arch; if (!platform || !["x64","arm64"].includes(arch)) { process.exit(1); } process.stdout.write(`backlog.md-${platform}-${arch}`);')"
+          PACKAGE_NAME="$(node -e 'const map = { win32: "windows", darwin: "darwin", linux: "linux" }; const platform = map[process.platform]; const arch = process.arch; if (!platform || !["x64","arm64"].includes(arch)) { process.exit(1); } process.stdout.write(`@kuwork/backlog.md-${platform}-${arch}`);')"
           BINARY_PATH="node_modules/${PACKAGE_NAME}/backlog"
 
           echo "Waiting for ${PACKAGE_NAME}@${VERSION} to become installable..."
@@ -281,12 +303,12 @@ jobs:
           MAX_ATTEMPTS=40
           SLEEP_SECONDS=15
           PACKAGES=(
-            "backlog.md-linux-x64"
-            "backlog.md-linux-arm64"
-            "backlog.md-darwin-x64"
-            "backlog.md-darwin-arm64"
-            "backlog.md-windows-x64"
-            "backlog.md-windows-arm64"
+            "@kuwork/backlog.md-linux-x64"
+            "@kuwork/backlog.md-linux-arm64"
+            "@kuwork/backlog.md-darwin-x64"
+            "@kuwork/backlog.md-darwin-arm64"
+            "@kuwork/backlog.md-windows-x64"
+            "@kuwork/backlog.md-windows-arm64"
           )
 
           for pkg in "${PACKAGES[@]}"; do
@@ -323,7 +345,7 @@ jobs:
             throw "Unsupported runner arch: $Arch"
           }
 
-          $PackageName = "backlog.md-windows-$Arch"
+          $PackageName = "@kuwork/backlog.md-windows-$Arch"
           $BinaryPath = Join-Path -Path "node_modules/$PackageName" -ChildPath "backlog.exe"
 
           Write-Host "Waiting for $PackageName@$Version to become installable..."
@@ -382,8 +404,8 @@ jobs:
           VERSION="${GITHUB_REF##refs/tags/v}"
           MAX_ATTEMPTS=40
           SLEEP_SECONDS=15
-          EXPECTED_PACKAGE="$(node -e 'const map = { win32: "windows", darwin: "darwin", linux: "linux" }; const platform = map[process.platform]; const arch = process.arch; if (!platform || !["x64","arm64"].includes(arch)) { process.exit(1); } process.stdout.write(`backlog.md-${platform}-${arch}`);')"
-          echo "Waiting for backlog.md@${VERSION} install + ${EXPECTED_PACKAGE} optional dependency..."
+          EXPECTED_PACKAGE="$(node -e 'const map = { win32: "windows", darwin: "darwin", linux: "linux" }; const platform = map[process.platform]; const arch = process.arch; if (!platform || !["x64","arm64"].includes(arch)) { process.exit(1); } process.stdout.write(`@kuwork/backlog.md-${platform}-${arch}`);')"
+          echo "Waiting for @kuwork/backlog.md@${VERSION} install + ${EXPECTED_PACKAGE} optional dependency..."
 
           for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
             rm -rf sanity
@@ -391,7 +413,7 @@ jobs:
             cd sanity
             npm init -y >/dev/null 2>&1
 
-            if npm i "backlog.md@${VERSION}" --prefer-online --no-audit --no-fund; then
+            if npm i "@kuwork/backlog.md@${VERSION}" --prefer-online --no-audit --no-fund; then
               if npx backlog -v; then
                 echo "Install sanity succeeded on attempt ${attempt}/${MAX_ATTEMPTS}."
                 exit 0
@@ -413,7 +435,7 @@ jobs:
             fi
           done
 
-          echo "Install sanity timed out for backlog.md@${VERSION}."
+          echo "Install sanity timed out for @kuwork/backlog.md@${VERSION}."
           exit 1
       - name: Install and run backlog -v (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
@@ -428,8 +450,8 @@ jobs:
             throw "Unsupported runner arch: $Arch"
           }
 
-          $ExpectedPackage = "backlog.md-windows-$Arch"
-          Write-Host "Waiting for backlog.md@$Version install + $ExpectedPackage optional dependency..."
+          $ExpectedPackage = "@kuwork/backlog.md-windows-$Arch"
+          Write-Host "Waiting for @kuwork/backlog.md@$Version install + $ExpectedPackage optional dependency..."
 
           for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
             if (Test-Path "sanity") {
@@ -440,7 +462,7 @@ jobs:
 
             try {
               npm init -y | Out-Null
-              npm i "backlog.md@$Version" --prefer-online --no-audit --no-fund
+              npm i "@kuwork/backlog.md@$Version" --prefer-online --no-audit --no-fund
               if ($LASTEXITCODE -eq 0) {
                 npx backlog -v
                 if ($LASTEXITCODE -eq 0) {
@@ -466,7 +488,7 @@ jobs:
             }
           }
 
-          throw "Install sanity timed out for backlog.md@$Version."
+          throw "Install sanity timed out for @kuwork/backlog.md@$Version."
 
   github-release:
     needs: build

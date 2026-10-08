@@ -82,10 +82,10 @@
   "author": "Alex Gavrilescu (https://github.com/MrLesk)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MrLesk/Backlog.md.git"
+    "url": "git+https://github.com/kuwork/Backlog.md.git"
   },
   "bugs": {
-    "url": "https://github.com/MrLesk/Backlog.md/issues"
+    "url": "https://github.com/kuwork/Backlog.md/issues"
   },
   "homepage": "https://backlog.md",
   "keywords": [
