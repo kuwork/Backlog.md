@@ -1,4 +1,6 @@
 import type { Dirent } from "node:fs";
+import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
+import { resolveBacklogDirectory } from "../utils/backlog-directory.ts";
 import type { GraphKind } from "./store";
 
 /**
@@ -129,7 +131,8 @@ export async function scanWhitelistedDirs(
 	const scanned: ScannedFile[] = [];
 	for (const dirName of Object.keys(DEFAULT_WHITELIST) as (keyof WhitelistDirs)[]) {
 		const relDir = dirs[dirName].replace(/\\/g, "/");
-		const absDir = join(projectRoot, "backlog", dirs[dirName]);
+		const backlogDirName = resolveBacklogDirectory(projectRoot).backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
+		const absDir = join(projectRoot, backlogDirName, dirs[dirName]);
 		const files = RECURSIVE_DIRS.has(dirName) ? await walkMarkdown(absDir) : await listMarkdown(absDir);
 		for (const file of files) {
 			const relPath = `${relDir}/${file.relFromDir}`;

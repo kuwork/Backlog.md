@@ -69,6 +69,25 @@ describe("graph scanner", () => {
 			await rm(dir, { recursive: true, force: true });
 		}
 	});
+
+	test("scans a project whose data lives under a configured .backlog directory", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "backlog-scan-hidden-"));
+		try {
+			await mkdir(join(dir, ".backlog", "tasks"), { recursive: true });
+			await mkdir(join(dir, ".backlog", "docs"), { recursive: true });
+			await writeFile(join(dir, ".backlog", "config.yml"), "project_name: Hidden\n");
+			await writeFile(join(dir, ".backlog", "tasks", "back-1 - A.md"), taskMd());
+			await writeFile(join(dir, ".backlog", "docs", "doc-1.md"), "---\nid: DOC-1\ntitle: d\n---\n");
+			const scanned = await scanWhitelistedDirs(dir);
+			const relPaths = scanned.map((f) => f.relPath).sort();
+			expect(relPaths).toEqual(["docs/doc-1.md", "tasks/back-1 - A.md"]);
+			// The matched files must resolve inside .backlog, never a sibling `backlog/`
+			// (the bug that left the task/knowledge graph empty on relocated projects).
+			expect(scanned.every((f) => f.absPath.replace(/\\/g, "/").includes("/.backlog/"))).toBe(true);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("graph parser", () => {

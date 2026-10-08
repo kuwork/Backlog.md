@@ -1,6 +1,8 @@
 import { closeSync, type FSWatcher, mkdirSync, openSync, readFileSync, unlinkSync, watch, writeSync } from "node:fs";
 import { join } from "node:path";
+import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import type { Core } from "../core/backlog";
+import { resolveBacklogDirectory } from "../utils/backlog-directory.ts";
 import { emptyParseReports, type ParseReports } from "./cold-start";
 import {
 	computeAggregateFingerprint,
@@ -186,7 +188,8 @@ export class GraphService {
 		const dirs = this.options.dirs ?? DEFAULT_WHITELIST;
 		for (const dirName of Object.keys(dirs) as (keyof WhitelistDirs)[]) {
 			try {
-				const dir = join(this.projectRoot, "backlog", dirs[dirName]);
+				const backlogDirName = resolveBacklogDirectory(this.projectRoot).backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
+				const dir = join(this.projectRoot, backlogDirName, dirs[dirName]);
 				const watcher = watch(dir, { recursive: true }, (_eventType, filename) => {
 					// Coarse by design: the path only feeds the dedup Set; the sync re-scans and
 					// re-hashes, so a missing filename costs at most one redundant stat.
