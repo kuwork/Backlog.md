@@ -366,3 +366,34 @@ describe("memo storage", () => {
 		expect(await getMemo(root, "20991231-1")).toBeNull();
 	});
 });
+
+/**
+ * A project that has chosen the hidden `.backlog/` directory (via `--backlog-dir .backlog` or an
+ * upgrade that wrote there) must keep its memos under `.backlog/memos`, not the conventional
+ * `backlog/memos`. This guards the regression where the memo watcher and writers hardcoded `backlog`
+ * and therefore looked in the wrong folder for relocated projects (see startMemoWatcher).
+ */
+describe("memo storage with a hidden .backlog directory", () => {
+	let root: string;
+
+	beforeEach(async () => {
+		root = await mkdtemp(join(tmpdir(), "backlog-memos-hidden-"));
+		await Bun.write(join(root, ".backlog", "config.yml"), "project_name: Hidden Memo Test\n");
+	});
+
+	afterEach(async () => {
+		await rm(root, { recursive: true, force: true });
+	});
+
+	it("resolves the memo directory under .backlog/memos", () => {
+		expect(memoDir(root)).toBe(join(root, ".backlog", "memos"));
+		expect(memoArchiveDir(root)).toBe(join(root, ".backlog", "archive", "memos"));
+	});
+
+	it("writes and reads memos inside the hidden directory", async () => {
+		const memo = await createMemo(root, "hidden note");
+		expect(memo.path.startsWith(join(root, ".backlog", "memos"))).toBe(true);
+		expect(await Bun.file(memo.path).exists()).toBe(true);
+		expect((await getMemo(root, memo.id))?.rawContent).toBe("hidden note");
+	});
+});

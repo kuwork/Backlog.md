@@ -221,6 +221,11 @@ export async function initializeProject(
 
 	// Create structure and save config
 	if (isReInitialization) {
+		// Re-init refreshes config but must also guarantee the on-disk structure exists: a project
+		// upgraded from a version that stored fewer directories (e.g. missing memos/wiki) would
+		// otherwise keep throwing at start. mkdir is recursive and idempotent, so this is safe, and
+		// it resolves the configured backlog directory rather than assuming `backlog/`.
+		await core.filesystem.ensureBacklogStructure();
 		await core.filesystem.saveConfig(config);
 	} else {
 		const normalizedBacklogDirectory = normalizeProjectBacklogDirectory(options.backlogDirectory);

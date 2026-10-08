@@ -2,6 +2,7 @@ import { mkdir, rename, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
+import { resolveBacklogDirectory } from "../utils/backlog-directory.ts";
 import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import { filesSignature } from "../utils/files-signature.ts";
 import { type ListPage, selectListPage } from "../utils/list-page.ts";
@@ -43,14 +44,25 @@ export interface MemoPageOptions {
 }
 export const MEMO_PAGE_SIZE = 30;
 
+/**
+ * The configured backlog directory name for a project root, falling back to the conventional
+ * `backlog` when none is configured (a project that has neither a `backlog/` nor a `.backlog/`
+ * directory yet). Memos must follow the same directory the rest of the project uses, so they
+ * can be relocated with `--backlog-dir` like every other artifact.
+ */
+function backlogDirNameFor(root: string): string {
+	const resolution = resolveBacklogDirectory(root);
+	return resolution.backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
+}
+
 /** Absolute path of the memo directory for a project root. */
 export function memoDir(root: string): string {
-	return join(root, DEFAULT_DIRECTORIES.BACKLOG, DEFAULT_DIRECTORIES.MEMOS);
+	return join(root, backlogDirNameFor(root), DEFAULT_DIRECTORIES.MEMOS);
 }
 
 /** Absolute path of the archived memo directory for a project root. */
 export function memoArchiveDir(root: string): string {
-	return join(root, DEFAULT_DIRECTORIES.BACKLOG, DEFAULT_DIRECTORIES.ARCHIVE_MEMOS);
+	return join(root, backlogDirNameFor(root), DEFAULT_DIRECTORIES.ARCHIVE_MEMOS);
 }
 
 /**
