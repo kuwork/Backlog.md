@@ -27,6 +27,7 @@ const BOOLEAN_CONFIG_KEYS = new Set([
 	"filesystemOnly",
 	"bypass_git_hooks",
 	"check_active_branches",
+	"include_cross_branch",
 ]);
 
 const ARRAY_CONFIG_KEYS = new Set(["statuses", "labels"]);

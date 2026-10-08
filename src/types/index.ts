@@ -316,6 +316,8 @@ export interface SearchOptions {
 	filters?: SearchFilters;
 	/** Widens the task source corpus with completed-corpus tasks; the pipeline itself is unchanged. */
 	includeCompleted?: boolean;
+	/** When false, tasks that live only on another branch are dropped from task results. Defaults to true. */
+	includeCrossBranch?: boolean;
 }
 
 export interface TaskSearchResult {
@@ -446,6 +448,11 @@ export interface BacklogConfig {
 	bypassGitHooks?: boolean;
 	checkActiveBranches?: boolean; // Check task states across active branches (default: true)
 	activeBranchDays?: number; // How many days a branch is considered active (default: 30)
+	/**
+	 * Include tasks from other branches in list, board and search surfaces (default: false).
+	 * Request-level parameters (e.g. `crossBranch` on the HTTP API) still override this value.
+	 */
+	includeCrossBranch?: boolean;
 	/** Project-relative backlog folder when config is stored at project root in backlog.config.yml. */
 	backlogDirectory?: string;
 	/** Global callback command to run on any task status change. Supports $TASK_ID, $OLD_STATUS, $NEW_STATUS, $TASK_TITLE variables. */

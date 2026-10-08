@@ -260,8 +260,9 @@ export class ApiClient {
 				}
 			}
 		}
-		// Default to true for cross-branch loading to match TUI behavior
-		if (options?.crossBranch !== false) params.append("crossBranch", "true");
+		// Omitted by default: the server resolves cross-branch visibility from the config. Only an
+		// explicit choice travels, and it stays an override rather than the only source.
+		if (options?.crossBranch !== undefined) params.append("crossBranch", String(options.crossBranch));
 
 		const url = `${API_BASE}/tasks${params.toString() ? `?${params.toString()}` : ""}`;
 		return this.fetchJson<Task[]>(url);
@@ -278,6 +279,8 @@ export class ApiClient {
 			labels?: string[];
 			modifiedFiles?: string[];
 			completed?: boolean;
+			/** Omitted by default so the server's configured cross-branch visibility applies. */
+			crossBranch?: boolean;
 			limit?: number;
 		} = {},
 	): Promise<SearchResult[]> {
@@ -332,6 +335,10 @@ export class ApiClient {
 		}
 		if (options.completed) {
 			params.set("completed", "true");
+		}
+		// Same contract as fetchTasks: absent means "use the config", present means "override it".
+		if (options.crossBranch !== undefined) {
+			params.set("crossBranch", String(options.crossBranch));
 		}
 		if (options.limit !== undefined) {
 			params.set("limit", String(options.limit));

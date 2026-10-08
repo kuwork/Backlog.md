@@ -36,6 +36,7 @@ import { type GraphLockConflictHandler, type GraphService, startGraphService } f
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import {
+	type BacklogConfig,
 	DOCUMENT_TYPE_VALUES,
 	type Document,
 	type SearchPriorityFilter,
@@ -229,6 +230,18 @@ function getLanIpv4Addresses(): string[] {
 		}
 	}
 	return addresses;
+}
+
+/**
+ * Cross-branch visibility defaults to the configured value; an explicit `crossBranch` parameter
+ * still wins, so the parameter stays an override rather than the only source. Kept standalone so
+ * both HTTP surfaces resolve the question identically and the rule can be tested directly.
+ */
+export function resolveCrossBranchVisibility(rawValue: string | null, config: BacklogConfig | null): boolean {
+	if (rawValue !== null) {
+		return rawValue === "true";
+	}
+	return config?.includeCrossBranch === true;
 }
 
 export class BacklogServer {
@@ -1121,6 +1134,10 @@ export class BacklogServer {
 		return new Response("Not Found", { status: 404 });
 	}
 
+	private async resolveCrossBranch(searchParams: URLSearchParams): Promise<boolean> {
+		return resolveCrossBranchVisibility(searchParams.get("crossBranch"), await this.core.filesystem.loadConfig());
+	}
+
 	private async handleListTasks(req: Request): Promise<Response> {
 		let refreshCrossBranch = this.servicesInitialized;
 		const url = new URL(req.url);
@@ -1129,7 +1146,7 @@ export class BacklogServer {
 		const assignee = url.searchParams.get("assignee") || undefined;
 		const parent = url.searchParams.get("parent") || undefined;
 		const priorityParam = url.searchParams.get("priority") || undefined;
-		const crossBranch = url.searchParams.get("crossBranch") === "true";
+		const crossBranch = await this.resolveCrossBranch(url.searchParams);
 		const labelParams = [...url.searchParams.getAll("label"), ...url.searchParams.getAll("labels")];
 		const labelsCsv = url.searchParams.get("labels");
 		if (labelsCsv) {
@@ -1320,6 +1337,9 @@ export class BacklogServer {
 				limit,
 				types,
 				filters,
+				// The board reads its rows from this endpoint, so the same config default and the
+				// same parameter override apply here as on /api/tasks.
+				includeCrossBranch: await this.resolveCrossBranch(url.searchParams),
 				// The show-completed toggle sends this from the board and the task list, and the
 				// statistics page uses the same parameter for its own scope.
 				includeCompleted: url.searchParams.get("completed") === "true",

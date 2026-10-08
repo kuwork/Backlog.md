@@ -50,7 +50,7 @@ export interface BranchTaskLoadResult {
 
 function extractConfiguredTaskId(filePath: string, prefix: string): string | null {
 	const filename = filePath.slice(filePath.lastIndexOf("/") + 1);
-	const taskId = extractTaskIdFromFilename(filename);
+	const taskId = extractTaskIdFromFilename(filename, prefix);
 	const taskPrefix = taskId ? extractAnyPrefix(taskId) : null;
 	return taskPrefix?.toLowerCase() === prefix.toLowerCase() ? taskId : null;
 }

@@ -2651,13 +2651,14 @@ async function runTaskList(
 
 	const usePlainOutput = outputMode !== "interactive";
 	if (usePlainOutput) {
+		const config = await core.filesystem.loadConfig();
 		const tasks = await core.queryTasks({
 			query: searchQuery || undefined,
 			filters: Object.keys(baseFilters).length > 0 ? baseFilters : undefined,
-			includeCrossBranch: false,
+			// Config decides whether other branches are visible; unset keeps the CLI local-first.
+			includeCrossBranch: config?.includeCrossBranch === true,
 			includeCompleted: options.completed === true,
 		});
-		const config = await core.filesystem.loadConfig();
 
 		// Readiness needs the completed corpus, so only the reads that filter on or publish the
 		// verdict pay for one: `--ready` filters on it and `--json` carries it. Both read it once,
@@ -2881,7 +2882,8 @@ async function runTaskList(
 			const [tasks, allTasksForParentCheck] = await Promise.all([
 				core.queryTasks({
 					filters: Object.keys(interactiveLoaderFilters).length > 0 ? interactiveLoaderFilters : undefined,
-					includeCrossBranch: false,
+					// Same config as `task list`; the board and the list must agree.
+					includeCrossBranch: config?.includeCrossBranch === true,
 					includeCompleted: options.completed === true,
 				}),
 				parentId ? core.queryTasks() : Promise.resolve(undefined),

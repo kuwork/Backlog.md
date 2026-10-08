@@ -10,6 +10,7 @@ import type {
 	Task,
 	WikiPage,
 } from "../types/index.ts";
+import { isLocalEditableTask } from "../types/index.ts";
 import { buildTaskSearchFields, createTaskFilterMatcher, TASK_SEARCH_FUSE_OPTIONS } from "../utils/task-search.ts";
 import type { ContentStore, ContentStoreEvent } from "./content-store.ts";
 import type { Memo } from "./memos.ts";
@@ -137,16 +138,21 @@ export class SearchService {
 		// without restarting the process.
 		this.refreshMemosWhenStale();
 
-		const { query = "", limit, types, filters, includeCompleted = false } = options;
+		const { query = "", limit, types, filters, includeCompleted = false, includeCrossBranch = true } = options;
 
 		const trimmedQuery = query.trim();
 		const allowedTypes = new Set<SearchResultType>(
 			types && types.length > 0 ? types : ["task", "document", "decision", "wiki", "memo"],
 		);
 		const taskMatcher = this.createTaskMatcher(filters);
+		// The corpus is shared and always cross-branch, so a local-only search narrows it here:
+		// tasks that exist only on another branch are simply not part of the answer.
+		const taskVisible = includeCrossBranch
+			? taskMatcher
+			: (task: Task) => taskMatcher(task) && isLocalEditableTask(task);
 
 		if (trimmedQuery === "") {
-			return this.collectWithoutQuery(allowedTypes, taskMatcher, limit, includeCompleted);
+			return this.collectWithoutQuery(allowedTypes, taskVisible, limit, includeCompleted);
 		}
 
 		const fuse = this.fuse;
@@ -170,7 +176,7 @@ export class SearchService {
 				continue;
 			}
 
-			if (entity.type === "task" && !taskMatcher(entity.task)) {
+			if (entity.type === "task" && !taskVisible(entity.task)) {
 				continue;
 			}
 

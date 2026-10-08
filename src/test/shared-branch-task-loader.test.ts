@@ -397,6 +397,28 @@ describe("shared immutable branch task loading", () => {
 		expect(loaded.flatMap((entry) => (entry.task ? [entry.task.title] : []))).toEqual(["Feature task"]);
 	});
 
+	it("resolves branch task files when the project uses a custom task prefix", async () => {
+		const featureCommit = "8".repeat(40);
+		const path = "backlog/tasks/back-1 - Feature.md";
+		const git = {
+			getCurrentBranch: async () => "main",
+			listFilesInTree: async () => [path],
+			getBranchLastModifiedMap: async () => new Map([[path, new Date("2026-08-10T00:00:00Z")]]),
+			showFile: async () => taskMarkdown("BACK-1", "Feature task"),
+		} as unknown as GitOperations;
+		const loader = new BranchTaskLoader(git);
+
+		const { entries: loaded } = await loader.load(
+			[{ name: "feature/task", commit: featureCommit, current: false }],
+			{ ...config, prefixes: { task: "back" }, remoteOperations: false },
+			[],
+			false,
+		);
+
+		expect(loaded.map((entry) => entry.id)).toEqual(["BACK-1"]);
+		expect(loaded.flatMap((entry) => (entry.task ? [entry.task.title] : []))).toEqual(["Feature task"]);
+	});
+
 	it("does not treat local refs as other branches while HEAD is detached", async () => {
 		const git = {
 			getCurrentBranch: async () => "",

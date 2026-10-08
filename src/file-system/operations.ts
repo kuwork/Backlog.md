@@ -2148,6 +2148,10 @@ export class FileSystem {
 				case "active_branch_days":
 					config.activeBranchDays = Number.parseInt(value, 10);
 					break;
+				case "include_cross_branch":
+				case "includeCrossBranch":
+					config.includeCrossBranch = value.toLowerCase() === "true";
+					break;
 				case "onStatusChange":
 				case "on_status_change":
 					// Remove surrounding quotes if present, but preserve inner content
@@ -2215,6 +2219,7 @@ export class FileSystem {
 			bypassGitHooks: config.bypassGitHooks,
 			checkActiveBranches: config.checkActiveBranches,
 			activeBranchDays: config.activeBranchDays,
+			includeCrossBranch: config.includeCrossBranch,
 			onStatusChange: config.onStatusChange,
 			prefixes: config.prefixes,
 			backlogDirectory: config.backlogDirectory,
@@ -2253,6 +2258,7 @@ export class FileSystem {
 				? [`check_active_branches: ${config.checkActiveBranches}`]
 				: []),
 			...(typeof config.activeBranchDays === "number" ? [`active_branch_days: ${config.activeBranchDays}`] : []),
+			...(typeof config.includeCrossBranch === "boolean" ? [`include_cross_branch: ${config.includeCrossBranch}`] : []),
 			...(config.onStatusChange ? [`onStatusChange: '${config.onStatusChange}'`] : []),
 			...(config.prefixes?.task ? [`task_prefix: "${config.prefixes.task}"`] : []),
 			...(config.backlogDirectory ? [`backlog_directory: "${config.backlogDirectory}"`] : []),
