@@ -516,7 +516,10 @@ export class ApiClient {
 		if (!response.ok) {
 			throw new Error("Failed to fetch statuses");
 		}
-		return response.json();
+		const payload = await response.json();
+		// The server ships { statuses, terminalStatuses } so callers can see which columns end a
+		// task; a bare array is still accepted, from an older server or a fixture.
+		return Array.isArray(payload) ? payload : (payload?.statuses ?? []);
 	}
 
 	async fetchConfig(): Promise<BacklogConfig> {

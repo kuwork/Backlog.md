@@ -132,7 +132,7 @@ import {
 import { buildTaskUpdateInput } from "./utils/task-edit-builder.ts";
 import { canonicalTaskId, normalizeTaskId, taskIdsEqual } from "./utils/task-path.ts";
 import { sortTasks } from "./utils/task-sorting.ts";
-import { getTerminalStatus, isTerminalStatus } from "./utils/terminal-status.ts";
+import { getTerminalStatus, getTerminalStatuses, isTerminalStatus } from "./utils/terminal-status.ts";
 import { getVersion } from "./utils/version.ts";
 
 type IntegrationMode = "mcp" | "cli" | "none";
@@ -6257,7 +6257,7 @@ addHelpSchema(configCmd.command("list"), {
 	reads: "Project Backlog.md configuration",
 	required: [],
 	optional: [{ name: "plain", type: "Boolean", description: "Use plain text output" }],
-	output: "All public configuration values",
+	output: "All public configuration values, plus the terminal statuses derived from them",
 	examples: ["backlog config list", "backlog config list --plain"],
 })
 	.description("list all configuration values")
@@ -6279,6 +6279,11 @@ addHelpSchema(configCmd.command("list"), {
 			console.log(`  defaultAssignee: [${(config.defaultAssignee ?? []).join(", ")}]`);
 			console.log(`  defaultStatus: ${config.defaultStatus || "(not set)"}`);
 			console.log(`  statuses: [${statusNames(config.statuses).join(", ")}]`);
+			// Derived, never stored: which columns end a task is a property of each column's
+			// category, and reading it off a raw `statuses` list is guesswork (the legacy rule is
+			// "the last one"), so the resolved answer is printed next to the list it came from.
+			const terminalStatuses = getTerminalStatuses(config.statuses ?? [...DEFAULT_STATUSES]);
+			console.log(`  terminalStatuses: [${terminalStatuses.join(", ")}] (derived from statuses)`);
 			console.log(`  labels: [${config.labels.join(", ")}]`);
 			const milestones = await core.filesystem.listMilestones();
 			console.log(`  milestones: [${milestones.map((milestone) => milestone.id).join(", ")}]`);

@@ -486,7 +486,8 @@ export const zhTW: TranslationDict = {
 		noTransitions: "本專案未宣告轉換規則，狀態可在任意非終態之間流轉。",
 		lintTitle: "設定提示（不會阻擋儲存）",
 		terminalStatus: "終止狀態",
-		terminalStatusDesc: "標誌工作結束的狀態，可以多選；一個都沒宣告時按「陣列最後一個」處理。",
+		terminalStatusDesc:
+			"由每個狀態的 category（done / dropped）推導；未宣告時取最後一列。此處唯讀，改 category 請到狀態機。",
 		categoryLabels: {
 			initial: "起點",
 			active: "排隊中 · 未被認領",

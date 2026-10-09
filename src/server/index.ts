@@ -27,7 +27,7 @@ import {
 	updateMemo,
 } from "../core/memos.ts";
 import type { SearchService } from "../core/search-service.ts";
-import { statusNames, validateStatusesShape } from "../core/state-machine.ts";
+import { compileStateMachine, statusNames, validateStatusesShape } from "../core/state-machine.ts";
 import { renderProjectStateMachine } from "../core/state-machine-guidance.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
@@ -60,6 +60,7 @@ import {
 	SelfDependentTaskError,
 } from "../utils/task-builders.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
+import { getTerminalStatuses } from "../utils/terminal-status.ts";
 import { getVersion } from "../utils/version.ts";
 import { withWikiPageTitles } from "../utils/wiki-titles.ts";
 
@@ -1711,8 +1712,18 @@ export class BacklogServer {
 
 	private async handleGetStatuses(): Promise<Response> {
 		const config = await this.core.filesystem.loadConfig();
-		const configured = statusNames(config?.statuses);
-		return Response.json(configured.length > 0 ? configured : ["To Do", "In Progress", "Done"]);
+		const statuses = config?.statuses ?? [];
+		const configured = statusNames(statuses);
+		const names = configured.length > 0 ? configured : ["To Do", "In Progress", "Done"];
+		const source = configured.length > 0 ? statuses : names;
+		// Bare names carry no category, so nothing downstream can work out which of them ends a
+		// task, or where a new one lands; ship the resolved answers with them instead of making
+		// every caller re-derive them from /api/config.
+		return Response.json({
+			statuses: names,
+			terminalStatuses: getTerminalStatuses(source),
+			defaultStatus: config?.defaultStatus?.trim() || compileStateMachine(source).initialStatus() || names[0],
+		});
 	}
 
 	// Documentation handlers
@@ -2305,7 +2316,9 @@ export class BacklogServer {
 			if (!config) {
 				return Response.json({ error: "Configuration not found" }, { status: 404 });
 			}
-			return Response.json(config);
+			// Spread keeps the derived value off `config` itself, so a client that posts this body
+			// back cannot smuggle it into config.yml (serializeConfig writes only known keys).
+			return Response.json({ ...config, terminalStatuses: getTerminalStatuses(config.statuses ?? []) });
 		} catch (error) {
 			console.error("Error loading config:", error);
 			return Response.json({ error: "Failed to load configuration" }, { status: 500 });

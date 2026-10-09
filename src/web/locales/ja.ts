@@ -494,7 +494,8 @@ export const ja: TranslationDict = {
 		noTransitions: "このプロジェクトは遷移を宣言していないため、非終状態の間は自由に移動できます。",
 		lintTitle: "設定の警告（保存はブロックしません）",
 		terminalStatus: "終状態",
-		terminalStatusDesc: "作業の終了を示すステータス。複数選択可。未宣言の場合は最後の列が使われます。",
+		terminalStatusDesc:
+			"各ステータスの category（done / dropped）から導出され、未宣言の場合は最後の列になります。ここは読み取り専用です。変更するにはステートマシンで category を編集してください。",
 		categoryLabels: {
 			initial: "起点",
 			active: "待機中・未着手",

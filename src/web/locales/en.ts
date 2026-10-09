@@ -493,7 +493,7 @@ export const en = {
 		lintTitle: "Configuration warnings (never block saving)",
 		terminalStatus: "Terminal statuses",
 		terminalStatusDesc:
-			"Statuses that end the work. Can be more than one; the last column is used when none is declared.",
+			"Derived from each status's category (done / dropped), or the last column when none is declared. Read-only here — edit the category in the state machine.",
 		categoryLabels: {
 			initial: "start",
 			active: "queued, unclaimed",

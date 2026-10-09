@@ -486,7 +486,8 @@ export const zhCN: TranslationDict = {
 		noTransitions: "本项目未声明转换规则，状态可在任意非终态之间流转。",
 		lintTitle: "配置提示（不阻断保存）",
 		terminalStatus: "终止状态",
-		terminalStatusDesc: "标志工作结束的状态，可以多选；一个都没声明时按“数组最后一个”处理。",
+		terminalStatusDesc:
+			"由每个状态的 category（done / dropped）推导；未声明时取最后一列。此处只读，改 category 请到状态机。",
 		categoryLabels: {
 			initial: "起点",
 			active: "排队中 · 未被认领",

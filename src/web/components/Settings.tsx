@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import { compileStateMachine, defaultStateMachineForLocale, statusNames } from "../../core/state-machine";
-import type { BacklogConfig, StatusDefinition, StatusesConfig } from "../../types";
+import { defaultStateMachineForLocale } from "../../core/state-machine";
+import type { BacklogConfig, StatusesConfig } from "../../types";
 import { getTerminalStatuses } from "../../utils/terminal-status";
 import { useI18nContext } from "../contexts/I18nContext";
 import { useI18n } from "../hooks/useI18n";
@@ -9,7 +9,6 @@ import { apiClient } from "../lib/api";
 import { isValidLocale } from "../locales";
 import ChipInput from "./ChipInput";
 import StateMachineEditor from "./StateMachineEditor";
-import StatusExcludeDropdown from "./StatusExcludeDropdown";
 import { SuccessToast } from "./SuccessToast";
 
 const Settings: React.FC = () => {
@@ -84,43 +83,8 @@ const Settings: React.FC = () => {
 		return (items ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
 	};
 
-	/** Column names of `statuses`, whatever shape it is in. */
-	const statusNamesFromConfig = (value: StatusesConfig): string[] => statusNames(value);
-
 	/** Terminal statuses as the runtime sees them: declared categories, else the last column. */
 	const terminalStatuses = getTerminalStatuses(config?.statuses ?? []);
-
-	/** Object-form rows for the terminal picker; a string array is converted on first edit. */
-	const asStatusDefinitions = (value: StatusesConfig): StatusDefinition[] => {
-		if (value.some((entry) => typeof entry !== "string")) {
-			return value.map((entry) => (typeof entry === "string" ? { name: entry } : entry));
-		}
-		const machine = compileStateMachine(value);
-		return value.map((entry) => {
-			const name = String(entry);
-			const definition: StatusDefinition = { name, category: machine.categoryOf(name) };
-			const exit = machine.exitChannel(name);
-			if (exit) definition.exit = exit;
-			return definition;
-		});
-	};
-
-	const handleTerminalStatusesChange = (selected: string[]) => {
-		if (!config) return;
-		const next = asStatusDefinitions(config.statuses).map((definition) => {
-			const isTerminal = definition.category === "done" || definition.category === "dropped";
-			const shouldBeTerminal = selected.includes(definition.name);
-			if (shouldBeTerminal && !isTerminal) {
-				return { ...definition, category: "done" as const, exit: definition.exit ?? ("complete" as const) };
-			}
-			if (!shouldBeTerminal && isTerminal) {
-				const { exit: _dropExit, ...rest } = definition;
-				return { ...rest, category: "active" as const };
-			}
-			return definition;
-		});
-		handleInputChange("statuses", next);
-	};
 
 	const handleStatusesChange = (statuses: StatusesConfig) => {
 		handleInputChange("statuses", statuses);
@@ -371,21 +335,15 @@ const Settings: React.FC = () => {
 								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.settings.defaultStatusDesc}</p>
 							</div>
 
-							<fieldset className="min-w-0 border-0 p-0">
-								<legend className="block p-0 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<div className="min-w-0">
+								<span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
 									{t.stateMachine.terminalStatus}
-								</legend>
-								<StatusExcludeDropdown
-									availableStatuses={statusNamesFromConfig(config.statuses)}
-									excludedStatuses={terminalStatuses}
-									onChange={handleTerminalStatusesChange}
-									menuId="terminal-statuses-menu"
-									className="w-full"
-									label={t.stateMachine.terminalStatus}
-									emptyLabel={t.common.none}
-								/>
+								</span>
+								<p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+									{terminalStatuses.length > 0 ? terminalStatuses.join(", ") : t.common.none}
+								</p>
 								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.stateMachine.terminalStatusDesc}</p>
-							</fieldset>
+							</div>
 
 							<div>
 								<label className="flex items-center justify-between">

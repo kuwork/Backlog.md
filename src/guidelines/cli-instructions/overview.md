@@ -19,7 +19,7 @@ Use this overview to decide what to read or run next.
 
 Search and read before changing anything. On the first interaction of a new session, start by loading the live project state so you do not rely on defaults or stale assumptions:
 
-- `backlog config list --plain` — read defaultAssignee, defaultStatus, statuses, labels (project recommended label group, not all labels ever used), milestones, etc.
+- `backlog config list --plain` — read defaultAssignee, defaultStatus, statuses, **terminalStatuses**, labels (project recommended label group, not all labels ever used), milestones, etc.
 - `backlog search "query" --plain`
 - `backlog task list --status "<todo status>" --plain`
 - `backlog task list --status "<active status>" --plain`
@@ -56,6 +56,7 @@ statuses:
 ```
 
 - `category` decides behaviour: `done` / `dropped` are terminal (reaching one stamps the end date), `wip` and `blocked` are work in flight, `initial` is the start.
+- Terminality is never guessed from a name: `backlog config list --plain` prints the resolved **`terminalStatuses`**, and `GET /api/config` and `GET /api/statuses` return the same derived list. Read it there instead of assuming the last column or a column called `Done`.
 - `ai` says who may make the move: `allowed` (the AI may move on its own), `allowed_if` (only while `if` holds), `propose` (propose the move and wait for the user), `forbidden` (only the user may move).
 - `display: false` keeps a status working while hiding its board column.
 - `next` absent means no transitions are declared for that status.

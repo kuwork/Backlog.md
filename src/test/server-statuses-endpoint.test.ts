@@ -63,19 +63,54 @@ describe("BacklogServer statuses endpoints", () => {
 		await safeCleanup(TEST_DIR);
 	});
 
-	it("serves plain names even when the config uses the object form", async () => {
+	it("serves plain names — plus the terminal set and the default column, which bare names cannot express", async () => {
 		const write = await putJson("/api/config/statuses", { statuses: DEFAULT_STATE_MACHINE });
 		expect(write.ok).toBe(true);
 		const response = await request("/api/statuses");
-		expect(await response.json()).toEqual([
-			"To Do",
-			"Planning",
-			"Plan Review",
-			"In Progress",
-			"In Review",
-			"Done",
-			"Dropped",
-		]);
+		expect(await response.json()).toEqual({
+			statuses: ["To Do", "Planning", "Plan Review", "In Progress", "In Review", "Done", "Dropped"],
+			terminalStatuses: ["Done", "Dropped"],
+			defaultStatus: "To Do",
+		});
+	});
+
+	it("reports the last column as terminal for a plain string-array machine", async () => {
+		const response = await request("/api/statuses");
+		expect(await response.json()).toEqual({
+			statuses: ["To Do", "In Progress", "Done"],
+			terminalStatuses: ["Done"],
+			defaultStatus: "To Do",
+		});
+	});
+
+	it("reports the status named by default_status, even when it is not the initial category", async () => {
+		const config = (await (await request("/api/config")).json()) as BacklogConfig & Record<string, unknown>;
+		const write = await putJson("/api/config", {
+			...config,
+			defaultStatus: "In Progress",
+			statuses: [
+				{ name: "To Do", category: "initial", next: [] },
+				{ name: "In Progress", category: "wip", next: [] },
+				{ name: "Done", category: "done", exit: "complete", next: [] },
+			],
+		});
+		expect(write.ok).toBe(true);
+		const response = await request("/api/statuses");
+		const payload = (await response.json()) as { terminalStatuses: string[]; defaultStatus: string };
+		expect(payload.terminalStatuses).toEqual(["Done"]);
+		expect(payload.defaultStatus).toBe("In Progress");
+	});
+
+	it("serves terminalStatuses on /api/config without letting it reach the file", async () => {
+		const payload = (await (await request("/api/config")).json()) as BacklogConfig & Record<string, unknown>;
+		expect(payload.terminalStatuses).toEqual(["Done"]);
+		const response = await putJson("/api/config", payload);
+		expect(response.ok).toBe(true);
+		const saved = (await savedConfig()) as BacklogConfig & Record<string, unknown>;
+		// Derived value, not a setting: serializeConfig writes only keys it knows, so posting the
+		// body the API just handed out cannot plant terminalStatuses in config.yml.
+		expect(saved.terminalStatuses).toBeUndefined();
+		expect(saved.statuses).toEqual(["To Do", "In Progress", "Done"]);
 	});
 
 	it("rejects a config save whose statuses cannot be written back", async () => {
