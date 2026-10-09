@@ -2,7 +2,7 @@
 title: 核心架构与数据流
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-09 22:00'
 ---
 
 
@@ -113,7 +113,7 @@ ContentStore 引入**逐项发布版本守卫 + 条件合并**解决竞态：
 
 配置存储在 YAML 中，关键字段：
 - `projectName`、`statuses`、`labels`、`dateFormat`
-- `checkActiveBranches`、`remoteOperations`、`activeBranchDays`：跨分支行为控制
+- `checkActiveBranches`、`remoteOperations`、`activeBranchDays`、`include_cross_branch`：跨分支行为控制——`include_cross_branch` 决定扫描结果是否进入看板/列表/搜索（默认 local-first），`check_active_branches` 决定是否扫描其他本地分支（BACK-759/760）
 - `autoCommit`、`bypassGitHooks`、`filesystemOnly`：Git 集成控制
 - `prefixes.task`：任务 ID 前缀自定义
 - `mcp.http`：MCP HTTP 传输配置（认证、CORS）
@@ -190,6 +190,10 @@ core 提供批量移动 primitive，把多个任务一次性移动到目标状�
 
 跨分支加载的强制刷新不再加入一个在途的过期 fetch（join 旧 fetch 会返回刷新前就已过时的结果）；强制刷新会等待在途 fetch 完成后发起新的加载，保证"强制"语义真正拿到新数据（[[sources/back-660-forced-refresh-stale-fetch-race|BACK-660]]）。
 
+## 前缀转发的跨分支加载（BACK-759）
+
+`extractConfiguredTaskId`（`src/core/task-loader.ts`）把配置的 `task_prefix` 转发给 `extractTaskIdFromFilename`——此前按硬编码默认前缀 `"task"` 解析文件名，自定义前缀项目（如本仓 `back`）的分支 commit index 恒为空、跨分支加载整体静默失效，且 ID 分配候选集随之残缺（本仓实测索引 0 → 2418、语料 400 → 444）。**跨分支可见性同时配置化**：yml 键 `include_cross_branch`（默认未设置 = local-first）是 `task list` / `board` / `/api/tasks` / `/api/search` 的默认值，`crossBranch` 参数仍是覆盖；规则集中在导出的纯函数 `resolveCrossBranchVisibility(param, config)`，两个 HTTP 面共用。搜索语料始终跨分支构建，关闭可见性时在查询路径以 `isLocalEditableTask` 过滤（[[sources/back-759-cross-branch-prefix-visibility|BACK-759]]）。
+
 ## Related Sources
 - [[sources/back-533-config-block-yaml-lists]] — BACK-533 块状 YAML 列表
 - [[sources/back-534-preserve-updated-date-ordinal-reorder]] — BACK-534 ordinal 保留时间戳
@@ -197,3 +201,4 @@ core 提供批量移动 primitive，把多个任务一次性移动到目标状�
 - [[sources/back-660-forced-refresh-stale-fetch-race]] — BACK-660 强制刷新等待在途 fetch
 - [[sources/back-680-batch-status-move]] — BACK-680 批量状态移动 primitive
 - [[sources/back-699-findidentity-nonpublishing-fallback]] — BACK-699 findIdentity 非发布回退
+- [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 前缀转发与 include_cross_branch 配置

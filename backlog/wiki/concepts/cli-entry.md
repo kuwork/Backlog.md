@@ -2,7 +2,7 @@
 title: CLI 入口与命令体系
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-09 22:00'
 ---
 
 # CLI 入口与命令体系
@@ -123,6 +123,7 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 - **未指派过滤**：`--unassigned` 单独列出没有 assignee 的任务，与 `--assignee` 互斥（冲突时报错 exit 1）（[[sources/back-551-unassigned-task-filtering|BACK-551]]）
 - **默认序号排序**：task list 默认按 ordinal 排序，保留 `--sort ordinal`（[[sources/back-542-ordinal-task-list-sort|BACK-542]]）
 - **数字 ID 查找**：非默认前缀下，`task edit` 移除 `normalizeTaskId` 预归一化，直接让核心层探测配置前缀（依赖 BACK-364）（[[sources/back-545-cli-task-edit-numeric-id|BACK-545]]）
+- **跨分支可见性**：`task list` 与 `board` 读 `include_cross_branch` 配置（未设置 = local-first），跨分支加载本身已修复为转发配置前缀（[[sources/back-759-cross-branch-prefix-visibility|BACK-759]]）
 
 ## doc view plain 输出
 
@@ -137,7 +138,7 @@ backlog milestone edit M1 --actual-start "2026-05-25 09:00" --clear-actual-end
 
 ## config 命令
 
-`config get/set/list` 通过共享的 `CONFIG_AVAILABLE_KEYS` 常量显示一致的可用键列表；列表键（statuses/labels）指引改为 `config get` + 编辑 config.yml，而非不存在的 `list-<key>` 命令（[[sources/back-533-config-block-yaml-lists|BACK-533]]）。
+`config get/set/list` 通过共享的 `CONFIG_AVAILABLE_KEYS` 常量显示一致的可用键列表；列表键（statuses/labels）指引改为 `config get` + 编辑 config.yml，而非不存在的 `list-<key>` 命令（[[sources/back-533-config-block-yaml-lists|BACK-533]]）。`config list` 在 statuses 行后打印派生的 `terminalStatuses: [Done, Dropped] (derived from statuses)`（[[sources/back-762-terminal-statuses-readonly|BACK-762]]）。
 
 ## overview 命令
 
@@ -229,3 +230,5 @@ backlog overview --plain # 纯文本输出
 - [[sources/back-680-batch-status-move]] — BACK-680 多 ID 批量状态移动
 - [[sources/back-683-cli-draft-edit]] — BACK-683 CLI draft edit
 - [[sources/back-688-milestones-plain-grouped-output]] — BACK-688 milestones list --plain 分组输出
+- [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 跨分支前缀修复与 include_cross_branch
+- [[sources/back-762-terminal-statuses-readonly]] — BACK-762 config list 打印派生终态集

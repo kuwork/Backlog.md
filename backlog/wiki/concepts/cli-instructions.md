@@ -2,7 +2,7 @@
 title: CLI 指令表面
 labels: [concept, cli, agent-guidance]
 created_date: '2026-07-14 11:20'
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-09 22:00'
 ---
 
 # CLI 指令表面
@@ -112,7 +112,7 @@ MCP 客户端通过 `get_backlog_instructions` 工具或 `backlog://workflow/...
 
 ## 首轮加载项目实况（BACK-582）
 
-agent 指南规定：agent **首轮必须先加载项目实况再作答**，例如先运行 `backlog config list --plain` 等只读命令了解配置、状态集、标签等项目实际状态，避免基于默认值或假设给建议。
+agent 指南规定：agent **首轮必须先加载项目实况再作答**，例如先运行 `backlog config list --plain` 等只读命令了解配置、状态集、标签等项目实际状态，避免基于默认值或假设给建议。`config list` 的 `terminalStatuses: [...]` 派生行（BACK-762）即为此服务的典型输出——终态判定读解析后的列表，不猜名字或列位置。
 
 ## 日期字段与多行输入约定（BACK-572）
 
@@ -161,3 +161,4 @@ agent 指南新增 `path:LINE` 行号引用与行范围链接的说明，任务 
 - [[sources/back-572-agent-guides-date-fields-multiline-input]] — BACK-572 日期/多行输入约定与死路径清理
 - [[sources/back-651-line-reference-docs]] — BACK-651 path:LINE 行号引用文档
 - [[sources/back-656-agent-guidance-overview-cadence]] — BACK-656 overview 每会话一次节奏修正
+- [[sources/back-762-terminal-statuses-readonly]] — BACK-762 指南点名 terminalStatuses 派生行

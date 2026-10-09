@@ -978,3 +978,77 @@ Chronological, append-only record of all wiki operations.
 **新增用户手册页面**: 0 个
 
 **重新生成**: `wiki_output/用户手册/manual.md`（merge.py）
+
+## [2026-10-09 21:40:00] wiki-create | 新增 developer-notes：GitHub CI 发布注意事项
+
+- 新建 `developer-notes/github-actions-release-gotchas.md`——`.github/workflows/release.yml` 标签触发自动发布链路的触发机制、作业依赖、三条硬规则（npm 版本号烧号、部分成功、OIDC dist-tag 授权）、打标签前检查、观察诊断与失败后处置决策表；全部条目来自真实事故
+- 已登记 `index.md` Developer Notes 表（本批提交一并入库）
+
+## [2026-10-09 23:00:00] batch-ingest | 增量摄取 BACK-757~762、RELEASE-v1.53.2-CN，收尾 developer-notes 页
+
+**检测基线**: 2026-10-07 22:50:00（上次 batch-ingest，BACK-748~756）
+**检测方式**: `git status --porcelain` + HEAD 祖先链逐文件比对（本仓 commit 日期失真，--since 不可信——HEAD b48bf699 之外 a0a68b4c/3b9d7103 等任务提交未进线性视野，直接以磁盘内容对照 log.md 为准）
+**变更源**: 6 个新任务（BACK-757~762，全部 Done，2026-10-08~09）+ 1 个顶层发布说明（RELEASE-v1.53.2-CN.md，未追踪）+ 1 个上一会话遗留的 developer-notes 页收尾；backlog/docs、decisions、milestones 无变更
+
+**新 source 页面（7）**:
+- `sources/back-757-memo-backlog-dir-resolution` — memo 目录解析配置化 + re-init 补建结构
+- `sources/back-758-graph-backlog-dir-resolution` — 图谱扫描/监听目录解析配置化
+- `sources/back-759-cross-branch-prefix-visibility` — 跨分支加载前缀转发 + include_cross_branch 配置化
+- `sources/back-760-cross-branch-settings-toggles` — 设置页跨分支三开关（扫描/展示两轴）
+- `sources/back-761-terminal-card-actual-end` — 终态卡片 actualEnd 时间戳 + isTerminalStatusName 防二次推导
+- `sources/back-762-terminal-statuses-readonly` — 终态集读取路径显式化、设置页只读化、派生值不落盘
+- `sources/release-v1-53-2-cn` — v1.53.2-CN hotfix 发布说明
+
+**更新 concept（9）**: `memos`（目录解析）、`kuzu-graph`（扫描/监听解析）、`core-architecture`（前缀转发段 + 配置体系 include_cross_branch）、`web-ui-features`（设置页三开关 + 终态只读 + 卡片时间戳）、`state-machine`（终态集显式化/判定 API 分层）、`cli-entry`（config list 派生行 + task list 跨分支配置）、`search-sequences`（/api/search crossBranch 回退）、`web-server`（派生值 spread、/api/statuses 形状、resolveCrossBranchVisibility）、`cli-instructions`（指南点名 terminalStatuses）
+
+**新 decision 页面（4）**:
+- `decisions/backlog-dir-single-resolution` — 全产物面统一 resolveBacklogDirectory（BACK-757/758）
+- `decisions/cross-branch-config-default-param-override` — 配置为默认、参数为覆盖（BACK-759）
+- `decisions/scan-show-two-axes` — include_cross_branch 不得停止扫描（BACK-760）
+- `decisions/terminal-set-derived-not-stored` — 终态集派生、只读、唯一写入口（BACK-762）
+
+**新 execution 页面（1）**: `execution/custom-backlog-dir-rollout-audit` — 配置目录推广时的硬编码路径审计模式（默认 fixture 掩盖缺陷、读/写/监听逐面核对、re-init 补建）
+
+**Pairing Memory Checklist**:
+- [x] `wiki/execution/` — 配置目录审计模式（BACK-757/758 跨任务提炼）
+- [x] `wiki/decisions/` — 4 个微决策（含 1 个两轴分工、1 个派生值治理）
+- [ ] `wiki/reasoning/` — 无复杂分解规划需记录（6 任务均为直实现 bug 修复/小特性）
+- [ ] `wiki/patterns/` — 未达 3+ 同构阈值（ BACK-761/762 共享"派生集合治理"主题但仅 2 例）
+- [ ] `wiki/retrospectives/` — 距 2026-09-08 回顾一月有余，但属小型增量波，留待下次大波或人工发起
+
+**用户手册**: 更新 3 页（`40-Web界面/01-看板视图` 完成时间戳、`40-Web界面/05-设置与主题` 跨分支三开关 + 终态只读、`60-配置与运维/00-配置管理` include_cross_branch + terminalStatuses 派生行 + 自定义目录生效说明）；merge.py 重新合并 manual.md（4951 → 5448 行）
+
+**更新导航**: `index.md`（Sources 334→341、Decisions 76→80、Execution 26→27）、`overview.md`（新增本波段落、统计同步）
+
+**mini-lint**: 7 个新 source 页 `source_path` 全部解析到磁盘真实文件（RELEASE-v1.53.2-CN.md 为仓库根未追踪文件，按 README/CLI-INSTRUCTIONS 先例收录）；新页面出链（concepts/decisions/execution/sources）目标均存在；index.md 覆盖全部内容子目录。
+
+## [2026-10-09 23:10:00] adjust | 发布说明版本号 1.53.2-CN → 1.53.4-CN 全量改名
+
+**更正对象**：23:00 batch-ingest 条目登记的 RELEASE-v1.53.2-CN。
+
+**事实核对**：npm `latest` dist-tag 已指向 1.53.4-CN，git 存在 `chore: sync package.json version to v1.53.4-CN [skip ci]` 同步提交；1.53.2/1.53.3 号段在发布尝试中烧号（`developer-notes/github-actions-release-gotchas` 的 E403/部分成功条目即来自这两次事故），BACK-757/758 hotfix 的实际发布版本为 **v1.53.4-CN**。
+
+**改名动作**：
+- `RELEASE-v1.53.2-CN.md` → `RELEASE-v1.53.4-CN.md`（标题行同步）
+- `sources/release-v1-53-2-cn` → `sources/release-v1-53-4-cn`（frontmatter title/source_path、正文版本号同步）
+- 反向引用同步：`sources/back-757`、`sources/back-758`、`index.md`、`overview.md`（含烧号注记）、`usermanual/60-配置与运维/00-配置管理.md`
+- merge.py 重新合并 manual.md
+
+**保持不变**：发布说明正文"上一个版本：v1.53.1-CN"链接（v1.53.2-CN 为烧号孤儿版，非正式前版）；23:00 历史条目不动（append-only）。
+
+## [2026-10-09 23:25:00] source-remove | 移除 RELEASE 发布说明摄取，确立「wiki 不收录发布说明」规则
+
+**规则变更**（用户裁决，同 2026-09-26 排除草稿的先例）：`RELEASE-vX.md` 发布说明**一律不摄为 source 页面**。理由：发布说明是面向用户的交付文案，其事实内容由 BACK 任务页承载；release 分支已留存全部历史版本，wiki 再收一份只会与任务页内容重复、并随版本号改名产生 maintenance 负担。1.53.2/1.53.4 两次改名（23:00 ingest → 23:10 adjust → 23:25 remove）即为例证。
+
+**删除清单**：
+- `RELEASE-v1.53.4-CN.md`（仓库根副本——release 分支已有同名文件，此处属重复）
+- `sources/release-v1-53-4-cn`
+
+**反向引用清理**：
+- `sources/back-757`、`sources/back-758` 移除 Related Sources 中的发布说明行
+- `index.md` Sources 表移除该行（340 条）
+- `overview.md` 删除「发布」bullet、「自定义目录全面生效」bullet 去掉版本号标注；统计 341 → 340
+- `usermanual/60-配置与运维/00-配置管理.md` 自定义目录说明去掉版本号归属（内容保留，事实源自 BACK-757/758 任务页）
+- merge.py 重新合并 manual.md
+
+**历史条目**：23:00 与 23:10 两条 log 条目不动（append-only）。

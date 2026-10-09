@@ -5,7 +5,7 @@ labels:
   - state-machine
   - config
 created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 01:13'
+updated_date: '2026-10-09 22:00'
 ---
 
 # 状态机语义
@@ -55,6 +55,15 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 
 状态机**定义**任务生命周期语义（见 [[concepts/task-lifecycle]]）：category 取代位置约定推导终态（done/dropped 双终态）、wip、actionable；CLI/MCP 的终态判定从 `statusNames()` 末位约定改为按 category 判断。task-execution 指南要求"跟随本项目状态机而非固定序列"，finalization 要求写"机器声明的终态"而非硬编码 Done。M2 预留 `task_edit` 四层校验、MCP 动态资源与教学式报错。
 
+## 终态集的显式化与只读化（BACK-762）
+
+终态集（category 为 done/dropped 的状态）在所有读取路径显式呈现、且只在状态机编辑器可改：
+
+- `backlog config list` 打印 `terminalStatuses: [Done, Dropped] (derived from statuses)` 派生行
+- `GET /api/config` 以 spread 附带 `terminalStatuses`（不挂 config 对象上，防 `handleUpdateConfig` 把它写回 config.yml）；`GET /api/statuses` 返回 `{ statuses, terminalStatuses, defaultStatus }`，前端兼容新旧两种形状
+- 设置页终态多选删除、换只读区块；`serializeConfig` 只写认识的键，测试把 API 返回体 POST 回去证明派生值不落盘
+- 判定 API 分层：`isTerminalStatus(status, rawStatusesConfig)` 吃原始配置自行推导；`isTerminalStatusName(status, resolvedNames)` 吃已解析集合纯比较（BACK-761 的二次推导 bug 促成了这一分层）
+
 ## Related Concepts
 
 - [[concepts/task-lifecycle]] — 状态机定义任务生命周期：双终态、actionable、完成/归档语义
@@ -72,3 +81,5 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 - [[sources/back-716-state-machine-guidance-overviews]] — 静态章节 + describe() 动态注入
 - [[sources/back-717-settings-page-reorder]] — 设置页卡片顺序调整
 - [[sources/back-721-state-machine-localization-guidance]] — 四语言变体与可读性优化
+- [[sources/back-761-terminal-card-actual-end]] — 终态判定 API 分层（isTerminalStatus vs isTerminalStatusName）
+- [[sources/back-762-terminal-statuses-readonly]] — 终态集读取路径显式化与设置页只读化
