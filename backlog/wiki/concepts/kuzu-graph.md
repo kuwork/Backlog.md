@@ -2,7 +2,7 @@
 title: Kuzu 任务图谱
 labels: [concept, graph, kuzu]
 created_date: '2026-09-26 14:45'
-updated_date: '2026-10-07 22:50'
+updated_date: '2026-10-09 22:00'
 ---
 
 # Kuzu 任务图谱
@@ -15,6 +15,7 @@ updated_date: '2026-10-07 22:50'
 - **语义边**：`ParentOf` / `BelongsToMilestone` / `DependsOn`（任务层）；知识层（BACK-714，doc-15 阶段 3）新增机械派生边 `TaggedWith`（frontmatter labels → Tag 节点）、`SourcedFrom`（`source_path` 溯源）、`LinksTo`（正文 `[[wikilink]]` 解析，剥离 alias/heading，唯一命中才成边）
 - **Fail-closed 解析**：悬空/歧义引用进入 `missingDependencies` / `ambiguousIds` / `invalidRelations` 报告，绝不静默丢弃；节点始终入图（`ambiguousIds` 在 `src/graph/relations.ts` 由 `recordsById` 桶推导：同一 ID 被多条记录占据即入报告）
 - 节点类型仅由白名单目录决定（`wiki/`、`docs/`、`decisions/`），不从 frontmatter 推断；`wiki/index.md` 与 `wiki/log.md` 扫描时排除
+- **语料目录跟随配置**（BACK-758）：`scanWhitelistedDirs()` 与 service watcher 的目录拼接经 `resolveBacklogDirectory()` 解析（`.backlog`/自定义路径），未配置回退 `backlog`——此前硬编码字面量使自定义目录项目图谱为空。图数据库本体在全局缓存目录，不受影响（[[sources/back-758-graph-backlog-dir-resolution]]）
 
 ## 后端：MemoryGraphStore 默认
 
@@ -72,6 +73,7 @@ kuzu 0.11.3 原生绑定在 Bun 1.3.14（Windows）下段错误（BACK-702 实�
 - [[sources/back-713-filenode-rename]] — FileNode(path PK) 重命名与自描述版本
 - [[sources/back-714-knowledge-graph-ingest]] — wiki/docs/decisions 入图与 /knowledge 视图
 - [[sources/back-756-graph-canvas-high-dpi]] — 高 DPI 下 canvas 裁剪/批绘/DPR 上限/文本 LOD
+- [[sources/back-758-graph-backlog-dir-resolution]] — 扫描与监听的配置目录解析
 
 ## Related Reasoning
 
