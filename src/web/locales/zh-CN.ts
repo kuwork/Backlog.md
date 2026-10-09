@@ -564,6 +564,14 @@ export const zhCN: TranslationDict = {
 		maxColumnWidth: "最大列宽",
 		maxColumnWidthDesc: "CLI 输出中文本列的最大宽度",
 		taskResolutionDesc: "当任务存在于多个分支时的冲突解决策略",
+		crossBranchTasks: "跨分支任务",
+		crossBranchTasksDesc:
+			"在看板、任务列表和搜索中包含其他活跃分支的任务。默认关闭：只显示当前分支可编辑的任务。是否扫描其他分支由下面的「检查活跃分支」单独控制。",
+		checkActiveBranches: "检查活跃分支",
+		checkActiveBranchesDesc:
+			"启动时扫描其他本地分支并索引其任务。关闭后任务 ID 分配也只按当前分支计算，新 ID 可能与其他分支撞号。",
+		activeBranchDays: "活跃分支天数",
+		activeBranchDaysDesc: "分支在多少天内被视为活跃并纳入扫描（默认 30）",
 		zeroPaddedIds: "ID 补零",
 		zeroPaddedIdsDesc: "ID 补零位数（0 = 禁用，3 = task-001，4 = task-0001）",
 		taskPrefix: "任务前缀",

@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-08 15:54'
-updated_date: '2026-10-08 17:18'
+updated_date: '2026-10-08 18:22'
 labels:
   - cli
   - web-ui
@@ -218,12 +218,15 @@ server falls back to config only when the parameter is absent.
   only visible from a branch that lags.
 - `bunx tsc --noEmit` clean; `bunx biome check` clean on all eight touched files.
 
-### Not done: no UI toggle
+### UI toggle: done in BACK-760
 
-The key is now real configuration, but the Web UI still has no switch for it — `src/web/components/
-InitializationScreen.tsx` is the only place that renders `checkActiveBranches`, and it is an init-time
-screen rather than a settings page. Editing `backlog/config.yml` is currently the only way to flip it.
-Worth its own task if a toggle is wanted.
+The key is now real configuration, but at the end of this task the Web UI still had no switch for it —
+`src/web/components/InitializationScreen.tsx` was the only place rendering `checkActiveBranches`, and it
+is an init-time screen rather than a settings page. Editing `backlog/config.yml` was the only way to flip
+it. **BACK-760 covers this**: the Advanced Settings card now carries Cross-Branch Tasks
+(`includeCrossBranch`), Check Active Branches (`checkActiveBranches`) and Active Branch Days
+(`activeBranchDays`). Note that saving there is explicit — the controls mutate form state and require
+**Save Changes**; the server re-reads the yml per request, so no restart is needed afterwards.
 
 ### Observed, not addressed
 
@@ -253,4 +256,5 @@ Second part — cross-branch visibility is now real configuration instead of sca
 - The rule lives in one exported pure function, `resolveCrossBranchVisibility`, so both HTTP surfaces cannot drift apart.
 - Search filtering happens at query time against the shared corpus — the corpus itself is still built cross-branch, so turning the setting on needs no reload.
 - Measured from a throwaway worktree at v1.52.0-CN: `task list` 400 rows (unset) → 445 rows (`include_cross_branch: true`).
+- The setting got its UI switch one task later, in BACK-760 (Advanced Settings → Cross-Branch Tasks, plus Check Active Branches and Active Branch Days).
 <!-- SECTION:FINAL_SUMMARY:END -->

@@ -576,6 +576,14 @@ export const en = {
 		maxColumnWidth: "Max Column Width",
 		maxColumnWidthDesc: "Maximum width for text columns in CLI output",
 		taskResolutionDesc: "Strategy for resolving conflicts when tasks exist in multiple branches",
+		crossBranchTasks: "Cross-Branch Tasks",
+		crossBranchTasksDesc:
+			"Include tasks from other active branches in the board, the task list and search. Off by default: only tasks editable in this branch are shown. Whether other branches are scanned at all is a separate switch below.",
+		checkActiveBranches: "Check Active Branches",
+		checkActiveBranchesDesc:
+			"Scan other local branches at startup and index their tasks. Turning this off also narrows task ID allocation to this branch, so new IDs may collide with those on other branches.",
+		activeBranchDays: "Active Branch Days",
+		activeBranchDaysDesc: "How many days a branch stays active and gets scanned (default: 30)",
 		zeroPaddedIds: "Zero-Padded IDs",
 		zeroPaddedIdsDesc: "Number of digits for ID padding (0 = disabled, 3 = task-001, 4 = task-0001)",
 		taskPrefix: "Task Prefix",

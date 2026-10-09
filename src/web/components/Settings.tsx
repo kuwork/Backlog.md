@@ -607,6 +607,69 @@ const Settings: React.FC = () => {
 							</div>
 
 							<div>
+								<label className="flex items-center justify-between">
+									<div>
+										<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+											{t.settings.crossBranchTasks}
+										</span>
+										<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.settings.crossBranchTasksDesc}</p>
+									</div>
+									<div className="relative inline-flex items-center cursor-pointer">
+										<input
+											type="checkbox"
+											checked={config.includeCrossBranch ?? false}
+											onChange={(e) => handleInputChange("includeCrossBranch", e.target.checked)}
+											className="sr-only peer"
+										/>
+										<div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-circle peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-circle after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500" />
+									</div>
+								</label>
+							</div>
+
+							<div>
+								<label className="flex items-center justify-between">
+									<div>
+										<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+											{t.settings.checkActiveBranches}
+										</span>
+										<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+											{t.settings.checkActiveBranchesDesc}
+										</p>
+									</div>
+									<div className="relative inline-flex items-center cursor-pointer">
+										<input
+											type="checkbox"
+											checked={config.checkActiveBranches !== false}
+											onChange={(e) => handleInputChange("checkActiveBranches", e.target.checked)}
+											className="sr-only peer"
+										/>
+										<div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-circle peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-circle after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500" />
+									</div>
+								</label>
+							</div>
+
+							{config.checkActiveBranches !== false && (
+								<div>
+									<label
+										htmlFor="activeBranchDays"
+										className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									>
+										{t.settings.activeBranchDays}
+									</label>
+									<input
+										id="activeBranchDays"
+										type="number"
+										min="1"
+										max="365"
+										value={config.activeBranchDays ?? 30}
+										onChange={(e) => handleInputChange("activeBranchDays", Number.parseInt(e.target.value, 10) || 30)}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200"
+									/>
+									<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.settings.activeBranchDaysDesc}</p>
+								</div>
+							)}
+
+							<div>
 								<label
 									htmlFor="zeroPaddedIds"
 									className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"

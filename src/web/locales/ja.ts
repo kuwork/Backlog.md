@@ -577,6 +577,14 @@ export const ja: TranslationDict = {
 		maxColumnWidth: "最大列幅",
 		maxColumnWidthDesc: "CLI 出力のテキスト列の最大幅",
 		taskResolutionDesc: "タスクが複数のブランチに存在する場合の競合解決戦略",
+		crossBranchTasks: "他ブランチのタスク",
+		crossBranchTasksDesc:
+			"ボード・タスク一覧・検索に他のアクティブブランチのタスクを含めます。既定はオフで、このブランチで編集できるタスクのみ表示されます。他のブランチをスキャンするかは下の「アクティブブランチをチェック」で別に制御します。",
+		checkActiveBranches: "アクティブブランチをチェック",
+		checkActiveBranchesDesc:
+			"起動時に他のローカルブランチをスキャンしてタスクを索引します。オフにするとタスク ID の採番もこのブランチのみになり、他ブランチと ID が衝突する可能性があります。",
+		activeBranchDays: "アクティブブランチ日数",
+		activeBranchDaysDesc: "ブランチがアクティブとしてスキャン対象になる日数（既定: 30）",
 		zeroPaddedIds: "ゼロ埋め ID",
 		zeroPaddedIdsDesc: "ID のゼロ埋め桁数（0 = 無効、3 = task-001、4 = task-0001）",
 		taskPrefix: "タスクプレフィックス",
