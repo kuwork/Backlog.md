@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: '2026-05-10 00:00'
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-09 22:00'
 ---
 
 # Web UI 功能
@@ -31,6 +31,7 @@ updated_date: '2026-09-26 14:45'
 - **跨分支任务列排序菜单**：列含跨分支任务时仍显示本地排序菜单（ID/标题/优先级），仅隐藏会修改 ordinal 的「Apply Priority Order」按钮（BACK-512）
 - **创建日期排序**：列菜单新增按创建日期排序（升/降），复用 `parseStoredUtcDate` 比较，缺失/无效日期排末尾、ID 决胜（BACK-541）
 - **隐藏空状态列**：`hideEmptyColumns` 配置（默认 false）开启后，无任务的状态列隐藏；拖拽中保持全部状态可见以作有效放置目标（BACK-549）
+- **终态卡片 actualEnd 时间戳**（BACK-761）：终态卡片 footer assignee 右侧显示 `actualEnd`（本地 `M/D HH:mm`，跨年显全年，hover 规范 UTC）；终态集合由 `getTerminalStatuses` 配置派生并经 `isTerminalStatusName` 判定——对已解析的名字集合纯比较、不二次推导（二次推导曾使 Done 卡片静默丢戳）
 
 ### 所有任务（All Tasks）
 - 表格布局
@@ -86,6 +87,8 @@ updated_date: '2026-09-26 14:45'
 - Web UI 主题自定义
 - **语言切换**：英语 / 日语 / 简体中文 / 繁体中文
 - **Locale 切换防覆盖**：`App.tsx` 仅在首次加载时从服务器同步 locale，避免后台数据刷新覆盖用户手动选择（BACK-503）
+- **Advanced Settings 跨分支三控件**（BACK-760）：Cross-Branch Tasks（`includeCrossBranch`，默认关）、Check Active Branches（`checkActiveBranches`，默认开）、Active Branch Days（`activeBranchDays`，默认 30，仅扫描开时渲染）——扫描与展示是两个独立轴，文案写明关闭扫描会收窄 ID 分配候选集。保存显式（Save Changes），保存后每请求重读 yml 即时生效
+- **终态集只读呈现**（BACK-762）：原 "terminal status" 多选删除（它曾悄悄改写各列 `category`，与状态机编辑器形成第二写入口），换成只读区块展示派生集合并指向状态机编辑器；派生值经 `/api/config` spread 返回、绝不写回 config.yml
 
 ## 全局搜索对话框（BACK-624）
 
@@ -286,3 +289,7 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - [[sources/back-710-task-modal-relationship-graph]] — BACK-710 模态关系图与 graphVersion 刷新
 - [[sources/back-711-modal-graph-alignment]] — BACK-711 共享 GraphLegend
 - [[sources/back-714-knowledge-graph-ingest]] — BACK-714 /knowledge 知识图谱视图
+- [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 看板/列表的跨分支可见性配置
+- [[sources/back-760-cross-branch-settings-toggles]] — BACK-760 设置页跨分支三控件
+- [[sources/back-761-terminal-card-actual-end]] — BACK-761 终态卡片 actualEnd 时间戳
+- [[sources/back-762-terminal-statuses-readonly]] — BACK-762 终态集只读呈现
