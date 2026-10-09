@@ -2906,6 +2906,7 @@ Web 界面的加载反馈分为两层（BACK-668/669/670）：
 
 - **头部**：日历图标 + `plannedStart ~ plannedEnd` 计划日期范围。当年份与当前年一致时自动省略年份，减少视觉噪音。
 - **脚部**：时钟图标 + `dueDate` 截止日期，紧邻相对创建时间显示。
+- **完成时间**：处于终态（如 Done）且有 `actualEnd` 的卡片，在脚部负责人右侧显示实际完成时间（本地时间 `M/D HH:mm`，跨年显全年；鼠标悬停显示存储的 UTC 值）（BACK-761）。
 - **逾期高亮**：当任务未处于终端状态（Done / Cancelled）且截止日期已过时，`dueDate` 以红色高亮显示（`text-red-600 dark:text-red-400 font-semibold`）。
 
 ### 116.1.11 打开任务详情
@@ -3341,6 +3342,7 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 - **Web 服务器端口**：`defaultPort` 与自动端口开关（端口被占用时自动改用后续可用端口）
 - **隐藏空状态列（`hideEmptyColumns`）**：开启后看板隐藏无任务的状态列，减少视觉杂乱；拖拽任务期间所有状态列保持可见以便放置
 - **自动打开浏览器（`autoOpenBrowser`）**
+- **Advanced Settings 跨分支三开关**（BACK-760）：Task Resolution Strategy 下方依次是 Cross-Branch Tasks（`includeCrossBranch`，默认关——扫描到的其他分支任务是否进入看板/任务列表/搜索）、Check Active Branches（`checkActiveBranches`，默认开——是否扫描其他本地分支，同时决定任务 ID 分配的候选分支集）与 Active Branch Days（`activeBranchDays`，默认 30 天，仅扫描开关打开时显示）
 - Git 相关选项（详见[配置管理](../60-配置与运维/00-配置管理.md)）
 
 点击需要修改的配置项，在输入框中输入新值，修改完成后点击「保存」按钮。配置变更会立即写回项目配置文件，部分设置（如端口）在重启 `backlog browser` 后生效。
@@ -3363,6 +3365,8 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 - **Default**：用内置的七列默认状态机整体替换当前配置（相当于恢复出厂值）
 
 状态机**只声明、不强制**：编辑器可以展示 lint 警告，但不会阻止保存；保存后服务端广播 `config-updated`，看板列与终态判定立即刷新。AI 侧的三份 overview（CLI `backlog instructions overview`、MCP 资源与指令工具）会自动渲染同一份状态机，代理按声明的机器工作。状态机的语义详见[任务生命周期](../10-任务管理/00-任务生命周期.md)。
+
+**终态集合由状态机派生、仅此一处可改**（BACK-762）：设置页曾有一个 "terminal status" 多选，但它并不存储列表、而是悄悄改写各状态的 `category`——与状态机编辑器写同一字段造成混乱。现在设置页只以只读区块展示派生的终态集合（如 `Done`、`Dropped`）并注明来源；`backlog config list` 也会打印 `terminalStatuses: [Done, Dropped] (derived from statuses)`。要增删终态，请在上方状态机编辑器中修改对应状态的 `category`。
 
 ### 116.5.4 编辑 Definition of Done 默认值
 
@@ -4915,6 +4919,8 @@ backlog config list --plain
 
 `--plain` 被 overview 指引列为读取实时配置的标准方式（BACK-719）：输出本就是纯文本，该标志被接受是为了让按统一习惯附加 `--plain` 的代理调用不会因 "unknown option" 而失败。
 
+`config list` 在 `statuses` 行之后还会打印一行派生的终态集合，例如 `terminalStatuses: [Done, Dropped] (derived from statuses)`（BACK-762）。终态由状态机中各列的 `category`（`done` / `dropped`）派生，只是只读呈现，不是可设置的配置键——要调整终态请在状态机编辑器中修改对应状态的 `category`。
+
 查看单个配置项：
 
 ```bash
@@ -5036,11 +5042,14 @@ backlog config set defaultEditor nvim
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `checkActiveBranches` | 布尔值 | `true` | 是否检查活跃分支中的任务状态 |
+| `checkActiveBranches` | 布尔值 | `true` | 是否扫描其他本地活跃分支 |
+| `includeCrossBranch` | 布尔值 | 未设置（本地优先） | 扫描结果是否进入看板、任务列表与搜索 |
 | `remoteOperations` | 布尔值 | `true` | 是否检查远程分支中的任务 |
 | `activeBranchDays` | 整数 | `30` | 分支被视为活跃的天数上限 |
 
 启用 `checkActiveBranches` 后，Backlog.md 会在加载任务时检查其他本地和远程分支，确保跨分支的任务状态准确。这在大型仓库中可能影响性能，可通过减小 `activeBranchDays` 来加速。
+
+`includeCrossBranch`（对应 `config.yml` 的 `include_cross_branch`，BACK-759）控制**展示**：开启后看板、任务列表与搜索会纳入只存在于其他分支的任务；未设置时保持本地优先（历史 CLI 行为）。它与 `checkActiveBranches` 是两个独立轴——后者管"是否扫描"（并决定任务 ID 分配的候选分支集），前者管"扫描结果是否展示"。关闭扫描会同时收窄 ID 分配候选集，请配合 `activeBranchDays` 理解代价。两个开关都可以在 Web 设置页的 Advanced Settings 卡片中找到（BACK-760），保存后立即生效无需重启。
 
 `remoteOperations` 依赖于 `checkActiveBranches`，当后者关闭时，前者自动失效。
 
@@ -5105,7 +5114,9 @@ Backlog.md 按以下优先级查找配置文件：
 1. `backlog/config.yml`
 2. `backlog.config.yml`（项目根目录）
 
-推荐使用 `backlog/config.yml`，这样配置与任务、文档等项目数据集中存放，便于备份和迁移。当使用 `backlog.config.yml` 时，可通过 `backlogDirectory` 项指定 backlog 文件夹的相对路径。
+推荐使用 `backlog/config.yml`，这样配置与任务、文档等项目数据集中存放，便于备份和迁移。当使用 `backlog.config.yml` 时，可通过 `backlogDirectory` 项指定 backlog 文件夹的相对路径（如 `.backlog`）。
+
+> **自定义 backlog 目录全面生效**（BACK-757/758）：memo 存储与图谱扫描/监听此前把目录名硬编码为 `backlog`，在 `.backlog` 等自定义目录项目下会读写/监听错误路径、图谱为空；现已统一解析配置目录。若你此前在自定义目录项目中使用过 memo，旧数据仍在你的 `backlog-dir/memos` 下、现在能被正确识别；若根下误建了空的 `backlog/memos` 可手动删除。重跑 `backlog init` 也会补建缺失的 `memos/`、`docs/` 等目录。
 
 配置文件的 YAML 格式示例：
 
@@ -5122,6 +5133,7 @@ labels:
   - docs
 dateFormat: "YYYY-MM-DD"
 checkActiveBranches: true
+include_cross_branch: false
 remoteOperations: true
 activeBranchDays: 30
 autoCommit: false

@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-10-07 22:50'
+updated_date: '2026-10-09 22:00'
 ---
 
 
@@ -349,6 +349,12 @@ Read this file FIRST on any wiki operation.
 | [[sources/doc-21-upstream-v1-52-0-to-v1-53-0-migration-diff-classification]] | doc-21 - Upstream v1.52.0 to v1.53.0 Migration Diff Classification | source, migration, cli |
 | [[sources/doc-22-upstream-v1-52-0-to-v1-53-0-migration-analysis-by-domain]] | doc-22 - v1.52.0 至 v1.53.0 上游任务迁移分析报告（按领域） | source, migration, cli |
 | [[sources/m-10-memos-integration]] | m-10 Memos Integration 里程碑 | source, milestone, memos |
+| [[sources/back-757-memo-backlog-dir-resolution]] | BACK-757 memo 存储解析配置 backlog 目录与 re-init 补建结构 | source, memos, bug, cli |
+| [[sources/back-758-graph-backlog-dir-resolution]] | BACK-758 图谱扫描/监听解析配置 backlog 目录 | source, graph, kuzu, bug |
+| [[sources/back-759-cross-branch-prefix-visibility]] | BACK-759 跨分支加载前缀转发与 include_cross_branch 配置 | source, core, cli, web-ui, config |
+| [[sources/back-760-cross-branch-settings-toggles]] | BACK-760 设置页跨分支可见性三开关 | source, web-ui, config |
+| [[sources/back-761-terminal-card-actual-end]] | BACK-761 终态看板卡片显示 actualEnd 完成时间 | source, web-ui, dates |
+| [[sources/back-762-terminal-statuses-readonly]] | BACK-762 终态集读取路径显式化与设置页只读化 | source, config, web-ui, cli |
 
 ## Execution Notes
 
@@ -380,6 +386,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/cdp-live-verification]] | headless Chrome CDP 实况验证 | 用 Chrome DevTools Protocol 对 Web UI 做端到端实况验证 |
 | [[execution/two-list-paging-models-wiring]] | 两套列表分页模型的接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
 | [[execution/webgl-html-overlay-hover-control]] | WebGL canvas 上挂 HTML 控件的模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
+| [[execution/custom-backlog-dir-rollout-audit]] | 配置目录（backlog-dir）推广时的硬编码路径审计模式 | 症状归族→grep 字面量→纯模块直调解析函数→每处 .backlog 种子回归用例，BACK-757/758 提炼 |
 
 ## Decisions
 
@@ -461,6 +468,10 @@ Read this file FIRST on any wiki operation.
 | [[decisions/board-hover-archive-overlay]] | 钉板归档按钮用 hover-only HTML overlay | BACK-747 指针追踪挂容器层、按钮内缩，常驻显示被否决 |
 | [[decisions/memo-archive-rename-not-rewrite]] | Memo 归档用 verbatim rename 而非重写 | BACK-747 逐字节移动天然可逆，拒绝覆盖目标，无取消归档 |
 | [[decisions/init-memos-dirs-symmetric]] | init 对称创建 backlog/memos 与 archive/memos | BACK-747 目录清单完整契约优先于按需创建 |
+| [[decisions/backlog-dir-single-resolution]] | 全部产物面统一经 resolveBacklogDirectory() 解析配置目录 | BACK-757/758 拒绝每处自写发现逻辑、纯模块直接调解析函数 |
+| [[decisions/cross-branch-config-default-param-override]] | 跨分支可见性：配置为默认、URL 参数为覆盖 | BACK-759 裁决收敛到纯函数 resolveCrossBranchVisibility，前端不再强制加参 |
+| [[decisions/scan-show-two-axes]] | 扫描与展示是两个轴：include_cross_branch 不得停止扫描 | BACK-760 扫描归 check_active_branches，否则默认禁用跨分支加载、ID 分配回退 |
+| [[decisions/terminal-set-derived-not-stored]] | 终态集是派生值：读取路径显式呈现、绝不落盘、唯一写入口是状态机编辑器 | BACK-762 拒绝设置页多选写 category 与独立配置键双写 |
 
 ## Concepts
 
@@ -596,6 +607,7 @@ _No comparisons created yet._
 | [[developer-notes/security-gotchas]] | 安全检查清单 | 路径遍历防护、SSRF 防护、文件大小限制、新增 API 安全自检 |
 | [[developer-notes/DEVELOPMENT-GUIDE]] | 开发指引 | Bun + TypeScript + Biome 技术栈开发标准与工作流 |
 | [[developer-notes/npm-publish-guide]] | npm 发布流程指南 | Fork 后发布 scoped 包到 npm 的完整流程与版本号陷阱 |
+| [[developer-notes/github-actions-release-gotchas]] | GitHub CI 发布注意事项 | 标签触发的自动发布链路、版本号烧号规则、失败后的处置路径 |
 
 ## Reports
 
