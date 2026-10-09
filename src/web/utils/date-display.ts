@@ -63,6 +63,33 @@ export function storedUtcToDateTimeLocal(dateStr: string): string {
 	return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+/**
+ * The compact stamp a card footer shows: `M/D` (or `YYYY/M/D` when the value is not from the current
+ * year), with `HH:mm` appended when the stored value carries a time.
+ *
+ * A stored datetime is UTC, so its day and clock are read after conversion; a date-only value names
+ * its own calendar day and is read from its digits, so no offset can shift it to the day before. The
+ * canonical UTC value stays on hover whenever there is a time to name — the rule every other date on
+ * the card follows.
+ */
+export function formatStoredUtcShortStamp(dateStr: string, now: Date = new Date()): StoredDateDisplay {
+	const normalized = dateStr.trim();
+	const parsed = parseStoredUtcDate(normalized);
+	if (!parsed) return { text: normalized };
+
+	const timed = DATE_TIME_REGEX.test(normalized);
+	const year = timed ? parsed.getFullYear() : Number.parseInt(normalized.slice(0, 4), 10);
+	const month = timed ? parsed.getMonth() + 1 : Number.parseInt(normalized.slice(5, 7), 10);
+	const day = timed ? parsed.getDate() : Number.parseInt(normalized.slice(8, 10), 10);
+	const datePart = year === now.getFullYear() ? `${month}/${day}` : `${year}/${month}/${day}`;
+
+	if (!timed) return { text: datePart, title: storedUtcHoverTitle(normalized) };
+
+	const hours = String(parsed.getHours()).padStart(2, "0");
+	const minutes = String(parsed.getMinutes()).padStart(2, "0");
+	return { text: `${datePart} ${hours}:${minutes}`, title: storedUtcHoverTitle(normalized) };
+}
+
 export function formatStoredUtcDateForCompactDisplay(dateStr: string, now: Date = new Date()): StoredDateDisplay {
 	const normalized = dateStr.trim();
 	if (!normalized) return { text: "—" };

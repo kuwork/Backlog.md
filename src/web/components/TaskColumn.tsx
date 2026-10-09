@@ -20,7 +20,8 @@ interface TaskColumnProps {
 	onCleanup?: () => void;
 	laneId?: string;
 	targetMilestone?: string | null;
-	terminalStatus?: string | null;
+	/** Every terminal status the project declares (config-driven, not a fixed "Done"). */
+	terminalStatuses?: string[];
 	labelColors?: Record<string, string>;
 	selectedTaskIds?: string[];
 	selectionAnchorId?: string | null;
@@ -47,7 +48,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 	onCleanup,
 	laneId,
 	targetMilestone,
-	terminalStatus,
+	terminalStatuses,
 	labelColors,
 	selectedTaskIds,
 	selectionAnchorId,
@@ -540,7 +541,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 							}}
 							status={title}
 							laneId={laneId}
-							terminalStatus={terminalStatus}
+							terminalStatuses={terminalStatuses}
 							labelColors={labelColors}
 						/>
 

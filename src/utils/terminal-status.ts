@@ -40,3 +40,20 @@ export function isTerminalStatus(status: string | null | undefined, statuses: St
 		(terminal) => normalizeStatusForComparison(status) === normalizeStatusForComparison(terminal),
 	);
 }
+
+/**
+ * Membership test against a terminal list that was **already derived**.
+ *
+ * {@link isTerminalStatus} takes a raw `statuses` config and derives the terminal set itself; handing
+ * it a derived list makes it derive twice, and the second pass reads `["Done", "Dropped"]` as a
+ * two-column machine whose last column is the only terminal one — so `Done` stops matching. Anything
+ * that received the set rather than the config uses this instead.
+ */
+export function isTerminalStatusName(
+	status: string | null | undefined,
+	terminalNames: readonly (string | null | undefined)[] | null | undefined,
+): boolean {
+	return (terminalNames ?? []).some(
+		(terminal) => normalizeStatusForComparison(status) === normalizeStatusForComparison(terminal),
+	);
+}

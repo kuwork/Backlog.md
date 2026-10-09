@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Milestone, StatusesConfig, Task } from "../../types";
 import { collectAvailableLabels, labelsToLower } from "../../utils/label-filter";
-import { getTerminalStatus } from "../../utils/terminal-status";
+import { getTerminalStatus, getTerminalStatuses } from "../../utils/terminal-status";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, type ReorderTaskPayload } from "../lib/api";
 import {
@@ -112,6 +112,9 @@ const Board: React.FC<BoardProps> = ({
 	// Prefer the raw config so `Done` (category done / exit complete) is found even though `Dropped`
 	// is the last column; a name list would only ever name the last one.
 	const terminalStatus = getTerminalStatus(statusesConfig ?? statuses);
+	// Cards need the whole set, not just the "complete" one: a project may declare more than one
+	// terminal status, and which one a task reached is a config question, never a fixed name.
+	const terminalStatuses = getTerminalStatuses(statusesConfig ?? statuses);
 	const archivedMilestoneIds = useMemo(
 		() => collectArchivedMilestoneKeys(archivedMilestones, milestoneEntities),
 		[archivedMilestones, milestoneEntities],
@@ -986,7 +989,7 @@ const Board: React.FC<BoardProps> = ({
 														onDragStart={handleColumnDragStart}
 														onDragEnd={handleColumnDragEnd}
 														onCleanup={status === terminalStatus ? () => setShowCleanupModal(true) : undefined}
-														terminalStatus={terminalStatus}
+														terminalStatuses={terminalStatuses}
 														labelColors={labelColors}
 														{...selectionProps}
 													/>
@@ -1017,7 +1020,7 @@ const Board: React.FC<BoardProps> = ({
 									onDragStart={handleColumnDragStart}
 									onDragEnd={handleColumnDragEnd}
 									onCleanup={status === terminalStatus ? () => setShowCleanupModal(true) : undefined}
-									terminalStatus={terminalStatus}
+									terminalStatuses={terminalStatuses}
 									labelColors={labelColors}
 									{...selectionProps}
 								/>

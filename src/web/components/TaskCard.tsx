@@ -1,7 +1,8 @@
 import React from "react";
 import type { Task } from "../../types";
+import { isTerminalStatusName } from "../../utils/terminal-status.ts";
 import { useI18n } from "../hooks/useI18n";
-import { storedUtcHoverTitle } from "../utils/date-display";
+import { formatStoredUtcShortStamp, storedUtcHoverTitle } from "../utils/date-display";
 import { getLabelColorClasses } from "../utils/labelColors";
 import AcceptanceCriteriaProgress from "./AcceptanceCriteriaProgress";
 import CompletedBadge from "./CompletedBadge";
@@ -14,7 +15,8 @@ interface TaskCardProps {
 	onDragEnd?: () => void;
 	status?: string;
 	laneId?: string;
-	terminalStatus?: string | null;
+	/** Every terminal status the project declares (config-driven, not a fixed "Done"). */
+	terminalStatuses?: string[];
 	labelColors?: Record<string, string>;
 	isSelected?: boolean;
 	selectionCount?: number;
@@ -199,7 +201,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 	onDragEnd,
 	status,
 	laneId,
-	terminalStatus,
+	terminalStatuses = [],
 	labelColors,
 	isSelected = false,
 	selectionCount = 0,
@@ -217,9 +219,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
 	// status column, so they follow the cross-branch treatment for dragging.
 	const isFromCompletedCorpus = task.source === "completed";
 
+	// Terminal is whatever the project's state machine declares, so nothing here assumes a name
+	// like "Done"; it drives both the due-date risk styling and the actual-end stamp.
+	const isTerminal = isTerminalStatusName(task.status, terminalStatuses);
+
 	// Compute due-date risk border class
 	let dueDateRiskClass = "";
-	if (task.dueDate && task.status !== "Done") {
+	if (task.dueDate && !isTerminal) {
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 		const due = new Date(`${task.dueDate}T00:00:00`);
@@ -447,16 +453,18 @@ const TaskCard: React.FC<TaskCardProps> = ({
 				{/* Labels - width-aware overflow */}
 				{task.labels.length > 0 && <WidthAwareLabels labels={task.labels} labelColors={labelColors} />}
 
-				{/* Footer with due date, created date, and assignee */}
+				{/* Footer with due date, created date, assignee, and — once the task is terminal — when
+            it actually ended. The two right-hand items share one group so the stamp still sits
+            hard right when there is no assignee. */}
 				<div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-600/50 transition-colors duration-200">
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2 min-w-0">
 						<span title={storedUtcHoverTitle(task.createdDate)}>{formatRelativeDate(task.createdDate)}</span>
 						{task.dueDate &&
 							(() => {
 								const today = new Date();
 								today.setHours(0, 0, 0, 0);
 								const due = new Date(`${task.dueDate}T00:00:00`);
-								const isOverdue = due < today && task.status !== terminalStatus;
+								const isOverdue = due < today && !isTerminal;
 								return (
 									<span
 										className={`flex items-center gap-1 ${isOverdue ? "text-red-600 dark:text-red-400 font-semibold" : ""}`}
@@ -480,11 +488,23 @@ const TaskCard: React.FC<TaskCardProps> = ({
 								);
 							})()}
 					</div>
-					{task.assignee.length > 0 && (
-						<span className="truncate max-w-[80px]" title={task.assignee.join(", ")}>
-							{task.assignee[0]}
-						</span>
-					)}
+					<div className="flex items-center gap-2 min-w-0">
+						{task.assignee.length > 0 && (
+							<span className="truncate max-w-[80px]" title={task.assignee.join(", ")}>
+								{task.assignee[0]}
+							</span>
+						)}
+						{isTerminal &&
+							task.actualEnd &&
+							(() => {
+								const stamp = formatStoredUtcShortStamp(task.actualEnd);
+								return (
+									<span className="shrink-0" title={stamp.title}>
+										{stamp.text}
+									</span>
+								);
+							})()}
+					</div>
 				</div>
 			</button>
 		</div>

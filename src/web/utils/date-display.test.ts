@@ -3,6 +3,7 @@ import {
 	dateTimeLocalToStoredUtc,
 	formatStoredUtcDateForCompactDisplay,
 	formatStoredUtcDateForDisplay,
+	formatStoredUtcShortStamp,
 	parseStoredUtcDate,
 	storedUtcHoverTitle,
 	storedUtcToDateTimeLocal,
@@ -100,6 +101,39 @@ describe("formatStoredUtcDateForCompactDisplay", () => {
 	it("handles missing and invalid values gracefully", () => {
 		expect(formatStoredUtcDateForCompactDisplay("", now)).toEqual({ text: "—" });
 		expect(formatStoredUtcDateForCompactDisplay("not-a-date", now)).toEqual({ text: "not-a-date" });
+	});
+});
+
+describe("formatStoredUtcShortStamp", () => {
+	const now = new Date(2026, 6, 1); // local 1 Jul 2026
+
+	it("drops the year when the stamp falls in the current year, and reads the clock locally", () => {
+		const parsed = parseStoredUtcDate("2026-06-15 12:00");
+		if (!parsed) throw new Error("expected parse");
+		const clock = `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`;
+		expect(formatStoredUtcShortStamp("2026-06-15 12:00", now)).toEqual({
+			text: `${parsed.getMonth() + 1}/${parsed.getDate()} ${clock}`,
+			title: "2026-06-15 12:00 (UTC)",
+		});
+	});
+
+	it("keeps the year when the stamp falls in another year", () => {
+		const parsed = parseStoredUtcDate("2019-06-15 12:00");
+		if (!parsed) throw new Error("expected parse");
+		const clock = `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`;
+		expect(formatStoredUtcShortStamp("2019-06-15 12:00", now).text).toBe(
+			`2019/${parsed.getMonth() + 1}/${parsed.getDate()} ${clock}`,
+		);
+	});
+
+	it("renders a date-only value without a clock and without shifting its day", () => {
+		expect(formatStoredUtcShortStamp("2026-02-09", now)).toEqual({ text: "2/9" });
+		expect(formatStoredUtcShortStamp("2019-02-09", now)).toEqual({ text: "2019/2/9" });
+	});
+
+	it("passes empty and unparsable values through", () => {
+		expect(formatStoredUtcShortStamp("", now)).toEqual({ text: "" });
+		expect(formatStoredUtcShortStamp("not-a-date", now)).toEqual({ text: "not-a-date" });
 	});
 });
 
