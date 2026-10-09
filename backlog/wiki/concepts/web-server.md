@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-09 22:00'
 ---
 
 
@@ -54,6 +54,12 @@ RESTful API 按资源组织：
 | 图谱 | `/api/graph` | GET（`{status, backend, nodes, edges, reports, nodeCount}`；首次导入 `building`，他人持锁 503） |
 | 任务依赖 | `/api/task/:id/dependencies` | GET |
 | Word 转换 | `/api/docx/convert` | POST |
+
+### 派生值与可见性裁决（BACK-759/762）
+
+- `GET /api/config` 返回 `{ ...config, terminalStatuses }`——派生值用 spread 附带，绝不挂到 config 对象上（`handleUpdateConfig` 会把收到的对象整体 `saveConfig`，挂上即被写回 config.yml）
+- `GET /api/statuses` 返回 `{ statuses, terminalStatuses, defaultStatus }`（defaultStatus 回退机器 initialStatus 再到首列；设置 `default_status` 时恒赢）；前端 `fetchStatuses()` 兼容旧 `string[]` 形状
+- `/api/tasks` 与 `/api/search` 的 `crossBranch` 参数缺省时回退 `include_cross_branch` 配置，裁决规则在导出的纯函数 `resolveCrossBranchVisibility` 中，两个面共用
 
 ## 实时同步
 
@@ -128,3 +134,5 @@ RESTful API 按资源组织：
 - [[sources/back-698-web-in-place-refresh]] — BACK-698 原地刷新 reconcileById
 - [[sources/back-700-content-entity-broadcast-refresh]] — BACK-700 内容实体广播 scope
 - [[sources/back-703-graph-incremental-sync]] — BACK-703 /api/graph 与 graph-updated 推送
+- [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 resolveCrossBranchVisibility 与 /api/search 过滤
+- [[sources/back-762-terminal-statuses-readonly]] — BACK-762 /api/config 与 /api/statuses 形状

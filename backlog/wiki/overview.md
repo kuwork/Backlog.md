@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-10-07 22:50'
+updated_date: '2026-10-09 22:00'
 ---
 
 # Knowledge Base Overview
@@ -162,6 +162,13 @@ updated_date: '2026-10-07 22:50'
 - **父任务视图纳入已完成子任务**（BACK-755）：`getTaskWithSubtasks` 拓宽为 active + completed（`mergeCompletedIntoActive`），修复已完成子任务在父视图消失；约 100 个文件仍用旧 `task-` 前缀为范围外
 - **图谱 canvas 高 DPI 渲染加速**（BACK-756）：视口裁剪 + 按 (dash,alpha)/(style,alpha) 批绘 + `MAX_DPR=2` 限制 + 文本 LOD 三阶段（`textStage`）+ 手势快照，高 DPI 屏上大幅降低重绘开销
 
+### 本波增量（BACK-757~762，2026-10-08~09）
+- **自定义目录全面生效**（BACK-757/758）：memo 存储与图谱扫描/监听此前硬编码 `"backlog"` 目录名，`.backlog` 项目下 watcher ENOENT、读写落错目录、图谱为空；现统一经 `resolveBacklogDirectory()` 解析，重跑 `backlog init` 补建缺失 `memos/`、`docs/`。全仓产物面（tasks/docs/decisions/memos/graph）至此全部尊重配置目录（见 [[decisions/backlog-dir-single-resolution]]、[[execution/custom-backlog-dir-rollout-audit]]）
+- **跨分支加载前缀修复**（BACK-759）：`extractConfiguredTaskId` 未转发配置前缀，自定义 `task_prefix` 项目分支索引恒空、跨分支整体静默失效（本仓实测索引 0→2418、语料 400→444），任务 ID 分配连带撞号（BACK-715 撞 main 已占号）；一行修复 + 非默认前缀回归 fixture
+- **跨分支可见性配置化**（BACK-759/760）：`include_cross_branch` 成为真实配置（默认 local-first），`crossBranch` 参数为显式覆盖，裁决收敛纯函数 `resolveCrossBranchVisibility`；设置页 Advanced Settings 暴露 Cross-Branch Tasks / Check Active Branches / Active Branch Days 三开关，扫描与展示分两轴（见 [[decisions/cross-branch-config-default-param-override]]、[[decisions/scan-show-two-axes]]）
+- **终态卡片完成时间**（BACK-761）：看板终态卡片 footer 显示 `actualEnd`（本地 `M/D HH:mm`、跨年显全年、hover 出 UTC）；终态集由 `getTerminalStatuses` 配置派生，`isTerminalStatusName` 对已解析集合纯比较——修复对推导结果二次推导导致 Done 卡片静默丢戳的陷阱
+- **终态集显式化与只读化**（BACK-762）：`config list` 打印 `terminalStatuses: [...] (derived from statuses)`；`/api/config` spread 附带、`/api/statuses` 扩为 `{ statuses, terminalStatuses, defaultStatus }`；设置页删除悄悄改写 `category` 的 "terminal status" 多选，换只读区块，状态机编辑器成为唯一写入口；派生值绝不落盘（见 [[decisions/terminal-set-derived-not-stored]]）
+
 ### 状态机语义化（doc-17~19 + BACK-715~721）
 - **doc-17 诊断**：`statuses` 只是显示层列定义，终态=数组末位、进行中=硬编码 `inprogress` 的约定在自定义状态列下静默失效；关键洞察"命令即门禁"（阶段推进从 AI 工具集交还人类命令）；引擎选型为自研 ~150 行零依赖校验器而非 XState（见 [[decisions/hand-rolled-state-machine-validator-over-engine]]）
 - **doc-19 PRD**：默认 7 列状态机、三审查点落位、可重置、指引优先
@@ -216,11 +223,11 @@ updated_date: '2026-10-07 22:50'
 
 ## 统计
 
-- Sources ingested: 334
+- Sources ingested: 340
 - Concepts extracted: 42
 - Entities catalogued: 2
-- Execution notes: 26
-- Decisions recorded: 76
+- Execution notes: 27
+- Decisions recorded: 80
 - Patterns: 6
 - Reasoning traces: 5
 - Retrospectives: 1
