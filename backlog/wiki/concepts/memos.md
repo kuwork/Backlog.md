@@ -4,7 +4,7 @@ labels:
   - concept
   - memos
 created_date: '2026-10-03 01:13'
-updated_date: '2026-10-07 22:50'
+updated_date: '2026-10-09 22:00'
 ---
 
 # 快速笔记（Memos）子系统
@@ -17,6 +17,7 @@ Backlog.md 的轻量随手记子系统：一行会议记录不再需要套用任
 - ID 为日期+序号格式 `YYYYMMDD-N`：取当日已有最大序号 +1，跨天重置为 1。id 前缀保留存储 UTC 日期，即使比归档日本地日早一天也保持稳定（文件名必须与 created_date 可 grep 对应）。
 - frontmatter 只含 id、created_date、updated_date、tags，**没有 title 字段**——displayTitle 由正文首个非空行派生（空行开头回退前 40 字符）。
 - 刻意排除：不接入 ContentStore / 快照机制、不改 EntityKind、无 pinned/promote 字段。
+- **目录解析跟随配置**（BACK-757）：`memoDir()` / `memoArchiveDir()` 经 `resolveBacklogDirectory()` 解析配置的 backlog 目录（`.backlog` / 自定义路径），未配置回退 `backlog`；此前是全仓唯一硬编码 `"backlog"` 的产物面，导致 `.backlog` 项目 watcher ENOENT、读写落错目录。重跑 `backlog init` 也会经 `ensureBacklogStructure()` 补建缺失的 `memos/`、`docs/`（[[sources/back-757-memo-backlog-dir-resolution]]）。
 - **UTC 存储 / 本地日分桶约定**：时间戳按仓库惯例存 UTC（`new Date().toISOString().slice(0, 16)`），但所有"按天"的表面（日历分桶、`?date=` 过滤、memoCreatedOnDate、搜索深链接）必须经 `src/utils/date-utc.ts` 的 `localDateKeyFromStoredUtc` 换算成本地日。违反此约定曾导致本地 23:00 写的 memo 被计到次日（[[sources/back-737-memos-ui-polish]]）。
 
 ## 四个消费面
@@ -72,5 +73,6 @@ memos 是纯 markdown 文件，web UI 之外的编辑（编辑器、脚本、CLI
 - [[sources/doc-20-memos-integration]] — Memos 集成的设计输入稿
 - [[sources/back-749-pinboard-fixed-height-ellipsis]] — 钉板便签固定高度 + 溢出省略号
 - [[sources/back-750-memo-tag-bar]] — 标签历史条与 #topic# 话题语法、composer 自动补全
+- [[sources/back-757-memo-backlog-dir-resolution]] — memo 目录解析配置化与 re-init 补建结构
 
 ## Related Entities

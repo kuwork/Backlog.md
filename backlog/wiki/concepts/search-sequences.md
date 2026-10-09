@@ -2,7 +2,7 @@
 title: 搜索与序列
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-26 14:45'
+updated_date: '2026-10-09 22:00'
 ---
 
 
@@ -47,6 +47,8 @@ backlog search "api" --unassigned                             # 未指派过滤
 支持命令过滤（command filters）和模糊匹配。自 BACK-624 起，主搜索入口是全局 Spotlight 风格对话框（`/search` 路由，Ctrl/Cmd+K），单列分组展示 task/document/wiki/decision，支持类型过滤、关键词与 ID 高亮、虚拟滚动与滚动位置记忆；侧边栏搜索框退化为只读触发按钮。详见 [[concepts/spotlight-search]]。
 
 服务端 `GET /api/search` 无需改动即可支撑该对话框：默认不设结果上限、支持 `type` 过滤（task|document|decision|wiki）、wiki 内容搜索，并返回 `SearchMatch.indices` 供前端高亮。旧的 5 条结果上限纯粹是客户端行为。
+
+`crossBranch` 参数与配置回退（BACK-759）：参数缺省时可见性跟随 `include_cross_branch` 配置（纯函数 `resolveCrossBranchVisibility` 统一裁决 `/api/tasks` 与 `/api/search`）；关闭时任务结果在查询路径按 `isLocalEditableTask` 过滤——语料始终跨分支构建，开关无需重载索引。
 
 ### 搜索分数阈值统一（BACK-564）
 
@@ -120,3 +122,4 @@ Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchSe
 - [[sources/back-662-completed-corpus-query-search]] — BACK-662 completed 语料搜索维度
 - [[sources/back-685-single-source-task-search]] — BACK-685 core task-search 单一所有者
 - [[sources/back-686-shared-search-consumers]] — BACK-686 TUI/里程碑页路由到共享搜索
+- [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 /api/search 的 crossBranch 参数与配置回退
