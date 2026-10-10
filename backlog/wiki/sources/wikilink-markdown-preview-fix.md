@@ -1,16 +1,16 @@
 ---
-title: BACK-482 修复 Wikilink 与 Markdown 相对链接预览
+title: BACK-482 - 修复 Wikilink 与 Markdown 相对链接预览
 labels: [source]
-source_path: backlog/tasks/back-482 - Fix-wikilink-and-Markdown-relative-link-preview-in-wiki-pages.md
 created_date: 2026-05-22 00:00
-updated_date: 2026-05-22 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-482 - Fix-wikilink-and-Markdown-relative-link-preview-in-wiki-pages.md
 ---
 
-# BACK-482 修复 Wikilink 与 Markdown 相对链接预览
+# BACK-482 - 修复 Wikilink 与 Markdown 相对链接预览
 
 **状态**: Done | **标签**: web-ui, bug, wiki | **优先级**: medium
 
-## 问题描述
+## 问题
 
 点击包含 `..` 的 wikilink（如 `[[../developer-notes/security-gotchas]]`）会弹出 "Failed to fetch wiki page" 错误。后端 `readWikiPage()` 将原始相对路径视为 `wikiRoot`-relative，导致 containment check 拒绝合法的父目录引用。
 

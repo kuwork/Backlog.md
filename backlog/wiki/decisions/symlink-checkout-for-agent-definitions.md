@@ -1,8 +1,8 @@
 ---
 title: Claude Agent Guideline 用符号链接保留单一事实来源
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # Claude Agent Guideline 用符号链接保留单一事实来源
@@ -26,8 +26,11 @@ BACK-605 决定 Claude agent guideline 的分发方式。仓库内有 `.claude/a
 
 - **常规文件副本**：被用户明确否决——两份副本需要双份维护，迟早漂移。
 
-## Related
+## Related Concepts
 
-- [[sources/back-605-claude-agent-guideline-symlink-windows]]
-- [[concepts/embedded-skills]]
-- [[concepts/cli-instructions]]
+- [[concepts/embedded-skills]] — 内嵌技能的分发与引用
+- [[concepts/cli-instructions]] — CLI 指令表面
+
+## Related Sources
+
+- [[sources/back-605-claude-agent-guideline-symlink-windows]] — 符号链接分发方式的落地任务

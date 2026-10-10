@@ -1,49 +1,44 @@
 ---
-title: Add milestone detail view and redesign milestone edit modal (modeled on task detail/edit page)
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-26 14:00'
-labels:
-  - source
-  - web-ui
-  - api
-  - milestones
-  - i18n
+title: BACK-580 - 里程碑详情视图与编辑模态框
+labels: [source, web-ui, api, milestones, i18n]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-580 - Add-milestone-detail-view-and-redesign-milestone-edit-modal-modeled-on-task-detail-edit-page.md
 ---
 
-# Add milestone detail view and redesign milestone edit modal (modeled on task detail/edit page)
+# BACK-580 - 里程碑详情视图与编辑模态框
 
-Gave Web UI milestones a full detail view (`/milestone/:id`, background-location routing like task details) and redesigned the add/edit modal on the mature `TaskDetailsModal` reference implementation (preview/edit modes, `PasteAwareMDEditor` description editing, MermaidMarkdown preview, dirty checking, Ctrl/Cmd+S, inline date saving). Before this, milestones had only a card list and simple modals, and the description could not be edited from the Web at all.
+为 Web UI 里程碑提供完整详情视图（`/milestone/:id`，类似任务详情的 background-location 路由），并在成熟的 `TaskDetailsModal` 参考实现上重新设计新增/编辑模态框（预览/编辑模式、`PasteAwareMDEditor` 描述编辑、MermaidMarkdown 预览、脏检查、Ctrl/Cmd+S、内联日期保存）。此前里程碑只有卡片列表和简单模态框，描述完全无法从 Web 编辑。
 
-## Summary
+## 实现要点
 
-- Backend: `handleUpdateMilestone` in `src/server/index.ts` now passes `description` through to `MilestoneHandlers.editMilestone` (`undefined` = unchanged, mirroring create); SPA fallback covers `/milestone/:id` and subpaths; new server tests in `src/test/server-search-endpoint.test.ts` verify PUT persists description to the `## Description` section and omission leaves it untouched.
-- Frontend: new `MilestoneDetailsModal.tsx` — one shared component for preview/edit modes (entered via the Edit button in the detail title bar), max-w-5xl; MermaidMarkdown description with empty placeholder; five date fields editable inline in BOTH modes (due/planned as `type=date`, actual as `datetime-local`, via `storedUtcToDateTimeLocal`/`formatStoredUtcDateForDisplay`); bottom task list reusing `MilestoneTaskRow` + sortable header showing ALL tasks.
-- `MilestoneAddModal.tsx` extracted with a `PasteAwareMDEditor` description field and `promoteAssets` (`POST /api/assets/promote`) before save; shared `src/web/utils/temp-assets.ts` extracted from TaskDetailsModal.
-- Header actions mirror the task modal: Cancel/Save (edit) and Cancel/Create (Add) live in the Modal header top-right with task-modal button styles; Add form lost its bottom button row.
-- Dirty-state parity with task details: Esc/Cancel/X confirm when the description is dirty, plus an `onClickCapture` link interceptor (ported from `TaskDetailsModal.confirmNavigationAwayFromEdits`) guarding Board/List header links and task/draft links in the description.
-- Card Edit button became a Detail button navigating to `/milestone/:id`; the legacy card edit modal, its state/handlers, `findDuplicateMilestone`, and the `editTitle` locale key were removed.
-- Archive button got a dedicated `archiving` state so inline meta saves no longer flash the archiving label.
-- Robustness fix: the rename cascade in `editMilestone` swallowed the identity and reason of a failing task — it now reports the failed task ID, the underlying lock/error reason, and rollback failures (`src/mcp/tools/milestones/handlers.ts`). Root trigger found in testing: renaming hit a fail-fast task lock held by another process (BACK-571); rollback restored the milestone file with no data loss.
-- i18n: new `t.milestones.*` strings in all four locales (en, zh-CN, zh-TW, ja).
-- Verification: full bun test 2161 pass / 0 fail / 14 skip; tsc and biome clean; binary rebuilt and smoke-tested.
+- 后端：`src/server/index.ts` 的 `handleUpdateMilestone` 现在将 `description` 传给 `MilestoneHandlers.editMilestone`（`undefined` = 不变，与创建一致）；SPA 回退覆盖 `/milestone/:id` 及子路径；`src/test/server-search-endpoint.test.ts` 中的新服务器测试验证 PUT 将描述持久化到 `## Description` 小节、省略则不动它。
+- 前端：新的 `MilestoneDetailsModal.tsx`——一个共享组件承载预览/编辑模式（经详情标题栏的 Edit 按钮进入），max-w-5xl；MermaidMarkdown 描述带空占位；五个日期字段在两种模式下都可内联编辑（due/planned 用 `type=date`，actual 用 `datetime-local`，经 `storedUtcToDateTimeLocal`/`formatStoredUtcDateForDisplay`）；底部任务列表复用 `MilestoneTaskRow` + 可排序表头显示全部任务。
+- `MilestoneAddModal.tsx` 抽出，带 `PasteAwareMDEditor` 描述字段，保存前 `promoteAssets`（`POST /api/assets/promote`）；共享 `src/web/utils/temp-assets.ts` 从 TaskDetailsModal 提取。
+- 头部操作镜像任务模态框：Cancel/Save（编辑）和 Cancel/Create（新增）位于模态框头部右上角，用任务模态框按钮样式；Add 表单移除了底部按钮行。
+- 与任务详情一致的脏状态：描述脏时 Esc/Cancel/X 需确认，外加 `onClickCapture` 链接拦截器（移植自 `TaskDetailsModal.confirmNavigationAwayFromEdits`），守卫看板/列表头部链接和描述中的任务/草稿链接。
+- 卡片 Edit 按钮变为导航到 `/milestone/:id` 的 Detail 按钮；旧卡片编辑模态框、其状态/处理器、`findDuplicateMilestone` 和 `editTitle` locale 键被移除。
+- Archive 按钮获得专门的 `archiving` 状态，内联元数据保存不再闪现 archiving 标签。
+- 健壮性修复：`editMilestone` 中的重命名级联曾吞掉失败任务的身份和原因——现在报告失败任务 ID、底层锁/错误原因和回滚失败（`src/mcp/tools/milestones/handlers.ts`）。测试中找到的根因：重命名撞上另一进程持有的快速失败任务锁（BACK-571）；回滚恢复了里程碑文件，无数据丢失。
+- i18n：四个语言环境（en、zh-CN、zh-TW、ja）新增 `t.milestones.*` 字符串。
+- 验证：完整 bun test 2161 pass / 0 fail / 14 skip；tsc 和 biome 干净；重建二进制并冒烟测试。
 
-## Acceptance Criteria
+## 验收标准
 
-- Clicking a milestone card title opens `/milestone/:id` with title, rendered description, five dates, progress, and the full task list; preview/edit share one component with task-modal parity (dirty check, Ctrl/Cmd+S, Esc suppression).
-- Edit modal contains PasteAwareMDEditor + five date fields; saving calls promoteAssets then PUT; description persists to `## Description`; clipboard-image paste uploads and renders.
-- en/zh-CN/zh-TW/ja locale strings present; bun test, tsc, and biome all pass.
+- 点击里程碑卡片标题打开 `/milestone/:id`，展示标题、渲染描述、五个日期、进度和完整任务列表；预览/编辑共享一个组件，与任务模态框对齐（脏检查、Ctrl/Cmd+S、Esc 抑制）。
+- 编辑模态框含 PasteAwareMDEditor + 五个日期字段；保存先调 promoteAssets 再 PUT；描述持久化到 `## Description`；剪贴板图片粘贴上传并渲染。
+- en/zh-CN/zh-TW/ja 语言字符串齐全；bun test、tsc、biome 全部通过。
 
 ## Related Concepts
 
-- [[concepts/milestones]] — milestone model, task cascade, and archive semantics
-- [[concepts/web-ui-features]] — detail-view routing pattern and card actions
-- [[concepts/paste-as-markdown]] — PasteAwareMDEditor editing with clipboard-image promote
-- [[concepts/asset-management]] — temp-assets extraction and promote flow
-- [[concepts/date-fields]] — the five milestone date fields with local/UTC conversions
-- [[concepts/web-ui-i18n]] — four-locale string additions
+- [[concepts/milestones]] — 里程碑模型、任务级联与归档语义
+- [[concepts/web-ui-features]] — 详情视图路由模式与卡片操作
+- [[concepts/paste-as-markdown]] — PasteAwareMDEditor 编辑与剪贴板图片 promote
+- [[concepts/asset-management]] — temp-assets 提取与 promote 流程
+- [[concepts/date-fields]] — 带本地/UTC 转换的五个里程碑日期字段
+- [[concepts/web-ui-i18n]] — 四语言字符串新增
 
 ## Related Sources
 
-- [[sources/back-515-milestone-update-fix]] — prior milestone web API fix
-- [[sources/m-6-new-milestones-ui]] — the milestone this work rolls up under (same batch)
+- [[sources/back-515-milestone-update-fix]] — 之前的里程碑 Web API 修复
+- [[sources/m-6-new-milestones-ui]] — 本工作归属的里程碑（同批次）

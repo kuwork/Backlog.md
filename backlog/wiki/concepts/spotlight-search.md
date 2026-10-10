@@ -1,11 +1,11 @@
 ---
-title: 全局搜索对话框（Spotlight Search）
-created_date: '2026-09-13 01:12'
-updated_date: '2026-09-13 01:12'
+title: 全局搜索对话框
 labels: [concept, web-ui, search, routing]
+created_date: 2026-09-13 01:12
+updated_date: 2026-10-09 23:30
 ---
 
-# 全局搜索对话框（Spotlight Search）
+# 全局搜索对话框
 
 Web UI 的全局搜索从侧边栏内联下拉重构为 macOS Spotlight 风格的居中对话框（BACK-624）。它是 fork 中第一个以 **modal-over-route** 形式落地的纯前端搜索表面：URL 即状态、历史栈即关闭语义、虚拟列表即性能边界。
 

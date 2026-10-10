@@ -1,12 +1,12 @@
 ---
-title: BACK-481 将 Wiki 纳入 Web 搜索范围
+title: BACK-481 - 将 Wiki 纳入 Web 搜索范围
 labels: [source]
-source_path: backlog/tasks/back-481 - Add-wiki-to-web-search.md
 created_date: 2026-05-22 00:00
-updated_date: 2026-05-22 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-481 - Add-wiki-to-web-search.md
 ---
 
-# BACK-481 将 Wiki 纳入 Web 搜索范围
+# BACK-481 - 将 Wiki 纳入 Web 搜索范围
 
 **状态**: Done | **标签**: web-ui, search, wiki, enhancement | **优先级**: medium
 

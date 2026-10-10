@@ -1,10 +1,10 @@
 ---
 title: MCP 客户端设置共享 Helper 模式
 labels: [execution, mcp, cli, codex]
-created_date: '2026-06-24 00:30'
-updated_date: '2026-06-24 00:30'
+created_date: 2026-06-24 00:30
+updated_date: 2026-10-09 23:30
 extracted_from:
-  - [[sources/back-520-fix-codex-mcp-connection-failure]]
+  - BACK-520
 ---
 
 # MCP 客户端设置共享 Helper 模式

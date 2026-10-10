@@ -1,12 +1,12 @@
 ---
-title: BACK-100 嵌入式 Web 服务器
+title: BACK-100 - 嵌入式 Web 服务器
 labels: [source]
-source_path: backlog/completed/back-100 - Add-embedded-web-server-to-Backlog-CLI.md
 created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/completed/back-100 - Add-embedded-web-server-to-Backlog-CLI.md
 ---
 
-
-# BACK-100 摘要
+# BACK-100 - 嵌入式 Web 服务器
 
 在 Backlog CLI 可执行文件中嵌入了一个基于 Bun.serve() 的 Web 服务器，提供现代化的 Web UI 进行任务管理。
 
@@ -38,3 +38,8 @@ created_date: 2026-05-06 00:00
 
 参见 `backlog/docs/doc-003 - Running-Backlog-Browser-as-a-Service.md`
 支持 Linux/WSL2 (systemd)、macOS (launchd)、Windows (Task Scheduler / NSSM)
+
+## Related Concepts
+
+- [[concepts/web-server]] — Bun.serve() HTTP API 与 WebSocket 实时推送
+- [[concepts/web-ui-features]] — Web UI 功能总览

@@ -1,12 +1,12 @@
 ---
-title: doc-4 上游 v1.47.1→v1.48.0 迁移差异分类
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-17 23:00'
+title: doc-4 - 上游 v1.47.1→v1.48.0 迁移差异分类
 labels: [source, doc, migration]
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/docs/migration/doc-4 - Upstream-v1.47.1-to-v1.48.0-Migration-Diff-Classification.md
 ---
 
-# doc-4 上游变更差异分类（v1.47.1 .. v1.48.0）
+# doc-4 - 上游 v1.47.1→v1.48.0 迁移差异分类
 
 上游 `MrLesk/Backlog.md` v1.47.1..v1.48.0 变更的 A/B/C 差异分类文档，是 fork 迁移决策的入口。
 

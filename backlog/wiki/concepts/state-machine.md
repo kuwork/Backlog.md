@@ -1,11 +1,8 @@
 ---
 title: 状态机语义
-labels:
-  - concept
-  - state-machine
-  - config
-created_date: '2026-10-03 01:13'
-updated_date: '2026-10-09 22:00'
+labels: [concept, state-machine, config]
+created_date: 2026-10-03 01:13
+updated_date: 2026-10-09 23:30
 ---
 
 # 状态机语义

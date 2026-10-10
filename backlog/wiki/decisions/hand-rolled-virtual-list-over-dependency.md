@@ -2,8 +2,8 @@
 title: 搜索对话框手写定高虚拟列表而非引入虚拟化库
 description: BACK-624 以恒定行高换取零新依赖
 labels: [decision, web-ui, search, dependencies]
-created_date: '2026-09-13 01:12'
-updated_date: '2026-09-13 01:12'
+created_date: 2026-09-13 01:12
+updated_date: 2026-10-09 23:30
 ---
 
 # 搜索对话框手写定高虚拟列表而非引入虚拟化库
@@ -12,7 +12,7 @@ updated_date: '2026-09-13 01:12'
 
 搜索结果可能上千条，需要窗口化渲染。
 
-## 决策
+## 决定
 
 手写 `VirtualList`（约 130 行）而非引入 `react-window` 等库：
 

@@ -1,18 +1,18 @@
 ---
-title: BACK-521.2 Short agent nudge and init default migration
+title: BACK-521.2 - 短代理 nudge 与 init 默认迁移
 labels: [source, cli, agent-guidance, init]
+created_date: 2026-06-13 14:13
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-521.2 - Short-agent-nudge-and-init-default-migration.md
-created_date: '2026-06-13 14:13'
-updated_date: '2026-07-14 11:20'
 ---
 
-# BACK-521.2 Short agent nudge and init default migration
+# BACK-521.2 - 短代理 nudge 与 init 默认迁移
 
 **状态**: Done | **负责人**: @codex | **优先级**: high | **父任务**: [[sources/back-521|BACK-521]]
 
 将 `backlog init` 的 AI 集成默认路径从完整 CLI 指令文件安装改为短 CLI 引导语（nudge），同时保留 MCP 与无 AI 集成的显式选项。
 
-## 关键变更
+## 实现要点
 
 - `backlog init` 将 CLI instructions 标记为推荐的 AI 集成路径，MCP / no-AI 作为显式替代选项。
 - `backlog init --defaults` 默认创建或追加短 CLI nudge 到 `AGENTS.md`。
@@ -21,7 +21,7 @@ updated_date: '2026-07-14 11:20'
 - nudge 内容要求代理在创建或执行任务前运行 `backlog instructions`，并在使用不熟悉的命令前先查看命令帮助。
 - 切换集成模式（MCP ↔ CLI instructions ↔ no-AI）时，现有 Backlog 块被干净替换，无关文件内容保留。
 
-## 实现要点
+实现步骤：
 
 1. 新增短 CLI nudge 常量，指示代理运行 `backlog instructions` 并在不熟悉操作时使用 `backlog <command> --help`。
 2. 更新 agent instruction writer，使 CLI 模式文件接收短 nudge 而非旧长指南，同时保留标记替换与幂等性。
@@ -48,5 +48,5 @@ updated_date: '2026-07-14 11:20'
 
 ## Related Sources
 
-- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
-- [[sources/back-521.1]] — BACK-521.1 Shared workflow instruction registry and CLI access
+- [[sources/back-521]] — BACK-521 CLI 优先的代理工作流重构
+- [[sources/back-521.1]] — BACK-521.1 共享工作流指令注册表与 CLI 访问

@@ -1,8 +1,8 @@
 ---
 title: Wikilink
 labels: [concept]
-created_date: '2026-06-06 01:00'
-updated_date: '2026-10-07 22:50'
+created_date: 2026-06-06 01:00
+updated_date: 2026-10-09 23:30
 ---
 
 # Wikilink
