@@ -1080,3 +1080,11 @@ Chronological, append-only record of all wiki operations.
 **过薄加厚（7）**：MCP 工具清单改为 7 域分类全表（源码实为 27 个工具，纠正审计的 28）；`02-代理指令文件` 增 instructions 十册完整列表；`03-Wiki Skill 安装` 增安装后的工作流节（摄取/查询/lint/flowback）；新建 `60-配置与运维/03-故障排查.md`（7 节，SUMMARY 登记，index 同步）；`taskResolutionStrategy` 入配置表并在设置页补语义；`mcp.http.*` 重写为"预留未实现，仅 stdio"（纠正误导性表述）。
 
 **产物**：merge.py 重新合并 manual.md（5448 → 5695 行）。统计：User manual pages 41 → 42。
+
+## [2026-10-10 14:15:00] comparison-create | 五次上游迁移的决策过程总结，pattern 升五波口径
+
+**触发**：用户问 wiki 是否总结过数次迁移经验；答：有 pattern（三波口径）+ 第三波回顾 + concept 台账，但第四、五波未回收。用户裁决：**不要逐波回顾，要一份总结**。
+
+**新建** `comparisons/migration-decision-process.md`（comparisons/ 首条）——按决策类型综合五波（v1.47.1→v1.53.0）：① 分类判断的口径演进（单源枚举 → 深分析重分类 → 双源并集；撞号按链接目标判断的教训）；② 刻意分叉台账（emptyClears、sequences、BACK-646/647、状态机校验器、CLI 分页 + 五条常驻约束），含留痕强度演进观察（散文→台账→decision 页）；③ 验证策略（AC#1 审查纪律、三段式、byte-identical+revert-check、复现先行、存量失败分诊）；④ 范围与节奏（JIT、B16 前置拆解、波末清算、draft 管道）；数据一览（三/四/五波 54/69/30 任务全 Done，中位 0/1/0 天，frontmatter 现算）；6 条元经验。
+
+**更新**：`patterns/upstream-migration-wave` 验证范围三波 60+ → 五波 153 任务全 Done，步骤表补双源并集与 revert-check，陷阱表加「撞号按号码判断」「未复现就建议迁移」两条；`concepts/upstream-migration` 迁移文档补 doc-21/22、新增第五波节。index Comparisons 占位替换为实表；overview 统计 Comparisons 0→1 并加指针。
