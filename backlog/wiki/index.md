@@ -556,7 +556,9 @@ Read this file FIRST on any wiki operation.
 
 ## Comparisons
 
-_No comparisons created yet._
+| File | Title | Description |
+|---|---|---|
+| [[comparisons/migration-decision-process]] | 五次上游迁移的决策过程总结 | 分类口径、divergence 台账、验证策略、节奏控制的跨波演进与元经验 |
 
 ## User Manual
 
