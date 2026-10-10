@@ -1,10 +1,9 @@
 ---
 title: 安全检查清单
 labels: [developer-note]
-created: 2026-05-10
 created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
 ---
-
 
 # 安全检查清单
 
@@ -75,3 +74,7 @@ if (/^192\.168\./.test(hostname)) return null;
 - [ ] 是否有文件大小 / 内存上限？→ 设置合理的 `MAX_FILE_SIZE`
 - [ ] 是否涉及目录列表？→ 明确排除敏感目录（如 `.git`、`.env`）
 - [ ] 错误信息是否暴露内部路径？→ 对外返回泛化错误 message，日志里再记录详细路径
+
+## Related Concepts
+
+- [[developer-notes/architecture-gotchas]] — 架构分层约束（路径解析与包含性校验职责归属 file-system 层）

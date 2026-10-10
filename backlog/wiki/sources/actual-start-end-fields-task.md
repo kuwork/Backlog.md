@@ -1,26 +1,32 @@
 ---
-title: BACK-492 actualStart 与 actualEnd 字段支持
-source_path: backlog/tasks/back-492 - Add-actualStart-and-actualEnd-fields-for-tasks-with-auto-population-on-status-change.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-492 - actualStart 与 actualEnd 字段支持
 labels: [source, feature, dates, cli, web-ui, mcp]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-492 - Add-actualStart-and-actualEnd-fields-for-tasks-with-auto-population-on-status-change.md
 ---
 
-# BACK-492 actualStart 与 actualEnd 字段支持
+# BACK-492 - actualStart 与 actualEnd 字段支持
+
+BACK-492 为任务模型新增 `actualStart`/`actualEnd` 可选日期时间字段，打通 12 层表面栈，是日期字段体系（planned / due / actual）的第三块拼图。
+
+## 目标
 
 为任务引入可选的 `actualStart` 和 `actualEnd` 日期时间字段，用于追踪任务实际开始与完成时间。
 
-## 自动填充规则
+## 实现要点
+
+### 自动填充规则
 
 - 当任务状态变更为**进行中**（in-progress）时，若 `actualStart` 为空，自动设置为当前日期时间
 - 当任务状态变更为**终态/Done**时，若 `actualEnd` 为空，自动设置为当前日期时间
 - 用户可手动覆盖这些值
 
-## 存储格式
+### 存储格式
 
 `actualStart` / `actualEnd` 采用**日期时间**格式（`YYYY-MM-DD HH:MM`，UTC），与 `createdDate` 保持一致，提供分钟级精度。这与 `plannedStart`/`plannedEnd` 的 date-only 格式（`YYYY-MM-DD`）形成对比。
 
-## 覆盖范围（12 层表面栈）
+### 覆盖范围（12 层表面栈）
 
 1. **类型层** — `Task`、`TaskCreateInput`、`TaskUpdateInput`、`TaskEditArgs`
 2. **Markdown 层** — parser/serializer 读写 `actual_start`/`actual_end` frontmatter
@@ -30,12 +36,12 @@ labels: [source, feature, dates, cli, web-ui, mcp]
 6. **MCP 层** — task schema 与 handler 支持
 7. **Web UI 层** — `datetime-local` 输入框，UTC 存储 ↔ 本地显示转换
 8. **i18n 层** — 4 个语言环境新增标签
-9. **Formatter 层** — plain-text 输出显示
+9. **Formatter 层** — plain 输出显示
 10. **Wizard 层** — `task-wizard.ts` 支持
 11. **Agent Guidelines** — 示例 frontmatter 更新
 12. **测试层** — markdown 测试、date-display 测试
 
-## 关键设计决策
+### 关键设计决策
 
 - `isInProgressStatus()` 使用大小写不敏感匹配 "inprogress"，支持本地化状态名
 - 自动填充仅在字段为空时触发，尊重用户手动覆盖

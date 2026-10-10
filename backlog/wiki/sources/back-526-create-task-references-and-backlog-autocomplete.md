@@ -1,12 +1,12 @@
 ---
-title: BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现
+title: BACK-526 - 修复创建任务引用输入与 .backlog 路径自动补全发现
 labels: [source, bug, web-ui, cli, autocomplete]
-created_date: '2026-07-14 06:20'
-updated_date: '2026-09-26 14:00'
+created_date: 2026-07-14 06:20
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-526 - Fix-create-task-references-input-and-.backlog-autocomplete-discovery.md
 ---
 
-# BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现
+# BACK-526 - 修复创建任务引用输入与 .backlog 路径自动补全发现
 
 修复 Web 创建任务模态框无法添加 References，以及路径自动补全无法发现 `.backlog` 目录的两个问题。
 
@@ -25,7 +25,7 @@ source_path: backlog/tasks/back-526 - Fix-create-task-references-input-and-.back
    - 遍历时仅当 `entry.name.startsWith(".") && entry.name !== ".backlog"` 才跳过
    - 其他点目录（如 `.github`、`.husky`）仍保持隐藏
 
-## 实现位置
+实现位置：
 
 - `src/web/components/TaskDetailsModal.tsx`
   - References 添加表单条件移除 `mode === "preview"` 限制
@@ -33,7 +33,7 @@ source_path: backlog/tasks/back-526 - Fix-create-task-references-input-and-.back
 - `src/file-system/operations.ts`
   - `searchProjectFiles` 调整点前缀目录过滤逻辑
 
-## 测试
+## 验证
 
 - TypeScript 检查通过
 - Biome 格式/ lint 通过

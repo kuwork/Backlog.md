@@ -1,18 +1,18 @@
 ---
-title: BACK-521.6 Root command local instruction hub
+title: BACK-521.6 - 根命令本地指令中心
 labels: [source, cli, agent-guidance]
+created_date: 2026-06-13 19:10
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-521.6 - Root-command-local-instruction-hub.md
-created_date: '2026-06-13 19:10'
-updated_date: '2026-07-14 11:20'
 ---
 
-# BACK-521.6 Root command local instruction hub
+# BACK-521.6 - 根命令本地指令中心
 
 **状态**: Done | **负责人**: @codex | **优先级**: medium | **父任务**: [[sources/back-521|BACK-521]]
 
 将 CLI 文档入口点转换为纯文本指令表面。裸 `backlog` 命令和 `backlog instructions` 默认输出纯文本：无 TTY UI、无富终端渲染、无需 `--plain`。
 
-## Acceptance Criteria
+## 验收标准
 
 - 裸 `backlog` 输出始终为纯文本，不再将 `https://backlog.md` 作为主要文档路径。
 - 裸 `backlog` 输出指向本地指令命令，特别是 `backlog instructions`、指南专用命令和命令级 `--help`。
@@ -41,6 +41,6 @@ updated_date: '2026-07-14 11:20'
 
 ## Related Sources
 
-- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
-- [[sources/back-521.1]] — BACK-521.1 Shared workflow instruction registry and CLI access
-- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-521]] — BACK-521 CLI 优先的代理工作流重构
+- [[sources/back-521.1]] — BACK-521.1 共享工作流指令注册表与 CLI 访问
+- [[sources/back-521.14]] — BACK-521.14 补充 CLI/MCP 指令指南缺失的代理指导

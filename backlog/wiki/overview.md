@@ -231,5 +231,5 @@ updated_date: '2026-10-09 22:00'
 - Patterns: 6
 - Reasoning traces: 5
 - Retrospectives: 1
-- User manual pages: 41
+- User manual pages: 42
 - Reports generated: 10

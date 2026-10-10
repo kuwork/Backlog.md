@@ -1,17 +1,17 @@
 ---
-title: autoCommit 精确文件提交但不移植临时索引 CAS 管线
-created_date: '2026-08-17 23:00'
-updated_date: '2026-08-17 23:00'
+title: autoCommit 精确提交与临时索引 CAS 管线的取舍
 labels: [decision, git, auto-commit]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
-# autoCommit 精确文件提交但不移植临时索引 CAS 管线
+# autoCommit 精确提交与临时索引 CAS 管线的取舍
 
 ## 背景
 
 上游 BACK-563 使用 `GIT_INDEX_FILE` 临时索引 + `commit-tree` + `update-ref` 的 CAS 管线实现精确路径提交。
 
-## 决策
+## 决定
 
 BACK-561 实现精确文件 autoCommit，但保留 fork 的 `git commit --only <paths>` 语义，不移植上游 CAS 管线。
 
@@ -24,4 +24,4 @@ BACK-561 实现精确文件 autoCommit，但保留 fork 的 `git commit --only <
 
 ## Related Sources
 
-- [[sources/back-561-autocommit-exact-files]] — 实现
+- [[sources/back-561-autocommit-exact-files]] — BACK-561 实现

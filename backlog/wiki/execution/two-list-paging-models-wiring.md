@@ -1,16 +1,18 @@
 ---
 title: 两套列表分页模型的接线约定
-created_date: '2026-10-03 01:25'
-updated_date: '2026-10-03 01:25'
 labels: [execution, cli, mcp, pagination]
-extracted_from: [BACK-741, BACK-742]
+created_date: 2026-10-03 01:25
+updated_date: 2026-10-09 23:30
+extracted_from:
+  - BACK-741
+  - BACK-742
 ---
 
 # 两套列表分页模型的接线约定
 
 Backlog.md 有两套列表分页模型，**故意不统一**（`ListPage` 类型重名是设计决策，两个文件内有对照文档）。
 
-## 模式
+## 标准步骤
 
 ### CLI 窗口模型（人类/代理翻页阅读）— `src/utils/list-window.ts`
 
@@ -28,14 +30,17 @@ Backlog.md 有两套列表分页模型，**故意不统一**（`ListPage` 类型
 4. 诊断/警告段（如 `milestone_list` 的 unconfigured/archived）不分页，保证警告不消失
 5. REST 对废弃参数明确拒绝（`GET /api/memos` 的 `cursor` 返回 400），web 侧迁移到 hasMore 驱动并用既有 id 去重吸收 offset 漂移的重复行
 
-## 反模式
+## 常见陷阱
 
 - 为 CLI 发明不透明 cursor，或为 MCP 发明窗口 footer——两种消费者的心智模型不同，混用必坏
 - 让 JSON 信封在"未截断"时也变化——会破坏 `task list --json --watch` 的逐字节替换帧契约（见 [[concepts/json-watch]]）
 - 分页单位搞错（`milestone list` 窗口单位是 milestone 而非任务；`--with-no-milestone` 段不占配额、不计入 `--count`）
 
+## Related Concepts
+
+- [[concepts/list-paging]] — 两个模型的概念页
+
 ## Related Sources
 
 - [[sources/back-741-cli-list-paging]] — CLI 窗口模型与 memo list 的 --cursor 移除
 - [[sources/back-742-mcp-list-pagination]] — MCP/REST 偏移信封模型全栈贯通
-- [[concepts/list-paging]] — 两个模型的概念页

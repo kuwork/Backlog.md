@@ -1,40 +1,34 @@
 ---
-title: BACK-621 Fix launcher resolving unprefixed platform package names (regression from BACK-550)
-created_date: '2026-09-07 22:28'
-updated_date: '2026-09-07 22:28'
-labels:
-  - source
-  - cli
-  - bug
-  - release
+title: BACK-621 - 修复启动器解析无前缀平台包名回归
+labels: [source, cli, bug, release]
+created_date: 2026-09-07 22:28
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-621 - Fix-launcher-resolving-unprefixed-platform-package-names-regression-from-BACK-550.md
 ---
 
-# BACK-621 Fix launcher resolving unprefixed platform package names (regression from BACK-550)
+# BACK-621 - 修复启动器解析无前缀平台包名回归
 
-Mac arm64 users installing `@kuwork/backlog.md@1.49.3-CN` got 'Binary package not installed for darwin-arm64' even though the platform package was installed. BACK-550 had changed `scripts/resolveBinary.cjs` to build unprefixed platform package names based on the false claim that scoped platform packages are never published; `require.resolve` with an unscoped specifier never looks inside the `@kuwork` scope, so resolution failed before spawn. The fix derives the scope from the main package's own `package.json` name — no `@kuwork` literal anywhere in source or tests.
+在 Mac arm64 上安装 `@kuwork/backlog.md@1.49.3-CN` 的用户收到“Binary package not installed for darwin-arm64”，尽管平台包已安装。BACK-550 曾把 `scripts/resolveBinary.cjs` 改为基于一个错误说法（称带 scope 的平台包从不发布）构造无前缀平台包名；用无 scope 的说明符做 `require.resolve` 永远不会去 `@kuwork` scope 里找，于是解析在 spawn 之前就失败了。修复方案从主包自己的 `package.json` 名称推导 scope——源码和测试中不再出现任何 `@kuwork` 字面量。
 
-## Summary
+- `scripts/resolveBinary.cjs`：新增 `getOwnPackageName`/`scopePrefixOf`/`PLATFORM_ARCHES` 辅助函数；`getPackageName` 构造 `@<scope>/backlog.md-<platform>-<arch>`，无前缀场景则构造无前缀名——兼容发布布局（`./package.json`）与仓库布局（`../package.json`）；darwin 回退矩阵与可注入的 resolver 保留
+- `scripts/postuninstall.cjs`：复用 `PLATFORM_ARCHES` + `getPackageName`，删除其硬编码的包名列表
+- `scripts/cli.cjs`：在 spawn 前对二进制执行 `chmodSync 0o755`——覆盖 `publish-npm.cmd` 在 Windows 上打包非 Windows 二进制带来的 EACCES 风险（tarball 模式 0644）；安装帮助文本使用动态主包名；参数清理正则泛化到任意 scope
+- 发布现状核对：本 fork 不使用上游 `.github/workflows/release.yml`，而是从发布分支通过 `scripts/build-release.cmd` + `scripts/publish-npm.cmd` 手动发布，后者硬编码的 `@kuwork` 带 scope 名称与推导结果本就一致——release.yml 的改动已回退以保持与上游可合并
+- 测试：`resolveBinary.test.ts` 从仓库 package.json 动态推导期望（无 scope 字面量）+ `scopePrefixOf` 单元测试；`cli-launcher.test.ts` 夹具写入真实包名 + 执行位恢复用例；22 通过 / 5 个 POSIX 用例在 win32 上跳过；端到端模拟已发布布局运行 `cli.js --version` → 1.49.3-CN
 
-- `scripts/resolveBinary.cjs`: new `getOwnPackageName`/`scopePrefixOf`/`PLATFORM_ARCHES` helpers; `getPackageName` builds `@<scope>/backlog.md-<platform>-<arch>` or unprefixed names when unscoped — compatible with both publish layout (`./package.json`) and repo layout (`../package.json`); darwin fallback matrix and injectable resolver kept
-- `scripts/postuninstall.cjs`: reuses `PLATFORM_ARCHES` + `getPackageName`, deleting its hardcoded package-name list
-- `scripts/cli.cjs`: `chmodSync 0o755` on the binary before spawn — covers the EACCES risk from `publish-npm.cmd` packing non-Windows binaries on Windows (tarball mode 0644); install help text uses the dynamic main package name; arg-cleanup regex generalized to any scope
-- Publishing reality check: the fork does not use upstream `.github/workflows/release.yml`; it publishes manually from the release branch via `scripts/build-release.cmd` + `scripts/publish-npm.cmd`, whose hardcoded `@kuwork` scoped names already match the derivation — release.yml changes were reverted to stay merge-compatible with upstream
-- Tests: `resolveBinary.test.ts` derives expectations from the repo package.json dynamically (no scope literal) + `scopePrefixOf` unit tests; `cli-launcher.test.ts` fixture writes the real package name + execute-bit restore case; 22 pass / 5 POSIX-skip on win32; end-to-end simulated published layout runs `cli.js --version` → 1.49.3-CN
+## 验收标准
 
-## Acceptance Criteria
-
-- resolveBinary.cjs derives the prefix from the main package.json name; no @kuwork literal in source
-- postuninstall.cjs reuses the same derivation
-- Tests cover scoped/unscoped derivation; darwin fallback matrix passes
-- tsc, biome, bun test pass
-- publish-npm.cmd published names match the derivation unchanged; release.yml left as upstream
-- Launcher restores the execute bit (chmod 0o755) before spawn
+- resolveBinary.cjs 从主 package.json 名称推导前缀；源码中无 @kuwork 字面量
+- postuninstall.cjs 复用同一推导
+- 测试覆盖带 scope/无前缀推导；darwin 回退矩阵通过
+- tsc、biome、bun test 通过
+- publish-npm.cmd 的已发布名称与推导一致、保持原样；release.yml 保持上游原样
+- 启动器在 spawn 前恢复执行位（chmod 0o755）
 
 ## Related Concepts
 
-- [[concepts/cli-entry]] — launcher/resolveBinary resolution chain from global install to binary spawn
+- [[concepts/cli-entry]] — 从全局安装到二进制 spawn 的启动器/resolveBinary 解析链
 
 ## Related Sources
 
-- [[sources/back-550-apple-silicon-binary-resolution]] — the BACK-550 change that introduced this regression
+- [[sources/back-550-apple-silicon-binary-resolution]] — 引入本次回归的 BACK-550 改动

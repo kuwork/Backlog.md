@@ -1,12 +1,12 @@
 ---
-title: BACK-527 CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列
+title: BACK-527 - CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列
 labels: [source, bug, cli, ux]
-created_date: '2026-07-14 06:32'
-updated_date: '2026-07-14 06:32'
+created_date: 2026-07-14 06:32
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-527 - Interpret-n-escape-sequences-in-task-create-edit-plan-notes-and-final-summary.md
 ---
 
-# BACK-527 CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列
+# BACK-527 - CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列
 
 将 BACK-508 引入的 `processCliEscapes` 辅助函数扩展到 `task create` 和 `task edit` 的 `--plan`、`--notes`、`--final-summary` 选项，实现与 `--description` 一致的跨平台换行输入。
 
@@ -39,7 +39,7 @@ backlog task edit BACK-1 --final-summary "Summary\nDetails"
 1. Windows 上先模拟 bash 双引号转义层（`\\` → `\`）
 2. 全平台统一应用 C-style 转义（`\n` → 换行，`\\` → 字面反斜杠）
 
-## 测试
+## 验证
 
 - `bunx tsc --noEmit` 通过
 - `bun test src/test/cli.test.ts` 通过（89 pass，1 个与文档更新路径相关的无关失败）

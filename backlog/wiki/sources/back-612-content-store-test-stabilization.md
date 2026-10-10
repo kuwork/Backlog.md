@@ -1,40 +1,33 @@
 ---
-title: BACK-612 Stabilize remaining ContentStore and editor-subprocess test failures
-created_date: '2026-09-06 19:47'
-updated_date: '2026-09-06 19:47'
-labels:
-  - source
-  - test
-  - core
-  - ci
-  - bug
+title: BACK-612 - 稳定其余 ContentStore 与编辑器子进程测试失败
+labels: [source, test, core, ci, bug]
+created_date: 2026-09-06 19:47
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-612 - Stabilize-remaining-ContentStore-and-editor-subprocess-test-failures.md
 ---
 
-# BACK-612 Stabilize remaining ContentStore and editor-subprocess test failures
+# BACK-612 - 稳定其余 ContentStore 与编辑器子进程测试失败
 
-Fixed the last 7 full-suite failures: three ContentStore stale-refresh tests broke deterministically after BACK-602's publication-owner gating made their synthetic upserts silently ignored, plus two test files died on Bun's 5000ms default timeout on Windows. Root-causing surfaced a real store bug — the identity-index rebuild branch rebuilt from a stale `activeTasks` corpus, evicting earlier in-memory upserts — fixed by rebuilding from `cachedTasks`.
+修复最后 7 个全量套件失败：BACK-602 的 publication-owner 门控使三个 ContentStore 陈旧刷新测试的合成 upsert 被静默忽略，导致其确定性失败；另两个测试文件在 Windows 上死于 Bun 5000ms 默认超时。根因定位还发现一个真实 store bug——identity-index 重建分支从陈旧的 `activeTasks` 语料重建，驱逐了更早的内存 upsert——已改为从 `cachedTasks` 重建修复。
 
-## Summary
+- 真实 bug 修复：`src/core/content-store.ts` 的 `upsertTask` identity-index 分支改从 `this.cachedTasks` 而非 `this.activeTasks` 重建，连续内存 upsert 不再互相驱逐。
+- `src/test/content-store.test.ts`：陈旧刷新测试传入以测试 backlog 目录为根的 publication owner，并用真实 filePath upsert 磁盘快照任务（无 filePath 的合成 upsert 被 BACK-602 替换过滤器丢弃）；loader ID 经 `normalizeTaskId` 规范化为 store 的规范大写 ID。
+- `src/test/tui-edit-session.test.ts` 与 `src/test/task-watcher.test.ts`：`setDefaultTimeout(20000)`（cli-dependency.test.ts 模式），容纳真实编辑器子进程/watcher 等待。
+- BACK-602 publication 门控有意保留为预期行为。
+- 验证：scoped 29/29；全量 bun test 2071 pass / 0 fail / 13 skip（`full-test-612.log`）。
 
-- Real bug fix: `src/core/content-store.ts` `upsertTask` identity-index branch now rebuilds from `this.cachedTasks` instead of `this.activeTasks`, so consecutive in-memory upserts no longer evict each other
-- `src/test/content-store.test.ts`: stale-refresh tests pass a publication owner rooted at the test backlog dir and upsert disk-snapshot tasks with real filePaths (synthetic no-filePath upserts are dropped by the BACK-602 replacement filter); loader IDs normalized via `normalizeTaskId` to the store's canonical uppercase IDs
-- `src/test/tui-edit-session.test.ts` and `src/test/task-watcher.test.ts`: `setDefaultTimeout(20000)` (cli-dependency.test.ts pattern) for real editor-subprocess/watcher waits
-- BACK-602 publication gating deliberately left untouched as intended behavior
-- Verified: scoped 29/29; full bun test 2071 pass / 0 fail / 13 skip (`full-test-612.log`)
+## 验收标准
 
-## Acceptance Criteria
-
-- The three stale-refresh ContentStore tests pass with publication ownership provided
-- tui-edit-session and task-watcher tests no longer die on Bun's 5000ms default under load
-- `bun test` on the three files passes
-- `bunx tsc --noEmit` and `bun run check` pass on touched files
+- 三个陈旧刷新 ContentStore 测试在提供 publication 所有权后通过。
+- tui-edit-session 与 task-watcher 测试在负载下不再死于 Bun 5000ms 默认值。
+- 三个文件的 `bun test` 通过。
+- `bunx tsc --noEmit` 与 `bun run check` 在改动文件上通过。
 
 ## Related Concepts
 
-- [[concepts/core-architecture]] — ContentStore upsert/identity-index internals and publication-owner gating
-- [[concepts/task-identity]] — normalizeTaskId canonical uppercase identity matching the store
+- [[concepts/core-architecture]] — ContentStore upsert/identity-index 内部机制与 publication-owner 门控。
+- [[concepts/task-identity]] — 与 store 规范大写身份匹配的 normalizeTaskId。
 
 ## Related Sources
 
-- [[sources/back-561-autocommit-exact-files]] — neighboring stabilization task in the same test-reliability wave
+- [[sources/back-561-autocommit-exact-files]] — 同一测试可靠性波次的邻近稳定化任务。

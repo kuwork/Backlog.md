@@ -2,13 +2,12 @@
 title: 搜索与序列
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-10-09 22:00'
+updated_date: 2026-10-09 23:30
 ---
-
 
 # 搜索与序列
 
-## 搜索（Search）
+## 搜索
 
 Backlog.md 使用 Fuse.js 提供统一的模糊搜索服务，覆盖所有入口点（CLI、TUI、Web）。
 
@@ -89,7 +88,7 @@ Wiki 页面通过 `ContentStore` 的现有快照/事件管道集成到 `SearchSe
 
 此策略解决了搜索短数字 ID（如 `479`）时因编辑距离阈值过宽而误匹配无关任务（如 `BACK-349`）的问题。
 
-## 序列（Sequences）
+## 序列
 
 从任务依赖关系自动计算出的可并行执行的任务组。
 

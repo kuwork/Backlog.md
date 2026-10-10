@@ -2,9 +2,8 @@
 title: Markdown 解析与序列化流水线
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-26 14:45'
+updated_date: 2026-10-09 23:30
 ---
-
 
 # Markdown 解析与序列化流水线
 

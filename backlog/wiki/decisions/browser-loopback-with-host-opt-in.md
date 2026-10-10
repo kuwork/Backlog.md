@@ -1,8 +1,8 @@
 ---
 title: 浏览器服务器默认回环 + --host 显式开放 LAN
-created_date: '2026-08-17 23:00'
-updated_date: '2026-08-17 23:00'
 labels: [decision, security, server]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 浏览器服务器默认回环 + --host 显式开放 LAN
@@ -11,7 +11,7 @@ labels: [decision, security, server]
 
 Bun.serve 默认绑定 `0.0.0.0`，使未认证的 Web UI API 暴露给 LAN/VPN，属于安全漏洞。
 
-## 决策
+## 决定
 
 BACK-558 默认绑定 `127.0.0.1`，保留熟悉的 `http://localhost:PORT` 显示；通过 `--host 0.0.0.0` 显式开放 LAN 并打印警告。
 

@@ -1,11 +1,8 @@
 ---
 title: task list --watch 生命周期契约
-labels:
-  - concept
-  - cli
-  - watch
-created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 01:13'
+labels: [concept, cli, watch]
+created_date: 2026-10-03 01:13
+updated_date: 2026-10-09 23:30
 ---
 
 # task list --watch 生命周期契约

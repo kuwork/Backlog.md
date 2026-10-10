@@ -1,11 +1,11 @@
 ---
-title: BACK-495 跟踪甘特图设计推理
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: 跟踪甘特图设计推理
 labels: [reasoning, gantt, visualization, design]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
 ---
 
-# BACK-495 跟踪甘特图设计推理
+# 跟踪甘特图设计推理
 
 ## 原始需求
 

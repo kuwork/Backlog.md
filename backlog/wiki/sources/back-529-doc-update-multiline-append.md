@@ -1,12 +1,12 @@
 ---
-title: BACK-529 doc update 多行与追加支持
+title: BACK-529 - 优化 doc update --content，支持多行与追加
 labels: [source, cli, mcp, doc]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-09-26 14:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-529 - Optimize-doc-update-content-with-multi-line-and-append-support.md
 ---
 
-# BACK-529 优化 doc update --content，支持多行与追加模式
+# BACK-529 - 优化 doc update --content，支持多行与追加
 
 让 `backlog doc update` 处理多行内容的方式与任务描述、备注一致，并支持追加文档块而无需整段替换。
 
@@ -22,7 +22,7 @@ source_path: backlog/tasks/back-529 - Optimize-doc-update-content-with-multi-lin
 3. MCP `document_update` 增加 `appendContent` 字段
 4. 新增 CLI 与 MCP 文档管理指南（documents guide），覆盖 doc create/update/list/view、多行内容、appendContent
 
-## 实现位置
+实现位置：
 
 - `src/cli.ts`（`--content` 转义、`--append-content` 选项）
 - `src/types/index.ts`（`DocumentUpdateInput.appendContent`）
@@ -30,7 +30,7 @@ source_path: backlog/tasks/back-529 - Optimize-doc-update-content-with-multi-lin
 - `src/mcp/tools/documents/handlers.ts`、`schemas.ts`
 - `src/guidelines/cli-instructions/documents.md`、`src/guidelines/mcp/documents.md` 等
 
-## 测试
+## 验证
 
 `src/test/doc-content-newlines.test.ts`（6 项）与 `src/test/mcp-documents.test.ts`（9 项）覆盖 `\n`、`\r\n`、省略内容保留、单/多次追加与组合。
 

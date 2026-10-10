@@ -1,36 +1,32 @@
 ---
-title: BACK-650 Fall back to a placeholder filename for punctuation-only titles
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - core
+title: BACK-650 - 纯标点标题回退占位文件名
+labels: [source, core]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-650 - Fall-back-to-a-placeholder-filename-for-punctuation-only-titles.md
 ---
 
-# BACK-650 Fall back to a placeholder filename for punctuation-only titles
+# BACK-650 - 纯标点标题回退占位文件名
 
-A punctuation-only title such as `!!!` sanitizes to an empty segment, producing `back-42 - .md`. The empty segment itself round-trips, but the `<id> - ` prefix is load-bearing for several filename readers, so `sanitizeFilename` — the single owner of filename sanitization — now falls back to an `untitled` placeholder instead of emitting an empty segment.
+像 `!!!` 这样的纯标点标题会被清洗成空片段，生成 `back-42 - .md`。空片段本身可以往返，但 `<id> - ` 前缀对多个文件名读取器是承重结构，因此 `sanitizeFilename`——文件名清洗的唯一属主——现在回退到 `untitled` 占位符，而不是输出空片段。
 
-## Summary
+- 修复由单个函数持有：`sanitizeFilename`（`src/file-system/operations.ts`）返回清洗后的值或 `'untitled'`，于是 `!!!` 标题生成 `task-1 - untitled.md`；全部四个调用点（saveTask、saveDraft、saveDecision、saveDocument）自动继承，frontmatter 标题保持 `!!!` 原样
+- `<id> - <title>.md` 形态是承重结构：content-store 的任务监视器从第一个空格前的片段取 ID，decision 监视器与 `task-path` 的 ID 查找按 ` - ` 切分，文档保存去重按 `base.split(' - ')[0]` 匹配，文档树同样给节点命名，重复任务修复拒绝在没有分隔符时重建路径——纯 ID 文件名会破坏所有这些
+- `src/test/filesystem.test.ts` 新增 5 个用例覆盖任务、草稿、决策与文档，包括两种文件名切分器的 ID 恢复，以及一次必须仍然去重为单个文件的文档重存；回退该回退逻辑会让 5 个中的 4 个变红（第 5 个是形态守卫）
+- 在一次性项目中端到端验证：`task create '!!!'` -> `task-1 - untitled.md`，doc 与 draft 同理，`task list` 仍渲染 `!!!` 标题；定向运行 74 通过，tsc 与 biome 干净
 
-- One function owns the fix: `sanitizeFilename` (`src/file-system/operations.ts`) returns the sanitized value or `'untitled'`, so a `!!!` title yields `task-1 - untitled.md`; all four call sites (saveTask, saveDraft, saveDecision, saveDocument) inherit it, and the frontmatter title keeps `!!!` untouched
-- The `<id> - <title>.md` shape is load-bearing: the content-store task watcher takes the id from the segment before the first space, the decision watcher and `task-path` id lookup split on ` - `, document save dedup matches by `base.split(' - ')[0]`, the docs tree labels nodes the same way, and duplicate-task repair refuses to rebuild a path without the separator — id-only filenames would break all of them
-- 5 new cases in `src/test/filesystem.test.ts` cover tasks, drafts, decisions, and documents, including id recovery by both filename splitters and a document resave that must still dedupe to one file; reverting the fallback turns 4 of 5 red (the fifth is a shape guard)
-- End-to-end in a throwaway project: `task create '!!!'` -> `task-1 - untitled.md`, same for doc and draft, with `task list` still rendering the `!!!` title; scoped run 74 pass, tsc and biome clean
+## 验收标准
 
-## Acceptance Criteria
-
-- A punctuation-only title produces a non-empty title segment (e.g. `task-42 - untitled.md`)
-- Filenames keep the `id - title.md` shape; no id-only filenames are introduced
-- Tests cover punctuation-only titles for tasks, docs, and decisions
+- 纯标点标题产生非空标题片段（如 `task-42 - untitled.md`）
+- 文件名保持 `id - title.md` 形态；不引入纯 ID 文件名
+- 测试覆盖任务、文档与决策的纯标点标题
 
 ## Related Concepts
 
-- [[concepts/task-identity]] — filename-derived id recovery that depends on the separator
-- [[concepts/core-architecture]] — single-owner sanitization shared by all entity stores
+- [[concepts/task-identity]] — 依赖该分隔符的文件名派生 ID 恢复
+- [[concepts/core-architecture]] — 所有实体存储共享的单属主清洗
 
 ## Related Sources
 
-- [[sources/back-538-duplicate-task-id-recovery]] — duplicate-task repair among the separator-dependent readers
-- [[sources/back-642-draft-identity-fail-closed]] — filename-derived draft identity protected by the same invariant
+- [[sources/back-538-duplicate-task-id-recovery]] — 分隔符依赖读取器之一的重复任务修复
+- [[sources/back-642-draft-identity-fail-closed]] — 受同一不变量保护的文件名派生草稿身份

@@ -1,12 +1,12 @@
 ---
-title: BACK-479 Web UI 路径自动补全与文档编辑
+title: BACK-479 - Web UI 路径自动补全与文档编辑
 labels: [source]
-source_path: backlog/tasks/back-479 - Web-UI-Full-documentation-editing-with-path-autocomplete-for-references-and-documentation.md
 created_date: 2026-05-20 23:45
-updated_date: 2026-05-20 23:45
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-479 - Web-UI-Full-documentation-editing-with-path-autocomplete-for-references-and-documentation.md
 ---
 
-# BACK-479 Web UI 路径自动补全与文档编辑
+# BACK-479 - Web UI 路径自动补全与文档编辑
 
 **状态**: Done | **标签**: feature, web-ui | **优先级**: medium
 

@@ -1,12 +1,12 @@
 ---
-title: BACK-538 重复任务 ID 恢复工作流
+title: BACK-538 - 重复任务 ID 恢复工作流
 labels: [source, core, cli, data-consistency, bug]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-09-26 14:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-538 - Implement-human-first-duplicate-task-ID-recovery-and-update-AI-guidelines.md
 ---
 
-# BACK-538 人类优先的重复任务 ID 恢复流程
+# BACK-538 - 重复任务 ID 恢复工作流
 
 迁移上游 BACK-516，实现人类优先、CLI 权威的重复任务 ID 检测与修复工作流。
 
@@ -20,12 +20,12 @@ source_path: backlog/tasks/back-538 - Implement-human-first-duplicate-task-ID-re
 
 新增命令：`--commit`（丢弃 .bak 备份并最终化）与 `--rollback`（恢复 .bak 备份），均需人工确认后执行。
 
-## 实现位置
+## 实现要点
 
 - `src/core/duplicate-task-repair.ts`、`src/utils/duplicate-detection.ts`、`src/cli.ts`
 - 指南 `src/guidelines/agent-guidelines.md`（新增 5.7 节含 finalize/undo）、`cli-instructions/task-execution.md`、`mcp/task-execution.md`
 
-## 测试
+## 验证
 
 覆盖 doctor 预览/修复/提交/回滚、核心回滚所有权、Web UI 恢复、巨量/填充/点号/遗留/过期计划、无覆盖并发编辑场景。
 

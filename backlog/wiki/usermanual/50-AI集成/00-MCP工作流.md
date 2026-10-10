@@ -2,7 +2,7 @@
 title: MCP 工作流
 labels: [usermanual]
 created_date: 2026-05-07 00:00
-updated_date: '2026-10-03 01:14'
+updated_date: '2026-10-09 23:30'
 ---
 
 
@@ -85,26 +85,71 @@ backlog task edit <id> -s Done
 
 ## MCP 工具能力清单
 
-通过 MCP 连接后，AI 代理可以执行 Backlog.md 的完整工具集：
+通过 MCP 连接后，AI 代理可调用 **27 个工具**，按域分类如下（必填参数以（必填）标注）。
 
-### 任务全生命周期管理
+### 任务（7 个）
 
-- 创建、编辑、查看、归档、搜索任务
-- 管理子任务和依赖关系
-- 更新任务状态、负责人、标签和优先级
-- 处理验收标准的勾选与取消勾选
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `task_create` | 创建新任务 | `title`（必填）、`description`、`status`、`priority`、`assignee`、`labels`、`milestone`、`dependencies`、`acceptanceCriteria`、`parentTaskId`、`dueDate` / `plannedStart` / `plannedEnd` |
+| `task_list` | 列出任务，多维过滤 | `status` / `statusExcluded`（单值或数组）、`assignee` / `unassigned`、`milestone`、`labels`、`search`、`ready`（仅可开工）、`completed`（含完成语料）、`offset` / `limit` |
+| `task_search` | 按标题/描述搜索 | `query`、`status`、`priority`、`modifiedFiles`、`completed`、`offset` / `limit` |
+| `task_view` | 查看任务详情 | `id`（必填） |
+| `task_edit` | 编辑元数据、计划/备注/评论、依赖、验收标准、任务级 DoD | `id`（必填）、`status`、`planSet` / `planAppend` / `planClear`、`notesSet` / `notesAppend` / `notesClear`、`commentsAppend`、`finalSummary`、`acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck`、`definitionOfDoneAdd` |
+| `task_archive` | 归档任务（软删除，腾出 ID 自动清理引用） | `id`（必填） |
+| `task_complete` | 完成清理：终态任务移入 completed/ | `id`（必填） |
 
-### 文档与决策
+### 文档（5 个）
 
-- 创建和更新项目文档
-- 创建架构决策记录（ADR）
-- 查看文档列表和决策列表（`decision_list` 支持状态 / 关键词过滤，BACK-742）
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `document_list` | 列出文档，支持子串过滤 | `search`、`offset` / `limit` |
+| `document_view` | 查看文档元数据与正文 | `id`（必填） |
+| `document_create` | 创建文档（可选 docs 子目录路径） | `title`、`content`（必填）、`type`、`path`、`tags` |
+| `document_update` | 更新内容/标题/元数据 | `id`、`content`（必填）、`title`、`appendContent`、`type`、`path`、`tags` |
+| `document_search` | 模糊搜索文档 | `query`（必填）、`offset` / `limit` |
 
-### 快速笔记
+### 里程碑（5 个）
 
-- `memo_create` / `memo_view` / `memo_update` / `memo_delete` 读写备忘
-- `memo_list` 按日期、标签过滤并分页
-- 与 CLI、Web 共享同一 ID 方案（`YYYYMMDD-N`）与文件格式，详见[快速笔记](../70-快速笔记/00-Memos简介.md)
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `milestone_list` | 列出里程碑文件与任务上的里程碑值 | `offset` / `limit` |
+| `milestone_add` | 新建里程碑 | `name`（必填）、`description`、`actualStart` / `actualEnd`、`documentation` |
+| `milestone_edit` | 重命名/改日期/改描述 | `from`、`to`（必填）、`updateTasks`、`dueDate` / `plannedStart` / `plannedEnd` |
+| `milestone_remove` | 移除里程碑，可选清理任务引用 | `name`（必填）、`taskHandling`（`clear` / `keep` / `reassign`）、`reassignTo` |
+| `milestone_archive` | 归档里程碑 | `name`（必填） |
+
+### 快速笔记（5 个）
+
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `memo_list` | 列出备忘（最新在前） | `date`、`tags`、`offset` / `limit` |
+| `memo_view` | 查看备忘全文 | `id`（必填） |
+| `memo_create` | 创建备忘 | `content`（必填）、`tags` |
+| `memo_update` | 替换（`content`）或追加（`append`）正文，二选一必填 | `id`（必填）、`content` / `append`、`tags` |
+| `memo_delete` | 删除备忘 | `id`（必填） |
+
+备忘工具与 CLI、Web 共享同一 ID 方案（`YYYYMMDD-N`）与文件格式，详见[快速笔记](../70-快速笔记/00-Memos简介.md)。
+
+### 决策（2 个）
+
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `decision_list` | 列出决策，支持状态/关键词过滤 | `status`（`proposed` / `accepted` / `rejected` / `superseded`）、`search`、`offset` / `limit` |
+| `decision_update` | 更新决策状态或正文 | `id`（必填）、`content` / `appendContent`、`status` |
+
+### 定义完成（2 个）
+
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `definition_of_done_defaults_get` | 读取项目默认 DoD 清单 | 无参数 |
+| `definition_of_done_defaults_upsert` | 整体替换项目默认 DoD 清单（新任务继承） | `items`（必填，不含逗号） |
+
+### 工作流（1 个）
+
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `get_backlog_instructions` | 获取工作流指南（markdown），默认 overview；overview 末尾自动渲染当前项目的完整状态机：状态表、类别、迁移边、终态表（BACK-716） | `instruction`（`overview` / `task-creation` / `task-execution` / `task-finalization` / `milestones` / `documents` / `decisions` / `drafts` / `memos`） |
 
 ### 列表分页
 
@@ -118,35 +163,24 @@ backlog task edit <id> -s Done
 - `hasMore` / `total` 让代理能判断拿到的是否完整列表，并据此循环翻页——不再静默截断
 - `task_list` 按状态桶的有序序列分页后再按桶重组渲染，桶顺序不变；`milestone_list` 的 unconfigured / archived 诊断段不参与分页，保证警告不丢失
 
-### 里程碑与看板
-
-- 创建、重命名、归档里程碑
-- 将任务分配到里程碑
-- 读取看板状态分布
-
-### 定义完成（DoD）
-
-- 获取项目的默认 DoD 清单
-- 修改默认 DoD 项
-- 在单个任务中管理 DoD 勾选状态
-
-### 工作流与配置
-
-- 获取工作流指令和指南（overview 末尾自动渲染当前项目的完整状态机：状态表、类别、迁移边、终态表，BACK-716）
-- 读取项目配置
-- 查看项目统计概览
-
 ## MCP 资源与提示
 
-Backlog.md MCP 服务器提供以下结构化资源，AI 代理可在会话中主动读取：
+Backlog.md MCP 服务器向客户端注册以下工作流资源，AI 代理可在会话中主动读取：
 
 | 资源 URI | 内容说明 |
 |---------|---------|
-| `backlog://workflow/overview` | 工作流概览，包含完整的协作指南 |
-| `backlog://docs/task-workflow` | 任务工作流详细指南 |
-| `backlog://init-required` | 未初始化项目时的回退资源 |
+| `backlog://workflow/overview` | 工作流概览：何时创建任务与基本流程；`get_backlog_instructions` 默认返回此册 |
+| `backlog://workflow/task-creation` | 任务创建指南：如何搜索、界定范围、创建任务 |
+| `backlog://workflow/task-execution` | 任务执行指南：如何计划、更新、推进任务 |
+| `backlog://workflow/task-finalization` | 任务收尾指南：如何验证、总结、完结工作 |
+| `backlog://workflow/milestones` | 里程碑指南：创建、编辑、移除、归档里程碑 |
+| `backlog://workflow/documents` | 文档管理指南：创建、更新、列出、查看项目文档 |
+| `backlog://workflow/decisions` | 决策指南：创建与列出决策，含输出模式与状态处理 |
+| `backlog://workflow/drafts` | 草稿指南：创建、晋级、降级、归档草稿 |
+| `backlog://workflow/memos` | 备忘指南：创建、列出、查看、更新、删除快速备忘 |
+| `backlog://init-required` | 未初始化项目时的回退资源：如何在本目录初始化 Backlog.md |
 
-AI 代理在首次连接或遇到不确定的场景时，会优先读取 `backlog://workflow/overview` 获取上下文指导。
+AI 代理在首次连接或遇到不确定的场景时，会优先读取 `backlog://workflow/overview` 获取上下文指导。CLI 侧的 `backlog instructions <分册>` 与上述分册一一对应，详见[代理指令文件](02-代理指令文件.md)。
 
 ## 安全特性
 

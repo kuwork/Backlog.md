@@ -1,41 +1,34 @@
 ---
-title: BACK-669 Polish the web UI initial loading state
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
-  - loading
+title: BACK-669 - Web 首屏加载状态打磨
+labels: [source, web-ui, loading]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-669 - Polish-the-web-UI-initial-loading-state.md
 ---
 
-# BACK-669 Polish the web UI initial loading state
+# BACK-669 - Web 首屏加载状态打磨
 
-Ports the upstream loading-state polish (PR #977, "the old ugly square") to the fork's two pre-first-load surfaces. Root cause in this fork: `rounded-full` is deliberately excluded from the compiled Tailwind CSS, so the board's first-load spinner rendered as a spinning bordered square, and the app pre-init screen was bare "Loading..." text.
+把上游加载状态打磨（PR #977，"the old ugly square"）移植到 fork 的两个首次加载前表面。fork 的根因：`rounded-full` 被刻意排除在编译后的 Tailwind CSS 之外，因此看板首屏 spinner 渲染成一个旋转的带边框方块，应用初始化前屏幕只有光秃秃的 "Loading..." 文本。
 
-## Summary
+- 根因在 fork 内验证：`src/web/styles/source.css` 排除 `rounded-full`（`@source not inline(...)`；项目工具类是 `rounded-circle`）；报告的"约 13k px 巨型 SVG"无法复现——它对应样式表应用前未加样式的 dev shell
+- 新 `BoardLoadingSkeleton.tsx`：`columnCount` 个幽灵列镜像真实列外观（`flex-1 min-w-[16rem]`、`rounded-lg p-4 min-h-24` 卡片——`min-h-24` 是 TaskColumn 的空态下限，看板不会收缩），`animate-pulse` 占位遵循 `motion-reduce`，全部 `aria-hidden`，紧凑圆环居中于其上，sr-only `t.board.loading`
+- fork 差异：骨架屏不接 `message` prop、不渲染进度句子——该信号自 BACK-668 起由头部 chip 独占，第二份会重复同一行；标签来自 i18n 而非硬编码英文
+- `App.tsx` 初始化前屏幕（`isInitialized === null`）在 `role="status"` 下渲染共享 `LoadingSpinner` 圆环 + sr-only `t.nav.projectLoading`；`LoadingSpinner` 增加了 `motion-reduce:animate-none`（后来又被 BACK-670 移除）
+- 死管道清除：Board/BoardPage 丢掉 `loadingMessage` prop 和被 BACK-668 孤立的 `translateLoadingMessage`/`locale` 残留；BACK-668 的 `hasLoadedDataRef` 门控不动，只有首次加载前窗口显示骨架屏
+- 真机经 CDP 测量（端点经 Fetch domain 保持）：圆环计算为 9999px 半径，幽灵列与真实列几何一致，内容干净替换幽灵；7 个回退探针全红，6 个新 jsdom 用例，20/20 范围内测试
 
-- Root cause verified in-fork: `src/web/styles/source.css` excludes `rounded-full` (`@source not inline(...)`; project utility is `rounded-circle`); the reported "~13k px giant SVG" does not reproduce — it matches the unstyled dev shell before the stylesheet applies
-- New `BoardLoadingSkeleton.tsx`: `columnCount` ghost columns mirroring real column chrome (`flex-1 min-w-[16rem]`, `rounded-lg p-4 min-h-24` card — `min-h-24` is TaskColumn's empty floor so the board never contracts), `animate-pulse` placeholders honouring `motion-reduce`, all `aria-hidden`, with the compact ring centred over them and an sr-only `t.board.loading`
-- Fork divergence: the skeleton takes no `message` prop and renders no progress sentence — the header chip has owned that since BACK-668, so a second copy would duplicate the same line; labels come from i18n rather than hardcoded English
-- `App.tsx` pre-init screen (`isInitialized === null`) renders the shared `LoadingSpinner` ring with an sr-only `t.nav.projectLoading` under `role="status"`; `LoadingSpinner` gained `motion-reduce:animate-none` (later removed again by BACK-670)
-- Dead plumbing removed: Board/BoardPage drop the `loadingMessage` prop and `translateLoadingMessage`/`locale` leftovers that BACK-668 orphaned; BACK-668's `hasLoadedDataRef` gating untouched, so only the pre-first-load window shows the skeleton
-- Real-machine measurements over CDP (endpoints held via Fetch domain): ring computes to 9999px radius, ghost columns match real column geometry, content replaces ghosts cleanly; 7 revert probes all red, 6 new jsdom cases, 20/20 scoped tests
+## 验收标准
 
-## Acceptance Criteria
-
-- Pre-init screen shows the shared spinner ring with locale sr-only label in both themes instead of bare text
-- Board first-load branch renders `BoardLoadingSkeleton` with `statuses.length` columns (three-ghost fallback) mirroring real column chrome
-- Loading path never uses the dead `rounded-full`; skeleton announces only via `role="status"` + localized label, no duplicated progress sentence
-- Board/BoardPage carry no leftover `loadingMessage` prop; jsdom tests cover skeleton, BoardPage loading and pre-init screen with revert probes
+- 初始化前屏幕在两种主题下显示共享 spinner 圆环 + 本地化 sr-only 标签，不再是裸文本
+- 看板首次加载分支渲染 `BoardLoadingSkeleton`，`statuses.length` 列（三幽灵兜底）镜像真实列外观
+- 加载路径永不使用死掉的 `rounded-full`；骨架屏只经 `role="status"` + 本地化标签播报，无重复进度句
+- Board/BoardPage 不残留 `loadingMessage` prop；jsdom 测试覆盖骨架屏、BoardPage 加载与初始化前屏幕并带回退探针
 
 ## Related Concepts
-
-- [[concepts/browser-loading]] — pre-first-load loading surfaces and skeleton design
-- [[concepts/web-ui-features]] — board column chrome the skeleton mirrors
+- [[concepts/browser-loading]] — 首次加载前加载面与骨架屏设计
+- [[concepts/web-ui-features]] — 骨架屏镜像的看板列外观
 
 ## Related Sources
-
-- [[sources/back-668-branch-indexing-header-chip]] — prerequisite: owns the mid-session loading signal and `hasLoadedDataRef` gating (batch sibling)
-- [[sources/back-670-loading-motion-reduce-removal]] — follow-up removing the motion-reduce escapes this task added (batch sibling)
-- [[sources/back-613-web-task-list-width-page-shell]] — earlier board layout geometry work
+- [[sources/back-668-branch-indexing-header-chip]] — 前置：独占会话中加载信号与 `hasLoadedDataRef` 门控（批次兄弟）
+- [[sources/back-670-loading-motion-reduce-removal]] — 移除本任务所加 motion-reduce 逃逸的后续（批次兄弟）
+- [[sources/back-613-web-task-list-width-page-shell]] — 早期看板布局几何工作

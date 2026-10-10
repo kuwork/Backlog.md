@@ -2,9 +2,8 @@
 title: 资源管理与临时文件提升
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: '2026-09-26 14:45'
+updated_date: 2026-10-09 23:30
 ---
-
 
 # 资源管理与临时文件提升
 

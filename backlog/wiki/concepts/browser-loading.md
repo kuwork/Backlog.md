@@ -1,8 +1,8 @@
 ---
 title: 浏览器加载状态
-created_date: '2026-08-17 23:00'
-updated_date: '2026-09-26 14:45'
 labels: [concept, web-ui, server, performance]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 浏览器加载状态

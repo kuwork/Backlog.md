@@ -2,7 +2,7 @@
 title: 重构分阶段推出模式
 labels: [pattern, refactoring, planning]
 created_date: 2026-05-27 00:00
-updated_date: 2026-05-27 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 重构分阶段推出模式
@@ -37,7 +37,7 @@ updated_date: 2026-05-27 00:00
 | **集成阶段才发现遗漏消费者** | BACK-273.04 发现 CLI 和 TUI 仍直接访问旧 API | Phase 0 用 `grep` 扫描所有 `import` 和调用点，列出完整影响半径 |
 | **并行子任务间隐式依赖** | 两个子任务同时修改同一文件的相邻区域，合并时冲突 | 父任务中标注「文件级冲突风险」，建议串行或提前协调接口 |
 
-## 参考任务
+## Related Sources
 
 - [[sources/due-date-fields-task]] — BACK-401 的子任务结构（虽然编号是单级，但实现步骤符合 Phase 1→3）
 - [[sources/back-490-overview-command-task]] — BACK-490 的依赖链示例（明确依赖 BACK-489）

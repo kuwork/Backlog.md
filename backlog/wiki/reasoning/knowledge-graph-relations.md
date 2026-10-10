@@ -1,11 +1,11 @@
 ---
-title: 知识图谱关系模型的设计推理（doc-15 / BACK-714）
-created_date: '2026-09-26 22:25'
-updated_date: '2026-09-26 22:25'
+title: 知识图谱关系模型的设计推理
 labels: [reasoning, graph, knowledge, dependencies]
+created_date: 2026-09-26 22:25
+updated_date: 2026-10-09 23:30
 ---
 
-# 知识图谱关系模型的设计推理（doc-15 / BACK-714）
+# 知识图谱关系模型的设计推理
 
 把 `backlog/wiki/`、`backlog/decisions/`、`backlog/docs/` 拉进与任务同一张 `FileNode` 表时，要决定的不是"加几种节点"，而是**什么才算图事实**：节点类型由谁声明、哪些关系可以机械派生、以及在渲染层如何把两种读法压在同一份 payload 上。设计见 doc-15，落地在 BACK-714，依赖 BACK-713 的 `FileNode(path PK)` 前提。
 
@@ -26,7 +26,7 @@ labels: [reasoning, graph, knowledge, dependencies]
 6. 语义关系（`relations` 字段与 8 张语义边表）本期做不做？
 7. UI 层：同一份 payload 怎么切成两个视图，caption 如何截断？
 
-## 备选方案对比
+## 方案对比
 
 | 议题 | 方案 A | 方案 B | 选择与理由 |
 |---|---|---|---|

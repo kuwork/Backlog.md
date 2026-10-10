@@ -1,9 +1,8 @@
 ---
-title: 开发指引
-labels:
-  - develop
-created_date: '2026-05-15 09:34'
-updated_date: '2026-05-15 09:34'
+title: 开发指引 — Bun + TypeScript + Biome 技术栈
+labels: [develop]
+created_date: 2026-05-15 09:34
+updated_date: 2026-10-09 23:30
 ---
 # 开发指引 — Bun + TypeScript + Biome 技术栈
 
@@ -544,3 +543,8 @@ bun build --production --minify src/index.ts --outdir=dist
 ---
 
 *本指引基于 Backlog.md 项目实践总结，随技术演进持续更新。*
+
+## Related Concepts
+
+- [[developer-notes/architecture-gotchas]] — 架构分层约束（HTTP handler 只做 I/O 适配）
+- [[developer-notes/ci-testing-gotchas]] — CI 与测试踩坑笔记

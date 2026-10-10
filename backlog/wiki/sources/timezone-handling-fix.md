@@ -1,12 +1,12 @@
 ---
-title: BACK-497 修复 CLI 与 Web UI 时区处理不一致
-source_path: backlog/tasks/back-497 - Fix-inconsistent-timezone-handling-between-CLI-and-web-UI.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-497 - 修复 CLI 与 Web UI 时区处理不一致
 labels: [source, bug, timezone, web-ui, core]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-497 - Fix-inconsistent-timezone-handling-between-CLI-and-web-UI.md
 ---
 
-# BACK-497 修复 CLI 与 Web UI 时区处理不一致
+# BACK-497 - 修复 CLI 与 Web UI 时区处理不一致
 
 修复存储的 UTC 时间字符串在 CLI 与 Web UI 中解析不一致的问题。
 
