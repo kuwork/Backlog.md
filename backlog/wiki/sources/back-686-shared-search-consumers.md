@@ -1,41 +1,33 @@
 ---
-title: BACK-686 Route TUI and milestone-page task search through the shared core search
-created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
-labels:
-  - source
-  - tui
-  - web-ui
-  - search
+title: BACK-686 - TUI 与 milestone 页面接入共享 Core 搜索
+labels: [source, tui, web-ui, search]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-686 - Route-TUI-and-milestone-page-task-search-through-the-shared-core-search.md
 ---
 
-# BACK-686 Route TUI and milestone-page task search through the shared core search
+# BACK-686 - TUI 与 milestone 页面接入共享 Core 搜索
 
-The TUI task viewer resolved one filter through two engines (in-memory index plus a SearchService fallback with ~50 lines of hand-rolled post-filters), and the web milestones page ran a third private Fuse config over id/title only. This task collapses both onto the BACK-685 shared search path, and fixes the incident that exposed: the server core leaking into the browser bundle.
+TUI 任务查看器用两个引擎解析同一个过滤器（内存索引加带约 50 行手搓后过滤的 SearchService 回退），Web milestones 页面跑第三个私有 Fuse 配置、只覆盖 id/title。本任务把两者合并到 BACK-685 共享搜索路径，并修复暴露该问题的事故：服务器 Core 泄漏进浏览器 bundle。
 
-## Summary
+- `src/ui/task-viewer-with-search.ts`：SearchService 回退引擎整体删除（声明、创建、回退分支、四个 dispose 调用点）；一个语料级索引经 `createTaskSearchIndex(allTasks)`；所有过滤器（query、status/statusExcluded、priority、labels + labelMatch、milestone + resolver、scoreThreshold 0.45、ready）走一次 `applyTaskFilters` 调用——一次渲染不再可能走两个引擎
+- `src/web/components/MilestonesPage.tsx`：私有 Fuse 配置删除；一个共享 `createTaskSearchIndex` 经 `useMemo` 覆盖 bucket 任务；精确 id/子串预匹配保留为模糊索引前的短路，label/body/assignee 查询现在在那里解析
+- 事故与修复：把 milestones 页面接到共享索引经 `task-path.ts` 的 `taskIdsEqual` 把 `node:path` 与 `core/backlog.ts` 拖进客户端 bundle，Web UI 白屏——修复是把 `taskIdsEqual` 移入纯模块 `src/utils/task-id.ts`（task-path 重导出），即仓库现有的纯辅助函数模式；经 `bun build src/web/index.html` 验证（客户端 bundle 无服务器侧标记）
+- fork 就绪引擎（`buildReadinessGraph`/`getTaskReadiness`）、跨分支语料拆分与自定义渲染不动
+- 新 `src/test/web-milestones-page-search.test.tsx`（6 用例）加变异矩阵；TUI 合并由 BACK-685 一致性套件间接守卫——查看器没有自动化测试架，笔记中记录的预先存在缺口
 
-- `src/ui/task-viewer-with-search.ts`: SearchService fallback engine deleted entirely (declaration, creation, fallback branch, four dispose call sites); one corpus-level index via `createTaskSearchIndex(allTasks)`; all filters (query, status/statusExcluded, priority, labels + labelMatch, milestone + resolver, scoreThreshold 0.45, ready) go through one `applyTaskFilters` call — one render can no longer take two engines
-- `src/web/components/MilestonesPage.tsx`: private Fuse config deleted; one shared `createTaskSearchIndex` over bucket tasks via `useMemo`; the exact-id/substring pre-match kept as a short-circuit ahead of the fuzzy index, so label/body/assignee queries now resolve there
-- Incident and fix: routing the milestones page through the shared index dragged `node:path` and `core/backlog.ts` into the client bundle via `taskIdsEqual` in `task-path.ts`, blanking the web UI — fixed by moving `taskIdsEqual` into the pure module `src/utils/task-id.ts` (task-path re-exports), the repo's existing pure-helper pattern; verified with `bun build src/web/index.html` (no server-side markers in the client bundle)
-- Fork readiness engine (`buildReadinessGraph`/`getTaskReadiness`), cross-branch corpus split, and custom rendering untouched
-- New `src/test/web-milestones-page-search.test.tsx` (6 cases) plus mutation matrix; TUI collapse guarded indirectly by the BACK-685 parity suite — the viewer has no automation harness, a pre-existing gap documented in the notes
+## 验收标准
 
-## Acceptance Criteria
-
-- The viewer's SearchService fallback branch and hand-rolled post-filters are gone; filtering matches other surfaces through the shared predicate (milestone incl. NO_MILESTONE, labelMatch, readiness, score cutoff)
-- The milestones page ships no private Fuse config; label/body queries find tasks there; the exact-id/substring pre-match survives as a short-circuit
-- New cases go red when the collapse or the routing is reverted; no server-only module enters the client graph
+- 查看器的 SearchService 回退分支与手搓后过滤器消失；过滤经共享谓词与其他面一致（milestone 含 NO_MILESTONE、labelMatch、就绪、score 截断）
+- milestones 页面不带私有 Fuse 配置；label/body 查询在那里能找到任务；精确 id/子串预匹配作为短路存活
+- 合并或接线被回退时新用例变红；无仅服务器模块进入客户端图
 
 ## Related Concepts
-
-- [[concepts/search-sequences]] — single search pipeline extended to two more consumers
-- [[concepts/milestones]] — milestones page search surface
-- [[concepts/browser-loading]] — the blank-page bundle incident and its pure-module fix
+- [[concepts/search-sequences]] — 扩展到两个新消费方的单一搜索管道
+- [[concepts/milestones]] — milestones 页面搜索面
+- [[concepts/browser-loading]] — 白屏 bundle 事故及其纯模块修复
 
 ## Related Sources
-
-- [[sources/back-685-single-source-task-search]] — the single-owner search this task routes consumers onto
-- [[sources/back-628-task-hierarchy-section]] — same pure task-id module pattern (`canonicalTaskId` vs Core-in-bundle) hit earlier
-- [[sources/back-568-core-browser-task-boundary]] — the Core/browser boundary discipline this incident re-asserts
+- [[sources/back-685-single-source-task-search]] — 本任务把消费方接入的单一所有者搜索
+- [[sources/back-628-task-hierarchy-section]] — 早前命中同款纯 task-id 模块模式（`canonicalTaskId` vs Core 进 bundle）
+- [[sources/back-568-core-browser-task-boundary]] — 本次事故重申的 Core/浏览器边界纪律

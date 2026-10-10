@@ -15,544 +15,544 @@ Read this file FIRST on any wiki operation.
 
 | File | Title | Labels |
 |---|---|---|
-| [[sources/readme-md]] | README.md 产品概述 | source |
-| [[sources/cli-instructions-md]] | CLI-INSTRUCTIONS.md 命令参考 | source |
-| [[sources/mcp-support-task]] | BACK-287 MCP 支持实现 | source |
-| [[sources/web-server-task]] | BACK-100 嵌入式 Web 服务器 | source |
-| [[sources/config-docs]] | 配置文档与决策记录 | source |
-| [[sources/src-architecture]] | 源代码架构总览 | source |
-| [[sources/paste-as-markdown-task]] | BACK-208 粘贴为 Markdown 支持 | source |
-| [[sources/windows-mcp-fix-task]] | BACK-465 Windows MCP document tool 挂起修复 | source |
-| [[sources/file-preview-task]] | BACK-467 本地文件预览与语法高亮 | source |
-| [[sources/wiki-web-ui-task]] | BACK-473 Web UI Wiki 区域与文件树导航 | source |
-| [[sources/wiki-install-task]] | BACK-474 Wiki Install 命令 | source |
-| [[sources/docx-upload-task]] | BACK-475 Word 文档上传与图片提取 | source |
-| [[sources/inline-code-html-escaping-fix]] | BACK-476 行内代码 HTML 实体转义修复 | source |
-| [[sources/web-ui-i18n-task]] | BACK-478 Web UI i18n 支持 | source |
-| [[sources/path-autocomplete-task]] | BACK-479 Web UI 路径自动补全与文档编辑 | source |
-| [[sources/milestone-search-fix]] | BACK-480 修复里程碑页面搜索模糊匹配误报 | source |
-| [[sources/demote-to-draft-action]] | BACK-419 Web UI 降级为草稿操作 | source |
-| [[sources/folder-grouping-for-docs]] | BACK-423 Web UI 文档文件夹分组 | source |
-| [[sources/back-502]] | BACK-502 同步 llm-wiki-for-backlog SKILL.md 更新到嵌入代码 | source |
-| [[sources/wiki-search-task]] | BACK-481 将 Wiki 纳入 Web 搜索范围 | source |
-| [[sources/wikilink-markdown-preview-fix]] | BACK-482 修复 Wikilink 与 Markdown 相对链接预览 | source |
-| [[sources/sidebar-resize-search-task]] | BACK-483 Web UI 侧边栏调整大小与搜索类型下拉 | source, web-ui, ux |
-| [[sources/web-ui-sort-optimization]] | BACK-484 Web UI 排序优化 | source, web-ui, ui, ux |
-| [[sources/ssl-network-error-fix]] | BACK-487 GitOperations.fetch SSL 网络错误优雅处理 | source, bug, git, network, ssl, error-handling |
-| [[sources/wiki-pasted-images-promote-fix]] | BACK-488 Wiki 粘贴图片保存时 promote 修复 | source, bug, wiki, web-ui, image-handling |
-| [[sources/due-date-fields-task]] | BACK-401 日期字段支持（dueDate / plannedStart / plannedEnd） | source, feature, dates, cli, web-ui, mcp |
-| [[sources/back-489-health-indicators-task]] | BACK-489 项目健康指标重构（临期 / 逾期 / 停滞） | source, feature, web-ui, statistics, health |
-| [[sources/back-490-overview-command-task]] | BACK-490 CLI overview 命令（项目级统计） | source, feature, cli, statistics, health |
-| [[sources/smart-gantt-view-task]] | BACK-491 智能甘特图视图 | source, feature, web-ui, gantt, visualization |
-| [[sources/actual-start-end-fields-task]] | BACK-492 actualStart 与 actualEnd 字段支持 | source, feature, dates, cli, web-ui, mcp |
-| [[sources/milestone-actual-dates-task]] | BACK-493 里程碑 actualStart 与 actualEnd 支持 | source, feature, dates, milestones, cli, web-ui, mcp |
-| [[sources/task-edit-modal-keyboard-fix]] | BACK-494 修复任务编辑模态框键盘快捷键与输入冲突 | source, bug, web-ui, keyboard, ux |
-| [[sources/tracking-gantt-view-task]] | BACK-495 跟踪甘特图（计划 vs 实际对比） | source, feature, web-ui, gantt, visualization, tracking |
-| [[sources/tracking-gantt-left-table-task]] | BACK-495.1 跟踪甘特图左表与时间解析引擎 | source, feature, web-ui, gantt, frontend |
-| [[sources/tracking-gantt-dual-layer-task]] | BACK-495.2 双层甘特条渲染（实际条 + 计划边框） | source, feature, web-ui, gantt, frontend, css |
-| [[sources/tracking-gantt-tooltip-legend-task]] | BACK-495.3 跟踪甘特图 Tooltip、图例与交互增强 | source, feature, web-ui, gantt, frontend, ux |
-| [[sources/tracking-gantt-arrow-resolution-task]] | BACK-495.4 跟踪甘特图智能依赖箭头时间解析 | source, feature, web-ui, gantt, frontend |
-| [[sources/subtask-grouping-fix]] | BACK-496 修复子任务在所有视图中按 ID 排序时的分组 | source, bug, web-ui, sorting |
-| [[sources/timezone-handling-fix]] | BACK-497 修复 CLI 与 Web UI 时区处理不一致 | source, bug, timezone, web-ui, core |
-| [[sources/actual-dates-auto-create-task]] | BACK-498 创建任务时自动填充 actualStart 与 actualEnd | source, bug, dates, core |
-| [[sources/tracking-gantt-design-doc]] | doc-6 跟踪甘特图设计方案 | source, design, gantt, visualization, web-ui |
-| [[sources/ganttview-milestone]] | m-7 GanttView 里程碑 | source, milestone, gantt |
-| [[sources/sidebar-collapse-button-fix]] | BACK-499 修复侧边栏折叠按钮与 resize handle 重叠 | source, web-ui, bug |
-| [[sources/task-completion-heatmap-task]] | BACK-503 统计页面 GitHub 风格贡献热力图 | source, feature, web-ui, statistics, visualization |
-| [[sources/label-color-customization-task]] | BACK-500 看板标签颜色自定义与卡片标签溢出优化 | source, web-ui, enhancement |
-| [[sources/task-detail-label-dropdown-task]] | BACK-501 任务详情标签输入添加下拉框与模糊过滤 | source, web-ui, enhancement |
-| [[sources/back-504]] | BACK-504 修复看板拖拽列排序重置与跨列放置定位 | source, bug, web-ui |
-| [[sources/back-505]] | BACK-505 Web UI 任务依赖项钻取导航 | source, feature, web-ui |
-| [[sources/back-506-cli-utc-conversion-fix]] | BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复 | source, bug, cli, dates, timezone |
-| [[sources/stable-task-modal-urls-task]] | BACK-509 稳定任务模态框 URL 与钻取支持 | source, feature, web-ui, routing, modal |
-| [[sources/wiki-page-switch-edit-mode-fix]] | BACK-510 修复 Wiki 页面切换不退出编辑模式 | source, bug, web-ui, wiki |
-| [[sources/local-url-short-aliases-task]] | BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
-| [[sources/back-508-cli-description-escapes]] | BACK-508 CLI description 换行符转义修复 | source, bug, cli, ux |
-| [[sources/back-512-kanban-column-sort-menu-cross-branch]] | BACK-512 看板列排序菜单跨分支任务修复 | source, web-ui, bug |
-| [[sources/back-470-task-comments]] | BACK-470 任务评论功能 | source, feature, comments, cli, mcp, web-ui, tui |
-| [[sources/back-470-1-core-task-comments]] | BACK-470.1 核心评论模型与 Markdown 持久化 | source, comments, core, markdown, search |
-| [[sources/back-470-2-cli-mcp-task-comments]] | BACK-470.2 CLI 与 MCP 暴露评论功能 | source, comments, cli, mcp |
-| [[sources/back-470-3-server-web-task-comments]] | BACK-470.3 Server API 与 Web UI 评论 | source, comments, server, web-ui |
-| [[sources/back-470-4-tui-docs-task-comments]] | BACK-470.4 TUI 渲染与公共文档评论 | source, comments, tui, docs |
-| [[sources/back-514-auto-port]] | BACK-514 浏览器 Web UI 自动端口选择 | source, feature, web-ui, server, port, enhancement |
-| [[sources/back-515-milestone-update-fix]] | BACK-515 Web API 里程碑更新返回修复 | source, bug, web-api, milestones |
-| [[sources/back-516-gantt-drag-fix]] | BACK-516 甘特图拖拽改为滚动而非修改视图范围 | source, bug, web-ui, gantt |
-| [[sources/back-517-i18n-fragmentation-fix]] | BACK-517 修复里程碑展开/折叠按钮 i18n 字符串拼接反模式 | source, bug, web-ui, milestones, i18n |
-| [[sources/back-518-tui-theme-adaptive]] | BACK-518 TUI 主题自适应渲染：移除硬编码颜色 | source, ui, board, ux |
-| [[sources/back-520-fix-codex-mcp-connection-failure]] | BACK-520 修复 Codex MCP 连接失败 | source, mcp, codex, bug |
-| [[sources/back-522-resolve-mcp-project-root-from-client-workspace-roots]] | BACK-522 从客户端 workspace roots 解析 MCP project root | source, mcp, bug, roots, workspace |
-| [[sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs]] | BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持 | source, wiki, feature, frontend, wikilink |
-| [[sources/back-524-add-media-wikilink-support-for-images-video-and-audio]] | BACK-524 媒体 wikilink 支持（图片/视频/音频） | source, web-ui, wiki, feature, media |
-| [[sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs]] | BACK-525 更新 wiki skill 与 CLI 多行输入文档 | source, wiki, docs, cli, skill |
-| [[sources/back-526-create-task-references-and-backlog-autocomplete]] | BACK-526 修复创建任务引用输入与 .backlog 路径自动补全发现 | source, bug, web-ui, cli, autocomplete |
-| [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]] | BACK-527 CLI task create/edit 对 plan、notes、finalSummary 解释 \n 转义序列 | source, bug, cli, ux |
-| [[sources/back-528-web-task-detail-date-clear-persisting]] | BACK-528 修复 Web 任务详情日期清除不持久化 | source, bug, web-ui, dates |
-| [[sources/back-521]] | BACK-521 CLI-first agent workflow refactor and local instruction surface | source, cli, agent-guidance, mcp |
-| [[sources/back-521.1]] | BACK-521.1 Shared workflow instruction registry and CLI access | source, cli, agent-guidance |
-| [[sources/back-521.2]] | BACK-521.2 短 CLI nudge 与 init 默认迁移 | source, cli, agent-guidance, init |
-| [[sources/back-521.6]] | BACK-521.6 Root command local instruction hub | source, cli, agent-guidance |
-| [[sources/back-521.7]] | BACK-521.7 Milestone CLI parity with MCP operations | source, cli, milestones, mcp |
-| [[sources/back-521.14]] | BACK-521.14 更新 CLI/MCP 指令指南缺失的代理指导 | source, docs, agent-guidance, cli, mcp |
-| [[sources/back-529-doc-update-multiline-append]] | BACK-529 doc update 多行与追加支持 | source, cli, mcp, doc |
-| [[sources/back-530-append-description]] | BACK-530 task edit 新增 --append-description | source, cli, mcp |
-| [[sources/back-531-local-link-line-range]] | BACK-531 短本地链接支持行区间后缀 | source, web-ui, markdown |
-| [[sources/back-532-cli-draft-workflow-guides]] | BACK-532 在指令指南中记录 CLI 草稿工作流 | source, cli, mcp, docs, agent-guidance |
-| [[sources/back-533-config-block-yaml-lists]] | BACK-533 解析 config 块状 YAML 列表 | source, config, cli |
-| [[sources/back-534-preserve-updated-date-ordinal-reorder]] | BACK-534 仅序号变更保留 updated_date | source, core, dates |
-| [[sources/back-535-preserve-unsaved-web-drafts]] | BACK-535 跨文件刷新保留 Web 未保存草稿 | source, web-ui, drafts, bug |
-| [[sources/back-536-in-document-hash-links]] | BACK-536 修复文档内 markdown 锚点链接 | source, web-ui, markdown, bug |
-| [[sources/back-537-deterministic-checklist-serialization]] | BACK-537 清单编辑与序列化确定性化 | source, core, markdown, cli, mcp |
-| [[sources/back-538-duplicate-task-id-recovery]] | BACK-538 重复任务 ID 恢复工作流 | source, core, cli, data-consistency, bug |
-| [[sources/back-539-linux-runner-win32-arm64-build]] | BACK-539 Linux runner 构建 win32-arm64 二进制 | source, ci, release, build |
-| [[sources/back-540-content-store-stale-refresh-guard]] | BACK-540 防止过期 ContentStore 刷新覆盖新状态 | source, core, concurrency, bug |
-| [[sources/back-541-board-column-created-sort]] | BACK-541 看板列菜单新增创建日期排序 | source, web-ui, sorting |
-| [[sources/back-542-ordinal-task-list-sort]] | BACK-542 任务列表视图默认序号排序 | source, web-ui, cli, sorting |
-| [[sources/back-543-milestone-cards-created-column]] | BACK-543 里程碑卡片任务表 Created 列 | source, web-ui, milestones, sorting |
-| [[sources/back-544-ac-numbers-browser-detail]] | BACK-544 浏览器任务详情显示 AC 编号 | source, web-ui |
-| [[sources/back-545-cli-task-edit-numeric-id]] | BACK-545 自定义前缀下 CLI task edit 数字 ID 查找 | source, cli, bug |
-| [[sources/back-546-label-filters-alphabetical]] | BACK-546 浏览器标签过滤器按字母排序 | source, web-ui, sorting, ux |
-| [[sources/back-547-avoid-bash-ansi-c-quoting]] | BACK-547 多行 CLI 输入避免 bash ANSI-C 引号 | source, cli, docs, agent-guidance |
-| [[sources/back-548-status-exclude-filtering]] | BACK-548 状态排除与多状态过滤 | source, cli, mcp, web-ui, tui, filtering |
-| [[sources/back-549-hide-empty-board-columns]] | BACK-549 看板无任务时隐藏空状态列 | source, web-ui, config |
-| [[sources/back-550-apple-silicon-binary-resolution]] | BACK-550 Apple Silicon 二进制解析改进 | source, cli, launcher, bug |
-| [[sources/back-551-unassigned-task-filtering]] | BACK-551 CLI 与 MCP 支持未指派任务过滤 | source, cli, mcp, filtering |
-| [[sources/back-552-doc-view-plain]] | BACK-552 doc view 增加 plain 支持 | source, cli, doc |
-| [[sources/back-553-modernize-browser-bundling]] | BACK-553 用 Bun 与 Tailwind 现代化浏览器 UI 打包 | source, build, web-ui |
-| [[sources/doc-4-upstream-migration-classification]] | doc-4 上游 v1.47.1→v1.48.0 迁移差异分类 | source, doc, migration |
-| [[sources/doc-5-a-class-migration-analysis]] | doc-5 A 类上游任务迁移分析报告 | source, doc, migration |
-| [[sources/doc-6-b-class-migration-analysis]] | doc-6 B 类上游任务迁移分析报告 | source, doc, migration |
-| [[sources/back-410-cursor-agents-md-cleanup]] | BACK-410 Cursor AGENTS.md init cleanup | source, cli, init, agents, cursor |
-| [[sources/back-554-document-sequences-command-in-cli-instructions]] | BACK-554 CLI instructions 中补充 sequences 命令 | source, documentation, cli, sequences |
-| [[sources/back-555-tui-live-refresh-atomic-writes]] | BACK-555 TUI live refresh 对原子写入稳健 | source, tui, file-watcher, concurrency |
-| [[sources/back-556-task-edit-append-plan]] | BACK-556 task edit 新增 --append-plan | source, cli, task-editing |
-| [[sources/back-557-browser-shortcuts-inline-fields]] | BACK-557 防止浏览器快捷键拦截内联字段 | source, web-ui, keyboard, bug |
-| [[sources/back-558-browser-server-loopback-only]] | BACK-558 浏览器服务器仅绑定回环 | source, server, security |
-| [[sources/back-559-browser-launch-honor-browser-env]] | BACK-559 启动浏览器 honor BROWSER 环境变量 | source, cli, server, browser |
-| [[sources/back-560-milestone-id-filtering]] | BACK-560 里程碑 ID 查询解析过滤 | source, milestones, filtering |
-| [[sources/back-561-autocommit-exact-files]] | BACK-561 autoCommit 精确到触碰文件 | source, git, auto-commit, core |
-| [[sources/back-562-stable-json-output]] | BACK-562 只读命令稳定 JSON 输出 | source, cli, json, api-contract |
-| [[sources/back-563-tui-intent-first-composer]] | BACK-563 TUI N 键任务 composer | source, tui, task-creation |
-| [[sources/back-564-search-score-threshold]] | BACK-564 搜索分数阈值跨表面对齐 | source, search, fuse, tui, cli, mcp |
-| [[sources/back-565-tui-theme-adaptive-scroll]] | BACK-565 TUI 主题自适应、滚动、Tab 切换 | source, tui, theme, accessibility |
-| [[sources/back-566-browser-async-loading]] | BACK-566 浏览器异步 idle-stable 加载指示 | source, web-ui, server, performance |
-| [[sources/back-567-cross-branch-task-identity]] | BACK-567 同路径跨分支任务版本统一身份 | source, core, identity, git |
-| [[sources/back-568-core-browser-task-boundary]] | BACK-568 Core 作为浏览器任务唯一边界 | source, server, web-ui, core |
-| [[sources/back-569-acceptance-criteria-progress-ui]] | BACK-569 TUI/Web 任务摘要 AC 进度 | source, tui, web-ui, acceptance-criteria |
-| [[sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification]] | doc-7 上游 v1.48.0→v1.49.3 迁移差异分类 | source, doc, migration, upstream |
-| [[sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain]] | doc-8 上游 v1.48.0→v1.49.3 按领域迁移分析 | source, doc, migration, upstream |
-| [[sources/readme-en-md]] | README.en.md 英文产品概述 | source |
-| [[sources/back-570-wiki-install-hints-cli-banner]] | BACK-570 CLI banner/agent nudge/README 补充 wiki install 指引 | source, cli, agent-guidance, wiki |
-| [[sources/back-571-fail-fast-concurrent-task-edits]] | BACK-571 并发任务编辑 fail-fast 文件锁 | source, migration, concurrency, core, bug |
-| [[sources/back-572-agent-guides-date-fields-multiline-input]] | BACK-572 agent 指南明确日期与多行输入约定 | source, agent-guidance, cli, mcp, docs |
-| [[sources/back-573-web-board-dnd-hide-empty-columns]] | BACK-573 hideEmptyColumns 下看板拖拽修复 | source, migration, web-ui, bug |
-| [[sources/back-574-decision-list-view-update-commands]] | BACK-574 decision list/view/update 命令与交互浏览器 | source, migration, cli, tui, decisions |
-| [[sources/back-575-doc-list-interactive-browser]] | BACK-575 doc list 交互浏览器 | source, cli, tui, docs |
-| [[sources/back-576-dedupe-generate-next-decision-id]] | BACK-576 去重 generateNextDecisionId、移除动态 import 环 | source, migration, cli, core |
-| [[sources/back-577-clear-deps-refs-docs-empty-setter-rejection]] | BACK-577 task edit --clear-* 与空 setter 拒绝 | source, migration, cli, mcp |
-| [[sources/back-578-task-edit-list-set-add-remove-flags]] | BACK-578 --ref/--doc/--dep set 语义 + --add-*/--remove-* | source, migration, cli, task-editing |
-| [[sources/back-579-default-assignee]] | BACK-579 defaultAssignee 全表面生效 | source, migration, config, core, cli, mcp |
-| [[sources/back-580-milestone-detail-view-edit-modal]] | BACK-580 Web 里程碑详情页与编辑模态框 | source, web-ui, milestones |
-| [[sources/back-581-web-settings-default-assignee]] | BACK-581 Web Settings 编辑 defaultAssignee | source, web-ui, config |
-| [[sources/back-582-agent-first-round-load-config]] | BACK-582 agent 首轮先加载项目实况 | source, agent-guidance, cli-instructions |
-| [[sources/back-583-labels-config-editor-web-settings]] | BACK-583 Web Settings labels 配置编辑器 | source, web-ui, cli |
-| [[sources/back-584-explicit-unassign-across-surfaces]] | BACK-584 跨表面显式取消指派（三态语义） | source, cli, web-ui, mcp |
-| [[sources/back-585-multi-assignee-parity-task-create]] | BACK-585 task create 多重 assignee 对齐 | source, cli |
-| [[sources/back-586-clear-default-editor]] | BACK-586 允许清空 defaultEditor | source, cli |
-| [[sources/back-587-repair-tui-task-composer-ux]] | BACK-587 TUI composer UX 修复 | source, tui |
-| [[sources/back-588-vim-keys-boundary-navigation]] | BACK-588 vim 键边界停留导航 | source, tui |
-| [[sources/back-589-vi-navigation-filter-popups]] | BACK-589 TUI filter 弹窗 vi 导航 | source, tui |
-| [[sources/back-590-hide-empty-board-columns]] | BACK-590 TUI 隐藏空看板列 | source, tui |
-| [[sources/back-591-tui-window-titles-project-name]] | BACK-591 TUI 窗口标题含项目名 + 终端标题恢复 | source, tui |
-| [[sources/back-592-doc-create-plain-flag]] | BACK-592 doc create 支持 --plain | source, cli |
-| [[sources/back-593-init-backlog-cwd-runtime-core]] | BACK-593 init 遵循 BACKLOG_CWD + createRuntimeCore 工厂 | source, cli, tui |
-| [[sources/back-594-align-filter-footer-hint]] | BACK-594 TUI footer 过滤提示统一 | source, tui |
-| [[sources/back-595-content-store-watcher-retry-rename]] | BACK-595 ContentStore 文档 watcher 修复 | source, server, web-ui, bug |
-| [[sources/back-596-fail-closed-document-decision-identity]] | BACK-596 文档/决策身份歧义 fail-closed | source, cli, server, mcp, bug |
-| [[sources/back-597-fix-cli-test-failures-doc-update-path-task-list-grouping]] | BACK-597 修复两个预存 CLI 测试失败 | source, cli, tests |
-| [[sources/back-598-doc-view-disambiguate-path-title-slug]] | BACK-598 doc view 按路径/标题 slug 消歧 | source, cli |
-| [[sources/back-599-gray-matter-no-cache-parse-wrapper]] | BACK-599 gray-matter no-cache 包装器 | source, markdown, bug |
-| [[sources/back-600-query-tasks-local-fast-path]] | BACK-600 queryTasks 本地快路径 | source, cli, performance |
-| [[sources/back-601-core-browser-publication-ownership]] | BACK-601 Core publication-owner 地基 | source, core, server |
-| [[sources/back-602-incremental-cross-branch-task-loading]] | BACK-602 增量跨分支任务加载（移植 BACK-624） | source, core, performance |
-| [[sources/back-603-heading-test-theme-adaptive-gray]] | BACK-603 heading 测试同步主题自适应色 | source, tui, tests |
-| [[sources/back-604-code-path-test-theme-adaptive-cyan]] | BACK-604 code-path 测试同步主题自适应色 | source, tui, tests |
-| [[sources/back-605-claude-agent-guideline-symlink-windows]] | BACK-605 Windows 符号链接 checkout 修复 | source, infra, windows, ci |
-| [[sources/back-606-cli-priority-plain-test-prefix-agnostic]] | BACK-606 优先级 plain 输出测试前缀无关化 | source, cli, tests |
-| [[sources/back-607-task-details-docs-tests-i18n-router]] | BACK-607 任务详情文档测试补 provider 包裹 | source, web-ui, tests |
-| [[sources/back-608-mcp-overview-status-excluded-doc]] | BACK-608 MCP overview 补 statusExcluded 文档 | source, mcp, docs |
-| [[sources/back-609-mcp-stdio-test-timeout]] | BACK-609 MCP stdio 测试显式超时 | source, test, ci |
-| [[sources/back-610-cli-priority-filtering-test-timeouts]] | BACK-610 CLI priority 测试超时放宽 | source, test, ci |
-| [[sources/back-611-mermaid-anchor-href-pathname-prefix]] | BACK-611 MermaidMarkdown 锚点断言同步 | source, test, web-ui |
-| [[sources/back-612-content-store-test-stabilization]] | BACK-612 ContentStore 测试稳定化 + 真实 bug 修复 | source, test, core, bug |
-| [[sources/back-613-web-task-list-width-page-shell]] | BACK-613 Web 任务列表无横向滚动适配 | source, web-ui |
-| [[sources/back-614-entity-id-auto-link-autocomplete]] | BACK-614 Web markdown 实体 ID 自动链接 | source, web-ui |
-| [[sources/back-615-dependency-readiness-guidance]] | BACK-615 依赖就绪指引（CLI/TUI/Web/MCP） | source, cli, tui, web-ui, mcp |
-| [[sources/back-616-tui-focus-list-recreation]] | BACK-616 applyFilters 重建列表后恢复焦点 | source, tui, bug |
-| [[sources/back-617-preview-mode-comment-add]] | BACK-617 preview 模式直接添加评论 | source, web-ui, comments |
-| [[sources/back-618-milestone-created-updated-dates]] | BACK-618 里程碑 created/updated 日期字段 | source, milestones, cli, mcp, web-ui |
-| [[sources/back-619-milestone-documentation-field]] | BACK-619 里程碑 documentation 字段 | source, milestones, cli, mcp, web-ui |
-| [[sources/back-620-swapped-empty-state-hints]] | BACK-620 修复互换的空态提示 | source, web-ui, bug, i18n |
-| [[sources/back-621-launcher-scoped-package-resolution]] | BACK-621 launcher scoped 包名解析修复 | source, cli, release |
-| [[sources/back-622-milestone-archive-remove-dialogs]] | BACK-622 里程碑归档/删除对话框澄清 | source, web-ui, milestones |
-| [[sources/back-623-comment-removal-flags]] | BACK-623 评论删除（--remove-comment/--clear-comments） | source, cli, mcp, comments |
-| [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] | doc-9 上游 v1.49.3→v1.50.1 差异分类 | source, doc, migration, upstream |
-| [[sources/doc-10-upstream-v1-49-3-to-v1-50-1-migration-analysis-by-domain]] | doc-10 上游 v1.49.3→v1.50.1 按领域分析 | source, doc, migration, upstream |
-| [[sources/doc-16-todo-tasks-vs-upstream-migration-report]] | doc-16 To-Do 任务与三次迁移对照清算 | source, doc, migration, backlog-hygiene |
-| [[sources/m-6-new-milestones-ui]] | m-6 New Milestones UI 里程碑 | source, milestone, milestones, web-ui |
-| [[sources/m-8-agent-cli-workflow]] | m-8 Agent CLI Workflow 里程碑 | source, milestone, cli, agent-workflow |
-| [[sources/back-624-global-search-dialog]] | BACK-624 Web UI 全局 Spotlight 搜索对话框 | source, web-ui, search, routing, modal |
-| [[sources/back-625-ac-progress-json-output]] | BACK-625 任务 JSON 输出返回验收标准进度 | source, cli, json, api-contract |
-| [[sources/back-626-dependabot-mermaid-bump]] | BACK-626 mermaid 安全升级解除 5 个 Dependabot 告警 | source, security, dependencies, build |
-| [[sources/back-627-back-arrow-history-fix]] | BACK-627 修复钻取后返回箭头留下过期历史条目 | source, web-ui, routing, bug |
-| [[sources/back-628-task-hierarchy-section]] | BACK-628 任务模态框显示父任务与子任务 | source, web-ui, task-hierarchy |
-| [[sources/back-629-global-search-dialog-light-theme]] | BACK-629 修复全局搜索对话框不跟随亮色主题 | source, web-ui, theming |
-| [[sources/back-630-board-card-ac-progress-restyle]] | BACK-630 看板卡片 AC 进度重排与样式重构 | source, web-ui |
-| [[sources/back-631-comment-rich-markdown-editor]] | BACK-631 Web 评论输入换成富 Markdown 编辑器 | source, web-ui, comments |
-| [[sources/back-632-decision-image-promotion]] | BACK-632 决策保存时 promote 粘贴图片 | source, web-ui, decisions |
-| [[sources/back-633-decision-editing-web-ui]] | BACK-633 Web UI 决策编辑 | source, web-ui, decisions |
-| [[sources/back-634-decision-creation-sidebar]] | BACK-634 Web 侧边栏创建决策 | source, web-ui, decisions |
-| [[sources/back-635-decision-status-editing]] | BACK-635 决策状态编辑跨 CLI/MCP/Web | source, decisions, cli, mcp, web-ui |
-| [[sources/back-636-decision-status-i18n]] | BACK-636 Web 决策状态标签本地化 | source, web-ui, decisions, i18n |
-| [[sources/back-637-hash-anchors-on-load]] | BACK-637 加载/重载/slug 归一化保持文档内锚点 | source, web-ui, markdown |
-| [[sources/back-638-header-outline-toc]] | BACK-638 文档/决策/wiki 页头部大纲浮动可折叠 TOC | source, web-ui |
-| [[sources/back-639-document-fingerprint-reload]] | BACK-639 文档体指纹变化时才重载打开文档 | source, web-ui |
-| [[sources/back-640-mermaid-rendering-fixes]] | BACK-640 Mermaid 渲染修复（fence 大小写、主题、预览面板） | source, web-ui, bug |
-| [[sources/back-641-sidebar-toggle-z-index]] | BACK-641 侧边栏折叠按钮被页头遮挡修复 | source, web-ui, bug |
-| [[sources/back-642-draft-identity-fail-closed]] | BACK-642 草稿身份歧义 fail-closed | source, drafts, bug |
-| [[sources/back-643-fence-aware-blank-line-collapse]] | BACK-643 notes 中围栏代码块内保留连续空行（issue 930） | source, markdown, bug |
-| [[sources/back-644-web-draft-editing-fix]] | BACK-644 Web UI 草稿编辑修复 | source, web-ui, drafts, bug |
-| [[sources/back-645-task-list-ac-progress-bar]] | BACK-645 任务列表定宽 AC 进度条重构 | source, web-ui |
-| [[sources/back-646-web-demote-resilience]] | BACK-646 Web UI 降级为草稿操作增强 | source, web-ui, drafts |
-| [[sources/back-647-reserved-task-prefixes]] | BACK-647 init 时保留 draft/doc/decision 前缀 | source, cli, init |
-| [[sources/back-648-tui-unicode-safe-insertion]] | BACK-648 TUI 文本插入 Unicode 安全 | source, tui, bug |
-| [[sources/back-649-shared-subtask-sorting]] | BACK-649 TUI 列表走共享任务 ID 比较器排序 | source, tui, sorting |
-| [[sources/back-650-untitled-filename-fallback]] | BACK-650 标点-only 标题回退占位文件名 | source, core, bug |
-| [[sources/back-651-line-reference-docs]] | BACK-651 agent 指南补充行号引用与行区间链接文档 | source, docs, agent-guidance |
-| [[sources/back-652-multi-status-filter]] | BACK-652 task list --status 支持多状态 | source, cli, filtering |
-| [[sources/back-653-readme-board-export-in-memory]] | BACK-653 README 看板导出移除临时文件往返 | source, cli, performance |
-| [[sources/back-654-board-export-grandchild-subtasks]] | BACK-654 看板导出分组含孙级子任务 | source, cli |
-| [[sources/back-655-section-marker-safety]] | BACK-655 拒绝嵌套章节标记并修复 append 截断 | source, markdown, bug |
-| [[sources/back-656-agent-guidance-overview-cadence]] | BACK-656 修正随发 agent 指南中 overview 节奏与任务描述 | source, docs, agent-guidance |
-| [[sources/back-657-task-list-json-watch]] | BACK-657 task list 复用 JSON 输出实现 watch | source, cli, json |
-| [[sources/back-658-json-readiness-publication]] | BACK-658 JSON 读取路径发布任务就绪度 | source, cli, json |
-| [[sources/back-659-ac-progress-mcp-plain-lists]] | BACK-659 MCP 与 plain 任务列表显示 AC 进度 | source, cli, mcp |
-| [[sources/back-660-forced-refresh-stale-fetch-race]] | BACK-660 强制刷新不再合并在途过期 fetch | source, core, concurrency, bug |
-| [[sources/back-661-deep-link-first-load-guard]] | BACK-661 首次加载前任务深链接不回退看板 | source, web-ui, routing, bug |
-| [[sources/back-662-completed-corpus-query-search]] | BACK-662 queryTasks 与 SearchService 增加 completed 语料选项 | source, core, search |
-| [[sources/back-663-completed-popup-read-only]] | BACK-663 completed 语料任务弹窗只读渲染 | source, web-ui |
-| [[sources/back-664-dependency-input-completed-predecessors]] | BACK-664 依赖输入接受已完成前驱并只读打开 | source, web-ui |
-| [[sources/back-665-completed-corpus-filter-checkbox]] | BACK-665 Web 看板/列表过滤栏增加 completed 语料复选框 | source, web-ui, filtering |
-| [[sources/back-666-modified-files-tabbed-panel]] | BACK-666 Web 任务模态框展示与编辑 modified files | source, web-ui |
-| [[sources/back-667-sidebar-docs-sort-toggles]] | BACK-667 Web 侧边栏文档树名称/ID 排序切换 | source, web-ui, sorting |
-| [[sources/back-668-branch-indexing-header-chip]] | BACK-668 Web UI 跨分支索引加载指示打磨 | source, web-ui, ux |
-| [[sources/back-669-initial-loading-skeleton]] | BACK-669 Web UI 初始加载态打磨 | source, web-ui, ux |
-| [[sources/back-670-loading-motion-reduce-removal]] | BACK-670 OS 关闭动画时加载指示仍保持动画 | source, web-ui, accessibility |
-| [[sources/back-672-wiki-tree-sort-toggles]] | BACK-672 Web 侧边栏 wiki 树标题/文件名排序切换 | source, web-ui, wiki, sorting |
-| [[sources/back-673-utc-hover-titles]] | BACK-673 Web UI 显示本地时间、hover 出 UTC | source, web-ui, dates |
-| [[sources/back-674-decisions-sort-toggles]] | BACK-674 文档排序标签改名 Title 并给决策加排序切换 | source, web-ui, sorting |
-| [[sources/back-675-tui-ac-bar-ascii]] | BACK-675 TUI AC 进度合并为单条 ASCII 彩色紧凑条 | source, tui |
-| [[sources/back-676-emoji-double-width-tui]] | BACK-676 TUI emoji 按双宽计算 | source, tui, bug |
-| [[sources/back-677-help-popup-resize-robustness]] | BACK-677 TUI 帮助弹窗抗 resize 与折行 | source, tui, bug |
-| [[sources/back-678-composer-extreme-terminal-sizes]] | BACK-678 composer 极端终端尺寸可用性 | source, tui |
-| [[sources/back-679-composer-mouse-clicks]] | BACK-679 TUI 任务 composer 支持鼠标点击 | source, tui |
-| [[sources/back-680-batch-status-move]] | BACK-680 多选任务一次动作跨状态移动 | source, tui, web-ui |
-| [[sources/back-681-tui-shift-arrow-multi-select]] | BACK-681 TUI shift+方向键多选移动 | source, tui |
-| [[sources/back-682-web-positional-batch-drop]] | BACK-682 Web 看板多选按选定位置插入 | source, web-ui |
-| [[sources/back-683-cli-draft-edit]] | BACK-683 CLI 草稿编辑，对齐 Web 看板草稿编辑 | source, cli, drafts |
-| [[sources/back-684-task-detail-popup-backdrop-resize]] | BACK-684 TUI 任务详情弹窗背板随 resize 跟踪 | source, tui, bug |
-| [[sources/back-685-single-source-task-search]] | BACK-685 任务搜索配置与过滤器单源化到 core | source, core, search |
-| [[sources/back-686-shared-search-consumers]] | BACK-686 TUI 与里程碑页搜索走共享 core 搜索 | source, tui, search |
-| [[sources/back-687-milestone-board-tui]] | BACK-687 TUI 里程碑列表换成交互式里程碑看板视图 | source, tui, milestones |
-| [[sources/back-688-milestones-plain-grouped-output]] | BACK-688 milestones list --plain 按里程碑分组输出 | source, cli, milestones |
-| [[sources/back-689-tui-task-composer-dates]] | BACK-689 TUI composer 与详情弹窗支持 planned/actual/due 日期 | source, tui, dates |
-| [[sources/back-690-overview-due-by-timezone-fix]] | BACK-690 overview Due By 西时区 date-only 渲染提前一天修复 | source, cli, dates, bug |
-| [[sources/back-691-local-first-lifecycle-vacated-refs]] | BACK-691 归档/完成/降级本地优先并清理腾空依赖引用 | source, core |
-| [[sources/back-692-tui-edit-file-location-routing]] | BACK-692 TUI 编辑键按文件位置而非状态路由目标 | source, tui |
-| [[sources/back-693-tui-draft-creation-window]] | BACK-693 TUI drafts 会话新增草稿创建窗口 | source, tui, drafts |
-| [[sources/back-694-board-popup-live-sync]] | BACK-694 看板任务弹窗与实时任务状态同步 | source, tui, live-sync |
-| [[sources/back-695-drafts-session-live-sync]] | BACK-695 drafts 会话与实时草稿变更同步 | source, tui, live-sync |
-| [[sources/back-696-milestone-popup-live-sync]] | BACK-696 里程碑弹窗与实时里程碑/任务状态同步 | source, tui, live-sync |
-| [[sources/back-697-json-summary-references-modified-files]] | BACK-697 task list --json 增加 references 与 modifiedFiles | source, cli, json |
-| [[sources/back-698-web-in-place-refresh]] | BACK-698 Web 视图数据变化原地刷新替代整页重载 | source, web-ui, live-sync |
-| [[sources/back-699-findidentity-nonpublishing-fallback]] | BACK-699 findIdentity rename 回退不发布 freshness | source, core, bug |
-| [[sources/back-700-content-entity-broadcast-refresh]] | BACK-700 内容实体（文档/决策/wiki）变更广播并原地刷新 | source, web-ui, live-sync |
-| [[sources/back-701-fix-server-test-keep-alive-misroute]] | BACK-701 本地 server 套件 Connection: close 假失败修复 | source, test, server |
-| [[sources/back-702-kuzu-graph-foundation]] | BACK-702 Kuzu graph foundation — schema, fail-closed parser, fingerprint cold start | source, graph, kuzu |
-| [[sources/back-703-graph-incremental-sync]] | BACK-703 Incremental rebuild and hot-update sync (Graph Service) | source, graph, kuzu, web-ui |
-| [[sources/back-704-graph-view-web-ui]] | BACK-704 Web UI D3.js 任务图谱可视化页 | source, kuzu, graph, web-ui |
-| [[sources/back-705-graph-control-cluster-styling]] | BACK-705 图谱控制簇样式统一 | source, web-ui, graph |
-| [[sources/back-706-milestone-actual-end-stamp]] | BACK-706 里程碑最后任务进入终态时打 actualEnd | source, milestones, core |
-| [[sources/back-707-dependency-gate-cycles]] | BACK-707 validateDependencies 拒绝环、容忍存量不可解析依赖 | source, core, dependencies |
-| [[sources/back-708-doctor-dependency-defects]] | BACK-708 backlog doctor 报告依赖缺陷 | source, cli, dependencies |
-| [[sources/back-709-dependency-closure-query]] | BACK-709 从任务语料回答依赖闭包与跳数 | source, core, dependencies |
-| [[sources/back-710-task-modal-relationship-graph]] | BACK-710 任务详情模态框增加关系图谱视图 | source, web-ui, graph |
-| [[sources/back-711-modal-graph-alignment]] | BACK-711 任务模态关系图谱与 /graph 页对齐 | source, web-ui, graph |
-| [[sources/back-712-wiki-lint-source-path-guidance]] | BACK-712 wiki lint 审查遗漏 source_path 问题修复 | source, wiki, docs |
-| [[sources/back-713-filenode-rename]] | BACK-713 图节点表 Task(id) 改名 FileNode(path PK) | source, kuzu, graph, core |
-| [[sources/back-714-knowledge-graph-ingest]] | BACK-714 wiki/docs/decisions 入图（FileNode 类型、tags、provenance、wikilinks） | source, kuzu, graph, wiki |
-| [[sources/doc-11-todo-tasks-vs-upstream-migration-cross-check]] | doc-11 To-Do 任务与上游迁移（v1.47.1-v1.50.1）对照分析 | source, doc, migration, backlog-hygiene |
-| [[sources/doc-12-upstream-v1-50-1-to-v1-52-0-migration-diff-classification]] | doc-12 上游 v1.50.1→v1.52.0 差异分类 | source, doc, migration, upstream |
-| [[sources/doc-13-upstream-v1-50-1-to-v1-52-0-migration-analysis-by-domain]] | doc-13 上游 v1.50.1→v1.52.0 按领域迁移分析 | source, doc, migration, upstream |
-| [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] | doc-14 Kuzu 任务图谱：冷启动校验与热更新设计 | source, graph, kuzu, design |
-| [[sources/doc-15-wiki-knowledge-graph-relation-design]] | doc-15 Wiki 知识图谱关系设计（doc-14 第三期） | source, graph, wiki, kuzu, design |
-| [[sources/m-9-kuzu-task-graph-phase-1]] | m-9 Kuzu Task Graph Phase 1 里程碑 | source, milestone, kuzu, graph |
-| [[sources/doc-002-configuring-vim-neovim-default-editor]] | doc-002 配置 VIM/Neovim 为默认编辑器 | source, doc, config |
-| [[sources/doc-003-running-backlog-browser-as-a-service]] | doc-003 将 backlog browser 作为服务运行 | source, doc, ops |
-| [[sources/back-222-subtask-visualization-web-ui]] | BACK-222 - Improve task and subtask visualization in web UI | source, web-ui, enhancement, archived |
-| [[sources/back-420-task-content-toc-scrollspy]] | BACK-420 - Add task content TOC and scrollspy in Web UI | source, web-ui, enhancement |
-| [[sources/back-715-state-machine-editor-settings]] | BACK-715 - Add a state machine editor to the settings page | source, feature, web-ui |
-| [[sources/back-716-state-machine-guidance-overviews]] | BACK-716 - State machine guidance: static overview sections + dynamic injection | source, agents, cli, mcp |
-| [[sources/back-717-settings-page-reorder]] | BACK-717 - Reorder the settings page: state machine card above Workflow Settings | source, web-ui |
-| [[sources/back-718-task-help-workflow-overview-hint]] | BACK-718 - Point task create/edit --help at the workflow overview | source, cli |
-| [[sources/back-719-config-list-plain-flag]] | BACK-719 - Make backlog config list accept the --plain flag the overview prints | source, cli |
-| [[sources/back-720-graph-canvas-2d-renderer]] | BACK-720 - Optimize GraphView rendering performance and hover experience | source, web-ui |
-| [[sources/back-721-state-machine-localization-guidance]] | BACK-721 - Optimize State Machine Guidance | source, state-machine, guidelines, i18n |
-| [[sources/back-722-flaky-test-failures-fix]] | BACK-722 - Fix pre-existing and flaky test failures across the suite | source, tests, tooling |
-| [[sources/back-723-biome-tsx-coverage]] | BACK-723 - Extend Biome coverage to .tsx files | source, tooling, biome, web-ui |
-| [[sources/back-724-milestone-modal-fetch-fallback-fix]] | BACK-724 - Fix MilestoneDetailsModal form not populating on fetch fallback | source, web-ui, bug |
-| [[sources/back-725-average-completion-time-statistics]] | BACK-725 - Add average task completion time to project statistics | source, statistics, cli, web-ui, gantt |
-| [[sources/back-726-modal-toc-drawer]] | BACK-726 - Modal markdown outline drawer: bookmark-style TOC entry for task/doc/wiki preview modals | source, web-ui, markdown, wiki |
-| [[sources/back-727-graph-view-light-theme-readability]] | BACK-727 - Improve graph view readability in light theme | source, web-ui, graph |
-| [[sources/back-728-memo-storage-layer]] | BACK-728 - Memo storage layer: src/core/memos.ts | source, feature, cli, web-ui |
-| [[sources/back-729-memo-http-api]] | BACK-729 - Memo HTTP API: /api/memos routes | source, feature, web-ui, api |
-| [[sources/back-730-cli-memo-subcommand]] | BACK-730 - CLI memo subcommand | source, cli, feature |
-| [[sources/back-731-memos-feed-page]] | BACK-731 - Memos feed page with quick capture | source, web-ui, feature |
-| [[sources/back-732-memos-calendar-mode]] | BACK-732 - Calendar mode and feed/calendar linkage on /memos | source, web-ui, feature |
-| [[sources/back-733-include-memos-in-global-search]] | BACK-733 - Include memos in global search | source, feature, web-ui, cli |
-| [[sources/back-734-memos-knowledge-web-links]] | BACK-734 - Wire memos into the knowledge web | source, feature, web-ui |
-| [[sources/back-735-memos-realtime-sync]] | BACK-735 - Realtime sync for memos | source, feature, web-ui |
-| [[sources/back-736-memos-milestone-acceptance-pass]] | BACK-736 - Memos milestone regression and acceptance pass | source, feature, testing |
-| [[sources/back-737-memos-ui-polish]] | BACK-737 - Memos UI polish: calendar popover, note typography, checklist and tag chips | source, feature, web-ui |
-| [[sources/back-738-memo-card-copy-id-modal-background]] | BACK-738 - Memo card menu: copy ID action and fix entity-link modal losing the /memos background | source, bug, web-ui |
-| [[sources/back-739-toc-drawer-floating-mode]] | BACK-739 - TOC drawer: float over the modal when the outside dock would leave the screen | source, web-ui |
-| [[sources/back-740-memo-mcp-tools]] | BACK-740 - Memo MCP tools: memo_create/list/view/update/delete | source, mcp |
-| [[sources/back-741-cli-list-paging]] | BACK-741 - Page long CLI lists with grep-style options | source, cli |
-| [[sources/back-742-mcp-list-pagination]] | Add pagination to MCP list tools and decision_list | source, mcp, web |
-| [[sources/back-743-watch-starter-liveness]] | Stop task list watchers when the process that started them exits | source, cli, watch |
-| [[sources/back-744-watch-idle-cpu-signature]] | Keep idle task list watchers from using constant CPU | source, cli, watch |
-| [[sources/back-745-memo-corpus-signature-gate]] | Gate memo search corpus refreshes behind a stat signature | source, core, memos, search, performance |
-| [[sources/back-746-memo-board-webgl-pinboard]] | Memo board: WebGL sticky-note pinboard view | source, web-ui, memos, webgl, feature |
-| [[sources/back-747-memo-archiving]] | Memo archiving: move a note to backlog/archive/memos | source, memos, feature, web-ui |
-| [[sources/back-748-fix-sidebar-resize-handle]] | BACK-748 - Fix sidebar resize handle collapsed by hr preflight height:0 | source, bug, web-ui |
-| [[sources/back-749-pinboard-fixed-height-ellipsis]] | BACK-749 - Pinboard notes: fixed height with ellipsis truncation on overflow | source, enhancement, web-ui, memos |
-| [[sources/back-750-memo-tag-bar]] | BACK-750 - Memo tag bar: single-line history strip and topic syntax | source, enhancement, web-ui, memos |
-| [[sources/back-751-auto-link-entity-id-ranges]] | BACK-751 - Auto-link entity ID ranges and slash-lists as a clickable dropdown selector | source, web-ui, enhancement, markdown |
-| [[sources/back-752-sequences-tui-two-pane]] | BACK-752 - Sequences TUI: two-pane view (sequence sidebar + task list) | source, cli, tui |
-| [[sources/back-753-referenced-by-backlinks]] | BACK-753 - Referenced by backlinks on document and decision pages | source, web-ui |
-| [[sources/back-754-re-parent-task]] | BACK-754 - Re-parent an existing task (task edit --parent / --clear-parent) | source, cli, mcp |
-| [[sources/back-755-include-completed-subtasks]] | BACK-755 - Include completed subtasks in parent task views | source, bug, subtasks |
-| [[sources/back-756-graph-canvas-high-dpi]] | BACK-756 - Speed up graph canvas rendering on high-DPI screens | source, web-ui |
-| [[sources/doc-17-state-machine-semantics-diagnosis]] | doc-17 - 状态机语义缺失与 AI 协同：完整诊断、方案与引擎选型 | source, design, mcp, state-machine |
-| [[sources/doc-18-differentiation-gap-analysis]] | doc-18 - 差异化管理机制横向差距分析：七层模型与五个缺口 | source, design |
-| [[sources/doc-19-default-state-machine-prd]] | doc-19 - PRD：默认状态机（7 列 · 三审查点落位 · 可重置 · 指引优先） | source, specification, state-machine, web-ui |
-| [[sources/doc-20-memos-integration]] | doc-20 - 快速笔记：Memos 集成 | source, web-ui, design |
-| [[sources/doc-21-upstream-v1-52-0-to-v1-53-0-migration-diff-classification]] | doc-21 - Upstream v1.52.0 to v1.53.0 Migration Diff Classification | source, migration, cli |
-| [[sources/doc-22-upstream-v1-52-0-to-v1-53-0-migration-analysis-by-domain]] | doc-22 - v1.52.0 至 v1.53.0 上游任务迁移分析报告（按领域） | source, migration, cli |
-| [[sources/m-10-memos-integration]] | m-10 Memos Integration 里程碑 | source, milestone, memos |
-| [[sources/back-757-memo-backlog-dir-resolution]] | BACK-757 memo 存储解析配置 backlog 目录与 re-init 补建结构 | source, memos, bug, cli |
-| [[sources/back-758-graph-backlog-dir-resolution]] | BACK-758 图谱扫描/监听解析配置 backlog 目录 | source, graph, kuzu, bug |
-| [[sources/back-759-cross-branch-prefix-visibility]] | BACK-759 跨分支加载前缀转发与 include_cross_branch 配置 | source, core, cli, web-ui, config |
-| [[sources/back-760-cross-branch-settings-toggles]] | BACK-760 设置页跨分支可见性三开关 | source, web-ui, config |
-| [[sources/back-761-terminal-card-actual-end]] | BACK-761 终态看板卡片显示 actualEnd 完成时间 | source, web-ui, dates |
-| [[sources/back-762-terminal-statuses-readonly]] | BACK-762 终态集读取路径显式化与设置页只读化 | source, config, web-ui, cli |
+| [[sources/readme-md]] |  README.md 产品概述 | source |
+| [[sources/cli-instructions-md]] |  CLI-INSTRUCTIONS.md 命令参考 | source |
+| [[sources/mcp-support-task]] |  BACK-287 MCP 支持实现 | source |
+| [[sources/web-server-task]] |  BACK-100 嵌入式 Web 服务器 | source |
+| [[sources/config-docs]] |  配置文档与决策记录 | source |
+| [[sources/src-architecture]] |  src/ 目录架构说明 | source |
+| [[sources/paste-as-markdown-task]] |  BACK-208 粘贴为 Markdown 支持 | source |
+| [[sources/windows-mcp-fix-task]] |  BACK-465 Windows MCP 挂起修复 | source |
+| [[sources/file-preview-task]] |  BACK-467 本地文件预览与语法高亮 | source |
+| [[sources/wiki-web-ui-task]] |  BACK-473 Web UI Wiki 区域文件树 | source |
+| [[sources/wiki-install-task]] |  BACK-474 Wiki Install 命令 | source |
+| [[sources/docx-upload-task]] |  BACK-475 Word 文档上传与图片提取 | source |
+| [[sources/inline-code-html-escaping-fix]] |  BACK-476 行内代码 HTML 实体转义修复 | source |
+| [[sources/web-ui-i18n-task]] |  BACK-478 Web UI 国际化支持 | source |
+| [[sources/path-autocomplete-task]] |  BACK-479 Web UI 路径自动补全与文档编辑 | source |
+| [[sources/milestone-search-fix]] |  BACK-480 里程碑页面搜索模糊匹配误报修复 | source |
+| [[sources/demote-to-draft-action]] |  BACK-419 Web UI 降级草稿操作 | source |
+| [[sources/folder-grouping-for-docs]] |  BACK-423 Web UI 文档文件夹分组 | source |
+| [[sources/back-502]] |  BACK-502 同步 SKILL.md 更新到嵌入代码 | source |
+| [[sources/wiki-search-task]] |  BACK-481 Wiki 纳入 Web 搜索 | source |
+| [[sources/wikilink-markdown-preview-fix]] |  BACK-482 Wikilink 相对链接预览修复 | source |
+| [[sources/sidebar-resize-search-task]] |  BACK-483 Web UI 侧边栏调整大小与搜索类型下拉 | source, web-ui, ux |
+| [[sources/web-ui-sort-optimization]] |  BACK-484 Web UI 排序优化 | source, web-ui, ui, ux |
+| [[sources/ssl-network-error-fix]] |  BACK-487 SSL 网络错误优雅处理修复 | source, bug, git, network, ssl, error-handling |
+| [[sources/wiki-pasted-images-promote-fix]] |  BACK-488 Wiki 粘贴图片迁移修复 | source, bug, wiki, web-ui, image-handling |
+| [[sources/due-date-fields-task]] |  BACK-401 日期字段（due/planned）支持 | source, feature, dates, cli, web-ui, mcp |
+| [[sources/back-489-health-indicators-task]] |  BACK-489 项目健康指标重构 | source, feature, web-ui, statistics, health |
+| [[sources/back-490-overview-command-task]] |  BACK-490 CLI overview 命令 | source, feature, cli, statistics, health |
+| [[sources/smart-gantt-view-task]] |  BACK-491 智能甘特图视图 | source, feature, web-ui, gantt, visualization |
+| [[sources/actual-start-end-fields-task]] |  BACK-492 任务 actual 字段支持 | source, feature, dates, cli, web-ui, mcp |
+| [[sources/milestone-actual-dates-task]] |  BACK-493 里程碑 actualStart 与 actualEnd 支持 | source, feature, dates, milestones, cli, web-ui, mcp |
+| [[sources/task-edit-modal-keyboard-fix]] |  BACK-494 任务编辑模态框快捷键冲突修复 | source, bug, web-ui, keyboard, ux |
+| [[sources/tracking-gantt-view-task]] |  BACK-495 跟踪甘特图计划实际对比 | source, feature, web-ui, gantt, visualization, tracking |
+| [[sources/tracking-gantt-left-table-task]] |  BACK-495.1 甘特图左表与时间解析 | source, feature, web-ui, gantt, frontend |
+| [[sources/tracking-gantt-dual-layer-task]] |  BACK-495.2 双层甘特条渲染 | source, feature, web-ui, gantt, frontend, css |
+| [[sources/tracking-gantt-tooltip-legend-task]] |  BACK-495.3 甘特图 Tooltip 图例交互 | source, feature, web-ui, gantt, frontend, ux |
+| [[sources/tracking-gantt-arrow-resolution-task]] |  BACK-495.4 甘特图依赖箭头时间解析 | source, feature, web-ui, gantt, frontend |
+| [[sources/subtask-grouping-fix]] |  BACK-496 子任务按 ID 排序归组修复 | source, bug, web-ui, sorting |
+| [[sources/timezone-handling-fix]] |  BACK-497 CLI 与 Web UI 时区一致化 | source, bug, timezone, web-ui, core |
+| [[sources/actual-dates-auto-create-task]] |  BACK-498 创建时自动填充 actual 字段 | source, bug, dates, core |
+| [[sources/tracking-gantt-design-doc]] |  doc-6 跟踪甘特图设计方案 | source, design, gantt, visualization, web-ui |
+| [[sources/ganttview-milestone]] |  m-7 GanttView 里程碑 | source, milestone, gantt |
+| [[sources/sidebar-collapse-button-fix]] |  BACK-499 侧边栏折叠按钮与调整大小手柄重叠修复 | source, web-ui, bug |
+| [[sources/task-completion-heatmap-task]] |  BACK-503 统计页贡献热力图 | source, feature, web-ui, statistics, visualization |
+| [[sources/label-color-customization-task]] |  BACK-500 看板标签颜色自定义与卡片标签溢出优化 | source, web-ui, enhancement |
+| [[sources/task-detail-label-dropdown-task]] |  BACK-501 任务标签下拉框与模糊过滤 | source, web-ui, enhancement |
+| [[sources/back-504]] |  BACK-504 看板拖拽列排序重置与跨列放置修复 | source, bug, web-ui |
+| [[sources/back-505]] |  BACK-505 Web UI 任务依赖项钻取导航 | source, feature, web-ui |
+| [[sources/back-506-cli-utc-conversion-fix]] |  BACK-506 CLI actualStart/End 时区转换修复 | source, bug, cli, dates, timezone |
+| [[sources/stable-task-modal-urls-task]] |  BACK-509 稳定任务模态框 URL 与钻取 | source, feature, web-ui, routing, modal |
+| [[sources/wiki-page-switch-edit-mode-fix]] |  BACK-510 Wiki 页面切换退出编辑模式 | source, bug, web-ui, wiki |
+| [[sources/local-url-short-aliases-task]] |  BACK-511 Markdown 本地 URL 短别名渲染 | source, feature, web-ui, markdown |
+| [[sources/back-508-cli-description-escapes]] |  BACK-508 CLI description 换行符转义修复 | source, bug, cli, ux |
+| [[sources/back-512-kanban-column-sort-menu-cross-branch]] |  BACK-512 看板列排序菜单跨分支任务修复 | source, web-ui, bug |
+| [[sources/back-470-task-comments]] |  BACK-470 任务评论功能 | source, feature, comments, cli, mcp, web-ui, tui |
+| [[sources/back-470-1-core-task-comments]] |  BACK-470.1 核心任务评论模型与持久化 | source, comments, core, markdown, search |
+| [[sources/back-470-2-cli-mcp-task-comments]] |  BACK-470.2 CLI 与 MCP 评论暴露 | source, comments, cli, mcp |
+| [[sources/back-470-3-server-web-task-comments]] |  BACK-470.3 Server 与 Web UI 评论支持 | source, comments, server, web-ui |
+| [[sources/back-470-4-tui-docs-task-comments]] |  BACK-470.4 终端评论渲染与文档更新 | source, comments, tui, docs |
+| [[sources/back-514-auto-port]] |  BACK-514 浏览器 Web UI 自动端口选择 | source, feature, web-ui, server, port, enhancement |
+| [[sources/back-515-milestone-update-fix]] |  BACK-515 里程碑更新响应缺失里程碑对象修复 | source, bug, web-api, milestones |
+| [[sources/back-516-gantt-drag-fix]] |  BACK-516 甘特图拖拽改为滚动平移 | source, bug, web-ui, gantt |
+| [[sources/back-517-i18n-fragmentation-fix]] |  BACK-517 里程碑按钮 i18n 拼接反模式修复 | source, bug, web-ui, milestones, i18n |
+| [[sources/back-518-tui-theme-adaptive]] |  BACK-518 TUI 主题自适应渲染 | source, ui, board, ux |
+| [[sources/back-520-fix-codex-mcp-connection-failure]] |  BACK-520 修复 Codex MCP 连接失败 | source, mcp, codex, bug |
+| [[sources/back-522-resolve-mcp-project-root-from-client-workspace-roots]] |  BACK-522 从客户端 workspace roots 解析 project root | source, mcp, bug, roots, workspace |
+| [[sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs]] |  BACK-523 Wiki wikilink 别名与属性块支持 | source, wiki, feature, frontend, wikilink |
+| [[sources/back-524-add-media-wikilink-support-for-images-video-and-audio]] |  BACK-524 媒体 wikilink 支持 | source, web-ui, wiki, feature, media |
+| [[sources/back-525-update-wiki-skill-and-cli-multi-line-input-docs]] |  BACK-525 更新 wiki skill 与 CLI 多行输入文档 | source, wiki, docs, cli, skill |
+| [[sources/back-526-create-task-references-and-backlog-autocomplete]] |  BACK-526 创建任务引用输入与 .backlog 补全修复 | source, bug, web-ui, cli, autocomplete |
+| [[sources/back-527-cli-escape-sequences-for-plan-notes-summary]] |  BACK-527 CLI plan/notes/finalSummary 转义修复 | source, bug, cli, ux |
+| [[sources/back-528-web-task-detail-date-clear-persisting]] |  BACK-528 Web 任务详情日期清除持久化修复 | source, bug, web-ui, dates |
+| [[sources/back-521]] |  BACK-521 CLI 优先的代理工作流重构 | source, cli, agent-guidance, mcp |
+| [[sources/back-521.1]] |  BACK-521.1 共享工作流指令注册表与 CLI 访问 | source, cli, agent-guidance |
+| [[sources/back-521.2]] |  BACK-521.2 短代理 nudge 与 init 默认迁移 | source, cli, agent-guidance, init |
+| [[sources/back-521.6]] |  BACK-521.6 根命令本地指令中心 | source, cli, agent-guidance |
+| [[sources/back-521.7]] |  BACK-521.7 里程碑 CLI 与 MCP 操作对齐 | source, cli, milestones, mcp |
+| [[sources/back-521.14]] |  BACK-521.14 补充指令指南缺失的代理指导 | source, docs, agent-guidance, cli, mcp |
+| [[sources/back-529-doc-update-multiline-append]] |  BACK-529 doc update 多行与追加支持 | source, cli, mcp, doc |
+| [[sources/back-530-append-description]] |  BACK-530 task edit 追加描述选项 | source, cli, mcp |
+| [[sources/back-531-local-link-line-range]] |  BACK-531 短本地链接支持行区间后缀 | source, web-ui, markdown |
+| [[sources/back-532-cli-draft-workflow-guides]] |  BACK-532 CLI 草稿工作流写入指令指南 | source, cli, mcp, docs, agent-guidance |
+| [[sources/back-533-config-block-yaml-lists]] |  BACK-533 config 块状 YAML 列表解析 | source, config, cli |
+| [[sources/back-534-preserve-updated-date-ordinal-reorder]] |  BACK-534 仅序号变更保留 updated_date | source, core, dates |
+| [[sources/back-535-preserve-unsaved-web-drafts]] |  BACK-535 跨文件刷新保留 Web 未保存草稿 | source, web-ui, drafts, bug |
+| [[sources/back-536-in-document-hash-links]] |  BACK-536 修复文档内 markdown 锚点链接 | source, web-ui, markdown, bug |
+| [[sources/back-537-deterministic-checklist-serialization]] |  BACK-537 清单编辑与序列化确定性化 | source, core, markdown, cli, mcp |
+| [[sources/back-538-duplicate-task-id-recovery]] |  BACK-538 重复任务 ID 恢复工作流 | source, core, cli, data-consistency, bug |
+| [[sources/back-539-linux-runner-win32-arm64-build]] |  BACK-539 Linux runner 构建 win32-arm64 二进制 | source, ci, release, build |
+| [[sources/back-540-content-store-stale-refresh-guard]] |  BACK-540 防止过期 ContentStore 刷新覆盖新状态 | source, core, concurrency, bug |
+| [[sources/back-541-board-column-created-sort]] |  BACK-541 看板列菜单新增创建日期排序 | source, web-ui, sorting |
+| [[sources/back-542-ordinal-task-list-sort]] |  BACK-542 任务列表视图默认序号排序 | source, web-ui, cli, sorting |
+| [[sources/back-543-milestone-cards-created-column]] |  BACK-543 里程碑卡片任务表 Created 列 | source, web-ui, milestones, sorting |
+| [[sources/back-544-ac-numbers-browser-detail]] |  BACK-544 浏览器任务详情显示 AC 编号 | source, web-ui |
+| [[sources/back-545-cli-task-edit-numeric-id]] |  BACK-545 自定义前缀下 task edit 数字 ID 查找 | source, cli, bug |
+| [[sources/back-546-label-filters-alphabetical]] |  BACK-546 浏览器标签过滤器按字母排序 | source, web-ui, sorting, ux |
+| [[sources/back-547-avoid-bash-ansi-c-quoting]] |  BACK-547 多行 CLI 输入避免 bash ANSI-C 引号 | source, cli, docs, agent-guidance |
+| [[sources/back-548-status-exclude-filtering]] |  BACK-548 状态排除与多状态过滤 | source, cli, mcp, web-ui, tui, filtering |
+| [[sources/back-549-hide-empty-board-columns]] |  BACK-549 看板无任务时隐藏空状态列 | source, web-ui, config |
+| [[sources/back-550-apple-silicon-binary-resolution]] |  BACK-550 Apple Silicon 二进制解析改进 | source, cli, launcher, bug |
+| [[sources/back-551-unassigned-task-filtering]] |  BACK-551 CLI 与 MCP 支持未指派任务过滤 | source, cli, mcp, filtering |
+| [[sources/back-552-doc-view-plain]] |  BACK-552 doc view 支持 plain 输出 | source, cli, doc |
+| [[sources/back-553-modernize-browser-bundling]] |  BACK-553 Bun 与 Tailwind 现代化浏览器打包 | source, build, web-ui |
+| [[sources/doc-4-upstream-migration-classification]] |  doc-4 上游 v1.47.1→v1.48.0 差异分类 | source, doc, migration |
+| [[sources/doc-5-a-class-migration-analysis]] |  doc-5 A 类迁移深析报告 | source, doc, migration |
+| [[sources/doc-6-b-class-migration-analysis]] |  doc-6 B 类迁移深析报告 | source, doc, migration |
+| [[sources/back-410-cursor-agents-md-cleanup]] |  BACK-410 Cursor AGENTS.md 初始化清理 | source, cli, init, agents, cursor |
+| [[sources/back-554-document-sequences-command-in-cli-instructions]] |  BACK-554 CLI 指令补充 sequence 命令速查 | source, documentation, cli, sequences |
+| [[sources/back-555-tui-live-refresh-atomic-writes]] |  BACK-555 TUI 实时刷新适应原子写入 | source, tui, file-watcher, concurrency |
+| [[sources/back-556-task-edit-append-plan]] |  BACK-556 task edit 新增 --append-plan | source, cli, task-editing |
+| [[sources/back-557-browser-shortcuts-inline-fields]] |  BACK-557 防止浏览器快捷键拦截行内任务字段 | source, web-ui, keyboard, bug |
+| [[sources/back-558-browser-server-loopback-only]] |  BACK-558 浏览器服务器仅绑回环 | source, server, security |
+| [[sources/back-559-browser-launch-honor-browser-env]] |  BACK-559 浏览器启动遵循 BROWSER 环境变量 | source, cli, server, browser |
+| [[sources/back-560-milestone-id-filtering]] |  BACK-560 里程碑 ID 查询匹配 | source, milestones, filtering |
+| [[sources/back-561-autocommit-exact-files]] |  BACK-561 autoCommit 精确暂存写入文件 | source, git, auto-commit, core |
+| [[sources/back-562-stable-json-output]] |  BACK-562 读取命令稳定 JSON 输出 | source, cli, json, api-contract |
+| [[sources/back-563-tui-intent-first-composer]] |  BACK-563 TUI 意图优先任务创建器 | source, tui, task-creation |
+| [[sources/back-564-search-score-threshold]] |  BACK-564 搜索评分阈值对齐多端 | source, search, fuse, tui, cli, mcp |
+| [[sources/back-565-tui-theme-adaptive-scroll]] |  BACK-565 TUI 主题自适应渲染与滚动 | source, tui, theme, accessibility |
+| [[sources/back-566-browser-async-loading]] |  BACK-566 浏览器异步稳定加载指示 | source, web-ui, server, performance |
+| [[sources/back-567-cross-branch-task-identity]] |  BACK-567 跨分支同路径任务同一身份 | source, core, identity, git |
+| [[sources/back-568-core-browser-task-boundary]] |  BACK-568 Core 唯一浏览器任务边界 | source, server, web-ui, core |
+| [[sources/back-569-acceptance-criteria-progress-ui]] |  BACK-569 验收标准完成度进度展示 | source, tui, web-ui, acceptance-criteria |
+| [[sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification]] |  doc-7 上游 v1.48.0→v1.49.3 差异分类 | source, doc, migration, upstream |
+| [[sources/doc-8-upstream-v1-49-3-migration-analysis-by-domain]] |  doc-8 v1.48.0→v1.49.3 迁移分析（按领域） | source, doc, migration, upstream |
+| [[sources/readme-en-md]] |  README.en.md 英文产品概述 | source |
+| [[sources/back-570-wiki-install-hints-cli-banner]] |  BACK-570 wiki 安装提示全入口可见 | source, cli, agent-guidance, wiki |
+| [[sources/back-571-fail-fast-concurrent-task-edits]] |  BACK-571 并发任务编辑快速失败锁 | source, migration, concurrency, core, bug |
+| [[sources/back-572-agent-guides-date-fields-multiline-input]] |  BACK-572 日期字段与多行输入指南澄清 | source, agent-guidance, cli, mcp, docs |
+| [[sources/back-573-web-board-dnd-hide-empty-columns]] |  BACK-573 隐藏空列时看板拖拽修复 | source, migration, web-ui, bug |
+| [[sources/back-574-decision-list-view-update-commands]] |  BACK-574 决策命令与双栏交互浏览器 | source, migration, cli, tui, decisions |
+| [[sources/back-575-doc-list-interactive-browser]] |  BACK-575 doc list 双栏交互浏览器 | source, cli, tui, docs |
+| [[sources/back-576-dedupe-generate-next-decision-id]] |  BACK-576 去重 decision ID 生成函数 | source, migration, cli, core |
+| [[sources/back-577-clear-deps-refs-docs-empty-setter-rejection]] |  BACK-577 task edit 清空列表与拒空值 | source, migration, cli, mcp |
+| [[sources/back-578-task-edit-list-set-add-remove-flags]] |  BACK-578 task edit 列表 set/add/remove 语义 | source, migration, cli, task-editing |
+| [[sources/back-579-default-assignee]] |  BACK-579 defaultAssignee 配置落地 | source, migration, config, core, cli, mcp |
+| [[sources/back-580-milestone-detail-view-edit-modal]] |  BACK-580 里程碑详情视图与编辑模态框 | source, web-ui, milestones |
+| [[sources/back-581-web-settings-default-assignee]] |  BACK-581 Web 设置编辑 defaultAssignee | source, web-ui, config |
+| [[sources/back-582-agent-first-round-load-config]] |  BACK-582 Agent 首轮先读项目配置 | source, agent-guidance, cli-instructions |
+| [[sources/back-583-labels-config-editor-web-settings]] |  BACK-583 Web 设置 labels 配置编辑器 | source, web-ui, cli |
+| [[sources/back-584-explicit-unassign-across-surfaces]] |  BACK-584 全端显式取消负责人分配 | source, cli, web-ui, mcp |
+| [[sources/back-585-multi-assignee-parity-task-create]] |  BACK-585 task create 多负责人对齐 | source, cli |
+| [[sources/back-586-clear-default-editor]] |  BACK-586 允许清空 defaultEditor | source, cli |
+| [[sources/back-587-repair-tui-task-composer-ux]] |  BACK-587 TUI 任务创建器交互修复 | source, tui |
+| [[sources/back-588-vim-keys-boundary-navigation]] |  BACK-588 vim 键在导航边界留在列表内 | source, tui |
+| [[sources/back-589-vi-navigation-filter-popups]] |  BACK-589 过滤器弹窗接入 vi 导航 | source, tui |
+| [[sources/back-590-hide-empty-board-columns]] |  BACK-590 看板隐藏空状态列 | source, tui |
+| [[sources/back-591-tui-window-titles-project-name]] |  BACK-591 TUI 窗口标题含项目名并恢复终端标题 | source, tui |
+| [[sources/back-592-doc-create-plain-flag]] |  BACK-592 doc create 支持 --plain | source, cli |
+| [[sources/back-593-init-backlog-cwd-runtime-core]] |  BACK-593 init 遵循 BACKLOG_CWD 并统一 core 构造 | source, cli, tui |
+| [[sources/back-594-align-filter-footer-hint]] |  BACK-594 统一看板与任务列表过滤 footer 提示 | source, tui |
+| [[sources/back-595-content-store-watcher-retry-rename]] |  BACK-595 修复 content-store watcher 重试与改名对账 | source, server, web-ui, bug |
+| [[sources/back-596-fail-closed-document-decision-identity]] |  BACK-596 文档与决策身份歧义时 fail-closed | source, cli, server, mcp, bug |
+| [[sources/back-597-fix-cli-test-failures-doc-update-path-task-list-grouping]] |  BACK-597 修复 doc update 与任务列表分组测试失败 | source, cli, tests |
+| [[sources/back-598-doc-view-disambiguate-path-title-slug]] |  BACK-598 doc view 支持路径与 slug 消歧 | source, cli |
+| [[sources/back-599-gray-matter-no-cache-parse-wrapper]] |  BACK-599 共享包装根除 gray-matter 缓存污染 | source, markdown, bug |
+| [[sources/back-600-query-tasks-local-fast-path]] |  BACK-600 常用任务命令避免无谓跨分支工作 | source, cli, performance |
+| [[sources/back-601-core-browser-publication-ownership]] |  BACK-601 补齐 Core browser 边界的 publication 所有权 | source, core, server |
+| [[sources/back-602-incremental-cross-branch-task-loading]] |  BACK-602 共享跨分支任务加载提速与增量化 | source, core, performance |
+| [[sources/back-603-heading-test-theme-adaptive-gray]] |  BACK-603 同步 heading 测试的三级灰色断言 | source, tui, tests |
+| [[sources/back-604-code-path-test-theme-adaptive-cyan]] |  BACK-604 同步 code-path 测试的青色断言 | source, tui, tests |
+| [[sources/back-605-claude-agent-guideline-symlink-windows]] |  BACK-605 Windows 下 Claude agent 指南符号链接修复 | source, infra, windows, ci |
+| [[sources/back-606-cli-priority-plain-test-prefix-agnostic]] |  BACK-606 优先级 plain 输出测试改为前缀无关 | source, cli, tests |
+| [[sources/back-607-task-details-docs-tests-i18n-router]] |  BACK-607 任务详情文档测试包裹 I18nProvider 与路由 | source, web-ui, tests |
+| [[sources/back-608-mcp-overview-status-excluded-doc]] |  BACK-608 概述 task_list 行补记 statusExcluded 过滤 | source, mcp, docs |
+| [[sources/back-609-mcp-stdio-test-timeout]] |  BACK-609 提高 MCP stdio 会话测试超时 | source, test, ci |
+| [[sources/back-610-cli-priority-filtering-test-timeouts]] |  BACK-610 提高 CLI 优先级过滤测试超时 | source, test, ci |
+| [[sources/back-611-mermaid-anchor-href-pathname-prefix]] |  BACK-611 Mermaid 锚点 href 断言同步路径前缀 | source, test, web-ui |
+| [[sources/back-612-content-store-test-stabilization]] |  BACK-612 稳定 ContentStore 与编辑器子进程测试 | source, test, core, bug |
+| [[sources/back-613-web-task-list-width-page-shell]] |  BACK-613 web 任务列表免横向滚动并收敛内边距 | source, web-ui |
+| [[sources/back-614-entity-id-auto-link-autocomplete]] |  BACK-614 markdown 实体 ID 自动链接与输入补全 | source, web-ui |
+| [[sources/back-615-dependency-readiness-guidance]] |  BACK-615 TUI 与 browser 依赖就绪指引 | source, cli, tui, web-ui, mcp |
+| [[sources/back-616-tui-focus-list-recreation]] |  BACK-616 修复 applyFilters 重建列表后 TUI 失焦 | source, tui, bug |
+| [[sources/back-617-preview-mode-comment-add]] |  BACK-617 任务详情视图直接添加评论 | source, web-ui, comments |
+| [[sources/back-618-milestone-created-updated-dates]] |  BACK-618 里程碑新增创建与更新日期字段 | source, milestones, cli, mcp, web-ui |
+| [[sources/back-619-milestone-documentation-field]] |  BACK-619 里程碑 documentation 字段支持 | source, milestones, cli, mcp, web-ui |
+| [[sources/back-620-swapped-empty-state-hints]] |  BACK-620 修复引用与文档区空态提示互换 | source, web-ui, bug, i18n |
+| [[sources/back-621-launcher-scoped-package-resolution]] |  BACK-621 修复启动器解析无前缀平台包名回归 | source, cli, release |
+| [[sources/back-622-milestone-archive-remove-dialogs]] |  BACK-622 澄清 Web 里程碑归档与移除对话框 | source, web-ui, milestones |
+| [[sources/back-623-comment-removal-flags]] |  BACK-623 task edit 支持删除与清空评论 | source, cli, mcp, comments |
+| [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] |  doc-9 上游 v1.49.3→v1.50.1 差异分类 | source, doc, migration, upstream |
+| [[sources/doc-10-upstream-v1-49-3-to-v1-50-1-migration-analysis-by-domain]] |  doc-10 v1.49.3→v1.50.1 迁移分析（按领域） | source, doc, migration, upstream |
+| [[sources/doc-16-todo-tasks-vs-upstream-migration-report]] |  doc-16 To-Do 任务迁移对照报告 | source, doc, migration, backlog-hygiene |
+| [[sources/m-6-new-milestones-ui]] |  m-6 新里程碑 UI 里程碑 | source, milestone, milestones, web-ui |
+| [[sources/m-8-agent-cli-workflow]] |  m-8 代理 CLI 工作流里程碑 | source, milestone, cli, agent-workflow |
+| [[sources/back-624-global-search-dialog]] |  BACK-624 Web 全局 Spotlight 式搜索对话框 | source, web-ui, search, routing, modal |
+| [[sources/back-625-ac-progress-json-output]] |  BACK-625 任务 JSON 输出返回验收标准进度 | source, cli, json, api-contract |
+| [[sources/back-626-dependabot-mermaid-bump]] |  BACK-626 解决 Dependabot 告警（mermaid 升级） | source, security, dependencies, build |
+| [[sources/back-627-back-arrow-history-fix]] |  BACK-627 修复钻取后返回箭头残留历史条目 | source, web-ui, routing, bug |
+| [[sources/back-628-task-hierarchy-section]] |  BACK-628 任务模态框显示父任务与子任务 | source, web-ui, task-hierarchy |
+| [[sources/back-629-global-search-dialog-light-theme]] |  BACK-629 修复全局搜索对话框不跟随亮色主题 | source, web-ui, theming |
+| [[sources/back-630-board-card-ac-progress-restyle]] |  BACK-630 看板卡片验收标准进度重排与换样式 | source, web-ui |
+| [[sources/back-631-comment-rich-markdown-editor]] |  BACK-631 评论输入框换成富 Markdown 编辑器 | source, web-ui, comments |
+| [[sources/back-632-decision-image-promotion]] |  BACK-632 保存决策时提升粘贴图片 | source, web-ui, decisions |
+| [[sources/back-633-decision-editing-web-ui]] |  BACK-633 启用 Web 决策编辑 | source, web-ui, decisions |
+| [[sources/back-634-decision-creation-sidebar]] |  BACK-634 启用侧边栏创建决策 | source, web-ui, decisions |
+| [[sources/back-635-decision-status-editing]] |  BACK-635 决策状态编辑打通 CLI/MCP/Web | source, decisions, cli, mcp, web-ui |
+| [[sources/back-636-decision-status-i18n]] |  BACK-636 本地化决策状态标签 | source, web-ui, decisions, i18n |
+| [[sources/back-637-hash-anchors-on-load]] |  BACK-637 保持文档内锚点加载与归一化可用 | source, web-ui, markdown |
+| [[sources/back-638-header-outline-toc]] |  BACK-638 页头大纲按钮与浮动折叠目录 | source, web-ui |
+| [[sources/back-639-document-fingerprint-reload]] |  BACK-639 按正文指纹变化重载打开文档 | source, web-ui |
+| [[sources/back-640-mermaid-rendering-fixes]] |  BACK-640 修复 Mermaid 图表不渲染（三处） | source, web-ui, bug |
+| [[sources/back-641-sidebar-toggle-z-index]] |  BACK-641 修复侧边栏折叠开关被页头遮挡 | source, web-ui, bug |
+| [[sources/back-642-draft-identity-fail-closed]] |  BACK-642 草稿身份歧义时按 fail-closed 处理 | source, drafts, bug |
+| [[sources/back-643-fence-aware-blank-line-collapse]] |  BACK-643 保留笔记代码块内连续空行 | source, markdown, bug |
+| [[sources/back-644-web-draft-editing-fix]] |  BACK-644 修复 Web 草稿编辑 | source, web-ui, drafts, bug |
+| [[sources/back-645-task-list-ac-progress-bar]] |  BACK-645 任务列表验收标准进度定宽条 | source, web-ui |
+| [[sources/back-646-web-demote-resilience]] |  BACK-646 新增 Web 降级转草稿操作 | source, web-ui, drafts |
+| [[sources/back-647-reserved-task-prefixes]] |  BACK-647 初始化时保留 draft/doc/decision 前缀 | source, cli, init |
+| [[sources/back-648-tui-unicode-safe-insertion]] |  BACK-648 TUI 文本插入 Unicode 安全化 | source, tui, bug |
+| [[sources/back-649-shared-subtask-sorting]] |  BACK-649 列表视图统一共享任务 ID 排序 | source, tui, sorting |
+| [[sources/back-650-untitled-filename-fallback]] |  BACK-650 纯标点标题回退占位文件名 | source, core, bug |
+| [[sources/back-651-line-reference-docs]] |  BACK-651 指南补充行号引用与行区间链接 | source, docs, agent-guidance |
+| [[sources/back-652-multi-status-filter]] |  BACK-652 task list --status 支持多状态 | source, cli, filtering |
+| [[sources/back-653-readme-board-export-in-memory]] |  BACK-653 README 看板导出去除临时文件中转 | source, cli, performance |
+| [[sources/back-654-board-export-grandchild-subtasks]] |  BACK-654 看板导出纳入孙级子任务 | source, cli |
+| [[sources/back-655-section-marker-safety]] |  BACK-655 拒绝嵌套小节标记并修复追加截断 | source, markdown, bug |
+| [[sources/back-656-agent-guidance-overview-cadence]] |  BACK-656 纠正 agent 指南 overview 节奏与描述要求 | source, docs, agent-guidance |
+| [[sources/back-657-task-list-json-watch]] |  BACK-657 task list --json --watch 实时输出 | source, cli, json |
+| [[sources/back-658-json-readiness-publication]] |  BACK-658 JSON 读取路径发布就绪状态 | source, cli, json |
+| [[sources/back-659-ac-progress-mcp-plain-lists]] |  BACK-659 MCP 与 plain 列表展示验收标准进度 | source, cli, mcp |
+| [[sources/back-660-forced-refresh-stale-fetch-race]] |  BACK-660 强制分配刷新不加入过期抓取 | source, core, concurrency, bug |
+| [[sources/back-661-deep-link-first-load-guard]] |  BACK-661 深链首次加载完成前不回退看板 | source, web-ui, routing, bug |
+| [[sources/back-662-completed-corpus-query-search]] |  BACK-662 查询层接入 completed 语料 | source, core, search |
+| [[sources/back-663-completed-popup-read-only]] |  BACK-663 completed 语料弹窗只读渲染加提示 | source, web-ui |
+| [[sources/back-664-dependency-input-completed-predecessors]] |  BACK-664 依赖输入接受已完成前置 | source, web-ui |
+| [[sources/back-665-completed-corpus-filter-checkbox]] |  BACK-665 过滤器栏加 completed 复选框 | source, web-ui, filtering |
+| [[sources/back-666-modified-files-tabbed-panel]] |  BACK-666 模态框展示编辑修改文件 | source, web-ui |
+| [[sources/back-667-sidebar-docs-sort-toggles]] |  BACK-667 文档树名称与 ID 排序开关 | source, web-ui, sorting |
+| [[sources/back-668-branch-indexing-header-chip]] |  BACK-668 跨分支索引加载指示器打磨 | source, web-ui, ux |
+| [[sources/back-669-initial-loading-skeleton]] |  BACK-669 首屏加载状态打磨 | source, web-ui, ux |
+| [[sources/back-670-loading-motion-reduce-removal]] |  BACK-670 系统禁动画时加载指示仍动画 | source, web-ui, accessibility |
+| [[sources/back-672-wiki-tree-sort-toggles]] |  BACK-672 wiki 树标题与文件名排序开关 | source, web-ui, wiki, sorting |
+| [[sources/back-673-utc-hover-titles]] |  BACK-673 本地时间渲染悬浮 UTC 值 | source, web-ui, dates |
+| [[sources/back-674-decisions-sort-toggles]] |  BACK-674 决策排序开关与标签改 Title | source, web-ui, sorting |
+| [[sources/back-675-tui-ac-bar-ascii]] |  BACK-675 TUI 验收标准条 ASCII 彩色化 | source, tui |
+| [[sources/back-676-emoji-double-width-tui]] |  BACK-676 TUI emoji 按双宽计 | source, tui, bug |
+| [[sources/back-677-help-popup-resize-robustness]] |  BACK-677 帮助弹窗适配 resize 与换行 | source, tui, bug |
+| [[sources/back-678-composer-extreme-terminal-sizes]] |  BACK-678 极端终端尺寸 composer 可用性 | source, tui |
+| [[sources/back-679-composer-mouse-clicks]] |  BACK-679 composer 支持鼠标点击 | source, tui |
+| [[sources/back-680-batch-status-move]] |  BACK-680 批量状态移动单次动作 | source, tui, web-ui |
+| [[sources/back-681-tui-shift-arrow-multi-select]] |  BACK-681 TUI shift 方向键多选移动 | source, tui |
+| [[sources/back-682-web-positional-batch-drop]] |  BACK-682 看板多选落点位置插入 | source, web-ui |
+| [[sources/back-683-cli-draft-edit]] |  BACK-683 CLI 草稿编辑对齐 Web | source, cli, drafts |
+| [[sources/back-684-task-detail-popup-backdrop-resize]] |  BACK-684 详情弹窗背景跟随 resize | source, tui, bug |
+| [[sources/back-685-single-source-task-search]] |  BACK-685 搜索配置与过滤单一来源 | source, core, search |
+| [[sources/back-686-shared-search-consumers]] |  BACK-686 TUI 与里程碑页接入共享搜索 | source, tui, search |
+| [[sources/back-687-milestone-board-tui]] |  BACK-687 TUI 里程碑交互看板视图 | source, tui, milestones |
+| [[sources/back-688-milestones-plain-grouped-output]] |  BACK-688 milestones plain 分组输出任务 | source, cli, milestones |
+| [[sources/back-689-tui-task-composer-dates]] |  BACK-689 TUI 任务编辑器与详情弹窗日期字段 | source, tui, dates |
+| [[sources/back-690-overview-due-by-timezone-fix]] |  BACK-690 overview Due By 仅日期时区错位修复 | source, cli, dates, bug |
+| [[sources/back-691-local-first-lifecycle-vacated-refs]] |  BACK-691 归档完成降级本地优先并清理空置引用 | source, core |
+| [[sources/back-692-tui-edit-file-location-routing]] |  BACK-692 TUI 编辑键按文件位置路由目标 | source, tui |
+| [[sources/back-693-tui-draft-creation-window]] |  BACK-693 TUI 草稿会话新增创建窗口 | source, tui, drafts |
+| [[sources/back-694-board-popup-live-sync]] |  BACK-694 看板任务弹窗实时同步 | source, tui, live-sync |
+| [[sources/back-695-drafts-session-live-sync]] |  BACK-695 草稿会话实时同步 | source, tui, live-sync |
+| [[sources/back-696-milestone-popup-live-sync]] |  BACK-696 里程碑弹窗实时同步 | source, tui, live-sync |
+| [[sources/back-697-json-summary-references-modified-files]] |  BACK-697 task list --json 新增 references 与 modifiedFiles | source, cli, json |
+| [[sources/back-698-web-in-place-refresh]] |  BACK-698 Web 视图原地刷新替代全量重载 | source, web-ui, live-sync |
+| [[sources/back-699-findidentity-nonpublishing-fallback]] |  BACK-699 findIdentity 回退未安装语料时不发布新鲜度 | source, core, bug |
+| [[sources/back-700-content-entity-broadcast-refresh]] |  BACK-700 内容实体变更广播与原位刷新 | source, web-ui, live-sync |
+| [[sources/back-701-fix-server-test-keep-alive-misroute]] |  BACK-701 Connection: close 修复测试误失败 | source, test, server |
+| [[sources/back-702-kuzu-graph-foundation]] |  BACK-702 Kuzu 图谱基础与指纹冷启动 | source, graph, kuzu |
+| [[sources/back-703-graph-incremental-sync]] |  BACK-703 增量重建与热更新同步 | source, graph, kuzu, web-ui |
+| [[sources/back-704-graph-view-web-ui]] |  BACK-704 D3.js 任务图谱可视化页面 | source, kuzu, graph, web-ui |
+| [[sources/back-705-graph-control-cluster-styling]] |  BACK-705 统一图谱控制簇样式 | source, web-ui, graph |
+| [[sources/back-706-milestone-actual-end-stamp]] |  BACK-706 末任务达终态盖印 actual_end | source, milestones, core |
+| [[sources/back-707-dependency-gate-cycles]] |  BACK-707 依赖校验拒环并容忍存量悬空依赖 | source, core, dependencies |
+| [[sources/back-708-doctor-dependency-defects]] |  BACK-708 doctor 报告依赖缺陷 | source, cli, dependencies |
+| [[sources/back-709-dependency-closure-query]] |  BACK-709 依赖闭包与跳数查询 | source, core, dependencies |
+| [[sources/back-710-task-modal-relationship-graph]] |  BACK-710 任务弹窗关系图谱视图 | source, web-ui, graph |
+| [[sources/back-711-modal-graph-alignment]] |  BACK-711 模态框图谱与 /graph 对齐 | source, web-ui, graph |
+| [[sources/back-712-wiki-lint-source-path-guidance]] |  BACK-712 wiki lint 漏检 source_path | source, wiki, docs |
+| [[sources/back-713-filenode-rename]] |  BACK-713 节点表 Task(id) 改 FileNode(path) | source, kuzu, graph, core |
+| [[sources/back-714-knowledge-graph-ingest]] |  BACK-714 wiki/docs/decisions 导入图谱 | source, kuzu, graph, wiki |
+| [[sources/doc-11-todo-tasks-vs-upstream-migration-cross-check]] |  doc-11 To-Do 任务与上游迁移对照 | source, doc, migration, backlog-hygiene |
+| [[sources/doc-12-upstream-v1-50-1-to-v1-52-0-migration-diff-classification]] |  doc-12 v1.50.1→v1.52.0 差异分类 | source, doc, migration, upstream |
+| [[sources/doc-13-upstream-v1-50-1-to-v1-52-0-migration-analysis-by-domain]] |  doc-13 v1.50.1→v1.52.0 迁移分析（按领域） | source, doc, migration, upstream |
+| [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] |  doc-14 Kuzu 图谱冷启动与热更新 | source, graph, kuzu, design |
+| [[sources/doc-15-wiki-knowledge-graph-relation-design]] |  doc-15 Wiki 知识图谱关系设计 | source, graph, wiki, kuzu, design |
+| [[sources/m-9-kuzu-task-graph-phase-1]] |  m-9 Kuzu 任务图谱一期里程碑 | source, milestone, kuzu, graph |
+| [[sources/doc-002-configuring-vim-neovim-default-editor]] |  doc-002 配置 Vim/Neovim 默认编辑器 | source, doc, config |
+| [[sources/doc-003-running-backlog-browser-as-a-service]] |  doc-003 browser 服务化运行指南 | source, doc, ops |
+| [[sources/back-222-subtask-visualization-web-ui]] |  BACK-222 Web UI 任务与子任务可视化 | source, web-ui, enhancement, archived |
+| [[sources/back-420-task-content-toc-scrollspy]] |  BACK-420 Web UI 任务内容目录与 scrollspy | source, web-ui, enhancement |
+| [[sources/back-715-state-machine-editor-settings]] |  BACK-715 设置页新增状态机编辑器 | source, feature, web-ui |
+| [[sources/back-716-state-machine-guidance-overviews]] |  BACK-716 状态机指引：静态章节与动态注入 | source, agents, cli, mcp |
+| [[sources/back-717-settings-page-reorder]] |  BACK-717 设置页重排聚拢状态设置 | source, web-ui |
+| [[sources/back-718-task-help-workflow-overview-hint]] |  BACK-718 任务 create/edit 帮助指向总览 | source, cli |
+| [[sources/back-719-config-list-plain-flag]] |  BACK-719 config list 支持 --plain | source, cli |
+| [[sources/back-720-graph-canvas-2d-renderer]] |  BACK-720 图视图迁移 Canvas 2D 渲染器 | source, web-ui |
+| [[sources/back-721-state-machine-localization-guidance]] |  BACK-721 状态机引导本地化与可读性优化 | source, state-machine, guidelines, i18n |
+| [[sources/back-722-flaky-test-failures-fix]] |  BACK-722 修复既存与随机测试失败 | source, tests, tooling |
+| [[sources/back-723-biome-tsx-coverage]] |  BACK-723 Biome 覆盖扩展 .tsx | source, tooling, biome, web-ui |
+| [[sources/back-724-milestone-modal-fetch-fallback-fix]] |  BACK-724 修复里程碑弹窗回退不填充 | source, web-ui, bug |
+| [[sources/back-725-average-completion-time-statistics]] |  BACK-725 统计新增任务平均完成耗时 | source, statistics, cli, web-ui, gantt |
+| [[sources/back-726-modal-toc-drawer]] |  BACK-726 弹窗 Markdown 大纲抽屉 | source, web-ui, markdown, wiki |
+| [[sources/back-727-graph-view-light-theme-readability]] |  BACK-727 浅色主题图视图可读性优化 | source, web-ui, graph |
+| [[sources/back-728-memo-storage-layer]] |  BACK-728 Memo 存储层 | source, feature, cli, web-ui |
+| [[sources/back-729-memo-http-api]] |  BACK-729 Memo HTTP API 路由 | source, feature, web-ui, api |
+| [[sources/back-730-cli-memo-subcommand]] |  BACK-730 CLI memo 子命令 | source, cli, feature |
+| [[sources/back-731-memos-feed-page]] |  BACK-731 Memos 信息流页与快捷捕获 | source, web-ui, feature |
+| [[sources/back-732-memos-calendar-mode]] |  BACK-732 memos 日历模式与信息流联动 | source, web-ui, feature |
+| [[sources/back-733-include-memos-in-global-search]] |  BACK-733 全局搜索纳入 memos | source, feature, web-ui, cli |
+| [[sources/back-734-memos-knowledge-web-links]] |  BACK-734 memos 接入知识网链接 | source, feature, web-ui |
+| [[sources/back-735-memos-realtime-sync]] |  BACK-735 memos 实时同步 | source, feature, web-ui |
+| [[sources/back-736-memos-milestone-acceptance-pass]] |  BACK-736 memos 里程碑回归与验收 | source, feature, testing |
+| [[sources/back-737-memos-ui-polish]] |  BACK-737 memos 页面 UI 打磨 | source, feature, web-ui |
+| [[sources/back-738-memo-card-copy-id-modal-background]] |  BACK-738 memo 卡片复制 ID 与模态背景修复 | source, bug, web-ui |
+| [[sources/back-739-toc-drawer-floating-mode]] |  BACK-739 TOC 抽屉窄屏悬浮模式 | source, web-ui |
+| [[sources/back-740-memo-mcp-tools]] |  BACK-740 memo MCP 五工具组 | source, mcp |
+| [[sources/back-741-cli-list-paging]] |  BACK-741 CLI 长列表 grep 风格分页 | source, cli |
+| [[sources/back-742-mcp-list-pagination]] |  BACK-742 MCP 列表工具与 decision_list 分页 | source, mcp, web |
+| [[sources/back-743-watch-starter-liveness]] |  BACK-743 watch 随启动方退出而停止 | source, cli, watch |
+| [[sources/back-744-watch-idle-cpu-signature]] |  BACK-744 watch 空转 CPU 的 stat 签名治理 | source, cli, watch |
+| [[sources/back-745-memo-corpus-signature-gate]] |  BACK-745 memo 搜索语料刷新的 stat 签名门控 | source, core, memos, search, performance |
+| [[sources/back-746-memo-board-webgl-pinboard]] |  BACK-746 memo 钉板 WebGL 便利贴视图 | source, web-ui, memos, webgl, feature |
+| [[sources/back-747-memo-archiving]] |  BACK-747 memo 归档：原位 rename 到 archive | source, memos, feature, web-ui |
+| [[sources/back-748-fix-sidebar-resize-handle]] |  BACK-748 侧边栏 resize handle 被 hr preflight 压塌 | source, bug, web-ui |
+| [[sources/back-749-pinboard-fixed-height-ellipsis]] |  BACK-749 钉板便签固定高度与省略号截断 | source, enhancement, web-ui, memos |
+| [[sources/back-750-memo-tag-bar]] |  BACK-750 memo 标签历史条与 #topic# 语法 | source, enhancement, web-ui, memos |
+| [[sources/back-751-auto-link-entity-id-ranges]] |  BACK-751 实体 ID 区间与斜杠列表自动链接 | source, web-ui, enhancement, markdown |
+| [[sources/back-752-sequences-tui-two-pane]] |  BACK-752 sequences TUI 双面板视图 | source, cli, tui |
+| [[sources/back-753-referenced-by-backlinks]] |  BACK-753 文档/决策页 Referenced by 反向链接 | source, web-ui |
+| [[sources/back-754-re-parent-task]] |  BACK-754 task edit 重定父任务 | source, cli, mcp |
+| [[sources/back-755-include-completed-subtasks]] |  BACK-755 父任务视图纳入 completed 子任务 | source, bug, subtasks |
+| [[sources/back-756-graph-canvas-high-dpi]] |  BACK-756 高 DPI 下图谱 canvas 渲染提速 | source, web-ui |
+| [[sources/doc-17-state-machine-semantics-diagnosis]] |  doc-17 状态机语义诊断与引擎选型 | source, design, mcp, state-machine |
+| [[sources/doc-18-differentiation-gap-analysis]] |  doc-18 差异化管理机制差距分析 | source, design |
+| [[sources/doc-19-default-state-machine-prd]] |  doc-19 默认状态机 PRD（七列三审查点） | source, specification, state-machine, web-ui |
+| [[sources/doc-20-memos-integration]] |  doc-20 快速笔记 Memos 集成 | source, web-ui, design |
+| [[sources/doc-21-upstream-v1-52-0-to-v1-53-0-migration-diff-classification]] |  doc-21 上游 v1.52.0→v1.53.0 差异分类 | source, migration, cli |
+| [[sources/doc-22-upstream-v1-52-0-to-v1-53-0-migration-analysis-by-domain]] |  doc-22 v1.52.0→v1.53.0 迁移分析（按领域） | source, migration, cli |
+| [[sources/m-10-memos-integration]] |  m-10 Memos Integration 里程碑 | source, milestone, memos |
+| [[sources/back-757-memo-backlog-dir-resolution]] |  BACK-757 memo 存储解析配置 backlog 目录 | source, memos, bug, cli |
+| [[sources/back-758-graph-backlog-dir-resolution]] |  BACK-758 图谱扫描与监听解析配置目录 | source, graph, kuzu, bug |
+| [[sources/back-759-cross-branch-prefix-visibility]] |  BACK-759 跨分支任务加载尊重自定义前缀 | source, core, cli, web-ui, config |
+| [[sources/back-760-cross-branch-settings-toggles]] |  BACK-760 设置页暴露跨分支可见性开关 | source, web-ui, config |
+| [[sources/back-761-terminal-card-actual-end]] |  BACK-761 终态看板卡片显示 actualEnd | source, web-ui, dates |
+| [[sources/back-762-terminal-statuses-readonly]] |  BACK-762 终态集显式化并退出设置编辑 | source, config, web-ui, cli |
 
 ## Execution Notes
 
 | File | Title | Description |
 |---|---|---|
-| [[execution/image-promote-integration]] | 在编辑器保存流程中集成图片 Promote | 提取临时 URL、调用 promote API、替换内容、更新 state 的标准步骤 |
-| [[execution/network-error-pattern-extension]] | 扩展 Git 网络错误识别模式 | 向 `containsNetworkErrorPattern` 追加新错误类型的标准流程 |
-| [[execution/milestone-update-refactor]] | 里程碑更新重构模式 | renameMilestone → updateMilestone + rawContent 保留 + 关联任务重写优化 |
-| [[execution/statistics-robustness]] | 统计模块健壮性模式 | 阻塞任务检测大小写敏感修复 + recentlyUpdated 回退到 createdDate |
-| [[execution/actual-date-auto-population]] | 实际时间字段自动填充模式 | 跨 createTaskFromInput 和 updateTask 统一实现 actualStart/actualEnd 自动填充 |
-| [[execution/timezone-unification]] | 统一 UTC 存储字符串的时区解析模式 | 修复 `new Date(dateStr)` 误解析为本地时间的问题 |
-| [[execution/statistics-cache-pattern]] | 统计缓存实现模式 | 服务端 debounced 缓存 + 客户端 localStorage 双缓存层，CLI 变更后自动刷新 |
-| [[execution/task-drill-down-navigation-pattern]] | 任务详情钻取导航模式 | 在全局 Modal 中通过 taskHistory 堆栈 + URL 路由层实现子任务钻取与返回 |
-| [[execution/cli-cross-platform-escape-pattern]] | CLI 跨平台转义一致性模式 | Windows 模拟 bash 双引号层 + 全平台统一 C-style 转义的两层架构 |
-| [[execution/label-color-persistence-pattern]] | 标签颜色持久化模式 | 将 UI 自定义样式映射持久化到项目配置，仅存储非默认值 |
-| [[execution/mcp-client-setup-pattern]] | MCP 客户端设置共享 Helper 模式 | 统一 Claude/Codex/Gemini/Kiro 的 MCP 注册与错误处理 |
-| [[execution/wikilink-media-rendering-pattern]] | Wikilink 媒体渲染模式 | 解析、路径解析、尺寸控制与组件注册的标准步骤 |
-| [[execution/instruction-guide-backport-pattern]] | agent-guidelines 运营指导回传到 CLI/MCP 指令表面 | 差距审计、内容拆分、两边同步、注册新指南、测试与构建的标准步骤 |
-| [[execution/content-store-version-guard-pattern]] | ContentStore 版本守卫刷新合并模式 | 防止异步刷新晚于写入完成而覆盖新状态的标准步骤 |
-| [[execution/browser-launch-utils-pattern]] | 浏览器启动命令统一模式 | BROWSER 环境变量安全处理 + 平台 fallback 统一调用点 |
-| [[execution/task-identity-index-pattern]] | TaskIdentityIndex 替换 ID-keyed 合并模式 | canonical ID + 逻辑路径身份键 + 确定性胜出 + 歧义 fail-closed |
-| [[execution/search-score-threshold-pattern]] | 统一搜索分数阈值模式 | 所有搜索入口共用 Web 0.45 Fuse 阈值，过滤数字误匹配 |
-| [[execution/pre-existing-failure-triage]] | 预存测试失败分诊方法 | stash 探针 / 基线对照 / 计数对比 / 先红后绿 / JSDOM 钉桩 |
-| [[execution/modal-route-history-invariant]] | 模态路由历史栈不变式 | 历史栈与模态栈 1:1；push 打开、pop 关闭、背景条目只挂模态目标 |
-| [[execution/web-bundle-purity-guard]] | 浏览器 bundle 纯净性守卫 | Web 侧只导入纯模块，避免 Core 被打包导致白屏（BACK-628 案例） |
-| [[execution/bun-windows-test-toolkit]] | Bun on Windows 测试工具箱 | Windows 上 Bun 测试常见陷阱与规避手法集合 |
-| [[execution/revert-matrix-verification]] | 回退矩阵验证法（revert-probe / red-green matrix） | 通过回退探针与先红后绿矩阵定位并确认回归根因 |
-| [[execution/blessed-tui-test-harness]] | blessed TUI 真实屏幕测试模式 | 用真实 blessed screen 驱动 TUI 交互断言的测试搭建 |
-| [[execution/cdp-live-verification]] | headless Chrome CDP 实况验证 | 用 Chrome DevTools Protocol 对 Web UI 做端到端实况验证 |
-| [[execution/two-list-paging-models-wiring]] | 两套列表分页模型的接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
-| [[execution/webgl-html-overlay-hover-control]] | WebGL canvas 上挂 HTML 控件的模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
-| [[execution/custom-backlog-dir-rollout-audit]] | 配置目录（backlog-dir）推广时的硬编码路径审计模式 | 症状归族→grep 字面量→纯模块直调解析函数→每处 .backlog 种子回归用例，BACK-757/758 提炼 |
+| [[execution/image-promote-integration]] |  编辑器保存流程图片 promote 集成 | 提取临时 URL、调用 promote API、替换内容、更新 state 的标准步骤 |
+| [[execution/network-error-pattern-extension]] |  Git 网络错误识别扩展模式 | 向 `containsNetworkErrorPattern` 追加新错误类型的标准流程 |
+| [[execution/milestone-update-refactor]] |  里程碑更新重构模式 | renameMilestone → updateMilestone + rawContent 保留 + 关联任务重写优化 |
+| [[execution/statistics-robustness]] |  统计模块健壮性模式 | 阻塞任务检测大小写敏感修复 + recentlyUpdated 回退到 createdDate |
+| [[execution/actual-date-auto-population]] |  实际时间字段自动填充模式 | 跨 createTaskFromInput 和 updateTask 统一实现 actualStart/actualEnd 自动填充 |
+| [[execution/timezone-unification]] |  统一 UTC 存储时区解析模式 | 修复 `new Date(dateStr)` 误解析为本地时间的问题 |
+| [[execution/statistics-cache-pattern]] |  统计缓存实现模式 | 服务端 debounced 缓存 + 客户端 localStorage 双缓存层，CLI 变更后自动刷新 |
+| [[execution/task-drill-down-navigation-pattern]] |  任务详情钻取导航模式 | 在全局 Modal 中通过 taskHistory 堆栈 + URL 路由层实现子任务钻取与返回 |
+| [[execution/cli-cross-platform-escape-pattern]] |  CLI 跨平台转义一致性模式 | Windows 模拟 bash 双引号层 + 全平台统一 C-style 转义的两层架构 |
+| [[execution/label-color-persistence-pattern]] |  标签颜色持久化模式 | 将 UI 自定义样式映射持久化到项目配置，仅存储非默认值 |
+| [[execution/mcp-client-setup-pattern]] |  MCP 客户端设置共享 Helper 模式 | 统一 Claude/Codex/Gemini/Kiro 的 MCP 注册与错误处理 |
+| [[execution/wikilink-media-rendering-pattern]] |  Wikilink 媒体渲染模式 | 解析、路径解析、尺寸控制与组件注册的标准步骤 |
+| [[execution/instruction-guide-backport-pattern]] |  agent 运营指导回传指令表面模式 | 差距审计、内容拆分、两边同步、注册新指南、测试与构建的标准步骤 |
+| [[execution/content-store-version-guard-pattern]] |  ContentStore 版本守卫刷新合并模式 | 防止异步刷新晚于写入完成而覆盖新状态的标准步骤 |
+| [[execution/browser-launch-utils-pattern]] |  浏览器启动命令统一模式 | BROWSER 环境变量安全处理 + 平台 fallback 统一调用点 |
+| [[execution/task-identity-index-pattern]] |  TaskIdentityIndex 替换 ID 合并模式 | canonical ID + 逻辑路径身份键 + 确定性胜出 + 歧义 fail-closed |
+| [[execution/search-score-threshold-pattern]] |  统一搜索分数阈值模式 | 所有搜索入口共用 Web 0.45 Fuse 阈值，过滤数字误匹配 |
+| [[execution/pre-existing-failure-triage]] |  预存测试失败分诊方法 | stash 探针 / 基线对照 / 计数对比 / 先红后绿 / JSDOM 钉桩 |
+| [[execution/modal-route-history-invariant]] |  模态路由历史栈不变式 | 历史栈与模态栈 1:1；push 打开、pop 关闭、背景条目只挂模态目标 |
+| [[execution/web-bundle-purity-guard]] |  浏览器 bundle 纯净性守卫 | Web 侧只导入纯模块，避免 Core 被打包导致白屏（BACK-628 案例） |
+| [[execution/bun-windows-test-toolkit]] |  Bun on Windows 测试工具箱 | Windows 上 Bun 测试常见陷阱与规避手法集合 |
+| [[execution/revert-matrix-verification]] |  回退矩阵验证法 | 通过回退探针与先红后绿矩阵定位并确认回归根因 |
+| [[execution/blessed-tui-test-harness]] |  blessed TUI 真实屏幕测试模式 | 用真实 blessed screen 驱动 TUI 交互断言的测试搭建 |
+| [[execution/cdp-live-verification]] |  headless Chrome CDP 实况验证 | 用 Chrome DevTools Protocol 对 Web UI 做端到端实况验证 |
+| [[execution/two-list-paging-models-wiring]] |  两套列表分页模型接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
+| [[execution/webgl-html-overlay-hover-control]] |  WebGL canvas HTML 控件悬挂模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
+| [[execution/custom-backlog-dir-rollout-audit]] |  backlog-dir 推广硬编码路径审计模式 | 症状归族→grep 字面量→纯模块直调解析函数→每处 .backlog 种子回归用例，BACK-757/758 提炼 |
 
 ## Decisions
 
 | File | Title | Description |
 |---|---|---|
-| [[decisions/reuse-asset-promote-for-wiki-images]] | Wiki 图片 Promote 复用现有 Asset API | BACK-488 选择复用现有端点而非新建后端逻辑 |
-| [[decisions/no-external-gantt-library]] | 不使用外部甘特图库 | BACK-491 选择纯 React/CSS 自研而非引入第三方 Gantt 库 |
-| [[decisions/date-only-storage]] | 日期字段采用 Date-only 存储 | YYYY-MM-DD vs date-time 的权衡与选择 |
-| [[decisions/web-ui-date-autofill]] | Web UI 日期自动填充规则 | dueDate 为空 plannedStart 时的自动填充 UX 决策 |
-| [[decisions/remove-json-overview]] | 移除 overview 命令的 --json 选项 | JSON 过于冗长，plain + TUI 覆盖需求 |
-| [[decisions/datetime-vs-date-only]] | actual 字段采用 Date-time 而非 Date-only 存储 | 分钟级精度需求与甘特图小时级视图支撑 |
-| [[decisions/duck-typing-for-testability]] | 使用 Duck-typing 替代 instanceof 以保证可测试性 | Bun 测试运行器中 HTMLElement 不可用 |
-| [[decisions/inline-style-over-tailwind-for-heatmap]] | 热力图配色使用 inline style 替代 Tailwind 类 | Bun CSS build 在 Windows 上崩溃，新 Tailwind 类不可用 |
-| [[decisions/sunday-start-week-grid]] | 热力图网格采用周日开始而非周一开始 | 与 GitHub 贡献图保持一致，符合用户心智模型 |
-| [[decisions/color-key-over-raw-css]] | 标签颜色使用 key 字符串而非原始 CSS 存储 | BACK-500 选择 key 字符串映射 Tailwind 类对 |
-| [[decisions/width-aware-label-measurement]] | 使用隐藏测量容器 + ResizeObserver 实现宽度自适应标签 | BACK-500 精确测量标签宽度 |
-| [[decisions/draggedtaskid-lift-to-board]] | draggedTaskId 状态提升到 Board 组件 | 跨列拖拽需要所有列共享拖拽状态 |
-| [[decisions/task-history-stack-over-route]] | 使用任务历史堆栈替代路由实现钻取导航 | 保持单 Modal 架构，避免引入路由复杂性 |
-| [[decisions/background-location-modal-route]] | 使用 backgroundLocation 实现模态框背景保持 | React Router state 模式，保持底层页面可见 |
-| [[decisions/replace-over-navigate-minus-one]] | 模态框关闭使用 replace 替代 navigate(-1)（已被取代） | BACK-509 逻辑，仅保留为无 backgroundLocation 时的回退路径 |
-| [[decisions/anchor-prefix-guard]] | Markdown 链接解析添加 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
-| [[decisions/simulate-bash-escape-on-windows]] | Windows 上模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
-| [[decisions/mcp-roots-discovery-scope]] | MCP Roots 发现扩展至正常启动路径并保留 Pinned CWD | BACK-522 选择复用现有 roots 发现而非重写 resolver |
-| [[decisions/wikilink-regex-pipeline]] | Wikilink 别名与属性块使用轻量正则流水线 | BACK-523 选择正则流水线而非完整 remark/rehype AST 处理 |
-| [[decisions/allow-backlog-directory-in-autocomplete]] | 路径自动补全允许发现 .backlog 目录 | BACK-526 选择从排除列表中移除 .backlog 同时保留其他点前缀目录隐藏 |
-| [[decisions/reuse-processCliEscapes-for-plan-notes-summary]] | 复用 processCliEscapes 处理 plan、notes 与 finalSummary | BACK-527 选择复用现有转义函数而非新增独立逻辑 |
-| [[decisions/empty-string-over-undefined-for-date-clear]] | Web 日期清除使用空字符串而非 undefined | BACK-528 选择让客户端发送空字符串避免 JSON 丢弃 undefined |
-| [[decisions/cli-instructions-default-over-mcp]] | CLI instructions 作为默认 AI 集成路径 | BACK-521.2 选择 CLI instructions 为默认，MCP 作为可选 |
-| [[decisions/short-cli-nudge-over-long-guide]] | 使用短 CLI nudge 替代长 agent instruction 指南 | BACK-521.2 选择短 nudge + 动态 `backlog instructions` |
-| [[decisions/doctor-human-first-fail-closed-repair]] | 重复 ID 修复采用人类优先、CLI 权威、不猜测 | BACK-538 选择 doctor 预览+确认+可回滚而非全自动修复 |
-| [[decisions/tokenizer-over-regex-sentinel]] | AC/DoD 解析用 tokenizer 替代 regex 哨兵 | BACK-537 选择确定性解析与 fail-closed |
-| [[decisions/content-store-version-guard]] | ContentStore 用逐项版本守卫防止过期刷新 | BACK-540 选择版本守卫+条件合并而非全局锁 |
-| [[decisions/ignore-ordinal-for-updated-date]] | ordinal 变更忽略 updated_date 差异 | BACK-534 选择集中式时间戳逻辑消除 diff 噪音 |
-| [[decisions/json-output-no-duplicate-integrity-warning]] | JSON 输出不接重复 ID 前置检查 | BACK-562 选择保留 doctor/Web 主动检查，避免每次 read 全量扫描 |
-| [[decisions/tui-composer-no-type-no-cas]] | TUI composer 不迁移 type 字段与 git CAS 管线 | BACK-563 采用成熟 composer 但适配 fork 模型 |
-| [[decisions/search-score-threshold-over-substring]] | 搜索统一使用 0.45 Fuse 分数阈值 | BACK-564 对齐所有搜索表面 |
-| [[decisions/browser-loopback-with-host-opt-in]] | 浏览器服务器默认回环 + --host 显式开放 LAN | BACK-558 安全默认 |
-| [[decisions/autocommit-exact-files-no-cas]] | autoCommit 精确文件提交但不移植临时索引 CAS 管线 | BACK-561 使用 git commit --only |
-| [[decisions/keep-sequences-upstream-removed]] | 保留 sequences 功能并补充 CLI 文档 | BACK-554 保留 fork 已有能力 |
-| [[decisions/fail-fast-task-editing-locks]] | 并发任务编辑采用 fail-fast 文件锁 | BACK-571 retries:0 无等待合并，锁目标是任务文件本身 |
-| [[decisions/empty-setter-rejection-over-emptyclears]] | 空 setter 值拒绝并指向 --clear-* | BACK-577 与上游 emptyClears 语义刻意分叉 |
-| [[decisions/tri-state-assignee-semantics]] | absent/显式 []/列表三态语义 | BACK-579/584/585 默认值落在 core 漏斗层 |
-| [[decisions/delayed-reveal-for-hidden-kanban-columns]] | 隐藏列 reveal 延迟一个 macrotask | BACK-573 避免 Chromium dragstart 期间同步布局中止拖拽 |
-| [[decisions/key-family-boundary-navigation]] | GenericList 按键族进边界回调 | BACK-588/589 无新配置键，vim 手动绑定而非 vi:true |
-| [[decisions/editor-clear-undefined-guard]] | 编辑器清空守卫改 !== undefined | BACK-586 真值回退会吞掉显式空标志 |
-| [[decisions/fail-closed-entity-identity]] | 实体身份歧义立即 fail-closed | BACK-596/598 身份语义优先于可用性 |
-| [[decisions/b16-publication-foundation-first]] | B16 先补 publication 地基再移植 624 | BACK-601/602 warm 读取 394→≤3 次 Git 操作 |
-| [[decisions/explicit-test-timeout-over-internal-guard]] | 测试显式超时覆盖并行调度噪声 | BACK-609/610/612 内部守卫保持不变 |
-| [[decisions/ready-guidance-completed-corpus]] | 就绪指引用 listCompletedTasks 语料 | BACK-615 112ms 替代上游 6.6s 方案 |
-| [[decisions/symlink-checkout-for-agent-definitions]] | agent 定义保留符号链接 | BACK-605 core.symlinks=true，副本方案被用户否决 |
-| [[decisions/launcher-scope-from-package-name]] | 包 scope 从 package.json name 推导 | BACK-621 不硬编码 @kuwork |
-| [[decisions/spread-passthrough-minimal-change]] | 新字段 spread 透传零签名改动 | BACK-618/619 自动刷新 updated_date |
-| [[decisions/identity-index-from-cached-tasks]] | identity-index 从 cachedTasks 重建 | BACK-612 测试稳定化挖出真实 store bug |
-| [[decisions/react-router-history-for-search-dialog]] | 搜索对话框历史语义复用 React Router | BACK-624 PRD 的 pushState/popstate 契约映射为 Router 语义 |
-| [[decisions/pop-over-push-for-modal-back]] | 模态框返回与关闭改为 pop 而非 push/replace | BACK-624/627 修正历史栈与模态栈 1:1 不变式，取代 509 决策 |
-| [[decisions/background-location-for-modal-targets-only]] | backgroundLocation 只挂给模态目标 | BACK-624 任务走模态、文档/决策/wiki 走整页 push |
-| [[decisions/visible-start-index-over-scroll-top]] | 滚动记忆用 visibleStartIndex 而非 scrollTop | BACK-624 定高行下图元索引更稳定、可确定性降级 |
-| [[decisions/hand-rolled-virtual-list-over-dependency]] | 手写定高虚拟列表而非引入虚拟化库 | BACK-624 零新依赖，代价是行高必须恒定 |
-| [[decisions/mermaid-11-16-1-supply-chain-maturity]] | mermaid 选择 11.16.1 而非最新 11.17.2 | BACK-626 供应链验证成熟度优先于版本新度 |
-| [[decisions/pure-task-id-module-in-browser-bundle]] | 浏览器 bundle 只导入纯模块 | BACK-628 从 task-path 改 task-id 以避免 Core 入包白屏 |
-| [[decisions/memory-graph-store-default-backend]] | 图存储双后端抽象，默认 MemoryGraphStore | BACK-702 Kuzu 图谱默认内存后端，Kuzu 可选 |
-| [[decisions/filenode-path-primary-key]] | 图节点以文件路径为主键（FileNode）+ SCHEMA_VERSION 自描述 | BACK-713 Task(id) 改名 FileNode(path PK) |
-| [[decisions/doctor-dependency-defects-warning-exit-zero]] | doctor 依赖缺陷诊断为 warning，退出码保持 0 | BACK-708 缺陷报告不阻断 CI |
-| [[decisions/tolerate-history-not-new-mistakes]] | 依赖写门禁"容忍历史，不容忍新错误" | BACK-707 存量坏数据容忍、新写入拒绝环 |
-| [[decisions/local-corpus-closure-over-graph-service]] | 依赖闭包查询走本地语料，不走图服务 | BACK-709 闭包/跳数从任务语料直接计算 |
-| [[decisions/demote-removes-references-not-rewrites]] | demote 移除被腾空的引用，而非改写为新草稿身份 | BACK-691 生命周期本地优先的引用清理语义 |
-| [[decisions/milestone-popup-in-place-rerender]] | milestone 弹窗原地重渲染，而非关闭重开 | BACK-696 实时同步下的弹窗刷新策略 |
-| [[decisions/nonpublishing-rename-fallback-load]] | findIdentity rename 回退使用非发布加载 | BACK-699 回退路径不污染 freshness 发布 |
-| [[decisions/completed-popup-reuses-cross-branch-lockdown]] | completed 语料弹窗复用 cross-branch 只读锁定 | BACK-663 只读渲染复用既有锁定机制 |
-| [[decisions/empty-selection-means-no-filter]] | 空选择等于不过滤 | BACK-652/665 多状态过滤的零选择语义 |
-| [[decisions/sanitize-filename-untitled-fallback]] | 唯一 sanitizeFilename 内做 untitled 回退 | BACK-650 标点-only 标题统一回退入口 |
-| [[decisions/draft-prefix-routing-over-store-probing]] | 草稿路由按 DRAFT- 前缀判断，不探测 store | BACK-683 CLI 草稿编辑路由策略 |
-| [[decisions/cli-draft-edit-refuses-non-draft-status]] | CLI 拒绝草稿的非 Draft --status，提升保持显式步骤 | BACK-683 草稿编辑与 promote 边界 |
-| [[decisions/always-animate-loading-over-motion-reduce]] | 加载指示器始终动画，优先于 motion-reduce 抑制 | BACK-670 加载反馈的可感知性优先 |
-| [[decisions/toc-entries-from-rendered-dom]] | TOC 条目读渲染后 DOM，而非解析 markdown 源 | BACK-638 大纲与真实渲染保持一致 |
-| [[decisions/free-text-status-storage]] | 决策状态值自由文本存储，不做固定集校验 | BACK-635 状态可扩展性优先于枚举约束 |
-| [[decisions/hand-rolled-state-machine-validator-over-engine]] | 自研零依赖状态机校验器而非引入引擎 | doc-17 现成引擎只覆盖需求 30%，出边权限列出与教学式报错无引擎提供 |
-| [[decisions/cli-list-window-over-cursor]] | CLI 列表分页用窗口模型并移除不透明 cursor | BACK-741 grep/git 风格 --max-count/--skip，memo list 的 --cursor 被否决 |
-| [[decisions/board-hover-archive-overlay]] | 钉板归档按钮用 hover-only HTML overlay | BACK-747 指针追踪挂容器层、按钮内缩，常驻显示被否决 |
-| [[decisions/memo-archive-rename-not-rewrite]] | Memo 归档用 verbatim rename 而非重写 | BACK-747 逐字节移动天然可逆，拒绝覆盖目标，无取消归档 |
-| [[decisions/init-memos-dirs-symmetric]] | init 对称创建 backlog/memos 与 archive/memos | BACK-747 目录清单完整契约优先于按需创建 |
-| [[decisions/backlog-dir-single-resolution]] | 全部产物面统一经 resolveBacklogDirectory() 解析配置目录 | BACK-757/758 拒绝每处自写发现逻辑、纯模块直接调解析函数 |
-| [[decisions/cross-branch-config-default-param-override]] | 跨分支可见性：配置为默认、URL 参数为覆盖 | BACK-759 裁决收敛到纯函数 resolveCrossBranchVisibility，前端不再强制加参 |
-| [[decisions/scan-show-two-axes]] | 扫描与展示是两个轴：include_cross_branch 不得停止扫描 | BACK-760 扫描归 check_active_branches，否则默认禁用跨分支加载、ID 分配回退 |
-| [[decisions/terminal-set-derived-not-stored]] | 终态集是派生值：读取路径显式呈现、绝不落盘、唯一写入口是状态机编辑器 | BACK-762 拒绝设置页多选写 category 与独立配置键双写 |
+| [[decisions/reuse-asset-promote-for-wiki-images]] |  wiki 图片 promote 复用 Asset API | BACK-488 选择复用现有端点而非新建后端逻辑 |
+| [[decisions/no-external-gantt-library]] |  不引入外部甘特图库 | BACK-491 选择纯 React/CSS 自研而非引入第三方 Gantt 库 |
+| [[decisions/date-only-storage]] |  日期字段的 Date-only（YYYY-MM-DD）存储 | YYYY-MM-DD vs date-time 的权衡与选择 |
+| [[decisions/web-ui-date-autofill]] |  Web UI 日期自动填充规则 | dueDate 为空 plannedStart 时的自动填充 UX 决策 |
+| [[decisions/remove-json-overview]] |  移除 overview 的 --json 选项 | JSON 过于冗长，plain + TUI 覆盖需求 |
+| [[decisions/datetime-vs-date-only]] |  actual 字段的 Date-time（而非 Date-only）存储 | 分钟级精度需求与甘特图小时级视图支撑 |
+| [[decisions/duck-typing-for-testability]] |  Duck-typing 替代 instanceof 保证可测试性 | Bun 测试运行器中 HTMLElement 不可用 |
+| [[decisions/inline-style-over-tailwind-for-heatmap]] |  热力图配色用 inline style | Bun CSS build 在 Windows 上崩溃，新 Tailwind 类不可用 |
+| [[decisions/sunday-start-week-grid]] |  热力图网格周日开始 | 与 GitHub 贡献图保持一致，符合用户心智模型 |
+| [[decisions/color-key-over-raw-css]] |  标签颜色用 key 字符串而非原始 CSS 存储 | BACK-500 选择 key 字符串映射 Tailwind 类对 |
+| [[decisions/width-aware-label-measurement]] |  隐藏测量容器实现宽度自适应标签 | BACK-500 精确测量标签宽度 |
+| [[decisions/draggedtaskid-lift-to-board]] |  draggedTaskId 状态提升到 Board 组件 | 跨列拖拽需要所有列共享拖拽状态 |
+| [[decisions/task-history-stack-over-route]] |  任务历史堆栈替代路由 | 保持单 Modal 架构，避免引入路由复杂性 |
+| [[decisions/background-location-modal-route]] |  backgroundLocation 的模态框背景保持模式 | React Router state 模式，保持底层页面可见 |
+| [[decisions/replace-over-navigate-minus-one]] |  模态框关闭 replace（已被取代） | BACK-509 逻辑，仅保留为无 backgroundLocation 时的回退路径 |
+| [[decisions/anchor-prefix-guard]] |  Markdown 链接解析的 # 锚点前缀守卫 | 防止 heading anchor 被误识别为本地 URL |
+| [[decisions/simulate-bash-escape-on-windows]] |  模拟 bash 双引号转义层 | BACK-508 选择模拟 bash 行为而非引入新 API |
+| [[decisions/mcp-roots-discovery-scope]] |  MCP roots 发现扩至正常启动 | BACK-522 选择复用现有 roots 发现而非重写 resolver |
+| [[decisions/wikilink-regex-pipeline]] |  wikilink 轻量正则流水线 | BACK-523 选择正则流水线而非完整 remark/rehype AST 处理 |
+| [[decisions/allow-backlog-directory-in-autocomplete]] |  路径自动补全放行 .backlog 目录 | BACK-526 选择从排除列表中移除 .backlog 同时保留其他点前缀目录隐藏 |
+| [[decisions/reuse-processCliEscapes-for-plan-notes-summary]] |  复用 processCliEscapes 统一转义 | BACK-527 选择复用现有转义函数而非新增独立逻辑 |
+| [[decisions/empty-string-over-undefined-for-date-clear]] |  Web 日期清除使用空字符串而非 undefined | BACK-528 选择让客户端发送空字符串避免 JSON 丢弃 undefined |
+| [[decisions/cli-instructions-default-over-mcp]] |  默认 AI 集成的 CLI instructions 路径 | BACK-521.2 选择 CLI instructions 为默认，MCP 作为可选 |
+| [[decisions/short-cli-nudge-over-long-guide]] |  短 CLI nudge 替代长指南 | BACK-521.2 选择短 nudge + 动态 `backlog instructions` |
+| [[decisions/doctor-human-first-fail-closed-repair]] |  重复 ID 修复的人类优先、CLI 权威、不猜测原则 | BACK-538 选择 doctor 预览+确认+可回滚而非全自动修复 |
+| [[decisions/tokenizer-over-regex-sentinel]] |  tokenizer 替代 regex 哨兵解析 AC/DoD | BACK-537 选择确定性解析与 fail-closed |
+| [[decisions/content-store-version-guard]] |  防过期刷新的 ContentStore 逐项版本守卫 | BACK-540 选择版本守卫+条件合并而非全局锁 |
+| [[decisions/ignore-ordinal-for-updated-date]] |  重排忽略 updated_date 差异 | BACK-534 选择集中式时间戳逻辑消除 diff 噪音 |
+| [[decisions/json-output-no-duplicate-integrity-warning]] |  JSON 输出不接重复 ID 前置检查 | BACK-562 选择保留 doctor/Web 主动检查，避免每次 read 全量扫描 |
+| [[decisions/tui-composer-no-type-no-cas]] |  TUI composer 不迁移 type 与 CAS 管线 | BACK-563 采用成熟 composer 但适配 fork 模型 |
+| [[decisions/search-score-threshold-over-substring]] |  搜索统一 0.45 Fuse 分数阈值 | BACK-564 对齐所有搜索表面 |
+| [[decisions/browser-loopback-with-host-opt-in]] |  浏览器服务器默认回环 + --host 显式开放 LAN | BACK-558 安全默认 |
+| [[decisions/autocommit-exact-files-no-cas]] |  autoCommit 精确提交与 CAS 管线取舍 | BACK-561 使用 git commit --only |
+| [[decisions/keep-sequences-upstream-removed]] |  保留 sequences 并补 CLI 文档 | BACK-554 保留 fork 已有能力 |
+| [[decisions/fail-fast-task-editing-locks]] |  并发任务编辑采用 Fail-Fast 文件锁 | BACK-571 retries:0 无等待合并，锁目标是任务文件本身 |
+| [[decisions/empty-setter-rejection-over-emptyclears]] |  空 Setter 值拒绝而非按 emptyClears 清除 | BACK-577 与上游 emptyClears 语义刻意分叉 |
+| [[decisions/tri-state-assignee-semantics]] |  字段三态语义 | BACK-579/584/585 默认值落在 core 漏斗层 |
+| [[decisions/delayed-reveal-for-hidden-kanban-columns]] |  隐藏看板列的 setTimeout(0) 延迟 reveal | BACK-573 避免 Chromium dragstart 期间同步布局中止拖拽 |
+| [[decisions/key-family-boundary-navigation]] |  按键族信息随边界回调传递 | BACK-588/589 无新配置键，vim 手动绑定而非 vi:true |
+| [[decisions/editor-clear-undefined-guard]] |  defaultEditor 清空的空值跳过校验与 undefined 守卫 | BACK-586 真值回退会吞掉显式空标志 |
+| [[decisions/fail-closed-entity-identity]] |  文档/决策身份歧义立即 Fail-Closed | BACK-596/598 身份语义优先于可用性 |
+| [[decisions/b16-publication-foundation-first]] |  B16 Publication 地基优先的两步移植 | BACK-601/602 warm 读取 394→≤3 次 Git 操作 |
+| [[decisions/explicit-test-timeout-over-internal-guard]] |  测试用显式超时而非放宽内部守卫 | BACK-609/610/612 内部守卫保持不变 |
+| [[decisions/ready-guidance-completed-corpus]] |  就绪指引走 listCompletedTasks 快路径 | BACK-615 112ms 替代上游 6.6s 方案 |
+| [[decisions/symlink-checkout-for-agent-definitions]] |  符号链接保留 agent 定义单一事实来源 | BACK-605 core.symlinks=true，副本方案被用户否决 |
+| [[decisions/launcher-scope-from-package-name]] |  平台包 scope 从主包推导 | BACK-621 不硬编码 @kuwork |
+| [[decisions/spread-passthrough-minimal-change]] |  新字段随 spread 透传加集中投影 | BACK-618/619 自动刷新 updated_date |
+| [[decisions/identity-index-from-cached-tasks]] |  identity 索引从 cachedTasks 重建 | BACK-612 测试稳定化挖出真实 store bug |
+| [[decisions/react-router-history-for-search-dialog]] |  搜索对话框历史复用 Router | BACK-624 PRD 的 pushState/popstate 契约映射为 Router 语义 |
+| [[decisions/pop-over-push-for-modal-back]] |  模态框返回与关闭改 pop | BACK-624/627 修正历史栈与模态栈 1:1 不变式，取代 509 决策 |
+| [[decisions/background-location-for-modal-targets-only]] |  backgroundLocation 仅挂给模态目标 | BACK-624 任务走模态、文档/决策/wiki 走整页 push |
+| [[decisions/visible-start-index-over-scroll-top]] |  滚动记忆用 visibleStartIndex | BACK-624 定高行下图元索引更稳定、可确定性降级 |
+| [[decisions/hand-rolled-virtual-list-over-dependency]] |  手写定高虚拟列表替代依赖库 | BACK-624 零新依赖，代价是行高必须恒定 |
+| [[decisions/mermaid-11-16-1-supply-chain-maturity]] |  mermaid 选 11.16.1 重供应链成熟度 | BACK-626 供应链验证成熟度优先于版本新度 |
+| [[decisions/pure-task-id-module-in-browser-bundle]] |  浏览器 bundle 只导入纯模块 | BACK-628 从 task-path 改 task-id 以避免 Core 入包白屏 |
+| [[decisions/memory-graph-store-default-backend]] |  图存储默认 MemoryGraphStore | BACK-702 Kuzu 图谱默认内存后端，Kuzu 可选 |
+| [[decisions/filenode-path-primary-key]] |  图节点以文件路径为主键（FileNode）+ 版本自描述 | BACK-713 Task(id) 改名 FileNode(path PK) |
+| [[decisions/doctor-dependency-defects-warning-exit-zero]] |  doctor 依赖缺陷 warning 级诊断与零退出码 | BACK-708 缺陷报告不阻断 CI |
+| [[decisions/tolerate-history-not-new-mistakes]] |  依赖写门禁容忍历史不容新错误 | BACK-707 存量坏数据容忍、新写入拒绝环 |
+| [[decisions/local-corpus-closure-over-graph-service]] |  依赖闭包查询走本地语料 | BACK-709 闭包/跳数从任务语料直接计算 |
+| [[decisions/demote-removes-references-not-rewrites]] |  demote 移除腾空引用而非改写身份 | BACK-691 生命周期本地优先的引用清理语义 |
+| [[decisions/milestone-popup-in-place-rerender]] |  milestone 弹窗原地重渲染 | BACK-696 实时同步下的弹窗刷新策略 |
+| [[decisions/nonpublishing-rename-fallback-load]] |  rename 回退用非发布加载 | BACK-699 回退路径不污染 freshness 发布 |
+| [[decisions/completed-popup-reuses-cross-branch-lockdown]] |  completed 语料弹窗复用跨分支只读锁定 | BACK-663 只读渲染复用既有锁定机制 |
+| [[decisions/empty-selection-means-no-filter]] |  空选择等于不过滤 | BACK-652/665 多状态过滤的零选择语义 |
+| [[decisions/sanitize-filename-untitled-fallback]] |  sanitizeFilename 内做 untitled 回退 | BACK-650 标点-only 标题统一回退入口 |
+| [[decisions/draft-prefix-routing-over-store-probing]] |  草稿路由的 DRAFT- 前缀分发而非 store 探测 | BACK-683 CLI 草稿编辑路由策略 |
+| [[decisions/cli-draft-edit-refuses-non-draft-status]] |  CLI 草稿编辑拒绝非 Draft 状态 | BACK-683 草稿编辑与 promote 边界 |
+| [[decisions/always-animate-loading-over-motion-reduce]] |  加载指示器动画优先于 motion-reduce 抑制 | BACK-670 加载反馈的可感知性优先 |
+| [[decisions/toc-entries-from-rendered-dom]] |  TOC 条目读渲染后 DOM | BACK-638 大纲与真实渲染保持一致 |
+| [[decisions/free-text-status-storage]] |  决策状态值自由文本存储，不做固定集校验 | BACK-635 状态可扩展性优先于枚举约束 |
+| [[decisions/hand-rolled-state-machine-validator-over-engine]] |  自研零依赖状态机校验器 | doc-17 现成引擎只覆盖需求 30%，出边权限列出与教学式报错无引擎提供 |
+| [[decisions/cli-list-window-over-cursor]] |  CLI 列表分页窗口模型取代不透明 cursor | BACK-741 grep/git 风格 --max-count/--skip，memo list 的 --cursor 被否决 |
+| [[decisions/board-hover-archive-overlay]] |  钉板归档按钮的 hover-only HTML overlay | BACK-747 指针追踪挂容器层、按钮内缩，常驻显示被否决 |
+| [[decisions/memo-archive-rename-not-rewrite]] |  memo 归档用 verbatim rename | BACK-747 逐字节移动天然可逆，拒绝覆盖目标，无取消归档 |
+| [[decisions/init-memos-dirs-symmetric]] |  init 对称创建 memos 目录 | BACK-747 目录清单完整契约优先于按需创建 |
+| [[decisions/backlog-dir-single-resolution]] |  产物面目录统一解析点 resolveBacklogDirectory() | BACK-757/758 拒绝每处自写发现逻辑、纯模块直接调解析函数 |
+| [[decisions/cross-branch-config-default-param-override]] |  跨分支可见性：配置为默认、URL 参数为覆盖 | BACK-759 裁决收敛到纯函数 resolveCrossBranchVisibility，前端不再强制加参 |
+| [[decisions/scan-show-two-axes]] |  扫描与展示是两个轴 | BACK-760 扫描归 check_active_branches，否则默认禁用跨分支加载、ID 分配回退 |
+| [[decisions/terminal-set-derived-not-stored]] |  终态集是派生值 | BACK-762 拒绝设置页多选写 category 与独立配置键双写 |
 
 ## Concepts
 
 | File | Title | Description |
 |---|---|---|
-| [[concepts/task-lifecycle]] | 任务生命周期 | 任务从草稿到归档的完整流程与字段说明 |
-| [[concepts/cli-tui]] | CLI 与 TUI 界面 | 命令行与终端交互式界面功能 |
-| [[concepts/web-ui-features]] | Web UI 功能 | 浏览器界面的页面、视图与技术特性 |
-| [[concepts/mcp-workflow]] | MCP 工作流与 AI 集成 | AI 代理集成方式与推荐工作流 |
-| [[concepts/search-sequences]] | 搜索与序列 | Fuse.js 模糊搜索与依赖序列计算 |
-| [[concepts/core-architecture]] | 核心架构与数据流 | Core、FileSystem、ContentStore、SearchService 的协作关系 |
-| [[concepts/cli-entry]] | CLI 入口与命令体系 | Commander.js 命令注册、交互/非交互模式、全局配置迁移 |
-| [[concepts/mcp-server]] | MCP Server 实现 | stdio 传输、tools/resources/prompts、roots 发现机制 |
-| [[concepts/web-server]] | Web Server 与浏览器界面 | Bun.serve HTTP API、WebSocket 实时同步、React SPA |
-| [[concepts/markdown-pipeline]] | Markdown 解析与序列化流水线 | gray-matter + 结构化章节提取、frontmatter 预处理 |
-| [[concepts/paste-as-markdown]] | 粘贴为 Markdown | 富文本自动转换为 Markdown，支持图片上传 |
-| [[concepts/asset-management]] | 资源管理与临时文件提升 | AssetManager、临时目录、安全下载、promote 机制 |
-| [[concepts/file-preview]] | 本地文件预览 | 代码/Markdown 文件预览、语法高亮、行号、行范围 |
-| [[concepts/docx-conversion]] | Word 文档转换 | `.docx` 上传、Markdown 转换、图片保存、统一 Markdown 流水线 |
-| [[concepts/embedded-skills]] | 内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
-| [[concepts/web-ui-i18n]] | Web UI 国际化 | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
-| [[concepts/wikilink]] | Wikilink | wiki 页面间交叉引用语法 `[[path/to/page]]`，支持别名、属性块、媒体嵌入 |
-| [[concepts/date-fields]] | 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd） | 五个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
-| [[concepts/project-health]] | 项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
-| [[concepts/gantt-view]] | Gantt 甘特图视图 | 纯 React/CSS 时间线可视化、跟踪甘特图双层渲染、日期解析、依赖箭头 |
-| [[concepts/task-comments]] | 任务评论 | 结构化追加式讨论机制、Markdown 持久化、CLI/MCP/Web/TUI 统一视图 |
-| [[concepts/auto-port]] | 自动端口选择 | autoPort 配置、端口扫描逻辑、多实例并发启动 |
-| [[concepts/i18n-string-fragmentation]] | i18n 字符串拼接反模式 | 运行时拼接导致翻译断裂、完整短语替代方案 |
-| [[concepts/tui-theme-adaptive]] | TUI 主题自适应渲染 | 逆视频高亮、移除硬编码 ANSI 颜色、跨主题兼容 |
-| [[concepts/cli-instructions]] | CLI 指令表面 | `backlog instructions` 提供的本地工作流指南与 CLI 优先代理集成 |
-| [[concepts/milestones]] | 里程碑管理 | 里程碑创建、分配、归档，CLI 与 MCP 操作语义 |
-| [[concepts/json-output]] | 稳定 JSON 输出 | 只读命令 --json 版本化契约、stdout-only、错误写 stderr |
-| [[concepts/task-identity]] | 共享任务身份 | canonical ID + 逻辑路径统一跨分支/完成/归档记录身份 |
-| [[concepts/browser-loading]] | 浏览器加载状态 | bind-first 服务器、WebSocket 三态、骨架屏/错误重试 |
-| [[concepts/upstream-migration]] | 上游迁移策略 | fork 对上游 A/B/C 分类与按领域迁移分析方法 |
-| [[concepts/ci-platform-contracts]] | CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
-| [[concepts/task-locking]] | 任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
-| [[concepts/spotlight-search]] | 全局搜索对话框（Spotlight Search） | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
-| [[concepts/kuzu-graph]] | Kuzu 任务图谱 | FileNode 图模型、MemoryGraphStore 默认后端、冷启动指纹校验、/graph 与 /knowledge 视图、wiki LinksTo |
-| [[concepts/memos]] | 快速笔记（Memos）子系统 | `backlog/memos/` 下第五种文件实体，极简捕获 + 日历，刻意与 ContentStore 重量级体系保持边界 |
-| [[concepts/memo-board]] | Memo 钉板视图（WebGL 便利贴） | 离屏 canvas 烘焙 + 裸 WebGL 单 quad，FNV-1a 三层确定性布局，固定黑板无平移缩放 |
-| [[concepts/state-machine]] | 状态机语义 | `statuses` 配置从显示层列定义升级为带语义的状态机：状态类别、转换条件、AI 可读指引 |
-| [[concepts/list-paging]] | 两个刻意不同的列表分页模型 | CLI 窗口模型面向人类/代理翻页阅读，MCP/REST 偏移信封模型面向程序化遍历，故意不统一 |
-| [[concepts/json-watch]] | task list --watch 生命周期契约 | JSON 行流能力：全量替换帧 + 启动方存活性 + 空转成本控制 |
-| [[concepts/statistics-corpus-scope]] | 统计语料范围（completed opt-in） | 项目统计默认活跃语料、completed 显式 opt-in，语料范围是所有统计读数的前置参数 |
-| [[concepts/toc-scrollspy]] | 模态框 TOC 抽屉与 scrollspy | 书签式大纲抽屉 + scrollspy 高亮，解决 Modal 类弹窗无大纲问题 |
-| [[concepts/live-sync-pattern]] | Web UI 实时同步复用模式 | window 事件转发 + 防抖广播 + refreshInPlace 原地刷新三件套，memos/drafts/board 复用 |
+| [[concepts/task-lifecycle]] |  任务生命周期 | 任务从草稿到归档的完整流程与字段说明 |
+| [[concepts/cli-tui]] |  CLI 与 TUI 界面 | 命令行与终端交互式界面功能 |
+| [[concepts/web-ui-features]] |  Web UI 功能 | 浏览器界面的页面、视图与技术特性 |
+| [[concepts/mcp-workflow]] |  MCP 工作流与 AI 集成 | AI 代理集成方式与推荐工作流 |
+| [[concepts/search-sequences]] |  搜索与序列 | Fuse.js 模糊搜索与依赖序列计算 |
+| [[concepts/core-architecture]] |  核心架构与数据流 | Core、FileSystem、ContentStore、SearchService 的协作关系 |
+| [[concepts/cli-entry]] |  CLI 入口与命令体系 | Commander.js 命令注册、交互/非交互模式、全局配置迁移 |
+| [[concepts/mcp-server]] |  MCP Server 实现 | stdio 传输、tools/resources/prompts、roots 发现机制 |
+| [[concepts/web-server]] |  Web Server 与浏览器界面 | Bun.serve HTTP API、WebSocket 实时同步、React SPA |
+| [[concepts/markdown-pipeline]] |  Markdown 解析与序列化流水线 | gray-matter + 结构化章节提取、frontmatter 预处理 |
+| [[concepts/paste-as-markdown]] |  粘贴为 Markdown | 富文本自动转换为 Markdown，支持图片上传 |
+| [[concepts/asset-management]] |  资源管理与临时文件提升 | AssetManager、临时目录、安全下载、promote 机制 |
+| [[concepts/file-preview]] |  本地文件预览 | 代码/Markdown 文件预览、语法高亮、行号、行范围 |
+| [[concepts/docx-conversion]] |  Word 文档转换 | `.docx` 上传、Markdown 转换、图片保存、统一 Markdown 流水线 |
+| [[concepts/embedded-skills]] |  内嵌 Skill 架构 | 构建时嵌入 skill 到二进制、Agent 安装机制 |
+| [[concepts/web-ui-i18n]] |  Web UI 国际化（i18n） | 零依赖轻量级 i18n、类型安全翻译字典、编译时嵌入 |
+| [[concepts/wikilink]] |  Wikilink | wiki 页面间交叉引用语法 `[[path/to/page]]`，支持别名、属性块、媒体嵌入 |
+| [[concepts/date-fields]] |  日期字段语义与格式 | 五个可选日期字段的语义、存储格式、CLI/Web/MCP 使用方式 |
+| [[concepts/project-health]] |  项目健康度指标 | 临期、逾期、停滞、阻塞四类健康分类的判定逻辑与呈现方式 |
+| [[concepts/gantt-view]] |  甘特图视图 | 纯 React/CSS 时间线可视化、跟踪甘特图双层渲染、日期解析、依赖箭头 |
+| [[concepts/task-comments]] |  任务评论 | 结构化追加式讨论机制、Markdown 持久化、CLI/MCP/Web/TUI 统一视图 |
+| [[concepts/auto-port]] |  自动端口选择 | autoPort 配置、端口扫描逻辑、多实例并发启动 |
+| [[concepts/i18n-string-fragmentation]] |  i18n 字符串拼接反模式 | 运行时拼接导致翻译断裂、完整短语替代方案 |
+| [[concepts/tui-theme-adaptive]] |  TUI 主题自适应渲染 | 逆视频高亮、移除硬编码 ANSI 颜色、跨主题兼容 |
+| [[concepts/cli-instructions]] |  CLI 指令表面 | `backlog instructions` 提供的本地工作流指南与 CLI 优先代理集成 |
+| [[concepts/milestones]] |  里程碑管理 | 里程碑创建、分配、归档，CLI 与 MCP 操作语义 |
+| [[concepts/json-output]] |  稳定 JSON 输出 | 只读命令 --json 版本化契约、stdout-only、错误写 stderr |
+| [[concepts/task-identity]] |  共享任务身份 | canonical ID + 逻辑路径统一跨分支/完成/归档记录身份 |
+| [[concepts/browser-loading]] |  浏览器加载状态 | bind-first 服务器、WebSocket 三态、骨架屏/错误重试 |
+| [[concepts/upstream-migration]] |  上游迁移策略 | fork 对上游 A/B/C 分类与按领域迁移分析方法 |
+| [[concepts/ci-platform-contracts]] |  CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
+| [[concepts/task-locking]] |  任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
+| [[concepts/spotlight-search]] |  全局搜索对话框 | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
+| [[concepts/kuzu-graph]] |  Kuzu 任务图谱 | FileNode 图模型、MemoryGraphStore 默认后端、冷启动指纹校验、/graph 与 /knowledge 视图、wiki LinksTo |
+| [[concepts/memos]] |  快速笔记子系统 | `backlog/memos/` 下第五种文件实体，极简捕获 + 日历，刻意与 ContentStore 重量级体系保持边界 |
+| [[concepts/memo-board]] |  Memo 钉板视图 | 离屏 canvas 烘焙 + 裸 WebGL 单 quad，FNV-1a 三层确定性布局，固定黑板无平移缩放 |
+| [[concepts/state-machine]] |  状态机语义 | `statuses` 配置从显示层列定义升级为带语义的状态机：状态类别、转换条件、AI 可读指引 |
+| [[concepts/list-paging]] |  列表分页双模型 | CLI 窗口模型面向人类/代理翻页阅读，MCP/REST 偏移信封模型面向程序化遍历，故意不统一 |
+| [[concepts/json-watch]] |  task list --watch 生命周期契约 | JSON 行流能力：全量替换帧 + 启动方存活性 + 空转成本控制 |
+| [[concepts/statistics-corpus-scope]] |  统计语料范围 | 项目统计默认活跃语料、completed 显式 opt-in，语料范围是所有统计读数的前置参数 |
+| [[concepts/toc-scrollspy]] |  模态框 TOC 抽屉与 scrollspy | 书签式大纲抽屉 + scrollspy 高亮，解决 Modal 类弹窗无大纲问题 |
+| [[concepts/live-sync-pattern]] |  Web UI 实时同步复用模式 | window 事件转发 + 防抖广播 + refreshInPlace 原地刷新三件套，memos/drafts/board 复用 |
 
 ## Entities
 
 | File | Title | Description |
 |---|---|---|
-| [[entities/backlog-cli]] | Backlog.md CLI 工具 | 项目技术栈、模块结构与分发渠道 |
-| [[entities/ai-agents]] | AI 代理与集成 | 支持的 AI 工具与集成方式对比 |
+| [[entities/backlog-cli]] |  Backlog.md CLI 工具 | 项目技术栈、模块结构与分发渠道 |
+| [[entities/ai-agents]] |  AI 代理与集成 | 支持的 AI 工具与集成方式对比 |
 
 ## Patterns
 
 | File | Title | Description |
 |---|---|---|
-| [[patterns/cross-surface-feature-addition]] | 跨表面功能添加模式 | 新增字段/功能时的 12 层遍历 checklist |
-| [[patterns/refactoring-rollout]] | 重构分阶段推出模式 | 核心抽象变更的 6 阶段子任务推进法 |
-| [[patterns/bug-fix-prevention]] | Bug 修复 → 预防模式 | 症状修复 → 根因分析 → 审计扫荡 → 回归测试 |
-| [[patterns/tui-editor-integration]] | TUI / 编辑器集成模式 | blessed TUI 中安全启动外部编辑器的 8 步流程 |
-| [[patterns/skill-file-change-sync]] | Skill 文件变更 → 嵌入代码同步模式 | 修改 Skill 源文件后必须重新运行 embed 脚本并提交生成文件 |
-| [[patterns/upstream-migration-wave]] | 上游迁移波次执行模式 | 分类→领域分析→draft 导入→任务落地→三段式验证→清算闭环，经三波 60+ 任务验证 |
+| [[patterns/cross-surface-feature-addition]] |  跨表面功能添加模式 | 新增字段/功能时的 12 层遍历 checklist |
+| [[patterns/refactoring-rollout]] |  重构分阶段推出模式 | 核心抽象变更的 6 阶段子任务推进法 |
+| [[patterns/bug-fix-prevention]] |  Bug 修复 → 预防模式 | 症状修复 → 根因分析 → 审计扫荡 → 回归测试 |
+| [[patterns/tui-editor-integration]] |  TUI / 编辑器集成模式 | blessed TUI 中安全启动外部编辑器的 8 步流程 |
+| [[patterns/skill-file-change-sync]] |  Skill 文件变更 → 嵌入代码同步模式 | 修改 Skill 源文件后必须重新运行 embed 脚本并提交生成文件 |
+| [[patterns/upstream-migration-wave]] |  上游迁移波次执行模式 | 分类→领域分析→draft 导入→任务落地→三段式验证→清算闭环，经三波 60+ 任务验证 |
 
 ## Reasoning
 
 | File | Title | Description |
 |---|---|---|
-| [[reasoning/back-491-smart-gantt-view]] | BACK-491 甘特图视图规划痕迹 | 问题分解、方案对比（外部库 vs 自研）、关键设计决策与风险缓解 |
-| [[reasoning/tracking-gantt-design]] | BACK-495 跟踪甘特图设计推理 | 双层叠加 vs 切换模式 vs 并列条、视觉设计决策与子任务拆分 |
-| [[reasoning/back-624-global-search-dialog]] | BACK-624 全局搜索对话框设计推理 | PRD 到 Router 语义的适配、六项方案对比、风险与缓解 |
-| [[reasoning/kuzu-graph-backend-and-lifecycle]] | Kuzu 图谱后端、生命周期与存储治理设计推理 | 双后端、FileNode 路径主键、指纹冷启动、三层热更新、自描述版本与 slot 缓存/锁 |
-| [[reasoning/knowledge-graph-relations]] | 知识图谱关系模型设计推理（doc-15 / BACK-714） | 类型来源反转（frontmatter → 目录决定）、机械派生三边、语义关系暂缓、两视图与 caption 宽度 |
+| [[reasoning/back-491-smart-gantt-view]] |  智能甘特图视图规划痕迹 | 问题分解、方案对比（外部库 vs 自研）、关键设计决策与风险缓解 |
+| [[reasoning/tracking-gantt-design]] |  跟踪甘特图设计推理 | 双层叠加 vs 切换模式 vs 并列条、视觉设计决策与子任务拆分 |
+| [[reasoning/back-624-global-search-dialog]] |  全局搜索对话框设计与分解推理 | PRD 到 Router 语义的适配、六项方案对比、风险与缓解 |
+| [[reasoning/kuzu-graph-backend-and-lifecycle]] |  Kuzu 图谱的后端、生命周期与存储治理设计推理 | 双后端、FileNode 路径主键、指纹冷启动、三层热更新、自描述版本与 slot 缓存/锁 |
+| [[reasoning/knowledge-graph-relations]] |  知识图谱关系模型的设计推理 | 类型来源反转（frontmatter → 目录决定）、机械派生三边、语义关系暂缓、两视图与 caption 宽度 |
 
 ## Retrospectives
 
 | File | Title | Description |
 |---|---|---|
-| [[retrospectives/2026-09-v1-50-1-wave]] | v1.50.1 迁移波次回顾 | 54 任务两波爆发（峰值 11/日），周期中位数 0 天，测试稳定化占 20% 工作量 |
+| [[retrospectives/2026-09-v1-50-1-wave]] |  v1.50.1 迁移波次回顾 | 54 任务两波爆发（峰值 11/日），周期中位数 0 天，测试稳定化占 20% 工作量 |
 
 ## Comparisons
 
@@ -596,18 +596,19 @@ _No comparisons created yet._
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
 | [[usermanual/60-配置与运维/02-项目概览]] | 项目概览 | CLI overview 命令、项目级统计、健康指标 |
+| [[usermanual/60-配置与运维/03-故障排查]] | 故障排查 | 端口与 autoPort、图谱 building 与锁接管、watch 不刷新、二进制架构不匹配、MCP 连接、编辑器无响应 |
 
 ## Developer Notes
 
 | File | Title | Description |
 |---|---|---|
-| [[developer-notes/honkit-usermanual-preview]] | HonKit 预览用户手册 | 本地预览、构建静态站点、生成 PDF 的完整操作流程 |
-| [[developer-notes/ci-testing-gotchas]] | CI 与测试踩坑笔记 | 常见 CI 失败场景、文件系统测试陷阱、Biome 格式化细节 |
-| [[developer-notes/architecture-gotchas]] | 架构分层规范 | Server 层禁止直接拥有文件读取/解析逻辑、HTTP handler 职责边界 |
-| [[developer-notes/security-gotchas]] | 安全检查清单 | 路径遍历防护、SSRF 防护、文件大小限制、新增 API 安全自检 |
-| [[developer-notes/DEVELOPMENT-GUIDE]] | 开发指引 | Bun + TypeScript + Biome 技术栈开发标准与工作流 |
-| [[developer-notes/npm-publish-guide]] | npm 发布流程指南 | Fork 后发布 scoped 包到 npm 的完整流程与版本号陷阱 |
-| [[developer-notes/github-actions-release-gotchas]] | GitHub CI 发布注意事项 | 标签触发的自动发布链路、版本号烧号规则、失败后的处置路径 |
+| [[developer-notes/honkit-usermanual-preview]] |  HonKit 预览用户手册 | 本地预览、构建静态站点、生成 PDF 的完整操作流程 |
+| [[developer-notes/ci-testing-gotchas]] |  CI 与测试踩坑笔记 | 常见 CI 失败场景、文件系统测试陷阱、Biome 格式化细节 |
+| [[developer-notes/architecture-gotchas]] |  架构分层规范 | Server 层禁止直接拥有文件读取/解析逻辑、HTTP handler 职责边界 |
+| [[developer-notes/security-gotchas]] |  安全检查清单 | 路径遍历防护、SSRF 防护、文件大小限制、新增 API 安全自检 |
+| [[developer-notes/DEVELOPMENT-GUIDE]] |  开发指引 | Bun + TypeScript + Biome 技术栈开发标准与工作流 |
+| [[developer-notes/npm-publish-guide]] |  npm 发布流程指南 | Fork 后发布 scoped 包到 npm 的完整流程与版本号陷阱 |
+| [[developer-notes/github-actions-release-gotchas]] |  GitHub CI 发布注意事项 | 标签触发的自动发布链路、版本号烧号规则、失败后的处置路径 |
 
 ## Reports
 

@@ -1,8 +1,8 @@
 ---
 title: 上游迁移波次执行模式
 labels: [pattern, migration, upstream]
-created_date: '2026-09-08 17:45'
-updated_date: '2026-09-08 17:45'
+created_date: 2026-09-08 17:45
+updated_date: 2026-10-09 23:30
 ---
 
 # 上游迁移波次执行模式
@@ -36,10 +36,13 @@ updated_date: '2026-09-08 17:45'
 | **全量测试噪音淹没验证** | 本仓库 full `bun test` 长期有 ~39 个 pre-existing 失败 | 用 scoped tests + 基线对照，分诊方法见 [[execution/pre-existing-failure-triage]] |
 | **迁移后 To-Do 漂移** | 上游已实现的功能在 fork To-Do 里重复出现 | 波次末端必须做 doc-16 式清算，防止重复劳动 |
 
-## 参考任务
+## Related Concepts
+
+- [[concepts/upstream-migration]] — 三波迁移的总体策略与 A/B/C 分类法
+
+## Related Sources
 
 - [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] — 阶段 1 产物
 - [[sources/doc-10-upstream-v1-49-3-to-v1-50-1-migration-analysis-by-domain]] — 阶段 2 产物
 - [[sources/doc-16-todo-tasks-vs-upstream-migration-report]] — 阶段 6 产物
 - [[sources/back-602-incremental-cross-branch-task-loading]] — B 类大项两阶段打法的落地任务
-- [[concepts/upstream-migration]] — 三波迁移的总体策略与 A/B/C 分类法

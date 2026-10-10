@@ -1,12 +1,12 @@
 ---
-title: BACK-495.4 跟踪甘特图智能依赖箭头时间解析
-source_path: backlog/tasks/back-495.4 - Implement-smart-dependency-arrow-time-resolution-for-tracking-Gantt.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-495.4 - 跟踪甘特图智能依赖箭头时间解析
 labels: [source, feature, web-ui, gantt, frontend]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-495.4 - Implement-smart-dependency-arrow-time-resolution-for-tracking-Gantt.md
 ---
 
-# BACK-495.4 跟踪甘特图智能依赖箭头时间解析
+# BACK-495.4 - 跟踪甘特图智能依赖箭头时间解析
 
 更新依赖箭头渲染，使用智能时间解析确定连接点，兼顾实际时间与计划时间的偏差。
 

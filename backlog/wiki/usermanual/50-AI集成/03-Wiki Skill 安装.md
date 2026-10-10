@@ -2,6 +2,7 @@
 title: Wiki Skill 安装
 labels: [usermanual]
 created_date: 2026-05-12 00:00
+updated_date: '2026-10-09 23:30'
 ---
 
 
@@ -93,4 +94,22 @@ Skill 内容在构建时嵌入编译后的二进制文件中：
 backlog wiki install claude --force
 ```
 
-建议在每次升级 Backlog.md 后检查并更新已安装的 skill。
+建议在每次升级 Backlog.md 后检查并更新已安装的 skill（升级 CLI 本身的方法见[安装与初始化](../00-快速开始/01-安装与初始化.md)的「升级 Backlog.md」一节）。
+
+## 安装后的工作流
+
+安装 skill 后，AI 代理即可按 `llm-wiki-for-backlog` 的约定维护项目 wiki。它不是 RAG——每次查询不重新推导知识，而是把 backlog 源**增量编译**成一份持久、互链的 wiki，知识逐次累积。代理侧四类操作：
+
+| 操作 | 说明 |
+|------|------|
+| 摄取（Ingest） | 读取 `tasks/`、`docs/`、`decisions/` 等 backlog 源，生成 source 摘要页、概念页、实体页，更新 `index.md` / `overview.md` / `log.md`；git 可用时按上次摄取以来的变更做增量摄取 |
+| 查询（Query） | 先读 `wiki/index.md`，从编译好的 wiki 综合回答，产物（报告等）写入 `wiki_output/` |
+| 健康检查（Lint） | 扫描矛盾、孤立页、过时结论、缺失交叉引用 |
+| 回写（Flowback） | 把有价值的查询结果保存回 `wiki/`，让知识复利增长 |
+
+**维护边界**（与 AGENTS.md 的 WIKI GUIDELINES 一致）：
+
+- `wiki/` 由 LLM 全权维护——人类可读、可浏览，但不要手改；手改会被下一次摄取覆盖，且破坏互链一致性
+- backlog 源目录（`tasks/`、`docs/` 等）对 wiki 操作是**只读**的
+- 摄取永不递归处理 `wiki/`、`wiki_output/` 自身
+- `wiki/log.md` 只追加；所有跨页引用使用 wikilink（`[[path/to/page]]`，不带 `.md`）

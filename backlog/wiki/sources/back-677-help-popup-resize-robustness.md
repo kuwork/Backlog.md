@@ -1,40 +1,34 @@
 ---
-title: BACK-677 Make the TUI help popup robust to resize and wrapped lines
-created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
-labels:
-  - source
-  - tui
+title: BACK-677 - TUI 帮助弹窗适配 resize 与换行
+labels: [source, tui]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-677 - Make-the-TUI-help-popup-robust-to-resize-and-wrapped-lines.md
 ---
 
-# BACK-677 Make the TUI help popup robust to resize and wrapped lines
+# BACK-677 - TUI 帮助弹窗适配 resize 与换行
 
-The TUI help popup never called the `reflow` helper its popup chrome already returned, so a terminal resize left the backdrop hanging below a re-centered popup, the popup height frozen at the size it was opened with, and the scroll bound computed from logical shortcut count rather than rendered (wrapped) rows. This task makes the popup lay itself out from the live terminal size and derive scroll bounds from what the renderer actually drew.
+TUI 帮助弹窗从不调用其弹窗外壳已返回的 `reflow` 辅助函数，因此终端 resize 后，背景悬在重新居中的弹窗下方，弹窗高度冻结在打开时的尺寸，滚动上界按逻辑快捷键数而非渲染（换行后）行数计算。本任务让弹窗按实时终端尺寸自布局，并从渲染器实际绘制的内容派生滚动界。
 
-## Summary
+- `src/ui/components/help-popup.ts`：`getHelpPopupHeight` 截断到终端高度（`Math.min(screen.height, preferred)`），弹窗永不高于屏幕；宽度与页脚文本提升为 `HELP_POPUP_WIDTH` / `getHelpText(scrolls)`，布局通道可重建两者
+- `openHelpPopup` 从 `createPopupChrome` 取 `reflow`，并新增 `getMaxScrollOffset`、`applyLayout`（重算高度 → reflow 外壳，重锚背景 → 渲染 → 把 `childBase` 截断到实测界 → 用实测页脚再 reflow 一次）和 `onResize`，注册在 `screen.on("resize")` 并在关闭路径移除
+- 滚动界来自视口 `getScrollHeight()` 减可见高度，而非快捷键计数；`scrollBy` 读取当前界而非打开时计算的界；30x24 下换行的描述现在能滚动到最终渲染行
+- `src/ui/components/filter-popup.ts`：`ScrollableViewport` 声明 `getScrollHeight(): number`——仅类型层，可滚动框已实现它
+- 实测复现 80x24 → 80x12：之前弹窗 `top: -4, height: 21`，背景冻结在 `top: 0, height: 23`；之后弹窗 `top: 1, height: 10`，背景 `top: 0, height: 12`
+- 测试：`src/test/help-popup.test.ts` 8 测试 / 48 断言，3 个驱动真实屏幕，每个新断言先对照改动前代码与背景重定位回退确认为红；十一个相邻 TUI 套件绿
+- ID 注：BACK-677 与无关的迁移台账条目撞号；fork 保留分配的编号，台账行留给单独簿记
 
-- `src/ui/components/help-popup.ts`: `getHelpPopupHeight` clamps to the terminal height (`Math.min(screen.height, preferred)`), so the popup is never taller than the screen; width and footer text hoisted into `HELP_POPUP_WIDTH` / `getHelpText(scrolls)` so a layout pass can rebuild both
-- `openHelpPopup` takes `reflow` from `createPopupChrome` and adds `getMaxScrollOffset`, `applyLayout` (recompute height → reflow chrome, which re-anchors the backdrop → render → clamp `childBase` to measured bound → reflow again with measured footer) and `onResize` registered on `screen.on("resize")` and removed in the close path
-- Scroll bound comes from the viewport's `getScrollHeight()` minus visible height instead of the shortcut count; `scrollBy` reads the current bound rather than the one computed at open; wrapped descriptions at 30x24 now scroll to the final rendered line
-- `src/ui/components/filter-popup.ts`: `ScrollableViewport` declares `getScrollHeight(): number` — type-level only, the scrollable box already implements it
-- Measured reproduction at 80x24 → 80x12: before, popup `top: -4, height: 21` with backdrop frozen at `top: 0, height: 23`; after, popup `top: 1, height: 10`, backdrop `top: 0, height: 12`
-- Tests: 8 tests / 48 assertions in `src/test/help-popup.test.ts`, 3 driving a real screen, each new assertion checked red against the pre-change code and against a backdrop-repositioning rollback; eleven neighbouring TUI suites green
-- ID note: BACK-677 collides with an unrelated migration-ledger entry; the fork keeps the allocated number and left the ledger row to separate bookkeeping
+## 验收标准
 
-## Acceptance Criteria
-
-- Resize with the popup open reflows it: height follows the viewport, border and help row stay on-screen even below the five-row minimum
-- Backdrop tracks the popup (top follows popup top, bottom within one row) instead of staying at its drawn geometry
-- Scroll bound recomputed from rendered rows on resize; offset clamped; footer hint shows only while content actually overflows; wrapped content scrolls to its last line at 30x24
-- Resize listener removed when the popup closes; the four help contexts keep their shortcut lists and `escape/q/Q/?` close keys
+- 弹窗打开时 resize 会 reflow：高度跟随视口，即使低于五行下限，边框与帮助行也留在屏内
+- 背景跟随弹窗（top 跟随弹窗 top，底部差一行内），而不是停留在绘制时的几何
+- 滚动界在 resize 时按渲染行重算；offset 截断；页脚提示仅在内容真的溢出时显示；换行内容在 30x24 能滚到最后一行
+- resize 监听在弹窗关闭时移除；四个帮助上下文保留快捷键列表与 `escape/q/Q/?` 关闭键
 
 ## Related Concepts
-
-- [[concepts/cli-tui]] — blessed TUI popup chrome and resize handling
-- [[concepts/tui-theme-adaptive]] — neighbouring TUI rendering work in the same surface
+- [[concepts/cli-tui]] — blessed TUI 弹窗外壳与 resize 处理
+- [[concepts/tui-theme-adaptive]] — 同面相邻的 TUI 渲染工作
 
 ## Related Sources
-
-- [[sources/back-563-tui-intent-first-composer]] — the task composer is the other `createPopupChrome` caller that already reflows on resize
-- [[sources/back-565-tui-theme-adaptive-scroll]] — earlier TUI scrolling/rendering work on the same helpers
+- [[sources/back-563-tui-intent-first-composer]] — 任务 composer 是另一个已在 resize 时 reflow 的 `createPopupChrome` 调用方
+- [[sources/back-565-tui-theme-adaptive-scroll]] — 同一辅助函数上的早期 TUI 滚动/渲染工作

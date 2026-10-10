@@ -1,12 +1,12 @@
 ---
-title: BACK-548 状态排除与多状态过滤
+title: BACK-548 - 状态排除与多状态过滤
 labels: [source, cli, mcp, web-ui, tui, filtering]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-09-26 14:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-548 - Add-exclude-status-filtering-and-multi-status-selection-to-task-list-and-search.md
 ---
 
-# BACK-548 任务列表与搜索增加状态排除及多状态过滤
+# BACK-548 - 状态排除与多状态过滤
 
 为 CLI/Web/MCP/TUI 的任务列表与搜索增加多状态选择与状态排除过滤。
 
@@ -19,7 +19,7 @@ source_path: backlog/tasks/back-548 - Add-exclude-status-filtering-and-multi-sta
 - **MCP**：`taskListSchema`/`taskSearchSchema` 的 status 支持字符串或数组并新增 `statusExcluded`，validators.ts JsonSchema 增加 oneOf 支持
 - **TUI**：统一视图 filter state 携带 status 数组与 statusExcludedFilter，看板 move 模式忽略仅排除类过滤
 
-## 实现位置
+## 实现要点
 
 - `src/types/index.ts`、`src/core/backlog.ts`、`src/core/search-service.ts`
 - `src/utils/status.ts`、`src/utils/task-search.ts`
@@ -27,7 +27,7 @@ source_path: backlog/tasks/back-548 - Add-exclude-status-filtering-and-multi-sta
 - `src/web/components/TaskList.tsx`、`StatusFilterDropdown.tsx`、`StatusExcludedDropdown.tsx`
 - `src/mcp/tools/tasks/schemas.ts`、`handlers.ts`、`src/mcp/validation/validators.ts`
 
-## 测试
+## 验证
 
 `cli-exclude-status-filtering.test.ts`（9 例）、search-service 排除测试、MCP filter 透传、unified-view、web 单状态 URL 去重。
 

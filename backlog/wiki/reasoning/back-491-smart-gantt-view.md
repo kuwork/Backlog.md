@@ -1,11 +1,11 @@
 ---
-title: "BACK-491 规划痕迹：智能甘特图视图"
+title: 智能甘特图视图规划痕迹
 labels: [reasoning, gantt, web-ui, planning]
 created_date: 2026-05-28 00:50
-updated_date: 2026-05-28 00:50
+updated_date: 2026-10-09 23:30
 ---
 
-# BACK-491 规划痕迹：智能甘特图视图
+# 智能甘特图视图规划痕迹
 
 ## 原始需求
 
@@ -31,7 +31,7 @@ Backlog.md Web UI 缺乏时间维度可视化能力。任务模型已包含丰�
 ### 时间解析规则（强制优先级）
 - 开始：`plannedStart` → `createdDate`
 - 结束：`plannedEnd` → `updatedDate` → fallback
--  rationale：最大化利用已有数据，同时保证所有任务都有可视表示
+- rationale：最大化利用已有数据，同时保证所有任务都有可视表示
 
 ### 最小宽度回退
 - 日视图 4 小时视觉宽度：解决同天多任务重叠，同时保持"单日期"语义

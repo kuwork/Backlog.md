@@ -1,12 +1,12 @@
 ---
-title: BACK-495.3 跟踪甘特图 Tooltip、图例与交互增强
-source_path: backlog/tasks/back-495.3 - Add-tooltip-legend-and-interaction-enhancements-for-tracking-Gantt.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-495.3 - 跟踪甘特图 Tooltip、图例与交互增强
 labels: [source, feature, web-ui, gantt, frontend, ux]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-495.3 - Add-tooltip-legend-and-interaction-enhancements-for-tracking-Gantt.md
 ---
 
-# BACK-495.3 跟踪甘特图 Tooltip、图例与交互增强
+# BACK-495.3 - 跟踪甘特图 Tooltip、图例与交互增强
 
 增强跟踪甘特图的交互体验：悬停 Tooltip 展示计划与实际时间、点击高亮包含计划层、工具栏图例说明视觉元素。
 

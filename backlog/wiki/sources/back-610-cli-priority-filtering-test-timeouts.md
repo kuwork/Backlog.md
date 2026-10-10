@@ -1,32 +1,26 @@
 ---
-title: BACK-610 Raise bun test timeouts for CLI priority filtering tests
-created_date: '2026-09-06 08:10'
-updated_date: '2026-09-06 08:10'
-labels:
-  - source
-  - test
-  - ci
-  - cli
+title: BACK-610 - 提高 CLI 优先级过滤测试的 bun 超时
+labels: [source, test, ci, cli]
+created_date: 2026-09-06 08:10
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-610 - Raise-bun-test-timeouts-for-CLI-priority-filtering-tests.md
 ---
 
-# BACK-610 Raise bun test timeouts for CLI priority filtering tests
+# BACK-610 - 提高 CLI 优先级过滤测试的 bun 超时
 
-Every test in `src/test/cli-priority-filtering.test.ts` spawns one or more real `bun run cli` subprocesses, and under full-suite parallel load their wall time exceeded Bun's default 5000ms per-test timeout (observed on the case-insensitive filtering test which spawns three CLIs at once). `setDefaultTimeout(20000)` at file top makes the suite fail only on real defects, not scheduling noise.
+`src/test/cli-priority-filtering.test.ts` 的每个测试都会 spawn 一个或多个真实 `bun run cli` 子进程，全量套件并行负载下其墙钟时间超过 Bun 默认 5000ms 单测超时（在一次性 spawn 三个 CLI 的大小写不敏感过滤测试上观察到）。文件顶部 `setDefaultTimeout(20000)` 使套件只在真实缺陷时失败，而非调度噪声。
 
-## Summary
+- `src/test/cli-priority-filtering.test.ts`：文件顶部 `setDefaultTimeout(20000)`，与 `cli-dependency.test.ts` 既有模式一致。
+- 取值 20000ms，远高于单次 CLI 调用开销；scoped 运行 13/13 通过。
+- 全量套件（`full-test-609-611.log`）：无 CLI 优先级超时失败。
+- 与 BACK-609、BACK-611 属同一稳定化波次（共享全量测试日志）。
 
-- `src/test/cli-priority-filtering.test.ts`: `setDefaultTimeout(20000)` at file top, matching the existing pattern in `cli-dependency.test.ts`
-- Chosen value 20000ms, well above single-CLI-invocation cost; scoped run 13/13 pass
-- Full suite (`full-test-609-611.log`): no CLI priority timeout failures
-- Part of the same stabilization wave as BACK-609 and BACK-611 (shared full-test log)
+## 验收标准
 
-## Acceptance Criteria
-
-- Every test that spawns the CLI carries an explicit per-test timeout well above single-invocation cost
-- `bun test src/test/cli-priority-filtering.test.ts` passes repeatedly
-- `bunx tsc --noEmit` and `bun run check` pass on touched files
+- 每个 spawn CLI 的测试都带显式单测超时，远高于单次调用开销。
+- `bun test src/test/cli-priority-filtering.test.ts` 重复运行通过。
+- `bunx tsc --noEmit` 与 `bun run check` 在改动文件上通过。
 
 ## Related Concepts
 
-- [[concepts/ci-platform-contracts]] — setDefaultTimeout pattern for subprocess-spawning tests
+- [[concepts/ci-platform-contracts]] — spawn 子进程测试的 setDefaultTimeout 模式。

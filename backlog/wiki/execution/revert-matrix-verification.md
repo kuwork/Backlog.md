@@ -1,16 +1,16 @@
 ---
 title: 回退矩阵验证法（revert-probe / red-green matrix）
-created_date: '2026-09-26 14:45'
-updated_date: '2026-09-26 14:45'
 labels: [execution, testing]
+created_date: 2026-09-26 14:45
+updated_date: 2026-10-09 23:30
 extracted_from:
-  - "[[sources/back-699-findidentity-nonpublishing-fallback]]"
-  - "[[sources/back-698-web-in-place-refresh]]"
-  - "[[sources/back-696-milestone-popup-live-sync]]"
-  - "[[sources/back-691-local-first-lifecycle-vacated-refs]]"
-  - "[[sources/back-683-cli-draft-edit]]"
-  - "[[sources/back-682-web-positional-batch-drop]]"
-  - "[[sources/back-680-batch-status-move]]"
+  - BACK-699
+  - BACK-698
+  - BACK-696
+  - BACK-691
+  - BACK-683
+  - BACK-682
+  - BACK-680
 ---
 
 # 回退矩阵验证法（revert-probe / red-green matrix）
@@ -26,13 +26,13 @@ extracted_from:
 3. 每个新用例至少要被一个变体打红；变体打红了**不相关**的用例说明测试粒度过粗
 4. 恢复实现，确认全绿；矩阵脚本留在 `tmp/`（如 `tmp/rollback-682.py`）备查
 
-## 成熟实例的矩阵规模
+### 成熟实例的矩阵规模
 
 - BACK-699：5 变体 × 3 套件；变体 D（翻转默认发布行为）回来时全绿，暴露了"安装方仍发布"没有测试钉住——**补了第二个回归用例**。矩阵不只验证测试，也验证覆盖缺口
 - BACK-698：6 变体 × 12 用例；BACK-682：8 变体；BACK-696：7 变体 × 8 用例；BACK-683：6 变体 + task-edit 对照组
 - BACK-691：4 个定向就地回退，确认恰好判别性用例失败
 
-## 半改动探针
+### 半改动探针
 
 半个改动一个探针能定位因果：BACK-663 只回退门控让新用例红；只回退横幅则精确复现旧症状（空 branch 的 "Read-only" 文案）。一次回退一半，胜过整改动的全绿全红。
 

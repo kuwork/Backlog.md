@@ -1,12 +1,12 @@
 ---
-title: BACK-553 用 Bun 与 Tailwind 现代化浏览器 UI 打包
+title: BACK-553 - 用 Bun 与 Tailwind 现代化浏览器 UI 打包
 labels: [source, build, web-ui]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-553 - Modernize-browser-UI-bundling-with-Bun-and-Tailwind.md
 ---
 
-# BACK-553 用 Bun 与 Tailwind 现代化浏览器 UI 打包
+# BACK-553 - 用 Bun 与 Tailwind 现代化浏览器 UI 打包
 
 将浏览器 UI 构建流程迁移到 Bun 原生全栈构建（`Bun.build` + `bun-plugin-tailwind`），替代旧的两步 build:css + compile 流程。
 
@@ -22,7 +22,7 @@ source_path: backlog/tasks/back-553 - Modernize-browser-UI-bundling-with-Bun-and
 - `package.json` 的 build/cli 脚本改调 scripts/build.ts；`bunfig.toml` 开发模式加 `[serve.static] plugins = [bun-plugin-tailwind]`；ci.yml/release.yml/flake.nix 构建步骤与 DEVELOPMENT.md 同步到共享构建脚本
 - `scripts/build-release.cmd` 修复为调用 `bun scripts/build.ts` + 4 个环境变量（`BACKLOG_BUILD_VERSION/TARGET/OUTFILE/EXECUTABLE_PATH`），保留 `:ensure_runtime` 缓存跨编译 workaround
 
-## 实现位置
+## 实现要点
 
 - `scripts/build.ts`（新增）、`scripts/build-release.cmd`
 - `src/web/index.html`、`src/web/styles/source.css`
@@ -30,7 +30,7 @@ source_path: backlog/tasks/back-553 - Modernize-browser-UI-bundling-with-Bun-and
 - `package.json`、`bunfig.toml`、`.github/workflows/ci.yml`、`release.yml`、`flake.nix`、`DEVELOPMENT.md`
 - `src/test/build.test.ts`
 
-## 测试
+## 验证
 
 `src/test/build.test.ts` 扩展——spawn 编译后二进制、启动浏览器、断言 no-store HTML 头与 hashed CSS/JS/favicon 资产服务及编译后二进制行为（1 pass、16 断言）。验证：`bunx tsc --noEmit`、biome check 通过，`bun scripts/build.ts` 成功构建 105MB 编译二进制。
 

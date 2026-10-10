@@ -1,12 +1,12 @@
 ---
-title: BACK-536 修复文档内 markdown 锚点链接
+title: BACK-536 - 修复文档内 markdown 锚点链接
 labels: [source, web-ui, markdown, bug]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-536 - Fix-in-document-markdown-hash-links.md
 ---
 
-# BACK-536 修复文档内 markdown 锚点链接
+# BACK-536 - 修复文档内 markdown 锚点链接
 
 修复文档内标题链接（`[link](#heading)`）跳出当前视图的问题，并统一标题 ID 生成与上游一致。
 
@@ -20,13 +20,13 @@ source_path: backlog/tasks/back-536 - Fix-in-document-markdown-hash-links.md
 - 用 `rehypeHeadingMetadata` 插件替换仅前缀的标题 ID 插件，为所有标题生成 github-slugger ID，使 `#A1`、`#A1: Section Title`、`<#A1: Section Title>` 人类可读锚点仍可解析（含百分号解码与前缀 starts-with 匹配）
 - 新增 `normalizeMarkdownHashLinks`（remark/unified）接入文档/决策保存路径，把人类可读 TOC 锚点改写为 github-slugger slug
 
-## 实现位置
+## 实现要点
 
 - `src/web/components/MermaidMarkdown.tsx`、`DocumentationDetail.tsx`、`DecisionDetail.tsx`
 - `src/markdown/hash-links.ts`
 - 指南与迁移报告 doc-5 TOC
 
-## 测试
+## 验证
 
 `src/test/mermaid-markdown.test.tsx`（`#A1`、`<#A1: Section Title (details)>` 解析）、`src/test/hash-links.test.ts`。
 

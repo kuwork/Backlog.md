@@ -1,12 +1,12 @@
 ---
-title: BACK-467 本地文件预览与语法高亮
+title: BACK-467 - 本地文件预览与语法高亮
 labels: [source]
-source_path: backlog/tasks/back-467 - Add-local-file-preview-with-syntax-highlighting-and-line-numbers.md
 created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-467 - Add-local-file-preview-with-syntax-highlighting-and-line-numbers.md
 ---
 
-
-# BACK-467 本地文件预览与语法高亮
+# BACK-467 - 本地文件预览与语法高亮
 
 **状态**: Done | **标签**: enhancement, web-ui | **负责人**: kuwork | **优先级**: medium
 
@@ -16,7 +16,7 @@ created_date: 2026-05-10 00:00
 
 路径始终相对于项目根目录（包含 `backlog/` 的目录）解析。用户应使用相对路径，如 `src/server/index.ts` 或 `CLI-INSTRUCTIONS.md`。不支持绝对路径，尝试遍历到项目根目录之上（`../`）会被 API 拒绝。
 
-## 功能特性
+## 目标
 
 - 代码和 Markdown 文件的完整内容查看
 - 通过 MDEditor.Markdown 与 Prism 实现语法高亮
@@ -25,7 +25,7 @@ created_date: 2026-05-10 00:00
 - 从文件扩展名检测语言
 - 文件不存在时回退到正常链接行为
 
-## 实现
+## 实现要点
 
 **后端**
 - `GET /api/file-content` 路由读取项目根目录内的本地文件
@@ -46,3 +46,13 @@ created_date: 2026-05-10 00:00
 - `src/web/components/TaskDetailsModal.tsx`
 - `src/web/lib/api.ts`
 - `src/web/styles/style.css`
+
+## Related Concepts
+
+- [[concepts/file-preview]] — 本地文件预览功能与语法高亮实现
+- [[concepts/markdown-pipeline]] — Markdown 渲染与 MermaidMarkdown 组件
+- [[concepts/web-ui-features]] — Web UI 功能总览
+
+## Related Sources
+
+- [[sources/path-autocomplete-task]] — BACK-479 路径自动补全与文档编辑（共享路径解析体验）

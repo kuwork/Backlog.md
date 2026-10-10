@@ -1,12 +1,8 @@
 ---
 title: 两个刻意不同的列表分页模型
-labels:
-  - concept
-  - cli
-  - api
-  - mcp
-created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 01:13'
+labels: [concept, cli, api, mcp]
+created_date: 2026-10-03 01:13
+updated_date: 2026-10-09 23:30
 ---
 
 # 两个刻意不同的列表分页模型

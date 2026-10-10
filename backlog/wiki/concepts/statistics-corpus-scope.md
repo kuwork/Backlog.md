@@ -1,13 +1,11 @@
 ---
-title: 统计语料范围（completed opt-in）
-labels:
-  - concept
-  - statistics
-created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 01:13'
+title: 统计语料范围
+labels: [concept, statistics]
+created_date: 2026-10-03 01:13
+updated_date: 2026-10-09 23:30
 ---
 
-# 统计语料范围（completed opt-in）
+# 统计语料范围
 
 项目统计（projectHealth）默认只统计**活跃语料**（`backlog/tasks/` 下非空状态任务），`backlog/completed/` 完成记录语料是显式 opt-in。同一指标在两个 scope 下数字不同（如平均完成耗时：活跃 411 任务/386 完成/5153 分钟 vs 扩展 715/690/5305 分钟），因此"语料范围"是所有统计读数的前置参数。
 

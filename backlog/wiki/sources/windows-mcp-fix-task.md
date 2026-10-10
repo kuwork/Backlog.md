@@ -1,12 +1,12 @@
 ---
-title: BACK-465 Windows MCP document tool 挂起修复
+title: BACK-465 - Windows MCP 文档工具挂起修复
 labels: [source]
-source_path: backlog/tasks/back-465 - Fix-Windows-MCP-document-tool-hangs.md
 created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-465 - Fix-Windows-MCP-document-tool-hangs.md
 ---
 
-
-# BACK-465 Windows MCP document tool 挂起修复
+# BACK-465 - Windows MCP 文档工具挂起修复
 
 **状态**: Done | **标签**: 无 | **负责人**: @codex | **优先级**: high
 
@@ -29,6 +29,10 @@ created_date: 2026-05-10 00:00
 - `bunx tsc --noEmit` passed
 - `bunx biome check src/commands/mcp.ts src/git/operations.ts src/test/mcp-stdio-exit.test.ts` passed
 
-## Review 跟进
+## 评审跟进
 
 PR #641 的 review 指出：将旧 try/catch 替换为直接 `Bun.spawn` 后，`isGitRepository` 在子进程无法创建时（如缺少 git 或无效 cwd）会 reject。已修复：将 `Bun.spawn` 和 `exited` await 包裹在 try/catch 中，任何失败时返回 false，并添加了对缺失工作目录的回归测试。
+
+## Related Concepts
+
+- [[concepts/mcp-server]] — MCP 服务器 stdio 传输与进程生命周期

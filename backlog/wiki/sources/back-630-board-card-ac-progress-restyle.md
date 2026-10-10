@@ -1,40 +1,35 @@
 ---
-title: BACK-630 Restyle and reposition acceptance criteria progress on web board cards
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
-  - board
+title: BACK-630 - 看板卡片验收标准进度重排与换样式
+labels: [source, web-ui, board]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-630 - Restyle-and-reposition-acceptance-criteria-progress-on-web-board-cards.md
 ---
 
-# BACK-630 Restyle and reposition acceptance criteria progress on web board cards
+# BACK-630 - 看板卡片验收标准进度重排与换样式
 
-The acceptance-criteria progress indicator on web kanban cards sat below the title as a wide monospace `[██████░░░░] 4/7` bar, visually detached from the task identity. This task moved it into the card header row next to the task ID and restyled it as the rounded emerald progress bar the task modal already uses for subtasks.
+Web 看板卡片上的验收标准进度指示器位于标题下方，是宽等宽字体 `[██████░░░░] 4/7` 条，视觉上与任务身份脱节。本任务把它移入卡片头部行、紧邻任务 ID，并重样式化为任务模态框在子任务上已用的圆角翠绿进度条。
 
-## Summary
+- `AcceptanceCriteriaProgress.tsx` 新增 `variant` prop：`cells`（默认，TaskList 仍在用的原等宽指示器，不变）与 `bar`（圆角 h-2 轨道、`bg-emerald-500` 填充、轨道右侧附勾选/总数分数，对齐 `TaskHierarchySection.tsx`）
+- `TaskCard.tsx` 把指示器与任务 ID 渲染进同一 flex-1 组，计划日期与优先级徽标保持右钉；标题下方的位置已移除
+- 门控不变：仅至少含一条验收标准的 In Progress 任务渲染它，从清单实时推导；保留 `role=progressbar` 与 aria 属性；不持久化进度值
+- 用户报告发现的暗色对比 bug：轨道原为 `dark:bg-gray-700`，与卡片表面完全同色；计算相对亮度后改为 `dark:bg-gray-500`（对卡片 2.13，之前 1.00；gray-400 会以 1.06 抹掉翠绿填充）
+- 在真实浏览器（Chromium 对开发服务器）双主题下用 0/4、1/4、2/4 卡片验证，并对轨道/填充颜色做像素采样
+- 测试：`web-acceptance-criteria-progress.test.tsx` 中 5 个用例覆盖 bar 变体（分数、宽度、aria 值、标记顺序）
 
-- `AcceptanceCriteriaProgress.tsx` gained a `variant` prop: `cells` (default, unchanged monospace indicator still used by TaskList) and `bar` (rounded h-2 track with `bg-emerald-500` fill plus the checked/total fraction to the right of the track, mirroring `TaskHierarchySection.tsx`)
-- `TaskCard.tsx` renders the indicator in a flex-1 group with the task ID so planned dates and the priority badge stay pinned right; the below-title placement was removed
-- Gating unchanged: only In Progress tasks with at least one acceptance criterion render it, derived live from the checklist; `role=progressbar` with aria attributes kept; no progress value persisted
-- Dark-theme contrast bug found by user report: the track was `dark:bg-gray-700`, literally the same colour as the card surface; changed to `dark:bg-gray-500` after computing relative luminance (2.13 against the card vs 1.00 before; gray-400 would erase the emerald fill at 1.06)
-- Verified in a real browser (Chromium against the dev server) in both themes with 0/4, 1/4 and 2/4 cards, plus pixel sampling of track/fill colours
-- Tests: 5 cases in `web-acceptance-criteria-progress.test.tsx` covering the bar variant (fraction, width, aria values, markup order)
+## 验收标准
 
-## Acceptance Criteria
-
-- Board card header shows AC progress immediately right of the task ID; the below-title indicator is gone
-- Bar variant uses rounded track with emerald fill and the exact fraction, distinguishable from the card surface in both themes
-- Gating, aria attributes and title text unchanged; indicator-free cards keep the previous header layout
-- Task list view (TaskList) rendering unchanged
+- 看板卡片头部在任务 ID 右侧立即显示 AC 进度；标题下方指示器已移除
+- bar 变体用圆角轨道 + 翠绿填充与精确分数，双主题下均可与卡片表面区分
+- 门控、aria 属性与 title 文本不变；无指示器的卡片保持原头部布局
+- 任务列表视图（TaskList）渲染不变
 
 ## Related Concepts
 
-- [[concepts/web-ui-features]] — board card and modal progress presentation conventions
-- [[concepts/task-lifecycle]] — acceptance criteria checklist progress the indicator derives from
+- [[concepts/web-ui-features]] — 看板卡片与模态框进度呈现约定
+- [[concepts/task-lifecycle]] — 指示器所来源的验收标准清单进度
 
 ## Related Sources
 
-- [[sources/back-628-task-hierarchy-section]] — BACK-628 modal subtask progress bar style reused for the bar variant
-- [[sources/back-569-acceptance-criteria-progress-ui]] — BACK-569 original AC progress indicator this task restyles
+- [[sources/back-628-task-hierarchy-section]] — BACK-628 模态框子任务进度条样式被 bar 变体复用
+- [[sources/back-569-acceptance-criteria-progress-ui]] — 本任务重样式的 BACK-569 原始 AC 进度指示器

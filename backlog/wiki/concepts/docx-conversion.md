@@ -2,8 +2,8 @@
 title: Word 文档转换
 labels: [concept]
 created_date: 2026-05-12 00:00
+updated_date: 2026-10-09 23:30
 ---
-
 
 # Word 文档转换
 
@@ -48,3 +48,7 @@ mammoth.convertToHtml(buffer, { convertImage })
 - 非 `.docx` 扩展名 → 400
 - 解析失败/文件损坏 → 400 带可读错误消息
 - 单张图片超大小限制 → 可在响应中警告或整体失败（策略可配置）
+
+## Related Concepts
+
+- [[concepts/paste-as-markdown]] — 粘贴转 Markdown，共享同一 HTML 清理与 Turndown 流水线

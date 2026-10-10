@@ -1,23 +1,18 @@
 ---
-title: BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持
-labels:
-  - source
-  - wiki
-  - feature
-  - frontend
-  - wikilink
+title: BACK-523 - Wiki wikilink 别名与 markdown-it-attrs 支持
+labels: [source, wiki, feature, frontend, wikilink]
+created_date: 2026-06-27 21:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-523 - Wiki-wikilinks-alias-support-with-Markdown-HTML-labels-and-markdown-it-attrs.md
-created_date: '2026-06-27 21:00'
-updated_date: '2026-08-17 23:00'
 ---
 
-# BACK-523 Wiki wikilink 别名与 markdown-it-attrs 支持
+# BACK-523 - Wiki wikilink 别名与 markdown-it-attrs 支持
 
 **状态**: Done | **标签**: wiki, feature, frontend | **负责人**: kimi
 
 将 wiki wikilink 从仅支持 `[[path/to/page]]` 的基础形式，扩展到支持富文本别名与属性块注解。
 
-## 新增语法
+## 目标
 
 ### 别名语法
 

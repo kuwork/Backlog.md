@@ -1,13 +1,13 @@
 ---
 title: 将 agent-guidelines.md 运营指导回传到 CLI/MCP 指令表面的模式
 labels: [execution, agent-guidance, docs]
-created_date: '2026-07-14 11:20'
-updated_date: '2026-07-14 11:20'
+created_date: 2026-07-14 11:20
+updated_date: 2026-10-09 23:30
 ---
 
 # 将 agent-guidelines.md 运营指导回传到 CLI/MCP 指令表面的模式
 
-## 场景
+## 适用场景
 
 项目同时维护：
 - `src/guidelines/agent-guidelines.md`（旧的统一代理指南）
@@ -32,7 +32,7 @@ updated_date: '2026-07-14 11:20'
    - MCP：`src/test/mcp-server.test.ts` 中检查 workflow resources/tools 包含 milestones 与内容变更。
 7. **构建二进制**：重新运行 `bun run build`，确保新指南嵌入 `dist/backlog.exe`。
 
-## 注意事项
+## 常见陷阱
 
 - CLI 版本不要引用 MCP 工具或 `backlog://workflow/...` 资源（BACK-521 AC #8）。
 - MCP 版本不要引用具体 CLI 命令作为唯一操作方式，应同时给出工具字段。
@@ -48,4 +48,4 @@ updated_date: '2026-07-14 11:20'
 
 ## Related Sources
 
-- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-521.14]] — BACK-521.14 用缺失的代理运营指导更新 CLI/MCP 指令指南

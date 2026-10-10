@@ -1,12 +1,12 @@
 ---
-title: BACK-545 自定义前缀下 CLI task edit 数字 ID 查找
+title: BACK-545 - 自定义前缀下 CLI task edit 数字 ID 查找
 labels: [source, cli, bug]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-545 - Fix-CLI-task-edit-numeric-ID-lookup-with-custom-prefix.md
 ---
 
-# BACK-545 修复自定义前缀下 CLI task edit 数字 ID 查找
+# BACK-545 - 自定义前缀下 CLI task edit 数字 ID 查找
 
 修复非默认前缀项目（如 `back`）下 `backlog task edit` 裸数字 ID 无法解析的问题。
 
@@ -18,11 +18,11 @@ BACK-364 已修复核心层（`core.loadTaskById`/`core.getTask`）的数字 ID 
 
 移除 task edit（交互向导与非交互两条路径）的 `normalizeTaskId` 预归一化，让 `core.loadTaskById` 接收原始 ID，从而 `getTaskPath` 能为数字 ID 自动探测配置前缀，与 view/archive/complete 行为一致。后续编辑使用 `existingTask.id`，保证始终使用规范前缀 ID。
 
-## 实现位置
+## 实现要点
 
 - `src/cli.ts`（依赖 `src/utils/task-path.ts`、`src/core/backlog.ts`；依赖 BACK-364）
 
-## 测试
+## 验证
 
 `src/test/task-edit-preservation.test.ts` 新增回归，覆盖自定义前缀下裸数字 ID 与带前缀 ID 两种情形。
 

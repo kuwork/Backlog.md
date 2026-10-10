@@ -1,8 +1,8 @@
 ---
 title: 任务生命周期
 labels: [concept]
-created_date: '2026-05-06 00:00'
-updated_date: '2026-09-26 14:45'
+created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 任务生命周期

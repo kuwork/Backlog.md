@@ -1052,3 +1052,31 @@ Chronological, append-only record of all wiki operations.
 - merge.py 重新合并 manual.md
 
 **历史条目**：23:00 与 23:10 两条 log 条目不动（append-only）。
+
+## [2026-10-09 23:45:00] style-normalize | 全面规范化 511 页 + 风格约定写入 AGENTS.md
+
+**背景**（用户裁决）：用户反馈 wiki 编写风格混乱、语言逐月漂移（05~07 中文 → 09 月 156 篇整页英文 → 10 月中英混排）、frontmatter/标题/Related 小节多套约定并存。用户选定：全面规范化存量 + 目标语言简体中文为主 + 手册缺口全补。
+
+**合同**：`AGENTS.md` WIKI GUIDELINES 新增「页面风格约定」12 条（语言、frontmatter 字段序/日期/labels、title 格式 `BACK-757 - 中文短标题`、H1=title、source/decision/execution 三类骨架、Related 小节命名与顺序、翻译忠实性、术语对照、LF）。
+
+**执行**：AgentSwarm 三波共 24 批（B01~B19 + W1~W4），覆盖 sources 340 / concepts 42 / decisions 80 / execution 27 / reasoning 5 / entities 2 / patterns 6 / retrospectives 1 / developer-notes 8 = 511 页（B01/B04 有 3 页重叠由先到者定稿）。156 篇英文 source 页全量译中（保留 file:line、命令、标识符、wikilink 原样）；5 个无 H1 页补齐；合并式 `## Related` 全部拆分；空 Related 小节删除；`## Summary`/`## Acceptance Criteria`/`## Implementation Notes` 等英文小节名归位中文化；frontmatter 统一字段序、日期去引号、labels 行内化、updated_date 统一 `2026-10-09 23:30`、清约定外字段（created:/decision_date:/description）。
+
+**校验**：全合同脚本扫描 511 页——引号日期 0、块状 labels 0、约定外字段 0、缺 source_path 0、H1≠title 0（初报 6 例均为代码围栏内 `#` 注释误报，围栏感知复扫确认）、陈旧 updated_date 0、合并 Related 0、英文小节名 0、CRLF 0。
+
+**index.md**：按各批 TSV 映射（tmp/wiki-style-map/，511 唯一路径）脚本同步 Title 列 510 格（1 行为表头伪行忽略）。
+
+**裁量留痕**：developer-notes/patterns 互链归入 Related Concepts（惯例沿用 sources/path-autocomplete-task 先例）；milestone 里程碑页 title 用 `m-10 - …` 式；reasoning 页 title 去任务 ID（合同第 3 条「concept/decision/execution/reasoning 页不含 ID」）；工作树行尾为 CRLF（core.autocrlf），入库经 .gitattributes 归一 LF。
+
+**遗留**：① DEVELOPMENT-GUIDE.md 546 行超合同篇幅锚点，拆分待编辑决策；② 手册 12+2 缺口补全由并行代理执行（见后续条目）；③ `sources/inline-code-html-escaping-fix` 的 source_path 指向 back-208 文件与 BACK-476 不符，属原始资料事实未改，建议 lint 时核实。
+
+## [2026-10-10 00:20:00] usermanual-update | 手册缺口补全 12+2，新增故障排查页
+
+**背景**（用户裁决）：只读审计发现手册缺失 5 项、过薄 7 项、错误陈述 2 条（见 23:45 条目前的工作）；用户选定全做。
+
+**错误修正（2）**：① 任务生命周期页删除不存在的 `backlog config reset statuses`（config 仅 get/set/list，恢复默认七列只能经 Web 设置页状态机编辑器 Default 按钮）；② 创建与编辑页"没有 complete 子命令"改写为 `backlog task complete <id>` 真实用法（仅接受终态任务，成功移入 completed/；MCP `task_complete` 同语义）。
+
+**缺失补齐（5，其中 1 项部分）**：`05-归档与清理` 增单任务完成清理节；`01-安装与初始化` 增升级路径（npm/brew/二进制）与非交互初始化节（`--defaults`/`--integration-mode`/`--agent-instructions`）；`00-MCP工作流` 资源列表重写为 10 资源全表并删除幻影 URI `backlog://docs/task-workflow`；`00-配置管理` 增 `onStatusChange` 自动化回调与 `defaultStatus`/`maxColumnWidth`/`definitionOfDone`/`milestones` 键表；`defaultReporter` 因源码无消费逻辑跳过（仅类型与序列化）。
+
+**过薄加厚（7）**：MCP 工具清单改为 7 域分类全表（源码实为 27 个工具，纠正审计的 28）；`02-代理指令文件` 增 instructions 十册完整列表；`03-Wiki Skill 安装` 增安装后的工作流节（摄取/查询/lint/flowback）；新建 `60-配置与运维/03-故障排查.md`（7 节，SUMMARY 登记，index 同步）；`taskResolutionStrategy` 入配置表并在设置页补语义；`mcp.http.*` 重写为"预留未实现，仅 stdio"（纠正误导性表述）。
+
+**产物**：merge.py 重新合并 manual.md（5448 → 5695 行）。统计：User manual pages 41 → 42。

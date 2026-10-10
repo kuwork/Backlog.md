@@ -2,11 +2,11 @@
 title: 实际时间字段自动填充模式
 labels: [execution, pattern, dates, core]
 created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
 extracted_from:
-  - sources/actual-start-end-fields-task
-  - sources/actual-dates-auto-create-task
-  - sources/milestone-actual-dates-task
+  - actual-start-end-fields-task
+  - actual-dates-auto-create-task
+  - milestone-actual-dates-task
 ---
 
 # 实际时间字段自动填充模式

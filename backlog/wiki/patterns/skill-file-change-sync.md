@@ -1,8 +1,8 @@
 ---
 title: Skill 文件变更 → 嵌入代码同步模式
 labels: [pattern, build, developer-experience, wiki]
-created_date: '2026-05-30 15:02'
-updated_date: '2026-05-30 15:02'
+created_date: 2026-05-30 15:02
+updated_date: 2026-10-09 23:30
 ---
 
 # Skill 文件变更 → 嵌入代码同步模式
@@ -24,12 +24,6 @@ updated_date: '2026-05-30 15:02'
 | 3 | **验证同步结果** | `git diff src/skills/embedded/llm-wiki-for-backlog.ts` |
 | 4 | **提交变更** | 同时提交 Skill 源文件和生成的嵌入代码 |
 
-## 根因说明
-
-`src/skills/embedded/llm-wiki-for-backlog.ts` 是**构建时产物**，由 `scripts/embed-wiki-skill.ts` 读取 `.codex/skills/llm-wiki-for-backlog/` 目录下的所有文件并生成 TypeScript 模块。该嵌入模块被打包进编译后的 `backlog.exe` / npm 包中，供 `wiki-install` 命令使用。
-
-如果仅修改源文件而不重新运行脚本，CLI 的二进制分发版本将继续携带旧 Skill 内容。
-
 ## 常见陷阱
 
 | 陷阱 | 示例 | 后果 |
@@ -38,11 +32,17 @@ updated_date: '2026-05-30 15:02'
 | **提交时遗漏生成文件** | 源文件已提交，但 `src/skills/embedded/llm-wiki-for-backlog.ts` 未纳入 commit | CI 构建产物与源文件不一致 |
 | **误以为嵌入代码是手写的** | 直接修改 `src/skills/embedded/llm-wiki-for-backlog.ts` | 下次运行脚本时手动修改会被覆盖 |
 
-## 自动化建议
+### 根因说明
+
+`src/skills/embedded/llm-wiki-for-backlog.ts` 是**构建时产物**，由 `scripts/embed-wiki-skill.ts` 读取 `.codex/skills/llm-wiki-for-backlog/` 目录下的所有文件并生成 TypeScript 模块。该嵌入模块被打包进编译后的 `backlog.exe` / npm 包中，供 `wiki-install` 命令使用。
+
+如果仅修改源文件而不重新运行脚本，CLI 的二进制分发版本将继续携带旧 Skill 内容。
+
+### 自动化建议
 
 - 在 `package.json` 的 `build` 脚本中前置 `embed-wiki-skill` 步骤
 - 或在 pre-commit hook 中检测 `.codex/skills/llm-wiki-for-backlog/` 变更时自动运行脚本
 
-## 参考任务
+## Related Sources
 
 - [[sources/back-502]] — BACK-502 同步 llm-wiki-for-backlog SKILL.md 更新到嵌入代码

@@ -1,42 +1,34 @@
 ---
-title: BACK-661 Keep task deep links from falling back to the board before the first load
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
-  - deep-links
-  - browser-loading
+title: BACK-661 - 深链首次加载完成前不回退看板
+labels: [source, web-ui, deep-links, browser-loading]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-661 - Keep-task-deep-links-from-falling-back-to-the-board-before-the-first-load.md
 ---
 
-# BACK-661 Keep task deep links from falling back to the board before the first load
+# BACK-661 - 深链首次加载完成前不回退看板
 
-Opening a task deep link landed on the board instead of the task modal. The server replays its own `{"type":"loaded"}` broadcast on WebSocket open, which cleared `isLoading` while the browser's first `/api/search` was still in flight — the deep-link sync effect then matched the URL id against an empty task list and `navigate("/")` erased a valid link. Fork-local fix (upstream has no `taskIdFromUrl`).
+打开任务深链会落到看板而不是任务模态框。服务端会在 WebSocket 打开时重放自己的 `{"type":"loaded"}` 广播，在浏览器首次 `/api/search` 仍在进行时清除了 `isLoading`——深链同步 effect 随后把 URL id 与空任务列表匹配，`navigate("/")` 抹掉了有效链接。fork 本地修复（上游没有 `taskIdFromUrl`）。
 
-## Summary
+- 用 headless Chrome + CDP 复现，3/3，冷/热服务端均复现：`loaded` 重放约 780ms 到达，首次 `/api/search`（4.7MB、347 任务）约 1019ms 才完成；用永不打开的 WebSocket 做因果检查，URL 保持完好
+- 是时序问题而非新代码：重放来自 BACK-566，防护来自 BACK-509；变化在于首次 search 负载增长到约 0.8s，且 WebSocket 握手被启动请求延迟，两者发生碰撞——较小的仓库里 search 会赢下竞态
+- 修复：新增 `hasCompletedFirstLoad` 状态，在 `loadAllData` 的 `finally` 中设置；深链 effect 以它为守卫并列为依赖，首次加载完成时重新运行（`src/web/App.tsx:349`、`:412`、`:520`、`:580`）
+- 实测的微妙点：仅 ref 的守卫保住了 URL 但永远不会打开模态框——`loadAllData` 在标记加载完成前会等待 `/api/tasks/duplicate-ids`（比 search 慢），因此 `/api/search` 之后的渲染是该 effect 看到的最后一次依赖变化，之后的 ref 翻转不会再触发它；`hasLoadedRef` 单独保留，因为 `loadAllData` 会同步读取它
+- 未改动：`isLoading` 仍由 `loading`/`loaded`/`error` 帧驱动加载指示器（BACK-566 设计），首次加载后真正未知 id 仍回退 `/`
+- 测试在 JSDOM 中挂载真实 `App`，使用缓慢的首次 search、立即的 `loaded` 帧和延迟的 duplicate-id 预览；在未修改守卫与仅 ref 守卫下均红；通过 headless Chrome + CDP 在真实浏览器验证（`dialog=true`，URL 保持）
 
-- Reproduced with headless Chrome + CDP, 3/3, on cold and warm servers: the `loaded` replay arrives at ~780ms while the first `/api/search` (4.7MB, 347 tasks) resolves at ~1019ms; a causality check with a never-opening WebSocket kept the URL intact
-- Timing, not new code: the replay came from BACK-566 and the guard from BACK-509; what changed is the first search payload grew to ~0.8s and the WebSocket handshake is delayed by startup requests, so the two collide — on a smaller repository the search wins the race
-- Fix: new `hasCompletedFirstLoad` state set in `loadAllData`'s `finally`; the deep-link effect guards on it and lists it as a dependency so it re-runs when the first load completes (`src/web/App.tsx:349`, `:412`, `:520`, `:580`)
-- Measured subtlety: a ref-only guard preserved the URL but never opened the modal — `loadAllData` awaits `/api/tasks/duplicate-ids` (slower than the search) before marking the load complete, so the render after `/api/search` is the last dependency change the effect sees and a ref flip afterwards never retriggers it; `hasLoadedRef` is kept separately because `loadAllData` reads it synchronously
-- Untouched: `isLoading` still drives the loading indicator from `loading`/`loaded`/`error` frames (BACK-566 design), and the fallback to `/` remains for genuinely unknown ids after the first load
-- Test mounts the real `App` in JSDOM with a slow first search, an immediate `loaded` frame, and a delayed duplicate-id preview; red against both the unmodified guard and a ref-only guard; verified in a real browser via headless Chrome + CDP (`dialog=true`, URL preserved)
+## 验收标准
 
-## Acceptance Criteria
-
-- A deep link to an existing task opens its modal even when the server `loaded` broadcast arrives before the first `/api/search` resolves, with the URL untouched
-- The wait is reactive: the effect re-runs and opens the modal once the first load completes despite `duplicate-ids` resolving after the search
-- A genuinely unknown id still falls back to `/` after the first load; `isLoading` keeps driving the loading indicator
-- An automated test reproduces the race and fails against both the unmodified and a ref-only guard
+- 即使服务端 `loaded` 广播先于首次 `/api/search` 完成，已有任务的深链也会打开其模态框，URL 不变
+- 等待是响应式的：首次加载完成后 effect 重新运行并打开模态框，尽管 `duplicate-ids` 在 search 之后才完成
+- 首次加载后真正未知的 id 仍回退 `/`；`isLoading` 继续驱动加载指示器
+- 自动化测试复现该竞态，在未修改守卫与仅 ref 守卫下均失败
 
 ## Related Concepts
-
-- [[concepts/browser-loading]] — the server loading broadcast vs. this browser's first-load state that collided
-- [[concepts/web-ui-features]] — deep-link modal routing conventions
+- [[concepts/browser-loading]] — 发生碰撞的服务端加载广播与本浏览器首次加载状态
+- [[concepts/web-ui-features]] — 深链模态框路由约定
 
 ## Related Sources
-
-- [[sources/back-566-browser-async-loading]] — introduced the WebSocket `loaded` replay at the root of the race
-- [[sources/stable-task-modal-urls-task]] — stable task URL design the deep-link effect serves
-- [[sources/back-664-dependency-input-completed-predecessors]] — same App-level navigation fallback machinery, extended for completed records
+- [[sources/back-566-browser-async-loading]] — 在竞态根源引入 WebSocket `loaded` 重放
+- [[sources/stable-task-modal-urls-task]] — 深链 effect 服务的稳定任务 URL 设计
+- [[sources/back-664-dependency-input-completed-predecessors]] — 同一 App 级导航回退机制，为已完成记录扩展

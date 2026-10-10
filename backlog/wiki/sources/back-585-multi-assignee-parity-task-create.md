@@ -1,34 +1,32 @@
 ---
-title: BACK-585 Multi-assignee parity for task create
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
-labels:
-  - source
-  - cli
+title: BACK-585 - task create 多负责人对齐
+labels: [source, cli]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-585 - Multi-assignee-parity-for-task-create.md
 ---
 
-# BACK-585 Multi-assignee parity for task create
+# BACK-585 - task create 多负责人对齐
 
-Fixed task create/draft create storing `-a "@a,@b"` as one literal assignee while task edit parsed comma-separated input. Create/draft now route assignees through the shared `parseDelimitedStringList` helper and `-a` is repeatable, mirroring the earlier --labels fix.
+修复 task create/draft create 把 `-a "@a,@b"` 存成一个字面负责人，而 task edit 会解析逗号分隔输入的问题。create/draft 现在经共享 `parseDelimitedStringList` helper 路由负责人，且 `-a` 可重复，与之前的 --labels 修复对齐。
 
-## Summary
+## 实现要点
 
-- Registered `createMultiValueAccumulator` on -a/--assignee for task create, task edit, and draft create in `src/cli.ts`; comma-separated values split into separate assignees via `parseDelimitedStringList`.
-- Replaced the duplicated inline label split in create/draft with `parseDelimitedStringList` (behavior identical since createTaskFromInput already runs normalizeStringList over labels).
-- Preserved the --unassign guard and empty -a validation from BACK-584; edit path already used `parseClearableStringList` and needed only repeatable registration.
-- Audit: task-creation wizard (`parseListInput` in `src/commands/task-wizard.ts`) and MCP task_create/task_edit (JSON array) already handled multi-assignee — no changes.
-- Docs: `src/guidelines/cli-instructions/task-creation.md`, `drafts.md`, `task-execution.md` updated; scoped tests 20 pass / 0 fail.
+- 在 `src/cli.ts` 中为 task create、task edit 和 draft create 的 -a/--assignee 注册 `createMultiValueAccumulator`；逗号分隔值经 `parseDelimitedStringList` 拆为独立负责人。
+- 用 `parseDelimitedStringList` 替换 create/draft 中重复的内联标签拆分（行为相同，因为 createTaskFromInput 已对 labels 运行 normalizeStringList）。
+- 保留 BACK-584 的 --unassign 防护和空 -a 校验；edit 路径已用 `parseClearableStringList`，只需注册可重复。
+- 审计：任务创建向导（`src/commands/task-wizard.ts` 的 `parseListInput`）和 MCP task_create/task_edit（JSON 数组）已支持多负责人——无需改动。
+- 文档：`src/guidelines/cli-instructions/task-creation.md`、`drafts.md`、`task-execution.md` 更新；限定测试 20 pass / 0 fail。
 
-## Acceptance Criteria
+## 验收标准
 
-- Comma-separated assignees parse into separate assignees on create and draft create; repeated -a collects on all three commands; shared helper parity with task edit; tests cover both input shapes.
+- 逗号分隔负责人在 create 和 draft create 上解析为独立负责人；重复的 -a 在三个命令上都收集；与 task edit 的共享 helper 对齐；测试覆盖两种输入形式。
 
 ## Related Concepts
 
-- [[concepts/cli-entry]] — commander option registration patterns (multi-value accumulators)
-- [[concepts/task-identity]] — assignee list semantics shared with BACK-584 unassign work
+- [[concepts/cli-entry]] — commander 选项注册模式（多值累加器）
+- [[concepts/task-identity]] — 与 BACK-584 取消分配工作共享的负责人列表语义
 
 ## Related Sources
 
-- [[sources/back-584-explicit-unassign-across-surfaces]] — the --unassign guard this task preserved
+- [[sources/back-584-explicit-unassign-across-surfaces]] — 本任务保留的 --unassign 防护

@@ -1,11 +1,11 @@
 ---
-title: i18n 字符串拼接反模式（i18n String Fragmentation）
-created_date: '2026-06-09 00:40'
-updated_date: '2026-06-09 00:40'
+title: i18n 字符串拼接反模式
 labels: [concept, i18n, anti-pattern, web-ui]
+created_date: 2026-06-09 00:40
+updated_date: 2026-10-09 23:30
 ---
 
-# i18n 字符串拼接反模式（i18n String Fragmentation）
+# i18n 字符串拼接反模式
 
 一种 i18n 反模式：完整的 UI 短语被拆分成部分片段，在运行时拼接，导致非英语 locale 产生破碎或不自然的翻译。
 
@@ -38,8 +38,8 @@ labels: [concept, i18n, anti-pattern, web-ui]
 - `zh-TW`: `"顯示任務"` / `"隱藏任務"`
 - `ja`: `"タスクを表示"` / `"タスクを非表示"`
 
-## 相关概念
+## Related Concepts
 - [[concepts/web-ui-i18n]] — Web UI 国际化架构
 
-## 相关来源
+## Related Sources
 - [[sources/back-517-i18n-fragmentation-fix]] — BACK-517 修复实现

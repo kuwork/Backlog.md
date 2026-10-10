@@ -1,18 +1,18 @@
 ---
-title: BACK-521 CLI-first agent workflow refactor and local instruction surface
+title: BACK-521 - CLI 优先的代理工作流重构与本地指令表面
 labels: [source, cli, agent-guidance, mcp]
+created_date: 2026-06-13 14:12
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-521 - CLI-first-agent-workflow-refactor-and-local-instruction-surface.md
-created_date: '2026-06-13 14:12'
-updated_date: '2026-09-26 14:00'
 ---
 
-# BACK-521 CLI-first agent workflow refactor and local instruction surface
+# BACK-521 - CLI 优先的代理工作流重构与本地指令表面
 
 **状态**: Done | **负责人**: @codex | **优先级**: high | **里程碑**: m-8
 
 让 `backlog` 命令成为人类和代理的默认入口。生成的指令文件保持简短并指向当前 CLI 指南；工作流指南通过公共 CLI 命令可读；命令帮助包含清晰的输入 schema；MCP 仍作为可选连接器保留。
 
-## 关键 Acceptance Criteria
+## 验收标准
 
 - `backlog init` 推荐 CLI instructions 作为 AI 集成路径，同时保留显式 MCP 和 no-AI 选项。
 - 生成的 agent instruction 文件使用短的、幂等的 CLI nudge，指向 CLI 指南入口并保留现有用户内容。
@@ -23,15 +23,15 @@ updated_date: '2026-09-26 14:00'
 - 文档和测试将 CLI instructions 描述为默认 AI 工作流，MCP 为可选。
 - `backlog instructions` 输出是 CLI 专用的，不会告诉 CLI-only 代理使用 MCP 工具或 `backlog://workflow/...` 资源。
 
-## 主要子任务
+## 子任务
 
-- [[sources/back-521.1]] — Shared workflow instruction registry and CLI access
-- [[sources/back-521.2]] — Short agent nudge and init default migration
-- [[sources/back-521.6]] — Root command local instruction hub
-- [[sources/back-521.7]] — Milestone CLI parity with MCP operations
-- [[sources/back-521.14]] — Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-521.1]] — 共享工作流指令注册表与 CLI 访问
+- [[sources/back-521.2]] — 短代理 nudge 与 init 默认迁移
+- [[sources/back-521.6]] — 根命令本地指令中心
+- [[sources/back-521.7]] — 里程碑 CLI 与 MCP 操作对齐
+- [[sources/back-521.14]] — 补充 CLI/MCP 指令指南缺失的代理指导
 
-## 实现原则
+## 实现要点
 
 - 使用公共命令服务人类和代理；不添加 agent-only 命名空间。
 - 复用现有工作流指南注册表，避免重复指令内容。

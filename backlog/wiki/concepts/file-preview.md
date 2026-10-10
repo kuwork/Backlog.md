@@ -2,8 +2,8 @@
 title: 本地文件预览
 labels: [concept]
 created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
 ---
-
 
 # 本地文件预览
 
@@ -46,3 +46,7 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 
 - `MermaidMarkdown` 的自定义 `a` 组件通过 `isExternalLink()` 区分 URL 与本地路径
 - `TaskDetailsModal` 在 References、Documentation 和所有 Markdown 区域传递 `onFileClick`
+
+## Related Concepts
+
+- [[concepts/web-ui-features]] — Web UI 功能集，含任务详情弹窗集成点

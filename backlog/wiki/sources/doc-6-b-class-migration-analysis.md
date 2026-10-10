@@ -1,12 +1,12 @@
 ---
-title: doc-6 B 类上游任务迁移分析报告
+title: doc-6 - B 类上游任务迁移分析报告
 labels: [source, doc, migration]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/docs/migration/doc-6 - B类上游任务迁移分析报告（v1.47.1-..-v1.48.0）.md
 ---
 
-# doc-6 B 类上游任务迁移分析报告（v1.47.1 .. v1.48.0）
+# doc-6 - B 类上游任务迁移分析报告
 
 对 doc-4 中 B 类（评估合入）各项做逐项迁移深析。
 

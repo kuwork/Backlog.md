@@ -1,42 +1,38 @@
 ---
-title: BACK-699 Stop findIdentity rename fallback from publishing freshness without installing the corpus
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - core
-  - bug
-  - cross-branch
+title: BACK-699 - findIdentity 回退未安装语料时不发布新鲜度
+labels: [source, core, bug, cross-branch]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-699 - Stop-findIdentity-rename-fallback-from-publishing-freshness-without-installing-the-corpus.md
 ---
 
-# BACK-699 Stop findIdentity rename fallback from publishing freshness without installing the corpus
+# BACK-699 - findIdentity 回退未安装语料时不发布新鲜度
 
-When a task file was renamed or deleted away with no branch-side copy, `ContentStore.findIdentity`'s rename fallback loaded the whole corpus to resolve one identity and threw it away — but the load went through the publishing loader, advancing `Core.activeBranchFingerprint` without installing anything. The next read then skipped the real refresh and served stale pre-move branch content.
+任务文件被重命名或删除且分支侧无副本时，`ContentStore.findIdentity` 的重命名回退为解析一个身份加载整个语料然后丢弃——但这次加载走了发布式加载器，推进了 `Core.activeBranchFingerprint` 却没有安装任何东西。下一次读取随后跳过真正的刷新，提供移动前的过期分支内容。
 
-## Summary
+## 解决方案
 
-- `ContentStore` gained `TaskLoaderOptions = { publish?: boolean }`, threaded from `loadTasksWithLoader` into the `taskLoader` call; the rename fallback calls it with `{ publish: false }` because its load only resolves one identity and is discarded
-- `src/core/backlog.ts`: the Core loader closure forwards the option into `loadContentStoreCorpus`, whose `publishSharedState` defaults to `true` — so `loadCurrentContent` and `refreshTasksFromDisk` keep publishing and publish-on-equal-corpus behavior is preserved
-- The trigger proved narrower than assumed: the store runs one publishing config-stable read right after binding its watchers, which installs a fresh corpus and masks the fingerprint side effect — the first version of the regression case passed against the unfixed code
-- Determinism comes from a `settleInitialContentReload(store)` helper that waits on the store's own `config` publication via `store.subscribe` instead of sleeping, so the worktree tip move cannot straddle the initial reload
-- The second regression case (`reuses the warm store across reads`) was added after rollback variant D (flipping the default for installing callers) came back green — nothing pinned that installing callers still publish; it counts `refreshTasks` invocations rather than timing
-- Verification: five-variant rollback matrix over three suites, each variant reddening only its causally responsible case; `core-task-corpus-regressions` 8 pass, `content-store` 16, `search-service` 7, `task-search-parity` 14; upstream reference `cd8f1297` (BACK-628) applied 1:1
+- `ContentStore` 新增 `TaskLoaderOptions = { publish?: boolean }`，从 `loadTasksWithLoader` 穿入 `taskLoader` 调用；重命名回退以 `{ publish: false }` 调用它，因为其加载只解析一个身份并被丢弃
+- `src/core/backlog.ts`：Core 加载器闭包将该选项转发进 `loadContentStoreCorpus`，其 `publishSharedState` 默认为 `true`——因此 `loadCurrentContent` 与 `refreshTasksFromDisk` 保持发布，等语料也发布的行为被保留
+- 触发条件比假设更窄：存储在绑定监视器后立即运行一次发布式配置稳定读取，安装了新鲜语料并掩盖指纹副作用——回归用例的第一个版本在未修复代码上就能通过
+- 确定性来自 `settleInitialContentReload(store)` 助手，它经 `store.subscribe` 等待存储自身的 `config` 发布而非睡眠，因此 worktree tip 移动不会横跨初始重载
+- 第二个回归用例（`reuses the warm store across reads`）在回滚变体 D（为安装式调用者翻转默认值）返回绿色后补加——没有任何东西固定安装式调用者仍发布；它数 `refreshTasks` 调用次数而非依赖时序
+- 验证：三套件上的五变体回滚矩阵，每个变体恰好使其因果负责的用例变红；`core-task-corpus-regressions` 8 通过、`content-store` 16、`search-service` 7、`task-search-parity` 14；上游参考 `cd8f1297`（BACK-628）1:1 应用
 
-## Acceptance Criteria
+## 验收标准
 
-- The rename fallback either installs the corpus it loads or performs a non-publishing load (chose the latter)
-- A non-publishing load no longer advances `activeBranchFingerprint`; installing callers keep publishing
-- A regression test reproduces the trigger (warm corpus, out-of-band worktree tip move, delete local-only task, read) and fails pre-fix
+- 重命名回退要么安装它加载的语料，要么执行非发布式加载（选择了后者）
+- 非发布式加载不再推进 `activeBranchFingerprint`；安装式调用者保持发布
+- 回归测试复现触发条件（热语料、带外 worktree tip 移动、删除仅本地任务、读取）并在修复前失败
 
 ## Related Concepts
 
-- [[concepts/task-identity]] — `findIdentity` and its rename fallback
-- [[concepts/core-architecture]] — ContentStore publication and the branch fingerprint
+- [[concepts/task-identity]] — `findIdentity` 及其重命名回退
+- [[concepts/core-architecture]] — ContentStore 发布与分支指纹
 
 ## Related Sources
 
-- [[sources/back-567-cross-branch-task-identity]] — the cross-branch identity machinery the fallback belongs to
-- [[sources/back-601-core-browser-publication-ownership]] — publication ownership rules this fix respects
-- [[sources/back-602-incremental-cross-branch-task-loading]] — the corpus-loading path the fallback misused
-- [[sources/back-540-content-store-stale-refresh-guard]] — an earlier stale-refresh guard on the same store
+- [[sources/back-567-cross-branch-task-identity]] — 回退所属的跨分支身份机制
+- [[sources/back-601-core-browser-publication-ownership]] — 本修复遵循的发布所有权规则
+- [[sources/back-602-incremental-cross-branch-task-loading]] — 回退误用的语料加载路径
+- [[sources/back-540-content-store-stale-refresh-guard]] — 同一存储上的早期过期刷新防护

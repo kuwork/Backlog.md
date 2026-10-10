@@ -1,8 +1,8 @@
 ---
 title: ContentStore 版本守卫刷新合并模式
 labels: [execution, core, concurrency]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # ContentStore 版本守卫刷新合并模式
@@ -23,8 +23,14 @@ updated_date: '2026-08-09 00:00'
 5. 用 `?? 0` 处理未初始化版本，保证 init 后首次刷新仍合并真实外部变更
 6. 同步按 root/epoch 检查发布，加固 root 生命周期与外部 watcher
 
-## 参考
+## Related Concepts
 
-- 相关任务：[[sources/back-540-content-store-stale-refresh-guard]]
-- 相关决策：[[decisions/content-store-version-guard]]
-- 相关概念：[[concepts/core-architecture]]
+- [[concepts/core-architecture]] — 核心架构与数据流
+
+## Related Sources
+
+- [[sources/back-540-content-store-stale-refresh-guard]] — BACK-540 过期刷新守卫任务
+
+## Related Decisions
+
+- [[decisions/content-store-version-guard]] — ContentStore 版本守卫决策

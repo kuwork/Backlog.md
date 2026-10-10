@@ -1,16 +1,16 @@
 ---
-title: BACK-518 TUI 主题自适应渲染：移除硬编码颜色
-created_date: '2026-06-09 00:40'
-updated_date: '2026-06-09 00:40'
+title: BACK-518 - TUI 主题自适应渲染：移除硬编码颜色
 labels: [source, enhancement, ui, tui, board, ux]
+created_date: 2026-06-09 00:40
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-518 - TUI-theme-adaptive-rendering-remove-hardcoded-colors.md
 ---
 
-# BACK-518 TUI 主题自适应渲染：移除硬编码颜色
+# BACK-518 - TUI 主题自适应渲染：移除硬编码颜色
 
 TUI 改进，提升终端主题兼容性。移除硬编码的 ANSI 颜色，改用反色（inverse-video）高亮，使界面在任何终端主题（包括单色配色）下都能正常工作。
 
-## 变更
+## 实现要点
 
 ### 主题自适应颜色（反色）
 
@@ -28,13 +28,11 @@ TUI 改进，提升终端主题兼容性。移除硬编码的 ANSI 颜色，改�
 
 - 状态/优先级选择器：仅当位于最后一项时，按下箭头才退出到任务列表（此前在任何项上按向下都会立即退出）
 
-## 修改的文件
+修改的文件：`tui.ts`、`board.ts`、`generic-list.ts`、`filter-header.ts`、`filter-popup.ts`、`task-viewer-with-search.ts`、`loading.ts`、`overview-tui.ts`、`status-icon.ts`、`heading.ts`、`code-path.ts` 及对应的测试文件。
 
-`tui.ts`、`board.ts`、`generic-list.ts`、`filter-header.ts`、`filter-popup.ts`、`task-viewer-with-search.ts`、`loading.ts`、`overview-tui.ts`、`status-icon.ts`、`heading.ts`、`code-path.ts` 及对应的测试文件。
-
-## 相关概念
+## Related Concepts
 - [[concepts/tui-theme-adaptive]] — 使用反色的终端主题自适应渲染
 - [[concepts/cli-tui]] — TUI 架构与组件
 
-## 相关来源
+## Related Sources
 - [[sources/back-470-4-tui-docs-task-comments]] — TUI 评论渲染（使用相同的主题自适应模式）

@@ -1,8 +1,8 @@
 ---
 title: 自动端口选择
-created_date: '2026-06-09 01:35'
-updated_date: '2026-06-09 01:35'
 labels: [concept, feature, server, web-ui, port, config]
+created_date: 2026-06-09 01:35
+updated_date: 2026-10-09 23:30
 ---
 
 # 自动端口选择

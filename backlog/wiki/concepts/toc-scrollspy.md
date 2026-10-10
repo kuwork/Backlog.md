@@ -1,10 +1,8 @@
 ---
 title: 模态框 TOC 抽屉与 scrollspy
-labels:
-  - concept
-  - web-ui
-created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 01:13'
+labels: [concept, web-ui]
+created_date: 2026-10-03 01:13
+updated_date: 2026-10-09 23:30
 ---
 
 # 模态框 TOC 抽屉与 scrollspy

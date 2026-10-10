@@ -2,7 +2,7 @@
 title: 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd）
 labels: [concept, dates, task, milestone]
 created_date: 2026-05-25 23:45
-updated_date: '2026-09-26 14:45'
+updated_date: 2026-10-09 23:30
 ---
 
 # 日期字段（dueDate / plannedStart / plannedEnd / actualStart / actualEnd）

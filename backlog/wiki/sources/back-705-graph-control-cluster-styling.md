@@ -1,34 +1,31 @@
 ---
-title: BACK-705 Unify the graph control cluster styling
-created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
-labels:
-  - source
-  - graph
-  - web-ui
+title: BACK-705 - 统一图谱控制簇样式
+labels: [source, graph, web-ui]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-705 - Unify-the-graph-control-cluster-styling-so-the-overview-key-matches-its-neighbours.md
 ---
 
-# BACK-705 Unify the graph control cluster styling
+# BACK-705 - 统一图谱控制簇样式
 
-The overview (fit) key in the graph control panel dropped its accent tint so all seven keys share one neutral style — once the key owned the panel's top-left cell (BACK-704 polish), the tint only added a second visual weight.
+图谱控制面板中的总览（fit）键去掉了强调色，使七个键共享同一中性样式——该键独占面板左上单元格后（BACK-704 打磨），强调色只会增加第二重视觉重量。
 
-## Summary
+## 实现要点
 
-- `GraphView.tsx`: `CtrlButton` loses its accent variant entirely — the prop, its JSDoc and the blue class string removed; the overview key renders through the plain branch; the 3-column grid and every key cell position unchanged
-- Verified against the source server with a throwaway corpus: computed background/border/text colors went from 2 distinct values to 1 in both light and dark themes, and all seven keys kept their exact rectangles
-- The legend half of the original request needed no code: clicking a node-kind chip already dims it (opacity 1 → 0.4) and hides that kind in the graph (nodes to 0.00 with pointer-events none, edges to 0.00), restored on second click — re-measured live; only the three edge-type legend lines are static by design
-- Gates: `tsc` clean; web suites 293 pass / 0 fail across 42 files
+- `GraphView.tsx`：`CtrlButton` 完全移除强调色变体——prop、其 JSDoc 与蓝色类名字符串全部删除；总览键改走普通分支渲染；3 列网格与每个键单元格位置不变
+- 用一次性 corpus 对照源服务端验证：浅色与深色主题下计算出的背景/边框/文字颜色都从 2 个不同值变为 1 个，且七个键保持各自矩形不变
+- 原始需求中图例的一半无需代码：点击节点 kind 芯片已经会将其变暗（透明度 1 → 0.4）并在图谱中隐藏该 kind（节点到 0.00 且 pointer-events none、边到 0.00），再次点击恢复——已实测复核；只有三条边类型图例行按设计是静态的
+- 关卡：`tsc` 无告警；web 套件 42 个文件 293 通过 / 0 失败
 
-## Acceptance Criteria
+## 验收标准
 
-- Overview key renders with the same border/background/text colors as pan and zoom keys in both themes; no accent variant left in GraphView
-- Control panel keeps its 3-column grid with every key at its previous screen position
+- 两种主题下总览键与平移、缩放键的边框/背景/文字颜色一致；GraphView 不再残留强调色变体
+- 控制面板保持 3 列网格，每个键维持原有屏幕位置
 
 ## Related Concepts
 
-- [[concepts/web-ui-features]] — control-cluster styling conventions applied to the graph page
+- [[concepts/web-ui-features]] — 应用于图谱页面的控制簇样式约定
 
 ## Related Sources
 
-- [[sources/back-704-graph-view-web-ui]] — introduced the accent tint this task removes (same batch)
+- [[sources/back-704-graph-view-web-ui]] — 引入本任务所移除强调色的页面（同一批）

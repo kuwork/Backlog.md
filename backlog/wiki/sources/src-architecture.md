@@ -1,12 +1,13 @@
 ---
-title: 源代码架构总览
+title: src/ 目录架构说明
 labels: [source]
-source_path: src/
 created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
+source_path: src/
 ---
 
 
-# 源代码架构总览
+# src/ 目录架构说明
 
 Backlog.md CLI 工具的完整 TypeScript 源码位于 `src/` 目录，基于 Bun 运行时构建。代码采用模块化分层架构，核心逻辑、协议适配层和界面层清晰分离。
 
@@ -84,3 +85,7 @@ Markdown 文件 → FileSystem → ContentStore → SearchService
 - **写入**：CLI/Web/MCP → Core → FileSystem → Markdown 文件
 - **读取**：ContentStore 初始化时从 FileSystem 批量加载，后续通过文件监视器增量更新
 - **搜索**：SearchService 订阅 ContentStore 事件，自动重建 Fuse.js 索引
+
+## Related Concepts
+
+- [[concepts/core-architecture]] — 核心架构与数据流（Core/FileSystem/ContentStore/SearchService 四协作类）

@@ -1,8 +1,8 @@
 ---
 title: npm 发布流程指南
-created_date: 2026-06-02 17:00
-updated_date: 2026-06-02 17:00
 labels: [developer-note, npm, publish, release]
+created_date: 2026-06-02 17:00
+updated_date: 2026-10-09 23:30
 ---
 
 # npm 发布流程指南
@@ -173,3 +173,7 @@ npm i -g @kuwork/backlog.md
 ```
 
 brew / nix 指令仍指向原仓库（`MrLesk/Backlog.md`），如需 fork 版本也需自行维护对应的包管理器渠道。
+
+## Related Concepts
+
+- [[developer-notes/github-actions-release-gotchas]] — 标签触发的 CI 自动发布链路与版本号烧号规则

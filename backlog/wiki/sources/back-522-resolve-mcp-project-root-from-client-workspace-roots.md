@@ -1,12 +1,12 @@
 ---
-title: BACK-522 从客户端 workspace roots 解析 MCP project root
+title: BACK-522 - 从客户端 workspace roots 解析 MCP project root
 labels: [source, mcp, bug, roots, workspace]
+created_date: 2026-06-24 00:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-522 - Resolve-MCP-project-root-from-client-workspace-roots.md
-created_date: '2026-06-24 00:30'
-updated_date: '2026-06-24 00:30'
 ---
 
-# BACK-522 从客户端 workspace roots 解析 MCP project root
+# BACK-522 - 从客户端 workspace roots 解析 MCP project root
 
 **状态**: Done | **标签**: mcp, bug | **负责人**: @ycaptain | **优先级**: high
 
@@ -18,7 +18,7 @@ updated_date: '2026-06-24 00:30'
 - 当共享/用户级服务器启动后，客户端切换 workspace 时，服务器仍把任务写到启动目录，而非客户端当前 workspace。
 - git worktree 场景同样受影响。
 
-## 修复内容
+## 解决方案
 
 1. **启动路径也启用 request-scoped roots discovery** — 将 #608（BACK-434）引入的 roots 发现扩展到正常（已初始化）启动路径，复用 `upgradeToProject`/`downgradeToFallback`/`resolveFromRoots`。
 2. **pinned 标志** — `src/commands/mcp.ts` 根据目录来源（`--cwd`/`BACKLOG_CWD` 或 `process.cwd()`）向 `createMcpServer` 传递 `pinned` 标志；pinned 时完全跳过 roots 查询。
@@ -26,7 +26,7 @@ updated_date: '2026-06-24 00:30'
 4. **upgradeToProject 短路** — 客户端 root 与启动目录相同时不重复注册。
 5. **约束保持** — 每个 root 直接检查、多 root 选第一个含 backlog 配置的 root、单飞行（single-flight）。
 
-## 行为变更
+行为变更：
 
 - 正常/已初始化路径现在会发出一次 `roots/list` 请求来跟随客户端 workspace（#608 在正常模式下不发出）。
 - 使用 `--cwd`/`BACKLOG_CWD` 可完全禁用 roots 发现，固定全局 backlog。

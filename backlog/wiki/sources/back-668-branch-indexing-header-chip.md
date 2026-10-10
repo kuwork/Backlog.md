@@ -1,45 +1,37 @@
 ---
-title: BACK-668 Polish the cross-branch indexing loading indicator in the web UI
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
-  - loading
-  - cross-branch
+title: BACK-668 - 跨分支索引加载指示器打磨
+labels: [source, web-ui, loading, cross-branch]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-668 - Polish-the-cross-branch-indexing-loading-indicator-in-the-web-UI.md
 ---
 
-# BACK-668 Polish the cross-branch indexing loading indicator in the web UI
+# BACK-668 - 跨分支索引加载指示器打磨
 
-The server's cross-branch indexing phase line was rendered verbatim in four places (board loading panel plus three sidebar spots), and every `loading` frame flipped `isLoading` back on — replacing loaded content with skeletons and reading as flicker. This task consolidates the signal into one header chip with a hairline sweep, and stops mid-session frames from unmounting loaded content.
+服务端的跨分支索引阶段行被原样渲染在四个地方（看板加载面板加侧边栏三处），且每个 `loading` 帧都把 `isLoading` 翻回开——用骨架屏替换已加载内容，看起来像闪烁。本任务把信号合并为一个带头部细线扫动的 chip，并阻止会话中帧卸载已加载内容。
 
-## Summary
+- 新 `BranchIndexingIndicator.tsx`：头部右侧簇中一个 `role="status"` chip，外加钉在头部底边框上的 2px 扫动轨道，由延迟出现（250ms）/淡出（200ms）状态机驱动，两个延迟都作 prop 以便测试；在出现窗口内完成的阶段不挂载任何东西
+- chip 可见标签是真实进度行经 `translateLoadingMessage` 翻译的结果——fork 相对移植版硬编码 "Indexing branches" 标题的有意差异——`max-w-[16rem]` 截断，完整行作 tooltip；无新语言 key，未匹配阶段回退到服务端原始行
+- 连续进度消息保持指示器挂载并替换标签，而不是重启出现窗口；`lastMessageRef` 让行保留到退出淡出的结束
+- `App.tsx` 让会话中骨架屏以 `hasLoadedDataRef` 为门：首次成功加载前 `loading` 帧才设置 `isLoading`，因此索引运行时已加载的看板与树保持挂载且可交互
+- `SideNavigation` 去掉 `loadingMessage` prop（三个占位变成纯骨架屏）；`App` 不再把消息传给 `Board`，头部 chip 成为阶段行唯一出现处
+- CSS 块（`indexing-sweep` keyframes）逐字节移植，未来合并无冲突；该组件是唯一承载差异的文件
+- 冷启动窗口内经 CDP 在两种主题下实测验证（通过移除 `.dark` 捕获亮色，帧以 virtual-time 暂停冻结）；6 用例指示器套件加更新的深链与侧边栏套件，所有探针先确认红
 
-- New `BranchIndexingIndicator.tsx`: a `role="status"` chip in the header's right cluster plus a 2px sweep track pinned to the header's bottom border, driven by a delayed-appear (250ms) / fade-out (200ms) state machine with both delays as props for tests; a phase finishing inside the appear window mounts nothing
-- The chip's visible label is the real progress line run through `translateLoadingMessage` — the fork's deliberate divergence from the ported hardcoded "Indexing branches" caption — truncated at `max-w-[16rem]` with the full line as tooltip; no new locale keys, unmatched phases fall back to the raw server line
-- Consecutive progress messages keep the indicator mounted and swap the label instead of restarting the appear window; `lastMessageRef` keeps the line through the exit fade
-- `App.tsx` gates mid-session skeletons on `hasLoadedDataRef`: a `loading` frame only sets `isLoading` before the first successful load, so loaded board and trees stay mounted and interactive while indexing runs
-- `SideNavigation` lost its `loadingMessage` prop (three placeholders became pure skeletons); `App` stops handing the message to `Board`, so the header chip is the only place the phase line shows
-- CSS block (`indexing-sweep` keyframes) ported byte for byte so future merges see no conflict; the component is the only file carrying a divergence
-- Live-verified over CDP during the cold-start window in both themes (light captured by removing `.dark` while the frame was frozen with virtual-time pause); 6-case indicator suite plus updated deep-link and sidebar suites, all probes confirmed red first
+## 验收标准
 
-## Acceptance Criteria
-
-- Indexing state shows as a header chip plus hairline sweep; the four raw sentence places no longer render the phase line
-- Chip label is the real progress line translated through `loadingPhrases`, raw fallback, tooltip for truncation, no new locale keys
-- After first successful load, later indexing frames leave board and sidebar trees mounted and interactive
-- Indicator mounts only after the phase persists and fades out before unmounting; consecutive messages swap label without restarting
-- Each new case confirmed red against the reverted change; verified live in both themes
+- 索引状态显示为头部 chip 加细线扫动；四个原始句子位置不再渲染阶段行
+- chip 标签是经 `loadingPhrases` 翻译的真实进度行，原始回退，截断有 tooltip，无新语言 key
+- 首次成功加载后，后续索引帧让看板与侧边栏树保持挂载且可交互
+- 指示器仅在阶段持续后出现，淡出后才卸载；连续消息只换标签不重启
+- 每个新用例先对照回退改动确认为红；两种主题下实测验证
 
 ## Related Concepts
-
-- [[concepts/browser-loading]] — loading-state surfaces and skeleton gating this task restructures
-- [[concepts/web-ui-features]] — header layout and loading conventions
-- [[concepts/web-ui-i18n]] — `loadingPhrases` translation table the chip reuses
+- [[concepts/browser-loading]] — 本任务重组的加载状态面与骨架屏门控
+- [[concepts/web-ui-features]] — 头部布局与加载约定
+- [[concepts/web-ui-i18n]] — chip 复用的 `loadingPhrases` 翻译表
 
 ## Related Sources
-
-- [[sources/back-669-initial-loading-skeleton]] — direct follow-up covering the pre-first-load surfaces (batch sibling)
-- [[sources/back-670-loading-motion-reduce-removal]] — follow-up removing the motion-reduce escapes from this chip (batch sibling)
-- [[sources/back-602-incremental-cross-branch-task-loading]] — the cross-branch loading feature whose progress this displays
+- [[sources/back-669-initial-loading-skeleton]] — 覆盖首次加载前表面的直接后续（批次兄弟）
+- [[sources/back-670-loading-motion-reduce-removal]] — 从本 chip 移除 motion-reduce 逃逸的后续（批次兄弟）
+- [[sources/back-602-incremental-cross-branch-task-loading]] — 显示其进度的跨分支加载功能

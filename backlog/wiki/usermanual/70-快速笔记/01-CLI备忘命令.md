@@ -13,15 +13,14 @@ updated_date: '2026-10-03 01:14'
 ## 创建备忘
 
 ```bash
-# 内联创建
-backlog memo create "周会结论：v2 发布推迟一周" --tags meeting
+# 内联创建（memo create 不接受位置参数，正文必须走 --content）
+backlog memo create --content "周会结论：v2 发布推迟一周" --tags meeting
 
-# 多行内容从 stdin 读取（省略 --content 时）
+# 多行内容从 stdin 读取（省略 --content 时，必须重定向或管道）
 cat debug.log | backlog memo create --tags debug
-
-# 手动输入多行，Ctrl+D 结束
-backlog memo create
 ```
+
+> 交互终端下直接敲 `backlog memo create` **不可用**：stdin 是 TTY 时 CLI 直接报错退出（`No memo content provided.`），不等键盘输入。想手动输入多行请先管道或重定向，例如 `backlog memo create <<'EOF'`。
 
 - `--content <text>`：内联正文，省略时从 stdin 读取，适合多行捕获与 shell 管道
 - `--tags <tags>`：逗号分隔的标签列表
@@ -79,12 +78,9 @@ backlog memo update 20261003-1 --content "修正后的结论"
 
 # 追加一行（保留原有内容）
 backlog memo update 20261003-1 --append "补充：性能回归已定位到缓存层"
-
-# 同时更新标签
-backlog memo update 20261003-1 --append "补充一句" --tags meeting,important
 ```
 
-`--content` 与 `--append` 二选一；更新会刷新 `updated_date`。注意 memo 没有标题，修改正文的第一个非空行即改变了列表中显示的卡片标题。
+`--content` 与 `--append` 二选一；更新会刷新 `updated_date`。`memo update` 不支持 `--tags`——标签只能在创建时用 `memo create --tags` 设定。注意 memo 没有标题，修改正文的第一个非空行即改变了列表中显示的卡片标题。
 
 ## 删除备忘
 

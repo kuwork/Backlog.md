@@ -1,23 +1,20 @@
 ---
-title: BACK-524 媒体 wikilink 支持（图片/视频/音频）
-labels:
-  - source
-  - web-ui
-  - wiki
-  - feature
-  - media
+title: BACK-524 - 媒体 wikilink 支持（图片/视频/音频）
+labels: [source, web-ui, wiki, feature, media]
+created_date: 2026-06-27 21:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-524 - add-media-wikilink-support-for-images-video-and-audio.md
-created_date: '2026-06-27 21:00'
-updated_date: '2026-06-27 21:00'
 ---
 
-# BACK-524 媒体 wikilink 支持（图片/视频/音频）
+# BACK-524 - 媒体 wikilink 支持（图片/视频/音频）
 
 **状态**: Done | **标签**: web-ui, wiki | **负责人**: kimi
 
 支持 Obsidian 风格的媒体 wikilink，在 wiki 页面及其他 Markdown 渲染视图中嵌入图片、视频和音频。
 
-## 语法
+## 目标
+
+语法：
 
 ```markdown
 ![[path]]
@@ -31,7 +28,7 @@ updated_date: '2026-06-27 21:00'
 - `alt`：可选替代文本 / 标题
 - `W` / `WxH`：可选显示尺寸，仅对图片和视频生效；音频忽略尺寸
 
-## 支持的媒体类型
+支持的媒体类型：
 
 | 类型 | 扩展名 |
 |---|---|
@@ -39,9 +36,9 @@ updated_date: '2026-06-27 21:00'
 | 视频 | mp4, webm, ogv, mov, mkv |
 | 音频 | mp3, wav, ogg, m4a, flac, aac, opus, wma |
 
-## 路径解析
+路径解析：
 
-- `assets/photo.png` → 项目根相对， served at `/assets/photo.png`
+- `assets/photo.png` → 项目根相对，served at `/assets/photo.png`
 - `./photo.png` / `../assets/photo.png` → 相对当前 wiki 页目录解析
 - 其他解析后的路径同样通过 `/assets/...` 提供服务
 

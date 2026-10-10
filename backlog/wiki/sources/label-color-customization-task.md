@@ -1,14 +1,16 @@
 ---
-title: BACK-500 看板标签颜色自定义与卡片标签溢出优化
+title: BACK-500 - 看板标签颜色自定义与卡片标签溢出优化
 labels: [source]
-source_path: backlog/tasks/back-500 - Kanban-label-color-customization-and-card-label-overflow-optimization.md
 created_date: 2026-05-30 10:20
-updated_date: 2026-05-30 10:20
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-500 - Kanban-label-color-customization-and-card-label-overflow-optimization.md
 ---
 
-# BACK-500 看板标签颜色自定义与卡片标签溢出优化
+# BACK-500 - 看板标签颜色自定义与卡片标签溢出优化
 
 **状态**: Done | **标签**: web-ui, enhancement | **优先级**: medium
+
+为 Kanban 看板任务卡片标签添加颜色自定义能力（替代默认灰色背景），并让卡片标签显示数量随容器宽度自适应，避免溢出。
 
 ## 功能一：标签颜色自定义
 

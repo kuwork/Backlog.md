@@ -1,12 +1,12 @@
 ---
-title: BACK-511 Markdown 本地 URL 短别名渲染
+title: BACK-511 - Markdown 本地 URL 短别名渲染
 labels: [source, feature, web-ui, markdown]
-created_date: '2026-06-05 15:19'
-updated_date: '2026-06-05 15:19'
+created_date: 2026-06-05 15:19
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-511 - Render-local-URLs-as-short-aliases-in-markdown-content.md
 ---
 
-# BACK-511 Markdown 本地 URL 短别名渲染
+# BACK-511 - Markdown 本地 URL 短别名渲染
 
 将 Markdown 内容中的同源本地 URL 渲染为可读短别名，提升可读性同时保持点击导航能力。
 
@@ -24,15 +24,18 @@ source_path: backlog/tasks/back-511 - Render-local-URLs-as-short-aliases-in-mark
 - 标题 slug 为装饰性，不影响别名生成
 - 任务 ID 解析保持前缀无关
 
-## 实现
+## 实现要点
 
 - `MermaidMarkdown.tsx` 新增 `parseLocalUrl()`，返回 `{ type, alias }`
 - 新增 `onDocClick`、`onDecisionClick`、`onWikiClick`、`onDraftClick` props
 - 所有消费者（TaskDetailsModal、DocumentationDetail、DecisionDetail、WikiDetail、FilePreviewModal）统一接入
 
-## 相关决策
-- 添加 `#` 前缀守卫，防止 heading anchor 被误识别为本地 URL
+添加 `#` 前缀守卫，防止 heading anchor 被误识别为本地 URL（见 [[decisions/anchor-prefix-guard]]）。
 
 ## Related Concepts
 - [[concepts/web-ui-features]] — Web UI Markdown 渲染
 - [[concepts/markdown-pipeline]] — Markdown 解析流水线
+
+## Related Decisions
+
+- [[decisions/anchor-prefix-guard]] — 防止 heading anchor 被误识别为本地 URL
