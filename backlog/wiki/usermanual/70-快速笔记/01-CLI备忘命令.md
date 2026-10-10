@@ -2,7 +2,7 @@
 title: CLI 备忘命令
 labels: [usermanual]
 created_date: 2026-10-03 01:14
-updated_date: '2026-10-03 01:14'
+updated_date: 2026-10-10 23:27
 ---
 
 
@@ -16,14 +16,24 @@ updated_date: '2026-10-03 01:14'
 # 内联创建（memo create 不接受位置参数，正文必须走 --content）
 backlog memo create --content "周会结论：v2 发布推迟一周" --tags meeting
 
-# 多行内容从 stdin 读取（省略 --content 时，必须重定向或管道）
+# 多行内容从 stdin 读取（省略 --content 时）
 cat debug.log | backlog memo create --tags debug
+
+# 手动输入多行：直接在终端敲正文，EOF 结束
+backlog memo create --tags debug
+# Type the memo, then end with Ctrl+D (Ctrl+Z on the classic Windows console). Ctrl+C aborts.
+# 第一行
+# 第二行
 ```
 
-> 交互终端下直接敲 `backlog memo create` **不可用**：stdin 是 TTY 时 CLI 直接报错退出（`No memo content provided.`），不等键盘输入。想手动输入多行请先管道或重定向，例如 `backlog memo create <<'EOF'`。
+> 交互终端下省略 `--content` 会进入键盘捕获（BACK-764）：提示语输出到 stderr（不会混进正文），多行原样落盘；`Ctrl+C` 中断，不建文件（退出码 130）；直接结束输入（空正文）报 `Memo content is empty.`，不建文件。
+>
+> **结束键**：优先用 `Ctrl+D`——VS Code 集成终端、Git Bash、Windows Terminal 都会把这个按键原样交给程序，Unix/macOS/WSL 上它还产生真正的 EOF。经典 Windows 控制台（cmd/PowerShell）不投递任何 EOF，此时改用 `Ctrl+Z`；注意 `Ctrl+Z` 在 VS Code 里被拦截、在 mintty(Git Bash) 里是挂起信号，所以这两个环境统一用 `Ctrl+D`。
+>
+> 实现要点：TTY 上命令会切到 raw mode 才能识别这些按键，因此回显由 CLI 自己做（逐字符回显、`Enter` 换行、`Backspace` 擦除当前行）；管道/重定向时仍是原本的「直接读 stdin、不回显」。
 
-- `--content <text>`：内联正文，省略时从 stdin 读取，适合多行捕获与 shell 管道
-- `--tags <tags>`：逗号分隔的标签列表
+- `--content <text>`：内联正文，省略时从 stdin 读取——管道/重定向时直接读，TTY 时改为键盘捕获
+- `--tags <tags>`：逗号分隔的标签列表，两种输入方式下都生效
 - 创建成功后 CLI 输出新 memo 的 ID（如 `20261003-1`）
 
 ## 列出备忘
@@ -78,9 +88,20 @@ backlog memo update 20261003-1 --content "修正后的结论"
 
 # 追加一行（保留原有内容）
 backlog memo update 20261003-1 --append "补充：性能回归已定位到缓存层"
+
+# 只改标签（保留正文不动）
+backlog memo update 20261003-1 --tags meeting,important
+
+# 正文与标签一起改
+backlog memo update 20261003-1 --append "补充一句" --tags meeting,important
+
+# 清空标签
+backlog memo update 20261003-1 --tags ""
 ```
 
-`--content` 与 `--append` 二选一；更新会刷新 `updated_date`。`memo update` 不支持 `--tags`——标签只能在创建时用 `memo create --tags` 设定。注意 memo 没有标题，修改正文的第一个非空行即改变了列表中显示的卡片标题。
+`--content` 与 `--append` 二选一；`--tags` 可与它们任意组合，也可单独使用（只改标签是合法更新）。三者都不给则报错 `No update options provided.` 并退出。省略 `--tags` 表示不动原标签，传空值 `--tags ""` 表示清空标签。更新会刷新 `updated_date`。
+
+标签解析与 REST `PATCH /api/memos/:id` 一致：trim、丢弃空项、去重，支持逗号分隔或重复传入（`--tags a --tags b`）。注意 memo 没有标题，修改正文的第一个非空行即改变了列表中显示的卡片标题。
 
 ## 删除备忘
 
