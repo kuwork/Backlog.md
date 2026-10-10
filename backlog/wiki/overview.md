@@ -188,6 +188,7 @@ updated_date: '2026-10-09 22:00'
 ### 上游迁移（v1.52.0 .. v1.53.0）— 第五波，已完成
 - **doc-21 差异分类** 与 **doc-22 按领域分析** 为本波迁移文档
 - **波后增量**：图视图迁移 Canvas 2D 渲染与 hover 延迟（BACK-720）、亮主题可读性（BACK-727）、里程碑模态框 fetch 回退表单填充修复（BACK-724）、平均完成耗时统计（BACK-725，语料范围语义见 [[concepts/statistics-corpus-scope]]）、模态框 TOC 抽屉与悬浮模式（BACK-726/739，见 [[concepts/toc-scrollspy]]）、测试基建（BACK-722 flaky 修复、BACK-723 Biome 覆盖 .tsx）；归档历史页 back-222 补建
+- **决策过程总结**（2026-10-10）：五波迁移的分类口径、divergence 台账、验证策略与节奏控制的跨波演进已综合为 [[comparisons/migration-decision-process]]，pattern 页升五波口径（[[patterns/upstream-migration-wave]]）
 
 ### 源代码架构域
 - **核心层**：`Core` 聚合 `FileSystem` + `GitOperations`，惰性初始化 `ContentStore` + `SearchService`
@@ -229,6 +230,7 @@ updated_date: '2026-10-09 22:00'
 - Execution notes: 27
 - Decisions recorded: 80
 - Patterns: 6
+- Comparisons: 1
 - Reasoning traces: 5
 - Retrospectives: 1
 - User manual pages: 42

@@ -41,6 +41,8 @@ Fork 对上游 `MrLesk/Backlog.md` 版本差异进行 A/B/C 分类并按领域�
 - doc-9：v1.49.3→v1.50.1 分类
 - doc-10：v1.49.3→v1.50.1 按领域详细分析
 - doc-16：To-Do 任务 vs 上游迁移清算报告
+- doc-21：v1.52.0→v1.53.0 分类
+- doc-22：v1.52.0→v1.53.0 按领域分析
 
 ## 第三波完整闭环（v1.49.3 → v1.50.1，BACK-570~623）
 
@@ -68,6 +70,10 @@ Fork 对上游 `MrLesk/Backlog.md` 版本差异进行 A/B/C 分类并按领域�
 - **doc-11 对照清算**（[[sources/doc-11-todo-tasks-vs-upstream-migration-cross-check]]）：对 42 个 To Do 任务逐项 grep 实证对照前三波迁移，13 归档 / 4 部分实现 / 25 未实现。
 - **落地管道**:A/B 条目按「原始任务文件导入规范」先转成 fork 记录，再逐个提升为 fork 任务 BACK-642~699，收尾时全部 Done。
 - **移植模式**：直接复用追求 byte-identical 移植 + revert-check 验证（逐个半段回退确认测试转红再恢复）;**deliberate divergence 台账**记录刻意不合入点（如 BACK-646 的 `demotionState`/409 分类因 fork 形态不可达而只移植 web 韧性、BACK-647 doctor 分支位置与上游有意不同）。
+
+## 第五波：v1.52.0 → v1.53.0（doc-21/22）
+
+沿用第四波的双源并集口径与七维分析格式，落地 BACK-715~744 共 30 个任务全部 Done（周期中位 0 天）。同期 fork 自主线（memos 子系统、状态机语义化）与迁移线并行，刻意分叉直接以 decision 页留痕（自研状态机校验器、CLI 窗口分页）。决策过程的综合总结见 [[comparisons/migration-decision-process]]。
 
 ## Related Sources
 
