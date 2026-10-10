@@ -142,6 +142,23 @@ The LLM reads from the following backlog folders as raw input. These are immutab
 - `wiki/comparisons/` — Cross-cutting analyses
 - `wiki/usermanual/` — Structured user manual (SUMMARY.md-based, mergeable into `manual.md`)
 
+### 页面风格约定 (Page Style Conventions)
+
+自 2026-10-09 起生效；存量页面按 Lint 逐步收敛，新页面必须遵守。
+
+1. **语言**：正文、标题、小节名一律简体中文。英文仅限代码标识符、命令、字段名、文件路径与固有专名（fail-closed、wikilink、hotfix、memo 等不译词）。同一页面不得整段切换语言。
+2. **frontmatter 字段顺序固定**：`title`、`labels`、`created_date`、`updated_date`；source 页在 `updated_date` 后加 `source_path`；decision 页允许可选 `description`（一行摘要）；execution/patterns 页允许 `extracted_from`（裸任务 ID 列表，如 `- BACK-757`）。日期一律不加引号（`updated_date: 2026-10-09 22:00`）；labels 一律行内数组（`labels: [concept, graph]`）；不加约定外字段。
+3. **title 格式**：source 页 = `BACK-757 - 中文短标题`（实体 ID + 连字符 + 中文短标题；doc/milestone/draft 页同理带各自 ID；顶层文件页如 README 用 `README.md 中文说明` 式，无 ID）。concept / decision / execution / reasoning / patterns / entities 页用中文名词短语、不含 ID。title 永不加引号。
+4. **H1**：每页有且仅有一个 H1，逐字等于 frontmatter title（含 ID）。禁止无 H1 或 H1 丢失 ID。
+5. **source 页骨架**：H1 → 导语一段（背景+结论）→ `## 问题`（bug）或 `## 目标`（feature）→ `## 解决方案` 或 `## 实现要点` → `## 验证`（有实测数据时）→ Related 小节。已有内容按此归位；禁止导语后没有任何正文小节直接进入 Related；禁止为凑结构凭空造节。
+6. **decision 页骨架**：`## 背景` → `## 决定` → `## 理由` → `## 被否方案` → Related。小节名不得使用 Context/Decision 等英文。
+7. **execution / patterns 页骨架**：`## 适用场景` → `## 标准步骤` → `## 常见陷阱` → `## Related Sources`（不叫"参考任务"；列表内只放 source 链接）。
+8. **Related 小节**：命名只用 `Related Concepts` / `Related Sources` / `Related Entities` / `Related Decisions` / `Related Reasoning`，按此固定顺序；列表项格式 `- [[path/to/page]] — 一句中文说明`；禁止合并为 `## Related`；禁止空 Related 小节。每页至少一个 Related 小节。
+9. **wikilink**：正文 prose 中允许别名 `[[target|BACK-543]]`；Related 列表内不用别名；所有跨页引用一律 `[[path]]`（不带 `.md`）。
+10. **翻译忠实性**：英文存量页译成中文时保留全部事实、file:line 引用、命令、标识符与 wikilink 原样，不增删内容。
+11. **术语对照**（翻译与写作统一）：modal=模态框、watcher=监视器、corpus=语料、terminal status=终态、cross-branch=跨分支、drill-down=钻取、pinboard=钉板、graph=图谱、fallback=回退、acceptance criteria=验收标准、board=看板、plain output=plain 输出。
+12. **行尾 LF**；不改动 `wiki_output/`、`index.md`、`overview.md`、`log.md`（由 ingest/lint 流程统一维护）。
+
 ### Rules
 - **NEVER** write to `tasks/`, `docs/`, `decisions/`, or other backlog source folders during wiki operations
 - **NEVER** recursively ingest `wiki/` or `wiki_output/`
