@@ -1,23 +1,18 @@
 ---
-title: BACK-525 更新 wiki skill 与 CLI 多行输入文档
-labels:
-  - source
-  - wiki
-  - docs
-  - cli
-  - skill
+title: BACK-525 - 更新 wiki skill 与 CLI 多行输入文档
+labels: [source, wiki, docs, cli, skill]
+created_date: 2026-06-27 21:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-525 - Update-wiki-skill-and-CLI-multi-line-input-docs.md
-created_date: '2026-06-27 21:00'
-updated_date: '2026-06-27 21:00'
 ---
 
-# BACK-525 更新 wiki skill 与 CLI 多行输入文档
+# BACK-525 - 更新 wiki skill 与 CLI 多行输入文档
 
 **状态**: Done | **负责人**: @kimi
 
 纯文档/工具同步任务：将 BACK-523、BACK-524 的 wikilink 增强以及 BACK-508 的 CLI 多行输入行为记录到 agent 可见的文档与内嵌 skill 中。
 
-## 同步内容
+## 实现要点
 
 ### Wiki skill 文档
 
@@ -35,7 +30,7 @@ updated_date: '2026-06-27 21:00'
 - `src/guidelines/cli-instructions/task-execution.md`：增加 `--comment` 等字段的多行示例
 - `src/guidelines/cli-instructions/task-finalization.md`：增加 `--final-summary` 的多行示例
 
-## 说明
+## 验证
 
 - 不引入新产品行为，仅保持文档与实现一致
 - `bunx tsc --noEmit` 通过

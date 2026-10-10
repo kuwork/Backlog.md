@@ -1,12 +1,12 @@
 ---
-title: BACK-495.1 跟踪甘特图左表与时间解析引擎
-source_path: backlog/tasks/back-495.1 - Update-left-table-and-actual-bar-time-resolution-for-tracking-Gantt.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-495.1 - 跟踪甘特图左表与时间解析引擎
 labels: [source, feature, web-ui, gantt, frontend]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-495.1 - Update-left-table-and-actual-bar-time-resolution-for-tracking-Gantt.md
 ---
 
-# BACK-495.1 跟踪甘特图左表与时间解析引擎
+# BACK-495.1 - 跟踪甘特图左表与时间解析引擎
 
 修改甘特图左表以显示四列时间数据，并更新底层时间解析引擎支持 `actualStart`/`actualEnd`。
 

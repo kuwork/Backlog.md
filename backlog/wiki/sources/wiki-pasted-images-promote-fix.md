@@ -1,11 +1,12 @@
 ---
-title: BACK-488 修复 Wiki 粘贴图片保存时未迁移到永久目录
+title: BACK-488 - 修复 Wiki 粘贴图片保存时未迁移到永久目录
 labels: [source, bug, wiki, web-ui, image-handling]
-source_path: backlog/tasks/back-488 - Fix-wiki-pasted-images-not-moved-to-paste-directory-on-save.md
 created_date: 2026-05-25 00:45
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-488 - Fix-wiki-pasted-images-not-moved-to-paste-directory-on-save.md
 ---
 
-# BACK-488 修复 Wiki 粘贴图片保存时未迁移到永久目录
+# BACK-488 - 修复 Wiki 粘贴图片保存时未迁移到永久目录
 
 **状态**: Done | **标签**: bug, wiki, web-ui, image-handling | **负责人**: @kimi
 

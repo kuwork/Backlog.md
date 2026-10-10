@@ -1,45 +1,37 @@
 ---
-title: BACK-687 CLI TUI — Replace milestones list with an interactive milestone board view
-created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
-labels:
-  - source
-  - cli
-  - tui
-  - milestones
+title: BACK-687 - TUI 里程碑交互式看板视图
+labels: [source, cli, tui, milestones]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-687 - CLI-TUI-Replace-milestones-list-with-an-interactive-milestone-board-view.md
 ---
 
-# BACK-687 CLI TUI — Replace milestones list with an interactive milestone board view
+# BACK-687 - TUI 里程碑交互式看板视图
 
-`backlog milestone list` was a static counts dump. This task replaces it with a two-pane interactive TUI — milestone list on the left, the real kanban board scoped to the selected milestone on the right, one shared filter bar on top — while `--plain` and non-TTY stdout keep the text output. Shipped over ten review rounds driven by live use.
+`backlog milestone list` 曾是静态计数转储。本任务把它换成双窗格交互 TUI——左侧里程碑列表，右侧限定到所选里程碑的真实看板，顶部一个共享过滤器栏——`--plain` 与非 TTY 标准输出保留文本输出。经十轮由实际使用驱动的评审发货。
 
-## Summary
+- `src/ui/board.ts`：可选 `BoardEmbedOptions` 嵌入与 `visibleFilters`；一个 `keysActive()` 谓词路由每个看板按键，宿主窗格可持有键盘；宿主侧边栏内边距与看板外观对齐；列框经 `areaLabel`（provider，框标题跟随选择：`Tasks · <name>`）；`BoardHandle`（`focusBoard`、`syncChrome`、`focusFilters`）；无嵌入时看板不变
+- `src/ui/milestones.ts`（新）：侧边栏先列未分配桶再按里程碑文件顺序列每个里程碑（已完成的打标，无隐藏）；方向键只移动光标，Space 限定看板（被限定行加 `▶ ` 前缀）；Enter 打开仅元数据的里程碑弹窗（无任务列表）；N 在列表创建里程碑、在看板创建默认落到被限定里程碑的任务
+- `src/utils/milestone-search.ts`（新）：一个里程碑搜索契约，TUI 头部与 `MilestonesPage.tsx` 共享（精确 id → 子串 → 共享模糊索引），对整个语料解析并与 scope 求交，列与计数一致
+- `src/ui/components/milestone-form.ts`（第 10 轮）：一个表单同时支撑创建与编辑——Title（仅创建）、Description、Due、Planned from/to、Actual from/to；日期按 `YYYY-MM-DD` 或 `YYYY-MM-DD HH:mm` 校验；详情弹窗的 E 以播种状态重新打开表单；标题刻意只读（文件名以它命名）；写经 `createMilestone` / `core.updateMilestone(id, title, options, false)`——显式 `false` 防止就地编辑被提交为 "Rename milestone"
+- 评审轮修复：退出释放进程级 blessed program（`releaseSharedProgram`）以恢复 stdin raw 模式；列边框色从 `isScopeActive()` 派生，非键盘窗格不为黄色；里程碑弹窗打开时渲染并画与任务弹窗相同的黑色背景；过滤器栏以 `<shown>/<total> tasks` 结尾，total 为整个语料（`BoardEmbedOptions.summaryTotal`）；行计数经导出的纯 `filterBoardTasks` 拆为过滤显示数与里程碑总数
+- 记录的 blessed 怪癖：`textbox.readInput()` 同步设置 `screen.grabKeys` 但在更晚的 nextTick 才挂字符监听（间隙键入的字符被丢——测试重打到值增长为止），拆掉仍在读取的 prompt 会让之后每个按键失效
+- 环境注意：本工作区是 admin 目录缺失的 git worktree，因此 git 依赖测试仅因此失败；仓库级 `bun run check .` 保留未动文件中的预先存在错误（DoD #2 未勾选）
+- 测试：`src/test/milestones-tui.test.ts` 经各轮增长到 22 用例；board/help/web-milestone/cli-milestone 套件绿；固定 sleep 换成状态等待（`waitUntil`）
 
-- `src/ui/board.ts`: optional `BoardEmbedOptions` embed and `visibleFilters`; one `keysActive()` predicate routes every board key so a host pane can hold the keyboard; host sidebar inset kept aligned with board chrome; columns framed via `areaLabel` (a provider, so the frame title follows the selection: `Tasks · <name>`); `BoardHandle` (`focusBoard`, `syncChrome`, `focusFilters`); with no embed the board is unchanged
-- `src/ui/milestones.ts` (new): sidebar lists the unassigned bucket first then every milestone in milestone-file order (completed marked, none hidden); arrows move only the cursor, Space scopes the board (scoped row prefixed `▶ `); Enter opens a metadata-only milestone popup (no task list); N creates a milestone on the list and a task defaulting to the scoped milestone on the board
-- `src/utils/milestone-search.ts` (new): one milestone search contract shared by the TUI header and `MilestonesPage.tsx` (exact id → substring → shared fuzzy index), resolved against the whole corpus and intersected with scope so columns and counts agree
-- `src/ui/components/milestone-form.ts` (round 10): one form behind both creating and editing — Title (create only), Description, Due, Planned from/to, Actual from/to; dates validated as `YYYY-MM-DD` or `YYYY-MM-DD HH:mm`; detail popup's E reopens the form seeded; title deliberately read-only (the file is named after it); writes through `createMilestone` / `core.updateMilestone(id, title, options, false)` — the explicit `false` keeps an in-place edit from committing as "Rename milestone"
-- Review-round fixes: quitting releases the process-wide blessed program (`releaseSharedProgram`) so stdin raw mode is restored; column border color derived from `isScopeActive()` so the non-keyboard pane is not yellow; milestone popup renders on open and draws the same black backdrop as the task popup; filter bar ends with `<shown>/<total> tasks` where total is the whole corpus (`BoardEmbedOptions.summaryTotal`); row counts split into filtered-shown vs milestone-total via exported pure `filterBoardTasks`
-- Blessed quirks recorded: `textbox.readInput()` sets `screen.grabKeys` synchronously but attaches its char listener in a later nextTick (typed chars in the gap are dropped — tests retype until the value grows), and tearing down a prompt still reading leaves every later keypress dead
-- Environment caveat: this workspace is a git worktree whose admin dir is missing, so git-dependent tests fail for that reason alone; repo-wide `bun run check .` kept pre-existing errors in untouched files (DoD #2 left unchecked)
-- Tests: `src/test/milestones-tui.test.ts` grew to 22 cases through the rounds; board/help/web-milestone/cli-milestone suites green; fixed sleeps replaced by state waits (`waitUntil`)
+## 验收标准
 
-## Acceptance Criteria
-
-- TTY launches the TUI; `--plain`/non-TTY keep text output with `--show-completed` semantics
-- Two panes, selection drives the board, focus moves with arrows/j/k; right pane reuses the real board so columns, shortcuts and filters match `task list`; Enter on a milestone opens metadata-only detail; Enter on a task opens the existing task popup
-- Filter bar spans both panes (Search/Priority/Labels, no milestone filter), matches like the web milestone page, and stays applied across selection changes; `<shown>/<total>` summary counts against the whole task total
-- List = unassigned bucket first then milestones in file order; each row shows its own done/total under the active filters; N creates milestone/task; only the keyboard-holding pane is highlighted
+- TTY 启动 TUI；`--plain`/非 TTY 保留文本输出与 `--show-completed` 语义
+- 双窗格，选择驱动看板，焦点随方向键/j/k 移动；右窗格复用真实看板，列、快捷键与过滤器与 `task list` 一致；里程碑上 Enter 打开仅元数据详情；任务上 Enter 打开现有任务弹窗
+- 过滤器栏跨双窗格（Search/Priority/Labels，无里程碑过滤器），匹配 Web 里程碑页面，选择变化间保持应用；`<shown>/<total>` 摘要对整个任务总数计数
+- 列表先未分配桶再按文件顺序；每行显示活跃过滤器下自己的 done/total；N 创建里程碑/任务；只有持有键盘的窗格高亮
 
 ## Related Concepts
-
-- [[concepts/milestones]] — the milestone model and bucket ordering this view renders
-- [[concepts/cli-tui]] — board embedding, keyboard ownership, and blessed teardown discipline
-- [[concepts/date-fields]] — the five milestone dates the form captures and validates
+- [[concepts/milestones]] — 本视图渲染的里程碑模型与桶排序
+- [[concepts/cli-tui]] — 看板嵌入、键盘归属与 blessed 拆卸纪律
+- [[concepts/date-fields]] — 表单捕获与校验的五个里程碑日期
 
 ## Related Sources
-
-- [[sources/back-686-shared-search-consumers]] — supplies the shared milestone search contract the header bar uses
-- [[sources/back-688-milestones-plain-grouped-output]] — follow-up restoring grouped plain-text output under the same entry point
-- [[sources/back-575-doc-list-interactive-browser]] — earlier interactive list viewer with the same teardown pattern
+- [[sources/back-686-shared-search-consumers]] — 提供头部栏所用共享里程碑搜索契约
+- [[sources/back-688-milestones-plain-grouped-output]] — 在同一入口恢复分组纯文本输出的后续
+- [[sources/back-575-doc-list-interactive-browser]] — 同拆卸模式的早期交互列表查看器

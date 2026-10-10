@@ -1,12 +1,12 @@
 ---
-title: BACK-495.2 双层甘特条渲染（实际条 + 计划边框）
-source_path: backlog/tasks/back-495.2 - Implement-dual-layer-Gantt-bar-rendering-actual-plan-border.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-495.2 - 双层甘特条渲染（实际条 + 计划边框）
 labels: [source, feature, web-ui, gantt, frontend, css]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-495.2 - Implement-dual-layer-Gantt-bar-rendering-actual-plan-border.md
 ---
 
-# BACK-495.2 双层甘特条渲染（实际条 + 计划边框）
+# BACK-495.2 - 双层甘特条渲染（实际条 + 计划边框）
 
 实现跟踪甘特图的核心双层渲染：底层为实际时间条（状态色实心填充），上层为计划边框（60° 斜线填充）。
 

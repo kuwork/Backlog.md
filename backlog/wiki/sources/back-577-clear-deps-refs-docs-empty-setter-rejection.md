@@ -1,44 +1,39 @@
 ---
-title: Add --clear-deps/--clear-refs/--clear-docs to task edit and reject empty list setter values
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
-labels:
-  - source
-  - migration
-  - cli
-  - mcp
-  - bug
+title: BACK-577 - task edit 清空列表与拒空值
+labels: [source, migration, cli, mcp, bug]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-577 - Add-clear-deps-clear-refs-clear-docs-to-task-edit-and-reject-empty-list-setter-values.md
 ---
 
-# Add --clear-deps/--clear-refs/--clear-docs to task edit and reject empty list setter values
+# BACK-577 - task edit 清空列表与拒空值
 
-Fixed silent no-op edits: empty `--dep`/`--ref`/`--doc` values in `task edit` left the list unchanged while exiting 0 — a fake success. Added explicit `--clear-deps` / `--clear-refs` / `--clear-docs` flags to clear those lists, and made both task create and task edit reject empty setter values (edit errors point at the matching `--clear-*` flag). MCP `task_edit` now rejects arrays containing empty-string elements; only an explicit empty array `[]` clears a list. Consolidates three upstream tasks (BACK-572/586/618).
+修复静默的无效果编辑：`task edit` 中空的 `--dep`/`--ref`/`--doc` 值会让列表保持不变并以 0 退出——虚假成功。为 task edit 新增显式的 `--clear-deps`/`--clear-refs`/`--clear-docs` 标志清空这些列表，并让 task create 和 task edit 都拒绝空 setter 值（edit 的错误指向匹配的 `--clear-*` 标志）。MCP `task_edit` 现在拒绝含空字符串元素的数组；只有显式空数组 `[]` 才清空列表。合并三个上游任务（BACK-572/586/618）。
 
-## Summary
+## 实现要点
 
-- `src/cli.ts`: new `--clear-deps`/`--clear-refs`/`--clear-docs` options on `task edit`; shared validators `validateClearableListInput` and `validateTaskListFlags` reject empty setter values for both create and edit, reject clear-vs-setter conflicts, and are included in the interactive-TTY edit predicate so flagged edits apply directly instead of opening the wizard.
-- `src/utils/task-edit-builder.ts`: `sanitizeClearableStringArray` rejects arrays containing empty-string elements; explicit `[]` clears the list; deps/refs/docs all route through it.
-- `src/utils/task-builders.ts`: `parseClearableStringList` kept for CLI parsing.
-- Deliberate divergence from upstream: the fork rejects empty setter values in edit (error points to `--clear-*`) instead of upstream's later `emptyClears` behavior where an explicit empty value equals clear — chosen to keep the fork's list-setter semantics consistent (documented in doc-10 CLI-4).
-- MCP: `task_edit` rejects empty-string elements in references/documentation/dependencies arrays; explicit `[]` clears.
-- Tests in `src/test/cli-dependency.test.ts`, `src/test/cli-refs-docs.test.ts`, `src/test/mcp-tasks.test.ts`, `src/test/mcp-refs-docs.test.ts` cover clear flags, empty-value rejection, setter/clear conflicts, create errors, and blank-only vs explicit-empty array semantics. Build succeeded to an alternate output path because `dist/backlog.exe` was locked by a running process.
+- `src/cli.ts`：`task edit` 新增 `--clear-deps`/`--clear-refs`/`--clear-docs` 选项；共享校验器 `validateClearableListInput` 和 `validateTaskListFlags` 对 create 和 edit 都拒绝空 setter 值、拒绝 clear 与 setter 冲突，并纳入交互式 TTY edit 谓词，使带标志的编辑直接生效而不是打开向导。
+- `src/utils/task-edit-builder.ts`：`sanitizeClearableStringArray` 拒绝含空字符串元素的数组；显式 `[]` 清空列表；deps/refs/docs 全部经它路由。
+- `src/utils/task-builders.ts`：`parseClearableStringList` 保留给 CLI 解析。
+- 与上游的刻意分歧：fork 在 edit 中拒绝空 setter 值（错误指向 `--clear-*`），而不是上游后来的 `emptyClears` 行为（显式空值等于清空）——选择保持 fork 列表 setter 语义一致（记录在 doc-10 CLI-4）。
+- MCP：`task_edit` 拒绝 references/documentation/dependencies 数组中的空字符串元素；显式 `[]` 清空。
+- 测试在 `src/test/cli-dependency.test.ts`、`src/test/cli-refs-docs.test.ts`、`src/test/mcp-tasks.test.ts`、`src/test/mcp-refs-docs.test.ts` 中，覆盖 clear 标志、空值拒绝、setter/clear 冲突、create 错误、纯空白与显式空数组语义。构建成功到替代输出路径，因为 `dist/backlog.exe` 被运行中的进程锁定。
 
-## Acceptance Criteria
+## 验收标准
 
-- `--clear-deps`/`--clear-refs`/`--clear-docs` each clear the corresponding list.
-- task edit rejects empty `--dep`/`--depends-on`/`--ref`/`--doc` values and suggests the matching `--clear-*` flag; task create still rejects empty values.
-- Clear flags cannot combine with setter flags for the same field; invalid input leaves the task unchanged.
-- MCP `task_edit` rejects empty-string elements; explicit `[]` clears; shared validators used for deps/refs/docs.
+- `--clear-deps`/`--clear-refs`/`--clear-docs` 各自清空对应列表。
+- task edit 拒绝空的 `--dep`/`--depends-on`/`--ref`/`--doc` 值并提示匹配的 `--clear-*` 标志；task create 仍拒绝空值。
+- clear 标志不能与同字段的 setter 标志组合；非法输入使任务保持不变。
+- MCP `task_edit` 拒绝空字符串元素；显式 `[]` 清空；deps/refs/docs 使用共享校验器。
 
 ## Related Concepts
 
-- [[concepts/cli-entry]] — option definitions, help schema, and TTY predicate for task edit
-- [[concepts/mcp-workflow]] — MCP task_edit shares the same validation helpers as the CLI
-- [[concepts/task-lifecycle]] — dependencies/references/documentation fields on the task model
+- [[concepts/cli-entry]] — task edit 的选项定义、帮助模式和 TTY 谓词
+- [[concepts/mcp-workflow]] — MCP task_edit 与 CLI 共享同一校验 helper
+- [[concepts/task-lifecycle]] — 任务模型上的 dependencies/references/documentation 字段
 
 ## Related Sources
 
-- [[sources/back-578-task-edit-list-set-add-remove-flags]] — the follow-up that adds --add-*/--remove-* on top of these validators (same batch)
-- [[sources/doc-10-upstream-v1-49-3-to-v1-50-1-migration-analysis-by-domain]] — CLI-4 documents the empty-value-reject divergence from upstream
-- [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] — entries B3/B22 grouped this data-correctness cluster as one wave
+- [[sources/back-578-task-edit-list-set-add-remove-flags]] — 在这些校验器之上新增 --add-*/--remove-* 的后续任务（同批次）
+- [[sources/doc-10-upstream-v1-49-3-to-v1-50-1-migration-analysis-by-domain]] — CLI-4 记录与上游的空值拒绝分歧
+- [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] — 条目 B3/B22 把该数据正确性簇归为一个波次

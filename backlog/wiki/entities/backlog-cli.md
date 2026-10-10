@@ -1,8 +1,8 @@
 ---
 title: Backlog.md CLI 工具
 labels: [entity]
-created_date: '2026-05-06 00:00'
-updated_date: '2026-09-13 01:12'
+created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # Backlog.md CLI 工具
@@ -60,11 +60,11 @@ Markdown 原生的任务管理与看板可视化 CLI 工具，同时作为 MCP �
 - [[concepts/mcp-workflow]] — MCP 工作流与 AI 集成
 - [[concepts/cli-entry]] — CLI 入口与命令体系
 
+## Related Sources
+
+- [[sources/back-521]] — BACK-521 CLI 优先的代理工作流重构
+- [[sources/back-521.2]] — BACK-521.2 短代理 nudge 与 init 默认集成迁移
+
 ## Related Entities
 
 - [[entities/ai-agents]] — AI 代理与集成
-
-## Related Sources
-
-- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
-- [[sources/back-521.2]] — BACK-521.2 Short agent nudge and init default migration

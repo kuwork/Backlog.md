@@ -1,34 +1,30 @@
 ---
-title: BACK-590 Hide empty board columns in the TUI
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-26 14:00'
-labels:
-  - source
-  - tui
+title: BACK-590 - 看板隐藏空状态列
+labels: [source, tui]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-590 - Hide-empty-board-columns-in-the-TUI.md
 ---
 
-# BACK-590 Hide empty board columns in the TUI
+# BACK-590 - 看板隐藏空状态列
 
-Threaded the existing `hideEmptyColumns` setting into the TUI kanban board with a Shift+H toggle. Empty status columns disappear when enabled; while a task is being moved every column returns so all drop targets stay reachable. The toggle persists to the shared `hide_empty_columns` config key and the piped (non-TTY) output applies the same filter.
+将已有的 `hideEmptyColumns` 设置接入 TUI 看板，并新增 Shift+H 切换。开启后空状态列消失；移动任务期间所有列临时恢复，保证每个放置目标可达。切换会持久化到共享的 `hide_empty_columns` 配置键，管道（非 TTY）输出应用同一过滤。
 
-## Summary
+- `src/ui/board.ts`：新增导出的纯函数 helper `filterVisibleColumns(data, hideEmptyColumns, isMoving)`——开启且非移动状态时隐藏空状态列；全部为空时保留所有列以避免看板空白；isMoving 时保留每一列。
+- `renderView` 从未过滤的投影派生 `currentStatuses`，使隐藏不会收窄移动目标；`filterVisibleColumns` 仅应用于渲染列。
+- Shift+H 切换（`screen.key(['S-h'])`）：乐观翻转 → `core.fs.saveConfig`，失败时回滚并显示临时 footer，`pendingSettingWrite` 在途守卫；`closeBoard()` 在 q/C-c、Esc、Tab 及视图切换退出前等待未完成的写入，确保切换后立即退出不丢失。
+- 管道分支一次性派生 `visibleStatuses` 并传给 `generateMilestoneGroupedBoard` 与 `generateKanbanBoardWithMetadata`（含 --milestones）。
+- `src/ui/unified-view.ts` 传 `hideEmptyColumns: config?.hideEmptyColumns ?? false`；帮助弹窗新增 `{ key: 'H', desc: 'Hide/show empty columns' }`，默认 footer 不变。
+- 测试：`src/test/board-hide-empty-columns.test.ts`，14 个测试，含配置往返与关闭竞态（84 pass / 4 Windows-PTY skips）。
 
-- `src/ui/board.ts`: new exported pure helper `filterVisibleColumns(data, hideEmptyColumns, isMoving)` — hides empty statuses when on and not moving; all-empty keeps all columns to avoid a blank board; isMoving keeps every column.
-- `renderView` derives `currentStatuses` from the unfiltered projection so hiding cannot narrow move targets; `filterVisibleColumns` applied only to rendered columns.
-- Shift+H toggle (`screen.key(['S-h'])`): optimistic flip → `core.fs.saveConfig`, rollback + transient footer on failure, `pendingSettingWrite` in-flight guard; `closeBoard()` awaits a pending write before teardown on q/C-c, Esc, Tab, and view-switch exits so a toggle followed by quit is not dropped.
-- Piped branch derives `visibleStatuses` once and passes them to both `generateMilestoneGroupedBoard` and `generateKanbanBoardWithMetadata` (including --milestones).
-- `src/ui/unified-view.ts` passes `hideEmptyColumns: config?.hideEmptyColumns ?? false`; help popup gains `{ key: 'H', desc: 'Hide/show empty columns' }` while the default footer stays unchanged.
-- Tests: `src/test/board-hide-empty-columns.test.ts`, 14 tests including config round-trip and shutdown race (84 pass / 4 Windows-PTY skips).
+## 验收标准
 
-## Acceptance Criteria
-
-- Empty columns hidden on/off; move-mode restores all columns; Shift+H persists to hide_empty_columns; piped output filters including --milestones; documented in help popup, footer unchanged; tests cover helper, render, move-mode, round trip.
+- 空列可开/关隐藏；移动模式恢复所有列；Shift+H 持久化到 hide_empty_columns；管道输出含 --milestones 均过滤；帮助弹窗有说明、footer 不变；测试覆盖 helper、render、move-mode、round trip。
 
 ## Related Concepts
 
-- [[concepts/cli-tui]] — board render/persist architecture and footer/help conventions
+- [[concepts/cli-tui]] — 看板渲染/持久化架构与 footer/帮助约定
 
 ## Related Sources
 
-- [[sources/back-594-align-filter-footer-hint]] — same footer's content conventions
+- [[sources/back-594-align-filter-footer-hint]] — 同一 footer 的内容约定

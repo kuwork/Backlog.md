@@ -1,13 +1,12 @@
 ---
 title: 配置文档与决策记录
 labels: [source]
-source_path: backlog/docs/ + backlog/decisions/
 created_date: 2026-05-06 00:00
-updated_date: '2026-09-26 14:00'
+updated_date: 2026-10-09 23:30
+source_path: backlog/docs/ + backlog/decisions/
 ---
 
-
-# 配置与决策摘要
+# 配置文档与决策记录
 
 > **溯源存疑（2026-09-26 lint）**：本页 `source_path` 为 `backlog/docs/ + backlog/decisions/`，是目录表达式而非具体文件路径，无法解析。该页实际聚合了 docs 与 decisions 两类来源，待人工指定具体指向后再改写；此处保留原值，不做猜测。
 
@@ -42,3 +41,8 @@ updated_date: '2026-09-26 14:00'
 
 - **Tailwind CSS v4**：CSS-first 配置，无 `tailwind.config.js`，使用 `@import "tailwindcss"` 和 `@theme`
 - **MCP stdio-only**：移除 HTTP/SSE 传输，仅支持 stdio 传输以确保安全
+
+## Related Sources
+
+- [[sources/doc-002-configuring-vim-neovim-default-editor]] — 默认编辑器（含 Vim/Neovim）配置文档
+- [[sources/cli-instructions-md]] — CLI 配置管理命令参考

@@ -1,8 +1,8 @@
 ---
 title: 平台包 Scope 从主包 package.json 自身推导
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 平台包 Scope 从主包 package.json 自身推导
@@ -27,8 +27,11 @@ scope 不硬编码，从主包自身的 `package.json` `name` 字段推导：sco
 - **硬编码 `@kuwork` scope**：更换发布 scope 时 launcher 静默失效。
 - **修改 Windows 发布脚本修 EACCES**：修的是单个构建产物，launcher 侧无兜底。
 
-## Related
+## Related Concepts
 
-- [[sources/back-621-launcher-scoped-package-resolution]]
-- [[concepts/cli-entry]]
-- [[concepts/ci-platform-contracts]]
+- [[concepts/cli-entry]] — CLI 入口与 launcher 解析
+- [[concepts/ci-platform-contracts]] — CI 平台产物契约
+
+## Related Sources
+
+- [[sources/back-621-launcher-scoped-package-resolution]] — launcher scope 推导实现

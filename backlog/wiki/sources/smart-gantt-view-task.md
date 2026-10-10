@@ -1,12 +1,12 @@
 ---
-title: "BACK-491: Add Smart Gantt View"
+title: BACK-491 - 智能甘特图视图
 labels: [source, feature, web-ui, gantt, visualization]
 created_date: 2026-05-28 00:50
-updated_date: 2026-05-28 00:50
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-491 - Add-smart-Gantt-View.md
 ---
 
-# BACK-491: Add Smart Gantt View
+# BACK-491 - 智能甘特图视图
 
 新增纯 React/CSS 渲染的甘特图时间线视图，基于现有任务日期字段与依赖关系，填补项目时间维度可视化空白。
 
@@ -65,13 +65,13 @@ source_path: backlog/tasks/back-491 - Add-smart-Gantt-View.md
 - 左表"详情"按钮点击打开现有 `TaskDetailsModal`
 - 排序后右侧甘特条按新顺序重新布局
 
-## Out of Scope
+## 范围之外
 
 - 不新增数据库/字段
 - 不支持手动拖拽调整时间（未来迭代）
 - 不计算复杂关键路径（未来迭代）
 
-## 相关概念
+## Related Concepts
 
 - [[concepts/gantt-view]] — 甘特图视图的架构与渲染策略
 - [[concepts/web-ui-features]] — Web UI 整体功能概览

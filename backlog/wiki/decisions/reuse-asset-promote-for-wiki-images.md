@@ -1,24 +1,23 @@
 ---
 title: Wiki 图片 Promote 复用现有 Asset API
-decision_date: 2026-05-24
 labels: [decision]
 created_date: 2026-05-25 00:45
-updated_date: 2026-05-25 00:45
+updated_date: 2026-10-09 23:30
 ---
 
 # Wiki 图片 Promote 复用现有 Asset API
 
-## 决策
-
-在 BACK-488 修复 Wiki 编辑器粘贴图片未迁移的问题时，**复用现有的 `/api/assets/promote` 端点和 `AssetManager.promote()` 方法**，不新建后端逻辑或专用端点。
-
-## 上下文
+## 背景
 
 - 任务和文档编辑器已实现了完整的 temp → paste 图片迁移流程
 - Wiki 编辑器已使用 `PasteAwareMDEditor`，图片粘贴到 `.temp/` 正常工作
 - 缺失的仅是保存时的 promote 步骤
 
-## 评估的替代方案
+## 决定
+
+在 BACK-488 修复 Wiki 编辑器粘贴图片未迁移的问题时，**复用现有的 `/api/assets/promote` 端点和 `AssetManager.promote()` 方法**，不新建后端逻辑或专用端点。
+
+## 被否方案
 
 | 方案 | 说明 | 结果 |
 |---|---|---|
@@ -38,5 +37,6 @@ updated_date: 2026-05-25 00:45
 - 保存流程与 `TaskDetailsModal.tsx`、`DocumentationDetail.tsx` 保持一致
 
 ## Related Sources
-- [[sources/wiki-pasted-images-promote-fix]]
-- [[sources/paste-as-markdown-task]]
+
+- [[sources/wiki-pasted-images-promote-fix]] — BACK-488 wiki 粘贴图片 promote 修复
+- [[sources/paste-as-markdown-task]] — 任务/文档编辑器粘贴图片迁移流程

@@ -1,8 +1,8 @@
 ---
 title: Identity Index 改从 cachedTasks 重建
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # Identity Index 改从 cachedTasks 重建
@@ -28,9 +28,12 @@ identity-index 改为从 `cachedTasks` 重建，与真实缓存的任务集保�
 - **保留 stale 重建并只改测试**：索引会继续返回过期身份。
 - **放宽 upsert 门槛让测试绕过 gating**：削弱了 publication 的正确性保障。
 
-## Related
+## Related Concepts
 
-- [[sources/back-612-content-store-test-stabilization]]
-- [[sources/back-602-incremental-cross-branch-task-loading]]
-- [[concepts/task-identity]]
-- [[concepts/browser-loading]]
+- [[concepts/task-identity]] — 任务身份索引与解析机制
+- [[concepts/browser-loading]] — 浏览器侧任务加载与发布状态
+
+## Related Sources
+
+- [[sources/back-612-content-store-test-stabilization]] — 暴露 stale 索引重建 bug 的测试稳定化任务
+- [[sources/back-602-incremental-cross-branch-task-loading]] — 引入 publication gating 的跨分支任务加载
