@@ -1,49 +1,39 @@
 ---
-title: BACK-662 Add completed-corpus option to queryTasks and SearchService
-created_date: '2026-09-26 14:30'
-updated_date: '2026-10-03 01:14'
-labels:
-  - source
-  - core
-  - cli
-  - mcp
-  - web-ui
-  - completed-corpus
+title: BACK-662 - queryTasks 与 SearchService 接入 completed 语料
+labels: [source, core, cli, mcp, web-ui, completed-corpus]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-662 - Add-completed-corpus-option-to-queryTasks-and-SearchService.md
 ---
 
-# BACK-662 Add completed-corpus option to queryTasks and SearchService
+# BACK-662 - queryTasks 与 SearchService 接入 completed 语料
 
-`queryTasks` and the SearchService corpus excluded `backlog/completed/` tasks, so CLI search, MCP list/search, and web search all missed completed work while single-task reads reached it. This task adds an opt-in `includeCompleted` flag that widens the task source corpus only — filtering, ranking, formatting, and limits run through the exact same pipeline, and default behaviour is unchanged everywhere.
+`queryTasks` 与 SearchService 语料排除了 `backlog/completed/` 任务，因此 CLI 搜索、MCP list/search 和 Web 搜索都漏掉了已完成工作，而单任务读取能到达。本任务增加一个可选的 `includeCompleted` 标志，仅扩大任务来源语料——过滤、排序、格式化与限制都走完全相同的管道，且所有默认行为不变。
 
-## Summary
+- `SearchOptions.includeCompleted`（types）→ `ContentStore.getTasks(filter, options)` 在设置时从 `taskIdentityIndex.getTasks(true)` 取数（索引已打上 `source: "completed"` 标签），并有手动合并回退；`TaskQueryOptions.includeCompleted` 贯穿 Core 的跨分支与本地路径，按规范 ID 去重、活跃优先
+- `SearchService`：`TaskSearchEntity` 增加 `isCompleted`；`applySnapshot` 把 `ContentSnapshot.taskCorpus` 的已完成条目与活跃任务一起索引；`search()`/`collectWithoutQuery` 除非显式加入，否则在 limit 检查之前跳过已完成实体，默认输出逐字节一致
+- 消费方：CLI `task list --completed` 与 `search --completed`；MCP `list_tasks`/`search_tasks` 布尔 `completed` 参数并更新 schema 描述；`/api/search?completed=true` 透传
+- 行为变化：MCP `task_search` 以前总是用已完成任务扩大语料；现在默认只读活跃任务，除非传 `completed: true`，与其他所有面一致
+- 契约：`TaskSummaryJson` 增加可空 `source` 字段（仅活跃读取为 `null`，扩大行上为 `"completed"`），消费方可据此路由或差异化渲染已完成结果
+- 范围扩展（用户指令）：Web 搜索对话框增加 completed 语料开关，发送 `completed=true`；已完成行带 Completed 徽标，点击通过 `preloadedTask` 导航负载打开任务模态框；徽标打磨复用了本地化的优先级/决策状态标签而非原始枚举值
+- 指南仅用过滤场景示例更新（verify-guide-examples 通过）；实测探针：默认 349 任务 vs 带标志 653，已完成行有标签；在 SearchService 与 CLI 两层均回退验证为红
 
-- `SearchOptions.includeCompleted` (types) → `ContentStore.getTasks(filter, options)` sources from `taskIdentityIndex.getTasks(true)` when set (the index already tags `source: "completed"`), with a manual merge fallback; `TaskQueryOptions.includeCompleted` threads through Core's cross-branch and local paths with canonical-id dedupe, active wins
-- `SearchService`: `TaskSearchEntity` gains `isCompleted`; `applySnapshot` indexes `ContentSnapshot.taskCorpus` completed entries alongside active tasks; `search()`/`collectWithoutQuery` skip completed entities unless opted in, before the limit check so default output stays byte-identical
-- Consumers: CLI `task list --completed` and `search --completed`; MCP `list_tasks`/`search_tasks` boolean `completed` parameter with schema-description updates; `/api/search?completed=true` passthrough
-- Behaviour change: MCP `task_search` previously ALWAYS widened the corpus with completed tasks; it now reads active-only unless `completed: true` is passed, aligning with every other surface
-- Contract: `TaskSummaryJson` gains a nullable `source` field (`null` on active-only reads, `"completed"` on widened rows) so consumers can route or render completed results differently
-- Scope extension (user directive): the web search dialog gained a completed-corpus toggle sending `completed=true`, completed rows carry a Completed badge, and clicking one opens the task modal via a `preloadedTask` navigation payload; badge polish reused localized priority/decision-status labels instead of raw enum values
-- Guidelines updated with filtered-scenario examples only (verify-guide-examples passes); live probe: default 349 tasks vs 653 with the flag, completed rows tagged; revert-verified red at both SearchService and CLI layers
+## 验收标准
 
-## Acceptance Criteria
-
-- `queryTasks` and SearchService accept an opt-in option (default off) merging completed tasks; default calls return exactly the active-only corpus
-- CLI `--completed` and MCP `completed` parameters include completed tasks; schema descriptions document them
-- Completed tasks are distinguishable in merged results (`source: "completed"`)
-- `/api/search` accepts `completed=true`; the web board composition is unchanged and the search dialog sends the parameter only when the toggle is on
-- Guide examples land on filtered scenarios, never a bare list-all
+- `queryTasks` 与 SearchService 接受默认关闭的可选选项合并已完成任务；默认调用返回完全相同的仅活跃语料
+- CLI `--completed` 与 MCP `completed` 参数包含已完成任务；schema 描述有文档
+- 合并结果中可区分已完成任务（`source: "completed"`）
+- `/api/search` 接受 `completed=true`；Web 看板组合不变，搜索对话框仅在开关打开时发送该参数
+- 指南示例落在过滤场景，绝不出现裸露的 list-all
 
 ## Related Concepts
-
-- [[concepts/search-sequences]] — SearchService corpus and ranking the flag widens
-- [[concepts/json-output]] — `TaskSummaryJson` gained the nullable `source` field
-- [[concepts/mcp-server]] — MCP contract gained the `completed` parameter
-- [[concepts/task-lifecycle]] — completed archive as a queryable corpus
-- [[concepts/statistics-corpus-scope]] — the completed-corpus opt-in as the scope parameter for statistics metrics
+- [[concepts/search-sequences]] — 被该标志扩大的 SearchService 语料与排序
+- [[concepts/json-output]] — `TaskSummaryJson` 增加可空 `source` 字段
+- [[concepts/mcp-server]] — MCP 契约增加 `completed` 参数
+- [[concepts/task-lifecycle]] — 已完成归档作为可查询语料
+- [[concepts/statistics-corpus-scope]] — completed 语料可选参数作为统计指标的 scope 参数
 
 ## Related Sources
-
-- [[sources/back-663-completed-popup-read-only]] — renders the completed records this task surfaces
-- [[sources/back-664-dependency-input-completed-predecessors]] — reuses the `/api/search?completed=true` flag for dependency suggestions
-- [[sources/back-567-cross-branch-task-identity]] — identity-index corpus machinery the merge builds on
+- [[sources/back-663-completed-popup-read-only]] — 渲染本任务浮出的已完成记录
+- [[sources/back-664-dependency-input-completed-predecessors]] — 为依赖建议复用 `/api/search?completed=true` 标志
+- [[sources/back-567-cross-branch-task-identity]] — 合并所基于的身份索引语料机制

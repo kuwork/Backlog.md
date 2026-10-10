@@ -1,20 +1,24 @@
 ---
-title: BACK-490 CLI overview 命令（项目级统计）
+title: BACK-490 - CLI overview 命令
 labels: [source, feature, cli, statistics, health]
-source_path: backlog/tasks/back-490 - Add-CLI-overview-command-for-project-level-task-statistics.md
 created_date: 2026-05-26 23:42
-updated_date: '2026-10-03 01:14'
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-490 - Add-CLI-overview-command-for-project-level-task-statistics.md
 ---
 
-# BACK-490 CLI overview 命令（项目级统计）
+# BACK-490 - CLI overview 命令
 
 **状态**: Done | **标签**: feature, cli | **负责人**: @kimi | **依赖**: BACK-489
+
+本任务已完成：为现有 `backlog overview` CLI 命令新增 `--plain` 纯文本输出模式，使用户无需启动交互式 TUI 即可快速获取项目级任务统计；同时把 TUI 重写为 ANSI 直接终端输出，并修复阻塞任务检测 bug。
 
 ## 目标
 
 增强现有 `backlog overview` CLI 命令，添加 `--plain` 纯文本输出模式，使用户无需启动交互式 TUI 即可快速获取项目级任务统计。
 
-## 输出维度
+## 实现要点
+
+### 输出维度
 
 - 总任务数、完成百分比、草稿数
 - 按状态分布 + 百分比
@@ -22,14 +26,14 @@ updated_date: '2026-10-03 01:14'
 - 最近活动：最近 7 天创建和更新的任务列表
 - 项目健康度：平均任务年龄、临期 / 逾期 / 停滞 / 阻塞任务列表
 
-## 两种输出模式
+### 两种输出模式
 
 | 模式 | 命令 | 特性 |
 |---|---|---|
 | 交互式 TUI | `backlog overview` | ANSI 彩色直接终端输出，单列垂直布局，终端原生滚动 |
 | 纯文本 | `backlog overview --plain` | 无 ANSI 颜色，适合管道处理；分隔线长度匹配标题长度 |
 
-## 变更摘要
+### 变更摘要
 
 | 文件 | 变更 |
 |---|---|
@@ -39,13 +43,13 @@ updated_date: '2026-10-03 01:14'
 | `src/core/statistics.ts` | 修复阻塞任务检测 bug：依赖 ID 大小写敏感比较（`task-1` vs `TASK-1`）→ 改用 `taskIdsEqual()`；`recentlyUpdated` 回退到 `createdDate` |
 | `src/test/stats-command.test.ts` | `overview --plain` 集成测试（含 ANSI 转义码排除验证） |
 
-## 设计决策
+### 设计决策
 
 - **移除 `--json`**：`TaskStatistics` 原始输出包含完整 Task 对象，对 CLI 过于冗长；plain + TUI 已覆盖用户需求。
 - **TUI 直接 ANSI 输出**：避免 blessed 盒子在 Windows 和 VS Code 集成终端中的滚动/resize bug。
 - **纯 read-only**：无数据模型变更，复用 `core.loadAllTasksForStatistics()` 与 `getTaskStatistics()`。
 
-## 输出结构（plain）
+### 输出结构（plain）
 
 ```
 Project Name - Project Overview

@@ -1,18 +1,18 @@
 ---
-title: BACK-521.7 Milestone CLI parity with MCP operations
+title: BACK-521.7 - 里程碑 CLI 与 MCP 操作对齐
 labels: [source, cli, milestones, mcp]
+created_date: 2026-06-13 21:12
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-521.7 - Milestone-CLI-parity-with-MCP-operations.md
-created_date: '2026-06-13 21:12'
-updated_date: '2026-07-14 11:20'
 ---
 
-# BACK-521.7 Milestone CLI parity with MCP operations
+# BACK-521.7 - 里程碑 CLI 与 MCP 操作对齐
 
 **状态**: Done | **负责人**: @gpt-5.5-xhigh | **优先级**: high | **父任务**: [[sources/back-521|BACK-521]]
 
 在 BACK-401 基础上，为里程碑添加非交互式 CLI 命令（add、edit、remove），使 CLI 用户和代理能执行与 MCP 相同的里程碑管理操作。
 
-## Acceptance Criteria
+## 验收标准
 
 - `backlog milestone add <name>` 创建里程碑文件，可选 description，与 MCP `milestone_add` 一致地验证重复。
 - `backlog milestone remove <name>` 支持 clear、keep、reassign 任务处理模式，包括验证必需的 reassign 目标。
@@ -44,6 +44,6 @@ updated_date: '2026-07-14 11:20'
 
 ## Related Sources
 
-- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
+- [[sources/back-521]] — BACK-521 CLI 优先的代理工作流重构
 - [[sources/milestone-actual-dates-task]] — BACK-493 里程碑 actualStart/actualEnd 支持
-- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-521.14]] — BACK-521.14 补充 CLI/MCP 指令指南缺失的代理指导

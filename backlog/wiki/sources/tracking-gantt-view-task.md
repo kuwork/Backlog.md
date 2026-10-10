@@ -1,12 +1,12 @@
 ---
-title: BACK-495 跟踪甘特图（计划 vs 实际对比）
-source_path: backlog/tasks/back-495 - Implement-tracking-Gantt-view-with-plan-vs-actual-comparison.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-495 - 跟踪甘特图（计划 vs 实际对比）
 labels: [source, feature, web-ui, gantt, visualization, tracking]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-495 - Implement-tracking-Gantt-view-with-plan-vs-actual-comparison.md
 ---
 
-# BACK-495 跟踪甘特图（计划 vs 实际对比）
+# BACK-495 - 跟踪甘特图（计划 vs 实际对比）
 
 在 Web UI 中新增**跟踪甘特图**视图，在同一行上同时展示计划时间范围（斜线边框）和实际任务进度（实心色条），实现视觉偏差追踪。
 

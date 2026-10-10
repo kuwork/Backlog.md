@@ -1,12 +1,12 @@
 ---
-title: BACK-509 稳定任务模态框 URL 与钻取支持
+title: BACK-509 - 稳定任务模态框 URL 与钻取支持
 labels: [source, feature, web-ui, routing, modal]
-created_date: '2026-06-05 15:19'
-updated_date: '2026-06-05 15:19'
+created_date: 2026-06-05 15:19
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-509 - Add-stable-task-modal-URLs-with-drill-down-support.md
 ---
 
-# BACK-509 稳定任务模态框 URL 与钻取支持
+# BACK-509 - 稳定任务模态框 URL 与钻取支持
 
 为 Web UI 任务详情模态框引入稳定的 `/task/:id` URL 路由，支持从任意视图打开、背景页面保持、钻取导航与分享。
 

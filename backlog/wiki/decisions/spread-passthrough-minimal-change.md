@@ -1,8 +1,8 @@
 ---
 title: 新字段随 Spread 透传加集中式实质变更投影
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 新字段随 Spread 透传加集中式实质变更投影
@@ -28,9 +28,12 @@ BACK-619 例外：`fs.updateMilestone` / `createMilestone` 的位置参数重构
 - **逐函数加位置参数**：BACK-618 已证明其脆弱——每次加字段都是全 caller 的连锁修改。
 - **由 caller 各自刷新 updated_date**：分散且易漏。
 
-## Related
+## Related Concepts
 
-- [[sources/back-618-milestone-created-updated-dates]]
-- [[sources/back-619-milestone-documentation-field]]
-- [[concepts/milestones]]
-- [[concepts/core-architecture]]
+- [[concepts/milestones]] — 里程碑模型与字段读写链路
+- [[concepts/core-architecture]] — 核心架构与存储层约定
+
+## Related Sources
+
+- [[sources/back-618-milestone-created-updated-dates]] — milestone 创建/更新时间字段的落地
+- [[sources/back-619-milestone-documentation-field]] — milestone 文档字段的落地

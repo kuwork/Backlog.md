@@ -2,7 +2,7 @@
 title: 项目健康度指标
 labels: [concept, statistics, health, web-ui, cli]
 created_date: 2026-05-26 23:42
-updated_date: 2026-05-26 23:42
+updated_date: 2026-10-09 23:30
 ---
 
 # 项目健康度指标

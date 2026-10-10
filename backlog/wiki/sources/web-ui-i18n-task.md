@@ -1,12 +1,12 @@
 ---
-title: BACK-478 Web UI i18n 支持
+title: BACK-478 - Web UI i18n 支持
 labels: [source]
-source_path: backlog/tasks/back-478 - Web-UI-i18n-support.md
 created_date: 2026-05-17 02:20
-updated_date: 2026-05-17 02:20
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-478 - Web-UI-i18n-support.md
 ---
 
-# BACK-478 Web UI i18n 支持
+# BACK-478 - Web UI i18n 支持
 
 **状态**: Done | **标签**: feature, web-ui, i18n | **优先级**: medium
 

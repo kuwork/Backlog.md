@@ -1,44 +1,40 @@
 ---
-title: BACK-703 Incremental rebuild and hot-update sync (Graph Service)
-created_date: '2026-09-26 14:14'
-updated_date: '2026-10-03 01:07'
-labels:
-  - source
-  - graph
-  - kuzu
-  - web-ui
+title: BACK-703 - 增量重建与热更新同步（Graph Service）
+labels: [source, graph, kuzu, web-ui]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-703 - Incremental-rebuild-and-hot-update-sync-core-notify-hook-watcher-Graph-Service.md
 ---
 
-# BACK-703 Incremental rebuild and hot-update sync (Graph Service)
+# BACK-703 - 增量重建与热更新同步（Graph Service）
 
-Phase 1 sync engine from doc-014 on top of BACK-702: keep the graph live as the corpus changes. It adds an incremental rebuild engine, an injectable core notify hook, a debounced hot-update pipeline, and an in-process Graph Service serving `/api/graph` to the Web UI.
+doc-014 在 BACK-702 之上的第 1 阶段同步引擎：语料变化时保持图谱实时。它新增增量重建引擎、可注入的核心 notify 钩子、带去抖的热更新管道，以及向 Web UI 提供 `/api/graph` 的进程内 Graph Service。
 
-## Summary
+## 实现要点
 
-- Incremental engine (`src/graph/incremental.ts`): `computeChangeSet` diffs per-file hash caches; `applyChangeSet` splits affected records into same-id in-place updates (`updateNodes` preserves edges) vs delete+insert (demote/promote), drops stale nodes by cached filePath, then rebuilds exactly the edges touching affected ids; `RecordCache` means untouched files are never re-read
-- `GraphStore` grew `updateNodes`, `deleteNodesByFilePath`, `deleteEdgesTouching`, `getAllNodes`/`getAllEdges`, implemented for both kuzu and memory backends
-- Core notify hook: public injectable `FileSystem.onFilesChanged` (null = no-op) emitted at every mutation-layer file exit — saveTask, drafts, archive/complete renames, promote/demote unlinks, milestone writes; batch operations emit per write and the consumer dedupes, so CLI/TUI/Web/MCP needed zero changes
-- GraphService: `graph.kuzu.lock` O_EXCL single-holder lock with stale-pid takeover; notify() + `node:fs` watch on the four whitelisted dirs converge on one pending Set with 150ms debounce and serialized sync; 5-minute stat-scan reconciliation as the third consistency layer
-- Server: eager fire-and-forget start on boot (lock loss never blocks), `GET /api/graph` returns `{status, backend, nodes, edges, reports, nodeCount}` with `building` during first import and 503 when another process holds the lock; updates pushed over the existing WebSocket channel (`graph-updated`), not SSE
-- Validation (`src/graph/validation.ts`): millisecond count checks after cold start; lazy DFS cycle detection off the critical path; `isReady`/`isBlocked` delegated to `readiness.ts`, never re-implemented in Cypher
-- Tests: 11 new in `graph-sync.test.ts` plus a real-repo Node+kuzu E2E (744 nodes / 125 edges)
-- Task closed Done (actual 2026-09-24 07:43→08:40, milestone m-9, dependency BACK-702); updates reach the Web UI over the existing WebSocket channel (`graph-updated`) rather than the SSE originally sketched in doc-014
+- 增量引擎（`src/graph/incremental.ts`）：`computeChangeSet` 比对逐文件哈希缓存；`applyChangeSet` 把受影响记录分为同 id 原地更新（`updateNodes` 保留边）与删除+插入（demote/promote），按缓存的 filePath 清除过时节点，然后只重建触及受影响 id 的边；`RecordCache` 保证未触碰的文件绝不重读
+- `GraphStore` 新增 `updateNodes`、`deleteNodesByFilePath`、`deleteEdgesTouching`、`getAllNodes`/`getAllEdges`，kuzu 与 memory 双后端均实现
+- 核心 notify 钩子：公开可注入的 `FileSystem.onFilesChanged`（null = no-op），在每个变更层文件出口发出——saveTask、drafts、archive/complete 重命名、promote/demote 解链、milestone 写入；批量操作按每次写入发出、由消费方去重，因此 CLI/TUI/Web/MCP 零改动
+- GraphService：`graph.kuzu.lock` O_EXCL 单持有者锁，带过期 pid 接管；notify() + `node:fs` 对四个白名单目录的监视收敛到同一个 pending Set，150 ms 去抖并串行化同步；5 分钟一次的 stat 扫描对账作为第三层一致性保障
+- 服务端：启动时急切 fire-and-forget（锁丢失绝不阻塞）；`GET /api/graph` 在首次导入期间返回 `building`、另一进程持有锁时返回 503，响应体为 `{status, backend, nodes, edges, reports, nodeCount}`；更新经由既有 WebSocket 通道推送（`graph-updated`），不用 SSE
+- 校验（`src/graph/validation.ts`）：冷启动后毫秒级计数检查；惰性 DFS 环检测移出关键路径；`isReady`/`isBlocked` 委托给 `readiness.ts`，绝不在 Cypher 里重新实现
+- 测试：`graph-sync.test.ts` 新增 11 个，外加真实仓库 Node+kuzu E2E（744 节点 / 125 边）
+- 任务已关闭为 Done（实际 2026-09-24 07:43→08:40，milestone m-9，依赖 BACK-702）；更新经由既有 WebSocket 通道（`graph-updated`）到达 Web UI，而非 doc-014 最初草拟的 SSE
 
-## Acceptance Criteria
+## 验收标准
 
-- Cache-diff change sets, batched inserts, edges built after nodes; same-id moves preserve edges while demote/promote rebuild under the new id
-- Injectable no-op notify hook in the core mutation layer reporting every changed path
-- Single dedup + debounce + lock pipeline; `graphChanged` broadcast after each sync
-- Single-holder lock, in-process hosting, `/api/graph` payload with building/503 semantics
-- Fast count validation, lazy cycles, readiness.ts stays the single readiness source
+- 缓存 diff 变更集、批量插入、节点就位后建边；同 id 移动保留边，demote/promote 在新 id 下重建
+- 核心变更层的可注入 no-op notify 钩子报告每个变更路径
+- 单一去重 + 去抖 + 锁管道；每次同步后广播 `graphChanged`
+- 单持有者锁、进程内托管、带 building/503 语义的 `/api/graph` 响应体
+- 快速计数校验、惰性环检测、readiness.ts 保持为唯一就绪状态来源
 
 ## Related Concepts
 
-- [[concepts/web-server]] — hosts the in-process Graph Service and `/api/graph`
-- [[concepts/task-lifecycle]] — mutations (complete/archive/demote/promote) that drive the notify hook
+- [[concepts/web-server]] — 托管进程内 Graph Service 与 `/api/graph`
+- [[concepts/task-lifecycle]] — 驱动 notify 钩子的变更（complete/archive/demote/promote）
 
 ## Related Sources
 
-- [[sources/back-702-kuzu-graph-foundation]] — schema, fingerprint and store this task syncs incrementally (same batch)
-- [[sources/back-704-graph-view-web-ui]] — the visualization page consuming `/api/graph` (same batch)
+- [[sources/back-702-kuzu-graph-foundation]] — 本任务增量同步的 schema、指纹与 store（同一批）
+- [[sources/back-704-graph-view-web-ui]] — 消费 `/api/graph` 的可视化页面（同一批）

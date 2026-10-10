@@ -1,12 +1,8 @@
 ---
 title: Gantt 甘特图视图
+labels: [concept, web-ui, gantt, visualization]
 created_date: 2026-05-28 00:50
-updated_date: 2026-05-29 22:36
-labels:
-  - concept
-  - web-ui
-  - gantt
-  - visualization
+updated_date: 2026-10-09 23:30
 ---
 
 # Gantt 甘特图视图

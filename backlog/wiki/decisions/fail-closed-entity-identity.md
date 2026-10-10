@@ -1,8 +1,8 @@
 ---
 title: 文档/决策身份歧义立即 Fail-Closed
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 文档/决策身份歧义立即 Fail-Closed
@@ -32,9 +32,12 @@ BACK-596/598 处理文档/决策实体的身份歧义：当裸 ID 对应多个�
 
 - **歧义后退回路径/slug 趟次解析**：掩盖了 ID 唯一性被破坏的事实，且可能静默命中错误实体。
 
-## Related
+## Related Concepts
 
-- [[sources/back-596-fail-closed-document-decision-identity]]
-- [[sources/back-598-doc-view-disambiguate-path-title-slug]]
-- [[concepts/task-identity]]
-- [[concepts/mcp-workflow]]
+- [[concepts/task-identity]] — 任务身份概念，ID → 实体映射可信度的核心
+- [[concepts/mcp-workflow]] — MCP 工作流概念，`AMBIGUOUS_ID` 错误码所在面
+
+## Related Sources
+
+- [[sources/back-596-fail-closed-document-decision-identity]] — 文档/决策身份歧义 fail-closed 的落地
+- [[sources/back-598-doc-view-disambiguate-path-title-slug]] — doc view 路径/标题/slug 消歧的落地

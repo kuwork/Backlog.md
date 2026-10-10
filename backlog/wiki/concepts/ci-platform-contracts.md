@@ -1,8 +1,8 @@
 ---
 title: CI 平台契约测试策略
-created_date: '2026-08-17 23:00'
-updated_date: '2026-09-08 17:00'
 labels: [concept, ci, testing]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # CI 平台契约测试策略

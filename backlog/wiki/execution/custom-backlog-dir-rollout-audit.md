@@ -1,8 +1,8 @@
 ---
 title: 配置目录（backlog-dir）推广时的硬编码路径审计模式
 labels: [execution, core, config, testing]
-created_date: '2026-10-09 22:00'
-updated_date: '2026-10-09 22:00'
+created_date: 2026-10-09 22:00
+updated_date: 2026-10-09 23:30
 extracted_from:
   - BACK-757
   - BACK-758

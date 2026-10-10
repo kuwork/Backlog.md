@@ -1,8 +1,8 @@
 ---
 title: 空 Setter 值拒绝而非按 emptyClears 清除
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 空 Setter 值拒绝而非按 emptyClears 清除
@@ -25,10 +25,13 @@ fork 采用 set / add / remove / clear 四语义：空 setter 值直接报错，
 
 - **沿用上游 emptyClears**：与 fork 既有的列表 setter 语义不一致，且掩盖脚本中的空值拼接错误。
 
-## Related
+## Related Concepts
 
-- [[sources/back-577-clear-deps-refs-docs-empty-setter-rejection]]
-- [[sources/back-578-task-edit-list-set-add-remove-flags]]
-- [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]]
-- [[concepts/task-lifecycle]]
-- [[concepts/upstream-migration]]
+- [[concepts/task-lifecycle]] — 列表 setter 语义所属的任务生命周期概念域
+- [[concepts/upstream-migration]] — 与上游 c9bbdbd emptyClears 语义分叉的迁移背景
+
+## Related Sources
+
+- [[sources/back-577-clear-deps-refs-docs-empty-setter-rejection]] — --ref/--doc/--dep 空值直接报错的核心任务
+- [[sources/back-578-task-edit-list-set-add-remove-flags]] — set/add/remove/clear 四语义的标志设计
+- [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] — 上游 emptyClears 变更的迁移差异分类
