@@ -1,12 +1,12 @@
 ---
-title: BACK-510 修复 Wiki 页面切换不退出编辑模式
+title: BACK-510 - 修复 Wiki 页面切换不退出编辑模式
 labels: [source, bug, web-ui, wiki]
-created_date: '2026-06-05 15:19'
-updated_date: '2026-06-05 15:19'
+created_date: 2026-06-05 15:19
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-510 - Fix-wiki-page-switch-not-exiting-edit-mode.md
 ---
 
-# BACK-510 修复 Wiki 页面切换不退出编辑模式
+# BACK-510 - 修复 Wiki 页面切换不退出编辑模式
 
 修复用户在 Wiki 页面处于编辑模式时，点击侧边栏切换到另一 Wiki 页面后未正确退出编辑模式的问题。
 

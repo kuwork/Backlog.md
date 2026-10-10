@@ -1,23 +1,24 @@
 ---
 title: Wikilink 媒体渲染模式
-labels:
-  - execution
-  - wiki
-  - wikilink
-  - media
-  - frontend
+labels: [execution, wiki, wikilink, media, frontend]
+created_date: 2026-06-27 21:00
+updated_date: 2026-10-09 23:30
 extracted_from:
   - BACK-524
   - BACK-523
-created_date: '2026-06-27 21:00'
-updated_date: '2026-06-27 21:00'
 ---
 
 # Wikilink 媒体渲染模式
 
 在 Web UI 中渲染 Obsidian 风格的媒体 wikilink（`![[path|alt|WxH]]`）时遵循以下模式。
 
-## 步骤
+## 适用场景
+
+- 新增媒体类型：扩展 `getMediaType` 的扩展名列表与对应 MIME 类型
+- 新增尺寸语法：在 `parseDimensions` 中增加分支
+- 其他需要内嵌媒体的 Markdown 视图：通过 `MermaidMarkdown` 的组件注册机制复用
+
+## 标准步骤
 
 1. **解析阶段**
    - 使用正则匹配 `![[...]]` 语法
@@ -43,16 +44,10 @@ updated_date: '2026-06-27 21:00'
    - 在 `BacklogServer.handleAssetRequest` 中补充 video/audio MIME 类型映射
    - 确保静态资源能正确返回 `Content-Type`
 
-## 复用场景
-
-- 新增媒体类型：扩展 `getMediaType` 的扩展名列表与对应 MIME 类型
-- 新增尺寸语法：在 `parseDimensions` 中增加分支
-- 其他需要内嵌媒体的 Markdown 视图：通过 `MermaidMarkdown` 的组件注册机制复用
+## Related Concepts
+- [[concepts/wikilink]] — Wiki 交叉引用语法
+- [[concepts/asset-management]] — 资源管理与静态资源服务
 
 ## Related Sources
 - [[sources/back-524-add-media-wikilink-support-for-images-video-and-audio]] — BACK-524 实现任务
 - [[sources/back-523-wiki-wikilinks-alias-support-with-markdown-html-labels-and-markdown-it-attrs]] — BACK-523 别名与属性块
-
-## Related Concepts
-- [[concepts/wikilink]] — Wiki 交叉引用语法
-- [[concepts/asset-management]] — 资源管理与静态资源服务

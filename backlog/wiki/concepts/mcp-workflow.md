@@ -1,8 +1,8 @@
 ---
 title: MCP 工作流与 AI 集成
 labels: [concept]
-created_date: '2026-05-10 00:00'
-updated_date: '2026-07-14 11:20'
+created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # MCP 工作流与 AI 集成

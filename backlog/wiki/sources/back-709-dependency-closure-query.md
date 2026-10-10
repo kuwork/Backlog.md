@@ -1,44 +1,40 @@
 ---
-title: BACK-709 Answer dependency closure and hop counts from the task corpus
-created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
-labels:
-  - source
-  - dependencies
-  - web-ui
-  - api
+title: BACK-709 - 任务语料的依赖闭包与跳数查询
+labels: [source, dependencies, web-ui, api]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-709 - Answer-dependency-closure-and-hop-counts-from-the-task-corpus.md
 ---
 
-# BACK-709 Answer dependency closure and hop counts from the task corpus
+# BACK-709 - 任务语料的依赖闭包与跳数查询
 
-One query answers the three dependency questions no surface could: what a task transitively depends on and at what distance, what transitively depends on it, and which unfinished task is the real root blocker — plus the dangling/ambiguous references and cycles a traversal must make visible. Exposed as `GET /api/task/:id/dependencies` and rendered in the task details modal.
+一个查询回答任何界面都答不了的三个依赖问题：一个任务传递依赖什么、距离多远，什么传递依赖它，以及哪个未完成任务是真正的根阻塞——外加遍历必须曝光的悬空/歧义引用与环。以 `GET /api/task/:id/dependencies` 暴露，并在任务详情模态框中渲染。
 
-## Summary
+## 实现要点
 
-- Corpus decision (2026-09-24): answered from the local corpus (tasks + completed), never from the graph service — the default backend is a pure-JS map (kuzu segfaults under Bun), GraphStore has no multi-hop call, and only the web host starts the service; a traversal over records on disk is the only and cheapest path for CLI, TUI, MCP and web alike
-- `src/utils/dependency-closure.ts` extended (not replaced): reverse index `dependentsOf`, `closureFrom` (BFS, one row per task at its shortest hop count, sorted by hops then id), `cycleThrough`; a visited set bounds cyclic corpora and a re-reached subject is reported as a cycle, not an error; unresolved references ride along in the result
-- `DependencyQuery` (`src/utils/dependency-query.ts`) answers `answer()`/`answerBoth()` per request; subject identity resolves through the gate's `matchRecords` rule — the earlier `canonicalTaskId` map lookup read "414" as TASK-414 in a `back`-prefixed project and silently kept the last of two colliding records
-- Corpus rules asserted in tests: completed directory is the completion evidence, milestones excluded, drafts walk one way (may depend on tasks and may be a subject when asked, never returned as a dependency; without the ask flag a draft subject answers `null`, not an empty closure)
-- Endpoint: one request answers both directions with hops, blockers, cycle, unresolved and a corpus summary; 404 unknown subject, 400 malformed maxHops; the PUT handler now attaches machine-readable `code` + `detail` (dependency_cycle / self_dependent / ineligible_target) to gate rejections so clients localize them
-- Modal (landed with BACK-710's commit): fetches once per open, once per settled inline edit (a `finally` tick, never on optimistic state — a refetch at removal time re-reports the just-removed cycle), and on external `tasksVersion` refresh; runtime shape-checked answers render "Waits for" / "Waited on by" rows with hop counts, highlighted root blockers, cycle and unresolved references; a rejected edit rolls the optimistic chip back and shows the localized reason, auto-dismissed after 6s
-- Fork-native work: upstream ships no graph database; the Kuzu graph serves visualization only. Tests: dependency-closure 14, server endpoint 3, modal 6; browser-verified on BACK-495.3 and BACK-218
+- 语料决策（2026-09-24）：从本地语料（tasks + completed）回答，绝不来自 graph service——默认后端是纯 JS map（kuzu 在 Bun 下会 segfault），GraphStore 没有多跳调用，且只有 web 宿主启动该服务；对 CLI、TUI、MCP 和 web 来说，磁盘记录上的遍历是唯一且最便宜的路径
+- `src/utils/dependency-closure.ts` 扩展（而非替换）：反向索引 `dependentsOf`、`closureFrom`（BFS，每个任务一行、取其最短跳数，按跳数再按 id 排序）、`cycleThrough`；visited 集合给环言语料定界，再次到达主体被报告为环而非错误；未解析引用随结果同行返回
+- `DependencyQuery`（`src/utils/dependency-query.ts`）按请求回答 `answer()`/`answerBoth()`；主体标识走门卫的 `matchRecords` 规则解析——早期的 `canonicalTaskId` map 查找会把 `back` 前缀项目中的 "414" 读成 TASK-414，并在两条冲突记录中默默保留后一条
+- 测试中断言的语料规则：completed 目录即完成证据、milestone 排除、draft 单向游走（可依赖任务、被点名时可作主体，但绝不作为依赖返回；无 ask 标志时 draft 主体回答 `null` 而非空闭包）
+- 端点：一个请求回答双向（含跳数）、阻塞者、环、未解析引用与语料摘要；未知主体 404，maxHops 畸形 400；PUT 处理程序现在给门卫拒绝附上机器可读的 `code` + `detail`（dependency_cycle / self_dependent / ineligible_target），客户端可本地化
+- 模态框（随 BACK-710 提交落地）：每次打开拉取一次，每次 settled 的内联编辑拉取一次（`finally` tick，绝不基于乐观状态——移除时刻的重拉会重新报告刚移除的环），外部 `tasksVersion` 刷新时也拉取；答案经运行时形状检查，渲染 "Waits for" / "Waited on by" 行（含跳数）、高亮根阻塞者、环与未解析引用；被拒绝的编辑回滚乐观芯片并显示本地化原因，6 秒后自动消失
+- fork 原生工作：上游不带图数据库；Kuzu 图谱只服务于可视化。测试：dependency-closure 14、服务端端点 3、模态框 6；在 BACK-495.3 和 BACK-218 上浏览器验证
 
-## Acceptance Criteria
+## 验收标准
 
-- Corpus-only answers on every host; drafts never returned as dependencies; one row per task with stable order and shortest hop count; diamonds dedupe
-- Reverse closure and root blockers identifiable; unresolved references surfaced; cyclic corpus terminates and flags the cycle
-- Web surface renders forward/reverse/hops from one request per popup open, no polling
+- 每个宿主都仅从语料回答；draft 绝不作为依赖返回；每个任务一行、顺序稳定、取最短跳数；菱形去重
+- 反向闭包与根阻塞者可识别；未解析引用被露出；环言语料可终止并标记环
+- Web 界面每次弹层打开从一个请求渲染正向/反向/跳数，不轮询
 
 ## Related Concepts
 
-- [[concepts/web-ui-features]] — task modal dependency UX this extends
-- [[concepts/web-server]] — hosts the new endpoint
-- [[concepts/task-lifecycle]] — completed-directory-as-evidence corpus rule
+- [[concepts/web-ui-features]] — 本任务扩展的任务模态框依赖 UX
+- [[concepts/web-server]] — 托管新端点
+- [[concepts/task-lifecycle]] — completed 目录即证据的语料规则
 
 ## Related Sources
 
-- [[sources/back-707-dependency-gate-cycles]] — write gate sharing the traversal and corpus definition (same batch)
-- [[sources/back-708-doctor-dependency-defects]] — doctor report over the same corpus walk (same batch)
-- [[sources/back-710-task-modal-relationship-graph]] — sibling modal surface for dependencies (same batch)
-- [[sources/back-615-dependency-readiness-guidance]] — readiness, whose semantics the blocker identification mirrors
+- [[sources/back-707-dependency-gate-cycles]] — 共享遍历与语料定义的写入门卫（同一批）
+- [[sources/back-708-doctor-dependency-defects]] — 同一语料遍历上的 doctor 报告（同一批）
+- [[sources/back-710-task-modal-relationship-graph]] — 依赖的兄弟模态框界面（同一批）
+- [[sources/back-615-dependency-readiness-guidance]] — 阻塞者识别所镜像的 readiness 语义

@@ -1,36 +1,30 @@
 ---
-title: m-9 Kuzu Task Graph Phase 1
-created_date: '2026-09-26 14:15'
-updated_date: '2026-09-26 14:15'
-labels:
-  - source
-  - milestone
-  - graph
-  - kuzu
+title: m-9 - Kuzu 任务图谱一期里程碑
+labels: [source, milestone, graph, kuzu]
+created_date: 2026-09-26 14:15
+updated_date: 2026-10-09 23:30
 source_path: backlog/milestones/m-9 - kuzu-task-graph-phase-1.md
 ---
 
-# m-9 Kuzu Task Graph Phase 1
+# m-9 - Kuzu 任务图谱一期里程碑
 
-Milestone scoping phase 1 of the Kuzu task-graph design (doc-14 §6), executed 2026-09-24 in a single day (actual_start 07:01 → actual_end 21:44). Its `documentation` field references the design doc by its former `doc-014` filename.
+本里程碑界定 Kuzu 任务图谱设计的一期范围（doc-14 §6），2026-09-24 一天内执行完成（actual_start 07:01 → actual_end 21:44）。其 `documentation` 字段以旧文件名 `doc-014` 引用设计文档。
 
-## Summary
+- 范围：覆盖 `backlog/tasks`、`drafts`、`milestones` 和 `completed`（不含 archive），与 doc-14 一期完全一致
+- 交付物：逐文件指纹冷启动校验 + 增量重建；通过核心 notify 钩子加热更新，`Bun.watch` 回退
+- 部署决定：Graph Service 是 `backlog.kuzu` 的唯一持有者，与 Web UI 同进程部署
+- 设计文档：`backlog/docs/BRDS/doc-014 - Kuzu-任务图谱：冷启动校验与热更新设计.md`（现改名 `doc-14 - …`；数据异常见摄取报告中的说明）
 
-- Scope: cover `backlog/tasks`, `drafts`, `milestones`, and `completed` (archive excluded), exactly matching doc-14 phase 1
-- Deliverables: per-file fingerprint cold-start validation with incremental rebuild; hot update via the core notify hook plus `Bun.watch` fallback
-- Deployment decision: Graph Service is the sole holder of `backlog.kuzu`, deployed in-process with the Web UI
-- Design doc of record: `backlog/docs/BRDS/doc-014 - Kuzu-任务图谱：冷启动校验与热更新设计.md` (now renamed `doc-14 - …`; see data anomaly note in the ingestion report)
+## 验收标准
 
-## Acceptance Criteria
-
-- Not applicable (milestone record); the phase-1 scope bullets above serve as completion definition.
+不适用（里程碑记录）；上述一期范围要点即作为完成定义。
 
 ## Related Concepts
 
-- [[concepts/milestones]] — milestone record whose documentation field points at the governing design doc
-- [[concepts/web-server]] — Graph Service co-hosted in-process with the Web UI
+- [[concepts/milestones]] — documentation 字段指向 governing 设计文档的里程碑记录
+- [[concepts/web-server]] — Graph Service 与 Web UI 同进程共驻
 
 ## Related Sources
 
-- [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] — the design doc this milestone implements (phase 1)
-- [[sources/doc-15-wiki-knowledge-graph-relation-design]] — phase-3 follow-on design
+- [[sources/doc-14-kuzu-task-graph-cold-start-hot-update-design]] — 本里程碑实施的设计文档（一期）
+- [[sources/doc-15-wiki-knowledge-graph-relation-design]] — 三期后续设计

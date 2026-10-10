@@ -1,14 +1,12 @@
 ---
-title: BACK-483 Web UI 侧边栏调整大小与搜索类型下拉
+title: BACK-483 - Web UI 侧边栏调整大小与搜索类型下拉
 labels: [source, web-ui, ux]
 created_date: 2026-05-23 00:40
-updated_date: '2026-09-26 14:00'
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-483 - Web-UI-Sidebar-resize-and-search-type-dropdown.md
 ---
 
-# BACK-483 Web UI 侧边栏调整大小与搜索类型下拉
-
-## 概述
+# BACK-483 - Web UI 侧边栏调整大小与搜索类型下拉
 
 优化 Web UI 三个交互区域：侧边栏支持拖拽调整宽度、搜索栏增加类型下拉筛选、Wiki URL 保持可读性。
 

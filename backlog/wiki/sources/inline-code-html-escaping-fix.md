@@ -1,12 +1,12 @@
 ---
-title: BACK-476 行内代码 HTML 实体转义修复
+title: BACK-476 - 行内代码 HTML 实体转义修复
 labels: [source]
-source_path: backlog/tasks/back-208 - Add-paste-as-markdown-support-in-Web-UI.md
 created_date: 2026-05-13 23:08
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-208 - Add-paste-as-markdown-support-in-Web-UI.md
 ---
 
-
-# BACK-476 行内代码 HTML 实体转义修复
+# BACK-476 - 行内代码 HTML 实体转义修复
 
 **状态**: Done | **标签**: web-ui, bug, wiki, markdown | **优先级**: medium
 
@@ -21,7 +21,7 @@ created_date: 2026-05-13 23:08
 
 影响范围：wiki 页面、任务详情、文档、决策、文件预览等所有使用 `MermaidMarkdown` 的视图。
 
-## 修复
+## 解决方案
 
 更新 `sanitizeMarkdownSource` 以收集**受保护范围**：
 

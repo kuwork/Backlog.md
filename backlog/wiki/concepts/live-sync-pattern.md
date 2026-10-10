@@ -1,11 +1,8 @@
 ---
 title: Web UI 实时同步复用模式
-labels:
-  - concept
-  - web-ui
-  - realtime
-created_date: '2026-10-03 01:13'
-updated_date: '2026-10-03 01:13'
+labels: [concept, web-ui, realtime]
+created_date: 2026-10-03 01:13
+updated_date: 2026-10-09 23:30
 ---
 
 # Web UI 实时同步复用模式

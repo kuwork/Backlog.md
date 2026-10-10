@@ -1,12 +1,12 @@
 ---
-title: doc-5 A 类上游任务迁移分析报告
+title: doc-5 - A 类上游任务迁移分析报告
 labels: [source, doc, migration]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/docs/migration/doc-5 - A类上游任务迁移分析报告.md
 ---
 
-# doc-5 A 类上游任务迁移分析报告
+# doc-5 - A 类上游任务迁移分析报告
 
 对 doc-4 中 A 类（必须合入）各项做逐项迁移深析。
 

@@ -1,8 +1,8 @@
 ---
 title: CLI 指令表面
 labels: [concept, cli, agent-guidance]
-created_date: '2026-07-14 11:20'
-updated_date: '2026-10-09 22:00'
+created_date: 2026-07-14 11:20
+updated_date: 2026-10-09 23:30
 ---
 
 # CLI 指令表面

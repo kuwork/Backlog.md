@@ -1,12 +1,12 @@
 ---
-title: BACK-474 Wiki Install 命令
+title: BACK-474 - Wiki Install 命令
 labels: [source]
-source_path: backlog/tasks/back-474 - Add-wiki-install-command.md
 created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-474 - Add-wiki-install-command.md
 ---
 
-
-# BACK-474 Wiki Install 命令
+# BACK-474 - Wiki Install 命令
 
 **状态**: Done | **标签**: feature, cli, wiki | **优先级**: medium
 
@@ -61,6 +61,10 @@ backlog wiki install <agent>
 
 安装结果包括 skill 名称、描述、触发词（从 SKILL.md YAML frontmatter 提取）。
 
-## 测试
+## 验证
 
 - `src/test/wiki-install.test.ts` — 12 个单元测试，覆盖 resolveAgent、installWikiSkill、dry-run、force overwrite、符号链接处理、结果格式化
+
+## Related Concepts
+
+- [[concepts/embedded-skills]] — 构建时嵌入 skill 到 CLI 二进制以支持离线安装

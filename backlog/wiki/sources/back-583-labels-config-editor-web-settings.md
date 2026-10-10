@@ -1,31 +1,28 @@
 ---
-title: BACK-583 Add labels config editor to web settings
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
-labels:
-  - source
-  - web-ui
-  - cli
+title: BACK-583 - Web 设置 labels 配置编辑器
+labels: [source, web-ui, cli]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-583 - Add-labels-config-editor-to-web-settings.md
 ---
 
-# BACK-583 Add labels config editor to web settings
+# BACK-583 - Web 设置 labels 配置编辑器
 
-The web UI Settings page gained an editor for the `labels` config key (project recommended labels used as autocomplete in Web UI and TUI), following the existing ChipInput pattern used for defaultAssignee and TaskDetailsModal labels.
+Web UI 设置页新增 `labels` 配置键的编辑器（项目推荐标签，用作 Web UI 和 TUI 的自动补全），沿用 defaultAssignee 和 TaskDetailsModal 标签已在用的 ChipInput 模式。
 
-## Summary
+## 实现要点
 
-- Added a labels ChipInput editor in `src/web/components/Settings.tsx` Workflow Settings section, placed between defaultAssignee and defaultEditor.
-- Labels are normalized on save: trimmed, empty values filtered; stays a required `string[]` (not undefined) in BacklogConfig.
-- i18n strings for labels label/description/placeholder added in `src/web/locales/en.ts`, `zh-CN.ts`, `zh-TW.ts`, `ja.ts`.
-- `src/test/server-config-endpoint.test.ts` extended with labels round-trip and clear-via-empty-list tests (20 pass / 0 fail).
+- `src/web/components/Settings.tsx` 的 Workflow Settings 小节新增 labels ChipInput 编辑器，位于 defaultAssignee 和 defaultEditor 之间。
+- 保存时归一化标签：去空白、过滤空值；在 BacklogConfig 中仍是必需的 `string[]`（非 undefined）。
+- label/description/placeholder 的 i18n 字符串加入 `src/web/locales/en.ts`、`zh-CN.ts`、`zh-TW.ts`、`ja.ts`。
+- `src/test/server-config-endpoint.test.ts` 扩展了 labels 往返和经空列表清除的测试（20 pass / 0 fail）。
 
-## Acceptance Criteria
+## 验收标准
 
-- Settings page displays a labels editor populated from config.labels; add/remove via ChipInput; persists via updateConfig and reloads correctly.
-- i18n strings added for all four locales; tests cover the round-trip via /api/config.
+- 设置页显示从 config.labels 填充的 labels 编辑器；经 ChipInput 添加/移除；经 updateConfig 持久化并正确重载。
+- 四个语言环境的 i18n 字符串齐全；测试覆盖经 /api/config 的往返。
 
 ## Related Concepts
 
-- [[concepts/web-ui-features]] — Settings page config editing surface
-- [[concepts/web-ui-i18n]] — four-locale i18n string convention (en/zh-CN/zh-TW/ja)
+- [[concepts/web-ui-features]] — 设置页配置编辑面
+- [[concepts/web-ui-i18n]] — 四语言 i18n 字符串约定（en/zh-CN/zh-TW/ja）

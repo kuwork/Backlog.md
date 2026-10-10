@@ -1,8 +1,8 @@
 ---
 title: 并发任务编辑采用 Fail-Fast 文件锁
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 并发任务编辑采用 Fail-Fast 文件锁
@@ -33,9 +33,12 @@ BACK-571 需要为并发任务编辑建立互斥保护。多条调用路径（CL
 - **只锁写、不重读**：读-改-写之间无刷新，丢失并发的其他编辑。
 - **按 lockfile 路径做进程内注册表键**：lockfile 路径与任务文件路径不一致，导致进程内锁与文件锁脱节。
 
-## Related
+## Related Concepts
 
-- [[sources/back-571-fail-fast-concurrent-task-edits]]
-- [[concepts/task-locking]]
-- [[concepts/task-identity]]
-- [[concepts/core-architecture]]
+- [[concepts/task-locking]] — 任务锁概念，proper-lockfile 封装与进程内注册表
+- [[concepts/task-identity]] — 任务身份概念，锁键与受保护资源一一对应
+- [[concepts/core-architecture]] — 核心架构概念，CLI/Web/MCP/TUI 多入口写入路径
+
+## Related Sources
+
+- [[sources/back-571-fail-fast-concurrent-task-edits]] — 并发任务编辑 fail-fast 文件锁的落地

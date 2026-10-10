@@ -1,11 +1,11 @@
 ---
-title: 隐藏看板列的延迟 Reveal 用 setTimeout(0)
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
+title: 隐藏看板列的 setTimeout(0) 延迟 reveal
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
-# 隐藏看板列的延迟 Reveal 用 setTimeout(0)
+# 隐藏看板列的 setTimeout(0) 延迟 reveal
 
 ## 背景
 
@@ -25,8 +25,11 @@ BACK-573 在 `hideEmptyColumns` 开启时，用户拖拽任务经过隐藏列需
 
 - **同步 isDragging 标志驱动布局变更**：在 dragstart 期间触发 React 重排，Chromium 中止拖拽，拖动手感直接断裂。
 
-## Related
+## Related Concepts
 
-- [[sources/back-573-web-board-dnd-hide-empty-columns]]
-- [[concepts/web-ui-features]]
-- [[concepts/browser-loading]]
+- [[concepts/web-ui-features]] — Web UI 功能
+- [[concepts/browser-loading]] — 浏览器加载
+
+## Related Sources
+
+- [[sources/back-573-web-board-dnd-hide-empty-columns]] — BACK-573 看板拖拽隐藏空列

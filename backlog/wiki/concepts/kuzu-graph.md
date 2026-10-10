@@ -1,8 +1,8 @@
 ---
 title: Kuzu 任务图谱
 labels: [concept, graph, kuzu]
-created_date: '2026-09-26 14:45'
-updated_date: '2026-10-09 22:00'
+created_date: 2026-09-26 14:45
+updated_date: 2026-10-09 23:30
 ---
 
 # Kuzu 任务图谱

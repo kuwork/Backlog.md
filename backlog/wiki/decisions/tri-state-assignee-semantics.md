@@ -1,8 +1,8 @@
 ---
 title: 字段三态语义：缺席 / 显式空列表 / 列表
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 字段三态语义：缺席 / 显式空列表 / 列表
@@ -36,10 +36,13 @@ BACK-579/584/585 统一创建与编辑表面的字段语义。列表类字段（
 - **`-a ""` 作为清空手段**：空字符串语义含混（是没填还是故意清空？），改为报错并指向 `--unassign`。
 - **默认值在 CLI 层应用**：wizard/TUI/Web/MCP 各自需要重复实现，且容易漏。
 
-## Related
+## Related Concepts
 
-- [[sources/back-579-default-assignee]]
-- [[sources/back-584-explicit-unassign-across-surfaces]]
-- [[sources/back-585-multi-assignee-parity-task-create]]
-- [[concepts/task-lifecycle]]
-- [[concepts/core-architecture]]
+- [[concepts/task-lifecycle]] — 任务生命周期
+- [[concepts/core-architecture]] — 核心架构与创建漏斗
+
+## Related Sources
+
+- [[sources/back-579-default-assignee]] — 默认负责人配置的落地
+- [[sources/back-584-explicit-unassign-across-surfaces]] — 跨表面显式清空的落地
+- [[sources/back-585-multi-assignee-parity-task-create]] — task create 多负责人对齐

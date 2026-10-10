@@ -1,45 +1,37 @@
 ---
-title: BACK-667 Add name and ID sort toggles to the web sidebar document tree
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
-  - sidebar
-  - sorting
+title: BACK-667 - 侧边栏文档树名称与 ID 排序开关
+labels: [source, web-ui, sidebar, sorting]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-667 - Add-name-and-ID-sort-toggles-to-the-web-sidebar-document-tree.md
 ---
 
-# BACK-667 Add name and ID sort toggles to the web sidebar document tree
+# BACK-667 - 侧边栏文档树名称与 ID 排序开关
 
-The sidebar documents tree rendered the server's raw filesystem order — filename order on Windows, arbitrary elsewhere — unlike the flat doc lists that sort by title. This task adds `Name` (title) and `ID` sort toggles to the documents section header, styled like the task list header sort buttons.
+侧边栏文档树渲染的是服务端原始文件系统顺序——Windows 上是文件名顺序，其他地方任意——不像按标题排序的平面文档列表。本任务给文档小节头部加 `Name`（标题）和 `ID` 排序开关，样式与任务列表头部排序按钮一致。
 
-## Summary
+- 两个开关位于新建文档下拉左侧，镜像任务列表头部的标签 + `↑/↓` 指示器；标题升序为默认，点击未激活列从升序重启，点击激活列翻转方向
+- `sortDocsTree(nodes, column, direction, docTitles)` 独立排序每个文件夹层级并返回新节点对象（`{ ...node, children: sorted }`）——prop 树永不被改动
+- 文件夹永远在前（它们既无标题也无文档 ID）并按名称跟随当前方向；文件按所选列排序
+- `Name` 比较行打印的标签——来自 memoized `docId → title` 映射的文档标题，回退到无扩展名的文件名——通过 `localeCompare(..., { numeric: true, sensitivity: "base" })`，所以 `doc-4` 排在 `doc-10` 前；同一个 `docsNodeLabel` 辅助函数也喂给行本身，顺序永远与显示一致
+- `ID` 通过 `compareTaskIds` 比较 `node.docId`，标签作决胜；两列在该语料上确实意见不同（标题顺序 vs `doc-4 … doc-13`）
+- 早期一版按文件名列排序，在 `doc-NN - title.md` 式名称上几乎等于 ID 顺序；用户要求改用标题
+- 语言：`sortDocsByName`/`sortDocsById` 与提示进全部四本字典；6 用例 JSDOM 测试的 fixture 标题刻意与文件名无关；zh-CN 下经 CDP 实测验证并带回退探针
 
-- Two toggles sit left of the create-document dropdown, mirroring the task list header's label + `↑/↓` indicator; title ascending is the default, clicking the inactive column restarts ascending, the active one flips direction
-- `sortDocsTree(nodes, column, direction, docTitles)` sorts every folder level independently and returns new node objects (`{ ...node, children: sorted }`) — the prop tree is never mutated
-- Folders always lead (they have neither title nor document ID) and follow the active direction by name; files follow ordered by the selected column
-- `Name` compares the label the row prints — document title from a memoized `docId → title` map, falling back to the file name without extension — via `localeCompare(..., { numeric: true, sensitivity: "base" })`, so `doc-4` precedes `doc-10`; the same `docsNodeLabel` helper feeds the row itself so order always matches display
-- `ID` compares `node.docId` through `compareTaskIds` with the label as tiebreak; the two columns genuinely disagree on this corpus (title order vs `doc-4 … doc-13`)
-- An earlier pass sorted the name column by file name, which on `doc-NN - title.md` names is nearly the ID order; the user asked for the title instead
-- Locales: `sortDocsByName`/`sortDocsById` + hints in all four dictionaries; 6-case JSDOM test with fixture titles deliberately unrelated to file names; live-verified in zh-CN over CDP with revert probes
+## 验收标准
 
-## Acceptance Criteria
-
-- Both sort buttons render left of the create button with the up/down indicator, title column active ascending by default
-- Title sort puts folders first then files by title, both direction-aware, using natural numeric order
-- ID sort orders files numerically by document ID while folders follow by name; every folder level sorted, prop tree untouched
-- Inactive-column click switches ascending; active-column click flips
-- All four locales carry labels and tooltips; tests distinguish the two columns with unrelated fixture titles
+- 两个排序按钮渲染在新建按钮左侧并带升降指示器，标题列默认激活升序
+- 标题排序先文件夹后文件按标题排，两个方向都可用，自然数字序
+- ID 排序按文档 ID 数字序排文件，文件夹按名称跟随；每个文件夹层级都被排序，prop 树不动
+- 点击未激活列切到升序；点击激活列翻转
+- 四种语言都带标签与 tooltip；测试用无关 fixture 标题区分两列
 
 ## Related Concepts
-
-- [[concepts/web-ui-features]] — sidebar tree and header-control conventions
-- [[concepts/task-identity]] — `compareTaskIds` numeric ID ordering reused for document IDs
-- [[concepts/web-ui-i18n]] — four-locale keys landing together (`TranslationDict` derived from en)
+- [[concepts/web-ui-features]] — 侧边栏树与头部控件约定
+- [[concepts/task-identity]] — 复用于文档 ID 的 `compareTaskIds` 数字 ID 排序
+- [[concepts/web-ui-i18n]] — 四语言 key 一起落地（`TranslationDict` 由 en 推导）
 
 ## Related Sources
-
-- [[sources/back-672-wiki-tree-sort-toggles]] — direct follow-up applying the same pattern to the wiki tree (batch sibling)
-- [[sources/back-674-decisions-sort-toggles]] — follow-up renaming this label to `Title` and extending the pattern to decisions (batch sibling)
-- [[sources/sidebar-resize-search-task]] — earlier sidebar structure work
+- [[sources/back-672-wiki-tree-sort-toggles]] — 直接把同模式应用到 wiki 树的后续（批次兄弟）
+- [[sources/back-674-decisions-sort-toggles]] — 把本标签改名为 `Title` 并扩展到决策的后续（批次兄弟）
+- [[sources/sidebar-resize-search-task]] — 早期侧边栏结构工作

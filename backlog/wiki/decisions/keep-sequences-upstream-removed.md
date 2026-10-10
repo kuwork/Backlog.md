@@ -1,8 +1,8 @@
 ---
 title: 保留 sequences 功能并补充 CLI 文档
-created_date: '2026-08-17 23:00'
-updated_date: '2026-08-17 23:00'
 labels: [decision, sequences, cli-instructions]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 保留 sequences 功能并补充 CLI 文档
@@ -11,7 +11,7 @@ labels: [decision, sequences, cli-instructions]
 
 上游 BACK-520 从 v1.48.0 起彻底移除了 sequences 功能（核心、CLI、MCP、TUI、Web），但 fork 仍保留 `src/core/sequences.ts` 和相关能力。
 
-## 决策
+## 决定
 
 BACK-554 决定保留 fork 的 sequences 功能，并在 `src/guidelines/cli-instructions/overview.md` 中添加 Sequences Quick Reference。
 

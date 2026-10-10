@@ -1,9 +1,9 @@
 ---
 title: 虚拟列表滚动记忆用 visibleStartIndex 而非 scrollTop
-description: BACK-624 定高行下图元索引比像素位置更稳定
 labels: [decision, web-ui, search]
-created_date: '2026-09-13 01:12'
-updated_date: '2026-09-13 01:12'
+created_date: 2026-09-13 01:12
+updated_date: 2026-10-09 23:30
+description: BACK-624 定高行下图元索引比像素位置更稳定
 ---
 
 # 虚拟列表滚动记忆用 visibleStartIndex 而非 scrollTop
@@ -12,7 +12,7 @@ updated_date: '2026-09-13 01:12'
 
 搜索对话框要求"从结果进入详情、后退返回后恢复列表位置"。可持久化的位置表示有两种：像素 `scrollTop` 或首个可见行索引。
 
-## 决策
+## 决定
 
 持久化 **`visibleStartIndex`**（虚拟列表首个可见行索引），写入 `location.state` 而非 URL 查询参数。
 

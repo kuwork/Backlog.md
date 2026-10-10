@@ -1,8 +1,8 @@
 ---
 title: 上游迁移策略
-created_date: '2026-08-17 23:00'
-updated_date: '2026-09-26 20:50'
 labels: [concept, migration, upstream]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 上游迁移策略
@@ -59,7 +59,7 @@ Fork 对上游 `MrLesk/Backlog.md` 版本差异进行 A/B/C 分类并按领域�
 
 **与上游刻意分叉点**：BACK-577 保留 fork 的 `emptyClears` 语义（拒绝空值 setter 清空字段），明确不合入上游变更，记录在 doc-10 CLI-4。
 
-## 第四波:v1.50.1 → v1.52.0(doc-11/12/13)
+## 第四波：v1.50.1 → v1.52.0（doc-11/12/13）
 
 第四波覆盖 131 个上游 commit、80 个候选条目，深度分析落档 7A / 43B / 30C:
 

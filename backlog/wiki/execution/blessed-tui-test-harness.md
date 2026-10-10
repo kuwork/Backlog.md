@@ -1,13 +1,13 @@
 ---
 title: blessed TUI 真实屏幕测试模式
-created_date: '2026-09-26 14:45'
-updated_date: '2026-09-26 14:45'
 labels: [execution, testing, tui]
+created_date: 2026-09-26 14:45
+updated_date: 2026-10-09 23:30
 extracted_from:
-  - "[[sources/back-684-task-detail-popup-backdrop-resize]]"
-  - "[[sources/back-677-help-popup-resize-robustness]]"
-  - "[[sources/back-678-composer-extreme-terminal-sizes]]"
-  - "[[sources/back-687-milestone-board-tui]]"
+  - BACK-684
+  - BACK-677
+  - BACK-678
+  - BACK-687
 ---
 
 # blessed TUI 真实屏幕测试模式
@@ -34,7 +34,7 @@ extracted_from:
 | 泄漏 isTTY 补丁 | 后续用例行为漂移 | finally 恢复 |
 | resize 监听不注销 | close 后 resize 打到已销毁弹窗 | 断言监听数回到 open 前值（BACK-684/677） |
 
-## 参考任务
+## Related Sources
 
 - [[sources/back-684-task-detail-popup-backdrop-resize]] — 3 真屏用例 / 25 断言的完整范本
 - [[sources/back-677-help-popup-resize-robustness]] — `createPopupChrome.reflow` 模式的测试

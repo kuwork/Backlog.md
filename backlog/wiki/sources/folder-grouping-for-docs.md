@@ -1,12 +1,12 @@
 ---
-title: Web UI 文档文件夹分组 (BACK-423)
-source_path: backlog/tasks/back-423 - Add-folder-grouping-for-docs-in-Web-UI.md
+title: BACK-423 - Web UI 文档文件夹分组
 labels: [source, web-ui, docs, enhancement]
 created_date: 2026-05-22 02:15
-updated_date: 2026-05-22 02:15
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-423 - Add-folder-grouping-for-docs-in-Web-UI.md
 ---
 
-# Web UI 文档文件夹分组 (BACK-423)
+# BACK-423 - Web UI 文档文件夹分组
 
 为 Web UI 侧边栏中的文档列表添加文件夹树形分组功能，使其与现有的 Wiki 导航体验保持一致。解决 GitHub issue #488。
 
@@ -14,7 +14,7 @@ updated_date: 2026-05-22 02:15
 
 当文档存储在 `backlog/docs/` 的子目录中时，Web UI 侧边栏此前以扁平列表渲染，用户无法查看文件夹结构、展开/折叠分组，或在添加文档之前创建新文件夹。
 
-## 方案概览
+## 解决方案
 
 一套覆盖后端、API 和前端的完整文档文件夹树系统：
 
@@ -61,14 +61,14 @@ updated_date: 2026-05-22 02:15
 - [x] 用户可展开和折叠分组，不失去对扁平文档的访问
 - [x] 现有文档的创建/查看/编辑行为对未分组文档继续生效
 
-## 相关概念
+## Related Concepts
 
-- [[concepts/web-ui-features]]
-- [[concepts/core-architecture]]
-- [[concepts/asset-management]]
+- [[concepts/web-ui-features]] — Web UI 功能总览
+- [[concepts/core-architecture]] — 核心架构与数据流
+- [[concepts/asset-management]] — 资源管理
 
-## 相关来源
+## Related Sources
 
-- [[sources/web-ui-i18n-task]]
-- [[sources/path-autocomplete-task]]
-- [[sources/milestone-search-fix]]
+- [[sources/web-ui-i18n-task]] — BACK-478 Web UI i18n 支持
+- [[sources/path-autocomplete-task]] — BACK-479 路径自动补全与文档编辑
+- [[sources/milestone-search-fix]] — BACK-480 里程碑页面搜索误报修复

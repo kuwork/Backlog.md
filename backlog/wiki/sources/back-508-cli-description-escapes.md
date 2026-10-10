@@ -1,12 +1,12 @@
 ---
-title: BACK-508 CLI description 换行符转义修复
+title: BACK-508 - CLI description 换行符转义修复
 labels: [source, bug, cli, ux]
-created_date: '2026-06-05 15:19'
-updated_date: '2026-09-26 14:00'
+created_date: 2026-06-05 15:19
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-508 - CLI-task-create-does-not-interpret-n-escape-sequences-in-description.md
 ---
 
-# BACK-508 CLI description 换行符转义修复
+# BACK-508 - CLI description 换行符转义修复
 
 修复 CLI 在 Windows 上无法通过 `\n` 在 `--description`/`--desc` 中插入换行的问题，实现跨平台一致的转义行为。
 
@@ -27,16 +27,15 @@ source_path: backlog/tasks/back-508 - CLI-task-create-does-not-interpret-n-escap
 | `\\n` (2 个反斜杠) | `\\n` → bash 模拟 → `\n` → C 转义 → 换行 | `\n` → C 转义 → 换行 | 换行 |
 | `\n` (1 个反斜杠) | `\n` → bash 模拟 → `\n` → C 转义 → 换行 | `\n` → C 转义 → 换行 | 换行 |
 
-## 实现
+实现上，`processCliEscapes` 辅助函数加入 `src/cli.ts`，应用于五个命令的 `--description`/`--desc`：
 
-- `processCliEscapes` 辅助函数加入 `src/cli.ts`
-- 应用于五个命令的 `--description`/`--desc`：
-  - `task create` / `task edit`
-  - `draft create`
-  - `milestone create` / `milestone edit`
-- `\t`、 `\r` 等其他转义序列原样透传
+- `task create` / `task edit`
+- `draft create`
+- `milestone create` / `milestone edit`
 
-## 测试
+`\t`、`\r` 等其他转义序列原样透传。
+
+## 验证
 
 - `src/test/description-newlines.test.ts` 更新为 5 个用例，覆盖跨平台场景
 

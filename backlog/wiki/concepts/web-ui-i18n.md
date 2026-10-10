@@ -2,7 +2,7 @@
 title: Web UI 国际化（i18n）
 labels: [concept]
 created_date: 2026-05-17 02:20
-updated_date: '2026-09-26 14:45'
+updated_date: 2026-10-09 23:30
 ---
 
 # Web UI 国际化（i18n）

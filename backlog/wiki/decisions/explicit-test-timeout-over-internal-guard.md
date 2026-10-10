@@ -1,8 +1,8 @@
 ---
 title: 测试用显式超时而非放宽内部守卫
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 测试用显式超时而非放宽内部守卫
@@ -29,9 +29,12 @@ BACK-609/610/612 处理 CI 上间歇性挂起的测试。部分挂起来自并�
 
 - **内部 Windows 翻倍超时继续顶**：已被实践证明不够，且是在用生产代码为测试噪声买单。
 
-## Related
+## Related Concepts
 
-- [[sources/back-609-mcp-stdio-test-timeout]]
-- [[sources/back-610-cli-priority-filtering-test-timeouts]]
-- [[sources/back-612-content-store-test-stabilization]]
-- [[concepts/ci-platform-contracts]]
+- [[concepts/ci-platform-contracts]] — CI 平台契约概念，测试稳定性的约束来源
+
+## Related Sources
+
+- [[sources/back-609-mcp-stdio-test-timeout]] — MCP stdio 测试显式超时的落地
+- [[sources/back-610-cli-priority-filtering-test-timeouts]] — CLI 优先级过滤测试超时的落地
+- [[sources/back-612-content-store-test-stabilization]] — 内容存储测试稳定化的落地

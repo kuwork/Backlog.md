@@ -1,21 +1,20 @@
 ---
 title: 任务详情钻取导航模式
-labels:
-  - execution
-  - pattern
-  - web-ui
-created_date: '2026-06-01 22:50'
-updated_date: '2026-06-05 15:19'
+labels: [execution, pattern, web-ui]
+created_date: 2026-06-01 22:50
+updated_date: 2026-10-09 23:30
 extracted_from:
   - BACK-505
   - BACK-509
 ---
 
-## 场景
+# 任务详情钻取导航模式
+
+## 适用场景
 
 在任务详情 Modal 中，用户需要进一步查看某个依赖任务或子任务的详情，同时保留返回父任务的能力。关闭 Modal 时应关闭整个浏览堆栈。
 
-## 模式结构
+## 标准步骤
 
 ### State 设计
 
@@ -42,29 +41,29 @@ const [taskHistory, setTaskHistory] = useState<Task[]>([]);
 
 仅在 `taskHistory.length > 0` 时传递 `onBack` 给 TaskDetailsModal，避免根级任务显示无意义的返回按钮。
 
-## URL 路由层扩展（BACK-509）
+### URL 路由层扩展（BACK-509）
 
-### Modal Route pattern (background location)
+#### Modal Route pattern (background location)
 
 打开任务时 push `/task/:id` 到历史栈，附带 `state.backgroundLocation` 指向当前页面位置。`Routes` 通过 `location={state.backgroundLocation || location}` 渲染背景页面，模态框在 `Routes` 外部渲染。
 
-### URL Sync Effect
+#### URL Sync Effect
 
 `AppContent` 中 `useEffect` 监听 `useMatch('/task/:id')`：
 - URL 任务 ID 变化时自动打开、钻取或返回，无需手动调用 `handleEditTask`
 - 直接访问 `/task/:id` 以默认视图（看板）为背景打开模态框
 
-### 关闭行为优化
+#### 关闭行为优化
 
 使用 `navigate(backgroundPath, { replace: true })` 替代 `navigate(-1)`：
 - 避免历史残留 `/task/:id` 条目
 - 防止 `setShowModal(false)` 在 URL 变更前触发的竞态条件
 
-### Markdown 链接拦截
+#### Markdown 链接拦截
 
 `MermaidMarkdown` 的 `parseTaskUrl()` 检测同源 `/task/:id` 链接，调用 `onTaskClick` 而非外部 `<a>`。Wiki 页面在 `contentRef` 事件委托中也拦截 `/task/` 点击。
 
-### 前缀无关匹配
+#### 前缀无关匹配
 
 客户端 `stripAnyPrefix` 与服务端 `findTaskByLooseId` 支持将 `506` 解析为 `BACK-506`，URL 同时兼容 `/task/BACK-506` 和 `/task/506`。
 
@@ -74,6 +73,6 @@ const [taskHistory, setTaskHistory] = useState<Task[]>([]);
 - **Modal 重置**：`TaskDetailsModal` 的 `useEffect` 依赖 `[task, isOpen, ...]` 会在 `editingTask` 变化时自动重置表单状态，无需额外处理
 - **关闭竞态**：`navigate(-1)` 曾与 `setShowModal(false)` 产生竞态，改用显式 `replace` 导航到背景页面后解决
 
-## 参考来源
+## Related Sources
 - [[sources/back-505]] — 原始实现任务
 - [[sources/stable-task-modal-urls-task]] — BACK-509 URL 路由扩展

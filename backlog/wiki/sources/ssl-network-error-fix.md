@@ -1,12 +1,12 @@
 ---
-title: BACK-487 修复 GitOperations.fetch SSL 网络错误未优雅处理
+title: BACK-487 - 修复 GitOperations.fetch SSL 网络错误未优雅处理
 labels: [source, bug, git, network, ssl, error-handling]
-source_path: backlog/tasks/back-487 - Fix-SSL-network-error-not-gracefully-handled-in-GitOperations.fetch.md
 created_date: 2026-05-25 00:45
-updated_date: '2026-09-26 14:00'
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-487 - Fix-SSL-network-error-not-gracefully-handled-in-GitOperations.fetch.md
 ---
 
-# BACK-487 修复 GitOperations.fetch SSL 网络错误未优雅处理
+# BACK-487 - 修复 GitOperations.fetch SSL 网络错误未优雅处理
 
 **状态**: Done | **标签**: bug, git, network, ssl, error-handling | **优先级**: high
 
@@ -29,7 +29,7 @@ updated_date: '2026-09-26 14:00'
   - `tls handshake timeout`
 - 当 `fetch()` 遇到 SSL 错误时，`isNetworkError()` 返回 `true`，`fetch()` 静默返回，调用方继续使用本地数据
 
-## 测试
+## 验证
 
 - `src/test/git.test.ts` 新增 `describe("isNetworkError")` 测试套件，覆盖：
   - 经典网络错误（回归检查）

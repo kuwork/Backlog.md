@@ -1,12 +1,12 @@
 ---
-title: doc-6 跟踪甘特图设计方案
-source_path: backlog/docs/doc-6 - 跟踪甘特图设计方案.md
-created_date: 2026-05-29 22:36
-updated_date: '2026-09-26 14:00'
+title: doc-6 - 跟踪甘特图设计方案
 labels: [source, design, gantt, visualization, web-ui]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/docs/doc-6 - 跟踪甘特图设计方案.md
 ---
 
-# doc-6 跟踪甘特图设计方案
+# doc-6 - 跟踪甘特图设计方案
 
 > **溯源存疑（2026-09-26 lint）**：本页 `source_path` 指向的 `backlog/docs/doc-6 - 跟踪甘特图设计方案.md` 已不存在。现存唯一的 `doc-6` 是 `backlog/docs/migration/doc-6 - B类上游任务迁移分析报告（v1.47.1-..-v1.48.0）.md`，标题与本页主题无关；git 中 `doc-6` 从未出现过甘特图文件，且当前 `backlog/docs/` 下无任何甘特图/gantt 文档。判定为 **ID 被复用**而非重命名，故不自动改写 `source_path`。
 
@@ -44,7 +44,7 @@ Backlog.md Web UI 跟踪甘特图的完整设计方案文档，涵盖双层渲�
 - **点击高亮**：上下游 + 依赖箭头高亮，计划边框层一同参与
 - **图例**：说明实心条=实际、斜线框=计划、箭头=依赖、黄色`*`=估计时间
 
-## Out of Scope
+## 范围之外
 
 1. 拖拽调整计划/实际时间
 2. 关键路径计算与红色高亮

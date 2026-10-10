@@ -1,11 +1,11 @@
 ---
-title: defaultEditor 清空用空值跳过校验并改用 undefined 守卫
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
+title: defaultEditor 清空的空值跳过校验与 undefined 守卫
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
-# defaultEditor 清空用空值跳过校验并改用 undefined 守卫
+# defaultEditor 清空的空值跳过校验与 undefined 守卫
 
 ## 背景
 
@@ -27,8 +27,11 @@ BACK-586 处理 `defaultEditor` 被显式清空（设为空值）的场景。清
 
 - **保留 truthiness 守卫与 `||` 回退**：显式空值被当作未表态，清空配置永远落不到下游。
 
-## Related
+## Related Concepts
 
-- [[sources/back-586-clear-default-editor]]
-- [[concepts/cli-entry]]
-- [[concepts/core-architecture]]
+- [[concepts/cli-entry]] — CLI 入口
+- [[concepts/core-architecture]] — 核心架构
+
+## Related Sources
+
+- [[sources/back-586-clear-default-editor]] — BACK-586 清空默认编辑器

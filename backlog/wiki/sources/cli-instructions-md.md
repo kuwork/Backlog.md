@@ -1,12 +1,12 @@
 ---
 title: CLI-INSTRUCTIONS.md 命令参考
-created_date: '2026-05-06 00:00'
-updated_date: '2026-08-17 23:00'
 labels: [source]
+created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
 source_path: CLI-INSTRUCTIONS.md
 ---
 
-# CLI-INSTRUCTIONS.md 摘要
+# CLI-INSTRUCTIONS.md 命令参考
 
 完整的 Backlog.md CLI 命令参考文档，涵盖项目设置、任务管理、搜索、看板、文档、决策、Web 界面等所有用户-facing 命令。
 

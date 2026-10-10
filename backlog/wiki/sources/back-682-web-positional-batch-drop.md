@@ -1,41 +1,35 @@
 ---
-title: BACK-682 Insert a web board multi-selection at a chosen position
-created_date: '2026-09-26 14:14'
-updated_date: '2026-09-26 14:14'
-labels:
-  - source
-  - web-ui
+title: BACK-682 - Web 看板多选落点位置插入
+labels: [source, web-ui]
+created_date: 2026-09-26 14:14
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-682 - Insert-a-web-board-multi-selection-at-a-chosen-position.md
 ---
 
-# BACK-682 Insert a web board multi-selection at a chosen position
+# BACK-682 - Web 看板多选落点位置插入
 
-A single-card web board drop honoured the drop position, but a multi-selection drop silently appended to the column end because the batch path never passed `orderedTaskIds`. This task wires positional batch drops end-to-end and unifies the manual-sort rule: any drop that rewrites a column's order retires that column's manual sort, and a column being hovered by a foreign drag stands its sort down for the visit. BACK-684's sort stand-down change is folded into this record.
+单卡 Web 看板落点遵守落点位置，但多选落点静默追加到列尾，因为批量路径从不传 `orderedTaskIds`。本任务把位置感知批量落点端到端接通，并统一手动排序规则：任何重写列顺序的落点使该列的手动排序退役，被外来拖拽悬停的列在访问期间让出排序。BACK-684 的排序让渡变更并入本记录。
 
-## Summary
+- `src/server/index.ts`（`handleMoveTasks`）：读取可选 `orderedTaskIds`，非空时转发，把契约违约（顺序遗漏被移动任务、重复 id）映射为 400 客户端错误
+- `src/web/lib/api.ts`：`MoveTasksPayload.orderedTaskIds?: string[]`，原样转发
+- `src/web/components/Board.tsx`：`selectionOrderIds` memo（按看板阅读顺序的选择）替换每次调用重算；`handleBatchMove` 从 memo 构建顺序，落点指定顺序时跳过基于状态的无操作测试
+- `src/web/components/TaskColumn.tsx`：一个 `resolveInsertion` 辅助函数为单卡和批量落点把落点映射为下标；`isDragFromSameColumn` 比较状态加泳道（有泳道时一列是 (lane, status)，不只是状态）；排序在未变顺序守卫之后退役；批量拖拽不再抑制插入指示器
+- 排序让渡（并入的 BACK-684）：`getDisplayTasks` 在来自另一列的拖拽悬停该列时把读取者排序读为 `null`，指示器与落点按落点将写入的默认顺序解析；掠过或取消的拖拽保留读取者排序
+- 验证：四个看板套件 69 个 JSDOM 用例、端点用例、八变体回退矩阵（`tmp/rollback-682.py`）、实测 CDP 拖拽——两卡落点恰好发一个同时带 `taskIds` 与 `orderedTaskIds` 的 `POST /api/tasks/move`，拖入手动排序列把它翻为默认顺序并把卡片落在邻居之间 ordinal 4500
+- 记录的陷阱：JSDOM 落点必须在列内分发（冒泡只向上走），只触 `drop` 的落点辅助看不到列自己的拖拽状态——辅助必须重放 `dragenter`
 
-- `src/server/index.ts` (`handleMoveTasks`): reads optional `orderedTaskIds`, forwards when non-empty, maps contract violations (order omitting a moved task, duplicate id) to 400 client errors
-- `src/web/lib/api.ts`: `MoveTasksPayload.orderedTaskIds?: string[]`, forwarded untouched
-- `src/web/components/Board.tsx`: `selectionOrderIds` memo (selection in board reading order) replaces per-call recomputation; `handleBatchMove` builds the order from the memo and skips its status-based no-op test when the drop named an order
-- `src/web/components/TaskColumn.tsx`: one `resolveInsertion` helper maps a drop to an index for both single and batch drops; `isDragFromSameColumn` compares status plus lane (with lanes a column is (lane, status), not just status); sort retired after the unchanged-order guard; insertion indicator no longer suppressed for batch drags
-- Sort stand-down (folded-in BACK-684): `getDisplayTasks` reads the reader's sort as `null` while a drag from another column is over the column, so the indicator and the drop resolve against the default order the drop will write; a fly-over or cancelled drag keeps the reader's sort
-- Verification: 69 JSDOM cases across four board suites, endpoint cases, an eight-variant rollback matrix (`tmp/rollback-682.py`), and live CDP drags — a two-card drop sent exactly one `POST /api/tasks/move` carrying both `taskIds` and `orderedTaskIds`, and a drag into a manually sorted column flipped it to default order and landed the card at ordinal 4500 between neighbours
-- Traps recorded: JSDOM drops must be dispatched inside the column (bubbling only travels up), and a drop helper firing only `drop` cannot see the column's own drag state — the helper must replay `dragenter`
+## 验收标准
 
-## Acceptance Criteria
-
-- `POST /api/tasks/move` accepts optional `orderedTaskIds`; without it append behaviour is unchanged; broken orders are 400s, failed ids land in `failures`
-- A batch drop onto a card inserts the selection at that index (board order, not click order); empty space still appends; same-column reposition works and in-place release writes nothing
-- Any drop that rewrites a column's order retires that column's manual sort — cross-status, cross-lane same-status, and same-column reorder alike
-- Insertion indicator shown during multi-selection drags over positions the drop will honour; live CDP check confirms one request carrying both fields
+- `POST /api/tasks/move` 接受可选 `orderedTaskIds`；无它时追加行为不变；破损顺序为 400，失败 id 落在 `failures`
+- 批量落点到卡片上把选择插入该下标（看板顺序而非点击顺序）；空白仍追加；同列重定位可用，原位释放不写任何东西
+- 任何重写列顺序的落点使该列手动排序退役——跨状态、同状态跨泳道与同列重排一视同仁
+- 多选拖拽在落点将遵守的位置上显示插入指示器；实测 CDP 检查确认单请求带两个字段
 
 ## Related Concepts
-
-- [[concepts/web-ui-features]] — board drag-and-drop and column sort semantics
-- [[concepts/milestones]] — lane-aware column identity ((lane, status) not just status)
+- [[concepts/web-ui-features]] — 看板拖拽与列排序语义
+- [[concepts/milestones]] — 泳道感知的列身份（(lane, status) 而非仅状态）
 
 ## Related Sources
-
-- [[sources/back-680-batch-status-move]] — introduced `orderedTaskIds` in core; this task passes it from the web surface
-- [[sources/back-681-tui-shift-arrow-multi-select]] — TUI consumer of the same positional primitive
-- [[sources/back-504]] — origin of the manual-sort retirement rule this task generalizes
+- [[sources/back-680-batch-status-move]] — 在 Core 引入 `orderedTaskIds`；本任务从 Web 面传它
+- [[sources/back-681-tui-shift-arrow-multi-select]] — 同一位置原语的 TUI 消费方
+- [[sources/back-504]] — 本任务推广的手动排序退役规则发源地

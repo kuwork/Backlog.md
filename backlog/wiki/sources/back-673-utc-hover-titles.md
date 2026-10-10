@@ -1,44 +1,37 @@
 ---
-title: BACK-673 Show local time in the web UI with the UTC value on hover
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
-  - dates
+title: BACK-673 - Web 显示本地时间并悬浮展示 UTC
+labels: [source, web-ui, dates]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-673 - Show-local-time-in-the-web-UI-with-the-UTC-value-on-hover.md
 ---
 
-# BACK-673 Show local time in the web UI with the UTC value on hover
+# BACK-673 - Web 显示本地时间并悬浮展示 UTC
 
-Web surfaces already rendered stored timestamps in the viewer's local timezone, but no surface exposed the canonical stored value behind the rendering. This task adds the missing half of upstream BACK-677: the stored UTC value in the element `title` attribute, marked `(UTC)`, on every web date render.
+Web 面已按查看者本地时区渲染存储时间戳，但没有任何面暴露渲染背后的规范存储值。本任务补上上游 BACK-677 缺失的另一半：每个 Web 日期渲染的元素 `title` 属性中带 `(UTC)` 标记的存储 UTC 值。
 
-## Summary
+- 扩展一个共享辅助函数而非平行模块：`src/web/utils/date-display.ts` 新增 `storedUtcHoverTitle(value)`，两个显示辅助函数现在都返回 `StoredDateDisplay`（`{ text, title? }`）；`text` 与之前输出逐字节一致，屏幕上无任何变化
+- 悬浮标题是原始存储字符串加 `(UTC)`——绝不从解析后的 `Date` 重格式化——因此与 Markdown 记录及 CLI/TUI/MCP 输出逐字一致
+- 处理了正确性陷阱：纯日期值（`yyyy-mm-dd`）、空与不可解析值完全不带 title，悬浮不会声称记录中没有的时间
+- 新 `StoredDate.tsx` 为每个调用点渲染 `{ text, title }`：任务详情模态框、任务列表、任务卡片、milestones 页面/行/模态框、草稿列表、cleanup 预览、统计；documentation/decision 详情与甘特 actual start/end 保留自己的文本但悬浮取自同一辅助函数
+- 两个带重复本地日期格式化器的组件（CleanupModal、Statistics）把它们交给共享辅助函数，统一为共享 medium-date/short-time 形态
+- 范围刻意限于悬浮：无可见文案改标签，CLI/TUI/MCP/`--plain` 不动（它们从不带 UTC 标记），`src/utils/date-utc.ts` API 不变；纯日期 dueDate/planned 列有意保持无悬浮
+- 测试从运行时时区推导期望而非钉死 `process.env.TZ`（bun 跨文件共享一个进程）；对丢 title、纯日期守卫与解析检查的回退探针红
 
-- One shared helper extended rather than a parallel module: `src/web/utils/date-display.ts` gained `storedUtcHoverTitle(value)` and both display helpers now return `StoredDateDisplay` (`{ text, title? }`); `text` is byte-identical to previous output, so nothing on screen changes
-- The hover title is the raw stored string plus `(UTC)` — never re-formatted from the parsed `Date` — so it matches the Markdown record and CLI/TUI/MCP output verbatim
-- Correctness trap handled: date-only values (`yyyy-mm-dd`), empty and unparsable values carry no title at all, so no hover claims a time the record does not have
-- New `StoredDate.tsx` renders `{ text, title }` as a span for every call site: task details modal, task list, task card, milestones page/rows/modal, drafts list, cleanup preview, statistics; documentation/decision details and gantt actual start/end keep their own text but take the hover from the same helper
-- The two components carrying duplicate local date formatters (CleanupModal, Statistics) lost them to the shared helper, normalizing to the shared medium-date/short-time shape
-- Scope deliberately limited to the hover: no visible copy relabelled, CLI/TUI/MCP/`--plain` untouched (they never carried a UTC marker), `src/utils/date-utc.ts` API unchanged; date-only dueDate/planned columns stay hover-free on purpose
-- Tests derive expectations from the runtime timezone instead of pinning `process.env.TZ` (bun shares one process across files); revert probes red for dropping the title, the date-only guard, and the parse check
+## 验收标准
 
-## Acceptance Criteria
-
-- Every web date-time render exposes the stored value with `(UTC)` marker in `title`; visible text unchanged in viewer-local timezone
-- Date-only, empty and unparsable values carry no title
-- Text and title come from one shared path via `StoredDate`; duplicated per-component formatters removed
-- Compact/relative labels keep their wording and carry the same hover when the value has a time
-- CLI, TUI, MCP and plain output untouched; timezone-independent tests with revert probes
+- 每个 Web 日期时间渲染在 `title` 中带 `(UTC)` 标记暴露存储值；可见文本仍为查看者本地时区不变
+- 纯日期、空与不可解析值不带 title
+- 文本与 title 经 `StoredDate` 走同一共享路径；重复的每组件格式化器已移除
+- 紧凑/相对标签保留措辞，值有时间时带同样悬浮
+- CLI、TUI、MCP 与 plain output 不动；时区无关测试带回退探针
 
 ## Related Concepts
-
-- [[concepts/date-fields]] — stored-UTC / display-local convention and date-only values this hover encodes
-- [[concepts/web-ui-features]] — surfaces routed through the shared `StoredDate` component
-- [[concepts/upstream-migration]] — partial port of upstream BACK-677, scoped to the missing half
+- [[concepts/date-fields]] — 本悬浮编码的存储 UTC/显示本地约定与纯日期值
+- [[concepts/web-ui-features]] — 经共享 `StoredDate` 组件路由的面
+- [[concepts/upstream-migration]] — 上游 BACK-677 的部分移植，限于缺失的一半
 
 ## Related Sources
-
-- [[sources/timezone-handling-fix]] — earlier timezone rendering work this task builds on
-- [[sources/back-506-cli-utc-conversion-fix]] — CLI-side UTC handling left deliberately untouched
-- [[sources/milestone-actual-dates-task]] — milestone date fields among the routed surfaces
+- [[sources/timezone-handling-fix]] — 本任务所构建的早期时区渲染工作
+- [[sources/back-506-cli-utc-conversion-fix]] — 被刻意不动的 CLI 侧 UTC 处理
+- [[sources/milestone-actual-dates-task]] — 被路由面之一的 milestone 日期字段

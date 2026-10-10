@@ -1,8 +1,8 @@
 ---
 title: TUI 主题自适应渲染
-created_date: '2026-06-09 00:40'
-updated_date: '2026-06-09 00:40'
 labels: [concept, tui, ui, terminal, accessibility]
+created_date: 2026-06-09 00:40
+updated_date: 2026-10-09 23:30
 ---
 
 # TUI 主题自适应渲染
@@ -30,9 +30,9 @@ labels: [concept, tui, ui, terminal, accessibility]
 
 背景遮罩覆盖层（`task-viewer-with-search.ts` 中的 `bg: "black"`）有意保持不变，因为它们是结构性覆盖层，而非可选中/高亮的文本。
 
-## 相关概念
+## Related Concepts
 - [[concepts/cli-tui]] — TUI 架构与组件
 
-## 相关来源
+## Related Sources
 - [[sources/back-518-tui-theme-adaptive]] — BACK-518 实现任务
 - [[sources/back-470-4-tui-docs-task-comments]] — TUI 评论渲染（使用相同模式）

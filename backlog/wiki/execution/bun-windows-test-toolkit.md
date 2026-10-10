@@ -1,15 +1,15 @@
 ---
 title: Bun on Windows 测试工具箱
-created_date: '2026-09-26 14:45'
-updated_date: '2026-09-26 14:45'
 labels: [execution, testing, windows, bun]
+created_date: 2026-09-26 14:45
+updated_date: 2026-10-09 23:30
 extracted_from:
-  - "[[sources/back-701-fix-server-test-keep-alive-misroute]]"
-  - "[[sources/back-690-overview-due-by-timezone-fix]]"
-  - "[[sources/back-655-section-marker-safety]]"
-  - "[[sources/back-657-task-list-json-watch]]"
-  - "[[sources/back-660-forced-refresh-stale-fetch-race]]"
-  - "[[sources/back-681-tui-shift-arrow-multi-select]]"
+  - BACK-701
+  - BACK-690
+  - BACK-655
+  - BACK-657
+  - BACK-660
+  - BACK-681
 ---
 
 # Bun on Windows 测试工具箱
@@ -18,7 +18,7 @@ extracted_from:
 
 在 Windows 主机上用 Bun 跑/写本仓库测试时，反复出现的平台级陷阱与对应解法。这些不是产品 bug，先查这张表再怀疑实现。
 
-## 已知陷阱与解法
+## 常见陷阱
 
 | 陷阱 | 症状 | 解法 | 出处 |
 |---|---|---|---|
@@ -29,8 +29,15 @@ extracted_from:
 | 沙箱内无法建 `refs/remotes/origin/*`；`git fetch --prune` 向上走查 | 测试在工作区里莫名失败或慢且 flaky | 测试工程建在仓库**外**的 `mkdtemp()` 目录 | [[sources/back-660-forced-refresh-stale-fetch-race]]、[[sources/back-681-tui-shift-arrow-multi-select]] |
 | win32 无真 pty | 键盘级 PTY 套件（`expect` 发 `ESC[1;2B`）跑不了 | 记录证据边界，不移植 PTY 套件；用真实 blessed screen 的渲染几何代替（见 [[execution/blessed-tui-test-harness]]） | [[sources/back-681-tui-shift-arrow-multi-select]] |
 
-## 通则
-
 - 平台怪癖由**测试基础设施**吸收，不动产品代码（BACK-701 的代价只是测试内失去连接复用）
 - 怀疑平台问题时先在干净 HEAD 复现（参见 [[execution/pre-existing-failure-triage]]），把"运行时 bug"与"我的改动"分开
 - 写合并/补丁脚本前先看真实 import 形状——BACK-701 事故：脚本假设无扩展名 import，而代码库写 `./test-utils.ts`，留下悬空行
+
+## Related Sources
+
+- [[sources/back-701-fix-server-test-keep-alive-misroute]] — BACK-701 keep-alive 路由错配修复
+- [[sources/back-690-overview-due-by-timezone-fix]] — BACK-690 overview 到期时区修复
+- [[sources/back-655-section-marker-safety]] — BACK-655 多行参数传递
+- [[sources/back-657-task-list-json-watch]] — BACK-657 JSON watch 子进程管理
+- [[sources/back-660-forced-refresh-stale-fetch-race]] — BACK-660 刷新竞态与仓库外测试工程
+- [[sources/back-681-tui-shift-arrow-multi-select]] — BACK-681 TUI 多选与 win32 pty 边界

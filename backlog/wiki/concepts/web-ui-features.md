@@ -1,8 +1,8 @@
 ---
 title: Web UI 功能
 labels: [concept]
-created_date: '2026-05-10 00:00'
-updated_date: '2026-10-09 22:00'
+created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # Web UI 功能

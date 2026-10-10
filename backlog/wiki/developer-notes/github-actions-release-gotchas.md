@@ -1,8 +1,8 @@
 ---
 title: GitHub CI 发布注意事项
-created_date: '2026-10-09 21:40'
-updated_date: '2026-10-09 21:40'
 labels: [developer-note, ci, release, github-actions, npm]
+created_date: 2026-10-09 21:40
+updated_date: 2026-10-09 23:30
 ---
 
 # GitHub CI 发布注意事项
@@ -126,8 +126,8 @@ gh api repos/kuwork/Backlog.md/actions/jobs/<job-id>/logs               # 单 jo
 
 **发版后**：`latest` 指到新版本（主包 + 6 平台包） · `install-sanity` 三平台通过 · GitHub Release 挂了 6 个二进制 · 远端 main 出现 `chore: sync package.json version` 提交 · 本地 `git pull`
 
-## Related
+## Related Concepts
 
+- [[concepts/ci-platform-contracts]] — CI 平台契约测试策略
 - [[developer-notes/npm-publish-guide]] — npm 手动发布流程与版本号陷阱（CI 之外的兜底路径）
 - [[developer-notes/ci-testing-gotchas]] — CI 与测试的其他踩坑条目
-- [[concepts/ci-platform-contracts]] — CI 平台契约测试策略

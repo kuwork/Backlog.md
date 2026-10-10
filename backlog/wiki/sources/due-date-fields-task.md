@@ -1,12 +1,12 @@
 ---
-title: BACK-401 日期字段支持（dueDate / plannedStart / plannedEnd）
+title: BACK-401 - 日期字段支持（dueDate / plannedStart / plannedEnd）
 labels: [source, feature, dates, cli, web-ui, mcp]
-source_path: backlog/tasks/back-401 - Add-dueDate-plannedStart-and-plannedEnd-support-for-tasks-and-milestones-across-CLI-TUI-Web-and-MCP.md
 created_date: 2026-05-25 23:45
-updated_date: 2026-05-25 23:45
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-401 - Add-dueDate-plannedStart-and-plannedEnd-support-for-tasks-and-milestones-across-CLI-TUI-Web-and-MCP.md
 ---
 
-# BACK-401 日期字段支持（dueDate / plannedStart / plannedEnd）
+# BACK-401 - 日期字段支持（dueDate / plannedStart / plannedEnd）
 
 **状态**: Done | **标签**: feature, dates, cli, web-ui, mcp | **负责人**: @codex
 
@@ -20,13 +20,15 @@ updated_date: 2026-05-25 23:45
 
 三者相互独立，可同时存在于同一任务或里程碑。
 
-## 存储语义
+## 实现要点
+
+### 存储语义
 
 - `createdDate` 为 **date-time**（`YYYY-MM-DD HH:MM`，UTC），记录精确时刻。
 - `dueDate` / `plannedStart` / `plannedEnd` 为 **date-only**（`YYYY-MM-DD`），代表日历日而非精确时刻。
 - 复用现有 `normalizeDate` 基础设施，写路径确保不带时间组件。
 
-## 跨层变更摘要
+### 跨层变更摘要
 
 | 层级 | 变更 |
 |---|---|
@@ -41,21 +43,25 @@ updated_date: 2026-05-25 23:45
 | **Agent 指南** | `agent-guidelines.md` 增加里程碑管理指令与日期字段 CLI 命令 |
 | **测试** | Markdown 解析/序列化 round-trip 测试；MCP 里程碑测试（32 pass）|
 
-## 关键设计决策
+### 关键设计决策
 
 - **方法重命名**：`renameMilestone` → `updateMilestone`，因为方法现在即使标题未变也会更新日期字段；同步修复了「仅修改日期时短路返回 No changes made」的 bug。
 - **任务里程碑重写优化**：标题未变时跳过 `updateTasks`，避免不必要的文件写入。
 - **Web UI 自动填充**：降低用户填写负担，允许保存前覆盖。
-- **日期指示器**：TaskCard 头部显示日历图标 + `plannedStart~plannedEnd`，脚部显示时钟图标 + `dueDate`；当年份与当前年一致时省略年份；逾期且非终端状态标红。
+- **日期指示器**：TaskCard 头部显示日历图标 + `plannedStart~plannedEnd`，脚部显示时钟图标 + `dueDate`；当年份与当前年一致时省略年份；逾期且非终态标红。
 
-## 已知限制
+### 已知限制
 
 - 甘特时间线视图（Gantt view）不在本任务范围内，属于后续独立任务。
 
 ## Related Concepts
+
 - [[concepts/date-fields]] — 三个日期字段的详细语义与使用场景
 - [[concepts/task-lifecycle]] — 任务 frontmatter 字段说明
 - [[concepts/web-ui-features]] — Web UI 日期指示器与自动填充
 - [[concepts/cli-entry]] — CLI 日期选项与 milestone edit 命令
 - [[concepts/mcp-server]] — MCP milestone_edit 工具与日期字段 schema
 
+## Related Sources
+
+- [[sources/actual-start-end-fields-task]] — BACK-492 在此基础上扩展 actualStart / actualEnd 实际日期字段

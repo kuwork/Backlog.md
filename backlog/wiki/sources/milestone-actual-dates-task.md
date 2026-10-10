@@ -1,12 +1,12 @@
 ---
-title: BACK-493 里程碑 actualStart 与 actualEnd 支持
-source_path: backlog/tasks/back-493 - Add-actualStart-and-actualEnd-support-for-milestones.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-493 - 里程碑 actualStart 与 actualEnd 支持
 labels: [source, feature, dates, milestones, cli, web-ui, mcp]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-493 - Add-actualStart-and-actualEnd-support-for-milestones.md
 ---
 
-# BACK-493 里程碑 actualStart 与 actualEnd 支持
+# BACK-493 - 里程碑 actualStart 与 actualEnd 支持
 
 将 BACK-492 引入的 `actualStart` / `actualEnd` 字段扩展到**里程碑**，由里程碑下属任务的状态变化驱动自动填充。
 

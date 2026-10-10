@@ -1,11 +1,11 @@
 ---
-title: B16 先补 Publication 地基再整体移植 BACK-624
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
+title: B16 Publication 地基优先的两步移植
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
-# B16 先补 Publication 地基再整体移植 BACK-624
+# B16 Publication 地基优先的两步移植
 
 ## 背景
 
@@ -33,11 +33,14 @@ B16 方案 1（doc-9）：上游 BACK-624 是一个拆分后的移植单元，�
 - **拆分忽略 BACK-624**：丢弃完整演进单元，warm 路径性能与并发正确性都得不到。
 - **在不补 559 地基的情况下直接移植 624**：地基缺失使合并逻辑无法正确工作。
 
-## Related
+## Related Concepts
 
-- [[sources/back-601-core-browser-publication-ownership]]
-- [[sources/back-602-incremental-cross-branch-task-loading]]
-- [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]]
-- [[concepts/core-architecture]]
-- [[concepts/browser-loading]]
-- [[concepts/upstream-migration]]
+- [[concepts/core-architecture]] — 核心架构
+- [[concepts/browser-loading]] — 浏览器加载
+- [[concepts/upstream-migration]] — 上游迁移
+
+## Related Sources
+
+- [[sources/back-601-core-browser-publication-ownership]] — BACK-601 publication-owner 地基
+- [[sources/back-602-incremental-cross-branch-task-loading]] — BACK-602 增量跨分支任务加载
+- [[sources/doc-9-upstream-v1-49-3-to-v1-50-1-migration-diff-classification]] — doc-9 迁移差异分类

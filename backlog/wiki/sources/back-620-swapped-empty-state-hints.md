@@ -1,33 +1,27 @@
 ---
-title: BACK-620 Fix swapped empty-state hints for references and documentation sections
-created_date: '2026-09-07 21:15'
-updated_date: '2026-09-07 21:15'
-labels:
-  - source
-  - web-ui
-  - bug
-  - i18n
+title: BACK-620 - 修复引用与文档区空态提示互换
+labels: [source, web-ui, bug, i18n]
+created_date: 2026-09-07 21:15
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-620 - Fix-swapped-empty-state-hints-for-references-and-documentation-sections.md
 ---
 
-# BACK-620 Fix swapped empty-state hints for references and documentation sections
+# BACK-620 - 修复引用与文档区空态提示互换
 
-In the web task details modal (also the edit and create page), the empty-state hints for the References and Documentation sections were swapped — References showed the 'No documents' hint and Documentation showed 'No references' — and the remove-button hover titles were swapped too. Users saw a misleading message in the wrong section whenever a task had no references or no documentation.
+在 Web 任务详情模态框（也是编辑页和创建页）中，References 区与 Documentation 区的空态提示互换了——References 显示的是“No documents”提示，Documentation 显示的是“No references”——移除按钮的悬停标题也互换了。每当任务没有引用或没有文档时，用户会在错误的分区看到误导信息。
 
-## Summary
+- `src/web/components/TaskDetailsModal.tsx`：四处用法换回正确位置——References 区现在渲染 `noReferences`/`removeReference`；Documentation 渲染 `noDocumentation`/`removeDocumentation`（语言键一直是对的；是第 1261/1338/1250/1327 行的用法互换了）
+- `src/test/web-task-details-modal-documentation.test.tsx`：替换了把 bug 固化下来的断言，新增引用为空的测试，并新增按语言（en/zh-CN/zh-TW/ja）的互换检测测试
+- 验证：定向套件 7/7 通过，tsc 干净，biome 退出码 0；按用户决定跳过全量套件
 
-- `src/web/components/TaskDetailsModal.tsx`: four usages swapped back — References section now renders `noReferences`/`removeReference`; Documentation renders `noDocumentation`/`removeDocumentation` (locale keys were always correct; usage was swapped at lines 1261/1338/1250/1327)
-- `src/test/web-task-details-modal-documentation.test.tsx`: replaced the assertion that encoded the bug, added a references-empty test, and added a per-locale (en/zh-CN/zh-TW/ja) swap-detection test
-- Verified: scoped suite 7/7, tsc clean, biome exit 0; full suite skipped per user decision
+## 验收标准
 
-## Acceptance Criteria
-
-- References section shows the references-specific empty hint; Documentation shows its own
-- Remove-button hover titles match their section
-- Behavior verified in all supported locales (en, zh-CN, zh-TW, ja)
-- tsc and scoped bun test pass
+- References 区显示引用专属的空态提示；Documentation 区显示自己的
+- 移除按钮的悬停标题与其分区匹配
+- 在所有支持的语言（en、zh-CN、zh-TW、ja）下验证行为
+- tsc 与定向 bun test 通过
 
 ## Related Concepts
 
-- [[concepts/web-ui-features]] — task details modal section rendering
-- [[concepts/web-ui-i18n]] — locale keys correct but usages swapped; per-locale regression test added
+- [[concepts/web-ui-features]] — 任务详情模态框的小节渲染
+- [[concepts/web-ui-i18n]] — 语言键正确但用法互换；新增按语言回归测试
