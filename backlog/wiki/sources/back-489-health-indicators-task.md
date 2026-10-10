@@ -1,20 +1,24 @@
 ---
-title: BACK-489 项目健康指标重构（临期 / 逾期 / 停滞）
+title: BACK-489 - 项目健康指标重构
 labels: [source, feature, web-ui, statistics, health]
-source_path: backlog/tasks/back-489 - Refactor-project-health-indicators-to-support-at-risk-overdue-and-stale-categories-with-dueDate-awareness.md
 created_date: 2026-05-26 23:42
-updated_date: 2026-05-26 23:42
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-489 - Refactor-project-health-indicators-to-support-at-risk-overdue-and-stale-categories-with-dueDate-awareness.md
 ---
 
-# BACK-489 项目健康指标重构（临期 / 逾期 / 停滞）
+# BACK-489 - 项目健康指标重构
 
 **状态**: Done | **标签**: web-ui | **负责人**: @kimi | **依赖**: BACK-401
+
+本任务已完成：在 BACK-401 引入 `dueDate` 的基础上，将单一「Stale Tasks >30 days」健康指标重构为临期、逾期、停滞三种独立风险分类，避免有截止日期的任务被错误归类为停滞；`dueDateRiskClass` 看板边条因与优先级边条的 CSS 层叠冲突，当前版本无可见效果，健康度信息集中在统计页展示。
 
 ## 目标
 
 在 BACK-401 引入 `dueDate` 后，将原有的单一「Stale Tasks >30 days」健康指标重构为三种独立的风险分类，避免有截止日期的任务被错误归类为停滞。
 
-## 三种健康分类
+## 实现要点
+
+### 三种健康分类
 
 | 分类 | 英文名 | 判定条件 | 颜色 |
 |---|---|---|---|
@@ -25,7 +29,7 @@ updated_date: 2026-05-26 23:42
 
 **关键规则**：有 `dueDate` 的任务**不再**计入 `staleTasks`，杜绝双重分类。
 
-## 变更摘要
+### 变更文件
 
 | 文件 | 变更 |
 |---|---|
@@ -35,7 +39,7 @@ updated_date: 2026-05-26 23:42
 | `src/web/locales/{en,ja,zh-CN,zh-TW}.ts` | 新增 `atRiskCount`、`overdueCount`、`atRiskTooltip`、`overdueTooltip` 等 i18n 键 |
 | `src/test/statistics.test.ts` | 4 个新测试用例：临期、逾期、停滞排除、Done 任务排除 |
 
-## 设计细节
+### 设计细节
 
 - **颜色 token**：Tailwind `text-amber-500` / `border-l-amber-500`（临期）、`text-red-600` / `border-l-red-500`（逾期）、`text-slate-400`（停滞）。
 - **Tooltip 单语言**：悬停提示严格单语言显示，不混排（如中文 tooltip 不含英文）。

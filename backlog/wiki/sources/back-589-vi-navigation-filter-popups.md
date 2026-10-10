@@ -1,32 +1,30 @@
 ---
-title: BACK-589 Salvage vi navigation from PR #809 for TUI filter popups
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
-labels:
-  - source
-  - tui
+title: BACK-589 - 过滤器弹窗接入 vi 导航
+labels: [source, tui]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-589 - Salvage-vi-navigation-from-PR-809-for-TUI-filter-popups.md
 ---
 
-# BACK-589 Salvage vi navigation from PR #809 for TUI filter popups
+# BACK-589 - 过滤器弹窗接入 vi 导航
 
-The TUI's single-select filter popups (status, priority, milestone) and the task composer Status/Type/Priority pickers only navigated with arrow keys while the rest of the TUI supports j/k. j/k now move the picker to the neighbouring index, clamping at both ends like the arrows, and Enter returns the j/k-selected value; help rows advertise j/k.
+TUI 的单选过滤器弹窗（status、priority、milestone）与任务编辑器的 Status/Type/Priority 选择器过去只能用方向键导航，而 TUI 其他部分支持 j/k。现在 j/k 将选择器移动到相邻索引，像方向键一样在两端截断，Enter 返回 j/k 选中的值；帮助行会提示 j/k。
 
-## Summary
+## 实现要点
 
-- `src/ui/components/filter-popup.ts`: single-select picker binds j/k via `picker.select((selected ?? 0) + offset)`, clamping at both ends, matching the arrow keys.
-- Both popup help rows updated to advertise j/k (the multi-select popup is a GenericList and already navigated with j/k).
-- Single-select clamps and multi-select wraps, preserving pre-existing boundary behavior; no other popup behavior changed.
-- Tests in `tui-vim-boundary-navigation.test.ts` drive real key events through both popups (24 pass / 0 fail).
+- `src/ui/components/filter-popup.ts`：单选选择器通过 `picker.select((selected ?? 0) + offset)` 绑定 j/k，在两端截断，与方向键一致。
+- 两个弹窗帮助行均更新为提示 j/k（多选弹窗是 GenericList，已支持 j/k 导航）。
+- 单选截断、多选环绕，保留既有边界行为；未改变其他弹窗行为。
+- `tui-vim-boundary-navigation.test.ts` 中的测试通过两个弹窗驱动真实按键事件（24 通过 / 0 失败）。
 
-## Acceptance Criteria
+## 验收标准
 
-- j/k added to single-select popups and composer pickers; clamp at both ends; Enter returns the j/k-selected value; multi-select help row advertises j/k; boundary behavior unchanged; real-key tests cover both popups.
+- 单选弹窗与编辑器选择器加入 j/k；两端截断；Enter 返回 j/k 选中的值；多选帮助行提示 j/k；边界行为不变；真实按键测试覆盖两个弹窗。
 
 ## Related Concepts
 
-- [[concepts/cli-tui]] — filter popup and picker keybinding conventions
+- [[concepts/cli-tui]] — 过滤器弹窗与选择器键位约定
 
 ## Related Sources
 
-- [[sources/back-588-vim-keys-boundary-navigation]] — shared vim/arrow key-family handling in lists
+- [[sources/back-588-vim-keys-boundary-navigation]] — 列表中共享的 vim/方向键键族处理

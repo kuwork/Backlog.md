@@ -1,12 +1,12 @@
 ---
 title: README.md 产品概述
-created_date: '2026-05-06 00:00'
-updated_date: '2026-08-17 23:00'
 labels: [source]
+created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
 source_path: README.md
 ---
 
-# README.md 摘要
+# README.md 产品概述
 
 Backlog.md 是一款 Markdown 原生的任务管理与看板可视化工具，可将任意 Git 仓库目录转变为自包含的项目看板。
 
@@ -50,5 +50,5 @@ Backlog.md 是一款 Markdown 原生的任务管理与看板可视化工具，�
 
 ## Related Sources
 
-- [[sources/readme-en-md]] — English README
-- [[sources/cli-instructions-md]] — CLI reference
+- [[sources/readme-en-md]] — 英文 README
+- [[sources/cli-instructions-md]] — CLI 参考

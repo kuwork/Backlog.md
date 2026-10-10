@@ -1,8 +1,8 @@
 ---
 title: 里程碑管理
 labels: [concept, milestones, cli, mcp]
-created_date: '2026-07-14 11:20'
-updated_date: '2026-09-26 14:45'
+created_date: 2026-07-14 11:20
+updated_date: 2026-10-09 23:30
 ---
 
 # 里程碑管理

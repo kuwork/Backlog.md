@@ -1,37 +1,33 @@
 ---
-title: BACK-641 Fix sidebar collapse toggle hidden behind the page header
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - web-ui
+title: BACK-641 - 修复侧边栏折叠开关被页头遮挡
+labels: [source, web-ui]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-641 - Fix-sidebar-collapse-toggle-hidden-behind-the-page-header.md
 ---
 
-# BACK-641 Fix sidebar collapse toggle hidden behind the page header
+# BACK-641 - 修复侧边栏折叠开关被页头遮挡
 
-The Web UI sidebar collapse toggle is anchored on the sidebar's right border (`absolute -right-3`), so about 11px of it lies inside the header column. The header (`relative z-20`, opaque) painted over the sidebar (`z-10`), showing only a half circle whose overhang half ignored clicks. The fix raises the sidebar container to `z-30` so the border-straddling toggle paints above the header.
+Web UI 侧边栏折叠开关锚在侧边栏右边框上（`absolute -right-3`），所以约 11px 落在页头列内。页头（`relative z-20`，不透明）画在侧边栏（`z-10`）之上，只露半个圆，悬出的一半不响应点击。修复把侧边栏容器提到 `z-30`，使跨边框的开关画在页头之上。
 
-## Summary
+- 根因：两个 z-index 在根堆叠上下文竞争，因为页头的父列未定位，`z-20` 页头胜过 `z-10` 侧边栏并盖住开关右半
+- `src/web/components/SideNavigation.tsx` 一行修复：侧边栏容器 `z-10` -> `z-30`，注释说明开关为何必须高过页头
+- 侧边栏子元素（resize 把手 z-20，ghost/下拉 z-50）不受影响，因为它们活在新的堆叠上下文内；模态框/toast/lightbox 是外部的 z-50
+- 用 Chrome CDP 命中测试加真实鼠标事件验证：`z-10` 时开关最右像素属于页头 `nav`；`z-30` 时所有探测点命中按钮，点击悬出部分可展开/折叠侧边栏（64px <-> 320px）
+- 已知权衡：视口窄于约 672px（页头本已溢出处）时侧边栏可能盖住页面 TOC 面板一条；修复需要把开关 portal 化，判定不值得
+- 门禁：`bun run check .` 0 错误，`bunx tsc --noEmit` 干净，定向测试 web-side-navigation-loading（5）与 web-toc（23）通过
 
-- Root cause: both z-indexes compete in the root stacking context because the header's parent column is not positioned, so `z-20` header beats `z-10` sidebar and covers the toggle's right half
-- One-line fix in `src/web/components/SideNavigation.tsx`: sidebar container `z-10` -> `z-30`, with a comment explaining why the toggle must outrank the header
-- Sidebar children (resize handle z-20, ghost/dropdowns z-50) are unaffected because they live inside the new stacking context; modals/toasts/lightbox are z-50 outside it
-- Verified with Chrome CDP hit-testing plus real mouse events: with `z-10` the toggle's rightmost pixel belongs to the header `nav`; with `z-30` all probe points hit the button, and clicking the overhang expands/collapses the sidebar (64px <-> 320px)
-- Known trade-off: at viewports narrower than ~672px (where the header already overflows) the sidebar can cover a sliver of the page TOC panel; fixing that would require portalling the toggle and was judged not worth it
-- Gates: `bun run check .` 0 errors, `bunx tsc --noEmit` clean, scoped tests web-side-navigation-loading (5) and web-toc (23) pass
+## 验收标准
 
-## Acceptance Criteria
-
-- Toggle fully visible in both expanded and collapsed sidebar states
-- Every part of the toggle, including the half over the header column, is clickable
-- Sidebar resize handle, header layout, and page TOC panel keep working
+- 开关在展开与折叠态都完整可见
+- 开关的每个部分，包括悬在页头列上的半边，都可点击
+- 侧边栏 resize 把手、页头布局与页面 TOC 面板保持工作
 
 ## Related Concepts
 
-- [[concepts/web-ui-features]] — sidebar and header layout conventions this stacking fix preserves
+- [[concepts/web-ui-features]] — 本堆叠修复所维护的侧边栏与页头布局约定
 
 ## Related Sources
 
-- [[sources/sidebar-collapse-button-fix]] — earlier sidebar collapse button repair in the same component area
-- [[sources/sidebar-resize-search-task]] — sidebar resize handle whose z-20 stacking must coexist with this fix
+- [[sources/sidebar-collapse-button-fix]] — 同一组件区域的早期侧边栏折叠按钮修复
+- [[sources/sidebar-resize-search-task]] — 须与本修复共存的侧边栏 resize 把手（z-20 堆叠）

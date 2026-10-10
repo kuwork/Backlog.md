@@ -1,8 +1,8 @@
 ---
 title: WebGL canvas 上挂 HTML 控件的模式
 labels: [execution, webgl, web-ui]
-created_date: '2026-10-05 08:25'
-updated_date: '2026-10-05 08:25'
+created_date: 2026-10-05 08:25
+updated_date: 2026-10-09 23:30
 extracted_from:
   - BACK-746
   - BACK-747
@@ -21,11 +21,13 @@ Canvas 渲染的场景里给单个图形元素挂控件（按钮、菜单）的�
 5. **按下事件 stopPropagation**：控件上的 click/pointerdown 不得冒泡到 canvas，否则一个动作触发两个行为（如归档同时打开弹窗）
 6. **失败要回滚视觉状态**：动作失败时显示错误横幅、不摘元素；成功后由数据驱动移除
 
-## 验证手法
-
-合成 pointermove 扫全板能验证渲染逻辑，但**必须再用真实鼠标路径复验一次**（headless Chromium 的 CDP Input.dispatchMouseEvent）——合成事件与真实指针在 hover 链上的行为可能存在差异。
-
 ## 常见陷阱
 
+- 合成 pointermove 扫全板能验证渲染逻辑，但**必须再用真实鼠标路径复验一次**（headless Chromium 的 CDP Input.dispatchMouseEvent）——合成事件与真实指针在 hover 链上的行为可能存在差异。
 - hover-only 控件的"指针移动到控件上"这一步最容易断：追踪层级、内缩距离、transition 延迟三处都要检查
 - 截图验证对 WebGL 页面不可靠（headless 可能黑屏），以 DOM 断言（`data-testid`、cursor 样式）为准
+
+## Related Sources
+
+- [[sources/back-746-memo-board-webgl-pinboard]] — BACK-746 memo 钉板 WebGL 实现
+- [[sources/back-747-memo-archiving]] — BACK-747 memo 归档功能

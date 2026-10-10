@@ -1,15 +1,15 @@
 ---
 title: headless Chrome CDP 实况验证
-created_date: '2026-09-26 14:45'
-updated_date: '2026-09-26 14:45'
 labels: [execution, testing, web-ui]
+created_date: 2026-09-26 14:45
+updated_date: 2026-10-09 23:30
 extracted_from:
-  - "[[sources/back-670-loading-motion-reduce-removal]]"
-  - "[[sources/back-668-branch-indexing-header-chip]]"
-  - "[[sources/back-661-deep-link-first-load-guard]]"
-  - "[[sources/back-638-header-outline-toc]]"
-  - "[[sources/back-641-sidebar-toggle-z-index]]"
-  - "[[sources/back-663-completed-popup-read-only]]"
+  - BACK-670
+  - BACK-668
+  - BACK-661
+  - BACK-638
+  - BACK-641
+  - BACK-663
 ---
 
 # headless Chrome CDP 实况验证
@@ -18,7 +18,7 @@ extracted_from:
 
 jsdom 证明不了的东西：真实渲染（computed style、动画矩阵）、真实视口、真实网络时序、真实鼠标命中。本波（653–714）CDP 已是 web 改动的事实标准收尾验证。
 
-## 已验证的用法
+## 标准步骤
 
 - **计算样式与动画探针**：读取 computed `animation-name` 与间隔采样的 transform 矩阵，区分"画了但没动"与"真的在转"（BACK-670 在 reduced-motion 主机上定位假死 spinner）
 - **virtual-time 冻结**：暂停 virtual time 抓住瞬态帧再断言/截图——冷启动窗口里的索引指示器用此法在两种主题下取证（BACK-668：去掉 `.dark` 补拍亮色主题）
@@ -33,7 +33,7 @@ jsdom 证明不了的东西：真实渲染（computed style、动画矩阵）、
 - **Bun keep-alive 池打到 DevTools HTTP 服务**：复用连接的第二个请求收到 404——给 CDP HTTP 请求加 `Connection: close`（BACK-674 记录，与 [[execution/bun-windows-test-toolkit]] 的 server 套件陷阱同源）
 - CDP 探针本身改变时序——结论以"探针在/不在都复现"为准（BACK-670 的 260ms 双采样）
 
-## 参考任务
+## Related Sources
 
 - [[sources/back-670-loading-motion-reduce-removal]] — 动画探针与 reduced-motion 主机
 - [[sources/back-661-deep-link-first-load-guard]] — 网络时序复现与因果探针

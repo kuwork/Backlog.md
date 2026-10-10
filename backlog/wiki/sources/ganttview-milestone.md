@@ -1,12 +1,12 @@
 ---
-title: m-7 GanttView 里程碑
-source_path: backlog/milestones/m-7 - ganttview.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: m-7 - GanttView 里程碑
 labels: [source, milestone, gantt]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/milestones/m-7 - ganttview.md
 ---
 
-# m-7 GanttView 里程碑
+# m-7 - GanttView 里程碑
 
 涵盖甘特图视图的完整开发与交付，包括 BACK-491 基础甘特图、BACK-495 跟踪甘特图及相关子任务。
 
@@ -17,7 +17,7 @@ labels: [source, milestone, gantt]
 - actual_start: 2026-05-25 16:00
 - actual_end: 2026-05-28 17:17
 
-## 关联任务
+## Related Sources
 
 - [[sources/smart-gantt-view-task]] — BACK-491 智能甘特图视图
 - [[sources/tracking-gantt-view-task]] — BACK-495 跟踪甘特图

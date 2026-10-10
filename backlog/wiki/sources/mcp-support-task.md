@@ -1,12 +1,12 @@
 ---
-title: BACK-287 MCP 支持实现
+title: BACK-287 - MCP 支持实现
 labels: [source]
-source_path: backlog/completed/back-287 - Add-MCP-support-for-agent-integration.md
 created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/completed/back-287 - Add-MCP-support-for-agent-integration.md
 ---
 
-
-# BACK-287 摘要
+# BACK-287 - MCP 支持实现
 
 实现了 Model Context Protocol (MCP) 支持，将 Backlog.md 功能通过标准化协议暴露给 AI 代理。
 
@@ -41,3 +41,12 @@ codex mcp add backlog backlog mcp start
 gemini mcp add backlog -s user backlog mcp start
 kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
 ```
+
+## Related Concepts
+
+- [[concepts/mcp-server]] — McpServer 继承 Core 的协议层实现
+- [[concepts/mcp-workflow]] — MCP 任务执行与收尾指南
+
+## Related Sources
+
+- [[sources/src-architecture]] — `src/mcp/` 在整体源码架构中的位置

@@ -1,8 +1,8 @@
 ---
 title: 稳定 JSON 输出
-created_date: '2026-08-17 23:00'
-updated_date: '2026-09-26 14:45'
 labels: [concept, cli, api-contract]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 稳定 JSON 输出

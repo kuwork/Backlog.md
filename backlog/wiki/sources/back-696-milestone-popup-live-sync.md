@@ -1,44 +1,40 @@
 ---
-title: BACK-696 Keep the milestone popup in sync with live milestone and task state
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - tui
-  - milestones
-  - live-refresh
+title: BACK-696 - 里程碑弹窗实时同步
+labels: [source, tui, milestones, live-refresh]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-696 - Keep-the-milestone-popup-in-sync-with-live-milestone-and-task-state.md
 ---
 
-# BACK-696 Keep the milestone popup in sync with live milestone and task state
+# BACK-696 - 里程碑弹窗实时同步
 
-The milestone detail popup rendered once from the state at Enter-press time, and unlike the task session the milestone view started no watcher at all — the whole view (popup, sidebar counts, columns) was a still picture. This task gives the session a new milestone-folder watcher plus the existing task watcher, and makes the popup updatable in place.
+里程碑详情弹窗从按 Enter 时刻的状态一次性渲染，且与任务会话不同，里程碑视图完全不启动监视器——整个视图（弹窗、侧边栏计数、列）是一张静照。本任务为会话新增里程碑文件夹监视器加上既有任务监视器，并让弹窗可原地更新。
 
-## Summary
+## 实现要点
 
-- New `src/utils/milestone-watcher.ts`: `watchMilestones` watches the milestones and archive-milestones folders and publishes both re-read lists once a change has settled; coarser than the task watcher on purpose (no per-record store to reconcile), but keeps the same two guards — a folder counts as read only when it holds as many usable milestones as `m-*.md` files, and a signature matching the last publication is dropped
-- `milestoneContentSignature` is exported so the view and the watcher compare one definition of changed, exactly as `taskContentSignature` is for tasks
-- `createMilestonePopup` returns `update` and `focus` beside `close`: the popup re-renders the header box and scrolled body **in place**, not close-and-reopen, because the host awaits `closed` to decide whether to open the edit form and gates its keys on `popupOpen` — a replacement popup would resolve that promise and drop the gate
-- The host tracks the open popup as state (`{ key, id, signature, handle }`) cleared in the single `openDetail` finally path, and drives it from `syncOpenPopup()`: left-the-list closes with a notice, changed signature re-renders, and either way the popup takes the keyboard back — without that, a board repaint hands focus to a column list and the popup silently stops answering Esc/q
-- The session starts both feeds (`watchTasks` for the progress counts, `watchMilestones` for the records) and stops them with the screen; `archivedMilestones` became view state so an archive performed elsewhere is reflected; when the popup resolves with edit, the milestone is re-resolved by row key so the form opens on current file content
-- Tests: new `milestone-watcher.test.ts` (5 cases, one through a real `fs.watch`), `milestones-tui.test.ts` +4 cases (in-place refresh proven by widget identity, progress line 0/2 → 1/2, removal closes with notice, external create appears in the sidebar); 7-variant × 8-case rollback matrix; all neighbouring suites green
+- 新 `src/utils/milestone-watcher.ts`：`watchMilestones` 监视 milestones 与 archive-milestones 文件夹，变更 settled 后发布两份重读列表；故意比任务监视器粗（无逐记录存储可对账），但保留同样的两道防护——仅当文件夹持有与 `m-*.md` 文件同样多的可用里程碑时才算读取成功，与上次发布相同的签名被丢弃
+- `milestoneContentSignature` 被导出，使视图与监视器比较同一个"已变"定义，与任务的 `taskContentSignature` 完全同构
+- `createMilestonePopup` 除 `close` 外返回 `update` 与 `focus`：弹窗**原地**重渲染头部框与可滚动主体，而非关闭重开——因为宿主 await `closed` 决定是否打开编辑表单，并以 `popupOpen` 门控按键，替换弹窗会 resolve 该 promise 并丢掉门控
+- 宿主将打开的弹窗跟踪为状态（`{ key, id, signature, handle }`），在唯一的 `openDetail` finally 路径清除，并由 `syncOpenPopup()` 驱动：离开列表以提示关闭，签名变更重渲染，两种情况下弹窗都收回键盘——否则看板重绘会把焦点交给列列表，弹窗静默地不再响应 Esc/q
+- 会话启动两条供给（`watchTasks` 供进度计数，`watchMilestones` 供记录）并随屏幕停止；`archivedMilestones` 变为视图状态，以反映别处执行的归档；弹窗以 edit resolve 时按行键重解析里程碑，使表单打开在当前文件内容上
+- 测试：新 `milestone-watcher.test.ts`（5 用例，一个经真实 `fs.watch`），`milestones-tui.test.ts` +4 用例（部件身份证明原地刷新、进度行 0/2 → 1/2、移除带提示关闭、外部创建出现在侧边栏）；7 变体 × 8 用例回滚矩阵；全部邻近套件绿色
 
-## Acceptance Criteria
+## 验收标准
 
-- An out-of-process milestone edit refreshes the open popup's title, dates, description, and documentation without user action
-- Task changes elsewhere move the popup's progress counts; a milestone leaving the list closes the popup with a visible notice
-- The milestone folder is live for the whole session: sidebar rows and scoped columns follow creates and archives
-- Refresh goes through the existing funnel; an unchanged signature is a no-op so the view's own writes don't flicker
+- 进程外里程碑编辑无需用户操作即可刷新打开弹窗的标题、日期、描述与 documentation
+- 别处的任务变更移动弹窗的进度计数；里程碑离开列表时以可见提示关闭弹窗
+- 里程碑文件夹在整个会话内保持活跃：侧边栏行与作用域列跟随创建与归档
+- 刷新走既有通道；未变化的签名为 no-op，使视图自身的写入不闪动
 
 ## Related Concepts
 
-- [[concepts/milestones]] — the milestone view and its detail popup
-- [[concepts/cli-tui]] — watcher-fed sessions and in-place popup updates
-- [[concepts/task-lifecycle]] — task completion as the popup's progress input
+- [[concepts/milestones]] — 里程碑视图及其详情弹窗
+- [[concepts/cli-tui]] — 监视器供给的会话与弹窗原地更新
+- [[concepts/task-lifecycle]] — 任务完成作为弹窗的进度输入
 
 ## Related Sources
 
-- [[sources/back-694-board-popup-live-sync]] — the task-popup sync whose shape this follows (with in-place update instead of reopen)
-- [[sources/back-695-drafts-session-live-sync]] — same wave of giving watcher-less sessions a feed
-- [[sources/back-618-milestone-created-updated-dates]] — milestone metadata the popup renders
-- [[sources/back-580-milestone-detail-view-edit-modal]] — the milestone detail/edit surface
+- [[sources/back-694-board-popup-live-sync]] — 本任务跟随的任务弹窗同步形态（以原地更新替代重开）
+- [[sources/back-695-drafts-session-live-sync]] — 给无监视器会话接上供给的同一波工作
+- [[sources/back-618-milestone-created-updated-dates]] — 弹窗渲染的里程碑元数据
+- [[sources/back-580-milestone-detail-view-edit-modal]] — 里程碑详情/编辑面

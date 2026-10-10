@@ -1,12 +1,12 @@
 ---
-title: BACK-208 粘贴为 Markdown 支持
+title: BACK-208 - 粘贴为 Markdown 支持
 labels: [source]
-source_path: backlog/tasks/back-208 - Add-paste-as-markdown-support-in-Web-UI.md
 created_date: 2026-05-10 00:00
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-208 - Add-paste-as-markdown-support-in-Web-UI.md
 ---
 
-
-# BACK-208 粘贴为 Markdown 支持
+# BACK-208 - 粘贴为 Markdown 支持
 
 **状态**: Done | **标签**: web-ui, enhancement, markdown | **负责人**: @kimi
 
@@ -77,7 +77,7 @@ created_date: 2026-05-10 00:00
 - 大小限制：响应体超过 20 MB 中止下载
 - 超时：30 秒 fetch 超时
 
-## Bugfixes（2026-05-09）
+## Bug 修复（2026-05-09）
 
 - **Excel 表格粘贴未转换**: Excel 用 `<colgroup><col>` 包装表格，Turndown GFM 规则无法识别。修复：`cleanHtml` 现在剥离这些标签。
 - **Excel 粘贴丢失截图**: Excel 同时在剪贴板放置 `text/html`（表格）和 `image/png`（截图）。修复：`handlePasteAsMarkdown` 返回 Markdown 字符串，`PasteAwareMDEditor` 接收后追加任何独立图片 blob。
@@ -86,3 +86,9 @@ created_date: 2026-05-10 00:00
 ## 后续修复
 
 - [[sources/wiki-pasted-images-promote-fix]] — BACK-488 修复 wiki 页面保存时未复用 temp → paste 图片迁移逻辑的问题。Wiki 编辑器已使用 `PasteAwareMDEditor` 支持图片粘贴，但 `WikiDetail.tsx` 的 `handleSave` 遗漏了 promote 步骤，现已补齐。
+
+## Related Concepts
+
+- [[concepts/paste-as-markdown]] — 智能粘贴功能的组件与流程
+- [[concepts/markdown-pipeline]] — Markdown 渲染流水线
+- [[concepts/asset-management]] — 图片资源上传与提升机制

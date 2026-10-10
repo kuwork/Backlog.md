@@ -2,12 +2,12 @@
 title: 扩展 Git 网络错误识别模式
 labels: [execution]
 created_date: 2026-05-25 00:45
-updated_date: 2026-05-25 00:45
+updated_date: 2026-10-09 23:30
 ---
 
 # 扩展 Git 网络错误识别模式
 
-## 场景
+## 适用场景
 
 `GitOperations.fetch()` 使用 `containsNetworkErrorPattern()` 识别网络错误并优雅降级（返回本地数据而非崩溃）。当新的网络错误类型出现时，需要将其加入识别模式列表。
 
@@ -28,9 +28,8 @@ updated_date: 2026-05-25 00:45
 4. **运行完整测试套件**
    - `bun test` 确认无回归
 
-## BACK-487 示例
+BACK-487 示例——追加的 SSL 相关模式：
 
-追加的 SSL 相关模式：
 ```typescript
 "ssl_error_syscall",
 "ssl_connect",
@@ -38,10 +37,11 @@ updated_date: 2026-05-25 00:45
 "tls handshake timeout",
 ```
 
-## 设计原则
+## 常见陷阱
 
 - **纯增量变更**：只扩展识别范围，不改变非网络错误的抛出行为
 - **环境意识**：SSL 错误常因 `Bun.spawn` 继承的环境与交互式 shell 不同（缺失代理变量）
 
-## 提取来源
-- [[sources/ssl-network-error-fix]]
+## Related Sources
+
+- [[sources/ssl-network-error-fix]] — BACK-487 SSL 网络错误识别修复

@@ -1,12 +1,12 @@
 ---
-title: BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复
+title: BACK-506 - CLI actualStart/actualEnd local-to-UTC 转换修复
 labels: [source, bug, cli, dates, timezone]
-created_date: '2026-06-04 16:34'
-updated_date: '2026-06-04 16:34'
+created_date: 2026-06-04 16:34
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-506 - Fix-CLI-actualStart-actualEnd-missing-local-to-UTC-conversion.md
 ---
 
-# BACK-506 CLI actualStart/actualEnd local-to-UTC 转换修复
+# BACK-506 - CLI actualStart/actualEnd local-to-UTC 转换修复
 
 修复 CLI（及 MCP）输入 `actualStart`/`actualEnd` 时未将本地时间转换为 UTC 的问题，消除与 Web UI 的存储偏差。
 
@@ -16,7 +16,7 @@ source_path: backlog/tasks/back-506 - Fix-CLI-actualStart-actualEnd-missing-loca
 - CLI 直接将本地时间字符串（如 `2026-06-04 09:00`）原样写入，导致同一输入在不同入口产生不同存储值
 - date-only 格式（`YYYY-MM-DD`）同样未被处理
 
-## 修复内容
+## 解决方案
 
 1. **新增 `localDateTimeToStoredUtc`**（`src/utils/date-utc.ts`）
    - 支持三种格式：`YYYY-MM-DD`（视为 00:00 local）、`YYYY-MM-DD HH:MM`、`YYYY-MM-DDTHH:MM`

@@ -1,16 +1,16 @@
 ---
-title: BACK-494 修复任务编辑模态框键盘快捷键与输入冲突
-source_path: backlog/tasks/back-494 - Fix-task-edit-modal-keyboard-shortcuts-interfering-with-title-input.md
-created_date: 2026-05-29 22:36
-updated_date: 2026-05-29 22:36
+title: BACK-494 - 修复任务编辑模态框键盘快捷键与输入冲突
 labels: [source, bug, web-ui, keyboard, ux]
+created_date: 2026-05-29 22:36
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-494 - Fix-task-edit-modal-keyboard-shortcuts-interfering-with-title-input.md
 ---
 
-# BACK-494 修复任务编辑模态框键盘快捷键与输入冲突
+# BACK-494 - 修复任务编辑模态框键盘快捷键与输入冲突
 
 修复 `TaskDetailsModal` 全局键盘快捷键在用户在表单输入框中打字时仍然触发的问题。
 
-## 问题描述
+## 问题
 
 `TaskDetailsModal.tsx` 在 `window` 上注册了 capture 阶段 `keydown` 监听器，处理以下快捷键：
 - `E` → 进入编辑模式

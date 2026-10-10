@@ -1,12 +1,12 @@
 ---
-title: BACK-550 Apple Silicon 二进制解析改进
+title: BACK-550 - Apple Silicon 二进制解析改进
 labels: [source, cli, launcher, bug]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-550 - Improve-binary-resolution-on-Apple-Silicon-Rosetta-arch-mismatch.md
 ---
 
-# BACK-550 改进 Apple Silicon 二进制解析（Rosetta/架构不匹配）
+# BACK-550 - Apple Silicon 二进制解析改进
 
 修复 M1/M2 Mac 上通过 Rosetta(x64) 运行 Node/Bun 时的二进制解析错误。
 
@@ -25,12 +25,12 @@ source_path: backlog/tasks/back-550 - Improve-binary-resolution-on-Apple-Silicon
 - `scripts/cli.cjs`：将同步 spawn 异常与 error 事件统一经 `isBinaryInstallError` 分类（errno -86/EBADARCH/ENOEXEC/ENOENT），输出检测到的平台架构、Node 版本、Rosetta 状态、已尝试包及具体重装命令；子进程死于信号（SIGILL/SIGTRAP）时退出码改为 1
 - README 新增 Apple Silicon 故障排查章节（brew/npm/bun 原生架构重装命令）
 
-## 实现位置
+## 实现要点
 
 - `scripts/resolveBinary.cjs`、`scripts/cli.cjs`、`README.md`
 - `src/test/resolveBinary.test.ts`、`src/test/cli-launcher.test.ts`
 
-## 测试
+## 验证
 
 resolveBinary.test.ts（darwin 双向回退矩阵、linux/win32 无回退、.exe 后缀、双缺失错误、非 darwin 短路）、cli-launcher.test.ts（缺包引导+退出 1、参数/退出码透传、SIGILL 引导、SIGTERM 退出 143、ENOEXEC）。
 

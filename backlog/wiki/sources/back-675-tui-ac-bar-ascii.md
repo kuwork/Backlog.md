@@ -1,44 +1,37 @@
 ---
-title: BACK-675 Merge the TUI acceptance-criteria bar follow-ups into one ASCII colored compact bar
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - tui
-  - acceptance-criteria
+title: BACK-675 - TUI 验收标准条合并为 ASCII 彩色紧凑条
+labels: [source, tui, acceptance-criteria]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-675 - Merge-the-TUI-acceptance-criteria-bar-follow-ups-into-one-ASCII-colored-compact-bar.md
 ---
 
-# BACK-675 Merge the TUI acceptance-criteria bar follow-ups into one ASCII colored compact bar
+# BACK-675 - TUI 验收标准条合并为 ASCII 彩色紧凑条
 
-The TUI acceptance-criteria bar rendered with Block Element glyphs (U+2588/U+2591), which blessed only guarantees fallback for DEC Special Graphics — so on Windows consoles without those glyphs the bar was invisible or garbled. This task lands the final form in one pass: compact ASCII, colored, clamped, and removed from the detail pane.
+TUI 验收标准条用 Block Element 字形（U+2588/U+2591）渲染，而 blessed 只保证 DEC Special Graphics 的回退——因此在没有那些字形的 Windows 控制台上，条不可见或乱码。本任务一次落地最终形态：紧凑 ASCII、彩色、截断，并从详情窗格移除。
 
-## Summary
+- `formatAcceptanceCriteriaProgress` 重写：`#` 填充 / `-` 空格的 ASCII 单元，宽版 5 格、紧凑 3 格，注释记录 Block Elements 为何不可用（无 blessed 字形回退）
+- `completionColor(checked, total)` 经 `wrapStatusColor` 应用：完成绿色、低于或等于三分之一红色、之间黄色；带截断，任何已勾选项至少显示一格，未完成的工作永不填满条
+- `WIDE_PROGRESS_MIN_WIDTH` 中途从 32 移到 40：32 时 fork 在已经太窄的列上仍显示宽条——120 列三列看板（列宽 36）正好落在该区间
+- 条只是行的扫描辅助：任务详情窗格的条行、其 import，以及只为给它量宽而存在的宽度管道（`availableWidth` 参数、quick-look 透传、resize 重渲染）全部移除——看板行是唯一的完成度面
+- 进度实时从已勾/总标准派生，无持久状态；无标准或非 In-Progress 状态的任务不渲染条，全部勾选的 In-Progress 任务保留活跃状态图标，条不会被误读为 Done
+- CLI/MCP `(ac: x/y)` 摘要后缀刻意不动
+- 测试：18 用例覆盖精确输出字符串、纯 ASCII 不变式、每个边界的颜色、两端截断、阈值处两种单元数、真实列宽下的看板行，以及详情小节渲染清单无条；在 BACK-411 上以 80/36/31/20 宽度实测渲染
 
-- `formatAcceptanceCriteriaProgress` rewritten: `#` filled / `-` empty ASCII cells, 5 cells wide and 3 compact, with a comment recording why Block Elements are unusable (no blessed glyph fallback)
-- `completionColor(checked, total)` applied through `wrapStatusColor`: green when complete, red at or below one third, yellow between; clamping so any checked criterion shows at least one cell while unfinished work never fills the bar
-- `WIDE_PROGRESS_MIN_WIDTH` moved 32 → 40 mid-flight: at 32 the fork kept showing the wide bar on columns already too tight for it — a 120-column three-column board (column width 36) sits exactly in that band
-- The bar is a scanning aid for rows only: the task detail pane's bar line, its import, and the width plumbing that existed only to size it (`availableWidth` argument, quick-look pass-through, resize re-render) were removed — the board row is the single completion surface
-- Progress is derived live from checked/total criteria with no persisted state; tasks with no criteria or non-In-Progress status render no bar, and an all-checked In-Progress task keeps the active-work status icon so the bar cannot read as Done
-- CLI/MCP `(ac: x/y)` summary suffix deliberately untouched
-- Tests: 18 cases covering exact emitted strings, ASCII-only invariant, color at every boundary, clamp at both extremes, both cell counts at the threshold, board rows at real column widths, and the detail section rendering checklist with no bar; rendered live against BACK-411 at widths 80/36/31/20
+## 验收标准
 
-## Acceptance Criteria
-
-- Bar renders ASCII `#`/`-` cells, legible without Block Element glyphs or UTF-8 locale
-- 5 cells wide / 3 compact at threshold 40, re-rendering on terminal resize
-- Filled run colored via shared status color helper (green complete, red ≤ 1/3, yellow between), clamped at both extremes
-- No bar for tasks without criteria or not In Progress; all-checked In-Progress keeps the active status icon
-- Bar on board rows only — detail pane shows heading plus checklist; CLI/MCP suffix unchanged
+- 条渲染 ASCII `#`/`-` 单元，无 Block Element 字形或 UTF-8 locale 也可读
+- 阈值 40 下宽版 5 格 / 紧凑 3 格，终端 resize 时重渲染
+- 填充段经共享状态色辅助函数着色（完成绿、≤1/3 红、之间黄），两端截断
+- 无标准或非 In Progress 的任务无条；全勾选的 In-Progress 保留活跃状态图标
+- 条只在看板行上——详情窗格显示标题加清单；CLI/MCP 后缀不变
 
 ## Related Concepts
-
-- [[concepts/cli-tui]] — blessed rendering constraints and terminal-width handling
-- [[concepts/tui-theme-adaptive]] — shared status color helper the bar uses
-- [[concepts/task-lifecycle]] — In Progress semantics the bar visualizes without implying Done
+- [[concepts/cli-tui]] — blessed 渲染约束与终端宽度处理
+- [[concepts/tui-theme-adaptive]] — 条使用的共享状态色辅助函数
+- [[concepts/task-lifecycle]] — 条可视化而不暗示 Done 的 In Progress 语义
 
 ## Related Sources
-
-- [[sources/back-569-acceptance-criteria-progress-ui]] — original AC progress UI this task finalizes
-- [[sources/back-625-ac-progress-json-output]] — the `(ac: x/y)` summary kept unchanged
-- [[sources/back-676-emoji-double-width-tui]] — sibling TUI cell-width correctness fix (batch sibling)
+- [[sources/back-569-acceptance-criteria-progress-ui]] — 本任务收尾的原始 AC 进度 UI
+- [[sources/back-625-ac-progress-json-output]] — 保持不变的 `(ac: x/y)` 摘要
+- [[sources/back-676-emoji-double-width-tui]] — 同级 TUI 单元格宽度正确性修复（批次兄弟）

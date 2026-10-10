@@ -1,8 +1,8 @@
 ---
 title: 任务评论
-created_date: '2026-06-09 01:35'
-updated_date: '2026-09-08 17:00'
 labels: [concept, feature, comments, markdown, cli, mcp, web-ui]
+created_date: 2026-06-09 01:35
+updated_date: 2026-10-09 23:30
 ---
 
 # 任务评论

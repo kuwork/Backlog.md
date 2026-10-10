@@ -1,8 +1,8 @@
 ---
 title: TUI composer 不迁移 type 字段与 git CAS 管线
-created_date: '2026-08-17 23:00'
-updated_date: '2026-08-17 23:00'
 labels: [decision, tui, composer, git]
+created_date: 2026-08-17 23:00
+updated_date: 2026-10-09 23:30
 ---
 
 # TUI composer 不迁移 type 字段与 git CAS 管线
@@ -11,7 +11,7 @@ labels: [decision, tui, composer, git]
 
 上游 BACK-430 / BACK-565 提供的 TUI 任务 composer 包含 type 选择器，并在 core/backlog.ts 与 git/operations.ts 中引入了创建失败回滚用的快照/临时索引 CAS 管线。
 
-## 决策
+## 决定
 
 BACK-563 采用上游 BACK-565 成熟版 composer，但：
 - 移除 type 字段（fork Task 模型没有 `type`）

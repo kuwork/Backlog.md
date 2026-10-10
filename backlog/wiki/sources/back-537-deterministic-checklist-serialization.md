@@ -1,12 +1,12 @@
 ---
-title: BACK-537 清单编辑与序列化确定性化
+title: BACK-537 - 清单编辑与序列化确定性化
 labels: [source, core, markdown, cli, mcp]
-created_date: '2026-08-09 00:00'
-updated_date: '2026-08-09 00:00'
+created_date: 2026-08-09 00:00
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-537 - Make-checklist-edits-and-serialization-deterministic.md
 ---
 
-# BACK-537 使清单（checklist）编辑与序列化确定性化
+# BACK-537 - 清单编辑与序列化确定性化
 
 让 AC/DoD 清单的解析与序列化变得确定性，并引入原子清空操作。
 
@@ -23,13 +23,13 @@ source_path: backlog/tasks/back-537 - Make-checklist-edits-and-serialization-det
 - 为 `TaskEditArgs`、MCP task_edit schema、handler 增加 `acceptanceCriteriaClear` 布尔字段；`toAcceptanceCriteriaEntries` 对空数组返回空列表使清空真正生效
 - 更新 agent/CLI/MCP 指南说明 clear-then-add 工作流
 
-## 实现位置
+## 实现要点
 
 - `src/markdown/structured-sections.ts`、`src/cli.ts`、`src/utils/task-edit-builder.ts`
 - `src/mcp/utils/schema-generators.ts`、`src/mcp/tools/tasks/handlers.ts`
 - 指南 `agent-guidelines.md`、`cli-instructions/task-execution.md`、`mcp/task-execution.md` 等
 
-## 测试
+## 验证
 
 `src/test/acceptance-criteria.test.ts`、`markdown.test.ts`、`mcp-tasks.test.ts` 聚焦测试 118/118 通过。
 

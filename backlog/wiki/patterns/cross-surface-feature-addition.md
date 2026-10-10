@@ -2,7 +2,7 @@
 title: 跨表面功能添加模式
 labels: [pattern, architecture, implementation]
 created_date: 2026-05-27 00:00
-updated_date: 2026-05-27 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 跨表面功能添加模式
@@ -44,7 +44,7 @@ updated_date: 2026-05-27 00:00
 | **Section overwrite** | BACK-108 更新 description 时误覆盖整个 AC 区块 | 为每个结构化章节创建独立的 `updateXxxSection()` serializer 辅助函数 |
 | **硬编码默认值绕过配置** | BACK-187 `core.createDocument(document, true, ...)` 中硬编码 `true` 覆盖了用户 `autoCommit` 配置 | 传 `undefined` 让 Core 层读取配置决定 |
 
-## 参考任务
+## Related Sources
 
 - [[sources/due-date-fields-task]] — BACK-401，最完整的 12 层全遍历示例（含里程碑序列化与 Agent 指南）
 - [[sources/back-489-health-indicators-task]] — BACK-489，基于已有字段构建派生统计的变体

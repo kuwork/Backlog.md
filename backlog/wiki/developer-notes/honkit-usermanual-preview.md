@@ -1,10 +1,9 @@
 ---
 title: HonKit 预览用户手册
 labels: [developer-notes]
-description: 使用 HonKit 本地预览和构建 usermanual 的完整操作流程
 created_date: 2026-05-12 00:00
+updated_date: 2026-10-09 23:30
 ---
-
 
 # HonKit 预览用户手册
 
@@ -125,3 +124,7 @@ npx honkit pdf
 | `ebook-convert` 找不到 | 未安装 Calibre 或未加入 PATH | 安装 Calibre 并配置环境变量 |
 | `cb.apply is not a function` | 使用原版 GitBook CLI + Node.js 22 | 改用 HonKit |
 | 中文路径乱码 | URL 编码正常行为 | 不影响实际访问 |
+
+## Related Concepts
+
+- [[usermanual/README]] — Backlog.md 用户手册封面（GitBook 风格目录结构）

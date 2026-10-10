@@ -1,8 +1,8 @@
 ---
 title: 任务锁与并发编辑
-created_date: '2026-09-08 17:00'
-updated_date: '2026-09-26 14:45'
 labels: [concept, concurrency, core]
+created_date: 2026-09-08 17:00
+updated_date: 2026-10-09 23:30
 ---
 
 # 任务锁与并发编辑

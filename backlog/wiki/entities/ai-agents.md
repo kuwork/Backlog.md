@@ -1,8 +1,8 @@
 ---
 title: AI 代理与集成
 labels: [entity]
-created_date: '2026-05-06 00:00'
-updated_date: '2026-07-14 11:20'
+created_date: 2026-05-06 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # AI 代理与集成
@@ -61,13 +61,13 @@ Cursor 作为 init 选项映射到共享的 `AGENTS.md` 目标：
 - [[concepts/mcp-workflow]] — MCP 工作流与 AI 集成
 - [[concepts/cli-entry]] — CLI 入口与命令体系
 
+## Related Sources
+
+- [[sources/back-521]] — BACK-521 CLI 优先的代理工作流重构
+- [[sources/back-521.2]] — BACK-521.2 短代理 nudge 与 init 默认集成迁移
+- [[sources/back-521.14]] — BACK-521.14 为 CLI/MCP 指令指南补充缺失的代理指引
+- [[sources/back-410-cursor-agents-md-cleanup]] — BACK-410 Cursor AGENTS.md 初始化清理
+
 ## Related Entities
 
 - [[entities/backlog-cli]] — Backlog.md CLI 工具
-
-## Related Sources
-
-- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
-- [[sources/back-521.2]] — BACK-521.2 Short agent nudge and init default migration
-- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
-- [[sources/back-410-cursor-agents-md-cleanup]] — Cursor AGENTS.md cleanup
