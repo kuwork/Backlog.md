@@ -5635,12 +5635,19 @@ addHelpSchema(memoCmd.command("update <memoId>"), {
 	optional: [
 		{ name: "content", type: "Markdown", description: "Replacement memo body" },
 		{ name: "append", type: "Markdown", description: "Append a line to the memo body" },
+		{
+			name: "tags",
+			type: "Comma-separated strings",
+			description: "Replacement tag list; a blank value clears the tags (omit to leave them as they are)",
+		},
 	],
-	writes: "Replaces or appends to the memo body and bumps its updated date",
+	writes: "Replaces or appends to the memo body, replaces the tag list, and bumps its updated date",
 	output: "Updated memo ID",
 	examples: [
 		'backlog memo update 20261001-1 --content "Rewritten note"',
 		'backlog memo update 20261001-1 --append "One more line"',
+		"backlog memo update 20261001-1 --tags idea,cli",
+		'backlog memo update 20261001-1 --tags ""',
 	],
 })
 	.description("update a memo")
@@ -5652,12 +5659,20 @@ addHelpSchema(memoCmd.command("update <memoId>"), {
 		"--append <text>",
 		"append a line to the memo body (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
 	)
+	.option(
+		"-t, --tags <tags>",
+		"replace the memo tags (comma-separated or use multiple times; pass an empty value to clear them)",
+		createMultiValueAccumulator(),
+	)
 	.action(async (memoId: string, options) => {
 		const cwd = await requireProjectRoot();
 		const hasContent = typeof options.content === "string";
 		const append = typeof options.append === "string" ? processCliEscapes(options.append) : "";
-		if (!hasContent && append.trim().length === 0) {
-			console.error("No update options provided. Provide --content or --append.");
+		const hasAppend = append.trim().length > 0;
+		// Absent keeps the stored tags; an explicitly blank value clears them.
+		const tags = parseClearableStringList(options.tags);
+		if (!hasContent && !hasAppend && tags === undefined) {
+			console.error("No update options provided. Provide --content, --append, or --tags.");
 			process.exitCode = 1;
 			return;
 		}
@@ -5667,8 +5682,13 @@ addHelpSchema(memoCmd.command("update <memoId>"), {
 			process.exitCode = 1;
 			return;
 		}
-		const content = hasContent ? processCliEscapes(options.content) : `${existing.rawContent}\n${append}`;
-		const memo = await updateMemo(cwd, existing.id, { content });
+		// Left undefined for a tags-only update, so updateMemo keeps the stored body.
+		const content = hasContent
+			? processCliEscapes(options.content)
+			: hasAppend
+				? `${existing.rawContent}\n${append}`
+				: undefined;
+		const memo = await updateMemo(cwd, existing.id, { content, tags });
 		if (!memo) {
 			console.error(`Memo ${memoId} not found.`);
 			process.exitCode = 1;

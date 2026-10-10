@@ -72,7 +72,21 @@ backlog memo update 20261001-1 --content "Rewritten note"
 backlog memo update 20261001-1 --append "One more line"
 ```
 
-A memo ID that does not exist is reported as an error.
+`backlog memo update` options:
+
+- `--content <content>` — replacement body (multi-line: write `\n` literally inside a single-quoted or double-quoted argument)
+- `--append <text>` — append a line to the existing body
+- `-t, --tags <tags>` — replacement tag list (comma-separated or use multiple times); pass an empty value to clear the tags
+
+Tags can be changed on their own or together with the body in one call:
+
+```bash
+backlog memo update 20261001-1 --tags idea,cli
+backlog memo update 20261001-1 --append "One more line" --tags idea,cli
+backlog memo update 20261001-1 --tags ""
+```
+
+Omitting `--tags` leaves the stored tags alone; `--tags ""` clears them. A memo ID that does not exist is reported as an error, and an update with none of `--content`, `--append` and `--tags` is rejected.
 
 #### Deleting a memo
 
