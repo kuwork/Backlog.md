@@ -24,9 +24,18 @@ printf "line one\nline two" | backlog memo create
 # -> Created memo 20261001-2
 ```
 
+On an interactive terminal the command instead prompts for the note, so quick capture needs no flags or pipes:
+
+```bash
+backlog memo create
+# -> Type the memo, then end with Ctrl+D (Ctrl+Z on the classic Windows console). Ctrl+C aborts.
+```
+
+Type any number of lines; the text is stored verbatim. End the capture with **Ctrl+D** — it is the only end key that works in every terminal, including the VS Code integrated terminal and Git Bash, which forward Ctrl+D but never deliver a real EOF. On the classic Windows console (cmd/PowerShell), which delivers no EOF at all, **Ctrl+Z** ends the capture instead; a real EOF (Unix/macOS/WSL Ctrl+D) works there too. Ctrl+C aborts without creating a memo.
+
 `backlog memo create` options:
 
-- `-c, --content <content>` — memo body (multi-line: write `\n` literally inside a single-quoted or double-quoted argument); omit to read the body from stdin
+- `-c, --content <content>` — memo body (multi-line: write `\n` literally inside a single-quoted or double-quoted argument); omit to type the body interactively on a TTY or read it from stdin
 - `-t, --tags <tags>` — tags (comma-separated or use multiple times)
 
 #### Listing memos

@@ -24,6 +24,7 @@ import { formatInstallResult, installWikiSkill } from "./commands/wiki-install.t
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
 import { findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
 import { initializeProject } from "./core/init.ts";
+import { captureInteractiveBody, InteractiveCaptureAbortedError } from "./core/interactive-input.ts";
 import { createMemo, deleteMemo, getMemo, listMemosPage, updateMemo } from "./core/memos.ts";
 import { foldArchivedMilestoneTasks } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
@@ -777,8 +778,9 @@ async function requireProjectRoot(): Promise<string> {
 }
 
 /**
- * Reads all of stdin as UTF-8 text. Callers must check `input.isTTY` first: an interactive
- * invocation would otherwise block forever waiting for a body nobody is going to type.
+ * Reads all of stdin as UTF-8 text. Only safe for non-interactive stdin: it awaits EOF, which an
+ * interactive terminal never delivers on its own. A caller running on a TTY must capture with
+ * `captureInteractiveBody` instead.
  */
 async function readStdinText(): Promise<string> {
 	const chunks: Buffer[] = [];
@@ -5478,11 +5480,12 @@ addHelpSchema(memoCmd.command("create"), {
 		{
 			name: "content",
 			type: "String",
-			description: "Memo body; when omitted the body is read from stdin (multi-line friendly)",
+			description:
+				"Memo body; when omitted the body is typed interactively on a TTY or read from stdin (multi-line friendly)",
 		},
 		{ name: "tags", type: "Comma-separated strings", description: "Tags to store with the memo" },
 	],
-	reads: "Stdin when --content is omitted",
+	reads: "Interactive typing when --content is omitted on a TTY, otherwise stdin",
 	writes: "Creates a memo markdown file under the configured memos directory",
 	output: "Created memo ID (YYYYMMDD-N)",
 	examples: [
@@ -5494,7 +5497,7 @@ addHelpSchema(memoCmd.command("create"), {
 	.description("create a memo")
 	.option(
 		"-c, --content <content>",
-		"memo body (multi-line: write \\n literally inside a single-quoted or double-quoted argument); omit to read the body from stdin",
+		"memo body (multi-line: write \\n literally inside a single-quoted or double-quoted argument); omit to type the body interactively on a TTY or read it from stdin",
 	)
 	.option("-t, --tags <tags>", "set tags (comma-separated or use multiple times)", createMultiValueAccumulator())
 	.action(async (options) => {
@@ -5503,9 +5506,19 @@ addHelpSchema(memoCmd.command("create"), {
 		if (typeof options.content === "string") {
 			content = processCliEscapes(options.content);
 		} else if (input.isTTY) {
-			console.error("No memo content provided. Pass --content or pipe the memo body on stdin.");
-			process.exitCode = 1;
-			return;
+			try {
+				content = await captureInteractiveBody(input, process.stderr, { echoTarget: process.stdout });
+			} catch (error) {
+				if (error instanceof InteractiveCaptureAbortedError) {
+					process.exitCode = 130;
+					return;
+				}
+				throw error;
+			} finally {
+				// The capture leaves a TTY stdin in a reading state that would keep the event
+				// loop alive forever (a TTY never delivers EOF); this command is done with stdin.
+				input.destroy();
+			}
 		} else {
 			content = await readStdinText();
 		}
