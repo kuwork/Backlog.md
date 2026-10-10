@@ -1,8 +1,8 @@
 ---
 title: 按键族信息随 GenericList 边界回调传递
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 按键族信息随 GenericList 边界回调传递
@@ -27,8 +27,11 @@ BACK-588/589 处理 TUI 列表的边界导航：到达列表顶部/底部时按�
 - **新增用户配置开关**：为一个本可按按键族自动判断的行为增加配置面，收益低维护高。
 - **用 blessed `vi: true` 标志**：附带绑定了 l/q/g/G 等键，污染 TUI 其他列表的既有键位约定。
 
-## Related
+## Related Concepts
 
-- [[sources/back-588-vim-keys-boundary-navigation]]
-- [[sources/back-589-vi-navigation-filter-popups]]
-- [[concepts/cli-tui]]
+- [[concepts/cli-tui]] — TUI 列表键位约定所在
+
+## Related Sources
+
+- [[sources/back-588-vim-keys-boundary-navigation]] — vim 键边界导航实现
+- [[sources/back-589-vi-navigation-filter-popups]] — 过滤弹窗 vi 导航实现

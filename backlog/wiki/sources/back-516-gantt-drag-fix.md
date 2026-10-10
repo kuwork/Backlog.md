@@ -1,12 +1,12 @@
 ---
-title: BACK-516 修复甘特图拖拽交互改为滚动而非修改视图范围
-created_date: '2026-06-09 00:40'
-updated_date: '2026-06-09 00:40'
+title: BACK-516 - 修复甘特图拖拽交互改为滚动而非修改视图范围
 labels: [source, bug, web-ui, gantt]
+created_date: 2026-06-09 00:40
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-516 - Fix-Gantt-chart-drag-interaction-to-use-scroll-instead-of-modifying-view-range.md
 ---
 
-# BACK-516 修复甘特图拖拽交互改为滚动而非修改视图范围
+# BACK-516 - 修复甘特图拖拽交互改为滚动而非修改视图范围
 
 修复甘特图拖拽行为，使拖拽操作平移视口而非改变日期比例尺。
 
@@ -22,17 +22,12 @@ source_path: backlog/tasks/back-516 - Fix-Gantt-chart-drag-interaction-to-use-sc
 - 从拖拽处理器中移除 `viewStartAtDrag` ref 和 `setViewStart`/`setViewEnd` 调用
 - 添加 `dragStartY` 和 `scrollTopAtDrag` refs 以实现垂直同步
 
-## 结果
+结果：水平拖拽平移时间线视口，不改变日期比例尺范围；垂直拖拽平移并与左侧任务列表同步；任务和今天线不再被挤压到右边缘；拖拽感觉像在移动滚动条滑块。
 
-- 水平拖拽平移时间线视口，不改变日期比例尺范围
-- 垂直拖拽平移并与左侧任务列表同步
-- 任务和今天线不再被挤压到右边缘
-- 拖拽感觉像在移动滚动条滑块
-
-## 相关概念
+## Related Concepts
 - [[concepts/gantt-view]] — 甘特图可视化与交互设计
 - [[concepts/web-ui-features]] — Web UI 视图
 
-## 相关来源
+## Related Sources
 - [[sources/tracking-gantt-view-task]] — BACK-495 跟踪甘特图
 - [[sources/smart-gantt-view-task]] — BACK-491 智能甘特图视图

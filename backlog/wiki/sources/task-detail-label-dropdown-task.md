@@ -1,12 +1,12 @@
 ---
-title: BACK-501 任务详情标签输入添加下拉框与模糊过滤
+title: BACK-501 - 任务详情标签输入添加下拉框与模糊过滤
 labels: [source]
-source_path: backlog/tasks/back-501 - Task-detail-label-input-needs-dropdown-with-fuzzy-filter.md
 created_date: 2026-05-30 10:20
-updated_date: 2026-05-30 10:20
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-501 - Task-detail-label-input-needs-dropdown-with-fuzzy-filter.md
 ---
 
-# BACK-501 任务详情标签输入添加下拉框与模糊过滤
+# BACK-501 - 任务详情标签输入添加下拉框与模糊过滤
 
 **状态**: Done | **标签**: web-ui, enhancement | **优先级**: medium
 

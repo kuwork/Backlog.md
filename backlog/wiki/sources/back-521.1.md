@@ -1,26 +1,18 @@
 ---
-title: BACK-521.1 Shared workflow instruction registry and CLI access
+title: BACK-521.1 - 共享工作流指令注册表与 CLI 访问
 labels: [source, cli, agent-guidance]
+created_date: 2026-06-13 14:13
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-521.1 - Shared-workflow-instruction-registry-and-CLI-access.md
-created_date: '2026-06-13 14:13'
-updated_date: '2026-07-14 11:20'
 ---
 
-# BACK-521.1 Shared workflow instruction registry and CLI access
+# BACK-521.1 - 共享工作流指令注册表与 CLI 访问
 
 **状态**: Done | **负责人**: @codex | **优先级**: high | **父任务**: [[sources/back-521|BACK-521]]
 
 创建面向 CLI 的指令表面。工作流指南注册表同时服务于 MCP 资源/工具和 CLI 命令；CLI 暴露列出可用指南和打印单个指南 markdown 的入口。
 
-## 公共 CLI 表面
-
-- `backlog instructions`
-- `backlog instructions --list`
-- `backlog instructions <overview|task-creation|task-execution|task-finalization|init-required|milestones>`
-
-不使用 `backlog agent` 这类 agent-only 命名空间。
-
-## Acceptance Criteria
+## 验收标准
 
 - 工作流指南内容可通过公共 CLI 命令读取。
 - CLI 指令命令与 MCP workflow resources/tools 共享一个注册表/单一真相源。
@@ -29,6 +21,16 @@ updated_date: '2026-07-14 11:20'
 - 测试覆盖指南列表、每个 guide key 返回预期内容。
 
 ## 实现要点
+
+公共 CLI 表面：
+
+- `backlog instructions`
+- `backlog instructions --list`
+- `backlog instructions <overview|task-creation|task-execution|task-finalization|init-required|milestones>`
+
+不使用 `backlog agent` 这类 agent-only 命名空间。
+
+实现步骤：
 
 1. 复用现有工作流指南注册表作为 CLI instruction 输出的来源；如需将 `init-required` 加入 CLI 可见注册表。
 2. 添加公共 `backlog instructions` 命令，支持 `--list` 和可选 guide key 参数。
@@ -50,7 +52,7 @@ updated_date: '2026-07-14 11:20'
 
 ## Related Sources
 
-- [[sources/back-521]] — BACK-521 CLI-first agent workflow refactor
-- [[sources/back-521.2]] — BACK-521.2 Short agent nudge and init default migration
-- [[sources/back-521.6]] — BACK-521.6 Root command local instruction hub
-- [[sources/back-521.14]] — BACK-521.14 Update CLI/MCP instruction guides with missing agent guidance
+- [[sources/back-521]] — BACK-521 CLI 优先的代理工作流重构
+- [[sources/back-521.2]] — BACK-521.2 短代理 nudge 与 init 默认迁移
+- [[sources/back-521.6]] — BACK-521.6 根命令本地指令中心
+- [[sources/back-521.14]] — BACK-521.14 补充 CLI/MCP 指令指南缺失的代理指导

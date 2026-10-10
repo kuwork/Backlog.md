@@ -1,42 +1,35 @@
 ---
-title: BACK-654 Include grandchild subtasks in board export grouping
-created_date: '2026-09-26 14:30'
-updated_date: '2026-09-26 14:30'
-labels:
-  - source
-  - cli
-  - board-export
-  - task-hierarchy
-  - upstream-migration
+title: BACK-654 - 看板导出纳入孙级子任务
+labels: [source, cli, board-export, task-hierarchy, upstream-migration]
+created_date: 2026-09-26 14:30
+updated_date: 2026-10-09 23:30
 source_path: backlog/tasks/back-654 - Include-grandchild-subtasks-in-board-export-grouping.md
 ---
 
-# BACK-654 Include grandchild subtasks in board export grouping
+# BACK-654 - 看板导出纳入孙级子任务
 
-The markdown board export built each status column as top-level tasks plus their direct children only; a subtask whose parent was itself a subtask was filed under the intermediate id, which the emit loop never walked, so grandchildren silently disappeared from the export. This task flattens each column depth-first over the existing children map.
+Markdown 看板导出把每个状态列构建为顶层任务加它们的直接子任务；父任务本身是子任务的孙级任务被挂到中间 ID 名下，而输出循环从不遍历它，于是孙级任务从导出中悄悄消失。本任务按现有 children 映射对每列做深度优先展平。
 
-## Summary
+- `generateKanbanBoardWithMetadata`（`src/board.ts:128-147`）现在用 `pushWithChildren` 递归沿现有 children 映射深度优先构建最终列列表；每层保持 ID 升序，孙级任务保留单个 `└─` 子任务前缀——不引入新的缩进形态
+- 扁平父子输出逐字节一致：精确输出测试在修复前与修复后代码上都通过，改动 hunk 与上游 ea809c223 逐字节一致
+- `buildKanbanStatusGroups` 不动（它只按状态分区，从不嵌套）；`generateMilestoneGroupedBoard` 经检查刻意未改——其小节构建器把该状态下每个任务直接映射为一行，不会丢孙级任务；改用测试钉住这一点
+- 测试：`src/test/board.test.ts` 新增三个用例——嵌套父/子/孙精确输出、扁平父/子精确输出、里程碑看板孙级用例
+- 经 tsc、Biome、六个文件共 42 个看板测试加 7 个看板 CLI 用例验证，回退检查恰好只有嵌套用例变红
 
-- `generateKanbanBoardWithMetadata` (`src/board.ts:128-147`) now builds the final column list with a `pushWithChildren` recursion that walks the existing children map depth-first; each level keeps its ID-ascending sort and grandchildren keep the single `└─` subtask prefix — no new indentation shape
-- Flat parent/child output is byte-identical: an exact-output test passes on both the pre-fix and fixed code, and the changed hunk is byte-identical to upstream ea809c223
-- `buildKanbanStatusGroups` left alone (it only partitions by status, never nests); `generateMilestoneGroupedBoard` was checked and deliberately not changed — its section builder maps every task in a status straight to a line, so it cannot drop a grandchild; a test pins that instead
-- Tests: three cases added to `src/test/board.test.ts` — nested parent/child/grandchild exact output, flat parent/child exact output, and a milestone-board grandchild case
-- Verified with tsc, Biome, 42 board tests across six files plus 7 board CLI cases, and a revert check turning exactly the nested case red
+## 验收标准
 
-## Acceptance Criteria
-
-- A subtask of a subtask appears in the exported board, in the same column as its ancestors and directly under its own parent
-- Flat parent/child export output is unchanged (same order, same `└─` prefix, same row content)
-- Flattening is depth-first over the existing children map with per-level ID-ascending sort
-- Regression tests pin the nested chain and the flat case with exact expected output; the milestone board is covered by a grandchild case without code change
+- 子任务的子任务出现在导出的看板中，与其祖先同列、紧邻自己的父任务之下
+- 扁平父子导出输出不变（顺序、`└─` 前缀、行内容均相同）
+- 展平按现有 children 映射深度优先进行，每层 ID 升序
+- 回归测试以精确期望输出钉住嵌套链与扁平用例；里程碑看板由孙级用例覆盖、无需改代码
 
 ## Related Concepts
 
-- [[concepts/upstream-migration]] — ports upstream BACK-659 (commit ea809c223)
-- [[concepts/task-lifecycle]] — parent/subtask hierarchy the export now walks fully
+- [[concepts/upstream-migration]] — 移植自上游 BACK-659（commit ea809c223）
+- [[concepts/task-lifecycle]] — 导出现在完整遍历的父子层级
 
 ## Related Sources
 
-- [[sources/back-653-readme-board-export-in-memory]] — sibling board-export fix; BACK-653 declined the non-mutating sort this task's report also flagged
-- [[sources/subtask-grouping-fix]] — BACK-496 subtask grouping in board/list views
-- [[sources/back-628-task-hierarchy-section]] — hierarchy rendering in the web task modal
+- [[sources/back-653-readme-board-export-in-memory]] — 兄弟看板导出修复；BACK-653 婉拒了本任务报告同样指出的非变更排序
+- [[sources/subtask-grouping-fix]] — BACK-496 看板/列表视图子任务分组
+- [[sources/back-628-task-hierarchy-section]] — Web 任务模态框中的层级渲染

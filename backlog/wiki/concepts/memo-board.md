@@ -1,12 +1,8 @@
 ---
 title: Memo 钉板视图（WebGL 便利贴）
-labels:
-  - concept
-  - memos
-  - webgl
-  - web-ui
-created_date: '2026-10-05 08:25'
-updated_date: '2026-10-07 22:50'
+labels: [concept, memos, webgl, web-ui]
+created_date: 2026-10-05 08:25
+updated_date: 2026-10-09 23:30
 ---
 
 # Memo 钉板视图（WebGL 便利贴）

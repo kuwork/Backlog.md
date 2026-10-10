@@ -1,12 +1,12 @@
 ---
-title: BACK-499 修复侧边栏折叠按钮与调整大小手柄重叠
+title: BACK-499 - 修复侧边栏折叠按钮与调整大小手柄重叠
 labels: [source]
-source_path: backlog/tasks/back-499 - Fix-sidebar-collapse-button-overlapping-resize-handle.md
 created_date: 2026-05-30 10:20
-updated_date: 2026-05-30 10:20
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-499 - Fix-sidebar-collapse-button-overlapping-resize-handle.md
 ---
 
-# BACK-499 修复侧边栏折叠按钮与调整大小手柄重叠
+# BACK-499 - 修复侧边栏折叠按钮与调整大小手柄重叠
 
 **状态**: Done | **标签**: web-ui, bug | **优先级**: medium
 
@@ -17,7 +17,7 @@ updated_date: 2026-05-30 10:20
 - **Hover 干扰**：鼠标悬停在折叠按钮上时，resize handle 的 `hover:bg-blue-400/50` 效果被触发，出现蓝色 ghost bar
 - **拖拽干扰**：点击折叠按钮时，resize handle 的 `onMouseDown` 抢先捕获事件，导致进入 resize 模式而非折叠侧边栏
 
-## Root Cause
+## 根因
 
 Z-index 层级错误：resize handle 为 `z-20`，折叠按钮为 `z-10`，resize handle 覆盖在按钮上方。
 

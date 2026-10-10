@@ -1,8 +1,8 @@
 ---
 title: 就绪指引加载已完成语料走 listCompletedTasks 快路径
-created_date: 2026-09-08 17:02
-updated_date: 2026-09-08 17:02
 labels: [decision]
+created_date: 2026-09-08 17:02
+updated_date: 2026-10-09 23:30
 ---
 
 # 就绪指引加载已完成语料走 listCompletedTasks 快路径
@@ -30,8 +30,11 @@ BACK-615 为依赖就绪指引加载已完成任务语料。上游做法是 `loa
 
 - **沿用上游 `loadTasks({ includeCompleted: true })`**：全量扫描解析，交互路径上不可接受的延迟。
 
-## Related
+## Related Concepts
 
-- [[sources/back-615-dependency-readiness-guidance]]
-- [[concepts/task-lifecycle]]
-- [[concepts/upstream-migration]]
+- [[concepts/task-lifecycle]] — 任务生命周期与完成语料语义
+- [[concepts/upstream-migration]] — 上游迁移差异处理
+
+## Related Sources
+
+- [[sources/back-615-dependency-readiness-guidance]] — 依赖就绪指引实现

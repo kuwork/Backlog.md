@@ -2,9 +2,8 @@
 title: CLI 与 TUI 界面
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: '2026-10-07 22:50'
+updated_date: 2026-10-09 23:30
 ---
-
 
 # CLI 与 TUI 界面
 

@@ -2,9 +2,8 @@
 title: 粘贴为 Markdown
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-05-25 00:45
+updated_date: 2026-10-09 23:30
 ---
-
 
 # 粘贴为 Markdown
 
@@ -62,3 +61,11 @@ Web UI 编辑器中的智能粘贴功能，自动将富文本（Word、Google Do
 
 - `turndown` + `turndown-plugin-gfm`
 - `mammoth` — Word 文档解析（`.docx` 上传路径）
+
+## Related Concepts
+
+- [[concepts/docx-conversion]] — `.docx` 上传转换流水线与本文同一套清理/转换后端
+
+## Related Sources
+
+- [[sources/wiki-pasted-images-promote-fix]] — Wiki 编辑器粘贴图片的 promote 保存修复

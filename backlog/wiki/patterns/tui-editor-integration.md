@@ -2,7 +2,7 @@
 title: TUI / 编辑器集成模式
 labels: [pattern, tui, terminal, editor]
 created_date: 2026-05-27 00:00
-updated_date: 2026-05-27 00:00
+updated_date: 2026-10-09 23:30
 ---
 
 # TUI / 编辑器集成模式
@@ -29,6 +29,15 @@ updated_date: 2026-05-27 00:00
 | 7 | **重新加载数据** | 读取修改后的文件，刷新当前视图状态 |
 | 8 | **集成测试** | 覆盖 stdio 继承、退出码处理、参数传递、终端序列重置 |
 
+### 终端序列速查
+
+| 序列 | 作用 | 何时发送 |
+|---|---|---|
+| `\u001b[?1l` | 关闭 DECCKM（应用光标模式） | 编辑器启动前 |
+| `\u001b>` | DECKPNM（数字键盘模式） | 编辑器启动前 |
+| `\u001b[?25h` | 显示光标 | TUI 恢复后 |
+| `\u001b[c` | 请求终端识别（触发 resize） | TUI 恢复后 |
+
 ## 常见陷阱
 
 | 陷阱 | 示例 | 预防 |
@@ -40,16 +49,7 @@ updated_date: 2026-05-27 00:00
 | **编辑器路径解析优先级错误** | 某次回归修改了解析顺序，导致 `EDITOR` 被忽略 | 将解析逻辑集中为 `resolveEditor()` 单一函数，所有入口复用 |
 | **跨分支任务误编辑** | TUI 中按 `E` 打开了来自其他分支的只读任务 | 编辑前检查 `task.branch`，只读任务弹出提示而非打开编辑器 |
 
-## 终端序列速查
-
-| 序列 | 作用 | 何时发送 |
-|---|---|---|
-| `\u001b[?1l` | 关闭 DECCKM（应用光标模式） | 编辑器启动前 |
-| `\u001b>` | DECKPNM（数字键盘模式） | 编辑器启动前 |
-| `\u001b[?25h` | 显示光标 | TUI 恢复后 |
-| `\u001b[c` | 请求终端识别（触发 resize） | TUI 恢复后 |
-
-## 参考任务
+## Related Sources
 
 - [[sources/back-490-overview-command-task]] — BACK-490 中 TUI 使用直接 ANSI 输出而非 blessed 盒子，属于 TUI 渲染策略的变体
 - [[sources/back-489-health-indicators-task]] — BACK-489 的 Web 统计页与 TUI 无直接关联，但 health 数据在 TUI 中的展示遵循同样的跨表面消费模式

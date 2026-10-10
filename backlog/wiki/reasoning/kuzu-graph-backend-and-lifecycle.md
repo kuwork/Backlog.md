@@ -1,8 +1,8 @@
 ---
 title: Kuzu 图谱的后端、生命周期与存储治理设计推理
-created_date: '2026-09-26 22:05'
-updated_date: '2026-09-26 22:05'
 labels: [reasoning, graph, kuzu, storage]
+created_date: 2026-09-26 22:05
+updated_date: 2026-10-09 23:30
 ---
 
 # Kuzu 图谱的后端、生命周期与存储治理设计推理
@@ -26,7 +26,7 @@ labels: [reasoning, graph, kuzu, storage]
 6. **图谱文件放哪、谁来持锁**：项目树内、还是 OS 缓存目录按槽位分家？
 7. **schema 变了怎么办**：写迁移脚本，还是让缓存自描述版本并整体重建？
 
-## 备选方案对比
+## 方案对比
 
 | 议题 | 方案 A | 方案 B | 选择与理由 |
 |---|---|---|---|

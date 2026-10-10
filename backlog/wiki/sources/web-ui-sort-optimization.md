@@ -1,16 +1,12 @@
 ---
-title: BACK-484 Web UI sort optimization
-labels:
-  - source
-  - web-ui
-  - ui
-  - ux
-source_path: backlog/tasks/back-484 - Web-UI-sort-optimization.md
+title: BACK-484 - Web UI 排序优化
+labels: [source, web-ui, ui, ux]
 created_date: 2026-05-23 11:15
-updated_date: 2026-05-23 11:15
+updated_date: 2026-10-09 23:30
+source_path: backlog/tasks/back-484 - Web-UI-sort-optimization.md
 ---
 
-# BACK-484 Web UI sort optimization
+# BACK-484 - Web UI 排序优化
 
 统一并优化 Web UI 中的排序指示器与交互。
 
@@ -39,11 +35,11 @@ updated_date: 2026-05-23 11:15
 - 菜单下拉宽度改为动态（`min-w-[12rem] w-max`），防止文字换行
 - 实现文件：`src/web/components/TaskColumn.tsx`
 
-## 相关概念
+## Related Concepts
 
 - [[concepts/web-ui-features]] — Web UI 功能总览
 
-## 相关实体
+## 涉及文件
 
 - `TaskList.tsx` — 任务列表页面
 - `MilestonesPage.tsx` — 里程碑页面

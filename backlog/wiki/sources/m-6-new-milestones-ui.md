@@ -1,30 +1,24 @@
 ---
-title: New Milestones UI (milestone stub)
-created_date: '2026-09-08 16:55'
-updated_date: '2026-09-08 16:55'
-labels:
-  - source
-  - milestone
-  - milestones
-  - web-ui
+title: m-6 - 新里程碑 UI 里程碑
+labels: [source, milestone, milestones, web-ui]
+created_date: 2026-09-08 16:55
+updated_date: 2026-10-09 23:30
 source_path: backlog/milestones/m-6 - new-milestones-ui.md
 ---
 
-# New Milestones UI (milestone stub)
+# m-6 - 新里程碑 UI 里程碑
 
-Milestone definition stub for the Web UI milestones overhaul. The source file is minimal (title + one-line description); the substantive work rolls up here, most recently BACK-580's milestone detail view and edit-modal redesign modeled on the task detail/edit page.
+Web UI 里程碑改版的里程碑定义存根。源文件内容极简（标题 + 一行描述）；实质性工作汇总于此，最近的是 BACK-580 的里程碑详情视图与编辑模态框重设计，以任务详情/编辑页面为范本。
 
-## Summary
-
-- Declares the "New Milestones UI" milestone with a one-line description.
-- BACK-580 (milestone detail view + redesigned edit modal) is the flagship task under this milestone; earlier milestone-web work (BACK-515 milestone update fix, BACK-543 Created column) also belongs to this theme.
+- 声明"New Milestones UI"里程碑，附一行描述。
+- BACK-580（里程碑详情视图 + 重设计编辑模态框）是该里程碑下的旗舰任务；更早的里程碑 Web 工作（BACK-515 里程碑更新修复、BACK-543 Created 列）也属于这一主题。
 
 ## Related Concepts
 
-- [[concepts/milestones]] — milestone model and lifecycle
+- [[concepts/milestones]] — 里程碑模型与生命周期
 
 ## Related Sources
 
-- [[sources/back-580-milestone-detail-view-edit-modal]] — the main deliverable under this milestone (same batch)
-- [[sources/back-515-milestone-update-fix]] — earlier milestone web API fix
-- [[sources/back-543-milestone-cards-created-column]] — milestone card table enhancement
+- [[sources/back-580-milestone-detail-view-edit-modal]] — 本里程碑下的主要交付物（同批）
+- [[sources/back-515-milestone-update-fix]] — 更早的里程碑 Web API 修复
+- [[sources/back-543-milestone-cards-created-column]] — 里程碑卡片表格增强
