@@ -20,6 +20,26 @@ Format and lint:
 npx biome check .
 ```
 
+### Graph backend (kuzu)
+
+Cypher graph search (BACK-765) requires the kuzu backend, opted into with
+`BACKLOG_GRAPH_BACKEND=kuzu`. The kuzu native binding cannot load under a
+process not named `node.exe` on Windows (it segfaults, see
+[kuzudb/kuzu#5672](https://github.com/kuzudb/kuzu/issues/5672)), which plain
+`bun` always triggers, so use the shim scripts — they run a copy of bun renamed
+to `node.exe`:
+
+```bash
+scripts/dev-kuzu.sh    # Git Bash / WSL
+scripts\dev-kuzu.ps1   # PowerShell（Ctrl+C 直接停止，无提示）
+scripts\dev-kuzu.cmd   # cmd（Ctrl+C 会询问 "Terminate batch job (Y/N)?"，按 Y 即可）
+```
+
+Without them the server still works but falls back to the memory backend, where
+`/api/graph/cypher` rejects queries with a "needs kuzu" message. Note kuzu is a
+pinned, archived dependency (last release 0.11.3); its successor LadybugDB
+(`@ladybugdb/core`) was evaluated but cannot load under Bun on Windows either.
+
 For contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## MCP Development Setup

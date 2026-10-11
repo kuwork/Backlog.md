@@ -58,6 +58,22 @@ export interface GraphEdge {
 	to: string;
 }
 
+/** A read-only Cypher query result, flattened for JSON transport to the Web UI. */
+export interface CypherQueryResult {
+	/** Column names in their result order (empty when the query returned no rows). */
+	columns: string[];
+	/** One row per result, each a parallel array to `columns`. Cells are JSON-serializable. */
+	rows: unknown[][];
+	/**
+	 * Best-effort set of FileNode keys (path and id) found in the result, so the UI can highlight
+	 * the matched subgraph. Already narrowed to the keys the canvas actually knows about on the
+	 * client, so an empty set simply means "no node matched".
+	 */
+	nodeKeys: string[];
+	/** True when the raw result exceeded the row cap and was truncated for display. */
+	truncated: boolean;
+}
+
 export interface GraphStore {
 	readonly backend: "kuzu" | "memory";
 	/**
@@ -97,6 +113,12 @@ export interface GraphStore {
 	getNode(path: string): Promise<GraphNode | null>;
 	setMeta(key: string, value: string): Promise<void>;
 	getMeta(key: string): Promise<string | null>;
+	/**
+	 * Run a read-only Cypher statement against the store and return its first result set, flattened
+	 * for JSON. The kuzu backend executes native Cypher; the memory backend does not support it and
+	 * rejects the call so the UI can surface a clear "use the kuzu backend" message.
+	 */
+	runCypher(statement: string): Promise<CypherQueryResult>;
 }
 
 /** Edge tables may hold at most one edge per (from, to) pair. */
@@ -201,6 +223,12 @@ export class MemoryGraphStore implements GraphStore {
 
 	async getMeta(key: string): Promise<string | null> {
 		return this.meta.get(key) ?? null;
+	}
+
+	async runCypher(): Promise<CypherQueryResult> {
+		throw new Error(
+			"Cypher 检索需要 kuzu 图后端：请设置 BACKLOG_GRAPH_BACKEND=kuzu 后重启 Backlog 服务，再使用此功能。",
+		);
 	}
 }
 
@@ -514,6 +542,39 @@ export class KuzuGraphStore implements GraphStore {
 		return row ? String(row.value) : null;
 	}
 
+	/**
+	 * Run a read-only Cypher statement and flatten the first result set. Mutation keywords are blocked
+	 * so a retrieval box can never corrupt the graph cache (it is a derived view of the markdown
+	 * truth). The flattened rows carry plain JSON and the set of FileNode key/id values found, which
+	 * the UI uses to highlight the matched subgraph.
+	 */
+	async runCypher(statement: string): Promise<CypherQueryResult> {
+		const trimmed = statement.trim();
+		if (!trimmed) throw new Error("Cypher 语句为空");
+		// Read-only retrieval only: block write keywords to protect the cache. `CALL` (e.g.
+		// show_tables) stays allowed because it is read-only introspection.
+		if (/\b(CREATE|DROP|DELETE|INSERT|MERGE|SET|UPDATE)\b/i.test(trimmed)) {
+			throw new Error("Cypher 检索仅支持只读查询（MATCH / RETURN / WITH / CALL），已阻止写操作以保护图谱缓存。");
+		}
+		const result = await this.query(trimmed);
+		const rowObjects = await result.getAll();
+		await this.closeResult(result);
+		const MAX_ROWS = 500;
+		const truncated = rowObjects.length > MAX_ROWS;
+		const slice = truncated ? rowObjects.slice(0, MAX_ROWS) : rowObjects;
+		const nodeKeys = new Set<string>();
+		const rows = slice.map((row) =>
+			Object.keys(row).map((key) => {
+				const cell = (row as Record<string, unknown>)[key];
+				collectCypherNodeKeys(cell, nodeKeys);
+				return serializeCypherValue(cell);
+			}),
+		);
+		const firstRow = rowObjects[0];
+		const columns = firstRow ? Object.keys(firstRow) : [];
+		return { columns, rows, nodeKeys: [...nodeKeys], truncated };
+	}
+
 	private connection(): import("kuzu").Connection {
 		if (!this.conn) throw new Error("KuzuGraphStore used before init()");
 		return this.conn;
@@ -560,6 +621,68 @@ export class KuzuGraphStore implements GraphStore {
 			await r.close?.();
 		}
 	}
+}
+
+/** A kuzu node value: has `_label` and no relationship endpoints. */
+function isCypherNode(value: unknown): value is Record<string, unknown> {
+	return (
+		typeof value === "object" && value !== null && !Array.isArray(value) && "_label" in value && !("_src" in value)
+	);
+}
+
+/** A kuzu relationship value: carries `_src`/`_dst` endpoints. */
+function isCypherRel(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value) && "_src" in value && "_dst" in value;
+}
+
+/** A kuzu path value: a node/relationship chain. */
+function isCypherPath(value: unknown): value is { _nodes: unknown[]; _rels: unknown[] } {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		Array.isArray((value as { _nodes?: unknown })._nodes)
+	);
+}
+
+/**
+ * Collect FileNode keys (path and id) from a result cell so the UI can highlight the matched
+ * subgraph. Walks nodes, paths and arrays; a bare string that already looks like a node path
+ * (a `RETURN n.path`) is kept too - the client narrows to keys it actually knows about.
+ */
+function collectCypherNodeKeys(value: unknown, keys: Set<string>): void {
+	if (isCypherNode(value)) {
+		if (value._label === "FileNode") {
+			const path = value.path;
+			const id = value.id;
+			if (typeof path === "string" && path) keys.add(path);
+			if (typeof id === "string" && id) keys.add(id);
+		}
+		return;
+	}
+	if (isCypherPath(value)) {
+		for (const node of value._nodes) collectCypherNodeKeys(node, keys);
+		return;
+	}
+	if (Array.isArray(value)) {
+		for (const item of value) collectCypherNodeKeys(item, keys);
+		return;
+	}
+	if (typeof value === "string" && value.includes("/")) keys.add(value);
+}
+
+/** Flatten a kuzu value into a JSON-serializable shape for transport to the UI. */
+function serializeCypherValue(value: unknown): unknown {
+	if (value === null || value === undefined) return value;
+	if (typeof value !== "object") return value;
+	if (Array.isArray(value)) return value.map(serializeCypherValue);
+	const out: Record<string, unknown> = {};
+	if (isCypherNode(value) || isCypherRel(value)) out._label = value._label;
+	for (const [key, val] of Object.entries(value)) {
+		if (key === "_id" || key === "_src" || key === "_dst") continue;
+		out[key] = serializeCypherValue(val);
+	}
+	return out;
 }
 
 function toGraphNode(row: Record<string, unknown>): GraphNode {

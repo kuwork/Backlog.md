@@ -73,6 +73,16 @@ export interface GraphPayload {
 	nodeCount: number;
 }
 
+/** A read-only Cypher result from POST /api/graph/cypher. */
+export interface CypherResult {
+	columns: string[];
+	rows: unknown[][];
+	/** FileNode path/id keys found in the result, for highlighting the matched subgraph. */
+	nodeKeys: string[];
+	/** True when the raw result exceeded the displayed row cap. */
+	truncated: boolean;
+}
+
 export interface ReorderTaskPayload {
 	taskId: string;
 	targetStatus: string;
@@ -570,6 +580,19 @@ export class ApiClient {
 			const error = new Error("Failed to fetch graph") as Error & { status?: number };
 			error.status = response.status;
 			throw error;
+		}
+		return response.json();
+	}
+
+	/** Run a read-only Cypher statement against the graph store; returns the flattened result set. */
+	async runCypher(statement: string): Promise<CypherResult> {
+		const response = await fetch(`${API_BASE}/graph/cypher`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ statement }),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Cypher 查询失败");
 		}
 		return response.json();
 	}

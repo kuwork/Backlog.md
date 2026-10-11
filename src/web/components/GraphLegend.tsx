@@ -113,6 +113,41 @@ export function nodeStyle(node: Pick<GraphNodeDto, "kind" | "filePath">): NodeSt
 }
 
 /**
+ * The styles a Cypher result set touches: which node styles contain a node whose id or filePath is
+ * among the result keys. A search opens exactly these legend categories, so the legend reads as
+ * the result set's own summary.
+ */
+export function stylesMatchedByKeys(
+	nodes: readonly Pick<GraphNodeDto, "id" | "kind" | "filePath">[],
+	keys: ReadonlySet<string>,
+): Set<NodeStyle> {
+	const matched = new Set<NodeStyle>();
+	for (const node of nodes) {
+		if (keys.has(node.id) || keys.has(node.filePath)) matched.add(nodeStyle(node));
+	}
+	return matched;
+}
+
+/**
+ * The induced subgraph on a Cypher result set: nodes whose id or filePath is among the keys, plus
+ * the edges whose both ends survived. `hidden` (the legend category filter) applies on top, so
+ * legend toggles keep working while a filter is active - a struck-through category hides even its
+ * matched nodes. Without `hidden` the result set alone decides the picture.
+ */
+export function selectFilteredGraph(
+	nodes: readonly GraphNodeDto[],
+	edges: readonly GraphEdgeDto[],
+	keys: ReadonlySet<string>,
+	hidden?: ReadonlySet<NodeStyle>,
+): { nodes: GraphNodeDto[]; edges: GraphEdgeDto[] } {
+	const visible = nodes.filter(
+		(node) => (keys.has(node.id) || keys.has(node.filePath)) && !hidden?.has(nodeStyle(node)),
+	);
+	const visibleIds = new Set(visible.map((node) => node.id));
+	return { nodes: visible, edges: edges.filter((edge) => visibleIds.has(edge.from) && visibleIds.has(edge.to)) };
+}
+
+/**
  * Styles the task graph (`/graph`) and the task relationship modal start with hidden: every
  * phase-3 kind. The task graph is the view a user has always had, so knowledge pages and Tag nodes
  * stay out of the picture until the legend asks for them. It also keeps tags recessive as doc-15 §7

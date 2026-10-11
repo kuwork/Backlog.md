@@ -544,6 +544,17 @@ describe("graph cache layout", () => {
 	});
 });
 
+describe("Cypher search (runCypher)", () => {
+	// The pure-JS fallback store has no native Cypher engine, so a Cypher query must fail loudly
+	// with a pointer to the kuzu backend rather than silently returning nothing (BACK-765).
+	test("memory backend rejects Cypher with a directive to use kuzu", async () => {
+		const store = new MemoryGraphStore();
+		await store.init();
+		await expect(store.runCypher()).rejects.toThrow(/kuzu/i);
+		await store.close();
+	});
+});
+
 async function seedProjectAt(dir: string, files: Record<string, string>): Promise<void> {
 	for (const [relPath, content] of Object.entries(files)) {
 		const abs = join(dir, "backlog", relPath);
