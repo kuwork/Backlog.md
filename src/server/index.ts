@@ -839,6 +839,9 @@ export class BacklogServer {
 					"/api/graph": {
 						GET: async () => await this.handleGetGraph(),
 					},
+					"/api/graph/cypher": {
+						POST: async (req: Request) => await this.handlePostGraphCypher(req),
+					},
 					"/api/status": {
 						GET: async () => await this.handleGetStatus(),
 					},
@@ -2791,6 +2794,35 @@ export class BacklogServer {
 		}
 		const payload = await service.getPayload();
 		return new Response(JSON.stringify(payload), { headers: { "Content-Type": "application/json" } });
+	}
+
+	/**
+	 * POST /api/graph/cypher - run a read-only Cypher statement against the graph store (kuzu
+	 * backend) and return the first result set, flattened, plus the FileNode keys found so the UI
+	 * can highlight the matched subgraph. The store rejects write keywords and the memory backend.
+	 */
+	private async handlePostGraphCypher(req: Request): Promise<Response> {
+		let body: unknown;
+		try {
+			body = await req.json();
+		} catch {
+			return Response.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+		}
+		const statement =
+			typeof (body as { statement?: unknown })?.statement === "string"
+				? String((body as { statement: unknown }).statement)
+				: "";
+		const service = await this.getGraphService();
+		if (!service) {
+			return Response.json({ error: "graph service unavailable" }, { status: 503 });
+		}
+		try {
+			const result = await service.runCypher(statement);
+			return Response.json(result, { headers: { "Content-Type": "application/json" } });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Cypher 查询失败";
+			return Response.json({ error: message }, { status: 400 });
+		}
 	}
 
 	private async handleGetVersion(): Promise<Response> {

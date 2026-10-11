@@ -13,7 +13,7 @@
         "d3-transition": "^3.0.1",
         "d3-zoom": "^3.0.0",
         "get-port": "^7.2.0",
-        "kuzu": "^0.11.3",
+        "kuzu": "0.11.3",
       },
       "devDependencies": {
         "@biomejs/biome": "2.4.12",

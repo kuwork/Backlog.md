@@ -17,7 +17,7 @@ import type { GraphPaths, GraphSlot } from "./paths";
 import { DEFAULT_SLOT, graphPaths } from "./paths";
 import type { WhitelistDirs } from "./scanner";
 import { DEFAULT_WHITELIST, scanWhitelistedDirs } from "./scanner";
-import type { GraphEdgeType, GraphKind, GraphStore } from "./store";
+import type { CypherQueryResult, GraphEdgeType, GraphKind, GraphStore } from "./store";
 import { openGraphStore } from "./store";
 
 /**
@@ -322,6 +322,13 @@ export class GraphService {
 
 	get isReady(): boolean {
 		return this.ready;
+	}
+
+	/** Run a read-only Cypher statement against the underlying store (kuzu backend). */
+	async runCypher(statement: string): Promise<CypherQueryResult> {
+		const store = this.store;
+		if (!store) throw new Error("graph store unavailable");
+		return store.runCypher(statement);
 	}
 
 	async getPayload(): Promise<GraphPayload> {

@@ -31,6 +31,7 @@ import {
 } from "../utils/graph-canvas";
 import { captionFor, captionPlateWidth } from "../utils/graph-caption";
 import { knowledgeNodeHref } from "../utils/graph-node-links";
+import CypherSearchDialog from "./CypherSearchDialog";
 import {
 	EDGE_DASH,
 	edgeStroke,
@@ -41,7 +42,9 @@ import {
 	nodeFill,
 	nodeStroke,
 	nodeStyle,
+	selectFilteredGraph,
 	selectVisibleGraph,
+	stylesMatchedByKeys,
 	TASK_GRAPH_HIDDEN_STYLES,
 } from "./GraphLegend";
 
@@ -69,6 +72,8 @@ interface SimNode extends SimulationNodeDatum {
 	radius: number;
 	/** Estimated plate width for the caption under the circle. */
 	captionWidth: number;
+	/** Source file path, mirrored from the payload node so a Cypher highlight can match by path. */
+	filePath: string;
 }
 
 interface SimLink extends SimulationLinkDatum<SimNode> {
@@ -217,6 +222,16 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 	const [payload, setPayload] = useState<GraphPayload | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [hover, setHover] = useState<{ x: number; y: number; label: string } | null>(null);
+	// Cypher search: `cypherOpen` toggles the popup; a successful query filters the canvas down to
+	// the matched result set until 清除 (or the next query) lifts the filter. The filter opens every
+	// legend category (its picture is the result set, so nothing reads as hidden), re-lays-out and
+	// re-frames the result set; the pre-search viewport and legend state are remembered so clearing
+	// restores them (恢复原状).
+	const [cypherOpen, setCypherOpen] = useState(false);
+	const [cypherFilter, setCypherFilter] = useState<Set<string> | null>(null);
+	const preFilterTransformRef = useRef<ZoomTransform | null>(null);
+	const preFilterHiddenRef = useRef<Set<NodeStyle> | null>(null);
+	const fitForFilterRef = useRef(false);
 	// The same payload read two ways: `/graph` shows the task relationships, the knowledge graph
 	// shows pages, decisions, documents and tags. A legend click can reveal the other half.
 	const isKnowledge = variant === "knowledge";
@@ -278,6 +293,45 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 	}, []);
 	const clearFocus = useCallback(() => {
 		clearFocusRef.current();
+	}, []);
+
+	// A successful Cypher query filters the canvas to the matched result set: only hit nodes and the
+	// edges whose both ends hit are drawn. The legend opens exactly the categories the result set
+	// has (nothing in it may read as filtered out) and counts the result set; 清除 lifts the filter
+	// and restores the pre-search legend and viewport. An empty hit set (e.g. RETURN count(*))
+	// leaves the view untouched.
+	const handleCypherSuccess = useCallback(
+		(nodeKeys: string[]) => {
+			if (nodeKeys.length === 0) {
+				setCypherFilter(null);
+				return;
+			}
+			const next = new Set(nodeKeys);
+			// Entering the filter remembers the pre-search viewport and legend; a new query on top
+			// of an active filter keeps that snapshot and just fits its own result set.
+			if (!cypherFilter) {
+				preFilterTransformRef.current = transformRef.current;
+				preFilterHiddenRef.current = hiddenStyles;
+			} else {
+				fitForFilterRef.current = false;
+			}
+			const matched = payload?.nodes ? stylesMatchedByKeys(payload.nodes, next) : new Set<NodeStyle>();
+			setHiddenStyles((prev) => {
+				const opened = new Set(prev);
+				for (const style of matched) opened.delete(style);
+				return opened;
+			});
+			setCypherFilter(next);
+		},
+		[cypherFilter, hiddenStyles, payload],
+	);
+	const handleCypherClear = useCallback(() => {
+		setCypherFilter(null);
+		const restoreHidden = preFilterHiddenRef.current;
+		if (restoreHidden) {
+			preFilterHiddenRef.current = null;
+			setHiddenStyles(restoreHidden);
+		}
 	}, []);
 
 	// Keyboard equivalents of the control buttons: arrows pan, Ctrl+[ / Ctrl+] zoom, Ctrl+0 fits,
@@ -420,8 +474,11 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		// The layout runs on the visible subset only - not on everything painted transparent
 		// afterwards: the task graph must not be pushed around by nodes it does not draw, and the
 		// simulation must not pay for them. A legend click rebuilds with the new subset; positions
-		// survive in `existing`, so only newly revealed nodes get placed from scratch.
-		const subset = selectVisibleGraph(payload.nodes, payload.edges, hiddenStyles);
+		// survive in `existing`, so only newly revealed nodes get placed from scratch. A Cypher
+		// filter narrows the subset to the result set, and the legend keeps applying on top of it.
+		const subset = cypherFilter
+			? selectFilteredGraph(payload.nodes, payload.edges, cypherFilter, hiddenStyles)
+			: selectVisibleGraph(payload.nodes, payload.edges, hiddenStyles);
 		if (subset.nodes.length === 0) {
 			// Every kind is hidden via the legend: clear the picture explicitly. The SVG version
 			// dropped all children on rebuild; a canvas keeps the last frame, and returning early
@@ -464,6 +521,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 				degree: degree.get(node.id) ?? 0,
 				radius: radiusFor(node),
 				captionWidth: captionPlateWidth(caption),
+				filePath: node.filePath,
 				...(existing.get(node.id) ?? {}),
 			};
 		});
@@ -733,8 +791,15 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 				litFor = focusId;
 				lit = focusId ? new Set([focusId, ...(neighbours.get(focusId) ?? [])]) : null;
 			}
-			const alphaFor = (id: string) => (lit && !lit.has(id) ? FOCUS_FADE : 1);
-			const alphaForEdge = (a: string, b: string) => (lit && !(lit.has(a) && lit.has(b)) ? FOCUS_FADE : 1);
+			// A Cypher filter narrows the subset itself, so the painter only fades for focus.
+			const alphaFor = (id: string) => {
+				if (lit && !lit.has(id)) return FOCUS_FADE;
+				return 1;
+			};
+			const alphaForEdge = (a: string, b: string) => {
+				if (lit && !(lit.has(a) && lit.has(b))) return FOCUS_FADE;
+				return 1;
+			};
 			const focusNode = focusId;
 			const isCluster = (id: string) => id === focusNode || (lit?.has(id) ?? false);
 
@@ -995,8 +1060,13 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			if (!known) continue;
 			node.x = known.x;
 			node.y = known.y;
-			node.fx = known.x;
-			node.fy = known.y;
+			// A filtered result set is not pinned: kept positions would scatter the few hits across
+			// the old full-graph canvas, so the simulation re-clusters them instead. The full view
+			// gets its persisted picture back - a clear rebuilds it and re-pins from `existing`.
+			if (!cypherFilter) {
+				node.fx = known.x;
+				node.fy = known.y;
+			}
 		}
 		// A newcomer that has laid-out neighbours starts at their centroid instead of d3's default
 		// spiral around the origin - which is where the forces would push it anyway, so the same
@@ -1039,8 +1109,11 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			node.y = centreY + Math.sin(angle) * ring;
 		}
 		simulation.stop();
-		const ticks =
-			unseen.length === 0
+		// A filtered view always re-runs the layout (the kept nodes are unpinned above, so zero
+		// newcomers can still mean work); every other rebuild only pays for what it added.
+		const ticks = cypherFilter
+			? Math.min(REHEAT_TICKS_MAX, REHEAT_TICKS + nodes.length * REHEAT_TICKS_PER_NEW_NODE)
+			: unseen.length === 0
 				? 0
 				: existing.size === 0
 					? PRECOMPUTE_TICKS
@@ -1187,10 +1260,27 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 			programmatic(() => select(canvasEl).call(zoomBehavior.transform, transform));
 		};
 		const savedTransform = transformRef.current;
-		if (savedTransform) {
-			programmatic(() => select(canvasEl).call(zoomBehavior.transform, savedTransform));
+		if (cypherFilter) {
+			// The filter replaces the picture, so fit the result set once; later rebuilds (data
+			// refresh, legend) keep the camera the user has.
+			if (!fitForFilterRef.current) {
+				fitToView();
+				fitForFilterRef.current = true;
+			} else if (savedTransform) {
+				programmatic(() => select(canvasEl).call(zoomBehavior.transform, savedTransform));
+			}
 		} else {
-			fitToView();
+			fitForFilterRef.current = false;
+			const restore = preFilterTransformRef.current;
+			if (restore) {
+				// 清除 puts the pre-search viewport back (AC: 恢复原状).
+				preFilterTransformRef.current = null;
+				programmatic(() => select(canvasEl).call(zoomBehavior.transform, restore));
+			} else if (savedTransform) {
+				programmatic(() => select(canvasEl).call(zoomBehavior.transform, savedTransform));
+			} else {
+				fitToView();
+			}
 		}
 		fitToViewRef.current = fitToView;
 		zoomCtlRef.current = { canvas: canvasEl, zoom: zoomBehavior };
@@ -1418,6 +1508,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		hiddenStyles,
 		positionKey,
 		programmatic,
+		cypherFilter,
 		t.graphView.edgeDependsOn,
 		t.graphView.edgeParentOf,
 		t.graphView.edgeMilestone,
@@ -1428,23 +1519,51 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 
 	const ready = payload?.status === "ready" && payload.nodes.length > 0;
 
+	// The result set itself, legend-independent: which categories and relation types it has decide
+	// which legend entries exist at all, so toggling one off never removes its entry while a filter
+	// is active - there would be no way to toggle it back on.
+	const filtered = useMemo(
+		() => (cypherFilter ? selectFilteredGraph(payload?.nodes ?? [], payload?.edges ?? [], cypherFilter) : null),
+		[payload, cypherFilter],
+	);
+	const resultSetStyles = useMemo(() => {
+		if (!filtered) return null;
+		const styles = new Set<NodeStyle>();
+		for (const node of filtered.nodes) styles.add(nodeStyle(node));
+		return styles;
+	}, [filtered]);
+	const resultSetEdgeTypes = useMemo(() => {
+		if (!filtered) return null;
+		const types = new Set<GraphEdgeDto["type"]>();
+		for (const edge of filtered.edges) types.add(edge.type);
+		return types;
+	}, [filtered]);
+
 	// The headline counts what this reading actually draws, not what the payload holds: the task
 	// graph and the knowledge graph are two subsets of one payload, and a legend click changes the
-	// subset. Same helper the layout uses, so the number can never disagree with the picture.
+	// subset - including on top of an active Cypher filter. Same helper the layout uses, so the
+	// number can never disagree with the picture.
 	const visibleCounts = useMemo(() => {
-		const subset = selectVisibleGraph(payload?.nodes ?? [], payload?.edges ?? [], hiddenStyles);
+		const subset = cypherFilter
+			? selectFilteredGraph(payload?.nodes ?? [], payload?.edges ?? [], cypherFilter, hiddenStyles)
+			: selectVisibleGraph(payload?.nodes ?? [], payload?.edges ?? [], hiddenStyles);
 		return { nodes: subset.nodes.length, edges: subset.edges.length };
-	}, [payload, hiddenStyles]);
+	}, [payload, hiddenStyles, cypherFilter]);
 
 	// Legend: one toggle per node style, with the live count so the filter also reads as a summary.
+	// While a Cypher filter is active the counts describe what is drawn - the result set minus
+	// whatever the legend hides - not the whole payload.
 	const counts = useMemo(() => {
 		const out: Partial<Record<NodeStyle, number>> = {};
-		for (const node of payload?.nodes ?? []) {
+		const pool = cypherFilter
+			? (filtered?.nodes ?? []).filter((node) => !hiddenStyles.has(nodeStyle(node)))
+			: (payload?.nodes ?? []);
+		for (const node of pool) {
 			const style = nodeStyle(node);
 			out[style] = (out[style] ?? 0) + 1;
 		}
 		return out;
-	}, [payload]);
+	}, [payload, cypherFilter, hiddenStyles, filtered]);
 	const legendEntries: Array<{ style: NodeStyle; label: string }> = [
 		{ style: "task", label: t.graphView.legendTask },
 		{ style: "completed", label: t.graphView.legendCompleted },
@@ -1455,6 +1574,20 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		{ style: "document", label: t.graphView.legendDocument },
 		{ style: "tag", label: t.graphView.legendTag },
 	];
+	const shownLegendEntries = resultSetStyles
+		? legendEntries.filter((entry) => resultSetStyles.has(entry.style))
+		: legendEntries;
+	const edgeLegendEntries: Array<{ type: GraphEdgeDto["type"]; label: string }> = [
+		{ type: "DependsOn", label: t.graphView.edgeDependsOn },
+		{ type: "ParentOf", label: t.graphView.edgeParentOf },
+		{ type: "BelongsToMilestone", label: t.graphView.edgeMilestone },
+		{ type: "SourcedFrom", label: t.graphView.edgeSourcedFrom },
+		{ type: "LinksTo", label: t.graphView.edgeLinksTo },
+		{ type: "TaggedWith", label: t.graphView.edgeTaggedWith },
+	];
+	const shownEdgeLegendEntries = resultSetEdgeTypes
+		? edgeLegendEntries.filter((entry) => resultSetEdgeTypes.has(entry.type))
+		: edgeLegendEntries;
 
 	return (
 		<div className="h-full flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -1471,7 +1604,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 				</div>
 				{ready && (
 					<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
-						{legendEntries.map(({ style, label }) => (
+						{shownLegendEntries.map(({ style, label }) => (
 							<LegendDot
 								key={style}
 								color={nodeFill(style, theme)}
@@ -1482,12 +1615,9 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 								hint={t.graphView.filterToggle}
 							/>
 						))}
-						<LegendLine dash={EDGE_DASH.DependsOn} label={t.graphView.edgeDependsOn} />
-						<LegendLine dash={EDGE_DASH.ParentOf} label={t.graphView.edgeParentOf} />
-						<LegendLine dash={EDGE_DASH.BelongsToMilestone} label={t.graphView.edgeMilestone} />
-						<LegendLine dash={EDGE_DASH.SourcedFrom} label={t.graphView.edgeSourcedFrom} />
-						<LegendLine dash={EDGE_DASH.LinksTo} label={t.graphView.edgeLinksTo} />
-						<LegendLine dash={EDGE_DASH.TaggedWith} label={t.graphView.edgeTaggedWith} />
+						{shownEdgeLegendEntries.map(({ type, label }) => (
+							<LegendLine key={type} dash={EDGE_DASH[type]} label={label} />
+						))}
 					</div>
 				)}
 			</div>
@@ -1532,7 +1662,8 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 					>
 						<CtrlButton onClick={fitOverview} label={<FitIcon />} title={`${t.graphView.fitOverview} (Ctrl+0)`} />
 						<CtrlButton onClick={() => panBy(0, 120)} label="↑" title={`${t.graphView.panUp} (↑)`} />
-						<span aria-hidden="true" />
+						{/* Cypher search: the control cluster's top-right cell (BACK-765). */}
+						<CtrlButton onClick={() => setCypherOpen(true)} label={<SearchIcon />} title={t.graphView.cypherSearch} />
 						<CtrlButton onClick={() => panBy(120, 0)} label="←" title={`${t.graphView.panLeft} (←)`} />
 						<CtrlButton onClick={() => panBy(0, -120)} label="↓" title={`${t.graphView.panDown} (↓)`} />
 						<CtrlButton onClick={() => panBy(-120, 0)} label="→" title={`${t.graphView.panRight} (→)`} />
@@ -1555,6 +1686,12 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 						{hover.label}
 					</div>
 				)}
+				<CypherSearchDialog
+					open={cypherOpen}
+					onClose={() => setCypherOpen(false)}
+					onSearchSuccess={handleCypherSuccess}
+					onClear={handleCypherClear}
+				/>
 			</div>
 		</div>
 	);
@@ -1591,6 +1728,25 @@ function FitIcon() {
 		>
 			<path d="M6 2H2v4" />
 			<path d="M10 14h4v-4" />
+		</svg>
+	);
+}
+
+function SearchIcon() {
+	return (
+		<svg
+			width="15"
+			height="15"
+			viewBox="0 0 24 24"
+			aria-hidden="true"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
+			<circle cx="11" cy="11" r="7" />
+			<path d="M21 21l-4.35-4.35" />
 		</svg>
 	);
 }
