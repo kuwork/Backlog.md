@@ -883,6 +883,8 @@ export const en = {
 		truncated: "Truncated to {count} rows.",
 		summary: "{count} rows · {ms} ms",
 		error: "Query failed",
+		showQuery: "Show query",
+		hideQuery: "Hide query",
 	},
 
 	imageLightbox: {

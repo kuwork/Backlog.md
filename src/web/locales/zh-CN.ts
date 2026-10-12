@@ -855,6 +855,8 @@ export const zhCN: TranslationDict = {
 		truncated: "已截断至 {count} 行。",
 		summary: "{count} 行 · {ms} ms",
 		error: "查询失败",
+		showQuery: "显示查询",
+		hideQuery: "隐藏查询",
 	},
 
 	imageLightbox: {

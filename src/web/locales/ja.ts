@@ -876,6 +876,8 @@ export const ja: TranslationDict = {
 		truncated: "{count} 行に切り詰めました。",
 		summary: "{count} 行 · {ms} ms",
 		error: "クエリに失敗しました",
+		showQuery: "クエリを表示",
+		hideQuery: "クエリを隠す",
 	},
 
 	imageLightbox: {

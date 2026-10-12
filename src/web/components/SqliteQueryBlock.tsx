@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { parseSqliteQueryBlock, type SqliteQueryView } from "../../sqlite/block.ts";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, type SqliteCell, type SqliteQueryResult } from "../lib/api";
@@ -18,6 +18,18 @@ function fill(template: string, values: Record<string, string | number>): string
 	return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 }
 
+/**
+ * The surrounding `.wmde-markdown` styles every `<pre>` (chrome, margins, its own font stack) at a
+ * specificity no single utility class can beat - the same trap the list view resets `dt` / `dd` for.
+ */
+const PRE_RESET: CSSProperties = {
+	margin: 0,
+	padding: 0,
+	background: "transparent",
+	fontSize: "0.75rem",
+	whiteSpace: "pre",
+};
+
 function renderCell(cell: SqliteCell): ReactNode {
 	if (cell === null) return <span className="text-gray-400 dark:text-gray-500">NULL</span>;
 	return String(cell);
@@ -35,6 +47,8 @@ export default function SqliteQueryBlock({ block }: Props) {
 	const parsed = useMemo(() => parseSqliteQueryBlock(block), [block]);
 	const [nonce, setNonce] = useState(0);
 	const [state, setState] = useState<State>({ status: "loading" });
+	const [queryOpen, setQueryOpen] = useState(false);
+	const panelId = useId();
 
 	useEffect(() => {
 		// `nonce` is the refresh signal: bumped, never read. That is the whole point of it - the
@@ -168,6 +182,15 @@ export default function SqliteQueryBlock({ block }: Props) {
 					) : null}
 					<button
 						type="button"
+						onClick={() => setQueryOpen((open) => !open)}
+						aria-expanded={queryOpen}
+						aria-controls={panelId}
+						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					>
+						{queryOpen ? t.sqliteQueryBlock.hideQuery : t.sqliteQueryBlock.showQuery}
+					</button>
+					<button
+						type="button"
 						onClick={refresh}
 						disabled={!parsed.ok || state.status === "loading"}
 						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
@@ -176,6 +199,29 @@ export default function SqliteQueryBlock({ block }: Props) {
 					</button>
 				</span>
 			</div>
+			{queryOpen ? (
+				<div
+					id={panelId}
+					className="px-3 py-2 bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700"
+				>
+					{parsed.ok ? (
+						<>
+							<div className="mb-1 text-xs text-gray-500 dark:text-gray-400">
+								source: <span className="font-mono">{parsed.block.source}</span>
+							</div>
+							<pre className="font-mono text-xs overflow-x-auto" style={PRE_RESET}>
+								{parsed.block.sql}
+							</pre>
+						</>
+					) : (
+						// A block that will not parse has no fields to show, and the raw body is what the
+						// reader has to fix, so show that instead of explaining the error twice.
+						<pre className="font-mono text-xs overflow-x-auto" style={PRE_RESET}>
+							{block}
+						</pre>
+					)}
+				</div>
+			) : null}
 			<div className="p-3">
 				{body}
 				{state.status === "ready" && state.result.truncated ? (
