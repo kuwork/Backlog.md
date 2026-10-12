@@ -36,6 +36,10 @@ import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
 import { type GraphLockConflictHandler, type GraphService, startGraphService } from "../graph/service";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
+import { listSqliteFiles } from "../sqlite/discover.ts";
+import { resolveSqliteSource } from "../sqlite/paths.ts";
+import { runSqliteQuery, SQLITE_MAX_ROWS } from "../sqlite/query.ts";
+import { validateReadOnlySql } from "../sqlite/validation.ts";
 import {
 	type BacklogConfig,
 	DOCUMENT_TYPE_VALUES,
@@ -692,6 +696,12 @@ export class BacklogServer {
 					},
 					"/api/tasks/:id/demote": {
 						POST: async (req: Request & { params: { id: string } }) => await this.handleDemoteTask(req.params.id),
+					},
+					"/api/sqlite/files": {
+						GET: async () => await this.handleListSqliteFiles(),
+					},
+					"/api/sqlite/query": {
+						POST: async (req: Request) => await this.handleSqliteQuery(req),
 					},
 					"/api/statuses": {
 						GET: async () => await this.handleGetStatuses(),
@@ -2341,6 +2351,54 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error loading config:", error);
 			return Response.json({ error: "Failed to load configuration" }, { status: 500 });
+		}
+	}
+
+	/**
+	 * GET /api/sqlite/files - every SQLite database in the project.
+	 *
+	 * Discovery, not a browsing surface: it answers "what can I point a block at?" now that any
+	 * project file is a legal source.
+	 */
+	private async handleListSqliteFiles(): Promise<Response> {
+		try {
+			return Response.json({ files: await listSqliteFiles(this.core.filesystem.rootDir) });
+		} catch (error) {
+			console.error("Error listing sqlite files:", error);
+			return Response.json({ error: "Failed to list sqlite files" }, { status: 500 });
+		}
+	}
+
+	/**
+	 * POST /api/sqlite/query - one read-only statement, answered with a JSON grid.
+	 *
+	 * Every failure here is a 400 with the reason written for a human: these messages are rendered
+	 * inside the block that asked for them, so "bad request" would tell the author nothing.
+	 */
+	private async handleSqliteQuery(req: Request): Promise<Response> {
+		let body: { source?: unknown; sql?: unknown; maxRows?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source : "";
+		const sql = typeof body?.sql === "string" ? body.sql : "";
+
+		const validated = validateReadOnlySql(sql);
+		if (!validated.ok) return Response.json({ error: validated.error }, { status: 400 });
+
+		// `source` is project-relative; the containment gates in resolveSqliteSource are what keep
+		// a client-supplied path inside the project (security-gotchas.md §1).
+		const resolved = resolveSqliteSource({ projectRoot: this.core.filesystem.rootDir, source });
+		if (!resolved.ok) return Response.json({ error: resolved.error }, { status: 400 });
+
+		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : SQLITE_MAX_ROWS;
+		try {
+			return Response.json(runSqliteQuery({ dbPath: resolved.path, sql: validated.sql, maxRows }));
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
 		}
 	}
 

@@ -875,6 +875,16 @@ export const en = {
 		clickToPreview: "Click to preview file",
 	},
 
+	sqliteQueryBlock: {
+		title: "SQLite query",
+		refresh: "Refresh",
+		loading: "Running query…",
+		empty: "The query returned no rows.",
+		truncated: "Truncated to {count} rows.",
+		summary: "{count} rows · {ms} ms",
+		error: "Query failed",
+	},
+
 	imageLightbox: {
 		viewImage: "View image",
 		zoomIn: "Zoom in",

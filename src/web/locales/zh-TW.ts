@@ -847,6 +847,16 @@ export const zhTW: TranslationDict = {
 		clickToPreview: "點擊預覽文件",
 	},
 
+	sqliteQueryBlock: {
+		title: "SQLite 查詢",
+		refresh: "重新查詢",
+		loading: "正在執行查詢…",
+		empty: "查詢沒有返回任何行。",
+		truncated: "已截斷至 {count} 行。",
+		summary: "{count} 行 · {ms} ms",
+		error: "查詢失敗",
+	},
+
 	imageLightbox: {
 		viewImage: "查看圖片",
 		zoomIn: "放大",

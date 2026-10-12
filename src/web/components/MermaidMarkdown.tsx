@@ -3,6 +3,7 @@ import Slugger from "github-slugger";
 import type { Element, ElementContent, Parent, Root, RootContent } from "hast";
 import React, { useEffect, useMemo, useRef } from "react";
 import { visit } from "unist-util-visit";
+import { SQLITE_BLOCK_LANG } from "../../sqlite/block.ts";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useOptionalTheme } from "../contexts/ThemeContext";
@@ -13,6 +14,7 @@ import { renderMermaidIn } from "../utils/mermaid";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
 import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
+import SqliteQueryBlock from "./SqliteQueryBlock";
 
 interface Props {
 	source: string;
@@ -398,6 +400,34 @@ function AudioPlayer(props: React.AudioHTMLAttributes<HTMLAudioElement>) {
 	return <audio {...rest} className={`${className ?? ""} w-full`.trim()} controls preload="metadata" />;
 }
 
+/**
+ * A `sqlite-query` fence is not a code sample - it is a query to run - so it renders as a result
+ * block instead of a <pre>. Only className and children are read back out of the props
+ * react-markdown hands over; spreading them onto the DOM would leak the hast `node`.
+ */
+/**
+ * react-markdown hands a fence's text over as an array of lines with the newlines kept as their own
+ * entries, never as one string - so reading `children` as a string yields an empty block body.
+ */
+function textOf(node: React.ReactNode): string {
+	if (typeof node === "string") return node;
+	if (typeof node === "number") return String(node);
+	if (Array.isArray(node)) return node.map(textOf).join("");
+	if (React.isValidElement(node)) return textOf((node.props as { children?: React.ReactNode }).children);
+	return "";
+}
+
+function PreBlock(props: React.ComponentProps<"pre">) {
+	const child = React.Children.toArray(props.children)[0] as
+		| React.ReactElement<{ className?: string; children?: React.ReactNode }>
+		| undefined;
+	const className = child?.props?.className ?? "";
+	if (!className.includes(`language-${SQLITE_BLOCK_LANG}`)) {
+		return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
+	}
+	return <SqliteQueryBlock block={textOf(child?.props?.children)} />;
+}
+
 export default function MermaidMarkdown({
 	source,
 	onFileClick,
@@ -744,6 +774,7 @@ export default function MermaidMarkdown({
 				source={safeSource}
 				components={{
 					a: LinkComponent,
+					pre: PreBlock,
 					img: LightboxImage,
 					video: VideoPlayer,
 					audio: AudioPlayer,

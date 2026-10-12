@@ -868,6 +868,16 @@ export const ja: TranslationDict = {
 		clickToPreview: "クリックしてファイルをプレビュー",
 	},
 
+	sqliteQueryBlock: {
+		title: "SQLite クエリ",
+		refresh: "再実行",
+		loading: "クエリ実行中…",
+		empty: "クエリ結果は 0 行です。",
+		truncated: "{count} 行に切り詰めました。",
+		summary: "{count} 行 · {ms} ms",
+		error: "クエリに失敗しました",
+	},
+
 	imageLightbox: {
 		viewImage: "画像を表示",
 		zoomIn: "拡大",
