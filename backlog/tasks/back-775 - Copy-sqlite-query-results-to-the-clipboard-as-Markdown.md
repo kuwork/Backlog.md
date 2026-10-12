@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-12 18:36'
-updated_date: '2026-10-12 19:02'
+updated_date: '2026-10-12 23:19'
 labels:
   - web-ui
   - sqlite
@@ -25,6 +25,7 @@ modified_files:
   - src/test/sqlite-markdown.test.ts
   - src/test/sqlite-query-block.test.tsx
 ordinal: 334001
+actual_start: '2026-10-12 18:54'
 actual_end: '2026-10-12 19:02'
 ---
 
@@ -86,6 +87,9 @@ navigator.clipboard is secure-context only; a LAN address like http://192.168.x.
 
 ### Validation
 `bun test src/test/sqlite-markdown.test.ts src/test/sqlite-query-block.test.tsx` -> 20 pass / 38 assertions; `bunx tsc --noEmit` clean; `bun run check .` 0 errors (14 pre-existing any warnings).
+
+### Behaviour change (2026-10-13 follow-up): the Copy button is hidden, not disabled, when there is nothing to copy
+The original AC said "disabled unless ready and non-empty". The product call was to hide it entirely: a button that is greyed out but still occupies the header for an empty result reads as "broken" rather than "nothing to do". So `copyMarkdown` is now null until `state.status === "ready" && rows.length > 0`, and the button is rendered only when that holds - the copied/failed transient states can never appear because neither can fire without a payload. The component test was updated from "disabled" to "element is absent" to pin the new contract.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

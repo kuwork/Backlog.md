@@ -239,13 +239,13 @@ describe("SqliteQueryBlock Copy Markdown", () => {
 		expect(button("Copy failed")).toBeTruthy();
 	});
 
-	it("leaves the action disabled and unlabelled when there is nothing to copy", async () => {
+	it("hides the button when there is nothing to copy", async () => {
 		queryResult = { ...RESULT, rows: [] };
 		stubClipboard();
 		mount(BLOCK);
 		await settle();
 
-		expect(button("Copy Markdown").disabled).toBe(true);
+		expect(button("Copy Markdown")).toBeUndefined();
 	});
 });
 
