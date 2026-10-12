@@ -265,11 +265,11 @@ export default function SqliteQueryBlock({ block }: Props) {
 					>
 						{queryOpen ? t.sqliteQueryBlock.hideQuery : t.sqliteQueryBlock.showQuery}
 					</button>
+				{copyMarkdown ? (
 					<button
 						type="button"
 						onClick={copy}
-						disabled={!copyMarkdown}
-						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 					>
 						{copyState === "copied"
 							? t.sqliteQueryBlock.copied
@@ -277,6 +277,7 @@ export default function SqliteQueryBlock({ block }: Props) {
 								? t.sqliteQueryBlock.copyFailed
 								: t.sqliteQueryBlock.copyMarkdown}
 					</button>
+				) : null}
 					<button
 						type="button"
 						onClick={exportCsv}
