@@ -6988,11 +6988,17 @@ async function withGraphDatabase(
 			console.warn(`⚠️ 未能获取数据库 "${database.name}" 的锁；本次为只读查询，仍会继续。`);
 		}
 		if (database.kind === "derived") {
-			// ryu's Bun build keeps its graph in-memory, so each CLI process starts from an empty
-			// store and must rebuild before it can query; reusing a "previous" fingerprint would
-			// silently query an empty graph. forceBuild always performs a full build.
-			await reconcileGraphStoreOnce(cwd, store, graphPaths(cwd, DEFAULT_SLOT), { forceBuild: true });
-			if (graphDebug) console.error(`[graph] after rebuild: countNodes=${await store.countNodes()}`);
+			// A cold process cannot reuse the store itself, but it can reuse the derived graph's
+			// snapshot: reuseSnapshot hydrates when the corpus fingerprint, parser version and schema
+			// version all still match, and otherwise builds from scratch and writes a fresh snapshot
+			// (BACK-772). It never skips the load, so the query can no longer run against an empty
+			// graph - the failure mode that made `forceBuild` necessary in BACK-767.
+			const outcome = await reconcileGraphStoreOnce(cwd, store, graphPaths(cwd, DEFAULT_SLOT), {
+				reuseSnapshot: true,
+			});
+			if (graphDebug) {
+				console.error(`[graph] derived: hydrated=${outcome.hydrated === true} countNodes=${await store.countNodes()}`);
+			}
 		} else {
 			const loaded = loadSnapshotWithFingerprint(database.source.snapshotPath);
 			loadedFingerprint = loaded.fingerprint;

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { readFileSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { graphPaths } from "../graph/paths";
-import { reconcileGraphStoreOnce } from "../graph/reconcile-once";
+import { derivedSnapshotPath, reconcileGraphStoreOnce } from "../graph/reconcile-once";
 import { openGraphStore } from "../graph/store";
 
 function taskMd(id: string, title: string): string {
@@ -70,10 +71,85 @@ describe("reconcileGraphStoreOnce", () => {
 		}
 	});
 
+	test("a cold store hydrates the derived snapshot instead of re-parsing the corpus", async () => {
+		// First run: nothing to reuse, so it builds and writes a snapshot.
+		const first = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		expect(first.backend).toBe("ryu");
+		let built: Awaited<ReturnType<typeof reconcileGraphStoreOnce>>;
+		try {
+			built = await reconcileGraphStoreOnce(root, first, paths, { reuseSnapshot: true });
+		} finally {
+			await first.close();
+		}
+		expect(built.built).toBe(true);
+		expect(built.hydrated).toBe(false);
+
+		// Second run in a FRESH store - exactly what the next CLI process gets - must hydrate.
+		const second = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		try {
+			const reused = await reconcileGraphStoreOnce(root, second, paths, { reuseSnapshot: true });
+			expect(reused.reused).toBe(true);
+			expect(reused.hydrated).toBe(true);
+			const counted = await second.runCypher("MATCH (n:FileNode) RETURN count(n)");
+			expect(String(counted.rows[0]?.[0])).toBe("2");
+		} finally {
+			await second.close();
+		}
+	});
+
+	test("a changed corpus rebuilds instead of hydrating the snapshot", async () => {
+		const first = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		expect(first.backend).toBe("ryu");
+		try {
+			await reconcileGraphStoreOnce(root, first, paths, { reuseSnapshot: true });
+		} finally {
+			await first.close();
+		}
+		await seed(root, { "backlog/tasks/back-3 - C.md": taskMd("back-3", "C") });
+
+		const second = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		try {
+			const outcome = await reconcileGraphStoreOnce(root, second, paths, { reuseSnapshot: true });
+			expect(outcome.hydrated).toBe(false);
+			expect(outcome.built).toBe(true);
+			const counted = await second.runCypher("MATCH (n:FileNode) RETURN count(n)");
+			expect(String(counted.rows[0]?.[0])).toBe("3");
+		} finally {
+			await second.close();
+		}
+	});
+
+	test("a corrupt snapshot is never served: the store is rebuilt instead", async () => {
+		const first = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		expect(first.backend).toBe("ryu");
+		try {
+			await reconcileGraphStoreOnce(root, first, paths, { reuseSnapshot: true });
+		} finally {
+			await first.close();
+		}
+		// Overwrite the snapshot with something that cannot be hydrated.
+		const broken = JSON.parse(readFileSync(derivedSnapshotPath(paths), "utf8")) as { nodeTables: unknown[] };
+		broken.nodeTables = [
+			{ name: "FileNode", properties: [{ name: "notARealColumn", type: "STRING", primaryKey: true }] },
+		];
+		writeFileSync(derivedSnapshotPath(paths), `${JSON.stringify(broken, null, 2)}\n`, "utf8");
+
+		const second = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		try {
+			const outcome = await reconcileGraphStoreOnce(root, second, paths, { reuseSnapshot: true });
+			expect(outcome.hydrated).toBe(false);
+			expect(outcome.built).toBe(true);
+			const counted = await second.runCypher("MATCH (n:FileNode) RETURN count(n)");
+			expect(String(counted.rows[0]?.[0])).toBe("2");
+		} finally {
+			await second.close();
+		}
+	});
+
 	test("runs a Cypher query against the seeded graph when the ryu backend is available", async () => {
 		const store = await openGraphStore(paths.dbPath, { backend: "ryu" });
 		try {
-			if (store.backend !== "ryu") return; // WASM unavailable in this env; skip Cypher assertion
+			expect(store.backend).toBe("ryu"); // fail loudly: a memory fallback would make the assertions vacuous
 			await reconcileGraphStoreOnce(root, store, paths);
 			const result = await store.runCypher("MATCH (n:FileNode) RETURN n.id ORDER BY n.id");
 			expect(result.columns).toEqual(["n.id"]);
@@ -88,7 +164,7 @@ describe("reconcileGraphStoreOnce", () => {
 	test("forceBuild always rebuilds and yields a queryable graph", async () => {
 		const store = await openGraphStore(paths.dbPath, { backend: "ryu" });
 		try {
-			if (store.backend !== "ryu") return; // WASM unavailable in this env; skip Cypher assertion
+			expect(store.backend).toBe("ryu"); // fail loudly: a memory fallback would make the assertions vacuous
 			const first = await reconcileGraphStoreOnce(root, store, paths, { forceBuild: true });
 			expect(first.built).toBe(true);
 			expect(first.reused).toBe(false);
