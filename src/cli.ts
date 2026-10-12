@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { closeSync, mkdirSync, openSync, unlinkSync, writeSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { stdin as input } from "node:process";
 import { createInterface } from "node:readline/promises";
@@ -41,7 +42,10 @@ import {
 	taskViewJson,
 } from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
+import { DEFAULT_SLOT, graphPaths } from "./graph/paths.ts";
+import { reconcileGraphStoreOnce } from "./graph/reconcile-once.ts";
 import type { GraphLockInfo } from "./graph/service.ts";
+import { type GraphStore, openGraphStore } from "./graph/store.ts";
 import {
 	type AgentInstructionFile,
 	addAgentInstructions,
@@ -6782,6 +6786,119 @@ async function confirmGraphLockTakeover(info: GraphLockInfo, conflict: "blocked"
 	// A dead holder, or an unreadable file, is exactly the hard-kill leftover: take it over.
 	return true;
 }
+
+// ---------------------------------------------------------------------------
+// Graph command: query the derived task/knowledge graph from the CLI
+// ---------------------------------------------------------------------------
+
+/** Best-effort single-holder lock for the CLI's own graph slot (doc-014 §3.3). */
+function tryAcquireGraphLock(lockPath: string): { release: () => void } | null {
+	try {
+		const fd = openSync(lockPath, "wx");
+		writeSync(fd, `${process.pid}\n`);
+		closeSync(fd);
+		return {
+			release: () => {
+				try {
+					unlinkSync(lockPath);
+				} catch {
+					/* already gone */
+				}
+			},
+		};
+	} catch {
+		return null;
+	}
+}
+
+/** Render a CypherQueryResult as an aligned table for human reading. */
+function printCypherResult(result: { columns: string[]; rows: unknown[][] }): void {
+	if (result.columns.length === 0) {
+		console.log("（无结果列）");
+		return;
+	}
+	if (result.rows.length === 0) {
+		console.log("（无匹配行）");
+		return;
+	}
+	const cellText = (cell: unknown): string => {
+		if (cell === null || cell === undefined) return "";
+		if (typeof cell === "object") return JSON.stringify(cell);
+		return String(cell);
+	};
+	const widths = result.columns.map((col, i) => {
+		const cellMax = Math.max(...result.rows.map((row) => cellText(row[i] ?? "").length));
+		return Math.max(col.length, cellMax);
+	});
+	const pad = (text: string, width: number): string => {
+		// No ANSI codes are emitted, so the visible width is just the string length.
+		return text + " ".repeat(Math.max(0, width - text.length));
+	};
+	const header = result.columns.map((col, i) => pad(col, widths[i] ?? col.length)).join("  ");
+	console.log(header);
+	console.log(widths.map((w) => "-".repeat(w)).join("  "));
+	for (const row of result.rows) {
+		console.log(row.map((cell, i) => pad(cellText(cell), widths[i] ?? cellText(cell).length)).join("  "));
+	}
+}
+
+const graphCommand = addHelpSchema(program.command("graph"), {
+	reads: "The derived task/knowledge graph (ryu/WASM Cypher backend)",
+	required: [],
+	optional: [],
+	output: "Cypher query results as a table (default) or JSON (--json)",
+	examples: [
+		'backlog graph query "MATCH (n:FileNode) RETURN n.path LIMIT 10"',
+		'backlog graph query "MATCH (n:FileNode) RETURN count(n)" --json',
+		'backlog graph query "MATCH (a:FileNode)-[:ParentOf]->(b:FileNode) RETURN a.path, b.path LIMIT 5"',
+	],
+});
+graphCommand
+	.command("query <cypher>")
+	.description(
+		"Run a read-only Cypher query. The CLI rebuilds a fresh in-process graph before each query " +
+			"(ryu's Bun build keeps the graph in memory, so it is not shared with the Web UI nor persisted " +
+			"between CLI runs — expect a ~5–7s build). Node label is FileNode; relationship tables are " +
+			"ParentOf, BelongsToMilestone, DependsOn, SourcedFrom, LinksTo, TaggedWith; tags use Tag + TaggedWith.",
+	)
+	.option("--json", "print the raw JSON result")
+	.action(async (cypher: string, options) => {
+		const cwd = await requireProjectRoot();
+		const paths = graphPaths(cwd, DEFAULT_SLOT);
+		mkdirSync(paths.dir, { recursive: true });
+		const store: GraphStore = await openGraphStore(paths.dbPath, { backend: "ryu" });
+		if (store.backend !== "ryu") {
+			console.error("Cypher 查询需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+			process.exitCode = 1;
+			await store.close();
+			return;
+		}
+		const lock = tryAcquireGraphLock(paths.lockPath);
+		try {
+			// ryu's Bun build keeps its graph in in-memory MEMFS, so each CLI process starts from an
+			// empty store and must rebuild before it can query; reuse of a "previous" fingerprint would
+			// silently query an empty graph. forceBuild always performs a full build.
+			if (!lock) {
+				console.warn("⚠️ 未能获取图库锁；将仍在本进程内重建图谱后查询（不会影响其他进程）。");
+			}
+			await reconcileGraphStoreOnce(cwd, store, paths, { forceBuild: true });
+			const result = await store.runCypher(cypher);
+			if (options.json) {
+				process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+			} else {
+				printCypherResult(result);
+				console.log(
+					`\n匹配节点: ${result.nodeKeys.length} ｜ 行数: ${result.rows.length}${result.truncated ? " ｜ 已截断(上限500)" : ""}`,
+				);
+			}
+		} catch (error) {
+			console.error(String(error instanceof Error ? error.message : error));
+			process.exitCode = 1;
+		} finally {
+			if (store.backend === "ryu") await store.close();
+			lock?.release();
+		}
+	});
 
 // Browser command for web UI
 program

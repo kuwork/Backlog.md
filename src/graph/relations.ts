@@ -185,7 +185,8 @@ export function resolveRelations(records: ParsedRecord[]): RelationResolution {
 						`parentTaskId '${record.parentTaskId}' referenced by '${record.id}' resolves to ${matchCount(record.parentTaskId)} records; edge not created`,
 					);
 				} else {
-					addEdge("ParentOf", record, target.filePath);
+					// ParentOf reads "parent is ParentOf child", so the edge is parent -> child.
+					addEdge("ParentOf", target, record.filePath);
 				}
 			}
 		}

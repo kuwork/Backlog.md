@@ -19,13 +19,14 @@ const edge = (type: GraphEdgeDto["type"], from: string, to: string): GraphEdgeDt
 	to,
 });
 
-// Parent chain BACK-1 -> BACK-2 -> BACK-3 (ParentOf: child -> parent),
+// Parent chain BACK-1 -> BACK-2 -> BACK-3 (ParentOf: parent -> child, so BACK-2 is parent of BACK-1,
+// BACK-3 is parent of BACK-2),
 // BACK-1 depends on BACK-4, BACK-1 belongs to milestone m-1, BACK-5 unconnected.
 const payload = (): RelationshipGraphPayload => ({
 	nodes: [node("BACK-1"), node("BACK-2"), node("BACK-3"), node("BACK-4"), node("BACK-5"), node("m-1", "milestone")],
 	edges: [
-		edge("ParentOf", "BACK-1", "BACK-2"),
-		edge("ParentOf", "BACK-2", "BACK-3"),
+		edge("ParentOf", "BACK-2", "BACK-1"),
+		edge("ParentOf", "BACK-3", "BACK-2"),
 		edge("DependsOn", "BACK-1", "BACK-4"),
 		edge("BelongsToMilestone", "BACK-1", "m-1"),
 	],
