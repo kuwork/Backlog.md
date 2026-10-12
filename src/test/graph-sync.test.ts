@@ -414,7 +414,7 @@ describe("GraphService hot update", () => {
 			"BelongsToMilestone:back-11->m-1",
 			"DependsOn:back-11->back-10",
 			"DependsOn:draft-3->back-11",
-			"ParentOf:back-11->back-10",
+			"ParentOf:back-10->back-11",
 		];
 		expect(edgeSet(seeded)).toEqual(seededEdges);
 
@@ -448,7 +448,7 @@ describe("GraphService hot update", () => {
 			"BelongsToMilestone:back-11->m-1",
 			"DependsOn:back-11->back-10",
 			"DependsOn:back-12->back-11",
-			"ParentOf:back-11->back-10",
+			"ParentOf:back-10->back-11",
 		]);
 
 		// 3. Archive the parent: the file leaves the whitelist, so its node and both of its edges go.

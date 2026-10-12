@@ -102,6 +102,8 @@ If the block says the project declares no transitions (a plain string array), th
   -> Read when creating or listing decisions: create status, list output modes, and key rules
 - `backlog instructions drafts`
   -> Read when creating, promoting, demoting, or archiving drafts: full workflow and ID handling
+- `backlog instructions graph`
+  -> Read when running Cypher graph queries from the CLI: how `backlog graph query` builds the in-memory graph, its read-only contract, and the available node/relationship labels
 - `backlog instructions memos`
   -> Read when capturing or managing memos: quick notes, stdin capture, listing, updating, and deleting
 

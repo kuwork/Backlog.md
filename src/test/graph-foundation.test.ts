@@ -202,7 +202,7 @@ describe("fail-closed relation resolution", () => {
 			rec({ id: "draft-2", kind: "draft", parentTaskId: "back-1", dependencies: ["back-1"] }),
 		]);
 		expect(result.edges.map((e) => [e.type, e.from, e.to])).toEqual([
-			["ParentOf", "drafts/draft-2.md", "tasks/back-1.md"],
+			["ParentOf", "tasks/back-1.md", "drafts/draft-2.md"],
 			["DependsOn", "drafts/draft-2.md", "tasks/back-1.md"],
 		]);
 		expect(result.invalidRelations).toEqual([]);
