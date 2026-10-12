@@ -2,13 +2,76 @@
 
 The `graph` command runs read-only Cypher queries against the project's task/knowledge graph from the command line. It is the CLI counterpart to the Web UI's Cypher search (the magnifier dialog in `backlog browser`). Each call builds the graph in memory from the Markdown corpus and runs your query against it.
 
-Use `backlog graph query` to explore task structure, dependencies, milestones, tags, and cross-file links without opening the browser — for ad-hoc analysis, scripting, or piping results into other tools.
+Use `backlog graph schema` to see the graph's structure, and `backlog graph query` to explore task structure, dependencies, milestones, tags, and cross-file links without opening the browser — for ad-hoc analysis, scripting, or piping results into other tools.
 
 > **Important**: Queries are strictly read-only. Write keywords (`CREATE` / `DROP` / `DELETE` / `INSERT` / `MERGE` / `SET` / `UPDATE`) are rejected, and the graph and corpus are never modified. The CLI builds a fresh in-memory graph on every run (the ryu/WASM backend does not persist between processes), so each call is independent of the Web UI's graph and takes a few seconds to build.
 
 ### CLI Usage
 
-The `graph` command exposes one subcommand, `query`.
+The `graph` command exposes two subcommands: `schema` (describe the graph) and `query` (run Cypher).
+
+#### Inspecting the graph schema
+
+`backlog graph schema` prints the graph's structure — every node table with its properties, and every relationship table with its endpoints — so you do not have to know the labels up front. It introspects ryu with the read-only procedures `show_tables` / `table_info` / `show_connection`.
+
+```bash
+backlog graph schema
+```
+```
+Node tables (NODE)
+  FileNode
+    path  STRING  (primary key)
+    id  STRING
+    type  STRING
+    title  STRING
+    status  STRING
+    updatedDate  STRING
+  Meta
+    name  STRING  (primary key)
+    value  STRING
+  Tag
+    name  STRING  (primary key)
+
+Relationship tables (REL)
+  FileNode -[:ParentOf]-> FileNode
+  FileNode -[:BelongsToMilestone]-> FileNode
+  FileNode -[:DependsOn]-> FileNode
+  FileNode -[:SourcedFrom]-> FileNode
+  FileNode -[:LinksTo]-> FileNode
+  FileNode -[:TaggedWith]-> Tag
+```
+
+`--json` prints the same information as a machine-readable object:
+
+```bash
+backlog graph schema --json
+# -> {
+#      "nodes": [
+#        { "name": "FileNode", "properties": [
+#            { "name": "path", "type": "STRING", "primaryKey": true }, … ] },
+#        …
+#      ],
+#      "relationships": [
+#        { "name": "ParentOf", "from": "FileNode", "to": "FileNode" },
+#        …
+#      ]
+#    }
+```
+
+The three underlying procedures are also reachable directly through `query` when you want them raw:
+
+```bash
+# All tables (name + kind)
+backlog graph query "CALL show_tables() RETURN name, type"
+
+# Columns of one node table ("primary key" is a space-containing reserved name -> backticks)
+backlog graph query "CALL table_info('FileNode') RETURN name, type, \`primary key\`"
+
+# Endpoints of one relationship table (REL tables only)
+backlog graph query "CALL show_connection('ParentOf') RETURN \`source table name\`, \`destination table name\`"
+```
+
+**Schema notes**: the node label is `FileNode` (**not** `File`); `CALL db.labels()` does not exist in ryu (`Parser exception`); `show_connection` works only on relationship tables. Relationship tables carry no user properties, so `table_info` on them returns nothing — use `show_connection` for their endpoints.
 
 #### Running a Cypher query
 
@@ -114,7 +177,8 @@ The graph mirrors the Markdown corpus under `backlog/`:
 
 ### Key Rules
 
-- The command is read-only and never writes to the graph or the corpus; write keywords are blocked with a clear error.
+- The commands are read-only and never write to the graph or the corpus; write keywords are blocked with a clear error.
+- `backlog graph schema` describes the graph (node tables + properties, relationship tables + endpoints); `backlog graph query "<cypher>"` runs your Cypher.
 - Each invocation builds the graph from scratch in memory and closes it on exit. It does **not** share state with `backlog browser` and does **not** persist across runs, so expect a short build delay (a few seconds on a large corpus).
 - Results are capped at 500 rows. When the cap is hit, `truncated` is `true` (and the table notes the truncation). Narrow the query with `WHERE` / `LIMIT` to see more.
 - Use `--json` for machine consumption; the default table is aligned plain text with no ANSI codes, so it is safe to pipe.

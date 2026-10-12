@@ -7,9 +7,26 @@ status: Done
 assignee:
   - '@kuwork'
 created_date: '2026-10-12 11:52'
-updated_date: '2026-10-12 08:58'
+updated_date: '2026-10-12 13:33'
 labels: []
 dependencies: []
+modified_files:
+  - DEVELOPMENT.md
+  - bun.lock
+  - package.json
+  - scripts/dev-kuzu.cmd
+  - scripts/dev-kuzu.ps1
+  - scripts/dev-kuzu.sh
+  - scripts/patch-ryugraph.cjs
+  - src/graph/cold-start.ts
+  - src/graph/fingerprint.ts
+  - src/graph/service.ts
+  - src/graph/store.ts
+  - src/server/index.ts
+  - src/test/graph-foundation.test.ts
+  - src/test/graph-sync.test.ts
+  - src/types/ryugraph-wasm.d.ts
+  - src/web/lib/api.ts
 actual_end: '2026-10-12 08:58'
 ---
 

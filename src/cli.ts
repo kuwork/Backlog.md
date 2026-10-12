@@ -6842,12 +6842,106 @@ function printCypherResult(result: { columns: string[]; rows: unknown[][] }): vo
 	}
 }
 
+/** Read one column out of a flattened Cypher row by column name (columns are the RETURN expressions/aliases). */
+function cypherCell(result: { columns: string[]; rows: unknown[][] }, row: unknown[], column: string): unknown {
+	const idx = result.columns.indexOf(column);
+	return idx >= 0 ? row[idx] : undefined;
+}
+
+/** The graph's schema, assembled from ryu's read-only introspection procedures. */
+type GraphSchema = {
+	nodes: { name: string; properties: { name: string; type: string; primaryKey: boolean }[] }[];
+	relationships: { name: string; from: string; to: string }[];
+};
+
+/** Describe every node/relationship table using ryu's show_tables / table_info / show_connection procedures. */
+async function loadGraphSchema(store: GraphStore): Promise<GraphSchema> {
+	const tables = await store.runCypher("CALL show_tables() RETURN name, type");
+	const nodes: GraphSchema["nodes"] = [];
+	const relationships: GraphSchema["relationships"] = [];
+	for (const row of tables.rows) {
+		const name = String(cypherCell(tables, row, "name") ?? "");
+		const kind = String(cypherCell(tables, row, "type") ?? "");
+		if (!name) continue;
+		if (kind === "NODE") {
+			const info = await store.runCypher(`CALL table_info('${name}') RETURN *`);
+			nodes.push({
+				name,
+				properties: info.rows.map((r) => {
+					const pk = cypherCell(info, r, "primary key");
+					return {
+						name: String(cypherCell(info, r, "name") ?? ""),
+						type: String(cypherCell(info, r, "type") ?? ""),
+						primaryKey: pk === true || pk === "true",
+					};
+				}),
+			});
+		} else if (kind === "REL") {
+			const conn = await store.runCypher(`CALL show_connection('${name}') RETURN *`);
+			const first = conn.rows[0] ?? [];
+			relationships.push({
+				name,
+				from: String(cypherCell(conn, first, "source table name") ?? ""),
+				to: String(cypherCell(conn, first, "destination table name") ?? ""),
+			});
+		}
+	}
+	return { nodes, relationships };
+}
+
+/** Print the graph schema as human-readable sections (labels/relationships are the ryu table names). */
+function printGraphSchema(schema: GraphSchema): void {
+	console.log("Node tables (NODE)");
+	for (const node of schema.nodes) {
+		console.log(`  ${node.name}`);
+		for (const prop of node.properties) {
+			console.log(`    ${prop.name}  ${prop.type}${prop.primaryKey ? "  (primary key)" : ""}`);
+		}
+	}
+	console.log("\nRelationship tables (REL)");
+	for (const rel of schema.relationships) {
+		console.log(`  ${rel.from} -[:${rel.name}]-> ${rel.to}`);
+	}
+}
+
+/** Open the CLI's ryu graph store, rebuild it in-process, run `fn`, then always close the store and release the lock. */
+async function withGraphStore(run: (store: GraphStore) => Promise<void>): Promise<void> {
+	const cwd = await requireProjectRoot();
+	const paths = graphPaths(cwd, DEFAULT_SLOT);
+	mkdirSync(paths.dir, { recursive: true });
+	const store: GraphStore = await openGraphStore(paths.dbPath, { backend: "ryu" });
+	if (store.backend !== "ryu") {
+		console.error("Cypher 查询需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+		process.exitCode = 1;
+		await store.close();
+		return;
+	}
+	const lock = tryAcquireGraphLock(paths.lockPath);
+	try {
+		// ryu's Bun build keeps its graph in in-memory MEMFS, so each CLI process starts from an
+		// empty store and must rebuild before it can query; reuse of a "previous" fingerprint would
+		// silently query an empty graph. forceBuild always performs a full build.
+		if (!lock) {
+			console.warn("⚠️ 未能获取图库锁；将仍在本进程内重建图谱后查询（不会影响其他进程）。");
+		}
+		await reconcileGraphStoreOnce(cwd, store, paths, { forceBuild: true });
+		await run(store);
+	} catch (error) {
+		console.error(String(error instanceof Error ? error.message : error));
+		process.exitCode = 1;
+	} finally {
+		if (store.backend === "ryu") await store.close();
+		lock?.release();
+	}
+}
+
 const graphCommand = addHelpSchema(program.command("graph"), {
 	reads: "The derived task/knowledge graph (ryu/WASM Cypher backend)",
 	required: [],
 	optional: [],
 	output: "Cypher query results as a table (default) or JSON (--json)",
 	examples: [
+		"backlog graph schema",
 		'backlog graph query "MATCH (n:FileNode) RETURN n.path LIMIT 10"',
 		'backlog graph query "MATCH (n:FileNode) RETURN count(n)" --json',
 		'backlog graph query "MATCH (a:FileNode)-[:ParentOf]->(b:FileNode) RETURN a.path, b.path LIMIT 5"',
@@ -6863,25 +6957,7 @@ graphCommand
 	)
 	.option("--json", "print the raw JSON result")
 	.action(async (cypher: string, options) => {
-		const cwd = await requireProjectRoot();
-		const paths = graphPaths(cwd, DEFAULT_SLOT);
-		mkdirSync(paths.dir, { recursive: true });
-		const store: GraphStore = await openGraphStore(paths.dbPath, { backend: "ryu" });
-		if (store.backend !== "ryu") {
-			console.error("Cypher 查询需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
-			process.exitCode = 1;
-			await store.close();
-			return;
-		}
-		const lock = tryAcquireGraphLock(paths.lockPath);
-		try {
-			// ryu's Bun build keeps its graph in in-memory MEMFS, so each CLI process starts from an
-			// empty store and must rebuild before it can query; reuse of a "previous" fingerprint would
-			// silently query an empty graph. forceBuild always performs a full build.
-			if (!lock) {
-				console.warn("⚠️ 未能获取图库锁；将仍在本进程内重建图谱后查询（不会影响其他进程）。");
-			}
-			await reconcileGraphStoreOnce(cwd, store, paths, { forceBuild: true });
+		await withGraphStore(async (store) => {
 			const result = await store.runCypher(cypher);
 			if (options.json) {
 				process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -6891,13 +6967,25 @@ graphCommand
 					`\n匹配节点: ${result.nodeKeys.length} ｜ 行数: ${result.rows.length}${result.truncated ? " ｜ 已截断(上限500)" : ""}`,
 				);
 			}
-		} catch (error) {
-			console.error(String(error instanceof Error ? error.message : error));
-			process.exitCode = 1;
-		} finally {
-			if (store.backend === "ryu") await store.close();
-			lock?.release();
-		}
+		});
+	});
+
+graphCommand
+	.command("schema")
+	.description(
+		"Print the graph schema: node tables and their properties, plus relationship tables and their endpoints " +
+			"(introspects ryu via show_tables / table_info / show_connection).",
+	)
+	.option("--json", "print the raw JSON schema")
+	.action(async (options) => {
+		await withGraphStore(async (store) => {
+			const schema = await loadGraphSchema(store);
+			if (options.json) {
+				process.stdout.write(`${JSON.stringify(schema, null, 2)}\n`);
+			} else {
+				printGraphSchema(schema);
+			}
+		});
 	});
 
 // Browser command for web UI
