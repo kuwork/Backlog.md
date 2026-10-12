@@ -8,7 +8,7 @@ Use `backlog graph schema` to see the graph's structure, and `backlog graph quer
 
 ### CLI Usage
 
-The `graph` command works against a named **database**: `default` (the derived markdown graph) or a user database you create. Its subcommands are `query` / `insert` (Cypher), `schema` / `show-schema`, `list`, `describe`, and `create` / `drop`.
+The `graph` command works against a named **database**: `default` (the derived markdown graph) or a user database you create. Its subcommands are `query` / `insert` (Cypher), `import` (CSV), `schema` / `show-schema`, `list`, `describe`, and `create` / `drop`.
 
 #### Inspecting the graph schema
 
@@ -100,6 +100,29 @@ backlog graph drop people
 - `insert` is **refused for `default`**: that graph is a derived cache, and the next rebuild would overwrite anything written into it. Create a user database instead.
 - `list` reads the registry only (instant). `describe` and every other command open the database first, so `describe default` pays the full corpus rebuild.
 - Snapshot limits: the whole database is serialised on write and replayed on open, so cost grows with database size - comfortable to roughly 1e5 rows.
+
+#### Importing a CSV file
+
+`backlog graph import <db> <csv>` loads a file of rows into a node table, so a spreadsheet can become a graph without writing Cypher by hand:
+
+```bash
+# Create the table `people` from the file name, with column types inferred from the data
+backlog graph import people data/people.csv
+
+# Name the table yourself, and rename a header that is not a valid property name
+backlog graph import people data/people.csv --node Person --map "First Name=firstName"
+
+# A headerless file: columns become column1, column2, …
+backlog graph import people data/raw.csv --no-header --node Raw
+```
+
+- The file is read with node's `fs` and inserted with batched parameterised `UNWIND`. ryu's `COPY FROM` is never used: under the WASM build it silently imports zero rows.
+- **The first column is the primary key.** A row whose key the database already has **updates** that row (import is an upsert on the key), so re-importing a corrected file does what one expects. A key repeated inside one file: the later row wins.
+- A missing table is created with types inferred per column: `INT64` → `DOUBLE` → `BOOLEAN`, falling back to `STRING`. An empty cell does not force `STRING`; it becomes NULL.
+- Importing into a table that already exists is checked against its declared columns: a CSV column the table does not have is an error (use `--map` to rename it onto one that exists), and so is a value the column's type cannot hold.
+- A malformed file - a ragged row, an unclosed quote, a header-only file, a duplicate or invalid column name - is reported with its line number **before** the database is opened, so the database is left exactly as it was.
+- Values keep their commas, quotes and newlines. The one exception is the key column: a newline there is refused, because ryu's `MERGE` would split such a row in two.
+- `--force` skips the snapshot fingerprint check, like the other write commands.
 
 #### Running a Cypher query
 
@@ -206,8 +229,8 @@ The graph mirrors the Markdown corpus under `backlog/`:
 
 ### Key Rules
 
-- `default` is read-only: it is a derived cache of the markdown corpus, and no command writes to it. Writing is possible only on a user database, via `insert`.
-- `schema` / `show-schema` describe a database (node tables + properties, relationship tables + endpoints); `list` inventories databases; `describe` reports table sizes; `query` reads; `insert` writes; `create` / `drop` manage user databases.
+- `default` is read-only: it is a derived cache of the markdown corpus, and no command writes to it. Writing is possible only on a user database, via `insert` (Cypher) or `import` (CSV).
+- `schema` / `show-schema` describe a database (node tables + properties, relationship tables + endpoints); `list` inventories databases; `describe` reports table sizes; `query` reads; `insert` writes Cypher; `import` loads a CSV; `create` / `drop` manage user databases.
 - Every command opens the database in memory and closes it on exit; nothing is shared with `backlog browser`. `default` is rebuilt from the corpus on each run (a few seconds on a large corpus), while a user database is replayed from its snapshot - which is also what makes it durable.
 - Results are capped at 500 rows. When the cap is hit, `truncated` is `true` (and the table notes the truncation). Narrow the query with `WHERE` / `LIMIT` to see more.
 - Use `--json` for machine consumption; the default table is aligned plain text with no ANSI codes, so it is safe to pipe.
