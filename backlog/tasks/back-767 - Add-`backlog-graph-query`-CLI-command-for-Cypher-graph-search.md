@@ -5,9 +5,20 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-12 10:10'
-updated_date: '2026-10-12 13:08'
-labels: []
+updated_date: '2026-10-12 13:34'
+labels:
+  - cli
 dependencies: []
+modified_files:
+  - src/cli.ts
+  - src/graph/reconcile-once.ts
+  - src/graph/relations.ts
+  - src/guidelines/cli-instructions/graph.md
+  - src/guidelines/cli-instructions/overview.md
+  - src/test/graph-foundation.test.ts
+  - src/test/graph-reconcile-once.test.ts
+  - src/test/graph-sync.test.ts
+  - src/web/utils/task-subgraph.test.ts
 ordinal: 328001
 actual_start: '2026-10-12 10:10'
 actual_end: '2026-10-12 13:00'

@@ -5,9 +5,29 @@ status: Done
 assignee:
   - '@kuwork'
 created_date: '2026-10-10 17:56'
-updated_date: '2026-10-11 04:57'
+updated_date: '2026-10-12 13:33'
 labels: []
 dependencies: []
+modified_files:
+  - DEVELOPMENT.md
+  - bun.lock
+  - package.json
+  - scripts/dev-kuzu.cmd
+  - scripts/dev-kuzu.ps1
+  - scripts/dev-kuzu.sh
+  - src/graph/service.ts
+  - src/graph/store.ts
+  - src/server/index.ts
+  - src/test/graph-foundation.test.ts
+  - src/test/web-graph-cypher-reveal.test.tsx
+  - src/web/components/CypherSearchDialog.tsx
+  - src/web/components/GraphLegend.tsx
+  - src/web/components/GraphView.tsx
+  - src/web/lib/api.ts
+  - src/web/locales/en.ts
+  - src/web/locales/ja.ts
+  - src/web/locales/zh-CN.ts
+  - src/web/locales/zh-TW.ts
 ordinal: 327001
 actual_start: '2026-10-10 17:58'
 actual_end: '2026-10-11 04:35'
