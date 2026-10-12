@@ -1,6 +1,6 @@
 ---
 id: m-11
-title: SQLite Explorer Phase 1
+title: SQLite Explorer
 created_date: '2026-10-13 01:14'
 updated_date: '2026-10-12 18:21'
 actual_end: '2026-10-12 18:21'

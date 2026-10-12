@@ -855,6 +855,8 @@ export const zhTW: TranslationDict = {
 		truncated: "已截斷至 {count} 行。",
 		summary: "{count} 行 · {ms} ms",
 		error: "查詢失敗",
+		showQuery: "顯示查詢",
+		hideQuery: "隱藏查詢",
 	},
 
 	imageLightbox: {
