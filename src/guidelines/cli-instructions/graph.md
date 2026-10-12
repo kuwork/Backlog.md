@@ -8,7 +8,7 @@ Use `backlog graph schema` to see the graph's structure, and `backlog graph quer
 
 ### CLI Usage
 
-The `graph` command exposes two subcommands: `schema` (describe the graph) and `query` (run Cypher).
+The `graph` command works against a named **database**: `default` (the derived markdown graph) or a user database you create. Its subcommands are `query` / `insert` (Cypher), `schema` / `show-schema`, `list`, `describe`, and `create` / `drop`.
 
 #### Inspecting the graph schema
 
@@ -62,31 +62,59 @@ The three underlying procedures are also reachable directly through `query` when
 
 ```bash
 # All tables (name + kind)
-backlog graph query "CALL show_tables() RETURN name, type"
+backlog graph query default "CALL show_tables() RETURN name, type"
 
 # Columns of one node table ("primary key" is a space-containing reserved name -> backticks)
-backlog graph query "CALL table_info('FileNode') RETURN name, type, \`primary key\`"
+backlog graph query default "CALL table_info('FileNode') RETURN name, type, \`primary key\`"
 
 # Endpoints of one relationship table (REL tables only)
-backlog graph query "CALL show_connection('ParentOf') RETURN \`source table name\`, \`destination table name\`"
+backlog graph query default "CALL show_connection('ParentOf') RETURN \`source table name\`, \`destination table name\`"
 ```
 
 **Schema notes**: the node label is `FileNode` (**not** `File`); `CALL db.labels()` does not exist in ryu (`Parser exception`); `show_connection` works only on relationship tables. Relationship tables carry no user properties, so `table_info` on them returns nothing — use `show_connection` for their endpoints.
+
+#### Databases
+
+Every command takes a database name. `default` is the derived graph of the markdown corpus: a rebuildable **cache**, always read-only, rebuilt in-process on each run. Anything you create with `backlog graph create` is a **user database**: it lives with the project under `<backlog>/databases/` (whichever of `backlog/` or `.backlog/` this project uses) and is kept durable in a JSON snapshot, because the ryu/WASM backend holds its data in WASM memory only.
+
+```bash
+# What exists
+backlog graph list
+
+# Create one, then give it a schema and data
+backlog graph create people "people and their relationships"
+backlog graph insert people "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"
+backlog graph insert people "CREATE REL TABLE KNOWS(FROM Person TO Person)"
+backlog graph insert people "CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob', age: 41})"
+backlog graph insert people "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) CREATE (a)-[:KNOWS]->(b)"
+
+# Read it back - in any later process, the snapshot is reloaded automatically
+backlog graph query people "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
+backlog graph describe people
+
+# Remove it, snapshot included
+backlog graph drop people
+```
+
+- `insert` takes write Cypher (`CREATE` / `MERGE` / `SET` / `DELETE`) and re-dumps the snapshot after every successful statement. Each `insert` is one statement followed by one snapshot write - durable, but not a transaction across statements.
+- `insert` is **refused for `default`**: that graph is a derived cache, and the next rebuild would overwrite anything written into it. Create a user database instead.
+- `list` reads the registry only (instant). `describe` and every other command open the database first, so `describe default` pays the full corpus rebuild.
+- Snapshot limits: the whole database is serialised on write and replayed on open, so cost grows with database size - comfortable to roughly 1e5 rows.
 
 #### Running a Cypher query
 
 ```bash
 # Count every node in the graph
-backlog graph query "MATCH (n:FileNode) RETURN count(n)"
+backlog graph query default "MATCH (n:FileNode) RETURN count(n)"
 
 # List files with their type, newest path first
-backlog graph query "MATCH (n:FileNode) RETURN n.type, n.path ORDER BY n.path LIMIT 10"
+backlog graph query default "MATCH (n:FileNode) RETURN n.type, n.path ORDER BY n.path LIMIT 10"
 
 # Walk a relationship (edge is directed parent -> child, so a is the parent, b is the child)
-backlog graph query "MATCH (a:FileNode)-[:ParentOf]->(b:FileNode) RETURN a.path, b.path LIMIT 10"
+backlog graph query default "MATCH (a:FileNode)-[:ParentOf]->(b:FileNode) RETURN a.path, b.path LIMIT 10"
 
 # Aggregate by tag
-backlog graph query "MATCH (n:FileNode)-[:TaggedWith]->(t:Tag) RETURN t.name, count(n) ORDER BY count(n) DESC LIMIT 10"
+backlog graph query default "MATCH (n:FileNode)-[:TaggedWith]->(t:Tag) RETURN t.name, count(n) ORDER BY count(n) DESC LIMIT 10"
 ```
 
 #### Task relationship graph by task ID
@@ -97,32 +125,32 @@ In this graph the `ParentOf` hierarchy edge is directed **from parent to child**
 
 ```bash
 # Look up one task by its ID
-backlog graph query "MATCH (t:FileNode {id: 'BACK-521'}) RETURN t.id, t.title, t.type, t.status"
+backlog graph query default "MATCH (t:FileNode {id: 'BACK-521'}) RETURN t.id, t.title, t.type, t.status"
 
 # Parent task it sits under. Edge is parent -> child, so follow it backwards with <-[:ParentOf]-.
 # BACK-521 is top-level, so this is empty; a subtask like BACK-521.2 would return BACK-521.
-backlog graph query "MATCH (c:FileNode {id: 'BACK-521'})<-[:ParentOf]-(p:FileNode) RETURN p.id, p.title"
+backlog graph query default "MATCH (c:FileNode {id: 'BACK-521'})<-[:ParentOf]-(p:FileNode) RETURN p.id, p.title"
 
 # Child / subtasks it parents. Edge is parent -> child, so follow it forwards with -[:ParentOf]->.
-backlog graph query "MATCH (p:FileNode {id: 'BACK-521'})-[:ParentOf]->(c:FileNode) RETURN c.id, c.title, c.status"
+backlog graph query default "MATCH (p:FileNode {id: 'BACK-521'})-[:ParentOf]->(c:FileNode) RETURN c.id, c.title, c.status"
 
 # What it depends on (task -[:DependsOn]-> dependency)
-backlog graph query "MATCH (t:FileNode {id: 'BACK-521'})-[:DependsOn]->(d:FileNode) RETURN d.id, d.title"
+backlog graph query default "MATCH (t:FileNode {id: 'BACK-521'})-[:DependsOn]->(d:FileNode) RETURN d.id, d.title"
 
 # What depends on it
-backlog graph query "MATCH (d:FileNode)-[:DependsOn]->(t:FileNode {id: 'BACK-521'}) RETURN d.id, d.title"
+backlog graph query default "MATCH (d:FileNode)-[:DependsOn]->(t:FileNode {id: 'BACK-521'}) RETURN d.id, d.title"
 
 # Milestone it belongs to (task -[:BelongsToMilestone]-> milestone)
-backlog graph query "MATCH (t:FileNode {id: 'BACK-521'})-[:BelongsToMilestone]->(m:FileNode) RETURN m.id, m.title"
+backlog graph query default "MATCH (t:FileNode {id: 'BACK-521'})-[:BelongsToMilestone]->(m:FileNode) RETURN m.id, m.title"
 
 # Tags attached to the task (task -[:TaggedWith]-> Tag)
-backlog graph query "MATCH (t:FileNode {id: 'BACK-521'})-[:TaggedWith]->(tag:Tag) RETURN tag.name"
+backlog graph query default "MATCH (t:FileNode {id: 'BACK-521'})-[:TaggedWith]->(tag:Tag) RETURN tag.name"
 ```
 
 To see the **entire** relationship map of a task in one result, chain typed `MATCH`es with `UNION ALL`, leading each branch with a literal relationship-name string (ryu does not provide a `type()` function for relationships):
 
 ```bash
-backlog graph query "\
+backlog graph query default "\
 MATCH (t:FileNode {id: 'BACK-521'})<-[:ParentOf]-(o:FileNode) RETURN 'ParentOf(parent)', o.id, o.type \
 UNION ALL MATCH (t:FileNode {id: 'BACK-521'})-[:ParentOf]->(o:FileNode) RETURN 'ParentOf(child)', o.id, o.type \
 UNION ALL MATCH (t:FileNode {id: 'BACK-521'})-[:DependsOn]->(o:FileNode) RETURN 'DependsOn', o.id, o.type \
@@ -140,22 +168,23 @@ The query prints as an aligned table (default) or as raw JSON with `--json`. Aft
 
 `backlog graph query` arguments and options:
 
-- `<cypher>` (positional, required) — the Cypher statement to run. Quote it so the shell does not mangle it; double quotes work on every platform, single quotes on Unix/macOS/WSL.
+- `<db>` (positional, required) — the database to query: `default` or a user database name.
+- `[cypher]` (positional) — the Cypher statement. Quote it so the shell does not mangle it; double quotes work on every platform, single quotes on Unix/macOS/WSL. Omit it only in the legacy one-argument form (`backlog graph query "MATCH ..."`), which targets `default`.
 - `--json` — print the raw `CypherQueryResult` (`{ columns, rows, nodeKeys, truncated }`) instead of the table. Use this for scripts and pipes.
 
 #### JSON output for scripting
 
 ```bash
-backlog graph query "MATCH (n:FileNode) WHERE n.type = 'task' RETURN count(n)" --json
+backlog graph query default "MATCH (n:FileNode) WHERE n.type = 'task' RETURN count(n)" --json
 # -> {
-#      "columns": ["count(n)"],
-#      "rows": [[<count>]],
+#      "columns": ["COUNT(n._ID)"],
+#      "rows": [[737]],
 #      "nodeKeys": [],
 #      "truncated": false
 #    }
 ```
 
-`rows` is a list of rows, each a list of column values; `nodeKeys` lists the matched node keys (used for highlighting in the Web UI, usually empty for aggregated results); `truncated` is `true` when the result exceeded the 500-row cap.
+`rows` is a list of rows, each a list of column values; `nodeKeys` lists the matched node keys (used for highlighting in the Web UI, usually empty for aggregated results); `truncated` is `true` when the result exceeded the 500-row cap. Column names come from ryu, so an aggregate gets a generated name — `count(n)` arrives as `COUNT(n._ID)` — read those values by position, or add an explicit alias when a script needs a stable key.
 
 #### What the graph contains
 
@@ -177,9 +206,9 @@ The graph mirrors the Markdown corpus under `backlog/`:
 
 ### Key Rules
 
-- The commands are read-only and never write to the graph or the corpus; write keywords are blocked with a clear error.
-- `backlog graph schema` describes the graph (node tables + properties, relationship tables + endpoints); `backlog graph query "<cypher>"` runs your Cypher.
-- Each invocation builds the graph from scratch in memory and closes it on exit. It does **not** share state with `backlog browser` and does **not** persist across runs, so expect a short build delay (a few seconds on a large corpus).
+- `default` is read-only: it is a derived cache of the markdown corpus, and no command writes to it. Writing is possible only on a user database, via `insert`.
+- `schema` / `show-schema` describe a database (node tables + properties, relationship tables + endpoints); `list` inventories databases; `describe` reports table sizes; `query` reads; `insert` writes; `create` / `drop` manage user databases.
+- Every command opens the database in memory and closes it on exit; nothing is shared with `backlog browser`. `default` is rebuilt from the corpus on each run (a few seconds on a large corpus), while a user database is replayed from its snapshot - which is also what makes it durable.
 - Results are capped at 500 rows. When the cap is hit, `truncated` is `true` (and the table notes the truncation). Narrow the query with `WHERE` / `LIMIT` to see more.
 - Use `--json` for machine consumption; the default table is aligned plain text with no ANSI codes, so it is safe to pipe.
 - Run from the project root (or a directory inside it) so the CLI can locate `backlog/`.
