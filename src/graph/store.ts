@@ -74,6 +74,15 @@ export interface CypherQueryResult {
 	truncated: boolean;
 }
 
+/** How many rows an interactive Cypher result is capped at before it is truncated for display. */
+export const DEFAULT_CYPHER_ROW_CAP = 500;
+
+/** Read one column out of a flattened Cypher row by column name (a column is its RETURN expression). */
+export function cypherCell(result: CypherQueryResult, row: unknown[], column: string): unknown {
+	const idx = result.columns.indexOf(column);
+	return idx >= 0 ? row[idx] : undefined;
+}
+
 export interface GraphStore {
 	readonly backend: "ryu" | "memory";
 	/**
@@ -118,7 +127,13 @@ export interface GraphStore {
 	 * for JSON. The ryu backend executes native Cypher; the memory backend does not support it and
 	 * rejects the call so the UI can surface a clear "use the ryu backend" message.
 	 */
-	runCypher(statement: string): Promise<CypherQueryResult>;
+	runCypher(statement: string, options?: { maxRows?: number }): Promise<CypherQueryResult>;
+	/**
+	 * Run a Cypher statement that may mutate the graph. Only user databases (opened with
+	 * `schema: "none"`) ever call this: the derived corpus graph is a rebuildable cache of the
+	 * markdown truth, so anything written into it would be overwritten by the next rebuild.
+	 */
+	runWrite(statement: string, params?: Record<string, unknown>): Promise<void>;
 }
 
 /** Edge tables may hold at most one edge per (from, to) pair. */
@@ -229,6 +244,10 @@ export class MemoryGraphStore implements GraphStore {
 		throw new Error(
 			"Cypher 检索需要支持 Cypher 的图后端（ryu）；当前运行在 memory 降级模式，不支持 Cypher。设置 BACKLOG_GRAPH_BACKEND=ryu 后重启，或移除该变量以回退到默认的 ryu 后端。",
 		);
+	}
+
+	async runWrite(): Promise<void> {
+		throw new Error("Cypher 写入需要支持 Cypher 的图后端（ryu）；当前运行在 memory 降级模式，不支持写入。");
 	}
 }
 
@@ -457,12 +476,19 @@ export class RyuGraphStore implements GraphStore {
 	private db: any = null;
 	private conn: any = null;
 
-	constructor(private readonly dbPath: string) {}
+	constructor(
+		private readonly dbPath: string,
+		private readonly schema: "corpus" | "none" = "corpus",
+	) {}
 
 	async init(): Promise<void> {
 		const ryu = await loadRyu();
 		this.db = new ryu.Database(this.dbPath);
 		this.conn = new ryu.Connection(this.db);
+		// A user database owns its schema: create nothing, wipe nothing, so the tables the user
+		// defined with Cypher survive the open. (ryu keeps the file in WASM memory anyway, so the
+		// snapshot sidecar - not this file - is the durable copy.)
+		if (this.schema === "none") return;
 		// The file says which schema it was built with, so a reusable file is recognised without
 		// consulting anything outside it (the sidecar cache, the caller's expectations).
 		if (isCurrentSchema(await this.readSchemaVersion())) {
@@ -616,11 +642,32 @@ export class RyuGraphStore implements GraphStore {
 		await upsertEdgesViaRunner((sql, params) => this.executePrepared(sql, params), edges);
 	}
 
+	/**
+	 * Number of nodes in the graph. The corpus graph counts its `FileNode`s - `Tag` is a virtual
+	 * classification node and `Meta` is bookkeeping, so neither is a graph node in the API's sense.
+	 * A user database has no `FileNode` table at all, so there every node table is counted; the
+	 * previous hardcoded `MATCH (n:FileNode)` threw `Binder exception: Table FileNode does not
+	 * exist` on any user database.
+	 */
 	async countNodes(): Promise<number> {
-		const result = await this.query("MATCH (n:FileNode) RETURN count(n) AS c");
+		const tables = await this.nodeTableNames();
+		const targets = tables.includes("FileNode") ? ["FileNode"] : tables;
+		let total = 0;
+		for (const table of targets) {
+			const result = await this.query(`MATCH (n:${table}) RETURN count(n) AS c`);
+			const rows = await this.rowsFromResult(result);
+			await this.closeResult(result);
+			total += Number(rows[0]?.c ?? 0);
+		}
+		return total;
+	}
+
+	/** Names of this database's node tables (relationship tables excluded). */
+	private async nodeTableNames(): Promise<string[]> {
+		const result = await this.query("CALL show_tables() RETURN name, type");
 		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
-		return Number(rows[0]?.c ?? 0);
+		return rows.filter((row) => String(row.type) === "NODE").map((row) => String(row.name));
 	}
 
 	async countEdges(type: GraphEdgeType): Promise<number> {
@@ -669,7 +716,7 @@ export class RyuGraphStore implements GraphStore {
 	 * truth). The flattened rows carry plain JSON and the set of FileNode key/id values found, which
 	 * the UI uses to highlight the matched subgraph.
 	 */
-	async runCypher(statement: string): Promise<CypherQueryResult> {
+	async runCypher(statement: string, options: { maxRows?: number } = {}): Promise<CypherQueryResult> {
 		const trimmed = statement.trim();
 		if (!trimmed) throw new Error("Cypher 语句为空");
 		// Read-only retrieval only: block write keywords to protect the cache. `CALL` (e.g.
@@ -680,7 +727,9 @@ export class RyuGraphStore implements GraphStore {
 		const result = await this.query(trimmed);
 		const rowObjects = await this.rowsFromResult(result);
 		await this.closeResult(result);
-		const MAX_ROWS = 500;
+		// The cap keeps an interactive result renderable, but internal callers that must not lose
+		// rows (dumping a snapshot) pass Infinity - silently truncating a dump would be data loss.
+		const MAX_ROWS = options.maxRows ?? DEFAULT_CYPHER_ROW_CAP;
 		const truncated = rowObjects.length > MAX_ROWS;
 		const slice = truncated ? rowObjects.slice(0, MAX_ROWS) : rowObjects;
 		const nodeKeys = new Set<string>();
@@ -696,11 +745,29 @@ export class RyuGraphStore implements GraphStore {
 		return { columns, rows, nodeKeys: [...nodeKeys], truncated };
 	}
 
+	/**
+	 * Run a mutating Cypher statement (user databases only). `runCypher`'s read-only keyword block
+	 * does not apply here - the whole point of a user database is CREATE/MERGE/SET/DELETE - but the
+	 * few statements that would reach outside this database are still refused.
+	 */
+	async runWrite(statement: string, params?: Record<string, unknown>): Promise<void> {
+		const trimmed = statement.trim();
+		if (!trimmed) throw new Error("Cypher 语句为空");
+		if (/\b(DROP\s+DATABASE|ATTACH|DETACH|INSTALL|LOAD\s+EXTENSION)\b/i.test(trimmed)) {
+			throw new Error("该语句超出用户数据库的写入范围，已被拒绝。");
+		}
+		if (params) {
+			await this.executePrepared(trimmed, params);
+			return;
+		}
+		const result = await this.query(trimmed);
+		await this.closeResult(result);
+	}
+
 	private connection(): any {
 		if (!this.conn) throw new Error("RyuGraphStore used before init()");
 		return this.conn;
 	}
-
 	private async query(statement: string): Promise<any> {
 		const result = await this.connection().query(statement);
 		if (Array.isArray(result)) {
@@ -804,6 +871,13 @@ function toGraphNode(row: Record<string, unknown>): GraphNode {
 export interface OpenGraphStoreOptions {
 	/** Force a specific backend ("ryu" | "memory"); omit for the default "ryu" (WASM) backend. */
 	backend?: string;
+	/**
+	 * Which schema the file carries. "corpus" (the default) is the derived markdown graph: the store
+	 * stamps SCHEMA_VERSION into it and wipes/rebuilds a file whose version is stale. "none" opens
+	 * the file exactly as it is and creates nothing, which is what a user database needs - its
+	 * tables are whatever the user defined with Cypher.
+	 */
+	schema?: "corpus" | "none";
 }
 
 const memoryStores = new Map<string, MemoryGraphStore>();
@@ -828,7 +902,7 @@ export async function openGraphStore(dbPath: string, options: OpenGraphStoreOpti
 	// Default: "ryu". The WASM backend has no native-binding crash risk, but guard it anyway so a
 	// failed init degrades to memory instead of taking the CLI/Web down.
 	try {
-		const store = new RyuGraphStore(dbPath);
+		const store = new RyuGraphStore(dbPath, options.schema ?? "corpus");
 		await store.init();
 		return store;
 	} catch (err) {

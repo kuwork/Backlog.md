@@ -42,10 +42,29 @@ import {
 	taskViewJson,
 } from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
+import {
+	createDatabase,
+	DEFAULT_DATABASE,
+	dropDatabase,
+	type GraphDatabase,
+	listDatabases,
+	recordSnapshot,
+	resolveDatabase,
+	validateDatabaseName,
+} from "./graph/databases.ts";
 import { DEFAULT_SLOT, graphPaths } from "./graph/paths.ts";
 import { reconcileGraphStoreOnce } from "./graph/reconcile-once.ts";
 import type { GraphLockInfo } from "./graph/service.ts";
-import { type GraphStore, openGraphStore } from "./graph/store.ts";
+import {
+	dumpDatabase,
+	hydrateDatabase,
+	loadSnapshot,
+	loadSnapshotWithFingerprint,
+	saveSnapshot,
+	snapshotFingerprint,
+	snapshotStats,
+} from "./graph/snapshot.ts";
+import { cypherCell, type GraphStore, openGraphStore } from "./graph/store.ts";
 import {
 	type AgentInstructionFile,
 	addAgentInstructions,
@@ -6842,12 +6861,6 @@ function printCypherResult(result: { columns: string[]; rows: unknown[][] }): vo
 	}
 }
 
-/** Read one column out of a flattened Cypher row by column name (columns are the RETURN expressions/aliases). */
-function cypherCell(result: { columns: string[]; rows: unknown[][] }, row: unknown[], column: string): unknown {
-	const idx = result.columns.indexOf(column);
-	return idx >= 0 ? row[idx] : undefined;
-}
-
 /** The graph's schema, assembled from ryu's read-only introspection procedures. */
 type GraphSchema = {
 	nodes: { name: string; properties: { name: string; type: string; primaryKey: boolean }[] }[];
@@ -6904,28 +6917,122 @@ function printGraphSchema(schema: GraphSchema): void {
 	}
 }
 
-/** Open the CLI's ryu graph store, rebuild it in-process, run `fn`, then always close the store and release the lock. */
-async function withGraphStore(run: (store: GraphStore) => Promise<void>): Promise<void> {
+/**
+ * Open a named database, prepare it, run `fn`, then always close the store and release the lock.
+ *
+ * The two kinds of database are prepared differently. `default` is a derived cache of the markdown
+ * corpus, so it is fully rebuilt in-process. A user database is hydrated from its snapshot, because
+ * ryu keeps its data in WASM memory and the snapshot - not the ryu file - is the durable copy. A
+ * write (`options.write`) dumps the snapshot back and bumps the registry before the process exits.
+ */
+async function withGraphDatabase(
+	dbName: string,
+	fn: (store: GraphStore, database: GraphDatabase) => Promise<void>,
+	options: { write?: boolean; requireUser?: boolean; force?: boolean } = {},
+): Promise<void> {
 	const cwd = await requireProjectRoot();
-	const paths = graphPaths(cwd, DEFAULT_SLOT);
-	mkdirSync(paths.dir, { recursive: true });
-	const store: GraphStore = await openGraphStore(paths.dbPath, { backend: "ryu" });
-	if (store.backend !== "ryu") {
-		console.error("Cypher 查询需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+	let database: GraphDatabase;
+	try {
+		database = resolveDatabase(cwd, dbName);
+	} catch (error) {
+		console.error(String(error instanceof Error ? error.message : error));
 		process.exitCode = 1;
-		await store.close();
 		return;
 	}
-	const lock = tryAcquireGraphLock(paths.lockPath);
+	if (options.requireUser && database.kind !== "user") {
+		// Check before opening: writing to `default` is pointless (the next rebuild overwrites it)
+		// and a full rebuild just to say so would waste several seconds.
+		console.error(
+			`"${DEFAULT_DATABASE}" 是 markdown 派生库、只读（每次从语料重建，写入会被覆盖）。` +
+				`请先 \`backlog graph create <名称> "<描述>"\` 建库，再写入那个库。`,
+		);
+		process.exitCode = 1;
+		return;
+	}
+	mkdirSync(dirname(database.source.dbPath), { recursive: true });
+	if (graphDebug) {
+		console.error(`[graph] database=${database.name} kind=${database.kind} db=${database.source.dbPath}`);
+	}
+	// The lock is taken before the store is opened. For a write it is mandatory: a user database is a
+	// whole-file read-modify-write (hydrate -> statement -> dump), so two writers that both loaded
+	// the same snapshot would have the later dump silently overwrite the earlier one - observed with
+	// two concurrent `insert`s, where only one of the two rows survived. A read may proceed without
+	// the lock, because the snapshot is replaced atomically and a lock-less reader simply sees a
+	// consistent older version.
+	const lock = tryAcquireGraphLock(database.source.lockPath);
+	if (!lock && options.write) {
+		console.error(
+			`⚠️ 数据库 "${database.name}" 正被另一个进程写入（锁：${database.source.lockPath}）。\n` +
+				"为避免覆盖对方的写入，本次写入已中止，请稍后重试。",
+		);
+		process.exitCode = 1;
+		return;
+	}
+	const store: GraphStore = await openGraphStore(database.source.dbPath, {
+		backend: "ryu",
+		schema: database.kind === "user" ? "none" : "corpus",
+	});
+	if (graphDebug) {
+		console.error(`[graph] backend=${store.backend}`);
+	}
+	if (store.backend !== "ryu") {
+		console.error("Cypher 操作需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+		process.exitCode = 1;
+		await store.close();
+		lock?.release();
+		return;
+	}
+	let loadedFingerprint: string | null = null;
 	try {
-		// ryu's Bun build keeps its graph in in-memory MEMFS, so each CLI process starts from an
-		// empty store and must rebuild before it can query; reuse of a "previous" fingerprint would
-		// silently query an empty graph. forceBuild always performs a full build.
 		if (!lock) {
-			console.warn("⚠️ 未能获取图库锁；将仍在本进程内重建图谱后查询（不会影响其他进程）。");
+			console.warn(`⚠️ 未能获取数据库 "${database.name}" 的锁；本次为只读查询，仍会继续。`);
 		}
-		await reconcileGraphStoreOnce(cwd, store, paths, { forceBuild: true });
-		await run(store);
+		if (database.kind === "derived") {
+			// ryu's Bun build keeps its graph in-memory, so each CLI process starts from an empty
+			// store and must rebuild before it can query; reusing a "previous" fingerprint would
+			// silently query an empty graph. forceBuild always performs a full build.
+			await reconcileGraphStoreOnce(cwd, store, graphPaths(cwd, DEFAULT_SLOT), { forceBuild: true });
+			if (graphDebug) console.error(`[graph] after rebuild: countNodes=${await store.countNodes()}`);
+		} else {
+			const loaded = loadSnapshotWithFingerprint(database.source.snapshotPath);
+			loadedFingerprint = loaded.fingerprint;
+			if (graphDebug) {
+				const rows = Object.values(loaded.snapshot.nodes).reduce((sum, list) => sum + list.length, 0);
+				console.error(
+					`[graph] snapshot: nodeTables=${loaded.snapshot.nodeTables.length} relTables=${loaded.snapshot.relTables.length} rows=${rows} fingerprint=${shortFingerprint(loaded.fingerprint)}`,
+				);
+			}
+			// A change made between two CLI runs cannot be seen by the in-flight check further down,
+			// because a fresh process has nothing of its own to compare against - the registry carries
+			// the fingerprint the CLI last wrote, and that is what makes the question answerable.
+			if (database.snapshotFingerprint !== null && loaded.fingerprint !== database.snapshotFingerprint) {
+				if (options.write && !options.force) {
+					throw new Error(
+						`数据库 "${database.name}" 的快照被 CLI 之外的改动修改过（记录 ${shortFingerprint(database.snapshotFingerprint)}，实际 ${shortFingerprint(loaded.fingerprint)}）。\n` +
+							"为避免覆盖这些改动，本次写入已中止；确认要覆盖请加 --force。",
+					);
+				}
+				console.warn(`⚠️ 数据库 "${database.name}" 的快照与 CLI 记录不一致，可能被手工编辑或其他工具修改过。`);
+			}
+			await hydrateDatabase(store, loaded.snapshot);
+			if (graphDebug) console.error(`[graph] after hydrate: countNodes=${await store.countNodes()}`);
+		}
+		await fn(store, database);
+		if (database.kind === "user" && options.write) {
+			// Second window: the file must also still be the one this process hydrated, in case
+			// something wrote it while we were running.
+			const current = snapshotFingerprint(database.source.snapshotPath);
+			if (current !== loadedFingerprint && !options.force) {
+				throw new Error(
+					`数据库 "${database.name}" 的快照在本次加载之后被改动过（记录 ${shortFingerprint(loadedFingerprint)}，实际 ${shortFingerprint(current)}）。\n` +
+						"为避免覆盖这些改动，本次写入已中止；确认要覆盖请加 --force。",
+				);
+			}
+			if (graphDebug) console.error(`[graph] dumping snapshot (countNodes=${await store.countNodes()})`);
+			saveSnapshot(database.source.snapshotPath, await dumpDatabase(store, database.name));
+			recordSnapshot(cwd, database.name, snapshotFingerprint(database.source.snapshotPath));
+			console.log(`\n已写入快照: ${database.source.snapshotPath}`);
+		}
 	} catch (error) {
 		console.error(String(error instanceof Error ? error.message : error));
 		process.exitCode = 1;
@@ -6936,29 +7043,50 @@ async function withGraphStore(run: (store: GraphStore) => Promise<void>): Promis
 }
 
 const graphCommand = addHelpSchema(program.command("graph"), {
-	reads: "The derived task/knowledge graph (ryu/WASM Cypher backend)",
+	reads: "The derived task/knowledge graph, or a user-created database",
 	required: [],
 	optional: [],
 	output: "Cypher query results as a table (default) or JSON (--json)",
 	examples: [
-		"backlog graph schema",
-		'backlog graph query "MATCH (n:FileNode) RETURN n.path LIMIT 10"',
-		'backlog graph query "MATCH (n:FileNode) RETURN count(n)" --json',
-		'backlog graph query "MATCH (a:FileNode)-[:ParentOf]->(b:FileNode) RETURN a.path, b.path LIMIT 5"',
+		"backlog graph list",
+		'backlog graph query default "MATCH (n:FileNode) RETURN n.path LIMIT 10"',
+		"backlog graph show-schema default",
+		'backlog graph create mydb "experiment data"',
+		'backlog graph insert mydb "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"',
 	],
 });
+
+/** A single positional that starts with a Cypher clause is a statement, not a database name. */
+function looksLikeCypher(value: string): boolean {
+	return /^\s*(MATCH|OPTIONAL\s+MATCH|CALL|RETURN|WITH|UNWIND|CREATE|MERGE|PROFILE|EXPLAIN)\b/i.test(value);
+}
+
+/** Abbreviate a snapshot fingerprint for an error message; a missing file is called out explicitly. */
+function shortFingerprint(fingerprint: string | null): string {
+	return fingerprint === null ? "无文件" : `${fingerprint.slice(0, 12)}…`;
+}
+
+/**
+ * `BACKLOG_GRAPH_DEBUG=1` traces the graph lifecycle on stderr: the backend actually chosen, what
+ * was loaded, and how many nodes the store holds at each step. Support-oriented: the store can
+ * silently fall back to the memory backend, which answers Cypher with nothing rather than failing.
+ */
+const graphDebug = process.env.BACKLOG_GRAPH_DEBUG === "1";
+
 graphCommand
-	.command("query <cypher>")
+	.command("query <db> [cypher]")
 	.description(
-		"Run a read-only Cypher query. The CLI rebuilds a fresh in-process graph before each query " +
-			"(ryu's Bun build keeps the graph in memory, so it is not shared with the Web UI nor persisted " +
-			"between CLI runs — expect a ~5–7s build). Node label is FileNode; relationship tables are " +
-			"ParentOf, BelongsToMilestone, DependsOn, SourcedFrom, LinksTo, TaggedWith; tags use Tag + TaggedWith.",
+		"Run a read-only Cypher query against a database. <db> is `default` (the derived markdown graph, " +
+			"rebuilt in-process, ~5-7s) or a user database name. The legacy one-argument form " +
+			'`graph query "MATCH ..."` still works and means `default`.',
 	)
 	.option("--json", "print the raw JSON result")
-	.action(async (cypher: string, options) => {
-		await withGraphStore(async (store) => {
-			const result = await store.runCypher(cypher);
+	.action(async (db: string, cypher: string | undefined, options) => {
+		// Backwards compatibility: `graph query "MATCH ..."` (one positional) targets `default`.
+		const target = cypher === undefined && looksLikeCypher(db) ? DEFAULT_DATABASE : db;
+		const statement = cypher ?? db;
+		await withGraphDatabase(target, async (store) => {
+			const result = await store.runCypher(statement);
 			if (options.json) {
 				process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 			} else {
@@ -6971,14 +7099,15 @@ graphCommand
 	});
 
 graphCommand
-	.command("schema")
+	.command("schema <db>")
+	.aliases(["show-schema"])
 	.description(
-		"Print the graph schema: node tables and their properties, plus relationship tables and their endpoints " +
-			"(introspects ryu via show_tables / table_info / show_connection).",
+		"Print a database's schema: node tables and their properties, plus relationship tables and their " +
+			"endpoints (introspects ryu via show_tables / table_info / show_connection).",
 	)
 	.option("--json", "print the raw JSON schema")
-	.action(async (options) => {
-		await withGraphStore(async (store) => {
+	.action(async (db: string, options) => {
+		await withGraphDatabase(db, async (store) => {
 			const schema = await loadGraphSchema(store);
 			if (options.json) {
 				process.stdout.write(`${JSON.stringify(schema, null, 2)}\n`);
@@ -6986,6 +7115,96 @@ graphCommand
 				printGraphSchema(schema);
 			}
 		});
+	});
+
+graphCommand
+	.command("list")
+	.description("List the available databases: `default` plus every user database, with size.")
+	.action(async () => {
+		const cwd = await requireProjectRoot();
+		const rows = listDatabases(cwd).map((database) => {
+			if (database.kind === "derived") return [database.name, database.kind, database.description, "-", "-"];
+			const stats = snapshotStats(loadSnapshot(database.source.snapshotPath));
+			return [database.name, database.kind, database.description, String(stats.nodes), String(stats.edges)];
+		});
+		printCypherResult({ columns: ["name", "kind", "description", "nodes", "edges"], rows });
+		console.log("\n（`default` 的行数用 `backlog graph describe default` 查看）");
+	});
+
+graphCommand
+	.command("describe <db>")
+	.description("Show one database in detail: description, timestamps and the row/edge count of every table.")
+	.action(async (db: string) => {
+		await withGraphDatabase(db, async (store, database) => {
+			console.log(`${database.name}  (${database.kind})`);
+			console.log(`  ${database.description}`);
+			if (database.createdAt) console.log(`  created: ${database.createdAt}   updated: ${database.updatedAt ?? "-"}`);
+			const schema = await loadGraphSchema(store);
+			const rows: string[][] = [];
+			for (const table of schema.nodes) {
+				const result = await store.runCypher(`MATCH (n:${table.name}) RETURN count(n)`);
+				rows.push(["NODE", table.name, String(result.rows[0]?.[0] ?? 0)]);
+			}
+			for (const rel of schema.relationships) {
+				const result = await store.runCypher(`MATCH (a:${rel.from})-[:${rel.name}]->(b:${rel.to}) RETURN count(a)`);
+				rows.push(["REL", rel.name, String(result.rows[0]?.[0] ?? 0)]);
+			}
+			console.log("");
+			printCypherResult({ columns: ["kind", "table", "rows"], rows });
+		});
+	});
+
+graphCommand
+	.command("create <db> <description>")
+	.description("Create a user database. Its data lives under <backlog>/databases/ as a JSON snapshot.")
+	.action(async (db: string, description: string) => {
+		const invalid = validateDatabaseName(db);
+		if (invalid) {
+			console.error(invalid);
+			process.exitCode = 1;
+			return;
+		}
+		const cwd = await requireProjectRoot();
+		try {
+			const database = createDatabase(cwd, db, description);
+			console.log(`已创建数据库 "${database.name}"：${database.description}`);
+			console.log(`  快照: ${database.source.snapshotPath}`);
+			console.log(`  写入: backlog graph insert ${database.name} "<cypher>"`);
+		} catch (error) {
+			console.error(String(error instanceof Error ? error.message : error));
+			process.exitCode = 1;
+		}
+	});
+
+graphCommand
+	.command("drop <db>")
+	.description("Delete a user database together with its snapshot and lock. `default` cannot be dropped.")
+	.action(async (db: string) => {
+		const cwd = await requireProjectRoot();
+		try {
+			dropDatabase(cwd, db);
+			console.log(`已删除数据库 "${db}"。`);
+		} catch (error) {
+			console.error(String(error instanceof Error ? error.message : error));
+			process.exitCode = 1;
+		}
+	});
+
+graphCommand
+	.command("insert <db> <cypher>")
+	.description(
+		"Run write Cypher (CREATE / MERGE / SET / DELETE) against a user database and persist the result. " +
+			"Refused for `default`, which is a read-only derived cache of the markdown corpus.",
+	)
+	.option("--force", "写入前不校验快照指纹（会覆盖本次加载后被改动过的快照）")
+	.action(async (db: string, cypher: string, options) => {
+		await withGraphDatabase(
+			db,
+			async (store) => {
+				await store.runWrite(cypher);
+			},
+			{ write: true, requireUser: true, force: options.force === true },
+		);
 	});
 
 // Browser command for web UI
