@@ -567,6 +567,7 @@ export class FileSystem {
 			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_MEMOS),
 			join(backlogDir, DEFAULT_DIRECTORIES.DOCS),
 			join(backlogDir, DEFAULT_DIRECTORIES.DECISIONS),
+			join(backlogDir, DEFAULT_DIRECTORIES.DATABASES),
 		];
 
 		for (const dir of directories) {

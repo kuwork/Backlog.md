@@ -280,6 +280,17 @@ export const Icons = {
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
 		</svg>
 	),
+	Database: () => (
+		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<ellipse cx="12" cy="6" rx="7" ry="3" strokeWidth={2} />
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"
+			/>
+		</svg>
+	),
 	Graph: () => (
 		<svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<circle cx="6" cy="6" r="2.5" strokeWidth={2} />
@@ -916,6 +927,13 @@ const SideNavigation = memo(function SideNavigation({
 		}
 		return false;
 	});
+	const [isGraphsCollapsed, setIsGraphsCollapsed] = useState(() => {
+		const saved = localStorage.getItem("graphsCollapsed");
+		if (saved !== null) {
+			return JSON.parse(saved);
+		}
+		return false;
+	});
 	const [version, setVersion] = useState<string>("");
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -1074,6 +1092,11 @@ const SideNavigation = memo(function SideNavigation({
 	useEffect(() => {
 		localStorage.setItem("wikiCollapsed", JSON.stringify(isWikiCollapsed));
 	}, [isWikiCollapsed]);
+
+	// Save graphs collapse state to localStorage
+	useEffect(() => {
+		localStorage.setItem("graphsCollapsed", JSON.stringify(isGraphsCollapsed));
+	}, [isGraphsCollapsed]);
 
 	const handleCreateWikiFile = useCallback((parentPath: string) => {
 		setCreateWikiParentPath(parentPath);
@@ -1471,36 +1494,6 @@ const SideNavigation = memo(function SideNavigation({
 								<span className="ml-3 text-sm font-medium">{t.nav.statistics}</span>
 							</NavLink>
 
-							{/* Graph Navigation */}
-							<NavLink
-								to="/graph"
-								className={({ isActive }) =>
-									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-										isActive
-											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
-											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-									}`
-								}
-							>
-								<Icons.Graph />
-								<span className="ml-3 text-sm font-medium">{t.nav.graph}</span>
-							</NavLink>
-
-							{/* Knowledge Graph Navigation */}
-							<NavLink
-								to="/knowledge"
-								className={({ isActive }) =>
-									`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
-										isActive
-											? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
-											: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-									}`
-								}
-							>
-								<Icons.KnowledgeGraph />
-								<span className="ml-3 text-sm font-medium">{t.nav.knowledgeGraph}</span>
-							</NavLink>
-
 							{/* Memos Navigation */}
 							<NavLink
 								to="/memos"
@@ -1520,7 +1513,79 @@ const SideNavigation = memo(function SideNavigation({
 
 					{!isCollapsed && (
 						<>
-							{/* Divider between Tasks and Documents */}
+							{/* Divider between Tasks and Graphs */}
+							<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
+
+							{/* Graphs Section */}
+							<div className="px-4 py-4">
+								<div className="flex items-center space-x-3">
+									<button
+										type="button"
+										onClick={() => setIsGraphsCollapsed(!isGraphsCollapsed)}
+										className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors duration-200"
+										title={isGraphsCollapsed ? t.nav.expandGraphs : t.nav.collapseGraphs}
+									>
+										{isGraphsCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
+									</button>
+									<span className="text-gray-500 dark:text-gray-400">
+										<Icons.Graph />
+									</span>
+									<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+										{t.nav.graphs}
+									</span>
+								</div>
+							</div>
+
+							{!isGraphsCollapsed && (
+								<div className="px-4 space-y-1">
+									{/* Databases Navigation */}
+									<NavLink
+										to="/databases"
+										className={({ isActive }) =>
+											`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+												isActive
+													? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+													: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+											}`
+										}
+									>
+										<Icons.Database />
+										<span className="ml-3 text-sm font-medium">{t.nav.databases}</span>
+									</NavLink>
+
+									{/* Task Graph Navigation */}
+									<NavLink
+										to="/graph"
+										className={({ isActive }) =>
+											`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+												isActive
+													? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+													: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+											}`
+										}
+									>
+										<Icons.Graph />
+										<span className="ml-3 text-sm font-medium">{t.nav.graph}</span>
+									</NavLink>
+
+									{/* Knowledge Graph Navigation */}
+									<NavLink
+										to="/knowledge"
+										className={({ isActive }) =>
+											`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+												isActive
+													? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+													: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+											}`
+										}
+									>
+										<Icons.KnowledgeGraph />
+										<span className="ml-3 text-sm font-medium">{t.nav.knowledgeGraph}</span>
+									</NavLink>
+								</div>
+							)}
+
+							{/* Divider between Graphs and Documents */}
 							<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
 
 							{/* Documents Section */}
@@ -1809,7 +1874,41 @@ const SideNavigation = memo(function SideNavigation({
 									<Icons.Statistics />
 								</div>
 							</NavLink>
-							{/* Graph Navigation */}
+							{/* Memos Navigation */}
+							<NavLink
+								to="/memos"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.memos}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Memo />
+								</div>
+							</NavLink>
+							{/* Databases Navigation */}
+							<NavLink
+								to="/databases"
+								data-tooltip-id="sidebar-tooltip"
+								data-tooltip-content={t.nav.databases}
+								className={({ isActive }) =>
+									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
+										isActive
+											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
+											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+									}`
+								}
+							>
+								<div className="w-6 h-6 flex items-center justify-center">
+									<Icons.Database />
+								</div>
+							</NavLink>
+							{/* Task Graph Navigation */}
 							<NavLink
 								to="/graph"
 								data-tooltip-id="sidebar-tooltip"
@@ -1841,23 +1940,6 @@ const SideNavigation = memo(function SideNavigation({
 							>
 								<div className="w-6 h-6 flex items-center justify-center">
 									<Icons.KnowledgeGraph />
-								</div>
-							</NavLink>
-							{/* Memos Navigation */}
-							<NavLink
-								to="/memos"
-								data-tooltip-id="sidebar-tooltip"
-								data-tooltip-content={t.nav.memos}
-								className={({ isActive }) =>
-									`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
-										isActive
-											? "bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400"
-											: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-									}`
-								}
-							>
-								<div className="w-6 h-6 flex items-center justify-center">
-									<Icons.Memo />
 								</div>
 							</NavLink>
 							<button

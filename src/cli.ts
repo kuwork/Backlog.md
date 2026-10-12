@@ -42,7 +42,7 @@ import {
 	taskViewJson,
 } from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
-import { importCsvTable, readCsvFile } from "./graph/csv-import.ts";
+import { importCsvRelations, importCsvTable, readCsvFile } from "./graph/csv-import.ts";
 import {
 	createDatabase,
 	DEFAULT_DATABASE,
@@ -61,6 +61,7 @@ import {
 	hydrateDatabase,
 	loadSnapshot,
 	loadSnapshotWithFingerprint,
+	referencedTables,
 	saveSnapshot,
 	snapshotFingerprint,
 	snapshotStats,
@@ -6929,7 +6930,7 @@ function printGraphSchema(schema: GraphSchema): void {
 async function withGraphDatabase(
 	dbName: string,
 	fn: (store: GraphStore, database: GraphDatabase) => Promise<void>,
-	options: { write?: boolean; requireUser?: boolean; force?: boolean } = {},
+	options: { write?: boolean; requireUser?: boolean; force?: boolean; statement?: string } = {},
 ): Promise<void> {
 	const cwd = await requireProjectRoot();
 	let database: GraphDatabase;
@@ -7021,7 +7022,16 @@ async function withGraphDatabase(
 				}
 				console.warn(`⚠️ 数据库 "${database.name}" 的快照与 CLI 记录不一致，可能被手工编辑或其他工具修改过。`);
 			}
-			await hydrateDatabase(store, loaded.snapshot);
+			// A query that names its labels only needs those tables; anything we cannot pin down
+			// (a `show_tables()` call, an unlabelled `MATCH (n)`) hydrates the whole database, so a
+			// scoped load can never answer "no rows" because a table was missing.
+			const scope = options.statement ? referencedTables(options.statement, loaded.snapshot) : null;
+			if (graphDebug) {
+				console.error(
+					`[graph] hydrate scope: ${scope ? `${scope.nodeTables.join(",") || "-"} | rel ${scope.relTables.join(",") || "-"}` : "全部表"}`,
+				);
+			}
+			await hydrateDatabase(store, loaded.snapshot, scope ?? undefined);
 			if (graphDebug) console.error(`[graph] after hydrate: countNodes=${await store.countNodes()}`);
 		}
 		await fn(store, database);
@@ -7093,17 +7103,21 @@ graphCommand
 		// Backwards compatibility: `graph query "MATCH ..."` (one positional) targets `default`.
 		const target = cypher === undefined && looksLikeCypher(db) ? DEFAULT_DATABASE : db;
 		const statement = cypher ?? db;
-		await withGraphDatabase(target, async (store) => {
-			const result = await store.runCypher(statement);
-			if (options.json) {
-				process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-			} else {
-				printCypherResult(result);
-				console.log(
-					`\n匹配节点: ${result.nodeKeys.length} ｜ 行数: ${result.rows.length}${result.truncated ? " ｜ 已截断(上限500)" : ""}`,
-				);
-			}
-		});
+		await withGraphDatabase(
+			target,
+			async (store) => {
+				const result = await store.runCypher(statement);
+				if (options.json) {
+					process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+				} else {
+					printCypherResult(result);
+					console.log(
+						`\n匹配节点: ${result.nodeKeys.length} ｜ 行数: ${result.rows.length}${result.truncated ? " ｜ 已截断(上限500)" : ""}`,
+					);
+				}
+			},
+			{ statement },
+		);
 	});
 
 graphCommand
@@ -7243,9 +7257,9 @@ function parseColumnMap(values: string[]): Record<string, string> {
 graphCommand
 	.command("import <db> <csv>")
 	.description(
-		"Load a CSV file into a user database as nodes. The target table is created with inferred column " +
-			"types when it does not exist; rows go in with batched parameterised UNWIND, because ryu's " +
-			"COPY FROM imports zero rows under the WASM build. Refused for `default`.",
+		"Load a CSV file into a user database as nodes, or as edges with --rel/--from/--to. A missing " +
+			"table is created with inferred column types; rows go in with batched parameterised UNWIND, " +
+			"because ryu's COPY FROM imports zero rows under the WASM build. Refused for `default`.",
 	)
 	.option("--node <table>", "目标节点表名（默认取 CSV 文件名）")
 	.option(
@@ -7256,11 +7270,22 @@ graphCommand
 	)
 	.option("--header", "第一行为列名（默认行为，显式写出亦可）")
 	.option("--no-header", "第一行也是数据行，列名自动生成为 column1、column2…")
+	.option("--rel <name>", "按关系导入：CSV 的两列作为一条边的两端，写入该关系表（与 --from / --to 同用）")
+	.option("--from <column>", "关系导入：源端点键所在的 CSV 列")
+	.option("--to <column>", "关系导入：目标端点键所在的 CSV 列")
+	.option("--from-node <table>", "关系导入：源端点节点表（关系表不存在时使用，缺省取 --node）")
+	.option("--to-node <table>", "关系导入：目标端点节点表（关系表不存在时使用，缺省取 --node）")
 	.option("--force", "写入前不校验快照指纹（会覆盖本次加载后被改动过的快照）")
 	.action(async (db: string, csvPath: string, options) => {
 		// Read and validate the whole file before a database is opened: a malformed file must leave
 		// the database untouched, and the cheapest way to guarantee that is to fail before the
 		// snapshot is even hydrated.
+		const asRelations = options.rel !== undefined;
+		if (asRelations && (!options.from || !options.to)) {
+			console.error("--rel 需要和 --from <列> 与 --to <列> 一起使用：两列给出每条边两端的键。");
+			process.exitCode = 1;
+			return;
+		}
 		let prepared: ReturnType<typeof readCsvFile>;
 		try {
 			prepared = readCsvFile(csvPath, {
@@ -7276,6 +7301,24 @@ graphCommand
 		await withGraphDatabase(
 			db,
 			async (store) => {
+				if (asRelations) {
+					const result = await importCsvRelations(store, prepared, {
+						rel: options.rel,
+						from: options.from,
+						to: options.to,
+						fromNode: options.fromNode ?? options.node,
+						toNode: options.toNode ?? options.node,
+					});
+					console.log(
+						`已导入 ${db}.${result.rel}（${result.fromNode} -> ${result.toNode}）：` +
+							`新增 ${result.inserted} 条边 ｜ 跳过 ${result.skipped} 行` +
+							`（${result.created ? "新建关系表" : "写入已有关系表"}）`,
+					);
+					if (result.skipped > 0) {
+						console.log("  跳过的行：端点键在库中不存在，或该边已存在（MERGE 不会重复建边）");
+					}
+					return;
+				}
 				const result = await importCsvTable(store, prepared);
 				const summary = [
 					`新增 ${result.inserted} 行`,

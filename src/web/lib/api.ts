@@ -73,6 +73,18 @@ export interface GraphPayload {
 	nodeCount: number;
 }
 
+/** One database as listed by GET /api/graph/databases. */
+export interface GraphDatabaseSummary {
+	name: string;
+	kind: "derived" | "user";
+	description: string;
+	createdAt: string | null;
+	updatedAt: string | null;
+	/** null for `default`: counting its rows would mean rebuilding the whole corpus. */
+	nodes: number | null;
+	edges: number | null;
+}
+
 /** A read-only Cypher result from POST /api/graph/cypher. */
 export interface CypherResult {
 	columns: string[];
@@ -590,6 +602,32 @@ export class ApiClient {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ statement }),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Cypher 查询失败");
+		}
+		return response.json();
+	}
+
+	/** List every database with its row counts. */
+	async listGraphDatabases(): Promise<GraphDatabaseSummary[]> {
+		const response = await fetch(`${API_BASE}/graph/databases`);
+		if (!response.ok) {
+			return throwResponseError(response, "获取数据库列表失败");
+		}
+		const payload = (await response.json()) as { databases?: GraphDatabaseSummary[] };
+		return payload.databases ?? [];
+	}
+
+	/**
+	 * Run a read-only Cypher statement against one database. `default` is rebuilt from the corpus, a
+	 * user database is replayed from its snapshot and then kept in the server process.
+	 */
+	async runDatabaseCypher(db: string, statement: string): Promise<CypherResult> {
+		const response = await fetch(`${API_BASE}/graph/db-cypher`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ db, statement }),
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Cypher 查询失败");

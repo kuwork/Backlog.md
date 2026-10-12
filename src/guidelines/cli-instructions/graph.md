@@ -100,6 +100,8 @@ backlog graph drop people
 - `insert` is **refused for `default`**: that graph is a derived cache, and the next rebuild would overwrite anything written into it. Create a user database instead.
 - `list` reads the registry only (instant). `describe` and every other command open the database first, so `describe default` pays the full corpus rebuild.
 - Snapshot limits: the whole database is serialised on write and replayed on open, so cost grows with database size - comfortable to roughly 1e5 rows.
+- A `query` that names its labels only replays the tables it needs (`MATCH (a:Person)-[:WORKS_AT]->(b:Company)` loads `Person`, `Company` and `WORKS_AT`, nothing else). Anything that cannot be pinned down - `CALL show_tables()`, an unlabelled `MATCH (n)`, a label the database does not have - replays the whole snapshot, so a scoped load can never answer "no rows" because a table was missing.
+- The Web UI (`backlog browser`) has a **Databases** page listing every database and running read-only Cypher against one. It is a resident process, so a user database it has opened stays loaded until its snapshot changes; a `query` run in the meantime sees the change and replays it. `default` on that page is answered by the same corpus rebuild the graph search uses.
 
 #### Importing a CSV file
 
@@ -123,6 +125,27 @@ backlog graph import people data/raw.csv --no-header --node Raw
 - A malformed file - a ragged row, an unclosed quote, a header-only file, a duplicate or invalid column name - is reported with its line number **before** the database is opened, so the database is left exactly as it was.
 - Values keep their commas, quotes and newlines. The one exception is the key column: a newline there is refused, because ryu's `MERGE` would split such a row in two.
 - `--force` skips the snapshot fingerprint check, like the other write commands.
+
+#### Importing a CSV file as edges
+
+With `--rel`, the same file becomes **edges** instead of nodes: two columns hold the keys of the endpoints, and each row is matched against the nodes the database already has.
+
+```bash
+# Nodes first - the edges can only reference keys that exist
+backlog graph import people data/person.csv --node Person
+
+# A self-referencing edge table: Person -[:KNOWS]-> Person
+backlog graph import people data/knows.csv --rel KNOWS --from person --to friend --node Person
+
+# Two different endpoint tables
+backlog graph import people data/works.csv --rel WORKS_AT --from employee --to employer \
+  --from-node Person --to-node Company
+```
+
+- Endpoint keys are **matched, not created**: a row whose node is missing produces no edge, and the CLI reports how many rows were skipped. The same count covers a row whose edge the pair already has - `MERGE` never stacks a duplicate edge, so re-importing a file is safe.
+- `--from-node` / `--to-node` are only needed when the relationship table does not exist yet; `--node` is shorthand for "both endpoints are this table". Once it exists, its own declaration names the endpoints and their keys, so the options can be left out.
+- A missing relationship table is created as `CREATE REL TABLE <name>(FROM <from-node> TO <to-node>)`. Relationship tables carry no properties in the snapshot, so any other column in the file is ignored.
+- A numeric endpoint key is matched with a cast, so an `INT64` primary key works like a `STRING` one.
 
 #### Running a Cypher query
 
@@ -152,7 +175,7 @@ backlog graph query default "MATCH (t:FileNode {id: 'BACK-521'}) RETURN t.id, t.
 
 # Parent task it sits under. Edge is parent -> child, so follow it backwards with <-[:ParentOf]-.
 # BACK-521 is top-level, so this is empty; a subtask like BACK-521.2 would return BACK-521.
-backlog graph query default "MATCH (c:FileNode {id: 'BACK-521'})<-[:ParentOf]-(p:FileNode) RETURN p.id, p.title"
+backlog graph query default "MATCH (c:FileNode {id: 'BACK-521.2'})<-[:ParentOf]-(p:FileNode) RETURN p.id, p.title"
 
 # Child / subtasks it parents. Edge is parent -> child, so follow it forwards with -[:ParentOf]->.
 backlog graph query default "MATCH (p:FileNode {id: 'BACK-521'})-[:ParentOf]->(c:FileNode) RETURN c.id, c.title, c.status"
@@ -231,7 +254,7 @@ The graph mirrors the Markdown corpus under `backlog/`:
 
 - `default` is read-only: it is a derived cache of the markdown corpus, and no command writes to it. Writing is possible only on a user database, via `insert` (Cypher) or `import` (CSV).
 - `schema` / `show-schema` describe a database (node tables + properties, relationship tables + endpoints); `list` inventories databases; `describe` reports table sizes; `query` reads; `insert` writes Cypher; `import` loads a CSV; `create` / `drop` manage user databases.
-- Every command opens the database in memory and closes it on exit; nothing is shared with `backlog browser`. `default` is rebuilt from the corpus on each run (a few seconds on a large corpus), while a user database is replayed from its snapshot - which is also what makes it durable.
+- Every CLI command opens the database in memory and closes it on exit. `default` is rebuilt from the corpus on each run (a few seconds on a large corpus), while a user database is replayed from its snapshot - which is also what makes it durable. The Web UI keeps its own copy of a user database in the server process; the snapshot is the only thing the two share, and the CLI replaces it atomically.
 - Results are capped at 500 rows. When the cap is hit, `truncated` is `true` (and the table notes the truncation). Narrow the query with `WHERE` / `LIMIT` to see more.
 - Use `--json` for machine consumption; the default table is aligned plain text with no ANSI codes, so it is safe to pipe.
 - Run from the project root (or a directory inside it) so the CLI can locate `backlog/`.

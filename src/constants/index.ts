@@ -30,6 +30,8 @@ export const DEFAULT_DIRECTORIES = {
 	MEMOS: "memos",
 	/** Milestones directory */
 	MILESTONES: "milestones",
+	/** User graph databases directory (snapshots and registry) */
+	DATABASES: "databases",
 } as const;
 
 /**

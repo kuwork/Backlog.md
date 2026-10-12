@@ -64,6 +64,14 @@ describe("Core", () => {
 			}
 		});
 
+		it("creates the user graph databases folder during init", async () => {
+			await initializeTestProject(core, "Graph Databases Project", true);
+
+			// Init must create it up front: the graph browser and `graph create` both assume the
+			// folder exists, and an empty directory is what keeps the location discoverable in git.
+			expect(existsSync(join(TEST_DIR, "backlog", "databases"))).toBe(true);
+		});
+
 		it("should use root backlog.config.yml for custom backlog directories", async () => {
 			await initializeTestProject(core, "Custom Root Project", false, "planning/backlog-data");
 

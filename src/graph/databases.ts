@@ -23,8 +23,8 @@ import { emptySnapshot, saveSnapshot, snapshotFingerprint } from "./snapshot.ts"
 /** The built-in database: the derived markdown graph. Always read-only. */
 export const DEFAULT_DATABASE = "default";
 
-/** Where user databases live, relative to the backlog directory. */
-export const USER_DATABASES_DIR = "databases";
+/** Where user databases live, relative to the backlog directory. Shared with the init structure. */
+export const USER_DATABASES_DIR = DEFAULT_DIRECTORIES.DATABASES;
 
 export const REGISTRY_VERSION = 1;
 export const MAX_DATABASE_NAME_LENGTH = 64;

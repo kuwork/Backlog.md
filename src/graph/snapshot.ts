@@ -270,14 +270,84 @@ function bindableRow(row: Record<string, unknown>, table: SnapshotNodeTable): Re
 }
 
 /**
+ * The tables a hydrating process actually needs: a subset of the snapshot, or `null` for "all of
+ * it".
+ *
+ * `null` is the safe answer and is what every caller falls back to: a partial hydrate that guessed
+ * wrong leaves a query running against a table that was never created, which reads as "no rows"
+ * rather than as an error.
+ */
+export interface HydrateScope {
+	nodeTables: string[];
+	relTables: string[];
+}
+
+/**
+ * Which tables a Cypher statement touches, or `null` when that cannot be determined.
+ *
+ * A node label is only recognised after `(` and a relationship name only after `[`, so a property
+ * map (`{name: 'Alice'}`) is never mistaken for a label. `CALL table_info('X')` / `show_connection('X')`
+ * are honoured too, since they name their table in a string. Anything else - an unlabelled
+ * `MATCH (n)`, a `show_tables()` call, a name the snapshot does not carry - returns `null` on
+ * purpose: those either need every table or cannot be answered safely.
+ */
+export function referencedTables(statement: string, snapshot: GraphSnapshot): HydrateScope | null {
+	if (/\b(show_tables|db\.|table_info\s*\(\s*\)|show_connection\s*\(\s*\))/i.test(statement)) return null;
+	const nodes = new Set<string>();
+	const rels = new Set<string>();
+	const pattern = /([([])\s*(?:[A-Za-z_]\w*)?\s*:\s*([A-Za-z_]\w*)/g;
+	for (let match = pattern.exec(statement); match; match = pattern.exec(statement)) {
+		if (match[1] === "[") rels.add(match[2] ?? "");
+		else nodes.add(match[2] ?? "");
+	}
+	for (const match of statement.matchAll(/table_info\s*\(\s*'([^']+)'\s*\)/gi)) nodes.add(match[1] ?? "");
+	for (const match of statement.matchAll(/show_connection\s*\(\s*'([^']+)'\s*\)/gi)) rels.add(match[1] ?? "");
+	nodes.delete("");
+	rels.delete("");
+	if (nodes.size === 0 && rels.size === 0) return null; // `MATCH (n) RETURN n` needs everything
+
+	const knownNodes = new Set(snapshot.nodeTables.map((table) => table.name));
+	const knownRels = new Map(snapshot.relTables.map((table) => [table.name, table]));
+	// A name the snapshot does not carry means the statement is ahead of the data (or the scan
+	// misread it) - hydrating a subset then would silently answer "no rows".
+	for (const name of nodes) if (!knownNodes.has(name)) return null;
+	for (const name of rels) if (!knownRels.has(name)) return null;
+
+	const needed = new Set(nodes);
+	for (const name of rels) {
+		const table = knownRels.get(name);
+		if (table) {
+			needed.add(table.from); // an edge cannot bind without both of its endpoints
+			needed.add(table.to);
+		}
+	}
+	return {
+		nodeTables: snapshot.nodeTables.filter((table) => needed.has(table.name)).map((table) => table.name),
+		relTables: snapshot.relTables.filter((table) => rels.has(table.name)).map((table) => table.name),
+	};
+}
+
+/**
  * Rebuild a database in memory from a snapshot. Order matters: tables, then **all** nodes, then
  * edges - an edge `MATCH` that cannot bind an endpoint drops the edge silently (BACK-766 hit
  * exactly that, which is why the graph once imported zero edges).
+ *
+ * `scope` hydrates only the tables listed (plus whatever those tables' edges need); omit it for the
+ * whole database.
  */
-export async function hydrateDatabase(store: GraphStore, snapshot: GraphSnapshot): Promise<void> {
-	for (const table of snapshot.nodeTables) await store.runWrite(nodeTableDdl(table));
-	for (const table of snapshot.relTables) await store.runWrite(relTableDdl(table));
-	for (const table of snapshot.nodeTables) {
+export async function hydrateDatabase(store: GraphStore, snapshot: GraphSnapshot, scope?: HydrateScope): Promise<void> {
+	const nodeTables = scope
+		? snapshot.nodeTables.filter((table) => scope.nodeTables.includes(table.name))
+		: snapshot.nodeTables;
+	const loaded = new Set(nodeTables.map((table) => table.name));
+	// A relationship whose endpoint table was not loaded would MATCH nothing and lose the edge, so
+	// it is skipped rather than replayed into a void.
+	const relTables = (
+		scope ? snapshot.relTables.filter((table) => scope.relTables.includes(table.name)) : snapshot.relTables
+	).filter((table) => loaded.has(table.from) && loaded.has(table.to));
+	for (const table of nodeTables) await store.runWrite(nodeTableDdl(table));
+	for (const table of relTables) await store.runWrite(relTableDdl(table));
+	for (const table of nodeTables) {
 		const rows = (snapshot.nodes[table.name] ?? []).map((row) => bindableRow(row, table));
 		const assignments = table.properties
 			.map((p) =>
@@ -290,15 +360,30 @@ export async function hydrateDatabase(store: GraphStore, snapshot: GraphSnapshot
 			});
 		}
 	}
-	for (const table of snapshot.relTables) {
+	for (const table of relTables) {
 		const rows = snapshot.edges[table.name] ?? [];
+		// The endpoint key is cast like any other typed column: an INT64 primary key arrives as a
+		// number on dump and is stored as text, so matching it needs the cast back.
+		const fromType = propertyType(snapshot, table.from, table.fromKey);
+		const toType = propertyType(snapshot, table.to, table.toKey);
+		const bind = (side: string, type: string): string =>
+			isTextType(type) ? `row.${side}` : `CAST(row.${side} AS ${type})`;
 		for (let start = 0; start < rows.length; start += BATCH_SIZE) {
 			await store.runWrite(
-				`UNWIND $rows AS row MATCH (a:${table.from} {${table.fromKey}: row.from}), (b:${table.to} {${table.toKey}: row.to}) CREATE (a)-[:${table.name}]->(b)`,
+				`UNWIND $rows AS row MATCH (a:${table.from} {\`${table.fromKey}\`: ${bind("from", fromType)}}), ` +
+					`(b:${table.to} {\`${table.toKey}\`: ${bind("to", toType)}}) CREATE (a)-[:${table.name}]->(b)`,
 				{ rows: rows.slice(start, start + BATCH_SIZE) },
 			);
 		}
 	}
+}
+
+/** The declared type of one property, defaulting to STRING when the table or column is not there. */
+function propertyType(snapshot: GraphSnapshot, table: string, property: string): string {
+	return (
+		snapshot.nodeTables.find((candidate) => candidate.name === table)?.properties.find((p) => p.name === property)
+			?.type ?? "STRING"
+	);
 }
 
 export interface SnapshotTableStats {
