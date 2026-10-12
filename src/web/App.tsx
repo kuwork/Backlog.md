@@ -24,6 +24,7 @@ import DocumentationDetail from "./components/DocumentationDetail";
 import DraftsList from "./components/DraftsList";
 import DuplicateTaskRepairModal from "./components/DuplicateTaskRepairModal";
 import GanttView from "./components/GanttView";
+import GraphDatabases from "./components/GraphDatabases";
 import GraphView from "./components/GraphView";
 import InitializationScreen from "./components/InitializationScreen";
 import Layout from "./components/Layout";
@@ -1226,6 +1227,7 @@ function AppContent() {
 					/>
 					<Route path="settings" element={<Settings />} />
 					<Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleOpenTask} />} />
+					<Route path="databases" element={<GraphDatabases />} />
 					<Route path="memos" element={<MemosPage />} />
 				</Route>
 				<Route path="task/:id" element={<Layout {...layoutProps} />}>

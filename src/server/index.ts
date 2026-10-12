@@ -31,6 +31,7 @@ import { compileStateMachine, statusNames, validateStatusesShape } from "../core
 import { renderProjectStateMachine } from "../core/state-machine-guidance.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
+import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
 import { type GraphLockConflictHandler, type GraphService, startGraphService } from "../graph/service";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
@@ -270,6 +271,8 @@ export class BacklogServer {
 	// Graph Service (doc-014 §3.3): hosted in-process with the Web UI; null when another process
 	// holds this slot's database, or before the port - and therefore the slot - is known.
 	private graphService: GraphService | null = null;
+	/** Hydrated user databases, kept alive across requests (the WASM store lives in this process). */
+	private databaseBrowser: UserDatabaseBrowser | null = null;
 	private graphSlot: GraphSlot = DEFAULT_SLOT;
 	private graphAttempt: Promise<GraphService | null> | null = null;
 
@@ -660,6 +663,7 @@ export class BacklogServer {
 					"/statistics": spaIndexHtml,
 					"/graph": spaIndexHtml,
 					"/knowledge": spaIndexHtml,
+					"/databases": spaIndexHtml,
 					"/settings": spaIndexHtml,
 					"/task/:id": spaIndexHtml,
 					"/task/:id/*": spaIndexHtml,
@@ -842,6 +846,12 @@ export class BacklogServer {
 					"/api/graph/cypher": {
 						POST: async (req: Request) => await this.handlePostGraphCypher(req),
 					},
+					"/api/graph/databases": {
+						GET: async () => await this.handleGetGraphDatabases(),
+					},
+					"/api/graph/db-cypher": {
+						POST: async (req: Request) => await this.handlePostDatabaseCypher(req),
+					},
 					"/api/status": {
 						GET: async () => await this.handleGetStatus(),
 					},
@@ -1017,6 +1027,12 @@ export class BacklogServer {
 			await this.graphService?.stop();
 			this.graphService = null;
 			this.graphAttempt = null;
+		} catch {}
+
+		// Release the hydrated user databases; their stores live in this process's WASM memory.
+		try {
+			await this.databaseBrowser?.closeAll();
+			this.databaseBrowser = null;
 		} catch {}
 
 		this.core.disposeSearchService();
@@ -2818,6 +2834,53 @@ export class BacklogServer {
 		}
 		try {
 			const result = await service.runCypher(statement);
+			return Response.json(result, { headers: { "Content-Type": "application/json" } });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Cypher 查询失败";
+			return Response.json({ error: message }, { status: 400 });
+		}
+	}
+
+	/**
+	 * GET /api/graph/databases - every database with its row counts, read from the registry and the
+	 * snapshots. `default` reports no counts: those would cost a full corpus rebuild, and the graph
+	 * page already shows them.
+	 */
+	private async handleGetGraphDatabases(): Promise<Response> {
+		return Response.json(
+			{ databases: describeDatabases(this.core.filesystem.rootDir) },
+			{ headers: { "Content-Type": "application/json" } },
+		);
+	}
+
+	/**
+	 * POST /api/graph/db-cypher - run a read-only Cypher statement against one database.
+	 *
+	 * `default` is served by the graph service (it owns the corpus rebuild and the lock); a user
+	 * database is replayed from its snapshot and then **kept** in this process, so a second query on
+	 * the same database costs nothing until the snapshot changes.
+	 */
+	private async handlePostDatabaseCypher(req: Request): Promise<Response> {
+		let body: unknown;
+		try {
+			body = await req.json();
+		} catch {
+			return Response.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+		}
+		const payload = body as { db?: unknown; statement?: unknown };
+		const db = typeof payload.db === "string" ? payload.db : "";
+		const statement = typeof payload.statement === "string" ? payload.statement : "";
+		if (!db) return Response.json({ error: "缺少数据库名" }, { status: 400 });
+		try {
+			if (db === DEFAULT_DATABASE) {
+				const service = await this.getGraphService();
+				if (!service) return Response.json({ error: "graph service unavailable" }, { status: 503 });
+				return Response.json(await service.runCypher(statement), {
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+			this.databaseBrowser ??= new UserDatabaseBrowser();
+			const result = await this.databaseBrowser.query(this.core.filesystem.rootDir, db, statement);
 			return Response.json(result, { headers: { "Content-Type": "application/json" } });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Cypher 查询失败";

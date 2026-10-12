@@ -2,7 +2,14 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { coerceCsvValue, importCsvTable, inferColumnType, parseCsvText, readCsvFile } from "../graph/csv-import";
+import {
+	coerceCsvValue,
+	importCsvRelations,
+	importCsvTable,
+	inferColumnType,
+	parseCsvText,
+	readCsvFile,
+} from "../graph/csv-import";
 import { dumpDatabase, hydrateDatabase, loadSnapshot, saveSnapshot } from "../graph/snapshot";
 import { openGraphStore } from "../graph/store";
 
@@ -227,6 +234,162 @@ describe("importing a csv into a database", () => {
 			).rejects.toThrow(/第 2 行.*不是合法的 INT64/);
 			const rows = await store.runCypher("MATCH (n:a) RETURN count(n)");
 			expect(String(rows.rows[0]?.[0])).toBe("1");
+		} finally {
+			await store.close();
+		}
+	});
+});
+
+describe("importing a csv as edges", () => {
+	let root: string;
+
+	beforeEach(async () => {
+		root = await mkdtemp(join(tmpdir(), "backlog-csv-rel-"));
+	});
+
+	afterEach(async () => {
+		await rm(root, { recursive: true, force: true });
+	});
+
+	async function write(name: string, contents: string): Promise<string> {
+		const path = join(root, name);
+		await writeFile(path, contents, "utf8");
+		return path;
+	}
+
+	async function freshStore(name: string) {
+		const store = await openGraphStore(join(root, `${name}.kuzu`), { backend: "ryu", schema: "none" });
+		expect(store.backend).toBe("ryu"); // fail loudly: a memory fallback would make every assertion vacuous
+		return store;
+	}
+
+	test("two columns become edges between the nodes they name, and survive a reload", async () => {
+		const writer = await freshStore("w");
+		const snapshotPath = join(root, "rel.graph.json");
+		try {
+			await importCsvTable(
+				writer,
+				readCsvFile(await write("p.csv", "name,age\nAlice,30\nBob,41\nCarol,37\n"), { table: "Person" }),
+			);
+			const result = await importCsvRelations(
+				writer,
+				readCsvFile(await write("k.csv", "person,friend\nAlice,Bob\nBob,Carol\nAlice,Ghost\n")),
+				{ rel: "KNOWS", from: "person", to: "friend", fromNode: "Person", toNode: "Person" },
+			);
+			expect(result.created).toBe(true);
+			expect(result.inserted).toBe(2); // Ghost has no node, so that row produces no edge
+			expect(result.skipped).toBe(1);
+			saveSnapshot(snapshotPath, await dumpDatabase(writer, "rel"));
+		} finally {
+			await writer.close();
+		}
+
+		const reader = await freshStore("r");
+		try {
+			await hydrateDatabase(reader, loadSnapshot(snapshotPath));
+			const edges = await reader.runCypher(
+				"MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name ORDER BY a.name",
+			);
+			expect(edges.rows).toEqual([
+				["Alice", "Bob"],
+				["Bob", "Carol"],
+			]);
+		} finally {
+			await reader.close();
+		}
+	});
+
+	test("a second import adds no duplicate edges, and the skipped rows are counted", async () => {
+		const store = await freshStore("idempotent");
+		try {
+			await importCsvTable(store, readCsvFile(await write("p.csv", "name\nAlice\nBob\n"), { table: "Person" }));
+			const first = await importCsvRelations(store, readCsvFile(await write("k.csv", "person,friend\nAlice,Bob\n")), {
+				rel: "KNOWS",
+				from: "person",
+				to: "friend",
+				fromNode: "Person",
+				toNode: "Person",
+			});
+			expect(first.inserted).toBe(1);
+			const second = await importCsvRelations(store, readCsvFile(await write("k2.csv", "person,friend\nAlice,Bob\n")), {
+				rel: "KNOWS",
+				from: "person",
+				to: "friend",
+				fromNode: "Person",
+				toNode: "Person",
+			});
+			expect(second.created).toBe(false);
+			expect(second.inserted).toBe(0);
+			expect(second.skipped).toBe(1);
+		} finally {
+			await store.close();
+		}
+	});
+
+	test("a numeric primary key is matched with a cast, not compared as text", async () => {
+		// The endpoint key of an INT64-keyed table has to be CAST, or the MATCH binds nothing.
+		const store = await freshStore("intkey");
+		try {
+			await importCsvTable(store, readCsvFile(await write("n.csv", "id,label\n1,one\n2,two\n"), { table: "N" }));
+			const result = await importCsvRelations(store, readCsvFile(await write("e.csv", "src,dst\n1,2\n")), {
+				rel: "LINKS",
+				from: "src",
+				to: "dst",
+				fromNode: "N",
+				toNode: "N",
+			});
+			expect(result.inserted).toBe(1);
+			const edges = await store.runCypher("MATCH (a:N)-[:LINKS]->(b:N) RETURN a.label, b.label");
+			expect(edges.rows).toEqual([["one", "two"]]);
+		} finally {
+			await store.close();
+		}
+	});
+
+	test("an existing relationship table already knows its endpoints, a missing one needs to be told", async () => {
+		const store = await freshStore("endpoints");
+		try {
+			await importCsvTable(store, readCsvFile(await write("p.csv", "name\nAlice\nBob\n"), { table: "Person" }));
+			await store.runWrite("CREATE NODE TABLE Company(name STRING PRIMARY KEY)");
+			await importCsvRelations(store, readCsvFile(await write("w.csv", "who,where\nAlice,Acme\n")), {
+				rel: "WORKS_AT",
+				from: "who",
+				to: "where",
+				fromNode: "Person",
+				toNode: "Company",
+			});
+			// The table now exists: importing again needs no endpoint hints at all.
+			const again = await importCsvRelations(store, readCsvFile(await write("w2.csv", "who,where\nBob,Acme\n")), {
+				rel: "WORKS_AT",
+				from: "who",
+				to: "where",
+			});
+			expect(again.fromNode).toBe("Person");
+			expect(again.toNode).toBe("Company");
+
+			await expect(
+				importCsvRelations(store, readCsvFile(await write("x.csv", "who,where\nAlice,Bob\n")), {
+					rel: "BRAND_NEW",
+					from: "who",
+					to: "where",
+				}),
+			).rejects.toThrow(/--from-node/);
+			await expect(
+				importCsvRelations(store, readCsvFile(await write("y.csv", "who,where\nAlice,Bob\n")), {
+					rel: "ALSO_NEW",
+					from: "who",
+					to: "where",
+					fromNode: "Person",
+					toNode: "Ghost",
+				}),
+			).rejects.toThrow(/节点表 "Ghost" 不存在/);
+			await expect(
+				importCsvRelations(store, readCsvFile(await write("z.csv", "who,where\nAlice,Bob\n")), {
+					rel: "WORKS_AT",
+					from: "who",
+					to: "nope",
+				}),
+			).rejects.toThrow(/--to 指定的列 "nope"/);
 		} finally {
 			await store.close();
 		}

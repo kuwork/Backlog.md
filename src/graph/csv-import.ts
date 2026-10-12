@@ -52,6 +52,31 @@ export interface ReadCsvOptions {
 	map?: Record<string, string>;
 }
 
+/** A CSV imported as edges rather than nodes. */
+export interface CsvRelationOptions {
+	/** Relationship table to write into; created with the given endpoints when absent. */
+	rel: string;
+	/** CSV column holding the source node's key. */
+	from: string;
+	/** CSV column holding the destination node's key. */
+	to: string;
+	/** Endpoint node tables, used only when the relationship table does not exist yet. */
+	fromNode?: string;
+	toNode?: string;
+}
+
+export interface CsvRelationResult {
+	rel: string;
+	fromNode: string;
+	toNode: string;
+	/** True when the relationship table did not exist and was created. */
+	created: boolean;
+	/** Edges the database gained. */
+	inserted: number;
+	/** Rows that produced no edge: an unknown endpoint key, or an edge the pair already had. */
+	skipped: number;
+}
+
 export interface CsvImportResult {
 	table: string;
 	/** True when the table did not exist and was auto-created with inferred column types. */
@@ -353,6 +378,132 @@ function insertStatement(table: string, columns: CsvColumn[], primaryKey: string
 		.map((column) => `n.\`${column.name}\` = ${value(column)}`);
 	const merge = `MERGE (n:${table} {\`${keyColumn.name}\`: ${value(keyColumn)}})`;
 	return `UNWIND $rows AS row ${merge}${assignments.length > 0 ? ` SET ${assignments.join(", ")}` : ""}`;
+}
+
+/**
+ * Import a CSV as **edges** instead of nodes: two columns name the endpoints by key, and the
+ * relationship table is created when it does not exist yet.
+ *
+ * Endpoint keys are matched, not created - an edge whose node is missing is skipped by ryu (the
+ * `MATCH` simply does not bind), and the count of rows that produced no edge is reported rather than
+ * left to be discovered by a query that returns too little. `MERGE` keeps a repeated import from
+ * stacking duplicate edges on the same pair.
+ */
+export async function importCsvRelations(
+	store: GraphStore,
+	csv: CsvTableData,
+	options: CsvRelationOptions,
+): Promise<CsvRelationResult> {
+	const names = csv.columns.map((column) => column.name);
+	const fromIndex = names.indexOf(options.from);
+	const toIndex = names.indexOf(options.to);
+	for (const [flag, column, index] of [
+		["--from", options.from, fromIndex],
+		["--to", options.to, toIndex],
+	] as const) {
+		if (index < 0) throw new Error(`${flag} 指定的列 "${column}" 不在 CSV 的列中（${names.join(", ")}）。`);
+	}
+
+	const schema = await readSnapshotSchema(store);
+	const existing = schema.relTables.find((table) => table.name === options.rel);
+	let endpoints: { fromNode: string; toNode: string; fromKey: string; toKey: string; fromType: string; toType: string };
+	let created = false;
+	if (existing) {
+		// The table's own declaration wins: its endpoints and their keys are what the snapshot was
+		// built from, so re-linking has to use exactly those.
+		if (!existing.fromKey || !existing.toKey) {
+			throw new Error(`关系表 "${options.rel}" 的端点表没有主键，无法按主键匹配端点。`);
+		}
+		endpoints = {
+			fromNode: existing.from,
+			toNode: existing.to,
+			fromKey: existing.fromKey,
+			toKey: existing.toKey,
+			fromType: keyType(schema, existing.from, existing.fromKey),
+			toType: keyType(schema, existing.to, existing.toKey),
+		};
+	} else {
+		const fromNode = options.fromNode;
+		const toNode = options.toNode;
+		if (!fromNode || !toNode) {
+			throw new Error(
+				`关系表 "${options.rel}" 还不存在，请用 --from-node / --to-node 指定端点节点表（两端同一张表时用 --node）。`,
+			);
+		}
+		const fromTable = requireNodeTable(schema, fromNode, options.rel);
+		const toTable = requireNodeTable(schema, toNode, options.rel);
+		const fromKey = primaryKeyOf(fromTable);
+		const toKey = primaryKeyOf(toTable);
+		endpoints = {
+			fromNode,
+			toNode,
+			fromKey,
+			toKey,
+			fromType: keyType(schema, fromNode, fromKey),
+			toType: keyType(schema, toNode, toKey),
+		};
+		await store.runWrite(`CREATE REL TABLE IF NOT EXISTS ${options.rel}(FROM ${fromNode} TO ${toNode})`);
+		created = true;
+	}
+
+	const bind = (column: string, type: string): string =>
+		type.toUpperCase() === "STRING" ? `row.\`${column}\`` : `CAST(row.\`${column}\` AS ${type})`;
+	const statement =
+		"UNWIND $rows AS row " +
+		`MATCH (a:${endpoints.fromNode} {\`${endpoints.fromKey}\`: ${bind(options.from, endpoints.fromType)}}), ` +
+		`(b:${endpoints.toNode} {\`${endpoints.toKey}\`: ${bind(options.to, endpoints.toType)}}) ` +
+		`MERGE (a)-[:${options.rel}]->(b)`;
+	const rows = csv.rows.map((row) => ({
+		[options.from]: row[fromIndex] ?? "",
+		[options.to]: row[toIndex] ?? "",
+	}));
+
+	const before = await countEdges(store, options.rel, endpoints.fromNode, endpoints.toNode);
+	for (let start = 0; start < rows.length; start += INSERT_BATCH_SIZE) {
+		await store.runWrite(statement, { rows: rows.slice(start, start + INSERT_BATCH_SIZE) });
+	}
+	const after = await countEdges(store, options.rel, endpoints.fromNode, endpoints.toNode);
+	const inserted = Math.max(0, after - before);
+	return {
+		rel: options.rel,
+		fromNode: endpoints.fromNode,
+		toNode: endpoints.toNode,
+		created,
+		inserted,
+		// A row that produced no edge: an endpoint key the database does not have, or an edge this
+		// pair already carries. ryu skips both silently, so they are counted here instead.
+		skipped: Math.max(0, rows.length - inserted),
+	};
+}
+
+function requireNodeTable(schema: { nodeTables: SnapshotNodeTable[] }, name: string, rel: string): SnapshotNodeTable {
+	const table = schema.nodeTables.find((candidate) => candidate.name === name);
+	if (!table) {
+		throw new Error(
+			`节点表 "${name}" 不存在，无法导入 "${rel}" 的边。请先导入节点：backlog graph import <db> <csv> --node ${name}`,
+		);
+	}
+	return table;
+}
+
+function primaryKeyOf(table: SnapshotNodeTable): string {
+	const key = table.properties.find((property) => property.primaryKey)?.name;
+	if (!key) {
+		throw new Error(`节点表 "${table.name}" 没有主键，无法作为边的端点（端点按主键匹配）。`);
+	}
+	return key;
+}
+
+function keyType(schema: { nodeTables: SnapshotNodeTable[] }, table: string, key: string): string {
+	return (
+		schema.nodeTables.find((candidate) => candidate.name === table)?.properties.find((p) => p.name === key)?.type ??
+		"STRING"
+	);
+}
+
+async function countEdges(store: GraphStore, rel: string, fromNode: string, toNode: string): Promise<number> {
+	const result = await store.runCypher(`MATCH (a:${fromNode})-[e:${rel}]->(b:${toNode}) RETURN count(e)`);
+	return Number(result.rows[0]?.[0] ?? 0);
 }
 
 /** Fit the CSV's columns onto a table that already exists, or say exactly why it cannot be done. */

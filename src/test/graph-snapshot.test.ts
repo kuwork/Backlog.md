@@ -9,6 +9,7 @@ import {
 	hydrateDatabase,
 	loadSnapshot,
 	loadSnapshotWithFingerprint,
+	referencedTables,
 	saveSnapshot,
 	snapshotFingerprint,
 	snapshotStats,
@@ -61,6 +62,39 @@ describe("graph snapshot round-trip", () => {
 			expect(String(nodes.rows[0]?.[0])).toBe("2");
 		} finally {
 			await reader.close();
+		}
+	});
+
+	test("reopening the same user-database path starts empty, so a re-hydrate does not collide", async () => {
+		// Regression: ryu keeps its file in WASM memory and `close()` does not release it. In a
+		// long-lived process (the Web UI) the second open used to see the first hydrate's rows, and
+		// the re-hydrate then inserted nothing at all - one duplicate primary key poisons the whole
+		// batched CREATE - so the browser served stale data with no error anywhere.
+		const dbPath = join(root, "reopen.kuzu");
+		const one: GraphSnapshot = {
+			...emptySnapshot("demo"),
+			nodeTables: [{ name: "Person", properties: [{ name: "name", type: "STRING", primaryKey: true }] }],
+			nodes: { Person: [{ name: "Alice" }] },
+		};
+		const two: GraphSnapshot = { ...one, nodes: { Person: [{ name: "Alice" }, { name: "Bob" }] } };
+
+		const first = await openGraphStore(dbPath, { backend: "ryu", schema: "none" });
+		expect(first.backend).toBe("ryu"); // fail loudly: a memory fallback would make this vacuous
+		try {
+			await hydrateDatabase(first, one);
+			expect(String((await first.runCypher("MATCH (n:Person) RETURN count(n)")).rows[0]?.[0])).toBe("1");
+		} finally {
+			await first.close();
+		}
+
+		// Same path, same process: the durable copy is the snapshot, so the second hydrate decides
+		// exactly what is in there.
+		const second = await openGraphStore(dbPath, { backend: "ryu", schema: "none" });
+		try {
+			await hydrateDatabase(second, two);
+			expect(String((await second.runCypher("MATCH (n:Person) RETURN count(n)")).rows[0]?.[0])).toBe("2");
+		} finally {
+			await second.close();
 		}
 	});
 
@@ -228,6 +262,96 @@ describe("graph snapshot round-trip", () => {
 			]);
 		} finally {
 			await reader.close();
+		}
+	});
+
+	test("an INT64 primary key re-links its edges after a round-trip", async () => {
+		// Regression: the edge replay matched `{key: row.from}` with no cast, so an INT64 key - a
+		// number on the way out - threw `Invalid argument type in ToBigInt operation` on the way in
+		// and the database lost every edge of that table.
+		const writer = await openGraphStore(join(root, "int.kuzu"), { backend: "ryu", schema: "none" });
+		expect(writer.backend).toBe("ryu");
+		const path = join(root, "int.graph.json");
+		try {
+			await writer.runWrite("CREATE NODE TABLE N(id INT64 PRIMARY KEY, label STRING)");
+			await writer.runWrite("CREATE REL TABLE LINKS(FROM N TO N)");
+			await writer.runWrite("UNWIND $rows AS row CREATE (:N {id: CAST(row.id AS INT64), label: row.label})", {
+				rows: [
+					{ id: "1", label: "one" },
+					{ id: "2", label: "two" },
+				],
+			});
+			await writer.runWrite(
+				"UNWIND $rows AS row MATCH (a:N {id: CAST(row.src AS INT64)}), (b:N {id: CAST(row.dst AS INT64)}) CREATE (a)-[:LINKS]->(b)",
+				{ rows: [{ src: "1", dst: "2" }] },
+			);
+			const snapshot = await dumpDatabase(writer, "int");
+			saveSnapshot(path, snapshot);
+			expect(snapshot.edges.LINKS).toEqual([{ from: "1", to: "2" }]);
+		} finally {
+			await writer.close();
+		}
+		const reader = await openGraphStore(join(root, "int2.kuzu"), { backend: "ryu", schema: "none" });
+		try {
+			await hydrateDatabase(reader, loadSnapshot(path));
+			const edges = await reader.runCypher("MATCH (a:N)-[:LINKS]->(b:N) RETURN a.label, b.label");
+			expect(edges.rows).toEqual([["one", "two"]]);
+		} finally {
+			await reader.close();
+		}
+	});
+
+	test("a query that names its labels hydrates only those tables", async () => {
+		const snapshot: GraphSnapshot = {
+			...emptySnapshot("scoped"),
+			nodeTables: [
+				{ name: "Person", properties: [{ name: "name", type: "STRING", primaryKey: true }] },
+				{ name: "Company", properties: [{ name: "name", type: "STRING", primaryKey: true }] },
+			],
+			relTables: [
+				{ name: "WORKS_AT", from: "Person", to: "Company", fromKey: "name", toKey: "name" },
+				{ name: "KNOWS", from: "Person", to: "Person", fromKey: "name", toKey: "name" },
+			],
+			nodes: {
+				Person: [{ name: "Alice" }],
+				Company: [{ name: "Acme" }],
+			},
+			edges: { WORKS_AT: [{ from: "Alice", to: "Acme" }], KNOWS: [] },
+		};
+
+		// A relationship pulls in both of its endpoint tables; an unlabelled MATCH and a
+		// `show_tables()` call cannot be narrowed, so they load everything.
+		expect(referencedTables("MATCH (n:Person) RETURN n.name", snapshot)).toEqual({
+			nodeTables: ["Person"],
+			relTables: [],
+		});
+		expect(referencedTables("MATCH (a:Person)-[:WORKS_AT]->(b) RETURN a.name", snapshot)).toEqual({
+			nodeTables: ["Person", "Company"],
+			relTables: ["WORKS_AT"],
+		});
+		expect(referencedTables("CALL table_info('Company') RETURN *", snapshot)).toEqual({
+			nodeTables: ["Company"],
+			relTables: [],
+		});
+		expect(referencedTables("MATCH (n) RETURN n", snapshot)).toBeNull();
+		expect(referencedTables("CALL show_tables() RETURN name, type", snapshot)).toBeNull();
+		expect(referencedTables("MATCH (n:Ghost) RETURN n", snapshot)).toBeNull(); // unknown label: do not guess
+
+		// A property map is not a label: {name: 'Alice'} must never be read as a table.
+		expect(referencedTables("MATCH (n:Person {name: 'Alice'}) RETURN n.name", snapshot)?.nodeTables).toEqual([
+			"Person",
+		]);
+
+		const store = await openGraphStore(join(root, "scoped.kuzu"), { backend: "ryu", schema: "none" });
+		expect(store.backend).toBe("ryu");
+		try {
+			await hydrateDatabase(store, snapshot, referencedTables("MATCH (n:Person) RETURN n.name", snapshot) ?? undefined);
+			const tables = await store.runCypher("CALL show_tables() RETURN name");
+			expect(tables.rows.flat()).toEqual(["Person"]); // Company was never created
+			const people = await store.runCypher("MATCH (n:Person) RETURN n.name");
+			expect(people.rows).toEqual([["Alice"]]);
+		} finally {
+			await store.close();
 		}
 	});
 

@@ -485,10 +485,15 @@ export class RyuGraphStore implements GraphStore {
 		const ryu = await loadRyu();
 		this.db = new ryu.Database(this.dbPath);
 		this.conn = new ryu.Connection(this.db);
-		// A user database owns its schema: create nothing, wipe nothing, so the tables the user
-		// defined with Cypher survive the open. (ryu keeps the file in WASM memory anyway, so the
-		// snapshot sidecar - not this file - is the durable copy.)
-		if (this.schema === "none") return;
+		// A user database owns its schema: create nothing of our own. It must still start **empty**,
+		// because ryu keeps the file in WASM memory and `close()` does not release it: in a long-lived
+		// process (the Web UI) reopening the same path would resurrect the previous contents, and a
+		// re-hydrate would then collide with them - one duplicate primary key makes the whole batched
+		// CREATE insert nothing, silently. The snapshot sidecar, not this file, is the durable copy.
+		if (this.schema === "none") {
+			await this.wipe();
+			return;
+		}
 		// The file says which schema it was built with, so a reusable file is recognised without
 		// consulting anything outside it (the sidecar cache, the caller's expectations).
 		if (isCurrentSchema(await this.readSchemaVersion())) {
@@ -510,12 +515,17 @@ export class RyuGraphStore implements GraphStore {
 	}
 
 	/**
-	 * Empty the graph and stamp it with the current schema. The tables are enumerated rather than
-	 * named: a rename leaves a table this build has never heard of, and it has to go too. Rel tables
-	 * come first because ryu refuses to drop a node table a relationship table still references.
+	 * Drop every table and create nothing. The tables are enumerated rather than named: a rename
+	 * leaves a table this build has never heard of, and it has to go too. Rel tables come first
+	 * because ryu refuses to drop a node table a relationship table still references.
 	 */
-	async clear(): Promise<void> {
+	private async wipe(): Promise<void> {
 		for (const table of await this.listTables()) await this.exec(`DROP TABLE IF EXISTS ${table}`);
+	}
+
+	/** Empty the graph and stamp it with the current schema. */
+	async clear(): Promise<void> {
+		await this.wipe();
 		await this.createSchema();
 	}
 
