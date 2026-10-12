@@ -204,9 +204,10 @@ export interface SqliteFileEntry {
 	mtime: string;
 }
 
-/** Where a CSV export landed: a project-relative path, never an absolute one. */
+/** A CSV export to be saved by the browser: the file body and a suggested name, never a path. */
 export interface SqliteCsvExport {
-	path: string;
+	filename: string;
+	csv: string;
 	rows: number;
 	truncated: boolean;
 }
@@ -1153,10 +1154,10 @@ export class ApiClient {
 	}
 
 	/**
-	 * Writes the same result out beside the database. The rows are not sent - the server re-runs the
-	 * statement - so this only ever receives back where the file went.
+	 * Asks the server to build the CSV (it re-gates `source` and `sql` and re-runs the read-only
+	 * statement). The browser then saves the returned text where the user chooses.
 	 */
-	async exportSqliteCsv(payload: SqliteQueryRequest & { filename?: string }): Promise<SqliteCsvExport> {
+	async exportSqliteCsv(payload: SqliteQueryRequest): Promise<SqliteCsvExport> {
 		const response = await fetch(`${API_BASE}/sqlite/export-csv`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

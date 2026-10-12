@@ -862,7 +862,7 @@ export const zhCN: TranslationDict = {
 		copyFailed: "复制失败",
 		exportCsv: "导出 CSV",
 		exporting: "正在导出…",
-		exported: "已保存到",
+		exported: "已导出：{name}",
 		exportFailed: "导出失败",
 	},
 

@@ -1,28 +1,19 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import {
-	defaultExportName,
-	exportTimestamp,
-	firstFreeTarget,
-	renderCsvFile,
-	rowsToCsv,
-	sanitizeCsvName,
-	UTF8_BOM,
-} from "../sqlite/csv.ts";
-import { exportSqliteCsv } from "../sqlite/export.ts";
-import { isInsideProjectRoot } from "../sqlite/paths.ts";
+import { defaultExportName, exportTimestamp, renderCsvFile, rowsToCsv, UTF8_BOM } from "../sqlite/csv.ts";
+import { buildSqliteCsv } from "../sqlite/export.ts";
 import { closeAllSqliteHandles, SQLITE_MAX_ROWS } from "../sqlite/query.ts";
 
 setDefaultTimeout(60_000);
 
 let root: string;
 
-// Same warm-up as src/test/sqlite.test.ts: opening the first SQLite file of a process costs far more
-// than the next ones, and Windows hands that bill to whichever test happens to be running.
+// Same warm-up as src/test/sqlite.test.ts: opening the first SQLite file of a process costs far
+// more than the next ones, and Windows hands that bill to whichever test happens to be running.
 {
 	const warmPath = join(mkdtempSync(join(tmpdir(), "backlog-csv-warm-")), "warm.sqlite");
 	const warm = new Database(warmPath);
@@ -47,16 +38,11 @@ function makeDb(path: string, rows = 2): void {
 	db.close();
 }
 
-/** A database under `<root>/data/shop.sqlite`, which is where every export in these tests lands. */
-function makeProject(rows = 2): { dbPath: string; source: string } {
+/** A database under `<root>/data/shop.sqlite`. */
+function makeProject(rows = 2): { source: string } {
 	mkdirSync(join(root, "data"), { recursive: true });
-	const dbPath = join(root, "data", "shop.sqlite");
-	makeDb(dbPath, rows);
-	return { dbPath, source: relative(root, dbPath).replace(/\\/g, "/") };
-}
-
-function exportDefault(options: { source: string; sql: string; filename?: string }) {
-	return exportSqliteCsv({ projectRoot: root, ...options });
+	makeDb(join(root, "data", "shop.sqlite"), rows);
+	return { source: relative(root, join(root, "data", "shop.sqlite")).replace(/\\/g, "/") };
 }
 
 beforeEach(() => {
@@ -68,19 +54,6 @@ afterEach(() => {
 	// Not awaited, and intentionally so: Windows holds a SQLite file briefly after close() and a
 	// synchronous rm blocks long enough to blow the timeout. A leftover temp directory is cheaper.
 	void rm(root, { recursive: true, force: true }).catch(() => {});
-});
-
-describe("isInsideProjectRoot (the write gate)", () => {
-	test("accepts a file inside the project and refuses the root itself as a target", () => {
-		expect(isInsideProjectRoot(root, join(root, "data", "report.csv"))).toBe(true);
-		expect(isInsideProjectRoot(root, root)).toBe(false);
-	});
-
-	test("refuses a sibling directory and any path that walks up", () => {
-		expect(isInsideProjectRoot(root, join(root, "..", "report.csv"))).toBe(false);
-		expect(isInsideProjectRoot(join(root, "data"), join(root, "data", "shop.sqlite"))).toBe(true);
-		expect(isInsideProjectRoot(join(root, "data"), join(root, "other", "shop.sqlite"))).toBe(false);
-	});
 });
 
 describe("rowsToCsv", () => {
@@ -119,106 +92,64 @@ describe("export naming", () => {
 		);
 	});
 
-	test("accepts a hint and appends the extension", () => {
-		const checked = sanitizeCsvName("march-report");
-
-		expect(checked).toEqual({ ok: true, name: "march-report.csv" });
-	});
-
-	test("keeps an existing .csv extension instead of doubling it", () => {
-		expect(sanitizeCsvName("march.csv")).toEqual({ ok: true, name: "march.csv" });
-	});
-
-	test("replaces characters that are only illegal on Windows", () => {
-		expect(sanitizeCsvName("Q1:A?")).toEqual({ ok: true, name: "Q1-A-.csv" });
-	});
-
-	test("refuses anything that could move the write somewhere else", () => {
-		for (const hint of ["../escape", "sub/dir/report", "..\\report", "C:report", "\\\\host\\share\\r", ".hidden"]) {
-			const checked = sanitizeCsvName(hint);
-			expect(checked.ok).toBe(false);
-			if (!checked.ok) expect(checked.error.length).toBeGreaterThan(0);
-		}
-		expect(sanitizeCsvName("   ").ok).toBe(false);
-	});
-
-	test("bumps the suffix rather than overwriting", () => {
-		const existing = new Set(["report.csv", "report-1.csv"]);
-
-		expect(firstFreeTarget("report.csv", (candidate) => existing.has(candidate))).toBe("report-2.csv");
+	test("keeps the bare stem when there is no sqlite extension", () => {
+		expect(defaultExportName("plain", new Date(2026, 2, 4, 9, 5, 7))).toBe("plain-20260304-090507.csv");
 	});
 });
 
-describe("exportSqliteCsv", () => {
-	test("writes the grid next to the database and answers with a project-relative path", () => {
+describe("buildSqliteCsv", () => {
+	test("returns the BOM'd body and a suggested name, not a path", () => {
 		const { source } = makeProject();
 
-		const result = exportDefault({ source, sql: "SELECT name, age FROM people ORDER BY age" });
+		const result = buildSqliteCsv({ projectRoot: root, source, sql: "SELECT name, age FROM people ORDER BY age" });
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.export.path).toMatch(/^data\/shop-\d{8}-\d{6}\.csv$/);
-		expect(result.export.rows).toBe(2);
-		expect(result.export.truncated).toBe(false);
-
-		const written = join(root, ...result.export.path.split("/"));
-		expect(existsSync(written)).toBe(true);
-		const body = readFileSync(written, "utf8");
-		expect(body.startsWith(UTF8_BOM)).toBe(true);
-		expect(body).toContain("name,age\r\nperson-0,0\r\n");
+		expect(result.csv.filename).toMatch(/^shop-\d{8}-\d{6}\.csv$/);
+		expect(result.csv.rows).toBe(2);
+		expect(result.csv.truncated).toBe(false);
+		expect(result.csv.csv.startsWith(UTF8_BOM)).toBe(true);
+		expect(result.csv.csv).toContain("name,age\r\nperson-0,0\r\n");
 	});
 
-	test("uses the filename hint when it is safe", () => {
+	test("re-runs every read gate and refuses the same things a render refuses", () => {
 		const { source } = makeProject();
 
-		const result = exportDefault({ source, sql: "SELECT name FROM people", filename: "march-report" });
-
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
-		expect(result.export.path).toBe("data/march-report.csv");
-	});
-
-	test("refuses a filename hint that would leave the directory", () => {
-		const { source } = makeProject();
-
-		const result = exportDefault({ source, sql: "SELECT name FROM people", filename: "../escaped" });
-
-		expect(result.ok).toBe(false);
-		if (result.ok) return;
-		expect(readdirSync(join(root, "data"))).toEqual(["shop.sqlite"]);
-	});
-
-	test("never overwrites an existing export", () => {
-		const { source } = makeProject();
-		expect(exportDefault({ source, sql: "SELECT name FROM people", filename: "same" }).ok).toBe(true);
-		expect(exportDefault({ source, sql: "SELECT name FROM people", filename: "same" }).ok).toBe(true);
-
-		expect(readdirSync(join(root, "data"))).toEqual(expect.arrayContaining(["same.csv", "same-1.csv"]));
-	});
-
-	test("re-runs every read gate before writing, and creates nothing when one refuses", () => {
-		const { source } = makeProject();
-
-		const write = exportDefault({ source, sql: "DROP TABLE people" });
-		const stacked = exportDefault({ source, sql: "SELECT 1; SELECT 2" });
-		const outside = exportDefault({ source: "../outside/shop.sqlite", sql: "SELECT 1" });
-		const missing = exportDefault({ source: "data/nope.sqlite", sql: "SELECT 1" });
+		const write = buildSqliteCsv({ projectRoot: root, source, sql: "DROP TABLE people" });
+		const stacked = buildSqliteCsv({ projectRoot: root, source, sql: "SELECT 1; SELECT 2" });
+		const outside = buildSqliteCsv({ projectRoot: root, source: "../outside/shop.sqlite", sql: "SELECT 1" });
+		const missing = buildSqliteCsv({ projectRoot: root, source: "data/nope.sqlite", sql: "SELECT 1" });
 
 		for (const refused of [write, stacked, outside, missing]) {
 			expect(refused.ok).toBe(false);
 		}
-		// The only file that belongs here is still just the database.
-		expect(readdirSync(join(root, "data"))).toEqual(["shop.sqlite"]);
 	});
 
-	test("reports truncation instead of silently saving a partial file", () => {
+	test("reports truncation instead of silently dropping rows", () => {
 		const { source } = makeProject(SQLITE_MAX_ROWS + 20);
 
-		const result = exportDefault({ source, sql: "SELECT name FROM people" });
+		const result = buildSqliteCsv({ projectRoot: root, source, sql: "SELECT name FROM people" });
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.export.rows).toBe(SQLITE_MAX_ROWS);
-		expect(result.export.truncated).toBe(true);
+		expect(result.csv.rows).toBe(SQLITE_MAX_ROWS);
+		expect(result.csv.truncated).toBe(true);
+	});
+
+	test("the exported body is BOM'd and row-for-row what the query returned", () => {
+		const { source } = makeProject();
+		const result = buildSqliteCsv({ projectRoot: root, source, sql: "SELECT name, age FROM people ORDER BY age" });
+		if (!result.ok) throw new Error("expected ok");
+
+		// The export reuses renderCsvFile, so asserting the shape here also pins the serialiser.
+		expect(result.csv.csv).toBe(
+			renderCsvFile(
+				["name", "age"],
+				[
+					["person-0", 0],
+					["person-1", 1],
+				],
+			),
+		);
 	});
 });

@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-12 18:38'
-updated_date: '2026-10-12 19:23'
+updated_date: '2026-10-12 23:26'
 labels:
   - server
   - sqlite
@@ -28,6 +28,7 @@ modified_files:
   - src/test/sqlite-csv.test.ts
   - src/test/sqlite-query-block.test.tsx
 ordinal: 335001
+actual_start: '2026-10-12 19:03'
 actual_end: '2026-10-12 19:23'
 ---
 
@@ -100,6 +101,19 @@ No end-to-end test drives the HTTP route: constructing `Core` in a test is heavy
 ### m-11 scope correction
 The milestone description listed CSV export as out of Phase 1 scope; that sentence contradicts this task, so it was amended (CSV export re-enters as a block action, Embed stays deferred). CLI caveat found while doing it: `backlog milestone edit m-11 -d ...` also **renames** the title to whatever identifies it, so the title and file name had to be restored with `-t "SQLite Explorer Phase 1"`, and one `
 ` following a colon survived into the file as literal `/n` - repaired by hand.
+
+### Requirement change (2026-10-13 follow-up): the destination is the user's, and unavailable actions hide
+Two product calls after the original build:
+1. **Export goes where the user picks, not next to the database.** The server no longer writes a file: `exportSqliteCsv` became `buildSqliteCsv`, which re-runs the same two gates and the read-only statement and returns the CSV **text** plus a suggested `<db stem>-<timestamp>.csv` name. The browser saves it through the File System Access API (`showSaveFilePicker`) where Chromium supports it, falling back to a blob download elsewhere. The security model is unchanged - no row payload or target path ever travels from the client - we just stopped deciding the destination server-side.
+2. **Hide, do not disable, when there is nothing to do.** The Copy button was already hidden-without-content; Export now follows: it renders only when `parsed.ok && ready && rows > 0`, and stays visible-but-disabled only during the in-flight save so the header does not flicker. A dismissed save dialog is an `AbortError` and is treated as a no-op, not a failure.
+
+### Code that was removed as dead
+- `sanitizeCsvName` and `firstFreeTarget` from csv.ts (no filename is decided server-side anymore).
+- `isInsideProjectRoot` from paths.ts (it existed solely for the write-gate; the read gates already pin access inside the project).
+- The `POST /api/sqlite/export-csv` handler now returns `{ filename, csv, rows, truncated }` instead of a project-relative path.
+
+### Validation
+`bun test src/test/sqlite-csv.test.ts src/test/sqlite-query-block.test.tsx src/test/sqlite.test.ts src/test/sqlite-markdown.test.ts` -> 62 pass / 119 assertions; `bunx tsc --noEmit` clean; `bun run check .` 0 errors (14 pre-existing any warnings). The component test now stubs `showSaveFilePicker` and asserts the exact text handed to the writable, plus that the button is absent when there are no rows.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

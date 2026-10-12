@@ -883,7 +883,7 @@ export const ja: TranslationDict = {
 		copyFailed: "コピーに失敗しました",
 		exportCsv: "CSV を書き出す",
 		exporting: "書き出し中…",
-		exported: "保存先",
+		exported: "書き出し先: {name}",
 		exportFailed: "書き出しに失敗しました",
 	},
 

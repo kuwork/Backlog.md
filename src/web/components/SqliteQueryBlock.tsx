@@ -4,6 +4,7 @@ import { parseSqliteQueryBlock, type SqliteQueryView } from "../../sqlite/block.
 import { cellToMarkdown, resultToMarkdownTable } from "../../sqlite/markdown.ts";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, type SqliteCell, type SqliteQueryResult } from "../lib/api";
+import { saveTextFile } from "../lib/save-file";
 
 interface Props {
 	/** The fenced block body, exactly as written in the document. */
@@ -132,20 +133,29 @@ export default function SqliteQueryBlock({ block }: Props) {
 	}, [copyState]);
 
 	// Export re-runs server-side: the server re-reads `source` and `sql` through the same gates it
-	// does for a render, so nothing in the payload here decides where a file lands.
+	// does for a render and returns the CSV text, then the browser writes it where the user picks.
+	// The button is shown only when there is a result to save; while saving it stays visible but
+	// disabled so the header does not flicker empty mid-save.
+	const canExport = parsed.ok && state.status === "ready" && state.result.rows.length > 0;
 	const [exportState, setExportState] = useState<
 		| { status: "idle" }
 		| { status: "saving" }
-		| { status: "saved"; path: string; truncated: boolean }
+		| { status: "saved"; name: string; truncated: boolean }
 		| { status: "failed"; message: string }
 	>({ status: "idle" });
 	const exportCsv = useCallback(async () => {
 		if (!parsed.ok) return;
 		setExportState({ status: "saving" });
 		try {
-			const saved = await apiClient.exportSqliteCsv({ source: parsed.block.source, sql: parsed.block.sql });
-			setExportState({ status: "saved", path: saved.path, truncated: saved.truncated });
+			const payload = await apiClient.exportSqliteCsv({ source: parsed.block.source, sql: parsed.block.sql });
+			await saveTextFile(payload.filename, payload.csv);
+			setExportState({ status: "saved", name: payload.filename, truncated: payload.truncated });
 		} catch (error: unknown) {
+			// The save dialog was dismissed: nothing was written, so treat it as a no-op, not a failure.
+			if (error instanceof DOMException && error.name === "AbortError") {
+				setExportState({ status: "idle" });
+				return;
+			}
 			setExportState({ status: "failed", message: error instanceof Error ? error.message : String(error) });
 		}
 	}, [parsed]);
@@ -265,27 +275,29 @@ export default function SqliteQueryBlock({ block }: Props) {
 					>
 						{queryOpen ? t.sqliteQueryBlock.hideQuery : t.sqliteQueryBlock.showQuery}
 					</button>
-				{copyMarkdown ? (
-					<button
-						type="button"
-						onClick={copy}
-						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-					>
-						{copyState === "copied"
-							? t.sqliteQueryBlock.copied
-							: copyState === "failed"
-								? t.sqliteQueryBlock.copyFailed
-								: t.sqliteQueryBlock.copyMarkdown}
-					</button>
-				) : null}
-					<button
-						type="button"
-						onClick={exportCsv}
-						disabled={state.status !== "ready" || state.result.rows.length === 0 || exportState.status === "saving"}
-						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
-					>
-						{exportState.status === "saving" ? t.sqliteQueryBlock.exporting : t.sqliteQueryBlock.exportCsv}
-					</button>
+					{copyMarkdown ? (
+						<button
+							type="button"
+							onClick={copy}
+							className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+						>
+							{copyState === "copied"
+								? t.sqliteQueryBlock.copied
+								: copyState === "failed"
+									? t.sqliteQueryBlock.copyFailed
+									: t.sqliteQueryBlock.copyMarkdown}
+						</button>
+					) : null}
+					{canExport || exportState.status === "saving" ? (
+						<button
+							type="button"
+							onClick={exportCsv}
+							disabled={!canExport}
+							className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+						>
+							{exportState.status === "saving" ? t.sqliteQueryBlock.exporting : t.sqliteQueryBlock.exportCsv}
+						</button>
+					) : null}
 					<button
 						type="button"
 						onClick={refresh}
@@ -328,8 +340,9 @@ export default function SqliteQueryBlock({ block }: Props) {
 				) : null}
 				{exportState.status === "saved" ? (
 					<p className="mt-2 text-xs break-all">
-						<span className="text-gray-500 dark:text-gray-400">{t.sqliteQueryBlock.exported}：</span>
-						<span className="font-mono">{exportState.path}</span>
+						<span className="text-gray-500 dark:text-gray-400">
+							{fill(t.sqliteQueryBlock.exported, { name: exportState.name })}
+						</span>
 						{exportState.truncated ? (
 							<span className="ml-1 text-gray-500 dark:text-gray-400">
 								{fill(t.sqliteQueryBlock.truncated, { count: state.status === "ready" ? state.result.rows.length : 0 })}
