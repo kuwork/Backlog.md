@@ -177,6 +177,33 @@ const DEFAULT_CONFIG: RequestConfig = {
 	timeout: 10000,
 };
 
+/**
+ * A query result cell. BIGINT is stringified and BLOBs summarised server-side, so whatever arrives
+ * here is guaranteed to survive JSON - a raw BIGINT would otherwise throw inside `response.json()`.
+ */
+export type SqliteCell = string | number | boolean | null;
+
+export interface SqliteQueryResult {
+	columns: string[];
+	rows: SqliteCell[][];
+	truncated: boolean;
+	elapsedMs: number;
+	dbPath: string;
+}
+
+export interface SqliteQueryRequest {
+	/** Project-relative path of the database; a leading slash is refused server-side. */
+	source: string;
+	sql: string;
+	maxRows?: number;
+}
+
+export interface SqliteFileEntry {
+	path: string;
+	size: number;
+	mtime: string;
+}
+
 export class ApiClient {
 	private config: RequestConfig;
 
@@ -1091,6 +1118,29 @@ export class ApiClient {
 		const response = await fetch(`${API_BASE}/drafts/${encodeURIComponent(id)}`);
 		if (!response.ok) {
 			throw new Error("Failed to fetch draft");
+		}
+		return response.json();
+	}
+
+	/** Every SQLite database the project contains, for `sqlite-query` blocks and future pickers. */
+	async fetchSqliteFiles(): Promise<SqliteFileEntry[]> {
+		const response = await fetch(`${API_BASE}/sqlite/files`);
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to list sqlite files");
+		}
+		const data = (await response.json()) as { files: SqliteFileEntry[] };
+		return data.files;
+	}
+
+	/** Runs one read-only statement; the server answers 400 with a human-readable Chinese reason. */
+	async runSqliteQuery(payload: SqliteQueryRequest): Promise<SqliteQueryResult> {
+		const response = await fetch(`${API_BASE}/sqlite/query`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to run sqlite query");
 		}
 		return response.json();
 	}
