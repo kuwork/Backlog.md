@@ -131,6 +131,25 @@ export default function SqliteQueryBlock({ block }: Props) {
 		return () => clearTimeout(timer);
 	}, [copyState]);
 
+	// Export re-runs server-side: the server re-reads `source` and `sql` through the same gates it
+	// does for a render, so nothing in the payload here decides where a file lands.
+	const [exportState, setExportState] = useState<
+		| { status: "idle" }
+		| { status: "saving" }
+		| { status: "saved"; path: string; truncated: boolean }
+		| { status: "failed"; message: string }
+	>({ status: "idle" });
+	const exportCsv = useCallback(async () => {
+		if (!parsed.ok) return;
+		setExportState({ status: "saving" });
+		try {
+			const saved = await apiClient.exportSqliteCsv({ source: parsed.block.source, sql: parsed.block.sql });
+			setExportState({ status: "saved", path: saved.path, truncated: saved.truncated });
+		} catch (error: unknown) {
+			setExportState({ status: "failed", message: error instanceof Error ? error.message : String(error) });
+		}
+	}, [parsed]);
+
 	let body: ReactNode;
 	if (!parsed.ok) {
 		body = <p className="text-red-600 dark:text-red-400">{parsed.error}</p>;
@@ -260,6 +279,14 @@ export default function SqliteQueryBlock({ block }: Props) {
 					</button>
 					<button
 						type="button"
+						onClick={exportCsv}
+						disabled={state.status !== "ready" || state.result.rows.length === 0 || exportState.status === "saving"}
+						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+					>
+						{exportState.status === "saving" ? t.sqliteQueryBlock.exporting : t.sqliteQueryBlock.exportCsv}
+					</button>
+					<button
+						type="button"
 						onClick={refresh}
 						disabled={!parsed.ok || state.status === "loading"}
 						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
@@ -296,6 +323,22 @@ export default function SqliteQueryBlock({ block }: Props) {
 				{state.status === "ready" && state.result.truncated ? (
 					<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
 						{fill(t.sqliteQueryBlock.truncated, { count: state.result.rows.length })}
+					</p>
+				) : null}
+				{exportState.status === "saved" ? (
+					<p className="mt-2 text-xs break-all">
+						<span className="text-gray-500 dark:text-gray-400">{t.sqliteQueryBlock.exported}：</span>
+						<span className="font-mono">{exportState.path}</span>
+						{exportState.truncated ? (
+							<span className="ml-1 text-gray-500 dark:text-gray-400">
+								{fill(t.sqliteQueryBlock.truncated, { count: state.status === "ready" ? state.result.rows.length : 0 })}
+							</span>
+						) : null}
+					</p>
+				) : null}
+				{exportState.status === "failed" ? (
+					<p className="mt-2 text-xs text-red-600 dark:text-red-400">
+						{t.sqliteQueryBlock.exportFailed}：{exportState.message}
 					</p>
 				) : null}
 			</div>

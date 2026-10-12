@@ -881,6 +881,10 @@ export const ja: TranslationDict = {
 		copyMarkdown: "Markdown でコピー",
 		copied: "コピーしました",
 		copyFailed: "コピーに失敗しました",
+		exportCsv: "CSV を書き出す",
+		exporting: "書き出し中…",
+		exported: "保存先",
+		exportFailed: "書き出しに失敗しました",
 	},
 
 	imageLightbox: {

@@ -888,6 +888,10 @@ export const en = {
 		copyMarkdown: "Copy Markdown",
 		copied: "Copied",
 		copyFailed: "Copy failed",
+		exportCsv: "Export CSV",
+		exporting: "Exporting…",
+		exported: "Saved to",
+		exportFailed: "Export failed",
 	},
 
 	imageLightbox: {

@@ -860,6 +860,10 @@ export const zhCN: TranslationDict = {
 		copyMarkdown: "复制为 Markdown",
 		copied: "已复制",
 		copyFailed: "复制失败",
+		exportCsv: "导出 CSV",
+		exporting: "正在导出…",
+		exported: "已保存到",
+		exportFailed: "导出失败",
 	},
 
 	imageLightbox: {
