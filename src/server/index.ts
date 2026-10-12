@@ -37,7 +37,7 @@ import { type GraphLockConflictHandler, type GraphService, startGraphService } f
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import { listSqliteFiles } from "../sqlite/discover.ts";
-import { exportSqliteCsv } from "../sqlite/export.ts";
+import { buildSqliteCsv } from "../sqlite/export.ts";
 import { resolveSqliteSource } from "../sqlite/paths.ts";
 import { runSqliteQuery, SQLITE_MAX_ROWS } from "../sqlite/query.ts";
 import { validateReadOnlySql } from "../sqlite/validation.ts";
@@ -2407,15 +2407,15 @@ export class BacklogServer {
 	}
 
 	/**
-	 * POST /api/sqlite/export-csv - write the result of one read-only statement next to its database.
+	 * POST /api/sqlite/export-csv - build the CSV of one read-only statement for the browser to save.
 	 *
-	 * The first write endpoint in this surface, so it takes the narrowest possible input: `source`
-	 * and `sql` are re-gated and the rows are re-read server-side. Nothing lands on disk until every
-	 * refusal has had its chance, and the answer carries a project-relative path, never an absolute
-	 * one.
+	 * The server never decides where the file goes: it re-gates `source` and `sql`, re-runs the
+	 * statement through the read-only path, serialises the result (BOM + rows) and hands the text
+	 * back with a suggested filename. Choosing the destination is the File System Access API's job
+	 * (or a plain download), so no path and no row payload ever travel from the client.
 	 */
 	private async handleSqliteExportCsv(req: Request): Promise<Response> {
-		let body: { source?: unknown; sql?: unknown; filename?: unknown };
+		let body: { source?: unknown; sql?: unknown };
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
@@ -2423,11 +2423,10 @@ export class BacklogServer {
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
-		const filename = typeof body?.filename === "string" ? body.filename : undefined;
 
-		const result = exportSqliteCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, filename });
+		const result = buildSqliteCsv({ projectRoot: this.core.filesystem.rootDir, source, sql });
 		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
-		return Response.json(result.export);
+		return Response.json(result.csv);
 	}
 
 	private async handleUpdateConfig(req: Request): Promise<Response> {

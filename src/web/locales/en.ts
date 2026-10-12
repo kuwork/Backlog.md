@@ -890,7 +890,7 @@ export const en = {
 		copyFailed: "Copy failed",
 		exportCsv: "Export CSV",
 		exporting: "Exporting…",
-		exported: "Saved to",
+		exported: "Exported: {name}",
 		exportFailed: "Export failed",
 	},
 

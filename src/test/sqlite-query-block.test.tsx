@@ -2,8 +2,17 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { UTF8_BOM } from "../sqlite/csv.ts";
 import SqliteQueryBlock from "../web/components/SqliteQueryBlock.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+
+interface FakeWritable {
+	write(data: string): Promise<void>;
+	close(): Promise<void>;
+}
+interface FakeHandle {
+	createWritable(): Promise<FakeWritable>;
+}
 
 const originalFetch = globalThis.fetch;
 const originalWindowGlobal = (globalThis as { window?: typeof window }).window;
@@ -29,6 +38,8 @@ let queryCalls = 0;
 let queryResult: unknown = RESULT;
 /** Every export request body, so the "no rows travel to the server" rule can be asserted. */
 const exportBodies: Record<string, unknown>[] = [];
+/** Every file the stubbed save dialog actually handed to a writable, so the write can be asserted. */
+const savedFiles: { name: string; contents: string }[] = [];
 
 function mount(block: string) {
 	act(() => {
@@ -73,12 +84,39 @@ beforeEach(() => {
 	queryCalls = 0;
 	queryResult = RESULT;
 	exportBodies.length = 0;
+	savedFiles.length = 0;
+	// The File System Access API is Chromium-only; stub it so the save path runs headless and the
+	// written text can be inspected. The dialog "suggests" the server's filename.
+	(globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker = async (options?: {
+		suggestedName?: string;
+	}) => {
+		const handle: FakeHandle = {
+			async createWritable() {
+				const writable: FakeWritable = {
+					async write(data: string) {
+						savedFiles.push({ name: options?.suggestedName ?? "", contents: data });
+					},
+					async close() {},
+				};
+				return writable;
+			},
+		};
+		return handle;
+	};
 	globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
 		if (url.includes("/api/sqlite/export-csv")) {
 			exportBodies.push(JSON.parse(String(init?.body ?? "{}")));
 			return Promise.resolve(
-				new Response(JSON.stringify({ path: "data/shop-export.csv", rows: 1, truncated: false }), { status: 200 }),
+				new Response(
+					JSON.stringify({
+						filename: "shop-20260101-000000.csv",
+						csv: `${UTF8_BOM}name\r\nAlice\r\n`,
+						rows: 1,
+						truncated: false,
+					}),
+					{ status: 200 },
+				),
 			);
 		}
 		if (url.includes("/api/sqlite/query")) {
@@ -99,6 +137,7 @@ afterEach(() => {
 	(globalThis as { window?: typeof window }).window = originalWindowGlobal;
 	(globalThis as { document?: Document }).document = originalDocumentGlobal;
 	(globalThis as { navigator?: Navigator }).navigator = originalNavigatorGlobal;
+	(globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined;
 	globalThis.fetch = originalFetch;
 });
 
@@ -250,7 +289,7 @@ describe("SqliteQueryBlock Copy Markdown", () => {
 });
 
 describe("SqliteQueryBlock Export CSV", () => {
-	it("asks the server to write the file and shows where it landed", async () => {
+	it("fetches the CSV and saves it where the user chose, with no rows leaving the browser", async () => {
 		mount(BLOCK);
 		await settle();
 
@@ -260,9 +299,11 @@ describe("SqliteQueryBlock Export CSV", () => {
 		});
 
 		// The rows never leave the browser: the server re-runs `source` + `sql` behind its own gates,
-		// so an export request cannot be turned into "write this payload at that path".
+		// so an export request cannot carry a payload to write.
 		expect(exportBodies).toEqual([{ source: "backlog/databases/shop.sqlite", sql: "SELECT name\nFROM people" }]);
-		expect(container?.textContent).toContain("data/shop-export.csv");
+		expect(savedFiles).toEqual([{ name: "shop-20260101-000000.csv", contents: `${UTF8_BOM}name\r\nAlice\r\n` }]);
+		// The confirmation names the suggestion, not a server-decided path.
+		expect(container?.textContent).toContain("shop-20260101-000000.csv");
 	});
 
 	it("reports a refusal instead of pretending it worked", async () => {
@@ -270,7 +311,7 @@ describe("SqliteQueryBlock Export CSV", () => {
 		await settle();
 		globalThis.fetch = (() =>
 			Promise.resolve(
-				new Response(JSON.stringify({ error: "导出目标不在项目目录内，已拒绝。" }), { status: 400 }),
+				new Response(JSON.stringify({ error: "source 指向项目目录之外：../outside/shop.sqlite" }), { status: 400 }),
 			)) as unknown as typeof fetch;
 
 		await act(async () => {
@@ -279,14 +320,14 @@ describe("SqliteQueryBlock Export CSV", () => {
 		});
 
 		expect(container?.textContent).toContain("Export failed");
-		expect(container?.textContent).toContain("导出目标不在项目目录内");
+		expect(container?.textContent).toContain("source 指向项目目录之外");
 	});
 
-	it("stays disabled until there is a result to write", async () => {
+	it("hides the button when there is no result to export", async () => {
 		queryResult = { ...RESULT, rows: [] };
 		mount(BLOCK);
 		await settle();
 
-		expect(button("Export CSV").disabled).toBe(true);
+		expect(button("Export CSV")).toBeUndefined();
 	});
 });
