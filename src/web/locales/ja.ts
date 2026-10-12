@@ -878,6 +878,9 @@ export const ja: TranslationDict = {
 		error: "クエリに失敗しました",
 		showQuery: "クエリを表示",
 		hideQuery: "クエリを隠す",
+		copyMarkdown: "Markdown でコピー",
+		copied: "コピーしました",
+		copyFailed: "コピーに失敗しました",
 	},
 
 	imageLightbox: {

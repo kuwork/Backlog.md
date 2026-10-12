@@ -857,6 +857,9 @@ export const zhCN: TranslationDict = {
 		error: "查询失败",
 		showQuery: "显示查询",
 		hideQuery: "隐藏查询",
+		copyMarkdown: "复制为 Markdown",
+		copied: "已复制",
+		copyFailed: "复制失败",
 	},
 
 	imageLightbox: {

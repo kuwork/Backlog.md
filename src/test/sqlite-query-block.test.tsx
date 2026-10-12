@@ -25,6 +25,8 @@ const BROKEN_BLOCK = ["source: backlog/databases/shop.sqlite", "  sql: SELECT na
 let root: Root | null = null;
 let container: HTMLElement | null = null;
 let queryCalls = 0;
+/** Swapped per test: the payload the faked query endpoint answers with. */
+let queryResult: unknown = RESULT;
 
 function mount(block: string) {
 	act(() => {
@@ -48,6 +50,12 @@ function toggle(): HTMLButtonElement {
 	return buttons.find((button) => /query/i.test(button.textContent ?? "")) as HTMLButtonElement;
 }
 
+function button(label: string): HTMLButtonElement {
+	return Array.from(container?.querySelectorAll("button") ?? []).find(
+		(candidate) => candidate.textContent === label,
+	) as HTMLButtonElement;
+}
+
 beforeEach(() => {
 	const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
 		url: "http://localhost:6421/",
@@ -61,15 +69,12 @@ beforeEach(() => {
 	globalThis.cancelAnimationFrame = (id: number) => clearTimeout(id);
 
 	queryCalls = 0;
-	globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+	queryResult = RESULT;
+	globalThis.fetch = ((input: RequestInfo | URL) => {
 		const url = String(input);
 		if (url.includes("/api/sqlite/query")) {
 			queryCalls++;
-			const body = init?.body ? JSON.parse(String(init.body)) : {};
-			if (body.source === "") {
-				return Promise.resolve(new Response(JSON.stringify({ error: "bad" }), { status: 400 }));
-			}
-			return Promise.resolve(new Response(JSON.stringify(RESULT), { status: 200 }));
+			return Promise.resolve(new Response(JSON.stringify(queryResult), { status: 200 }));
 		}
 		return Promise.resolve(new Response("{}", { status: 200 }));
 	}) as unknown as typeof fetch;
@@ -150,5 +155,87 @@ describe("SqliteQueryBlock Show/Hide Query", () => {
 		});
 
 		expect(container?.querySelector("pre")?.textContent).toBe(BROKEN_BLOCK);
+	});
+});
+
+describe("SqliteQueryBlock Copy Markdown", () => {
+	const writes: string[] = [];
+
+	function stubClipboard() {
+		writes.length = 0;
+		(globalThis as { navigator?: Navigator }).navigator = {
+			clipboard: {
+				writeText: (text: string) => {
+					writes.push(text);
+					return Promise.resolve();
+				},
+			},
+		} as unknown as Navigator;
+	}
+
+	async function clickCopy() {
+		await act(async () => {
+			button("Copy Markdown").click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+	}
+
+	it("copies the rendered grid as a Markdown table", async () => {
+		stubClipboard();
+		mount(BLOCK);
+		await settle();
+		await clickCopy();
+
+		expect(writes).toEqual(["| name |\n| --- |\n| Alice |"]);
+		expect(button("Copied")).toBeTruthy();
+	});
+
+	it("copies a value view as the bare scalar", async () => {
+		stubClipboard();
+		mount(`${BLOCK}\nview: value`);
+		await settle();
+		await clickCopy();
+
+		expect(writes).toEqual(["Alice"]);
+	});
+
+	it("falls back to a textarea when the async clipboard API is missing", async () => {
+		// jsdom has no navigator.clipboard, which is also what a non-secure origin looks like.
+		mount(BLOCK);
+		await settle();
+
+		const seen: string[] = [];
+		const originalAppend = document.body.appendChild.bind(document.body);
+		(document.body as unknown as { appendChild: (node: Node) => Node }).appendChild = (node: Node) => {
+			if ((node as HTMLElement).tagName === "TEXTAREA") seen.push((node as HTMLTextAreaElement).value);
+			return originalAppend(node);
+		};
+		(document as unknown as { execCommand: (command: string) => boolean }).execCommand = () => true;
+
+		await clickCopy();
+
+		(document.body as unknown as { appendChild: (node: Node) => Node }).appendChild = originalAppend;
+		expect(seen).toEqual(["| name |\n| --- |\n| Alice |"]);
+		expect(button("Copied")).toBeTruthy();
+		expect(document.querySelector("textarea")).toBeNull();
+	});
+
+	it("reports the failure instead of silently doing nothing", async () => {
+		mount(BLOCK);
+		await settle();
+		(document as unknown as { execCommand: (command: string) => boolean }).execCommand = () => false;
+
+		await clickCopy();
+
+		expect(button("Copy failed")).toBeTruthy();
+	});
+
+	it("leaves the action disabled and unlabelled when there is nothing to copy", async () => {
+		queryResult = { ...RESULT, rows: [] };
+		stubClipboard();
+		mount(BLOCK);
+		await settle();
+
+		expect(button("Copy Markdown").disabled).toBe(true);
 	});
 });

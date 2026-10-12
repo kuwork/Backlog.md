@@ -885,6 +885,9 @@ export const en = {
 		error: "Query failed",
 		showQuery: "Show query",
 		hideQuery: "Hide query",
+		copyMarkdown: "Copy Markdown",
+		copied: "Copied",
+		copyFailed: "Copy failed",
 	},
 
 	imageLightbox: {

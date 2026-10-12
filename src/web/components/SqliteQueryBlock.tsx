@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { parseSqliteQueryBlock, type SqliteQueryView } from "../../sqlite/block.ts";
+import { cellToMarkdown, resultToMarkdownTable } from "../../sqlite/markdown.ts";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, type SqliteCell, type SqliteQueryResult } from "../lib/api";
 
@@ -33,6 +34,38 @@ const PRE_RESET: CSSProperties = {
 function renderCell(cell: SqliteCell): ReactNode {
 	if (cell === null) return <span className="text-gray-400 dark:text-gray-500">NULL</span>;
 	return String(cell);
+}
+
+/** How long a button stays on its confirmation before reverting to the action label. */
+const CONFIRMATION_MS = 2000;
+
+/**
+ * `navigator.clipboard` is unavailable outside a secure context, and this app is reachable over a
+ * plain http LAN address often enough for that to matter. The textarea route is deprecated but is
+ * still the only thing that works there, so it is the fallback rather than nothing.
+ */
+async function writeClipboard(text: string): Promise<void> {
+	if (navigator.clipboard?.writeText) {
+		try {
+			await navigator.clipboard.writeText(text);
+			return;
+		} catch {
+			/* fall through to the textarea below */
+		}
+	}
+	const textarea = document.createElement("textarea");
+	textarea.value = text;
+	textarea.setAttribute("readonly", "");
+	textarea.style.position = "fixed";
+	textarea.style.opacity = "0";
+	document.body.appendChild(textarea);
+	textarea.select();
+	try {
+		const copied = document.execCommand?.("copy") ?? false;
+		if (!copied) throw new Error("document.execCommand('copy') refused");
+	} finally {
+		document.body.removeChild(textarea);
+	}
 }
 
 /**
@@ -73,6 +106,30 @@ export default function SqliteQueryBlock({ block }: Props) {
 
 	const refresh = useCallback(() => setNonce((value) => value + 1), []);
 	const view: SqliteQueryView = parsed.ok ? parsed.block.view : "table";
+
+	// Only what the reader already sees on screen is copied - a truncated grid copies the rows that
+	// were loaded, which is exactly what the truncation note under the table says is there.
+	const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+	const copyMarkdown = useMemo(() => {
+		if (state.status !== "ready" || state.result.rows.length === 0) return null;
+		return view === "value" ? cellToMarkdown(state.result.rows[0]?.[0] ?? null) : resultToMarkdownTable(state.result);
+	}, [state, view]);
+
+	const copy = useCallback(async () => {
+		if (!copyMarkdown) return;
+		try {
+			await writeClipboard(copyMarkdown);
+			setCopyState("copied");
+		} catch {
+			setCopyState("failed");
+		}
+	}, [copyMarkdown]);
+
+	useEffect(() => {
+		if (copyState === "idle") return;
+		const timer = setTimeout(() => setCopyState("idle"), CONFIRMATION_MS);
+		return () => clearTimeout(timer);
+	}, [copyState]);
 
 	let body: ReactNode;
 	if (!parsed.ok) {
@@ -188,6 +245,18 @@ export default function SqliteQueryBlock({ block }: Props) {
 						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 					>
 						{queryOpen ? t.sqliteQueryBlock.hideQuery : t.sqliteQueryBlock.showQuery}
+					</button>
+					<button
+						type="button"
+						onClick={copy}
+						disabled={!copyMarkdown}
+						className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+					>
+						{copyState === "copied"
+							? t.sqliteQueryBlock.copied
+							: copyState === "failed"
+								? t.sqliteQueryBlock.copyFailed
+								: t.sqliteQueryBlock.copyMarkdown}
 					</button>
 					<button
 						type="button"
