@@ -2797,7 +2797,7 @@ export class BacklogServer {
 	}
 
 	/**
-	 * POST /api/graph/cypher - run a read-only Cypher statement against the graph store (kuzu
+	 * POST /api/graph/cypher - run a read-only Cypher statement against the graph store (ryu
 	 * backend) and return the first result set, flattened, plus the FileNode keys found so the UI
 	 * can highlight the matched subgraph. The store rejects write keywords and the memory backend.
 	 */

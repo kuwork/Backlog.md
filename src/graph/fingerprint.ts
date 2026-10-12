@@ -41,7 +41,7 @@ export interface FileFingerprint {
 export interface MetaCache {
 	parserVersion: number;
 	/** Which store backend built the cached graph; a mismatch forces a rebuild. */
-	backend: "kuzu" | "memory";
+	backend: "ryu" | "memory";
 	fingerprint: string | null;
 	files: Record<string, FileFingerprint>;
 }
@@ -77,7 +77,7 @@ export function loadMetaCache(sidecarPath: string): MetaCache | null {
 		}
 		return {
 			parserVersion: Number(parsed.parserVersion ?? PARSER_VERSION),
-			backend: parsed.backend === "kuzu" ? "kuzu" : "memory",
+			backend: parsed.backend === "ryu" ? "ryu" : "memory",
 			fingerprint: parsed.fingerprint ?? null,
 			files: parsed.files,
 		};

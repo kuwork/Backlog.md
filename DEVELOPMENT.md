@@ -20,25 +20,18 @@ Format and lint:
 npx biome check .
 ```
 
-### Graph backend (kuzu)
+### Graph backend (ryu)
 
-Cypher graph search (BACK-765) requires the kuzu backend, opted into with
-`BACKLOG_GRAPH_BACKEND=kuzu`. The kuzu native binding cannot load under a
-process not named `node.exe` on Windows (it segfaults, see
-[kuzudb/kuzu#5672](https://github.com/kuzudb/kuzu/issues/5672)), which plain
-`bun` always triggers, so use the shim scripts — they run a copy of bun renamed
-to `node.exe`:
+Cypher graph search (BACK-765) runs on the **ryu** backend, which is the default -
+no environment variable is needed. ryu is the WebAssembly build of RyuGraph (a Kuzu
+fork), so it runs inside Bun's WebAssembly runtime and avoids the native NAPI segfault
+that blocks the original Kuzu binding on Windows+Bun. Set `BACKLOG_GRAPH_BACKEND=memory`
+to force the pure-JS degraded mode (no Cypher support, but it can never crash the
+CLI/Web).
 
-```bash
-scripts/dev-kuzu.sh    # Git Bash / WSL
-scripts\dev-kuzu.ps1   # PowerShell（Ctrl+C 直接停止，无提示）
-scripts\dev-kuzu.cmd   # cmd（Ctrl+C 会询问 "Terminate batch job (Y/N)?"，按 Y 即可）
-```
-
-Without them the server still works but falls back to the memory backend, where
-`/api/graph/cypher` rejects queries with a "needs kuzu" message. Note kuzu is a
-pinned, archived dependency (last release 0.11.3); its successor LadybugDB
-(`@ladybugdb/core`) was evaluated but cannot load under Bun on Windows either.
+The Kuzu native dependency was removed (BACK-768); ryu's single arch-independent
+`.wasm` covers all six packaged platforms, whereas Kuzu would have needed a per-platform
+native sidecar.
 
 For contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

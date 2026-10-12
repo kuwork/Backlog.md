@@ -85,8 +85,8 @@ export interface ColdStartResult {
 }
 
 export interface ColdStartOptions {
-	/** Force the native kuzu backend; default is the in-memory degraded mode (see store.ts). */
-	backend?: "kuzu" | "memory";
+	/** Force the Cypher backend (ryu); default is the in-memory degraded mode (see store.ts). */
+	backend?: "ryu" | "memory";
 	dirs?: WhitelistDirs;
 	/** Instance slot that picks the cache entry; see paths.ts. */
 	slot?: GraphSlot;
@@ -179,7 +179,7 @@ export async function coldStart(projectRoot: string, options: ColdStartOptions =
 			records,
 		};
 	} finally {
-		// Only the native backend owns OS resources; memory singletons stay warm by design.
-		if (store.backend === "kuzu") await store.close();
+		// Only the persistent (WASM) backend owns OS resources; memory singletons stay warm by design.
+		if (store.backend === "ryu") await store.close();
 	}
 }
