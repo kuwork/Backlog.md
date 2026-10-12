@@ -44,6 +44,14 @@ export interface MetaCache {
 	backend: "ryu" | "memory";
 	fingerprint: string | null;
 	files: Record<string, FileFingerprint>;
+	/**
+	 * Content hash of the derived-graph snapshot written for this exact corpus state, or null/absent
+	 * when there is none. It is what lets a cold CLI process tell "this snapshot belongs to the
+	 * corpus I am looking at" from "I cannot know, so rebuild" (BACK-772).
+	 */
+	snapshotFingerprint?: string | null;
+	/** Graph schema version the snapshot was written with; a mismatch invalidates the snapshot. */
+	graphSchemaVersion?: number;
 }
 
 export function computeFileHash(content: string): string {
@@ -80,6 +88,8 @@ export function loadMetaCache(sidecarPath: string): MetaCache | null {
 			backend: parsed.backend === "ryu" ? "ryu" : "memory",
 			fingerprint: parsed.fingerprint ?? null,
 			files: parsed.files,
+			snapshotFingerprint: parsed.snapshotFingerprint ?? null,
+			graphSchemaVersion: typeof parsed.graphSchemaVersion === "number" ? parsed.graphSchemaVersion : undefined,
 		};
 	} catch {
 		return null; // corrupt cache == null fingerprint == full rebuild
