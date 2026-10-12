@@ -44,6 +44,7 @@
     "mammoth": "1.12.0",
     "mermaid": "11.16.1",
     "neo-neo-bblessed": "1.0.10",
+    "patch-package": "^8.0.1",
     "picocolors": "1.1.1",
     "proper-lockfile": "4.1.2",
     "react": "19.2.5",
@@ -66,7 +67,7 @@
     "mcp": "bun src/cli.ts mcp start",
     "update-nix": "sh scripts/update-nix.sh",
     "benchmark:task-loading": "bun scripts/benchmark-task-loading.ts",
-    "postinstall": "node scripts/postinstall.cjs"
+    "postinstall": "node scripts/postinstall.cjs && node scripts/patch-ryugraph.cjs"
   },
   "lint-staged": {
     "package.json": [
@@ -101,7 +102,6 @@
   "trustedDependencies": [
     "@biomejs/biome",
     "bun",
-    "kuzu",
     "node-pty"
   ],
   "dependencies": {
@@ -113,6 +113,6 @@
     "d3-transition": "^3.0.1",
     "d3-zoom": "^3.0.0",
     "get-port": "^7.2.0",
-    "kuzu": "0.11.3"
+    "ryugraph-wasm": "25.9.2"
   }
 }

@@ -7,13 +7,13 @@
  * path, create the new path, rebuild edges - with no second identity to keep in sync.
  *
  * Two backends implement the same interface:
- * - KuzuGraphStore: the real embedded Kuzu database (a hashed cache file, see graph/paths.ts). The
- *   native binding segfaults when loaded from Bun on this machine (doc-014 §5 anticipated Windows
- *   packaging issues), so it is only activated when explicitly requested - e.g. a host process
- *   running on Node - or via BACKLOG_GRAPH_BACKEND=kuzu.
+ * - RyuGraphStore: the WebAssembly build of RyuGraph (a Kuzu fork). It is the DEFAULT backend, since
+ *   the WASM runs inside Bun's WebAssembly runtime and avoids the native NAPI segfault that blocks
+ *   Kuzu on Windows+Bun - so Cypher search works out of the box on every platform.
  * - MemoryGraphStore: a pure-JS in-memory fallback (the doc's ":memory:" degraded mode). Always
- *   available, used by default so a crash in the native module can never take the CLI/Web down.
- *   Durability is delegated to the fingerprint cache: a rebuilt graph is identical by construction.
+ *   available, used only when BACKLOG_GRAPH_BACKEND=memory is set or when the ryu WASM backend fails
+ *   to initialise - so a native/WASM failure can never take the CLI/Web down. Durability is delegated
+ *   to the fingerprint cache: a rebuilt graph is identical by construction.
  *
  * Markdown files remain the single source of truth (doc-014 §0); the store is a derived cache and
  * every mutation here is driven by file-system reconciliation only.
@@ -75,10 +75,10 @@ export interface CypherQueryResult {
 }
 
 export interface GraphStore {
-	readonly backend: "kuzu" | "memory";
+	readonly backend: "ryu" | "memory";
 	/**
 	 * Open the store. A persistent backend also verifies that the file it opens is at
-	 * SCHEMA_VERSION and rebuilds it from scratch when it is not - see KuzuGraphStore.init.
+	 * SCHEMA_VERSION and rebuilds it from scratch when it is not - see RyuGraphStore.init.
 	 */
 	init(): Promise<void>;
 	close(): Promise<void>;
@@ -115,8 +115,8 @@ export interface GraphStore {
 	getMeta(key: string): Promise<string | null>;
 	/**
 	 * Run a read-only Cypher statement against the store and return its first result set, flattened
-	 * for JSON. The kuzu backend executes native Cypher; the memory backend does not support it and
-	 * rejects the call so the UI can surface a clear "use the kuzu backend" message.
+	 * for JSON. The ryu backend executes native Cypher; the memory backend does not support it and
+	 * rejects the call so the UI can surface a clear "use the ryu backend" message.
 	 */
 	runCypher(statement: string): Promise<CypherQueryResult>;
 }
@@ -227,7 +227,7 @@ export class MemoryGraphStore implements GraphStore {
 
 	async runCypher(): Promise<CypherQueryResult> {
 		throw new Error(
-			"Cypher 检索需要 kuzu 图后端：请设置 BACKLOG_GRAPH_BACKEND=kuzu 后重启 Backlog 服务，再使用此功能。",
+			"Cypher 检索需要支持 Cypher 的图后端（ryu）；当前运行在 memory 降级模式，不支持 Cypher。设置 BACKLOG_GRAPH_BACKEND=ryu 后重启，或移除该变量以回退到默认的 ryu 后端。",
 		);
 	}
 }
@@ -235,7 +235,7 @@ export class MemoryGraphStore implements GraphStore {
 /**
  * The shape a cache file must have. Bump this whenever SCHEMA_DDL below changes - a renamed table,
  * an added or removed column, a different primary key - and nothing else has to change: a file that
- * records any other version is wiped and rebuilt at open time (see KuzuGraphStore.init).
+ * records any other version is wiped and rebuilt at open time (see RyuGraphStore.init).
  *
  * The value is written into the database's own Meta table, so a cache file describes its own
  * schema. That matters because kuzu's `CREATE ... IF NOT EXISTS` is a silent no-op for a name that
@@ -252,7 +252,7 @@ export class MemoryGraphStore implements GraphStore {
  */
 export const SCHEMA_VERSION = 2;
 
-/** The Meta row holding SCHEMA_VERSION inside the database. Only the kuzu backend persists a file. */
+/** The Meta row holding SCHEMA_VERSION inside the database. Only the ryu backend persists a file. */
 export const SCHEMA_VERSION_KEY = "schemaVersion";
 
 /** Whether a version read back from a database is the one this build writes. Missing = stale. */
@@ -283,51 +283,186 @@ export const EDGE_TYPES = [...FILE_EDGE_TYPES, ...TAG_EDGE_TYPES] as const;
 const NODE_BATCH_SIZE = 100;
 
 /**
- * Edge-import CSV. Node paths are file names, so unlike ids they may well contain a comma, a quote
- * or a newline - quote (and escape) anything that would otherwise split the row.
+ * Bulk-insert edges for a store backend via UNWIND + MATCH + MERGE. We deliberately avoid COPY ... FROM
+ * CSV here: ryu COPY for relationship tables is fussy about column naming, and under RyuGraph's
+ * WASM build it silently imports zero edges - which would leave the graph view with nodes but no
+ * connections. MERGE keeps each (from,to) pair unique per edge type, matching the in-memory store's
+ * dedup semantics. An edge whose endpoint node is absent is simply skipped (MATCH does not bind), so a
+ * stale edge never throws.
  */
-function csvField(value: string): string {
-	return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+async function upsertEdgesViaRunner(
+	run: (sql: string, params: Record<string, unknown>) => Promise<void>,
+	edges: GraphEdge[],
+): Promise<void> {
+	const byType = new Map<GraphEdgeType, Array<{ from: string; to: string }>>();
+	for (const edge of edges) {
+		const list = byType.get(edge.type) ?? [];
+		list.push({ from: edge.from, to: edge.to });
+		byType.set(edge.type, list);
+	}
+	for (const [type, pairs] of byType) {
+		if (pairs.length === 0) continue;
+		const target = TAG_EDGE_TYPES.includes(type as "TaggedWith") ? "Tag {name: pair.to}" : "FileNode {path: pair.to}";
+		const sql = `UNWIND $pairs AS pair MATCH (a:FileNode {path: pair.from}), (b:${target}) MERGE (a)-[:${type}]->(b)`;
+		await run(sql, { pairs });
+	}
 }
 
-async function writeEdgeCsv(type: GraphEdgeType, edges: GraphEdge[]): Promise<string> {
-	const { join } = await import("node:path");
-	const { mkdtemp, writeFile } = await import("node:fs/promises");
-	const { tmpdir } = await import("node:os");
-	const dir = await mkdtemp(join(tmpdir(), "backlog-kuzu-"));
-	const csvPath = join(dir, `${type.toLowerCase()}.csv`);
-	const lines = ["from,to", ...edges.map((e) => `${csvField(e.from)},${csvField(e.to)}`)];
-	await writeFile(csvPath, `${lines.join("\n")}\n`, "utf8");
-	return csvPath;
+/**
+ * Resolve the requested graph backend. Default is "ryu" (the RyuGraph WASM build, which runs under
+ * Bun/Windows without the native NAPI segfault that blocks Kuzu). An explicit "memory" choice - via
+ * the option or the BACKLOG_GRAPH_BACKEND env var - wins; anything else defaults to ryu.
+ */
+export function resolveGraphBackend(backend?: string): "ryu" | "memory" {
+	const choice = backend ?? process.env.BACKLOG_GRAPH_BACKEND;
+	if (choice === "memory") return choice;
+	return "ryu";
 }
 
-type KuzuModule = typeof import("kuzu");
+type RyuModule = any;
 
-let kuzuModule: KuzuModule | null = null;
+let ryuModule: RyuModule | null = null;
 
-/** Load the kuzu native module. Never called implicitly - see the backend-selection notes above. */
-async function loadKuzu(): Promise<KuzuModule> {
-	if (!kuzuModule) kuzuModule = (await import("kuzu")) as KuzuModule;
-	return kuzuModule;
+/**
+ * Load the RyuGraph WASM module (a Kuzu fork). The WASM build runs in Bun's WebAssembly runtime, so
+ * it works under Bun/Windows where Kuzu's native binding cannot. `init()` must be awaited once before
+ * any Database is constructed. Never called implicitly for the default backend.
+ */
+async function loadRyu(): Promise<RyuModule> {
+	if (!ryuModule) {
+		const mod: any = await import("ryugraph-wasm/sync");
+		ryuModule = (mod.default ?? mod) as RyuModule;
+		await ryuModule.init();
+	}
+	return ryuModule;
 }
 
-export function isKuzuRequested(backend?: string): boolean {
-	const choice = backend ?? process.env.BACKLOG_GRAPH_BACKEND ?? "memory";
-	return choice === "kuzu";
+/** A kuzu/ryu node value: has `_label` and no relationship endpoints. */
+function isCypherNode(value: unknown): value is Record<string, unknown> {
+	return (
+		typeof value === "object" && value !== null && !Array.isArray(value) && "_label" in value && !("_src" in value)
+	);
 }
 
-export class KuzuGraphStore implements GraphStore {
-	readonly backend = "kuzu" as const;
+/** A kuzu/ryu relationship value: carries `_src`/`_dst` endpoints. */
+function isCypherRel(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value) && "_src" in value && "_dst" in value;
+}
 
-	private db: import("kuzu").Database | null = null;
-	private conn: import("kuzu").Connection | null = null;
+/** A kuzu/ryu path value: a node/relationship chain. */
+function isCypherPath(value: unknown): value is { _nodes: unknown[]; _rels: unknown[] } {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		Array.isArray((value as { _nodes?: unknown })._nodes)
+	);
+}
+
+/**
+ * Collect FileNode keys (path and id) from a result cell so the UI can highlight the matched
+ * subgraph. Walks nodes, paths and arrays; a bare string that already looks like a node path
+ * (a `RETURN n.path`) is kept too - the client narrows to keys it actually knows about.
+ */
+function collectCypherNodeKeys(value: unknown, keys: Set<string>): void {
+	if (isCypherNode(value)) {
+		if (value._label === "FileNode") {
+			const path = value.path;
+			const id = value.id;
+			if (typeof path === "string" && path) keys.add(path);
+			if (typeof id === "string" && id) keys.add(id);
+		}
+		return;
+	}
+	if (isCypherPath(value)) {
+		for (const node of value._nodes) collectCypherNodeKeys(node, keys);
+		return;
+	}
+	if (Array.isArray(value)) {
+		for (const item of value) collectCypherNodeKeys(item, keys);
+		return;
+	}
+	if (typeof value === "string" && value.includes("/")) keys.add(value);
+}
+
+/** Flatten a kuzu/ryu value into a JSON-serializable shape for transport to the UI. */
+function serializeCypherValue(value: unknown): unknown {
+	if (value === null || value === undefined) return value;
+	if (typeof value !== "object") return value;
+	if (Array.isArray(value)) return value.map(serializeCypherValue);
+	const out: Record<string, unknown> = {};
+	if (isCypherNode(value) || isCypherRel(value)) out._label = value._label;
+	for (const [key, val] of Object.entries(value)) {
+		if (key === "_id" || key === "_src" || key === "_dst") continue;
+		out[key] = serializeCypherValue(val);
+	}
+	return out;
+}
+
+/**
+ * Parse one cell of RyuGraph's CLI-style `toString()` output back into a value the shared
+ * serialize/collect helpers understand. Node/relationship cells render as `{_LABEL: FileNode,
+ * path: ..., id: ..., ...}` (note the UPPER-CASE internal keys) - we normalise them to the
+ * lower-case `_label`/`_id`/`_src`/`_dst` shape the helpers expect. Anything else is a scalar: bare
+ * numbers are coerced for display fidelity, everything else stays a string. This is the int64-safe
+ * recovery path used when Bun's embind cannot convert an INT64 result column (see rowsFromResult).
+ */
+function parseCypherCell(text: string): unknown {
+	const t = text.trim();
+	if (t.startsWith("{") && t.endsWith("}")) {
+		const obj: Record<string, unknown> = {};
+		const re = /([A-Za-z_][\w]*):\s*("([^"]*)"|'([^']*)'|[^,}]*)/g;
+		let m = re.exec(t);
+		while (m) {
+			const rawKey = m[1];
+			let value = (m[2] ?? "").trim();
+			if (
+				value.length >= 2 &&
+				((value[0] === '"' && value[value.length - 1] === '"') || (value[0] === "'" && value[value.length - 1] === "'"))
+			) {
+				value = value.slice(1, -1);
+			}
+			const key =
+				rawKey === "_LABEL"
+					? "_label"
+					: rawKey === "_ID"
+						? "_id"
+						: rawKey === "_SRC"
+							? "_src"
+							: rawKey === "_DST"
+								? "_dst"
+								: rawKey;
+			if (key) obj[key] = value;
+			m = re.exec(t);
+		}
+		return obj;
+	}
+	if (/^-?\d+$/.test(t)) return Number(t);
+	if (/^-?\d*\.\d+$/.test(t)) return Number(t);
+	return t;
+}
+
+/**
+ * RyuGraph (Kuzu fork) backend over its WebAssembly build - the Cypher engine that works under
+ * Bun/Windows, where Kuzu's native NAPI binding segfaults. It is the only Cypher-capable backend
+ * (the native Kuzu store was removed in BACK-768); the result accessor differs from kuzu's: Ryu's
+ * QueryResult exposes `getAllRows()` (a column-parallel array) instead of `getAll()` (objects keyed
+ * by column name), so `rowsFromResult` zips the column names back before the shared serialize/collect helpers
+ * run. The WASM module is loaded + `init()`-ed lazily by `loadRyu` because importing it from the
+ * default (memory) backend must never pull a native or WASM dependency in.
+ */
+export class RyuGraphStore implements GraphStore {
+	readonly backend = "ryu" as const;
+
+	private db: any = null;
+	private conn: any = null;
 
 	constructor(private readonly dbPath: string) {}
 
 	async init(): Promise<void> {
-		const kuzu = await loadKuzu();
-		this.db = new kuzu.Database(this.dbPath);
-		this.conn = new kuzu.Connection(this.db);
+		const ryu = await loadRyu();
+		this.db = new ryu.Database(this.dbPath);
+		this.conn = new ryu.Connection(this.db);
 		// The file says which schema it was built with, so a reusable file is recognised without
 		// consulting anything outside it (the sidecar cache, the caller's expectations).
 		if (isCurrentSchema(await this.readSchemaVersion())) {
@@ -343,7 +478,7 @@ export class KuzuGraphStore implements GraphStore {
 			this.conn = null;
 		}
 		if (this.db) {
-			await this.db.close(); // releases the kuzu file lock for the next opener
+			await this.db.close(); // releases the file lock for the next opener
 			this.db = null;
 		}
 	}
@@ -351,7 +486,7 @@ export class KuzuGraphStore implements GraphStore {
 	/**
 	 * Empty the graph and stamp it with the current schema. The tables are enumerated rather than
 	 * named: a rename leaves a table this build has never heard of, and it has to go too. Rel tables
-	 * come first because kuzu refuses to drop a node table a relationship table still references.
+	 * come first because ryu refuses to drop a node table a relationship table still references.
 	 */
 	async clear(): Promise<void> {
 		for (const table of await this.listTables()) await this.exec(`DROP TABLE IF EXISTS ${table}`);
@@ -366,7 +501,7 @@ export class KuzuGraphStore implements GraphStore {
 	/** Table names in this file, relationship tables first so the node tables are droppable. */
 	private async listTables(): Promise<string[]> {
 		const result = await this.query("CALL show_tables() RETURN name, type");
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		const tables = rows.map((row) => ({ name: String(row.name), rel: String(row.type) === "REL" }));
 		return [...tables.filter((t) => t.rel), ...tables.filter((t) => !t.rel)].map((t) => t.name);
@@ -424,7 +559,7 @@ export class KuzuGraphStore implements GraphStore {
 
 	async getAllTags(): Promise<string[]> {
 		const result = await this.query("MATCH (t:Tag) RETURN t.name AS name");
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		return rows.map((row) => String(row.name));
 	}
@@ -442,7 +577,6 @@ export class KuzuGraphStore implements GraphStore {
 				{ paths },
 			);
 		}
-		// A tag name is not a path, so only the tagged file end can match here.
 		for (const type of TAG_EDGE_TYPES) {
 			await this.executePrepared(`MATCH (a:FileNode)-[r:${type}]->(t:Tag) WHERE a.path IN $paths DELETE r`, {
 				paths,
@@ -454,7 +588,7 @@ export class KuzuGraphStore implements GraphStore {
 		const result = await this.query(
 			"MATCH (n:FileNode) RETURN n.path AS path, n.id AS id, n.type AS type, n.title AS title, n.status AS status, n.updatedDate AS updatedDate",
 		);
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		return rows.map(toGraphNode);
 	}
@@ -465,13 +599,13 @@ export class KuzuGraphStore implements GraphStore {
 			const result = await this.query(
 				`MATCH (a:FileNode)-[r:${type}]->(b:FileNode) RETURN a.path AS from, b.path AS to`,
 			);
-			const rows = await result.getAll();
+			const rows = await this.rowsFromResult(result);
 			await this.closeResult(result);
 			for (const row of rows) edges.push({ type, from: String(row.from), to: String(row.to) });
 		}
 		for (const type of TAG_EDGE_TYPES) {
 			const result = await this.query(`MATCH (a:FileNode)-[r:${type}]->(t:Tag) RETURN a.path AS from, t.name AS to`);
-			const rows = await result.getAll();
+			const rows = await this.rowsFromResult(result);
 			await this.closeResult(result);
 			for (const row of rows) edges.push({ type, from: String(row.from), to: String(row.to) });
 		}
@@ -479,32 +613,19 @@ export class KuzuGraphStore implements GraphStore {
 	}
 
 	async upsertEdges(edges: GraphEdge[]): Promise<void> {
-		// Deduplicate - one edge per (type, from, to); kuzu's COPY would happily insert twice.
-		const unique = new Map<string, GraphEdge>();
-		for (const edge of edges) unique.set(edgeKey(edge.type, edge.from, edge.to), edge);
-		for (const type of EDGE_TYPES) {
-			const selected = [...unique.values()].filter((e) => e.type === type);
-			if (selected.length === 0) continue;
-			const csvPath = await writeEdgeCsv(type, selected);
-			try {
-				await this.exec(`COPY ${type} FROM '${csvPath.replace(/\\/g, "/")}' (HEADER=true)`);
-			} finally {
-				const { unlink } = await import("node:fs/promises");
-				await unlink(csvPath).catch(() => {}); // temp file best-effort cleanup
-			}
-		}
+		await upsertEdgesViaRunner((sql, params) => this.executePrepared(sql, params), edges);
 	}
 
 	async countNodes(): Promise<number> {
 		const result = await this.query("MATCH (n:FileNode) RETURN count(n) AS c");
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		return Number(rows[0]?.c ?? 0);
 	}
 
 	async countEdges(type: GraphEdgeType): Promise<number> {
 		const result = await this.query(`MATCH (:FileNode)-[r:${type}]->() RETURN count(r) AS c`);
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		return Number(rows[0]?.c ?? 0);
 	}
@@ -518,7 +639,7 @@ export class KuzuGraphStore implements GraphStore {
 			"MATCH (n:FileNode {path: $path}) RETURN n.path AS path, n.id AS id, n.type AS type, n.title AS title, n.status AS status, n.updatedDate AS updatedDate LIMIT 1",
 			{ path },
 		);
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		const row = rows[0];
 		return row ? toGraphNode(row) : null;
@@ -536,7 +657,7 @@ export class KuzuGraphStore implements GraphStore {
 		const result = await this.queryWithParams("MATCH (m:Meta {name: $name}) RETURN m.value AS value LIMIT 1", {
 			name: key,
 		});
-		const rows = await result.getAll();
+		const rows = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		const row = rows[0];
 		return row ? String(row.value) : null;
@@ -557,7 +678,7 @@ export class KuzuGraphStore implements GraphStore {
 			throw new Error("Cypher 检索仅支持只读查询（MATCH / RETURN / WITH / CALL），已阻止写操作以保护图谱缓存。");
 		}
 		const result = await this.query(trimmed);
-		const rowObjects = await result.getAll();
+		const rowObjects = await this.rowsFromResult(result);
 		await this.closeResult(result);
 		const MAX_ROWS = 500;
 		const truncated = rowObjects.length > MAX_ROWS;
@@ -565,7 +686,7 @@ export class KuzuGraphStore implements GraphStore {
 		const nodeKeys = new Set<string>();
 		const rows = slice.map((row) =>
 			Object.keys(row).map((key) => {
-				const cell = (row as Record<string, unknown>)[key];
+				const cell = row[key];
 				collectCypherNodeKeys(cell, nodeKeys);
 				return serializeCypherValue(cell);
 			}),
@@ -575,31 +696,28 @@ export class KuzuGraphStore implements GraphStore {
 		return { columns, rows, nodeKeys: [...nodeKeys], truncated };
 	}
 
-	private connection(): import("kuzu").Connection {
-		if (!this.conn) throw new Error("KuzuGraphStore used before init()");
+	private connection(): any {
+		if (!this.conn) throw new Error("RyuGraphStore used before init()");
 		return this.conn;
 	}
 
-	private async query(statement: string): Promise<import("kuzu").QueryResult> {
+	private async query(statement: string): Promise<any> {
 		const result = await this.connection().query(statement);
 		if (Array.isArray(result)) {
 			const first = result[0];
-			if (!first) throw new Error("kuzu returned an empty multi-result set");
+			if (!first) throw new Error("ryu returned an empty multi-result set");
 			return first;
 		}
 		return result;
 	}
 
-	private async queryWithParams(
-		statement: string,
-		params: Record<string, unknown>,
-	): Promise<import("kuzu").QueryResult> {
+	private async queryWithParams(statement: string, params: Record<string, unknown>): Promise<any> {
 		const prepared = await this.connection().prepare(statement);
-		if (!prepared.isSuccess()) throw new Error(`kuzu prepare failed: ${prepared.getErrorMessage()}`);
+		if (!prepared.isSuccess()) throw new Error(`ryu prepare failed: ${prepared.getErrorMessage()}`);
 		const result = await this.connection().execute(prepared, params as Record<string, never>);
 		if (Array.isArray(result)) {
 			const first = result[0];
-			if (!first) throw new Error("kuzu returned an empty multi-result set");
+			if (!first) throw new Error("ryu returned an empty multi-result set");
 			return first;
 		}
 		return result;
@@ -616,73 +734,60 @@ export class KuzuGraphStore implements GraphStore {
 		await this.closeResult(result);
 	}
 
-	private async closeResult(result: import("kuzu").QueryResult | import("kuzu").QueryResult[]) {
-		for (const r of Array.isArray(result) ? result : [result]) {
-			await r.close?.();
+	/**
+	 * Normalize a RyuGraph QueryResult into kuzu/ryu-shaped row objects. Ryu's QueryResult exposes
+	 * `getAllRows()` (a column-parallel array) rather than the object-keyed shape kuzu uses; we zip
+	 * the column names back so the shared serialize/collect helpers - which
+	 * expect `{ column: value }` rows - keep working unchanged. Under Bun, `getAllRows()` throws on
+	 * any INT64 column (count/size/sum/arithmetic) because embind's ToBigInt cannot cross the
+	 * WASM boundary - we recover via the int64-safe `toString()` representation in that case.
+	 */
+	private async rowsFromResult(result: any): Promise<Record<string, unknown>[]> {
+		const cols = await result.getColumnNames();
+		let raw: unknown[][];
+		try {
+			raw = await result.getAllRows();
+		} catch (err) {
+			if (String(err).includes("ToBigInt") || String(err).includes("BigInt")) {
+				return this.rowsFromResultString(result, cols);
+			}
+			throw err;
 		}
+		return raw.map((row: unknown[]) => {
+			const obj: Record<string, unknown> = {};
+			for (let i = 0; i < cols.length; i++) obj[cols[i]] = row[i];
+			return obj;
+		});
 	}
-}
 
-/** A kuzu node value: has `_label` and no relationship endpoints. */
-function isCypherNode(value: unknown): value is Record<string, unknown> {
-	return (
-		typeof value === "object" && value !== null && !Array.isArray(value) && "_label" in value && !("_src" in value)
-	);
-}
-
-/** A kuzu relationship value: carries `_src`/`_dst` endpoints. */
-function isCypherRel(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value) && "_src" in value && "_dst" in value;
-}
-
-/** A kuzu path value: a node/relationship chain. */
-function isCypherPath(value: unknown): value is { _nodes: unknown[]; _rels: unknown[] } {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		!Array.isArray(value) &&
-		Array.isArray((value as { _nodes?: unknown })._nodes)
-	);
-}
-
-/**
- * Collect FileNode keys (path and id) from a result cell so the UI can highlight the matched
- * subgraph. Walks nodes, paths and arrays; a bare string that already looks like a node path
- * (a `RETURN n.path`) is kept too - the client narrows to keys it actually knows about.
- */
-function collectCypherNodeKeys(value: unknown, keys: Set<string>): void {
-	if (isCypherNode(value)) {
-		if (value._label === "FileNode") {
-			const path = value.path;
-			const id = value.id;
-			if (typeof path === "string" && path) keys.add(path);
-			if (typeof id === "string" && id) keys.add(id);
-		}
-		return;
+	/**
+	 * Int64-safe fallback used when `getAllRows()` cannot convert an INT64 column under Bun's
+	 * embind. RyuGraph's `toString()` renders the result as `|`-delimited cells (node/rel cells as
+	 * `{...}` objects), which we parse back into values via parseCypherCell so node-key extraction
+	 * and the shared serializers keep working.
+	 */
+	private async rowsFromResultString(result: any, cols: string[]): Promise<Record<string, unknown>[]> {
+		const text = String((await result.toString?.()) ?? "");
+		const lines = text
+			.split("\n")
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0);
+		// The first line is the header (column names); every subsequent non-empty line is a data row.
+		const dataLines = lines.slice(1);
+		return dataLines.map((line) => {
+			const cells = line.split("|").map((c) => parseCypherCell(c));
+			const obj: Record<string, unknown> = {};
+			for (let i = 0; i < cols.length; i++) {
+				const col = cols[i];
+				if (col !== undefined) obj[col] = cells[i] ?? null;
+			}
+			return obj;
+		});
 	}
-	if (isCypherPath(value)) {
-		for (const node of value._nodes) collectCypherNodeKeys(node, keys);
-		return;
-	}
-	if (Array.isArray(value)) {
-		for (const item of value) collectCypherNodeKeys(item, keys);
-		return;
-	}
-	if (typeof value === "string" && value.includes("/")) keys.add(value);
-}
 
-/** Flatten a kuzu value into a JSON-serializable shape for transport to the UI. */
-function serializeCypherValue(value: unknown): unknown {
-	if (value === null || value === undefined) return value;
-	if (typeof value !== "object") return value;
-	if (Array.isArray(value)) return value.map(serializeCypherValue);
-	const out: Record<string, unknown> = {};
-	if (isCypherNode(value) || isCypherRel(value)) out._label = value._label;
-	for (const [key, val] of Object.entries(value)) {
-		if (key === "_id" || key === "_src" || key === "_dst") continue;
-		out[key] = serializeCypherValue(val);
+	private async closeResult(result: any) {
+		await result?.close?.();
 	}
-	return out;
 }
 
 function toGraphNode(row: Record<string, unknown>): GraphNode {
@@ -697,7 +802,7 @@ function toGraphNode(row: Record<string, unknown>): GraphNode {
 }
 
 export interface OpenGraphStoreOptions {
-	/** "kuzu" forces the native backend; anything else keeps the pure-JS fallback. */
+	/** Force a specific backend ("ryu" | "memory"); omit for the default "ryu" (WASM) backend. */
 	backend?: string;
 }
 
@@ -705,19 +810,35 @@ const memoryStores = new Map<string, MemoryGraphStore>();
 
 /**
  * Open a graph store at the given database path (see graph/paths.ts - one database per project and
- * instance slot, kept in the cache directory). The native kuzu backend is opt-in
- * (BACKLOG_GRAPH_BACKEND=kuzu or an explicit option) because loading the binding inside Bun
- * segfaults on this machine; the default is the in-memory degraded mode sanctioned by doc-014 §5.
- * Memory stores are process singletons keyed by that same path so the cold-start fast path reuses
- * an already-built graph within the same process (a resident Graph Service keeps it warm across
- * reconciliations).
+ * instance slot, kept in the cache directory). The default backend is "ryu" (the RyuGraph WASM
+ * build), which runs under Bun/Windows without the native NAPI segfault that blocks Kuzu, so Cypher
+ * search works out of the box on every platform. Opt out with an explicit choice:
+ * - "memory" forces the pure-JS degraded mode (doc-014 §5), which has no Cypher support but can never
+ *   crash the CLI/Web on a native/WASM failure.
+ * If the default ryu backend ever fails to initialise, we degrade to memory rather than taking the
+ * process down. Memory stores are process singletons keyed by that same path so the cold-start fast
+ * path reuses an already-built graph within the same process (a resident Graph Service keeps it warm
+ * across reconciliations).
  */
 export async function openGraphStore(dbPath: string, options: OpenGraphStoreOptions = {}): Promise<GraphStore> {
-	if (isKuzuRequested(options.backend)) {
-		const store = new KuzuGraphStore(dbPath);
+	const choice = resolveGraphBackend(options.backend);
+	if (choice === "memory") {
+		return openMemoryStore(dbPath);
+	}
+	// Default: "ryu". The WASM backend has no native-binding crash risk, but guard it anyway so a
+	// failed init degrades to memory instead of taking the CLI/Web down.
+	try {
+		const store = new RyuGraphStore(dbPath);
 		await store.init();
 		return store;
+	} catch (err) {
+		console.warn(`[graph] RyuGraph (WASM) 后端初始化失败，回退到 memory 降级模式（Cypher 检索不可用）：${String(err)}`);
+		return openMemoryStore(dbPath);
 	}
+}
+
+/** Build or reuse the pure-JS in-memory store (a process singleton per resolved db path). */
+async function openMemoryStore(dbPath: string): Promise<GraphStore> {
 	const { resolve } = await import("node:path");
 	const key = resolve(dbPath);
 	let store = memoryStores.get(key);

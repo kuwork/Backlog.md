@@ -67,7 +67,7 @@ export interface GraphEdgeDto {
 
 export interface GraphPayload {
 	status: "building" | "ready";
-	backend: "kuzu" | "memory";
+	backend: "ryu" | "memory";
 	nodes: GraphNodeDto[];
 	edges: GraphEdgeDto[];
 	nodeCount: number;

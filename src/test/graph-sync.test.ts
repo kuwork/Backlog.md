@@ -583,7 +583,8 @@ describe("/api/graph endpoint", () => {
 			nodeCount: number;
 		};
 		expect(payload.status).toBe("ready");
-		expect(payload.backend).toBe("memory");
+		// The default graph backend is now "ryu" (RyuGraph WASM) - so an unconfigured server reports it.
+		expect(payload.backend).toBe("ryu");
 		expect(payload.nodes.map((n) => n.id)).toContain("back-1");
 		expect(payload.nodeCount).toBe(1);
 		// Dangling dependency surfaced fail-closed for the frontend's gray dashed rendering.

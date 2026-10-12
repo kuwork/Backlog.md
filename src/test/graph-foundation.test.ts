@@ -9,7 +9,15 @@ import { parseTaskFile } from "../graph/parser";
 import { graphCacheDir, graphPaths, portSlot, TUI_SLOT } from "../graph/paths";
 import { resolveRelations } from "../graph/relations";
 import { scanWhitelistedDirs } from "../graph/scanner";
-import { type GraphNode, isCurrentSchema, MemoryGraphStore, SCHEMA_VERSION, SCHEMA_VERSION_KEY } from "../graph/store";
+import {
+	type GraphEdge,
+	type GraphNode,
+	isCurrentSchema,
+	MemoryGraphStore,
+	RyuGraphStore,
+	SCHEMA_VERSION,
+	SCHEMA_VERSION_KEY,
+} from "../graph/store";
 
 let root: string;
 
@@ -484,13 +492,10 @@ describe("FileNode identity", () => {
 });
 
 describe("graph schema version", () => {
-	// The kuzu store cannot be driven from Bun at all (the native binding segfaults here - see
-	// store.ts), so what is tested in-process is the decision rule the recorded version drives. The
-	// statement sequence that rule triggers was verified against the real binding under Node by
-	// importing this module compiled with `bun build src/graph/store.ts --target=node --external
-	// kuzu`, then, per case (no version row / current version / a later version / a fresh file),
-	// asserting through a second raw connection that a stale file is wiped and a current one is
-	// reused with its rows intact. Re-run that when the DDL or the version rule changes.
+	// The persistent backend (RyuGraph, a Kuzu fork shipped as WASM) runs under Bun/Windows, so the
+	// decision rule the recorded version drives is exercised in-process by the RyuGraphStore tests
+	// below. This block just asserts the boolean rule itself: a file records this build's schema
+	// (SCHEMA_VERSION) to be reusable, and anything else - missing, older, or newer - is rebuilt.
 	test("a cache file is reusable only when it records this build's schema", () => {
 		expect(isCurrentSchema(String(SCHEMA_VERSION))).toBe(true);
 		// No version row at all: an empty file, or one written before this mechanism existed (i.e.
@@ -546,11 +551,116 @@ describe("graph cache layout", () => {
 
 describe("Cypher search (runCypher)", () => {
 	// The pure-JS fallback store has no native Cypher engine, so a Cypher query must fail loudly
-	// with a pointer to the kuzu backend rather than silently returning nothing (BACK-765).
-	test("memory backend rejects Cypher with a directive to use kuzu", async () => {
+	// with a pointer to the ryu backend rather than silently returning nothing (BACK-765).
+	test("memory backend rejects Cypher with a directive to use ryu", async () => {
 		const store = new MemoryGraphStore();
 		await store.init();
-		await expect(store.runCypher()).rejects.toThrow(/kuzu/i);
+		await expect(store.runCypher()).rejects.toThrow(/ryu/i);
+		await store.close();
+	});
+});
+
+describe("RyuGraphStore (WASM Cypher backend, BACK-766)", () => {
+	// RyuGraph is a Kuzu fork shipped as WebAssembly, so it runs under Bun/Windows where Kuzu's
+	// native NAPI binding segfaults. These tests exercise the same store contract as the other
+	// backends and confirm the Bun/BigInt embind patch (scripts/patch-ryugraph.cjs) holds.
+	test("builds schema, upserts nodes, and answers Cypher with highlighted node keys", async () => {
+		const store = new RyuGraphStore(":memory:");
+		await store.init();
+		await store.upsertNodes([
+			node("tasks/back-1 - A.md", "back-1", { type: "task" }),
+			node("tasks/back-2 - B.md", "back-2", { type: "task" }),
+		]);
+		expect(await store.getAllNodes()).toHaveLength(2);
+
+		const result = await store.runCypher("MATCH (n:FileNode) RETURN n ORDER BY n.id");
+		expect(result.columns).toEqual(["n"]);
+		expect([...result.nodeKeys].sort()).toEqual(["back-1", "back-2", "tasks/back-1 - A.md", "tasks/back-2 - B.md"]);
+		expect(result.truncated).toBe(false);
+		// The node value is flattened (the _id/_src/_dst internal fields are dropped for transport).
+		expect(result.rows[0]?.[0]).toMatchObject({ _label: "FileNode", path: "tasks/back-1 - A.md", id: "back-1" });
+		await store.close();
+	});
+
+	test("rejects write statements to protect the graph cache", async () => {
+		const store = new RyuGraphStore(":memory:");
+		await store.init();
+		await expect(store.runCypher("CREATE (:FileNode {path:'x.md', id:'X', type:'task'})")).rejects.toThrow(/只读/i);
+		await store.close();
+	});
+
+	test("stamps the schema version and reuses a persisted cache across reopen", async () => {
+		const path = join(root, "ryu-cache.db");
+		const a = new RyuGraphStore(path);
+		await a.init();
+		await a.upsertNodes([node("tasks/back-3 - C.md", "back-3")]);
+		await a.close();
+
+		const b = new RyuGraphStore(path);
+		await b.init();
+		const ids = (await b.getAllNodes()).map((n) => n.id);
+		expect(ids).toContain("back-3");
+		await b.close();
+	});
+
+	// BACK-767: Bun's embind cannot convert an INT64 result column (count/size/sum/arithmetic) to JS
+	// - getAllRows() throws ToBigInt. The store must recover via the int64-safe toString() fallback
+	// instead of crashing, and still surface node keys for highlighting.
+	test("recovers from INT64 result columns via the toString fallback (count, mixed)", async () => {
+		const store = new RyuGraphStore(":memory:");
+		await store.init();
+		await store.upsertNodes([
+			node("tasks/back-1 - A.md", "back-1", { type: "task" }),
+			node("tasks/back-2 - B.md", "back-2", { type: "task" }),
+		]);
+
+		const count = await store.runCypher("MATCH (n:FileNode) RETURN count(n) AS c");
+		expect(count.columns).toEqual(["c"]);
+		expect(count.rows).toEqual([[2]]);
+		expect(count.nodeKeys.length).toBe(0);
+		expect(count.truncated).toBe(false);
+
+		const mixed = await store.runCypher("MATCH (n:FileNode) RETURN n, count(*) AS deg ORDER BY n.id");
+		expect(mixed.columns).toEqual(["n", "deg"]);
+		expect([...mixed.nodeKeys].sort()).toEqual(["back-1", "back-2", "tasks/back-1 - A.md", "tasks/back-2 - B.md"]);
+		// The node cell survives the fallback as a structured object, not a bare string.
+		expect(mixed.rows[0]?.[0]).toMatchObject({ _label: "FileNode", path: "tasks/back-1 - A.md", id: "back-1" });
+		expect(mixed.rows[0]?.[1]).toBe(1);
+		await store.close();
+	});
+
+	// BACK-767 regression: RyuGraph's WASM COPY ... FROM CSV silently imports zero edges, so the graph
+	// view would render nodes with no connections. upsertEdges must use UNWIND + MATCH + MERGE instead.
+	test("upsertEdges persists edges readable via getAllEdges / countEdges (no COPY)", async () => {
+		const store = new RyuGraphStore(":memory:");
+		await store.init();
+		const files = [
+			node("tasks/back-1 - A.md", "back-1", { type: "task" }),
+			node("tasks/back-2 - B.md", "back-2", { type: "task" }),
+			node("tasks/back-3 - C.md", "back-3", { type: "task" }),
+		];
+		await store.upsertNodes(files);
+		await store.upsertTags(["urgent"]);
+
+		const edges: GraphEdge[] = [
+			{ type: "ParentOf", from: "tasks/back-1 - A.md", to: "tasks/back-2 - B.md" },
+			{ type: "DependsOn", from: "tasks/back-2 - B.md", to: "tasks/back-3 - C.md" },
+			{ type: "TaggedWith", from: "tasks/back-1 - A.md", to: "urgent" },
+			{ type: "ParentOf", from: "tasks/back-1 - A.md", to: "tasks/back-2 - B.md" }, // duplicate within batch
+		];
+		await store.upsertEdges(edges);
+
+		const all = await store.getAllEdges();
+		expect(all).toContainEqual({ type: "ParentOf", from: "tasks/back-1 - A.md", to: "tasks/back-2 - B.md" });
+		expect(all).toContainEqual({ type: "DependsOn", from: "tasks/back-2 - B.md", to: "tasks/back-3 - C.md" });
+		expect(all).toContainEqual({ type: "TaggedWith", from: "tasks/back-1 - A.md", to: "urgent" });
+		// The duplicate ParentOf is de-duplicated by MERGE.
+		expect(all.filter((e) => e.type === "ParentOf")).toHaveLength(1);
+		expect(await store.countEdges("ParentOf")).toBe(1);
+		expect(await store.countEdges("TaggedWith")).toBe(1);
+		// A stale edge whose source node is absent is skipped, never thrown.
+		await store.upsertEdges([{ type: "DependsOn", from: "tasks/back-1 - A.md", to: "tasks/ghost.md" }]);
+		expect(await store.countEdges("DependsOn")).toBe(1);
 		await store.close();
 	});
 });

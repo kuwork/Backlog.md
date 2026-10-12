@@ -79,7 +79,7 @@ export interface GraphPayload {
 }
 
 export interface GraphServiceOptions {
-	backend?: "kuzu" | "memory";
+	backend?: "ryu" | "memory";
 	dirs?: WhitelistDirs;
 	/** Instance slot choosing the cache entry: `portSlot(port)` for the Web UI, "tui" for the TUI. */
 	slot?: GraphSlot;
@@ -216,7 +216,7 @@ export class GraphService {
 		if (this.reconcileTimer) clearInterval(this.reconcileTimer);
 		for (const watcher of this.watchers) watcher.close();
 		this.watchers = [];
-		if (this.store && this.store.backend === "kuzu") await this.store.close();
+		if (this.store && this.store.backend === "ryu") await this.store.close();
 		this.store = null;
 		this.releaseLock();
 	}
@@ -324,7 +324,7 @@ export class GraphService {
 		return this.ready;
 	}
 
-	/** Run a read-only Cypher statement against the underlying store (kuzu backend). */
+	/** Run a read-only Cypher statement against the underlying store (ryu backend). */
 	async runCypher(statement: string): Promise<CypherQueryResult> {
 		const store = this.store;
 		if (!store) throw new Error("graph store unavailable");
