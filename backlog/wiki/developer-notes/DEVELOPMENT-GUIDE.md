@@ -210,7 +210,8 @@ bunx tsc --noEmit    # 类型检查
 bun test             # 运行测试
 
 # 5. 提交（触发预提交钩子）
-git commit -m "feat: 描述信息"
+#    提交信息格式：BACK-<任务ID> - <任务标题>（见 AGENTS.md 的 Git Workflow）
+git commit -m "BACK-123 - 任务标题"
 ```
 
 ### 4.2 编辑器配置
