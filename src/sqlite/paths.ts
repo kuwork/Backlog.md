@@ -69,6 +69,16 @@ function segmentsInsideProject(projectRoot: string, target: string): string[] | 
 	return rel.split(/[\\/]/);
 }
 
+/**
+ * True when `target` sits strictly inside `projectRoot`.
+ *
+ * The CSV export re-checks its own write target through this before touching disk (BACK-776), so
+ * there is exactly one containment rule in the module rather than two that can drift apart.
+ */
+export function isInsideProjectRoot(projectRoot: string, target: string): boolean {
+	return segmentsInsideProject(projectRoot, target) !== null;
+}
+
 export function resolveSqliteSource(request: SqliteSourceRequest): SqliteSourceResult {
 	const source = request.source.trim();
 	if (source.length === 0) return fail("source 不能为空。");

@@ -27,6 +27,8 @@ let container: HTMLElement | null = null;
 let queryCalls = 0;
 /** Swapped per test: the payload the faked query endpoint answers with. */
 let queryResult: unknown = RESULT;
+/** Every export request body, so the "no rows travel to the server" rule can be asserted. */
+const exportBodies: Record<string, unknown>[] = [];
 
 function mount(block: string) {
 	act(() => {
@@ -70,8 +72,15 @@ beforeEach(() => {
 
 	queryCalls = 0;
 	queryResult = RESULT;
-	globalThis.fetch = ((input: RequestInfo | URL) => {
+	exportBodies.length = 0;
+	globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
+		if (url.includes("/api/sqlite/export-csv")) {
+			exportBodies.push(JSON.parse(String(init?.body ?? "{}")));
+			return Promise.resolve(
+				new Response(JSON.stringify({ path: "data/shop-export.csv", rows: 1, truncated: false }), { status: 200 }),
+			);
+		}
 		if (url.includes("/api/sqlite/query")) {
 			queryCalls++;
 			return Promise.resolve(new Response(JSON.stringify(queryResult), { status: 200 }));
@@ -237,5 +246,47 @@ describe("SqliteQueryBlock Copy Markdown", () => {
 		await settle();
 
 		expect(button("Copy Markdown").disabled).toBe(true);
+	});
+});
+
+describe("SqliteQueryBlock Export CSV", () => {
+	it("asks the server to write the file and shows where it landed", async () => {
+		mount(BLOCK);
+		await settle();
+
+		await act(async () => {
+			button("Export CSV").click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		// The rows never leave the browser: the server re-runs `source` + `sql` behind its own gates,
+		// so an export request cannot be turned into "write this payload at that path".
+		expect(exportBodies).toEqual([{ source: "backlog/databases/shop.sqlite", sql: "SELECT name\nFROM people" }]);
+		expect(container?.textContent).toContain("data/shop-export.csv");
+	});
+
+	it("reports a refusal instead of pretending it worked", async () => {
+		mount(BLOCK);
+		await settle();
+		globalThis.fetch = (() =>
+			Promise.resolve(
+				new Response(JSON.stringify({ error: "导出目标不在项目目录内，已拒绝。" }), { status: 400 }),
+			)) as unknown as typeof fetch;
+
+		await act(async () => {
+			button("Export CSV").click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		expect(container?.textContent).toContain("Export failed");
+		expect(container?.textContent).toContain("导出目标不在项目目录内");
+	});
+
+	it("stays disabled until there is a result to write", async () => {
+		queryResult = { ...RESULT, rows: [] };
+		mount(BLOCK);
+		await settle();
+
+		expect(button("Export CSV").disabled).toBe(true);
 	});
 });

@@ -860,6 +860,10 @@ export const zhTW: TranslationDict = {
 		copyMarkdown: "複製為 Markdown",
 		copied: "已複製",
 		copyFailed: "複製失敗",
+		exportCsv: "匯出 CSV",
+		exporting: "正在匯出…",
+		exported: "已儲存至",
+		exportFailed: "匯出失敗",
 	},
 
 	imageLightbox: {

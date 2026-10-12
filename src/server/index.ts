@@ -37,6 +37,7 @@ import { type GraphLockConflictHandler, type GraphService, startGraphService } f
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import { listSqliteFiles } from "../sqlite/discover.ts";
+import { exportSqliteCsv } from "../sqlite/export.ts";
 import { resolveSqliteSource } from "../sqlite/paths.ts";
 import { runSqliteQuery, SQLITE_MAX_ROWS } from "../sqlite/query.ts";
 import { validateReadOnlySql } from "../sqlite/validation.ts";
@@ -702,6 +703,9 @@ export class BacklogServer {
 					},
 					"/api/sqlite/query": {
 						POST: async (req: Request) => await this.handleSqliteQuery(req),
+					},
+					"/api/sqlite/export-csv": {
+						POST: async (req: Request) => await this.handleSqliteExportCsv(req),
 					},
 					"/api/statuses": {
 						GET: async () => await this.handleGetStatuses(),
@@ -2400,6 +2404,30 @@ export class BacklogServer {
 			const detail = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
 		}
+	}
+
+	/**
+	 * POST /api/sqlite/export-csv - write the result of one read-only statement next to its database.
+	 *
+	 * The first write endpoint in this surface, so it takes the narrowest possible input: `source`
+	 * and `sql` are re-gated and the rows are re-read server-side. Nothing lands on disk until every
+	 * refusal has had its chance, and the answer carries a project-relative path, never an absolute
+	 * one.
+	 */
+	private async handleSqliteExportCsv(req: Request): Promise<Response> {
+		let body: { source?: unknown; sql?: unknown; filename?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source : "";
+		const sql = typeof body?.sql === "string" ? body.sql : "";
+		const filename = typeof body?.filename === "string" ? body.filename : undefined;
+
+		const result = exportSqliteCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, filename });
+		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+		return Response.json(result.export);
 	}
 
 	private async handleUpdateConfig(req: Request): Promise<Response> {

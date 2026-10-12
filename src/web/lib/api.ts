@@ -204,6 +204,13 @@ export interface SqliteFileEntry {
 	mtime: string;
 }
 
+/** Where a CSV export landed: a project-relative path, never an absolute one. */
+export interface SqliteCsvExport {
+	path: string;
+	rows: number;
+	truncated: boolean;
+}
+
 export class ApiClient {
 	private config: RequestConfig;
 
@@ -1141,6 +1148,22 @@ export class ApiClient {
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to run sqlite query");
+		}
+		return response.json();
+	}
+
+	/**
+	 * Writes the same result out beside the database. The rows are not sent - the server re-runs the
+	 * statement - so this only ever receives back where the file went.
+	 */
+	async exportSqliteCsv(payload: SqliteQueryRequest & { filename?: string }): Promise<SqliteCsvExport> {
+		const response = await fetch(`${API_BASE}/sqlite/export-csv`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to export sqlite query");
 		}
 		return response.json();
 	}
