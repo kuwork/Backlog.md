@@ -857,6 +857,9 @@ export const zhTW: TranslationDict = {
 		error: "查詢失敗",
 		showQuery: "顯示查詢",
 		hideQuery: "隱藏查詢",
+		copyMarkdown: "複製為 Markdown",
+		copied: "已複製",
+		copyFailed: "複製失敗",
 	},
 
 	imageLightbox: {
