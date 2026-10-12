@@ -135,8 +135,41 @@ describe("graph snapshot round-trip", () => {
 		}
 	});
 
-	test("a row that lost a declared property fails loudly instead of loading nothing", async () => {
+	test("a NULL property survives dump -> hydrate instead of being read as a broken row", async () => {
+		// `RETURN n` leaves a NULL property out of the node, so a snapshot row legally lacks keys -
+		// which is what an empty CSV cell looks like on disk (BACK-770). It has to hydrate as NULL,
+		// not fail: the row is intact, the property simply has no value.
 		const store = await openGraphStore(join(root, "h.kuzu"), { backend: "ryu", schema: "none" });
+		expect(store.backend).toBe("ryu");
+		try {
+			const snapshot: GraphSnapshot = {
+				...emptySnapshot("nulls"),
+				nodeTables: [
+					{
+						name: "P",
+						properties: [
+							{ name: "name", type: "STRING", primaryKey: true },
+							{ name: "age", type: "INT64", primaryKey: false },
+						],
+					},
+				],
+				nodes: { P: [{ name: "a", age: 30 }, { name: "b" }] },
+			};
+			await hydrateDatabase(store, snapshot);
+			const rows = await store.runCypher("MATCH (p:P) RETURN p.name, p.age ORDER BY p.name");
+			expect(rows.rows).toEqual([
+				["a", 30],
+				["b", ""],
+			]);
+		} finally {
+			await store.close();
+		}
+	});
+
+	test("a row carrying a field the table never declared still fails loudly", async () => {
+		// The other half of the guard: a renamed or misspelled field from a hand edit must not load
+		// as a row of NULLs (which is indistinguishable from "the data was never there").
+		const store = await openGraphStore(join(root, "i.kuzu"), { backend: "ryu", schema: "none" });
 		expect(store.backend).toBe("ryu");
 		try {
 			const snapshot: GraphSnapshot = {
@@ -144,9 +177,57 @@ describe("graph snapshot round-trip", () => {
 				nodeTables: [{ name: "P", properties: [{ name: "name", type: "STRING", primaryKey: true }] }],
 				nodes: { P: [{ _label: "P", name: "ok" }, { other: 1 }] },
 			};
-			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/缺少字段/);
+			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/未声明的字段/);
 		} finally {
 			await store.close();
+		}
+	});
+
+	test("a row with an empty primary key is refused instead of crashing the WASM backend", async () => {
+		// A NULL primary key segfaults ryu, so a corrupt snapshot has to be reported instead.
+		const store = await openGraphStore(join(root, "j.kuzu"), { backend: "ryu", schema: "none" });
+		expect(store.backend).toBe("ryu");
+		try {
+			const snapshot: GraphSnapshot = {
+				...emptySnapshot("nokey"),
+				nodeTables: [{ name: "P", properties: [{ name: "name", type: "STRING", primaryKey: true }] }],
+				nodes: { P: [{ name: "ok" }, { name: null }] },
+			};
+			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/主键/);
+		} finally {
+			await store.close();
+		}
+	});
+
+	test("a value containing a comma survives dump -> save -> load -> hydrate", async () => {
+		// Regression: dumpDatabase used `RETURN n`, and ryu cannot hand a whole node across the WASM
+		// boundary when one of its properties is INT64 - the caller fell back to parsing ryu's
+		// `|`-delimited text, which cut a value at its first comma ("Ann, A" came back as "Ann").
+		const writer = await openGraphStore(join(root, "k.kuzu"), { backend: "ryu", schema: "none" });
+		expect(writer.backend).toBe("ryu");
+		const path = join(root, "comma.graph.json");
+		try {
+			await writer.runWrite("CREATE NODE TABLE P(name STRING PRIMARY KEY, age INT64)");
+			await writer.runWrite("UNWIND $rows AS row CREATE (:P {name: row.name, age: CAST(row.age AS INT64)})", {
+				rows: [
+					{ name: "Ann, A", age: "22" },
+					{ name: "plain", age: null },
+				],
+			});
+			saveSnapshot(path, await dumpDatabase(writer, "comma"));
+		} finally {
+			await writer.close();
+		}
+		const reader = await openGraphStore(join(root, "l.kuzu"), { backend: "ryu", schema: "none" });
+		try {
+			await hydrateDatabase(reader, loadSnapshot(path));
+			const rows = await reader.runCypher("MATCH (p:P) RETURN p.name, p.age ORDER BY p.name");
+			expect(rows.rows).toEqual([
+				["Ann, A", 22],
+				["plain", ""],
+			]);
+		} finally {
+			await reader.close();
 		}
 	});
 

@@ -18,6 +18,11 @@ export const SNAPSHOT_VERSION = 1;
 /** Rows per `UNWIND` batch when dumping or hydrating. */
 const BATCH_SIZE = 500;
 
+/** A column whose value is text, i.e. the one type for which an empty cell and NULL are different. */
+function isTextType(type: string): boolean {
+	return type.toUpperCase() === "STRING";
+}
+
 export interface SnapshotProperty {
 	name: string;
 	type: string;
@@ -167,12 +172,31 @@ export async function dumpDatabase(store: GraphStore, database: string): Promise
 	const { nodeTables, relTables } = await readSnapshotSchema(store);
 	const snapshot: GraphSnapshot = { version: SNAPSHOT_VERSION, database, nodeTables, relTables, nodes: {}, edges: {} };
 	for (const table of nodeTables) {
+		// Explicit properties rather than `RETURN n`. ryu cannot hand a whole node across the WASM
+		// boundary when any of its properties is INT64 - `getAllRows()` throws and the caller falls
+		// back to parsing ryu's `|`-delimited text, which silently truncates a value at its first
+		// comma and mangles one containing a newline (a name like "Ann, A" came back as "Ann").
+		// Returning the properties one by one stays on the structured path and loses nothing.
 		// maxRows: Infinity - a dump must never inherit the interactive 500-row display cap, or every
 		// table bigger than that would silently lose rows.
-		const result = await store.runCypher(`MATCH (n:${table.name}) RETURN n`, { maxRows: Number.POSITIVE_INFINITY });
+		if (table.properties.length === 0) {
+			snapshot.nodes[table.name] = [];
+			continue;
+		}
+		const columns = table.properties.map((p) => `n.\`${p.name}\``).join(", ");
+		const result = await store.runCypher(`MATCH (n:${table.name}) RETURN ${columns}`, {
+			maxRows: Number.POSITIVE_INFINITY,
+		});
 		snapshot.nodes[table.name] = result.rows.map((row) => {
-			const value = row[0];
-			return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+			const record: Record<string, unknown> = {};
+			table.properties.forEach((property, index) => {
+				const value = row[index] ?? null;
+				// ryu reports NULL as an empty cell, and an INT64/DOUBLE/BOOLEAN column has no empty
+				// value of its own - so an empty cell there is NULL. Left as "" it would be handed
+				// back to a typed column on hydrate, which cannot accept it.
+				record[property.name] = value === "" && !isTextType(property.type) ? null : value;
+			});
+			return record;
 		});
 	}
 	for (const table of relTables) {
@@ -195,20 +219,54 @@ export async function dumpDatabase(store: GraphStore, database: string): Promise
  * Not cosmetic. ryu converts a `$rows` parameter into a LIST<STRUCT> and needs every entry to have
  * the same shape: a heterogeneous list is **silently treated as empty**, which is how a hand-edited
  * snapshot became a database with zero rows and no error at all. Projecting also drops the `_label`
- * key that the dump adds to every node. A row missing a declared property is reported loudly,
- * because the alternative - loading nothing - is indistinguishable from "the data was never there".
+ * key that the dump adds to every node.
+ *
+ * A declared property the row does not carry becomes NULL rather than an error: `RETURN n` omits a
+ * property ryu holds as NULL, so an absent key is what a NULL looks like on disk - and a CSV cell
+ * that was empty is exactly that (BACK-770). A key the table never declared is still refused, which
+ * is how a renamed or misspelled field from a hand edit stays loud instead of loading as nothing.
  */
 function projectRow(row: Record<string, unknown>, table: SnapshotNodeTable): Record<string, unknown> {
-	const projected: Record<string, unknown> = {};
-	for (const property of table.properties) {
-		if (!(property.name in row)) {
+	for (const key of Object.keys(row)) {
+		if (key === "_label") continue; // added by the dump, never declared
+		if (!table.properties.some((property) => property.name === key)) {
 			throw new Error(
-				`快照损坏：${table.name} 的一行缺少字段 "${property.name}"，无法还原（该行：${JSON.stringify(row)}）。`,
+				`快照损坏：${table.name} 的一行含未声明的字段 "${key}"（该表的字段：${table.properties
+					.map((p) => p.name)
+					.join(", ")}；该行：${JSON.stringify(row)}）。`,
 			);
 		}
-		projected[property.name] = row[property.name];
+	}
+	const projected: Record<string, unknown> = {};
+	for (const property of table.properties) {
+		projected[property.name] = row[property.name] ?? null;
 	}
 	return projected;
+}
+
+/**
+ * Turn a projected row into the values the insert statement may pass as parameters.
+ *
+ * A typed column gets `CAST(... AS type)` and therefore a text value: a JS number handed to an
+ * INT64 or DOUBLE parameter throws `TypeError: Invalid argument type in ToBigInt operation` under
+ * Bun, so a number read out of a snapshot is stringified on the way back in. Text columns pass
+ * through untouched, which is what keeps an empty string an empty string instead of a NULL.
+ */
+function bindableRow(row: Record<string, unknown>, table: SnapshotNodeTable): Record<string, unknown> {
+	const projected = projectRow(row, table);
+	const bound: Record<string, unknown> = {};
+	for (const property of table.properties) {
+		const value = projected[property.name] ?? null;
+		if (property.primaryKey && (value === null || value === "")) {
+			// Creating a node with a NULL primary key segfaults the ryu WASM build - a corrupt
+			// snapshot must say so instead of taking the process down with it.
+			throw new Error(
+				`快照损坏：${table.name} 有主键 "${property.name}" 为空的行，无法还原（该行：${JSON.stringify(projected)}）。`,
+			);
+		}
+		bound[property.name] = value === null ? null : isTextType(property.type) ? value : String(value);
+	}
+	return bound;
 }
 
 /**
@@ -220,8 +278,12 @@ export async function hydrateDatabase(store: GraphStore, snapshot: GraphSnapshot
 	for (const table of snapshot.nodeTables) await store.runWrite(nodeTableDdl(table));
 	for (const table of snapshot.relTables) await store.runWrite(relTableDdl(table));
 	for (const table of snapshot.nodeTables) {
-		const rows = (snapshot.nodes[table.name] ?? []).map((row) => projectRow(row, table));
-		const assignments = table.properties.map((p) => `${p.name}: row.${p.name}`).join(", ");
+		const rows = (snapshot.nodes[table.name] ?? []).map((row) => bindableRow(row, table));
+		const assignments = table.properties
+			.map((p) =>
+				isTextType(p.type) ? `\`${p.name}\`: row.\`${p.name}\`` : `\`${p.name}\`: CAST(row.\`${p.name}\` AS ${p.type})`,
+			)
+			.join(", ");
 		for (let start = 0; start < rows.length; start += BATCH_SIZE) {
 			await store.runWrite(`UNWIND $rows AS row CREATE (:${table.name} {${assignments}})`, {
 				rows: rows.slice(start, start + BATCH_SIZE),

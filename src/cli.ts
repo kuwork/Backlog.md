@@ -42,6 +42,7 @@ import {
 	taskViewJson,
 } from "./formatters/json-output.ts";
 import { formatTaskPlainText } from "./formatters/task-plain-text.ts";
+import { importCsvTable, readCsvFile } from "./graph/csv-import.ts";
 import {
 	createDatabase,
 	DEFAULT_DATABASE,
@@ -7059,6 +7060,7 @@ const graphCommand = addHelpSchema(program.command("graph"), {
 		"backlog graph show-schema default",
 		'backlog graph create mydb "experiment data"',
 		'backlog graph insert mydb "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"',
+		"backlog graph import mydb data/people.csv --node Person",
 	],
 });
 
@@ -7208,6 +7210,82 @@ graphCommand
 			db,
 			async (store) => {
 				await store.runWrite(cypher);
+			},
+			{ write: true, requireUser: true, force: options.force === true },
+		);
+	});
+
+/** Collect a repeatable `--map` value into a list; validated after parsing, in the action. */
+function collectOptionValue(value: string, previous: string[]): string[] {
+	return [...previous, value];
+}
+
+/**
+ * `--map "First Name=firstName"` renames a CSV header into a property name. Several groups may be
+ * given in one comma-separated value or by repeating the option.
+ */
+function parseColumnMap(values: string[]): Record<string, string> {
+	const map: Record<string, string> = {};
+	for (const value of values) {
+		for (const part of value.split(",")) {
+			const entry = part.trim();
+			if (!entry) continue;
+			const separator = entry.indexOf("=");
+			if (separator <= 0) {
+				throw new Error(`--map 的每一组应为 "<CSV列名>=<属性名>"，收到 "${entry}"。`);
+			}
+			map[entry.slice(0, separator).trim()] = entry.slice(separator + 1).trim();
+		}
+	}
+	return map;
+}
+
+graphCommand
+	.command("import <db> <csv>")
+	.description(
+		"Load a CSV file into a user database as nodes. The target table is created with inferred column " +
+			"types when it does not exist; rows go in with batched parameterised UNWIND, because ryu's " +
+			"COPY FROM imports zero rows under the WASM build. Refused for `default`.",
+	)
+	.option("--node <table>", "目标节点表名（默认取 CSV 文件名）")
+	.option(
+		"--map <mapping>",
+		'把 CSV 列名改写成属性名："First Name=firstName"（可重复，也可逗号分隔多组）',
+		collectOptionValue,
+		[] as string[],
+	)
+	.option("--header", "第一行为列名（默认行为，显式写出亦可）")
+	.option("--no-header", "第一行也是数据行，列名自动生成为 column1、column2…")
+	.option("--force", "写入前不校验快照指纹（会覆盖本次加载后被改动过的快照）")
+	.action(async (db: string, csvPath: string, options) => {
+		// Read and validate the whole file before a database is opened: a malformed file must leave
+		// the database untouched, and the cheapest way to guarantee that is to fail before the
+		// snapshot is even hydrated.
+		let prepared: ReturnType<typeof readCsvFile>;
+		try {
+			prepared = readCsvFile(csvPath, {
+				table: options.node,
+				hasHeader: options.header !== false,
+				map: parseColumnMap(options.map ?? []),
+			});
+		} catch (error) {
+			console.error(String(error instanceof Error ? error.message : error));
+			process.exitCode = 1;
+			return;
+		}
+		await withGraphDatabase(
+			db,
+			async (store) => {
+				const result = await importCsvTable(store, prepared);
+				const summary = [
+					`新增 ${result.inserted} 行`,
+					`覆盖 ${result.updated} 行（主键已存在）`,
+					`文件内重复 ${result.skipped} 行`,
+				].join(" ｜ ");
+				console.log(`已导入 ${db}.${result.table}：${summary}（${result.created ? "新建表" : "写入已有表"}）`);
+				console.log(
+					`  列: ${result.columns.map((c) => `${c.name} ${c.type}${c.primaryKey ? " (主键)" : ""}`).join(", ")}`,
+				);
 			},
 			{ write: true, requireUser: true, force: options.force === true },
 		);
