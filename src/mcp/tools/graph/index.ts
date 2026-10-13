@@ -5,6 +5,7 @@ import {
 	type GraphCreateDatabaseArgs,
 	type GraphDescribeDatabaseArgs,
 	GraphHandlers,
+	type GraphImportCsvArgs,
 	type GraphListDatabasesArgs,
 	type GraphQueryArgs,
 	type GraphSchemaArgs,
@@ -12,6 +13,7 @@ import {
 import {
 	graphCreateDatabaseSchema,
 	graphDescribeDatabaseSchema,
+	graphImportCsvSchema,
 	graphListDatabasesSchema,
 	graphQuerySchema,
 	graphSchemaSchema,
@@ -91,9 +93,28 @@ export function registerGraphTools(server: McpServer): void {
 		async (input) => handlers.createDatabase(input as GraphCreateDatabaseArgs),
 	);
 
+	const importCsvTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_import_csv",
+			description:
+				"Import a CSV file into a user database as rows (nodes), or as edges (relationships) with rel/from/to. A missing table is created with inferred column types. Write operation on a user database; 'default' is read-only.",
+			inputSchema: graphImportCsvSchema,
+			annotations: {
+				title: "Import CSV into Graph",
+				readOnlyHint: false,
+				destructiveHint: true,
+				idempotentHint: false,
+				openWorldHint: false,
+			},
+		},
+		graphImportCsvSchema,
+		async (input) => handlers.importCsv(input as GraphImportCsvArgs),
+	);
+
 	server.addTool(queryTool);
 	server.addTool(schemaTool);
 	server.addTool(listDatabasesTool);
 	server.addTool(describeDatabaseTool);
 	server.addTool(createDatabaseTool);
+	server.addTool(importCsvTool);
 }
