@@ -30,6 +30,10 @@ import type { SearchService } from "../core/search-service.ts";
 import { compileStateMachine, statusNames, validateStatusesShape } from "../core/state-machine.ts";
 import { renderProjectStateMachine } from "../core/state-machine-guidance.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
+import { listDuckdbFiles } from "../duckdb/discover.ts";
+import { buildDuckdbCsv } from "../duckdb/export.ts";
+import { resolveDuckdbSource } from "../duckdb/paths.ts";
+import { DUCKDB_MAX_ROWS, runDuckdbQuery } from "../duckdb/query.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
@@ -706,6 +710,15 @@ export class BacklogServer {
 					},
 					"/api/sqlite/export-csv": {
 						POST: async (req: Request) => await this.handleSqliteExportCsv(req),
+					},
+					"/api/duckdb/files": {
+						GET: async () => await this.handleListDuckdbFiles(),
+					},
+					"/api/duckdb/query": {
+						POST: async (req: Request) => await this.handleDuckdbQuery(req),
+					},
+					"/api/duckdb/export-csv": {
+						POST: async (req: Request) => await this.handleDuckdbExportCsv(req),
 					},
 					"/api/statuses": {
 						GET: async () => await this.handleGetStatuses(),
@@ -2425,6 +2438,67 @@ export class BacklogServer {
 		const sql = typeof body?.sql === "string" ? body.sql : "";
 
 		const result = buildSqliteCsv({ projectRoot: this.core.filesystem.rootDir, source, sql });
+		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+		return Response.json(result.csv);
+	}
+
+	/**
+	 * GET /api/duckdb/files - every DuckDB database in the project (mirrors /api/sqlite/files).
+	 */
+	private async handleListDuckdbFiles(): Promise<Response> {
+		try {
+			return Response.json({ files: await listDuckdbFiles(this.core.filesystem.rootDir) });
+		} catch (error) {
+			console.error("Error listing duckdb files:", error);
+			return Response.json({ error: "Failed to list duckdb files" }, { status: 500 });
+		}
+	}
+
+	/**
+	 * POST /api/duckdb/query - one read-only statement, answered with a JSON grid (mirrors SQLite).
+	 */
+	private async handleDuckdbQuery(req: Request): Promise<Response> {
+		let body: { source?: unknown; sql?: unknown; maxRows?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source : "";
+		const sql = typeof body?.sql === "string" ? body.sql : "";
+
+		const validated = validateReadOnlySql(sql);
+		if (!validated.ok) return Response.json({ error: validated.error }, { status: 400 });
+
+		// `source` is project-relative; the containment gates in resolveDuckdbSource keep a
+		// client-supplied path inside the project (security-gotchas.md §1).
+		const resolved = resolveDuckdbSource({ projectRoot: this.core.filesystem.rootDir, source });
+		if (!resolved.ok) return Response.json({ error: resolved.error }, { status: 400 });
+
+		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : DUCKDB_MAX_ROWS;
+		try {
+			return Response.json(await runDuckdbQuery({ dbPath: resolved.path, sql: validated.sql, maxRows }));
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+		}
+	}
+
+	/**
+	 * POST /api/duckdb/export-csv - build the CSV of one read-only statement for the browser to save
+	 * (mirrors /api/sqlite/export-csv). The server never decides where the file goes.
+	 */
+	private async handleDuckdbExportCsv(req: Request): Promise<Response> {
+		let body: { source?: unknown; sql?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source : "";
+		const sql = typeof body?.sql === "string" ? body.sql : "";
+
+		const result = await buildDuckdbCsv({ projectRoot: this.core.filesystem.rootDir, source, sql });
 		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
 		return Response.json(result.csv);
 	}

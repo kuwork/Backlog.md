@@ -887,6 +887,25 @@ export const ja: TranslationDict = {
 		exportFailed: "書き出しに失敗しました",
 	},
 
+	duckdbQueryBlock: {
+		title: "DuckDB クエリ",
+		refresh: "再実行",
+		loading: "クエリ実行中…",
+		empty: "クエリ結果は 0 行です。",
+		truncated: "{count} 行に切り詰めました。",
+		summary: "{count} 行 · {ms} ms",
+		error: "クエリに失敗しました",
+		showQuery: "クエリを表示",
+		hideQuery: "クエリを隠す",
+		copyMarkdown: "Markdown でコピー",
+		copied: "コピーしました",
+		copyFailed: "コピーに失敗しました",
+		exportCsv: "CSV を書き出す",
+		exporting: "書き出し中…",
+		exported: "書き出し先: {name}",
+		exportFailed: "書き出しに失敗しました",
+	},
+
 	imageLightbox: {
 		viewImage: "画像を表示",
 		zoomIn: "拡大",

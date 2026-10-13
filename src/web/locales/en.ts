@@ -894,6 +894,25 @@ export const en = {
 		exportFailed: "Export failed",
 	},
 
+	duckdbQueryBlock: {
+		title: "DuckDB query",
+		refresh: "Refresh",
+		loading: "Running query…",
+		empty: "The query returned no rows.",
+		truncated: "Truncated to {count} rows.",
+		summary: "{count} rows · {ms} ms",
+		error: "Query failed",
+		showQuery: "Show query",
+		hideQuery: "Hide query",
+		copyMarkdown: "Copy Markdown",
+		copied: "Copied",
+		copyFailed: "Copy failed",
+		exportCsv: "Export CSV",
+		exporting: "Exporting…",
+		exported: "Exported: {name}",
+		exportFailed: "Export failed",
+	},
+
 	imageLightbox: {
 		viewImage: "View image",
 		zoomIn: "Zoom in",

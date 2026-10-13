@@ -15,8 +15,8 @@ export const CSV_EXTENSION = ".csv";
 /** Excel needs this at the head of the file to read UTF-8 rather than the local codepage. */
 export const UTF8_BOM = "﻿";
 
-/** Every leading sqlite extension this module strips before appending `.csv`. */
-const SQLITE_EXTENSIONS = [".sqlite", ".sqlite3", ".db"] as const;
+/** Extensions stripped from a database filename when suggesting a CSV export name. Shared by the SQLite and DuckDB explorers. */
+const DB_NAME_EXTENSIONS = [".sqlite", ".sqlite3", ".db", ".duckdb"] as const;
 
 function cellToCsv(cell: SqliteCell): string {
 	if (cell === null) return "";
@@ -52,7 +52,7 @@ export function exportTimestamp(now = new Date()): string {
 export function defaultExportName(dbPath: string, now = new Date()): string {
 	const base = dbPath.split(/[\\/]/).pop() ?? "export";
 	const lower = base.toLowerCase();
-	const extension = SQLITE_EXTENSIONS.find((candidate) => lower.endsWith(candidate));
+	const extension = DB_NAME_EXTENSIONS.find((candidate) => lower.endsWith(candidate));
 	const stem = extension ? base.slice(0, base.length - extension.length) : base;
 	return `${stem || "export"}-${exportTimestamp(now)}${CSV_EXTENSION}`;
 }

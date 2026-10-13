@@ -3,6 +3,7 @@ import Slugger from "github-slugger";
 import type { Element, ElementContent, Parent, Root, RootContent } from "hast";
 import React, { useEffect, useMemo, useRef } from "react";
 import { visit } from "unist-util-visit";
+import { DUCKDB_BLOCK_LANG } from "../../duckdb/block.ts";
 import { SQLITE_BLOCK_LANG } from "../../sqlite/block.ts";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
@@ -13,6 +14,7 @@ import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-targe
 import { renderMermaidIn } from "../utils/mermaid";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
+import DuckdbQueryBlock from "./DuckdbQueryBlock";
 import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
 import SqliteQueryBlock from "./SqliteQueryBlock";
 
@@ -422,10 +424,16 @@ function PreBlock(props: React.ComponentProps<"pre">) {
 		| React.ReactElement<{ className?: string; children?: React.ReactNode }>
 		| undefined;
 	const className = child?.props?.className ?? "";
-	if (!className.includes(`language-${SQLITE_BLOCK_LANG}`)) {
+	if (!className.includes("language-")) {
 		return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
 	}
-	return <SqliteQueryBlock block={textOf(child?.props?.children)} />;
+	if (className.includes(`language-${SQLITE_BLOCK_LANG}`)) {
+		return <SqliteQueryBlock block={textOf(child?.props?.children)} />;
+	}
+	if (className.includes(`language-${DUCKDB_BLOCK_LANG}`)) {
+		return <DuckdbQueryBlock block={textOf(child?.props?.children)} />;
+	}
+	return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
 }
 
 export default function MermaidMarkdown({

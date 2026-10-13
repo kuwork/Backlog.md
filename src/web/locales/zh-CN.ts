@@ -866,6 +866,25 @@ export const zhCN: TranslationDict = {
 		exportFailed: "导出失败",
 	},
 
+	duckdbQueryBlock: {
+		title: "DuckDB 查询",
+		refresh: "重新查询",
+		loading: "正在执行查询…",
+		empty: "查询没有返回任何行。",
+		truncated: "已截断至 {count} 行。",
+		summary: "{count} 行 · {ms} ms",
+		error: "查询失败",
+		showQuery: "显示查询",
+		hideQuery: "隐藏查询",
+		copyMarkdown: "复制为 Markdown",
+		copied: "已复制",
+		copyFailed: "复制失败",
+		exportCsv: "导出 CSV",
+		exporting: "正在导出…",
+		exported: "已导出：{name}",
+		exportFailed: "导出失败",
+	},
+
 	imageLightbox: {
 		viewImage: "查看图片",
 		zoomIn: "放大",
