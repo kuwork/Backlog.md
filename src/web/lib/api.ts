@@ -80,7 +80,10 @@ export interface GraphDatabaseSummary {
 	description: string;
 	createdAt: string | null;
 	updatedAt: string | null;
-	/** null for `default`: counting its rows would mean rebuilding the whole corpus. */
+	/**
+	 * Row counts. null only while `default` is still building: its counts come from the graph
+	 * service's live corpus graph, not from a snapshot that can be read on the spot.
+	 */
 	nodes: number | null;
 	edges: number | null;
 }

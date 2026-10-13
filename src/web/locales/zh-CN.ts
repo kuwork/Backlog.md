@@ -1114,7 +1114,7 @@ export const zhCN: TranslationDict = {
 		columnEdges: "边",
 		kindDerived: "派生",
 		kindUser: "用户",
-		derivedCountsUnknown: "重建",
+		countsUnavailable: "—",
 		cypherLabel: "Cypher 查询（只读）",
 		cypherPlaceholder: "MATCH (n) RETURN n LIMIT 25",
 		run: "运行",
@@ -1124,7 +1124,10 @@ export const zhCN: TranslationDict = {
 		truncated: "已截断（上限 500 行）",
 		readOnlyNotice:
 			'浏览是只读的。写入请用 CLI：`backlog graph import <db> <csv>` 或 `backlog graph insert <db> "<cypher>"`。',
-		defaultNote: "`default` 是 markdown 派生库：查询它会重建整个语料，需要几秒钟。",
+		defaultNote:
+			"`default` 是 markdown 派生库，由图服务在本进程内维护：随语料变更增量同步，查询直接落在已构建的图谱上，不会重建。",
+		schemaHint:
+			"查结构：CLI 用 `backlog graph schema <数据库>` 打印节点表、字段与关系表端点。下面两句可直接点进输入框：",
 	},
 };
 

@@ -277,7 +277,8 @@ function AppContent() {
 	const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 	// Task graph cold start (doc-014): driven by its own WS messages, parallel to loadingMessage.
 	const [graphStatus, setGraphStatus] = useState<"building" | "ready" | null>(null);
-	// Bumped on every graph-updated broadcast so the graph view refetches in place.
+	// Bumped on every graph-updated broadcast - and on graph-ready, which is the same news for a
+	// client that connected mid-build - so the graph view and the databases table refetch in place.
 	const [graphVersion, setGraphVersion] = useState(0);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 	const [duplicatePlan, setDuplicatePlan] = useState<DuplicateRepairPlan | null>(null);
@@ -973,6 +974,9 @@ function AppContent() {
 				setGraphStatus("building");
 			} else if (event.data === "graph-ready") {
 				setGraphStatus("ready");
+				// The graph just finished building. A client that connected mid-build never saw the
+				// `graph-updated` that build emitted, so this is its only signal to refetch.
+				setGraphVersion((version) => version + 1);
 			} else if (event.data === "graph-updated") {
 				setGraphVersion((version) => version + 1);
 			} else if (event.data === "graph-failed") {
@@ -1227,7 +1231,7 @@ function AppContent() {
 					/>
 					<Route path="settings" element={<Settings />} />
 					<Route path="gantt" element={<GanttView tasks={tasks} onEditTask={handleOpenTask} />} />
-					<Route path="databases" element={<GraphDatabases />} />
+					<Route path="databases" element={<GraphDatabases graphVersion={graphVersion} />} />
 					<Route path="memos" element={<MemosPage />} />
 				</Route>
 				<Route path="task/:id" element={<Layout {...layoutProps} />}>

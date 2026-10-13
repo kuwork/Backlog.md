@@ -18,7 +18,7 @@ import { DEFAULT_SLOT, graphPaths } from "./paths";
 import type { WhitelistDirs } from "./scanner";
 import { DEFAULT_WHITELIST, scanWhitelistedDirs } from "./scanner";
 import type { CypherQueryResult, GraphEdgeType, GraphKind, GraphStore } from "./store";
-import { openGraphStore } from "./store";
+import { EDGE_TYPES, openGraphStore } from "./store";
 
 /**
  * Graph Service (doc-014 §3): the single process holding the task graph.
@@ -329,6 +329,29 @@ export class GraphService {
 		const store = this.store;
 		if (!store) throw new Error("graph store unavailable");
 		return store.runCypher(statement);
+	}
+
+	/**
+	 * Row counts of the live graph, or null while it is still building.
+	 *
+	 * Deliberately counts instead of reusing `getPayload()`: the payload materializes every node and
+	 * edge in JS, which is what the graph canvas needs and what the databases table must not pay for
+	 * just to print two numbers. The store answers counting queries itself - `countNodes()` is one
+	 * corpus scan, `getAllTags()` one Tag scan, and each `countEdges()` one per edge table - and this
+	 * is a resident store, so there is no replay behind them.
+	 *
+	 * The counts mean "what this database holds", which is the whole graph the views draw when nothing
+	 * is filtered: the `FileNode`s **plus** the `Tag` nodes (`domain/wiki` and friends are drawn as
+	 * nodes, so a row that omitted them would read 181 short of the canvas headline). `Meta` is
+	 * bookkeeping - no view renders it - and stays out. Note this is the full graph, not one view's
+	 * subset: each graph page filters by legend category, so its headline is smaller by design.
+	 */
+	async getCounts(): Promise<{ nodes: number; edges: number } | null> {
+		const store = this.store;
+		if (!store || !this.ready) return null;
+		const [files, tags] = await Promise.all([store.countNodes(), store.getAllTags()]);
+		const perType = await Promise.all(EDGE_TYPES.map((type) => store.countEdges(type)));
+		return { nodes: files + tags.length, edges: perType.reduce((total, count) => total + count, 0) };
 	}
 
 	async getPayload(): Promise<GraphPayload> {

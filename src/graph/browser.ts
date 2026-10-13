@@ -24,7 +24,10 @@ export interface DatabaseSummary {
 	description: string;
 	createdAt: string | null;
 	updatedAt: string | null;
-	/** Row counts from the snapshot; null for `default`, which is a corpus rebuild we will not pay for here. */
+	/**
+	 * Row counts from the snapshot. null for `default`: this function reads files only, and the
+	 * corpus graph lives in the graph service's memory - its caller fills those counts in.
+	 */
 	nodes: number | null;
 	edges: number | null;
 }
