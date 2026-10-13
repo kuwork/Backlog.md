@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { $ } from "bun";
+import { createDatabase } from "../graph/databases.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerGraphTools } from "../mcp/tools/graph/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
@@ -73,5 +74,39 @@ describe("MCP graph tools", () => {
 		expect(result.isError).toBeFalsy();
 		const text = getText(result.content);
 		expect(text).toContain("labels");
+	});
+
+	it("registers graph_schema in the MCP tool list", async () => {
+		const names = await listToolNames();
+		expect(names).toContain("graph_schema");
+	});
+
+	it("introspects the default derived graph schema (node tables + relationship tables)", async () => {
+		const result = await callTool("graph_schema", { db: "default" });
+		expect(result.isError).toBeFalsy();
+		const schema = JSON.parse(getText(result.content)) as {
+			nodeTables: { name: string; properties: { name: string; type: string; primaryKey: boolean }[] }[];
+			relTables: { name: string; from: string; to: string }[];
+		};
+		expect(Array.isArray(schema.nodeTables)).toBe(true);
+		expect(schema.nodeTables.length).toBeGreaterThan(0);
+		expect(Array.isArray(schema.nodeTables[0]?.properties)).toBe(true);
+		expect(Array.isArray(schema.relTables)).toBe(true);
+	});
+
+	it("introspects a user database schema", async () => {
+		createDatabase(TEST_DIR, "schemadb", "schema test database");
+		const result = await callTool("graph_schema", { db: "schemadb" });
+		expect(result.isError).toBeFalsy();
+		const schema = JSON.parse(getText(result.content)) as { nodeTables: unknown[]; relTables: unknown[] };
+		expect(Array.isArray(schema.nodeTables)).toBe(true);
+		expect(Array.isArray(schema.relTables)).toBe(true);
+	});
+
+	it("returns a clear error for an unknown database", async () => {
+		const result = await callTool("graph_schema", { db: "does-not-exist" });
+		expect(result.isError).toBe(true);
+		const text = getText(result.content);
+		expect(text).toContain("不存在");
 	});
 });
