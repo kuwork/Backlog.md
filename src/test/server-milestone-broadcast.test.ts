@@ -102,6 +102,53 @@ describe("data change WebSocket publication", () => {
 		);
 	});
 
+	it("publishes a milestone file written out-of-band as a milestone-scoped update", async () => {
+		const messages: string[] = [];
+		await openSocket(messages);
+
+		// Reading the corpus starts the store, and the milestone folder watcher is started with the
+		// same services. The store's `ready` broadcast (`tasks-updated`) is the signal that it is
+		// live: a milestone file written before that would be seen by no watcher at all.
+		await request("/api/tasks");
+		await retry(
+			async () => {
+				if (!messages.includes("tasks-updated")) throw new Error("The content store did not become ready");
+			},
+			60,
+			250,
+		);
+		await withTimeout(sleep(200), "the milestone watcher to settle", 2000);
+		messages.length = 0;
+
+		// A CLI `milestone add` writes this file directly and never calls the API, so the folder
+		// watcher is the only thing that can tell a connected client the milestone list changed.
+		await writeFile(
+			join(core.filesystem.milestonesDir, "m-0 - Written-by-hand.md"),
+			[
+				"---",
+				"id: m-0",
+				"title: Written by hand",
+				"description: ''",
+				"created_date: '2026-09-01 10:00'",
+				"---",
+				"",
+				"## Description",
+				"",
+				"Body",
+				"",
+			].join("\n"),
+			"utf8",
+		);
+
+		await retry(
+			async () => {
+				if (!messages.includes("milestones-updated")) throw new Error("Out-of-band milestone was not published");
+			},
+			40,
+			250,
+		);
+	});
+
 	it("keeps a task file change on the task message", async () => {
 		const messages: string[] = [];
 		await openSocket(messages);

@@ -7,6 +7,7 @@ export {
 	buildMilestoneSummary,
 	collectArchivedMilestoneKeys,
 	collectMilestoneIds,
+	collectUnresolvedMilestoneIds,
 	getMilestoneLabel,
 	isDoneStatus,
 	milestoneKey,

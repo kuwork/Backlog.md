@@ -63,6 +63,7 @@ import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import { DependencyQuery } from "../utils/dependency-query.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
+import { watchMilestones } from "../utils/milestone-watcher.ts";
 import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
 import {
 	DependencyCycleError,
@@ -267,6 +268,9 @@ export class BacklogServer {
 	private browserLoadingState: BrowserLoadingState = { type: "loading", message: null };
 	private unsubscribeContentStore?: () => void;
 	private memoWatcher?: FSWatcher;
+	// Milestones live outside the ContentStore too (see startMilestoneWatcher), so this is the
+	// only thing that turns an out-of-band milestone write into a client refresh.
+	private milestoneWatcher: { stop: () => void } | null = null;
 	private storeReadyBroadcasted = false;
 	private taskBroadcastTimer?: ReturnType<typeof setTimeout>;
 	// Content-entity scopes (documents/decisions/wikis) are independent: each pending scope is
@@ -394,6 +398,12 @@ export class BacklogServer {
 		// memo directory directly so edits made outside the web UI (editor, CLI, script) broadcast.
 		this.startMemoWatcher();
 
+		// Milestones are outside the ContentStore for the same reason (its watchers only cover
+		// tasks, documents, decisions and wikis), so a CLI `milestone add` would otherwise never
+		// reach a client and a stale milestones page would keep rendering the id instead of the
+		// title. Hand the app the same feed the TUI already uses.
+		this.startMilestoneWatcher();
+
 		const search = await this.core.getSearchService();
 		this.searchService = search;
 		this.servicesInitialized = true;
@@ -428,6 +438,29 @@ export class BacklogServer {
 			// A missing directory (project without memos yet) is not fatal: the first memo write
 			// creates it, but we simply skip the watcher until the next start.
 			console.warn("Could not watch the memo directory for external edits:", error);
+		}
+	}
+
+	/**
+	 * Watches `backlog/milestones/` (and its archive) for out-of-band edits, so a milestone added
+	 * by the CLI or an editor reaches the Web UI without a manual reload - the same job
+	 * startMemoWatcher does for memos. Reuses the TUI's `watchMilestones`, which owns the settle and
+	 * double-read logic and drops a signature it already published, so a REST write is not echoed
+	 * twice: the API broadcast and this one coalesce in the 75ms debounce anyway.
+	 *
+	 * The milestone list is not held by the ContentStore, so nothing else in this class would ever
+	 * notice the new file.
+	 */
+	private startMilestoneWatcher(): void {
+		if (this.milestoneWatcher) return;
+		try {
+			this.milestoneWatcher = watchMilestones(this.core, {
+				onMilestonesChanged: () => this.broadcastDataUpdated("milestones"),
+			});
+		} catch (error) {
+			// A project whose milestone folders are not readable yet is not fatal: the first write
+			// creates them, and the watcher is set up again on the next start.
+			console.warn("Could not watch the milestone folders for external edits:", error);
 		}
 	}
 
@@ -1047,6 +1080,12 @@ export class BacklogServer {
 		try {
 			this.memoWatcher?.close();
 			this.memoWatcher = undefined;
+		} catch {}
+
+		// Stop the milestone folder watcher (milestones are outside the ContentStore too)
+		try {
+			this.milestoneWatcher?.stop();
+			this.milestoneWatcher = null;
 		} catch {}
 
 		// Stop the Graph Service (releases the single-holder lock)

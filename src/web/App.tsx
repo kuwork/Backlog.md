@@ -48,7 +48,12 @@ import { useHashScroll } from "./hooks/useHashScroll";
 import { useI18n } from "./hooks/useI18n";
 import { apiClient } from "./lib/api";
 import { isValidLocale } from "./locales";
-import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from "./utils/milestones";
+import {
+	collectArchivedMilestoneKeys,
+	collectMilestoneIds,
+	collectUnresolvedMilestoneIds,
+	milestoneKey,
+} from "./utils/milestones";
 import { deepEqual, reconcileById } from "./utils/reconcile";
 import { sanitizeUrlTitle } from "./utils/urlHelpers";
 import { getWebVersion } from "./utils/version";
@@ -263,6 +268,11 @@ function AppContent() {
 	const decisionsRef = useRef<Decision[]>([]);
 	const milestoneEntitiesRef = useRef<Milestone[]>([]);
 	const archivedMilestonesRef = useRef<Milestone[]>([]);
+	/**
+	 * Milestone ids a task referenced for which we already tried the by-id entity fetch. Without it
+	 * a task pinned to a milestone that does not exist would refetch on every task refresh forever.
+	 */
+	const attemptedMilestoneFetchRef = useRef<Set<string>>(new Set());
 	const loadErrorRef = useRef<Error | null>(null);
 	const duplicatePlanRef = useRef<DuplicateRepairPlan | null>(null);
 	/**
@@ -397,6 +407,43 @@ function AppContent() {
 		setDuplicatePlan(plan);
 	}, []);
 
+	/**
+	 * Fetch the milestone entities a task corpus references but the loaded set does not cover.
+	 *
+	 * A bucket label is resolved from the entities alone, so a task pointing at a milestone that
+	 * was never loaded degrades to the raw id (m-15); the detail view has no such gap because it
+	 * fetches the milestone by id. This closes it: an out-of-band milestone add (a CLI write the
+	 * client never heard about) now resolves to its title on the list and the board too, without
+	 * waiting for a broadcast and without refetching the whole entity list. Requesting each missing
+	 * id individually is what the detail modal already does, so it is the path known to work.
+	 */
+	const ensureReferencedMilestones = useCallback(async (tasksList: Task[]) => {
+		const missing = collectUnresolvedMilestoneIds(
+			tasksList,
+			milestoneEntitiesRef.current,
+			archivedMilestonesRef.current,
+		).filter((id) => !attemptedMilestoneFetchRef.current.has(milestoneKey(id)));
+		if (missing.length === 0) {
+			return;
+		}
+		for (const id of missing) {
+			attemptedMilestoneFetchRef.current.add(milestoneKey(id));
+		}
+		const fetched = await Promise.all(missing.map((id) => apiClient.fetchMilestone(id).catch(() => null)));
+		const additions = fetched.filter((milestone): milestone is Milestone => milestone !== null);
+		if (additions.length === 0) {
+			return;
+		}
+		const merged = [...milestoneEntitiesRef.current];
+		for (const milestone of additions) {
+			if (!merged.some((entry) => milestoneKey(entry.id) === milestoneKey(milestone.id))) {
+				merged.push(milestone);
+			}
+		}
+		milestoneEntitiesRef.current = merged;
+		setMilestoneEntities(merged);
+	}, []);
+
 	const hasLoadedRef = useRef(false);
 	// Content is on screen once the first load has succeeded; from then on a mid-session
 	// indexing broadcast must not flip the blocking skeleton back on.
@@ -455,6 +502,10 @@ function AppContent() {
 			archivedMilestonesRef.current = archivedMilestonesData;
 			setMilestoneEntities(milestonesData);
 			setArchivedMilestones(archivedMilestonesData);
+			// A task can name a milestone this entity list did not cover (an out-of-band add the
+			// client never heard about). Fetch exactly those missing entities so the bucket label
+			// resolves to the title instead of the raw id, the way the detail view already does.
+			void ensureReferencedMilestones(tasksList);
 			applyMilestoneIds(
 				collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
 					(milestone) => !archivedKeys.has(milestoneKey(milestone)),
@@ -489,7 +540,7 @@ function AppContent() {
 				setHasCompletedFirstLoad(true);
 			}
 		}
-	}, [applySearchResults, applyMilestoneIds, applyDuplicatePlan]);
+	}, [applySearchResults, applyMilestoneIds, applyDuplicatePlan, ensureReferencedMilestones]);
 
 	/**
 	 * Incremental refresh: the surgical update the single-card reorder path already applied, made
@@ -541,6 +592,9 @@ function AppContent() {
 						.join("\n");
 				const previousIdSignature = idSignature(tasksRef.current);
 				const { tasks: tasksList } = applySearchResults(searchResults, archivedKeys, milestoneAliases);
+				// A task-only refresh does not reread the milestone entities, so a milestone named by a
+				// task but never loaded would keep rendering as its raw id. Fetch exactly those.
+				void ensureReferencedMilestones(tasksList);
 				applyMilestoneIds(
 					collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
 						(milestone) => !archivedKeys.has(milestoneKey(milestone)),
@@ -569,7 +623,7 @@ function AppContent() {
 				}
 			}
 		},
-		[applySearchResults, applyMilestoneIds, applyDuplicatePlan, loadAllData],
+		[applySearchResults, applyMilestoneIds, applyDuplicatePlan, ensureReferencedMilestones, loadAllData],
 	);
 
 	React.useEffect(() => {
