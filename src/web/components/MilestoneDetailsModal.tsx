@@ -1,8 +1,9 @@
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { Milestone, Task } from "../../types";
 import { stripAnyPrefix } from "../../utils/prefix-config";
+import { taskIdsEqual } from "../../utils/task-id";
 import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../utils/task-sorting";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
@@ -11,14 +12,18 @@ import { dateTimeLocalToStoredUtc, parseStoredUtcDate, storedUtcToDateTimeLocal 
 import { areJsonEqual, preserveDirtyRefreshValue } from "../utils/form-refresh";
 import { isTypingTarget } from "../utils/keyboard";
 import { isDoneStatus, milestoneKey } from "../utils/milestones";
+import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import FilePreviewModal from "./FilePreviewModal";
+import type { NodeStyle } from "./GraphLegend";
 import MermaidMarkdown from "./MermaidMarkdown";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
 import StoredDate from "./StoredDate";
+import TaskDependencyGraph, { type GraphViewports } from "./TaskDependencyGraph";
+import { HeaderBackButton } from "./TaskDetailsModal";
 
 interface Props {
 	milestoneId: string | null;
@@ -29,6 +34,8 @@ interface Props {
 	onClose: () => void;
 	onEditTask: (task: Task) => void;
 	onRefreshData?: () => Promise<void> | void;
+	/** Bumped when the server graph changes (graph-updated WebSocket); triggers a graph refetch. */
+	graphVersion?: number;
 }
 
 type Mode = "preview" | "edit";
@@ -69,10 +76,12 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	onClose,
 	onEditTask,
 	onRefreshData,
+	graphVersion,
 }) => {
 	const { theme } = useTheme();
 	const { t } = useI18n();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [mode, setMode] = useState<Mode>("preview");
 	const [fetchedMilestone, setFetchedMilestone] = useState<Milestone | null>(null);
 	const activeMilestone = milestone ?? fetchedMilestone;
@@ -137,6 +146,41 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	const doneCount = useMemo(() => milestoneTasks.filter((task) => isDoneStatus(task.status)).length, [milestoneTasks]);
 	const progress = milestoneTasks.length > 0 ? Math.round((doneCount / milestoneTasks.length) * 100) : 0;
 
+	// Relationship-graph entry: open/close, legend filters and the viewport transform are kept per
+	// milestone, so switching milestones (or drilling into a task and back) restores each milestone's
+	// own view. The modal instance stays mounted across the URL-driven open/close, so these survive
+	// the round trip to a task detail and back.
+	const [graphOpenByMilestone, setGraphOpenByMilestone] = useState<ReadonlyMap<string, boolean>>(() => new Map());
+	const [graphHiddenStylesByMilestone, setGraphHiddenStylesByMilestone] = useState<
+		ReadonlyMap<string, ReadonlySet<NodeStyle>>
+	>(() => new Map());
+	const milestoneGraphViewportsRef = useRef<GraphViewports>(new Map());
+	const activeMilestoneId = activeMilestone?.id ?? "";
+	const showGraph = graphOpenByMilestone.get(activeMilestoneId) ?? false;
+	const setShowGraph = useCallback(
+		(open: boolean) => {
+			if (!activeMilestoneId) return;
+			setGraphOpenByMilestone((previous) => new Map(previous).set(activeMilestoneId, open));
+		},
+		[activeMilestoneId],
+	);
+	const milestoneTaskIds = useMemo(() => milestoneTasks.map((task) => task.id), [milestoneTasks]);
+
+	// While the relationship graph fills the modal, Escape collapses it (back to the detail view)
+	// instead of closing the modal - mirroring the task detail modal behavior.
+	useEffect(() => {
+		if (!showGraph) return;
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === "Escape" && !isTypingTarget(event)) {
+				event.preventDefault();
+				event.stopPropagation();
+				setShowGraph(false);
+			}
+		};
+		window.addEventListener("keydown", onKey, { capture: true });
+		return () => window.removeEventListener("keydown", onKey, { capture: true });
+	}, [showGraph, setShowGraph]);
+
 	const baseline = useMemo(
 		() => ({
 			name: activeMilestone?.title || "",
@@ -154,11 +198,26 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	// Reset local state when the opened milestone changes. Re-runs whenever the
 	// milestone object updates (including the fallback fetch resolving late), but
 	// a same-record refresh only overwrites fields the user has not edited.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
 		const next = baseline;
 		const previous = formBaselineRef.current;
 		const sameOpenRefresh =
 			Boolean(previous) && isOpen && previousIsOpenRef.current && previousMilestoneIdRef.current === milestoneId;
+
+		// The per-milestone graph state (open/closed flag, hidden styles, viewport transform) is keyed by
+		// milestone id and lives for the lifetime of this mounted modal, so switching milestones - or
+		// having a task drilled open on top of the graph and coming back - restores each milestone's own
+		// view. It is dropped only on a *genuine* close. A task drilled open from this graph is itself a
+		// modal route, so closing this milestone flips `isOpen` false while only landing underneath that
+		// task - an occlusion, where the graph must survive the return trip. Landing on any non-modal
+		// route (the milestones list, the board) means the milestone was really left, so a fresh open
+		// starts on the detail view - mirroring the task detail modal.
+		if (!isOpen && previousIsOpenRef.current && !isModalRoutePath(location.pathname)) {
+			setGraphOpenByMilestone(new Map());
+			setGraphHiddenStylesByMilestone(new Map());
+			milestoneGraphViewportsRef.current.clear();
+		}
 
 		if (sameOpenRefresh && previous) {
 			setName((current) => preserveDirtyRefreshValue(current, previous.name, next.name));
@@ -565,7 +624,12 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				}}
 				title={activeMilestone ? activeMilestone.title : t.milestones.loading}
 				maxWidthClass="max-w-5xl"
-				disableEscapeClose={mode === "edit"}
+				disableEscapeClose={mode === "edit" || showGraph}
+				leftActions={
+					showGraph ? (
+						<HeaderBackButton onClick={() => setShowGraph(false)} label={t.milestones.dependencyGraphBack} />
+					) : undefined
+				}
 				actions={
 					activeMilestone ? (
 						<div className="flex items-center gap-2">
@@ -657,341 +721,386 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 					) : undefined
 				}
 			>
-				{error && <div className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
-
-				{!activeMilestone ? (
-					<div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">{t.milestones.loading}</div>
+				{showGraph && activeMilestone ? (
+					<TaskDependencyGraph
+						focusIds={milestoneTaskIds}
+						viewportKey={activeMilestone.id}
+						graphVersion={graphVersion}
+						viewports={milestoneGraphViewportsRef.current}
+						hiddenStyles={graphHiddenStylesByMilestone.get(activeMilestone.id)}
+						onHiddenStylesChange={(next) =>
+							setGraphHiddenStylesByMilestone((prev) => new Map(prev).set(activeMilestone.id, next))
+						}
+						drillOnRoot
+						onTaskClick={(taskId) => {
+							const target = tasks.find((task) => taskIdsEqual(task.id, taskId));
+							if (target) onEditTask(target);
+						}}
+					/>
 				) : (
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-6" onClickCapture={confirmNavigationAwayFromEdits}>
-						{/* Main content */}
-						<div className="md:col-span-2 space-y-6">
-							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-								<SectionHeader title={t.milestones.descriptionLabel} />
-								{mode === "preview" ? (
-									description ? (
-										<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-											<MermaidMarkdown
-												source={description}
-												onTaskClick={handleTaskClick}
-												onDraftClick={(draftId) => {
-													if (!confirmLeaveWithUnsavedEdits()) return;
-													navigate(`/draft/${draftId}`);
-												}}
-												wikilinkBasePath="index.md"
-											/>
-										</div>
-									) : (
-										<div className="text-sm text-gray-500 dark:text-gray-400">{t.milestones.noDescription}</div>
-									)
-								) : (
-									<div className="border border-gray-200 dark:border-gray-700 rounded-md">
-										<PasteAwareMDEditor
-											value={description}
-											onChange={(val) => setDescription(val || "")}
-											preview="edit"
-											height={300}
-											data-color-mode={theme}
-										/>
-									</div>
-								)}
-							</div>
+					<>
+						{error && <div className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
 
-							{/* Documentation */}
-							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-								<SectionHeader title={t.taskDetails.section.documentation} />
-								<div className="space-y-3">
-									{documentation.length > 0 ? (
-										<ul className="space-y-2">
-											{documentation.map((doc, idx) => (
-												<li key={doc} className="flex items-center gap-3 group">
-													<span className="flex-1 min-w-0">
-														{doc.startsWith("http://") || doc.startsWith("https://") ? (
-															<a
-																href={doc}
-																target="_blank"
-																rel="noopener noreferrer"
-																className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-															>
-																{doc}
-															</a>
-														) : (
+						{!activeMilestone ? (
+							<div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">{t.milestones.loading}</div>
+						) : (
+							<div className="grid grid-cols-1 md:grid-cols-3 gap-6" onClickCapture={confirmNavigationAwayFromEdits}>
+								{/* Main content */}
+								<div className="md:col-span-2 space-y-6">
+									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+										<SectionHeader title={t.milestones.descriptionLabel} />
+										{mode === "preview" ? (
+											description ? (
+												<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
+													<MermaidMarkdown
+														source={description}
+														onTaskClick={handleTaskClick}
+														onDraftClick={(draftId) => {
+															if (!confirmLeaveWithUnsavedEdits()) return;
+															navigate(`/draft/${draftId}`);
+														}}
+														wikilinkBasePath="index.md"
+													/>
+												</div>
+											) : (
+												<div className="text-sm text-gray-500 dark:text-gray-400">{t.milestones.noDescription}</div>
+											)
+										) : (
+											<div className="border border-gray-200 dark:border-gray-700 rounded-md">
+												<PasteAwareMDEditor
+													value={description}
+													onChange={(val) => setDescription(val || "")}
+													preview="edit"
+													height={300}
+													data-color-mode={theme}
+												/>
+											</div>
+										)}
+									</div>
+
+									{/* Documentation */}
+									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+										<SectionHeader title={t.taskDetails.section.documentation} />
+										<div className="space-y-3">
+											{documentation.length > 0 ? (
+												<ul className="space-y-2">
+													{documentation.map((doc, idx) => (
+														<li key={doc} className="flex items-center gap-3 group">
+															<span className="flex-1 min-w-0">
+																{doc.startsWith("http://") || doc.startsWith("https://") ? (
+																	<a
+																		href={doc}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																		className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+																	>
+																		{doc}
+																	</a>
+																) : (
+																	<button
+																		type="button"
+																		onClick={() => setPreviewPath(doc)}
+																		className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
+																		title={t.taskDetails.clickToPreview}
+																	>
+																		{doc}
+																	</button>
+																)}
+															</span>
 															<button
 																type="button"
-																onClick={() => setPreviewPath(doc)}
-																className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
-																title={t.taskDetails.clickToPreview}
+																onClick={() => {
+																	const newDocs = documentation.filter((_, i) => i !== idx);
+																	setDocumentation(newDocs);
+																	void saveMeta({ documentation: newDocs });
+																}}
+																className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+																title={t.taskDetails.removeDocumentation}
 															>
-																{doc}
+																<svg
+																	aria-hidden="true"
+																	className="w-4 h-4"
+																	fill="none"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24"
+																>
+																	<path
+																		strokeLinecap="round"
+																		strokeLinejoin="round"
+																		strokeWidth={2}
+																		d="M6 18L18 6M6 6l12 12"
+																	/>
+																</svg>
 															</button>
-														)}
+														</li>
+													))}
+												</ul>
+											) : (
+												<p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
+											)}
+											<form
+												onSubmit={(e) => {
+													e.preventDefault();
+													const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
+													const value = input.value.trim();
+													if (value && !documentation.includes(value)) {
+														const newDocs = [...documentation, value];
+														setDocumentation(newDocs);
+														void saveMeta({ documentation: newDocs });
+														input.value = "";
+													}
+												}}
+												className="flex gap-2"
+											>
+												<PathAutocomplete
+													name="newDoc"
+													placeholder={t.taskDetails.placeholderRefDoc}
+													className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+												/>
+												<button
+													type="submit"
+													className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+												>
+													{t.common.add}
+												</button>
+											</form>
+										</div>
+									</div>
+								</div>
+
+								{/* Sidebar metadata */}
+								<div className="space-y-4">
+									{(activeMilestone.createdDate || activeMilestone.updatedDate) && (
+										<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-1">
+											{activeMilestone.createdDate && (
+												<div>
+													<span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.created}:</span>{" "}
+													<span className="text-gray-700 dark:text-gray-200">
+														<StoredDate value={activeMilestone.createdDate} />
 													</span>
-													<button
-														type="button"
-														onClick={() => {
-															const newDocs = documentation.filter((_, i) => i !== idx);
-															setDocumentation(newDocs);
-															void saveMeta({ documentation: newDocs });
-														}}
-														className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
-														title={t.taskDetails.removeDocumentation}
+												</div>
+											)}
+											{activeMilestone.updatedDate && (
+												<div>
+													<span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.updated}:</span>{" "}
+													<span className="text-gray-700 dark:text-gray-200">
+														<StoredDate value={activeMilestone.updatedDate} />
+													</span>
+												</div>
+											)}
+										</div>
+									)}
+
+									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2">
+										<SectionHeader title={t.milestones.nameLabel} />
+										<input
+											id="milestone-details-modal-name"
+											type="text"
+											value={name}
+											onChange={(e) => {
+												setName(e.target.value);
+												if (error) setError(null);
+											}}
+											onBlur={() => {
+												if (!name.trim()) {
+													setName(baseline.name);
+													return;
+												}
+												if (name.trim() !== (activeMilestone?.title || "")) {
+													void saveMeta({ name });
+												}
+											}}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.currentTarget.blur();
+												}
+											}}
+											className={dateInputClass}
+										/>
+										<p className="text-xs text-gray-500 dark:text-gray-400">{t.milestones.renameHint}</p>
+									</div>
+
+									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
+										<div className="flex items-center justify-between gap-2">
+											<SectionHeader title={t.milestones.progressLabel} />
+											{milestoneTasks.length > 0 && (
+												<button
+													type="button"
+													onClick={() => setShowGraph(true)}
+													title={t.milestones.dependencyGraphToggle}
+													aria-label={t.milestones.dependencyGraphToggle}
+													className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors duration-200"
+												>
+													<svg
+														className="w-4 h-4"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+														aria-hidden="true"
 													>
-														<svg
-															aria-hidden="true"
-															className="w-4 h-4"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																strokeLinecap="round"
-																strokeLinejoin="round"
-																strokeWidth={2}
-																d="M6 18L18 6M6 6l12 12"
-															/>
-														</svg>
-													</button>
-												</li>
-											))}
-										</ul>
-									) : (
-										<p className="text-sm text-gray-500 dark:text-gray-400">{t.taskDetails.noDocumentation}</p>
-									)}
-									<form
-										onSubmit={(e) => {
-											e.preventDefault();
-											const input = e.currentTarget.elements.namedItem("newDoc") as HTMLInputElement;
-											const value = input.value.trim();
-											if (value && !documentation.includes(value)) {
-												const newDocs = [...documentation, value];
-												setDocumentation(newDocs);
-												void saveMeta({ documentation: newDocs });
-												input.value = "";
-											}
-										}}
-										className="flex gap-2"
-									>
-										<PathAutocomplete
-											name="newDoc"
-											placeholder={t.taskDetails.placeholderRefDoc}
-											className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-										/>
-										<button
-											type="submit"
-											className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-										>
-											{t.common.add}
-										</button>
-									</form>
-								</div>
-							</div>
-						</div>
-
-						{/* Sidebar metadata */}
-						<div className="space-y-4">
-							{(activeMilestone.createdDate || activeMilestone.updatedDate) && (
-								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-1">
-									{activeMilestone.createdDate && (
-										<div>
-											<span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.created}:</span>{" "}
-											<span className="text-gray-700 dark:text-gray-200">
-												<StoredDate value={activeMilestone.createdDate} />
-											</span>
+														<circle cx="6" cy="6" r="2.5" strokeWidth={2} />
+														<circle cx="18" cy="6" r="2.5" strokeWidth={2} />
+														<circle cx="6" cy="18" r="2.5" strokeWidth={2} />
+														<circle cx="18" cy="18" r="2.5" strokeWidth={2} fill="currentColor" stroke="none" />
+														<path strokeLinecap="round" strokeWidth={2} d="M8.5 6h7M6 8.5v7m12-7v7M8.5 18h7" />
+													</svg>
+												</button>
+											)}
 										</div>
-									)}
-									{activeMilestone.updatedDate && (
-										<div>
-											<span className="font-semibold text-gray-800 dark:text-gray-100">{t.common.updated}:</span>{" "}
-											<span className="text-gray-700 dark:text-gray-200">
-												<StoredDate value={activeMilestone.updatedDate} />
-											</span>
+										<div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+											<div
+												className="h-full bg-emerald-500 transition-all duration-300"
+												style={{ width: `${progress}%` }}
+											/>
 										</div>
-									)}
-								</div>
-							)}
+										<div className="flex items-center justify-between text-sm">
+											<span className="text-gray-500 dark:text-gray-400">
+												{milestoneTasks.length}{" "}
+												{milestoneTasks.length === 1 ? t.milestones.taskSingular : t.milestones.taskPlural}
+											</span>
+											<span className="font-bold text-emerald-600 dark:text-emerald-400">{progress}%</span>
+										</div>
+									</div>
 
-							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2">
-								<SectionHeader title={t.milestones.nameLabel} />
-								<input
-									id="milestone-details-modal-name"
-									type="text"
-									value={name}
-									onChange={(e) => {
-										setName(e.target.value);
-										if (error) setError(null);
-									}}
-									onBlur={() => {
-										if (!name.trim()) {
-											setName(baseline.name);
-											return;
-										}
-										if (name.trim() !== (activeMilestone?.title || "")) {
-											void saveMeta({ name });
-										}
-									}}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.currentTarget.blur();
-										}
-									}}
-									className={dateInputClass}
-								/>
-								<p className="text-xs text-gray-500 dark:text-gray-400">{t.milestones.renameHint}</p>
-							</div>
-
-							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
-								<SectionHeader title={t.milestones.progressLabel} />
-								<div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-									<div
-										className="h-full bg-emerald-500 transition-all duration-300"
-										style={{ width: `${progress}%` }}
-									/>
-								</div>
-								<div className="flex items-center justify-between text-sm">
-									<span className="text-gray-500 dark:text-gray-400">
-										{milestoneTasks.length}{" "}
-										{milestoneTasks.length === 1 ? t.milestones.taskSingular : t.milestones.taskPlural}
-									</span>
-									<span className="font-bold text-emerald-600 dark:text-emerald-400">{progress}%</span>
-								</div>
-							</div>
-
-							<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
-								<SectionHeader title={t.milestones.datesLabel} />
-								<div className="space-y-2">
-									<label
-										htmlFor="milestone-details-modal-due-date"
-										className="text-sm font-medium text-gray-900 dark:text-gray-100"
-									>
-										{t.taskDetails.section.dueDate}
-									</label>
-									<input
-										id="milestone-details-modal-due-date"
-										type="date"
-										value={dueDate}
-										onChange={(e) => {
-											const value = e.target.value;
-											setDueDate(value);
-											void saveMeta({ dueDate: value });
-										}}
-										className={dateInputClass}
-									/>
-								</div>
-								<div className="space-y-2">
-									<label
-										htmlFor="milestone-details-modal-planned-start"
-										className="text-sm font-medium text-gray-900 dark:text-gray-100"
-									>
-										{t.taskDetails.section.plannedStart}
-									</label>
-									<input
-										id="milestone-details-modal-planned-start"
-										type="date"
-										value={plannedStart}
-										onChange={(e) => {
-											const value = e.target.value;
-											setPlannedStart(value);
-											void saveMeta({ plannedStart: value });
-										}}
-										className={dateInputClass}
-									/>
-								</div>
-								<div className="space-y-2">
-									<label
-										htmlFor="milestone-details-modal-planned-end"
-										className="text-sm font-medium text-gray-900 dark:text-gray-100"
-									>
-										{t.taskDetails.section.plannedEnd}
-									</label>
-									<input
-										id="milestone-details-modal-planned-end"
-										type="date"
-										value={plannedEnd}
-										onChange={(e) => {
-											const value = e.target.value;
-											setPlannedEnd(value);
-											void saveMeta({ plannedEnd: value });
-										}}
-										className={dateInputClass}
-									/>
-								</div>
-								<div className="space-y-2">
-									<label
-										htmlFor="milestone-details-modal-actual-start"
-										className="text-sm font-medium text-gray-900 dark:text-gray-100"
-									>
-										{t.taskDetails.section.actualStart}
-									</label>
-									<input
-										id="milestone-details-modal-actual-start"
-										type="datetime-local"
-										value={storedUtcToDateTimeLocal(actualStart)}
-										onChange={(e) => {
-											const value = dateTimeLocalToStoredUtc(e.target.value);
-											setActualStart(value);
-											void saveMeta({ actualStart: value });
-										}}
-										className={dateInputClass}
-									/>
-								</div>
-								<div className="space-y-2">
-									<label
-										htmlFor="milestone-details-modal-actual-end"
-										className="text-sm font-medium text-gray-900 dark:text-gray-100"
-									>
-										{t.taskDetails.section.actualEnd}
-									</label>
-									<input
-										id="milestone-details-modal-actual-end"
-										type="datetime-local"
-										value={storedUtcToDateTimeLocal(actualEnd)}
-										onChange={(e) => {
-											const value = dateTimeLocalToStoredUtc(e.target.value);
-											setActualEnd(value);
-											void saveMeta({ actualEnd: value });
-										}}
-										className={dateInputClass}
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
-				)}
-
-				{/* Task list */}
-				{activeMilestone && (
-					<div className="mt-6">
-						<div className="mb-3 flex items-center justify-between">
-							<h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-								{t.milestones.tasksSection}
-							</h3>
-							<span className="text-xs text-gray-500 dark:text-gray-400">
-								{doneCount}/{milestoneTasks.length}
-							</span>
-						</div>
-						{milestoneTasks.length === 0 ? (
-							<p className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-								{t.milestones.noTasks}
-							</p>
-						) : (
-							<div className="rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-								<div className="divide-y divide-gray-200 dark:divide-gray-700">
-									{renderTaskTableHeader()}
-									{getSortedTasks(milestoneTasks).map((task) => (
-										<MilestoneTaskRow
-											key={task.id}
-											task={task}
-											isDone={isDoneStatus(task.status)}
-											statusBadgeClass={getStatusBadgeClass(task.status)}
-											priorityBadgeClass={getPriorityBadgeClass(task.priority)}
-											onEditTask={onEditTask}
-											onDragStart={noopDrag}
-											onDragEnd={noopDrag}
-										/>
-									))}
+									<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
+										<SectionHeader title={t.milestones.datesLabel} />
+										<div className="space-y-2">
+											<label
+												htmlFor="milestone-details-modal-due-date"
+												className="text-sm font-medium text-gray-900 dark:text-gray-100"
+											>
+												{t.taskDetails.section.dueDate}
+											</label>
+											<input
+												id="milestone-details-modal-due-date"
+												type="date"
+												value={dueDate}
+												onChange={(e) => {
+													const value = e.target.value;
+													setDueDate(value);
+													void saveMeta({ dueDate: value });
+												}}
+												className={dateInputClass}
+											/>
+										</div>
+										<div className="space-y-2">
+											<label
+												htmlFor="milestone-details-modal-planned-start"
+												className="text-sm font-medium text-gray-900 dark:text-gray-100"
+											>
+												{t.taskDetails.section.plannedStart}
+											</label>
+											<input
+												id="milestone-details-modal-planned-start"
+												type="date"
+												value={plannedStart}
+												onChange={(e) => {
+													const value = e.target.value;
+													setPlannedStart(value);
+													void saveMeta({ plannedStart: value });
+												}}
+												className={dateInputClass}
+											/>
+										</div>
+										<div className="space-y-2">
+											<label
+												htmlFor="milestone-details-modal-planned-end"
+												className="text-sm font-medium text-gray-900 dark:text-gray-100"
+											>
+												{t.taskDetails.section.plannedEnd}
+											</label>
+											<input
+												id="milestone-details-modal-planned-end"
+												type="date"
+												value={plannedEnd}
+												onChange={(e) => {
+													const value = e.target.value;
+													setPlannedEnd(value);
+													void saveMeta({ plannedEnd: value });
+												}}
+												className={dateInputClass}
+											/>
+										</div>
+										<div className="space-y-2">
+											<label
+												htmlFor="milestone-details-modal-actual-start"
+												className="text-sm font-medium text-gray-900 dark:text-gray-100"
+											>
+												{t.taskDetails.section.actualStart}
+											</label>
+											<input
+												id="milestone-details-modal-actual-start"
+												type="datetime-local"
+												value={storedUtcToDateTimeLocal(actualStart)}
+												onChange={(e) => {
+													const value = dateTimeLocalToStoredUtc(e.target.value);
+													setActualStart(value);
+													void saveMeta({ actualStart: value });
+												}}
+												className={dateInputClass}
+											/>
+										</div>
+										<div className="space-y-2">
+											<label
+												htmlFor="milestone-details-modal-actual-end"
+												className="text-sm font-medium text-gray-900 dark:text-gray-100"
+											>
+												{t.taskDetails.section.actualEnd}
+											</label>
+											<input
+												id="milestone-details-modal-actual-end"
+												type="datetime-local"
+												value={storedUtcToDateTimeLocal(actualEnd)}
+												onChange={(e) => {
+													const value = dateTimeLocalToStoredUtc(e.target.value);
+													setActualEnd(value);
+													void saveMeta({ actualEnd: value });
+												}}
+												className={dateInputClass}
+											/>
+										</div>
+									</div>
 								</div>
 							</div>
 						)}
-					</div>
+
+						{/* Task list */}
+						{activeMilestone && (
+							<div className="mt-6">
+								<div className="mb-3 flex items-center justify-between">
+									<h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+										{t.milestones.tasksSection}
+									</h3>
+									<span className="text-xs text-gray-500 dark:text-gray-400">
+										{doneCount}/{milestoneTasks.length}
+									</span>
+								</div>
+								{milestoneTasks.length === 0 ? (
+									<p className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+										{t.milestones.noTasks}
+									</p>
+								) : (
+									<div className="rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+										<div className="divide-y divide-gray-200 dark:divide-gray-700">
+											{renderTaskTableHeader()}
+											{getSortedTasks(milestoneTasks).map((task) => (
+												<MilestoneTaskRow
+													key={task.id}
+													task={task}
+													isDone={isDoneStatus(task.status)}
+													statusBadgeClass={getStatusBadgeClass(task.status)}
+													priorityBadgeClass={getPriorityBadgeClass(task.priority)}
+													onEditTask={onEditTask}
+													onDragStart={noopDrag}
+													onDragEnd={noopDrag}
+												/>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+						)}
+					</>
 				)}
 			</Modal>
 

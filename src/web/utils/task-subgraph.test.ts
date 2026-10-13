@@ -115,4 +115,31 @@ describe("buildRelationshipSubgraph", () => {
 		expect(graph.nodes.some((n) => n.isRoot)).toBe(true);
 		expect(graph.edges).toHaveLength(2);
 	});
+
+	it("marks every focus id as a root for a multi-root (group) scope", () => {
+		const graph = buildRelationshipSubgraph(payload(), ["BACK-1", "BACK-4"]);
+		const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+		expect(byId.get("BACK-1")?.isRoot).toBe(true);
+		expect(byId.get("BACK-4")?.isRoot).toBe(true);
+		expect(byId.get("BACK-2")?.isRoot).toBe(false);
+		expect(byId.get("BACK-3")?.isRoot).toBe(false);
+	});
+
+	it("returns the union of every focus id neighborhood for a group scope", () => {
+		const graph = buildRelationshipSubgraph(payload(), ["BACK-1", "BACK-4"]);
+		const ids = graph.nodes.map((n) => n.id);
+		// BACK-1 reaches BACK-2/BACK-3 (parent chain), m-1 (milestone) and BACK-4 (dependency);
+		// BACK-4 reaches BACK-1 in reverse, so the union is the whole connected cluster.
+		expect(ids).toEqual(expect.arrayContaining(["BACK-1", "BACK-2", "BACK-3", "BACK-4", "m-1"]));
+		expect(ids).not.toContain("BACK-5");
+	});
+
+	it("ignores focus ids missing from the payload and yields empty when none resolve", () => {
+		const partial = buildRelationshipSubgraph(payload(), ["BACK-1", "GHOST-9"]);
+		expect(partial.nodes.some((n) => n.isRoot)).toBe(true);
+		expect(partial.nodes.find((n) => n.isRoot)?.id).toBe("BACK-1");
+		const none = buildRelationshipSubgraph(payload(), ["GHOST-9", "GHOST-0"]);
+		expect(none.nodes).toHaveLength(0);
+		expect(none.edges).toHaveLength(0);
+	});
 });

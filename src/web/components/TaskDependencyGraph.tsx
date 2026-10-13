@@ -40,9 +40,41 @@ import {
 /** Where each task's graph viewport was left (`d3-zoom` transform), keyed by task id. */
 export type GraphViewports = Map<string, ZoomTransform>;
 
+/**
+ * Routes a double-clicked relationship-graph node to the URL that opens its detail surface.
+ * Returns `null` for task/draft nodes (the caller resolves those against its own corpus and drills
+ * in), and the milestone route for a milestone node so its details modal opens on top of the
+ * current one. Centralised here so the "double-click a milestone does nothing" gap stays covered
+ * by a unit test rather than only by manual canvas interaction.
+ */
+export function relationshipNodeRoute(id: string, kind: GraphNodeDto["kind"] | undefined): string | null {
+	if (kind === "milestone") return `/milestone/${encodeURIComponent(id)}`;
+	return null;
+}
+
 interface Props {
-	/** Canonical id of the open task; the subgraph is centered on it. */
-	focusId: string;
+	/**
+	 * Canonical id of the open task; the subgraph is centered on it. For a group scope (e.g. a
+	 * milestone's tasks) prefer `focusIds` instead. Exactly one of `focusId` / `focusIds` is expected.
+	 */
+	focusId?: string;
+	/**
+	 * Multiple root ids — the subgraph is the union of every root's relationship neighborhood, with
+	 * each root flagged `isRoot`. Used to scope the graph to a group of tasks (e.g. a milestone).
+	 */
+	focusIds?: string[];
+	/**
+	 * Key the viewport transform is persisted under in `viewports`. Defaults to `focusId` so a single
+	 * task keeps its own viewport; a group scope passes its own id (e.g. the milestone id) for
+	 * per-group viewport persistence.
+	 */
+	viewportKey?: string;
+	/**
+	 * When true, double-clicking a root node also fires `onTaskClick`. In the task detail modal the
+	 * root is the task already on screen, so opening it is a no-op; in a group scope (e.g. a
+	 * milestone) no single node is "the open one", so every node — roots included — should drill in.
+	 */
+	drillOnRoot?: boolean;
 	/** Bumped by the app when the server graph changes (graph-updated WebSocket); triggers a refetch. */
 	graphVersion?: number;
 	/**
@@ -53,7 +85,12 @@ interface Props {
 	viewports: GraphViewports;
 	hiddenStyles?: ReadonlySet<NodeStyle>;
 	onHiddenStylesChange: (next: ReadonlySet<NodeStyle>) => void;
-	onTaskClick: (taskId: string) => void;
+	/**
+	 * Fired when a node is double-clicked. The second argument is the node's graph kind, so a caller
+	 * can route milestones to the milestone details modal (and tasks/drafts to the task/draft views)
+	 * instead of assuming every node is a task.
+	 */
+	onTaskClick: (id: string, kind?: GraphNodeDto["kind"]) => void;
 }
 
 const ARROW_SIZE = 7;
@@ -101,6 +138,9 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
  */
 export const TaskDependencyGraph: FC<Props> = ({
 	focusId,
+	focusIds,
+	viewportKey,
+	drillOnRoot,
 	graphVersion,
 	viewports,
 	hiddenStyles,
@@ -118,6 +158,10 @@ export const TaskDependencyGraph: FC<Props> = ({
 		onTaskClickRef.current = onTaskClick;
 	}, [onTaskClick]);
 	const filters = hiddenStyles ?? DEFAULT_FILTERS;
+	// Scope: a single focus (task detail) or a set of roots (milestone scope). The persisted viewport
+	// is keyed by viewportKey when given, else by the single focus id, so a group keeps its own view.
+	const focusList = focusIds && focusIds.length > 0 ? focusIds : focusId ? [focusId] : [];
+	const viewportKeyResolved = viewportKey ?? focusId ?? "";
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
@@ -139,8 +183,8 @@ export const TaskDependencyGraph: FC<Props> = ({
 	}, [t.graphView.error, graphVersion]);
 
 	const subgraph = useMemo(
-		() => (payload?.status === "ready" ? buildRelationshipSubgraph(payload, focusId) : null),
-		[payload, focusId],
+		() => (payload?.status === "ready" ? buildRelationshipSubgraph(payload, focusList) : null),
+		[payload, focusList],
 	);
 
 	// Legend filters: hidden kinds drop their nodes and every edge touching them.
@@ -362,7 +406,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 			.on("zoom", (event) => {
 				transform = event.transform;
 				// Remember the viewport on this task; a drill-down round trip comes back to it.
-				viewports.set(focusId, event.transform);
+				viewports.set(viewportKeyResolved, event.transform);
 				if (event.sourceEvent) scheduleDraw();
 				else draw();
 			});
@@ -409,7 +453,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 		};
 		// Returning to a task the user already inspected (the drill-down round trip) restores the
 		// viewport they left there; a first visit frames the whole subgraph.
-		const savedTransform = viewports.get(focusId);
+		const savedTransform = viewports.get(viewportKeyResolved);
 		if (savedTransform) select(canvasEl).call(zoomBehavior.transform, savedTransform);
 		else fitToView();
 
@@ -475,10 +519,10 @@ export const TaskDependencyGraph: FC<Props> = ({
 			}
 			// Double-click opens: drill into the neighbouring task's own detail view.
 			// The root has nothing to open - it is already on screen.
-			if (found.isRoot) return;
+			if (found.isRoot && !drillOnRoot) return;
 			selectedId = found.id;
 			scheduleDraw();
-			onTaskClickRef.current(found.id);
+			onTaskClickRef.current(found.id, found.kind);
 		};
 		canvasEl.addEventListener("pointermove", onPointerMove);
 		canvasEl.addEventListener("pointerdown", onPointerDown);
@@ -504,7 +548,7 @@ export const TaskDependencyGraph: FC<Props> = ({
 	}, [
 		visibleSubgraph,
 		viewports,
-		focusId,
+		viewportKeyResolved,
 		theme,
 		t.graphView.edgeDependsOn,
 		t.graphView.edgeParentOf,

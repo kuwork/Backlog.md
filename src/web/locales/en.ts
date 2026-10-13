@@ -404,6 +404,8 @@ export const en = {
 		datesLabel: "Dates",
 		loading: "Loading milestone...",
 		loadError: "Failed to load milestone",
+		dependencyGraphToggle: "Show relationship graph",
+		dependencyGraphBack: "Back to milestone details (Esc)",
 	},
 
 	drafts: {
