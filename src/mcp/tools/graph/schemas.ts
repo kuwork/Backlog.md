@@ -53,3 +53,27 @@ export const graphDescribeDatabaseSchema: JsonSchema = {
 	required: ["db"],
 	additionalProperties: false,
 };
+
+export const graphCreateDatabaseSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		name: {
+			type: "string",
+			minLength: 1,
+			description:
+				"Name of the new user database (letters/digits/_/-, must start with a letter; 'default' is reserved).",
+		},
+		description: {
+			type: "string",
+			minLength: 1,
+			description: "Human-readable description of the new user database.",
+		},
+		acknowledged: {
+			type: "boolean",
+			description:
+				"Confirmation flag. Must be true; graph_create_database is a write operation that creates a durable database.",
+		},
+	},
+	required: ["name", "description", "acknowledged"],
+	additionalProperties: false,
+};

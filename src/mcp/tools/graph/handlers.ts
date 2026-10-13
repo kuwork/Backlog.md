@@ -1,5 +1,6 @@
 import type { Core } from "../../../core/backlog.ts";
 import { describeDatabases } from "../../../graph/browser.ts";
+import { createDatabase } from "../../../graph/databases.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { CallToolResult } from "../../types.ts";
 import { isWriteStatement, queryDatabase, schemaDatabase } from "./graph-access.ts";
@@ -17,6 +18,12 @@ export type GraphListDatabasesArgs = Record<string, never>;
 
 export type GraphDescribeDatabaseArgs = {
 	db: string;
+};
+
+export type GraphCreateDatabaseArgs = {
+	name: string;
+	description: string;
+	acknowledged: boolean;
 };
 
 /** Format a Cypher result set for an agent: machine-readable JSON plus a short summary line. */
@@ -88,5 +95,42 @@ export class GraphHandlers {
 		return {
 			content: [{ type: "text", text: JSON.stringify(found, null, 2) }],
 		};
+	}
+
+	async createDatabase(args: GraphCreateDatabaseArgs): Promise<CallToolResult> {
+		const name = args.name;
+		const description = args.description;
+		if (!name || !description) {
+			throw new BacklogToolError("Missing required argument: name and description", "VALIDATION_ERROR");
+		}
+		if (!args.acknowledged) {
+			throw new BacklogToolError(
+				`graph_create_database is a write operation; pass acknowledged: true to confirm creating user database "${name}".`,
+				"VALIDATION_ERROR",
+			);
+		}
+		try {
+			const database = createDatabase(this.core.filesystem.rootDir, name, description);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								name: database.name,
+								kind: database.kind,
+								description: database.description,
+								createdAt: database.createdAt,
+								updatedAt: database.updatedAt,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
+		} catch (error) {
+			throw new BacklogToolError(error instanceof Error ? error.message : String(error), "RESOURCE_CONFLICT");
+		}
 	}
 }
