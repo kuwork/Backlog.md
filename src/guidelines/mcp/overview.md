@@ -45,6 +45,7 @@ Searching first avoids duplicate tasks and helps you understand existing context
 - **Managing documents** → `backlog://workflow/documents` - How to create, update, list, and view project documents
 - **Managing decisions** → `backlog://workflow/decisions` - How to create, list and update decisions, including output modes and status handling
 - **Managing drafts** → `backlog://workflow/drafts` - How to create, promote, demote, and archive drafts
+- **Querying the graph** → `backlog://workflow/graph` - How to query the task/knowledge graph and manage user graph databases
 
 ### Core Principle
 
