@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileSystem } from "../file-system/operations";
+import { DEFAULT_DATABASE } from "../graph/databases";
 import { computeFileHash, loadMetaCache, saveMetaCache } from "../graph/fingerprint";
 import { computeChangeSet, RecordCache } from "../graph/incremental";
 import { graphPaths, portSlot, TUI_SLOT } from "../graph/paths";
@@ -170,6 +171,66 @@ describe("GraphService hot update", () => {
 		// After release the lock is free again.
 		expect(await second.start()).toBe(true);
 		await second.stop();
+	});
+
+	test("getCounts reports the live graph's counts, agreeing with the payload and moving with a sync", async () => {
+		const service = new GraphService(root, { backend: "memory", debounceMs: 30, reconcileMs: 3_600_000 });
+		// Before start there is no store to count: the databases table shows a dash, not a zero.
+		expect(await service.getCounts()).toBeNull();
+		expect(await service.start()).toBe(true);
+		try {
+			// Seed: A depends on B, B belongs to milestone m-1, and a wiki page carries one label -
+			// the label becomes a Tag node, which the graph views draw and therefore must be counted.
+			await writeFile(
+				join(root, "backlog", "tasks", "back-1 - A.md"),
+				taskMd({ id: "back-1", dependencies: ["back-2"] }),
+				"utf8",
+			);
+			await writeFile(
+				join(root, "backlog", "tasks", "back-2 - B.md"),
+				taskMd({ id: "back-2", milestone: "m-1" }),
+				"utf8",
+			);
+			await writeFile(join(root, "backlog", "milestones", "m-1 - M.md"), "---\nid: m-1\ntitle: M\n---\n", "utf8");
+			await mkdir(join(root, "backlog", "wiki"), { recursive: true }); // beforeEach seeds work dirs only
+			await writeFile(
+				join(root, "backlog", "wiki", "page-a.md"),
+				"---\ntitle: Page A\nfile_type: wiki\nlabels:\n  - domain/graph\n---\n\nbody\n",
+				"utf8",
+			);
+			service.notify(["seed"]);
+			const counts = await retry(async () => {
+				const current = await service.getCounts();
+				if (current?.nodes !== 5) throw new Error("waiting for the seed import");
+				return current;
+			});
+			// 4 FileNodes (2 tasks, 1 milestone, 1 wiki page) + 1 Tag.
+			expect(counts).toEqual({ nodes: 5, edges: 3 }); // DependsOn + BelongsToMilestone + TaggedWith
+
+			// Counting must never disagree with the graph page about the same corpus: `nodes` is what
+			// the canvas draws with nothing filtered out, so it includes the Tag nodes.
+			const payload = await service.getPayload();
+			expect(payload.nodeCount).toBe(4); // the payload's own count is FileNodes only
+			expect(counts.nodes).toBe(payload.nodes.length);
+			expect(counts.edges).toBe(payload.edges.length);
+
+			// A later sync moves them - which is exactly what the graph-updated broadcast surfaces.
+			await writeFile(join(root, "backlog", "tasks", "back-3 - C.md"), taskMd({ id: "back-3" }), "utf8");
+			await writeFile(
+				join(root, "backlog", "tasks", "back-1 - A.md"),
+				taskMd({ id: "back-1", dependencies: ["back-2", "back-3"] }),
+				"utf8",
+			);
+			service.notify(["dep-edit"]);
+			const after = await retry(async () => {
+				const current = await service.getCounts();
+				if (current?.edges !== 4) throw new Error("waiting for the new edge");
+				return current;
+			});
+			expect(after).toEqual({ nodes: 6, edges: 4 });
+		} finally {
+			await service.stop();
+		}
 	});
 
 	test("one database per slot: a TUI and a Web UI session never contend", async () => {
@@ -593,6 +654,44 @@ describe("/api/graph endpoint", () => {
 		// While this server holds the lock, a second service cannot take it.
 		const second = new GraphService(root, { backend: "memory", reconcileMs: 3_600_000 });
 		expect(await second.start()).toBe(false);
+
+		await handle.stop();
+	});
+
+	test("lists `default` with the corpus counts the graph service actually holds", async () => {
+		await writeFile(
+			join(root, "backlog", "tasks", "back-1 - A.md"),
+			taskMd({ id: "back-1", dependencies: ["back-2"] }),
+			"utf8",
+		);
+		await writeFile(join(root, "backlog", "tasks", "back-2 - B.md"), taskMd({ id: "back-2" }), "utf8");
+
+		const { BacklogServer } = await import("../server/index");
+		const server = new BacklogServer(root);
+		const handle = server as unknown as {
+			getGraphService(): Promise<unknown>;
+			handleGetGraphDatabases(): Promise<Response>;
+			stop(): Promise<void>;
+		};
+		type DatabasesBody = {
+			databases: { name: string; kind: string; nodes: number | null; edges: number | null }[];
+		};
+		const listing = async () => (await (await handle.handleGetGraphDatabases()).json()) as DatabasesBody;
+
+		// Before the service is up the list still answers, and `default` reports a dash: the request
+		// must never block on a cold start that can run for seconds.
+		expect((await listing()).databases.find((db) => db.name === DEFAULT_DATABASE)).toMatchObject({
+			kind: "derived",
+			nodes: null,
+			edges: null,
+		});
+
+		await handle.getGraphService(); // what the server's boot does eagerly
+		expect((await listing()).databases.find((db) => db.name === DEFAULT_DATABASE)).toMatchObject({
+			kind: "derived",
+			nodes: 2,
+			edges: 1, // DependsOn
+		});
 
 		await handle.stop();
 	});

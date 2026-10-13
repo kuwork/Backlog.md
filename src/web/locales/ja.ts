@@ -1136,7 +1136,7 @@ export const ja: TranslationDict = {
 		columnEdges: "エッジ",
 		kindDerived: "派生",
 		kindUser: "ユーザー",
-		derivedCountsUnknown: "再構築",
+		countsUnavailable: "—",
 		cypherLabel: "Cypher クエリ（読み取り専用）",
 		cypherPlaceholder: "MATCH (n) RETURN n LIMIT 25",
 		run: "実行",
@@ -1147,7 +1147,9 @@ export const ja: TranslationDict = {
 		readOnlyNotice:
 			'参照は読み取り専用です。書き込みは CLI で行います：`backlog graph import <db> <csv>` または `backlog graph insert <db> "<cypher>"`',
 		defaultNote:
-			"`default` は markdown から派生したグラフです。クエリのたびにコーパス全体を再構築するため、数秒かかります。",
+			"`default` は markdown から派生したグラフで、プロセス内のグラフサービスが維持します。コーパスの変更を増分同期するため、クエリは構築済みのグラフに対して実行され、再構築は行いません。",
+		schemaHint:
+			"構造を調べるには、CLI の `backlog graph schema <db>` がノードテーブル・プロパティ・リレーションの端点を出力します。下の文はクリックで入力欄に入ります：",
 	},
 } as const;
 

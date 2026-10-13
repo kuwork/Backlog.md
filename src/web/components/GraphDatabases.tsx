@@ -6,12 +6,25 @@
  * `FileNode`; this one cannot.
  */
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient, type CypherResult, type GraphDatabaseSummary } from "../lib/api";
 import LoadingSpinner from "./LoadingSpinner";
 
 const DEFAULT_STATEMENT = "MATCH (n) RETURN n LIMIT 25";
+
+/**
+ * The schema procedures ryu answers, offered as one-click statements.
+ *
+ * `show_tables()` lists the tables; `table_info` describes one. `FileNode` is the label the corpus
+ * graph uses (not `File`), so it doubles as a worked example. `show_connection('Rel')` is the third
+ * step for a relationship table, but its result is the endpoints, not columns - the CLI's
+ * `backlog graph schema` prints all three together.
+ */
+const SCHEMA_HINTS = [
+	"CALL show_tables() RETURN name, type",
+	"CALL table_info('FileNode') RETURN name, type, `primary key`",
+] as const;
 
 /** Render one result cell: text as-is, anything structured as compact JSON. */
 function cellText(value: unknown): string {
@@ -20,7 +33,16 @@ function cellText(value: unknown): string {
 	return String(value);
 }
 
-const GraphDatabases: React.FC = () => {
+interface GraphDatabasesProps {
+	/**
+	 * Bumped by the shell on every `graph-updated` / `graph-ready` broadcast. The corpus database is
+	 * held by the graph service in the server process and changes without a page reload, so the row
+	 * counts only stay honest if the list is refetched when the graph says it changed.
+	 */
+	graphVersion?: number;
+}
+
+const GraphDatabases: React.FC<GraphDatabasesProps> = ({ graphVersion = 0 }) => {
 	const { t } = useI18n();
 	const [databases, setDatabases] = useState<GraphDatabaseSummary[] | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -29,24 +51,36 @@ const GraphDatabases: React.FC = () => {
 	const [result, setResult] = useState<CypherResult | null>(null);
 	const [queryError, setQueryError] = useState<string | null>(null);
 	const [running, setRunning] = useState(false);
+	// Set once a list has arrived. A refresh failure must not blank a populated page, so the error
+	// branch only applies to the first load.
+	const loadedRef = useRef(false);
 
+	// graphVersion is a refresh trigger, not a value the fetch reads - which is why biome cannot see
+	// it as a dependency, and why dropping it would leave the counts silently stale.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: graphVersion is a refresh trigger
 	useEffect(() => {
 		let cancelled = false;
 		apiClient
 			.listGraphDatabases()
 			.then((list) => {
 				if (cancelled) return;
+				loadedRef.current = true;
 				setDatabases(list);
-				// Land on a user database: `default` costs a corpus rebuild, so it should be a choice.
+				// Land on a user database once and keep it: `default` is the corpus graph, which has
+				// its own page (GraphView), and a refresh must never move the selection out from
+				// under the statement the user is editing.
 				setSelected((current) => current ?? list.find((db) => db.kind === "user")?.name ?? list[0]?.name ?? null);
 			})
 			.catch((error: unknown) => {
-				if (!cancelled) setLoadError(error instanceof Error ? error.message : t.databases.error);
+				// A failed refresh leaves the table up: the counts are stale, not wrong, and blanking
+				// the page would throw away the selected database and its result over one blip.
+				if (cancelled || loadedRef.current) return;
+				setLoadError(error instanceof Error ? error.message : t.databases.error);
 			});
 		return () => {
 			cancelled = true;
 		};
-	}, [t]);
+	}, [t, graphVersion]);
 
 	const run = useCallback(async () => {
 		if (!selected || !statement.trim()) return;
@@ -130,10 +164,10 @@ const GraphDatabases: React.FC = () => {
 								</td>
 								<td className="px-4 py-2 text-gray-600 dark:text-gray-300">{db.description}</td>
 								<td className="px-4 py-2 text-right text-gray-700 dark:text-gray-200">
-									{db.nodes === null ? t.databases.derivedCountsUnknown : db.nodes}
+									{db.nodes === null ? t.databases.countsUnavailable : db.nodes}
 								</td>
 								<td className="px-4 py-2 text-right text-gray-700 dark:text-gray-200">
-									{db.edges === null ? t.databases.derivedCountsUnknown : db.edges}
+									{db.edges === null ? t.databases.countsUnavailable : db.edges}
 								</td>
 							</tr>
 						))}
@@ -172,6 +206,21 @@ const GraphDatabases: React.FC = () => {
 				{active?.kind === "derived" && (
 					<p className="text-xs text-gray-500 dark:text-gray-400">{t.databases.defaultNote}</p>
 				)}
+				<div className="space-y-1.5">
+					<p className="text-xs text-gray-500 dark:text-gray-400">{t.databases.schemaHint}</p>
+					<div className="flex flex-wrap gap-2">
+						{SCHEMA_HINTS.map((hint) => (
+							<button
+								key={hint}
+								type="button"
+								onClick={() => setStatement(hint)}
+								className="px-2 py-0.5 font-mono text-xs rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/40"
+							>
+								{hint}
+							</button>
+						))}
+					</div>
+				</div>
 			</div>
 
 			{queryError && (

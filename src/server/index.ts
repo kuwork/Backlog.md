@@ -3001,15 +3001,27 @@ export class BacklogServer {
 	}
 
 	/**
-	 * GET /api/graph/databases - every database with its row counts, read from the registry and the
-	 * snapshots. `default` reports no counts: those would cost a full corpus rebuild, and the graph
-	 * page already shows them.
+	 * GET /api/graph/databases - every database with its row counts.
+	 *
+	 * A user database answers from its snapshot without opening it. `default` has no snapshot to
+	 * read - it is the corpus graph the graph service holds in this process - so its counts come
+	 * from the service itself, and stay null while that graph is still building.
+	 *
+	 * Deliberately checks the already-started service instead of awaiting it: a cold start can run
+	 * for seconds on a large repository, and a database list has no business blocking on it. The
+	 * `graph-ready` broadcast is what brings the counts in, which is why the page refetches on it.
 	 */
 	private async handleGetGraphDatabases(): Promise<Response> {
-		return Response.json(
-			{ databases: describeDatabases(this.core.filesystem.rootDir) },
-			{ headers: { "Content-Type": "application/json" } },
-		);
+		const databases = describeDatabases(this.core.filesystem.rootDir);
+		const counts = this.graphService ? await this.graphService.getCounts() : null;
+		if (counts) {
+			for (const database of databases) {
+				if (database.kind !== "derived") continue;
+				database.nodes = counts.nodes;
+				database.edges = counts.edges;
+			}
+		}
+		return Response.json({ databases }, { headers: { "Content-Type": "application/json" } });
 	}
 
 	/**

@@ -1114,7 +1114,7 @@ export const zhTW: TranslationDict = {
 		columnEdges: "邊",
 		kindDerived: "衍生",
 		kindUser: "使用者",
-		derivedCountsUnknown: "重建",
+		countsUnavailable: "—",
 		cypherLabel: "Cypher 查詢（唯讀）",
 		cypherPlaceholder: "MATCH (n) RETURN n LIMIT 25",
 		run: "執行",
@@ -1124,7 +1124,10 @@ export const zhTW: TranslationDict = {
 		truncated: "已截斷（上限 500 列）",
 		readOnlyNotice:
 			'瀏覽是唯讀的。寫入請用 CLI：`backlog graph import <db> <csv>` 或 `backlog graph insert <db> "<cypher>"`。',
-		defaultNote: "`default` 是 markdown 衍生庫：查詢它會重建整個語料，需要幾秒鐘。",
+		defaultNote:
+			"`default` 是 markdown 衍生庫，由圖服務在本行程內維護：隨語料變更增量同步，查詢直接落在已建構的圖譜上，不會重建。",
+		schemaHint:
+			"查結構：CLI 用 `backlog graph schema <資料庫>` 印出節點表、欄位與關係表端點。下面兩句可直接點進輸入框：",
 	},
 };
 

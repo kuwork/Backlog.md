@@ -1142,7 +1142,7 @@ export const en = {
 		columnEdges: "Edges",
 		kindDerived: "derived",
 		kindUser: "user",
-		derivedCountsUnknown: "rebuild",
+		countsUnavailable: "—",
 		cypherLabel: "Cypher query (read-only)",
 		cypherPlaceholder: "MATCH (n) RETURN n LIMIT 25",
 		run: "Run",
@@ -1153,7 +1153,9 @@ export const en = {
 		readOnlyNotice:
 			'Browsing is read-only. Write with the CLI: `backlog graph import <db> <csv>` or `backlog graph insert <db> "<cypher>"`.',
 		defaultNote:
-			"`default` is the derived markdown graph: querying it rebuilds the whole corpus, which takes a few seconds.",
+			"`default` is the derived markdown graph, kept warm in this process by the graph service and synced incrementally as the corpus changes: queries run against the built graph and never rebuild.",
+		schemaHint:
+			"Need the shape? The CLI's `backlog graph schema <db>` prints node tables, their properties and relationship endpoints. Click a statement to load it:",
 	},
 } as const;
 
