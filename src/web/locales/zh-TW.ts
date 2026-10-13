@@ -400,6 +400,8 @@ export const zhTW: TranslationDict = {
 		datesLabel: "日期",
 		loading: "正在載入里程碑...",
 		loadError: "載入里程碑失敗",
+		dependencyGraphToggle: "顯示關聯關係圖",
+		dependencyGraphBack: "返回里程碑詳情 (Esc)",
 	},
 
 	drafts: {

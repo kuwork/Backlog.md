@@ -37,25 +37,32 @@ export const SUBGRAPH_MAX_DEPTH = 4;
 export const SUBGRAPH_MAX_NODES = 80;
 
 /**
- * The typed-edge subgraph around `focusId`, BFS in both directions, cycle-protected by a
- * visited set and bounded by `maxDepth` hops and `maxNodes` total nodes. Edge endpoints are
+ * The typed-edge subgraph around one or more `focusId`s, BFS in both directions, cycle-protected
+ * by a visited set and bounded by `maxDepth` hops and `maxNodes` total nodes. Edge endpoints are
  * matched case-insensitively (taskIdsEqual), so a focus id in any casing still lands on its
- * canonical graph node. A focus id missing from the payload yields an empty subgraph.
+ * canonical graph node. Every focus id present in the payload is flagged `isRoot` — passing an
+ * array scopes the graph to a whole group (e.g. a milestone's tasks) rather than a single task.
+ * A focus id missing from the payload is ignored; when none resolve, the subgraph is empty.
  */
 export function buildRelationshipSubgraph(
 	payload: RelationshipGraphPayload,
-	focusId: string,
+	focusId: string | string[],
 	maxDepth: number = SUBGRAPH_MAX_DEPTH,
 	maxNodes: number = SUBGRAPH_MAX_NODES,
 ): RelationshipSubgraph {
-	// BFS outward from the focus through both edge directions; the visited set is the cycle
+	// BFS outward from every focus through both edge directions; the visited set is the cycle
 	// protection, and the queue drains breadth-first so the node budget keeps the closest
-	// neighbors when it has to cut.
+	// neighbors when it has to cut. Each focus node seeds the queue at depth 0 (root).
 	const depthById = new Map<string, number>();
-	const focusNode = payload.nodes.find((node) => taskIdsEqual(node.id, focusId));
-	if (!focusNode) return { nodes: [], edges: [] };
-	depthById.set(focusNode.id, 0);
-	const queue: string[] = [focusNode.id];
+	const queue: string[] = [];
+	for (const id of Array.isArray(focusId) ? focusId : [focusId]) {
+		const focusNode = payload.nodes.find((node) => taskIdsEqual(node.id, id));
+		if (focusNode && !depthById.has(focusNode.id)) {
+			depthById.set(focusNode.id, 0);
+			queue.push(focusNode.id);
+		}
+	}
+	if (queue.length === 0) return { nodes: [], edges: [] };
 
 	const adjacency = new Map<string, string[]>();
 	const touch = (from: string, to: string) => {
@@ -85,7 +92,7 @@ export function buildRelationshipSubgraph(
 	return {
 		nodes: payload.nodes
 			.filter((node) => depthById.has(node.id))
-			.map((node) => ({ ...node, isRoot: node.id === focusNode.id })),
+			.map((node) => ({ ...node, isRoot: depthById.get(node.id) === 0 })),
 		edges: payload.edges.filter(
 			(edge) => TASK_RELATION_EDGE_TYPES.has(edge.type) && depthById.has(edge.from) && depthById.has(edge.to),
 		),

@@ -400,6 +400,8 @@ export const zhCN: TranslationDict = {
 		datesLabel: "日期",
 		loading: "正在加载里程碑...",
 		loadError: "加载里程碑失败",
+		dependencyGraphToggle: "显示关联关系图",
+		dependencyGraphBack: "返回里程碑详情 (Esc)",
 	},
 
 	drafts: {

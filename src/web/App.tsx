@@ -1277,6 +1277,7 @@ function AppContent() {
 				onClose={handleCloseMilestoneModal}
 				onEditTask={handleOpenTask}
 				onRefreshData={refreshData}
+				graphVersion={graphVersion}
 			/>
 
 			<TaskDetailsModal

@@ -1,7 +1,7 @@
 import { commands } from "@uiw/react-md-editor";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { AcceptanceCriterion, Milestone, StatusesConfig, Task, TaskComment } from "../../types";
 import type { DependencyDirectionAnswer, DependencyQueryAnswer } from "../../utils/dependency-query";
 import { stripAnyPrefix } from "../../utils/prefix-config";
@@ -9,11 +9,12 @@ import { createReadinessGraph, formatReadinessBlockers, getTaskReadiness } from 
 import { canonicalTaskId, taskIdsEqual } from "../../utils/task-id";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
-import { ApiError, apiClient, NetworkError } from "../lib/api";
+import { ApiError, apiClient, type GraphNodeKind, NetworkError } from "../lib/api";
 import type { TranslationDict } from "../locales/types";
 import { dateTimeLocalToStoredUtc, storedUtcToDateTimeLocal } from "../utils/date-display";
 import { areJsonEqual, preserveDirtyRefreshValue } from "../utils/form-refresh";
 import { isTypingTarget } from "../utils/keyboard";
+import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
@@ -27,7 +28,7 @@ import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
 import StoredDate from "./StoredDate";
 import TabButton from "./TabButton";
-import TaskDependencyGraph, { type GraphViewports } from "./TaskDependencyGraph";
+import TaskDependencyGraph, { type GraphViewports, relationshipNodeRoute } from "./TaskDependencyGraph";
 import TaskHierarchySection from "./TaskHierarchySection";
 
 interface Props {
@@ -68,7 +69,7 @@ type Mode = "preview" | "edit" | "create";
  * the relationship graph are the same move, so they share the arrow in the same slot - left of the
  * modal title, where a drill-down already puts it.
  */
-const HeaderBackButton: React.FC<{ onClick: () => void; label: string }> = ({ onClick, label }) => (
+export const HeaderBackButton: React.FC<{ onClick: () => void; label: string }> = ({ onClick, label }) => (
 	<button
 		type="button"
 		onClick={onClick}
@@ -224,6 +225,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	const { theme } = useTheme();
 	const { t } = useI18n();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const isCreateMode = !task;
 	const isFromOtherBranch = Boolean(task?.branch);
 	// A record read out of backlog/completed reaches the popup the same way a cross-branch record
@@ -667,13 +669,24 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	// Completed records are the one thing the board corpus cannot answer, and BACK-662's completed
 	// corpus makes the search service the surface that can.
 	const handleGraphTaskClick = useCallback(
-		(taskId: string) => {
-			const targetTask = dependencyCorpus.find((entry) => taskIdsEqual(entry.id, taskId));
+		(nodeId: string, kind?: GraphNodeKind) => {
+			// A milestone node drills into the milestone details modal, opened on top of this task
+			// modal - the same routing the full /graph view uses. Carrying this view as the
+			// background location means closing the milestone lands back here (on the task, with its
+			// relationship graph still open) instead of dumping the user on the milestones list. The
+			// node id is the milestone's own id (m-3), which resolves against the loaded entities
+			// directly, so no record lookup is needed. Everything else is a task/draft handled below.
+			const milestoneRoute = relationshipNodeRoute(nodeId, kind);
+			if (milestoneRoute) {
+				navigate(milestoneRoute, { state: { backgroundLocation: location } });
+				return;
+			}
+			const targetTask = dependencyCorpus.find((entry) => taskIdsEqual(entry.id, nodeId));
 			if (targetTask && onDrillDown) {
 				onDrillDown(targetTask);
 			}
 		},
-		[dependencyCorpus, onDrillDown],
+		[dependencyCorpus, onDrillDown, navigate, location],
 	);
 
 	const searchCompletedDependencies = useCallback(async (query: string): Promise<Task[]> => {
@@ -862,9 +875,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
 			setDependencySaveError(null);
 		}
 
-		// Every task opens in the detail view; the per-task graph state (mode, viewport, filters) lives
-		// as long as the modal does, so a drill-down round trip still finds each task where it was left.
-		if (!isOpen || !previousIsOpen.current) {
+		// The per-task graph state (open/closed flag, hidden styles, viewport transform) is keyed by task
+		// id and lives for the lifetime of this mounted modal, so a task returns exactly where it was
+		// left. It is dropped only on a *genuine* close. A milestone drilled open on top of this task is
+		// itself a modal route, so closing this task flips `isOpen` false while only landing underneath
+		// that milestone - an occlusion, where the graph must survive for the return trip. Landing on
+		// any non-modal route means the task was really left, so a fresh open starts on the detail view.
+		if (!isOpen && previousIsOpen.current && !isModalRoutePath(location.pathname)) {
 			setGraphOpenByTask(new Map());
 			setGraphHiddenStyles(new Map());
 			graphViewportsRef.current.clear();

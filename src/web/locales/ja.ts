@@ -407,6 +407,8 @@ export const ja: TranslationDict = {
 		datesLabel: "日付",
 		loading: "マイルストーンを読み込み中...",
 		loadError: "マイルストーンの読み込みに失敗しました",
+		dependencyGraphToggle: "関連グラフを表示",
+		dependencyGraphBack: "マイルストーン詳細に戻る (Esc)",
 	},
 
 	drafts: {
