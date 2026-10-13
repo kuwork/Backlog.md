@@ -78,6 +78,9 @@
     ],
     "src/**/*.{ts,js}": [
       "biome check --write --files-ignore-unknown=true"
+    ],
+    "!(backlog/databases/**)*.json": [
+      "biome check --write --files-ignore-unknown=true"
     ]
   },
   "author": "Alex Gavrilescu (https://github.com/MrLesk)",

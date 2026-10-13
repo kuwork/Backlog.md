@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "databases": {
+    "demo": {
+      "description": "Web UI 测试用演示图：公司 / 人员 / 项目 / 技能",
+      "createdAt": "2026-10-13 01:56",
+      "updatedAt": "2026-10-13 01:56",
+      "snapshotFingerprint": "5f064ad84f24eee5ad3b95d85cbf115d457b5f9715e936238321259008fa83ca"
+    }
+  }
+}
