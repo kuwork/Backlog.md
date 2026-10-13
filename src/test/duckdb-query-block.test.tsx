@@ -123,13 +123,13 @@ describe("DuckdbQueryBlock base render (BACK-778)", () => {
 		expect(container?.textContent).toContain("第 2 行");
 	});
 
-	// Show/Hide is enabled by BACK-779; Copy Markdown (BACK-780) and Export CSV (BACK-781) remain
-	// gated and must stay absent, not merely disabled.
-	it("exposes the Show/Hide toggle but keeps Copy/Export gated", async () => {
+	// Show/Hide (BACK-779) and Copy Markdown (BACK-780) are enabled; Export CSV (BACK-781) is the
+	// only action still gated, so it must stay absent, not merely disabled.
+	it("keeps the Export CSV action gated", async () => {
 		mount(BLOCK);
 		await settle();
 		expect(toggle()).toBeTruthy();
-		expect(button("Copy Markdown")).toBeUndefined();
+		expect(button("Copy Markdown")).toBeTruthy();
 		expect(button("Export CSV")).toBeUndefined();
 		// Refresh is always present.
 		expect(button("Refresh")).toBeTruthy();
@@ -198,5 +198,90 @@ describe("DuckdbQueryBlock Show/Hide Query (BACK-779)", () => {
 		});
 
 		expect(container?.querySelector("pre")?.textContent).toBe(BROKEN_BLOCK);
+	});
+});
+
+// A DuckDB result after `toCell` coercion (validated in duckdb.test.ts): BIGINT→string, DECIMAL→fixed
+// scale string, TIMESTAMP→ISO, DATE→ISO date, BLOB→"<blob N 字节>", NULL→null. The copy serializer
+// only sees the coerced `SqliteCell` union, so this exercises the DuckDB→Markdown contract end to end.
+const COPY_RESULT = {
+	columns: ["id", "amount", "ts", "day", "blob", "note"],
+	rows: [["1234567890123", "3.140", "2026-10-13T08:30:00.000Z", "2026-10-13", "<blob 4 字节>", null]],
+	truncated: false,
+	elapsedMs: 5,
+	dbPath: "backlog/databases/shop.duckdb",
+};
+
+describe("DuckdbQueryBlock Copy Markdown (BACK-780)", () => {
+	const writes: string[] = [];
+
+	function stubClipboard() {
+		writes.length = 0;
+		(globalThis as { navigator?: Navigator }).navigator = {
+			clipboard: {
+				writeText: (text: string) => {
+					writes.push(text);
+					return Promise.resolve();
+				},
+			},
+		} as unknown as Navigator;
+	}
+
+	async function clickCopy() {
+		await act(async () => {
+			button("Copy Markdown")?.click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+	}
+
+	it("copies a DuckDB-typed grid as a Markdown table", async () => {
+		stubClipboard();
+		queryResult = COPY_RESULT;
+		mount(BLOCK);
+		await settle();
+		await clickCopy();
+
+		expect(writes).toEqual([
+			"| id | amount | ts | day | blob | note |\n" +
+				"| --- | --- | --- | --- | --- | --- |\n" +
+				"| 1234567890123 | 3.140 | 2026-10-13T08:30:00.000Z | 2026-10-13 | <blob 4 字节> |  |",
+		]);
+		// The success label proves the copy path ran; the shared 2s revert is covered by SQLite.
+		expect(button("Copied")).toBeTruthy();
+	});
+
+	it("copies a value view as the bare scalar (DECIMAL stays formatted)", async () => {
+		stubClipboard();
+		queryResult = { columns: ["amount"], rows: [["3.140"]], truncated: false, elapsedMs: 2, dbPath: "x" };
+		mount(`${BLOCK}\nview: value`);
+		await settle();
+		await clickCopy();
+
+		expect(writes).toEqual(["3.140"]);
+	});
+
+	it("reports the failure instead of silently doing nothing", async () => {
+		stubClipboard();
+		(globalThis as { navigator: Navigator }).navigator.clipboard.writeText = () => Promise.reject(new Error("denied"));
+		(globalThis as unknown as { document: { execCommand: (command: string) => boolean } }).document.execCommand = () =>
+			false;
+		mount(BLOCK);
+		await settle();
+
+		await act(async () => {
+			button("Copy Markdown")?.click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		expect(button("Copy failed")).toBeTruthy();
+	});
+
+	it("hides the button when there is nothing to copy", async () => {
+		stubClipboard();
+		queryResult = { ...RESULT, rows: [] };
+		mount(BLOCK);
+		await settle();
+
+		expect(button("Copy Markdown")).toBeUndefined();
 	});
 });
