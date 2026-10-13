@@ -44,6 +44,12 @@ function button(label: string): HTMLButtonElement | undefined {
 		| undefined;
 }
 
+/** The Show/Hide toggle: its label flips between "Show query" and "Hide query", so match on /query/. */
+function toggle(): HTMLButtonElement {
+	const buttons = Array.from(container?.querySelectorAll("button") ?? []);
+	return buttons.find((candidate) => /query/i.test(candidate.textContent ?? "")) as HTMLButtonElement;
+}
+
 beforeEach(() => {
 	const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
 		url: "http://localhost:6421/",
@@ -117,15 +123,80 @@ describe("DuckdbQueryBlock base render (BACK-778)", () => {
 		expect(container?.textContent).toContain("第 2 行");
 	});
 
-	// The three action buttons (Show/Hide, Copy Markdown, Export CSV) are milestone-gated and turned
-	// on by BACK-779 / BACK-780 / BACK-781. Until then they must stay absent, not merely disabled.
-	it("does not expose the action buttons before they are enabled", async () => {
+	// Show/Hide is enabled by BACK-779; Copy Markdown (BACK-780) and Export CSV (BACK-781) remain
+	// gated and must stay absent, not merely disabled.
+	it("exposes the Show/Hide toggle but keeps Copy/Export gated", async () => {
 		mount(BLOCK);
 		await settle();
-		expect(button("Show query")).toBeUndefined();
+		expect(toggle()).toBeTruthy();
 		expect(button("Copy Markdown")).toBeUndefined();
 		expect(button("Export CSV")).toBeUndefined();
 		// Refresh is always present.
 		expect(button("Refresh")).toBeTruthy();
+	});
+});
+
+describe("DuckdbQueryBlock Show/Hide Query (BACK-779)", () => {
+	it("runs the query once to render rows, and hides the SQL until asked", async () => {
+		mount(BLOCK);
+		await settle();
+
+		expect(queryCalls).toBe(1);
+		expect(container?.textContent).toContain("Alice");
+		expect(toggle().textContent).toBe("Show query");
+		expect(container?.querySelector("pre")).toBeNull();
+		expect(toggle().getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("reveals the source and the statement when expanded", async () => {
+		mount(BLOCK);
+		await settle();
+
+		await act(async () => {
+			toggle().click();
+		});
+
+		const panel = container?.querySelector("pre");
+		expect(panel?.textContent).toBe("SELECT name\nFROM people");
+		expect(container?.textContent).toContain("backlog/databases/shop.duckdb");
+		expect(toggle().textContent).toBe("Hide query");
+		expect(toggle().getAttribute("aria-expanded")).toBe("true");
+	});
+
+	it("expanding costs no extra request, and Refresh leaves it expanded", async () => {
+		mount(BLOCK);
+		await settle();
+
+		await act(async () => {
+			toggle().click();
+		});
+		expect(queryCalls).toBe(1);
+
+		const refresh = Array.from(container?.querySelectorAll("button") ?? []).find(
+			(candidate) => candidate.textContent === "Refresh",
+		) as HTMLButtonElement;
+		await act(async () => {
+			refresh.click();
+		});
+		await settle();
+
+		// Two calls total (initial + refresh), and the panel survived the reload.
+		expect(queryCalls).toBe(2);
+		expect(container?.querySelector("pre")?.textContent).toBe("SELECT name\nFROM people");
+		expect(toggle().textContent).toBe("Hide query");
+	});
+
+	it("reveals the raw block body when the block cannot be parsed", async () => {
+		mount(BROKEN_BLOCK);
+		await settle();
+
+		expect(queryCalls).toBe(0);
+		expect(container?.textContent).toContain("第 2 行");
+
+		await act(async () => {
+			toggle().click();
+		});
+
+		expect(container?.querySelector("pre")?.textContent).toBe(BROKEN_BLOCK);
 	});
 });
