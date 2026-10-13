@@ -1,4 +1,5 @@
 import type { Core } from "../../../core/backlog.ts";
+import { describeDatabases } from "../../../graph/browser.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { CallToolResult } from "../../types.ts";
 import { isWriteStatement, queryDatabase, schemaDatabase } from "./graph-access.ts";
@@ -11,6 +12,8 @@ export type GraphQueryArgs = {
 export type GraphSchemaArgs = {
 	db: string;
 };
+
+export type GraphListDatabasesArgs = Record<string, never>;
 
 /** Format a Cypher result set for an agent: machine-readable JSON plus a short summary line. */
 function formatCypherResult(result: { columns: string[]; rows: unknown[][]; truncated?: boolean }): string {
@@ -55,6 +58,13 @@ export class GraphHandlers {
 		const schema = await schemaDatabase(this.core.filesystem.rootDir, db);
 		return {
 			content: [{ type: "text", text: JSON.stringify(schema, null, 2) }],
+		};
+	}
+
+	async listDatabases(_args: GraphListDatabasesArgs): Promise<CallToolResult> {
+		const databases = describeDatabases(this.core.filesystem.rootDir);
+		return {
+			content: [{ type: "text", text: JSON.stringify(databases, null, 2) }],
 		};
 	}
 }
