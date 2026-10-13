@@ -360,6 +360,40 @@ export function getMilestoneLabel(milestoneId: string | undefined, milestoneEnti
 }
 
 /**
+ * Milestone ids a task corpus references that the loaded entities do not cover.
+ *
+ * A bucket label is resolved from the entities alone (`getMilestoneLabel`), so a task pointing at
+ * a milestone that was never loaded renders as its raw id (m-15). The detail view does not have
+ * that gap - it fetches the milestone by id. Returning the unresolved ids lets the caller fetch
+ * exactly those entities, so an out-of-band milestone add (a CLI write the client never heard
+ * about) resolves to its title on the list and board too.
+ */
+export function collectUnresolvedMilestoneIds(
+	tasks: Task[],
+	milestoneEntities: Milestone[],
+	archivedMilestones: Milestone[] = [],
+): string[] {
+	const knownIdKeys = new Set<string>();
+	for (const milestone of [...milestoneEntities, ...archivedMilestones]) {
+		const idKey = milestoneKey(milestone.id);
+		if (idKey) {
+			knownIdKeys.add(idKey);
+		}
+	}
+	const unresolved: string[] = [];
+	const seen = new Set<string>();
+	for (const id of collectMilestoneIds(tasks, milestoneEntities, archivedMilestones)) {
+		const key = milestoneKey(id);
+		if (!key || knownIdKeys.has(key) || seen.has(key)) {
+			continue;
+		}
+		seen.add(key);
+		unresolved.push(id);
+	}
+	return unresolved;
+}
+
+/**
  * Check if a status represents a "done" state
  */
 export function isDoneStatus(status?: string | null): boolean {
