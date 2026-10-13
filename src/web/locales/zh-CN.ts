@@ -1114,6 +1114,7 @@ export const zhCN: TranslationDict = {
 		columnDescription: "描述",
 		columnNodes: "节点",
 		columnEdges: "边",
+		actionViewAll: "View ALL",
 		kindDerived: "派生",
 		kindUser: "用户",
 		countsUnavailable: "—",
@@ -1130,6 +1131,20 @@ export const zhCN: TranslationDict = {
 			"`default` 是 markdown 派生库，由图服务在本进程内维护：随语料变更增量同步，查询直接落在已构建的图谱上，不会重建。",
 		schemaHint:
 			"查结构：CLI 用 `backlog graph schema <数据库>` 打印节点表、字段与关系表端点。下面两句可直接点进输入框：",
+		allRows: "返回全部行（不限 500 行）",
+		viewLabel: "视图",
+		viewTable: "表格",
+		viewGraph: "图谱",
+		viewSplit: "并列",
+		fullscreen: "全屏",
+		exitFullscreen: "退出全屏",
+		graphTitle: "结果图谱",
+		graphTooLarge: "结果有 {1} 个节点，超出图谱可交互布局的规模",
+		graphTooLargeHint: "请在表格视图查看，或用 LIMIT 缩小结果。",
+		graphEmpty: "结果中没有可绘制的节点——试试返回节点本身，例如 MATCH (n) RETURN n",
+		graphDangling: "有 {1} 条关系因端点未随结果返回而无法绘制",
+		graphInternalHidden: "已隐藏 {1} 个内部节点",
+		graphInternalHint: "由 Backlog.md 自行写入的元数据节点（语料指纹），不属于你的数据。默认隐藏，点击可显示。",
 	},
 };
 

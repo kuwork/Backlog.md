@@ -34,6 +34,16 @@ export function scaledRadius(radius: number, k: number): number {
 }
 
 /**
+ * Degree-scaled node radius (Neo4j-style): the square root keeps the area readable instead of
+ * letting one hub dwarf the rest, and the same relation count always lands on the same size.
+ * Every graph view shares the policy; a view that wants one size for a recessive style simply
+ * returns a constant instead of calling this.
+ */
+export function degreeRadius(degree: number, maxDegree: number, min = 6, max = 20): number {
+	return min + (max - min) * Math.sqrt(degree / Math.max(1, maxDegree));
+}
+
+/**
  * Rounded-rect path via arcTo. ctx.roundRect would do this in one call, but it is missing from
  * older canvas implementations (Chrome < 99, older WebView2), and a throw inside a draw unmounts
  * the whole view.
@@ -269,4 +279,15 @@ export function canvasThemeColors(theme: string): { plateFill: string; plateStro
 	return theme === "dark"
 		? { plateFill: "#111827E6", plateStroke: "#4B5563", label: "#d1d5db" }
 		: { plateFill: "#FFFFFFE6", plateStroke: "#D1D5DB", label: "#374151" };
+}
+
+export const EDGE_STROKE = "#94a3b8";
+
+/**
+ * Edge stroke with theme compensation. The slate-400 base is tuned for the dark canvas — on a
+ * light surface it washes out and the relationships read as gaps, so the light theme steps two
+ * shades darker (slate-500 is still clearly a line, not a wireframe of text).
+ */
+export function edgeStroke(theme: string): string {
+	return theme === "dark" ? EDGE_STROKE : "#64748b";
 }

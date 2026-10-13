@@ -697,11 +697,17 @@ export class ApiClient {
 	 * Run a read-only Cypher statement against one database. `default` is rebuilt from the corpus, a
 	 * user database is replayed from its snapshot and then kept in the server process.
 	 */
-	async runDatabaseCypher(db: string, statement: string): Promise<CypherResult> {
+	/**
+	 * Run a Cypher statement against one database. `maxRows: null` lifts the interactive display
+	 * cap and returns every row; the default keeps a result renderable.
+	 */
+	async runDatabaseCypher(db: string, statement: string, maxRows?: number | null): Promise<CypherResult> {
 		const response = await fetch(`${API_BASE}/graph/db-cypher`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ db, statement }),
+			// `undefined` drops the key (server applies its default cap); `null` travels as null and
+			// means "no cap".
+			body: JSON.stringify({ db, statement, maxRows }),
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Cypher 查询失败");

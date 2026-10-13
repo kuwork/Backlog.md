@@ -6844,7 +6844,19 @@ function printCypherResult(result: { columns: string[]; rows: unknown[][] }): vo
 	}
 	const cellText = (cell: unknown): string => {
 		if (cell === null || cell === undefined) return "";
-		if (typeof cell === "object") return JSON.stringify(cell);
+		if (typeof cell === "object") {
+			// Node/relationship cells carry ryu's internal handles (_id, _src, _dst) so a client can
+			// join an edge to its endpoints (BACK-793); a terminal table has no use for them.
+			if (!Array.isArray(cell)) {
+				const shown: Record<string, unknown> = {};
+				for (const [key, value] of Object.entries(cell)) {
+					if (key === "_id" || key === "_src" || key === "_dst") continue;
+					shown[key] = value;
+				}
+				return JSON.stringify(shown);
+			}
+			return JSON.stringify(cell);
+		}
 		return String(cell);
 	};
 	const widths = result.columns.map((col, i) => {
@@ -7099,6 +7111,7 @@ graphCommand
 			'`graph query "MATCH ..."` still works and means `default`.',
 	)
 	.option("--json", "print the raw JSON result")
+	.option("--all", "return every row instead of the interactive 500-row display cap")
 	.action(async (db: string, cypher: string | undefined, options) => {
 		// Backwards compatibility: `graph query "MATCH ..."` (one positional) targets `default`.
 		const target = cypher === undefined && looksLikeCypher(db) ? DEFAULT_DATABASE : db;
@@ -7106,7 +7119,7 @@ graphCommand
 		await withGraphDatabase(
 			target,
 			async (store) => {
-				const result = await store.runCypher(statement);
+				const result = await store.runCypher(statement, options.all ? { maxRows: null } : {});
 				if (options.json) {
 					process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 				} else {

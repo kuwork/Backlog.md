@@ -1136,6 +1136,7 @@ export const ja: TranslationDict = {
 		columnDescription: "説明",
 		columnNodes: "ノード",
 		columnEdges: "エッジ",
+		actionViewAll: "View ALL",
 		kindDerived: "派生",
 		kindUser: "ユーザー",
 		countsUnavailable: "—",
@@ -1152,6 +1153,21 @@ export const ja: TranslationDict = {
 			"`default` は markdown から派生したグラフで、プロセス内のグラフサービスが維持します。コーパスの変更を増分同期するため、クエリは構築済みのグラフに対して実行され、再構築は行いません。",
 		schemaHint:
 			"構造を調べるには、CLI の `backlog graph schema <db>` がノードテーブル・プロパティ・リレーションの端点を出力します。下の文はクリックで入力欄に入ります：",
+		allRows: "全行を返す（500 行の上限なし）",
+		viewLabel: "表示",
+		viewTable: "テーブル",
+		viewGraph: "グラフ",
+		viewSplit: "両方",
+		fullscreen: "全画面表示",
+		exitFullscreen: "全画面表示を終了",
+		graphTitle: "結果グラフ",
+		graphTooLarge: "結果に {1} 件のノードがあり、グラフの対話的なレイアウトの規模を超えています",
+		graphTooLargeHint: "テーブル表示で確認するか、LIMIT で結果を絞り込んでください。",
+		graphEmpty: "結果に描画できるノードがありません——ノード自身を返してみてください（例: MATCH (n) RETURN n）",
+		graphDangling: "端点が結果に含まれないため {1} 件のリレーションを描画できません",
+		graphInternalHidden: "内部ノード {1} 件を非表示",
+		graphInternalHint:
+			"Backlog.md が自分用に書き込むメタデータノード（コーパスのフィンガープリント）で、あなたのデータではありません。既定では非表示です。クリックすると表示されます。",
 	},
 } as const;
 

@@ -3077,20 +3077,23 @@ export class BacklogServer {
 		} catch {
 			return Response.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
 		}
-		const payload = body as { db?: unknown; statement?: unknown };
+		const payload = body as { db?: unknown; statement?: unknown; maxRows?: unknown };
 		const db = typeof payload.db === "string" ? payload.db : "";
 		const statement = typeof payload.statement === "string" ? payload.statement : "";
+		// A row cap of `null` means "every row": the interactive cap is a rendering budget, and the
+		// reader asking for the whole result is choosing to pay for it.
+		const maxRows = payload.maxRows === null ? null : typeof payload.maxRows === "number" ? payload.maxRows : undefined;
 		if (!db) return Response.json({ error: "缺少数据库名" }, { status: 400 });
 		try {
 			if (db === DEFAULT_DATABASE) {
 				const service = await this.getGraphService();
 				if (!service) return Response.json({ error: "graph service unavailable" }, { status: 503 });
-				return Response.json(await service.runCypher(statement), {
+				return Response.json(await service.runCypher(statement, { maxRows }), {
 					headers: { "Content-Type": "application/json" },
 				});
 			}
 			this.databaseBrowser ??= new UserDatabaseBrowser();
-			const result = await this.databaseBrowser.query(this.core.filesystem.rootDir, db, statement);
+			const result = await this.databaseBrowser.query(this.core.filesystem.rootDir, db, statement, maxRows);
 			return Response.json(result, { headers: { "Content-Type": "application/json" } });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Cypher 查询失败";

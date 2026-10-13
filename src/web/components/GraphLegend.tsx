@@ -1,5 +1,6 @@
 import { useTheme } from "../contexts/ThemeContext";
 import type { GraphEdgeDto, GraphNodeDto } from "../lib/api";
+import { edgeStroke } from "../utils/graph-canvas";
 
 /**
  * Shared visual language of the graph views (/graph page and the relationship graph in the task
@@ -70,16 +71,14 @@ export function nodeStroke(style: NodeStyle, theme: string): string {
 	return theme === "dark" ? NODE_STROKE[style] : NODE_STROKE_LIGHT[style];
 }
 
-export const EDGE_STROKE = "#94a3b8";
-
 /**
  * Edge stroke with theme compensation. The slate-400 base is tuned for the dark canvas — on a
  * light surface it washes out and the relationships read as gaps, so the light theme steps two
- * shades darker (slate-500 is still clearly a line, not a wireframe of text).
+ * shades darker (slate-500 is still clearly a line, not a wireframe of text). It lives with the
+ * other canvas colours (the graph views paint edges with it); re-exported here because the
+ * legend's sample line is the same colour.
  */
-export function edgeStroke(theme: string): string {
-	return theme === "dark" ? EDGE_STROKE : "#64748b";
-}
+export { edgeStroke };
 
 /** DependsOn is the semantic backbone: solid with an arrowhead. The structural relations are dashed. */
 export const EDGE_DASH: Record<GraphEdgeDto["type"], string | null> = {
