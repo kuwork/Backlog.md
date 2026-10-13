@@ -2,9 +2,9 @@
 id: m-12
 title: DuckDB Explorer
 created_date: '2026-10-13 07:55'
-updated_date: '2026-10-13 07:55'
+updated_date: '2026-10-13 03:11'
 documentation:
-  - backlog/docs/PRDS/sqlite/doc-16 - SQLite Explorer：只读 SQL 浏览与查询能力.md
+  - backlog/docs/PRDS/duckdb/doc-25 - DuckDB-Explorer：只读-SQL-浏览与查询能力.md
 ---
 ## Description
 
@@ -24,4 +24,4 @@ High-level tasks:
 5. Server + Web - Export CSV for `duckdb-query` results (`buildDuckdbCsv` + `POST /api/duckdb/export-csv` + shared save-where-user-picks; locale wiring, BACK-781, mirrors BACK-776).
 6. Tests and gates - parser, path guards, read-only validation (shared), DuckDB handle/type coercion, truncation, CSV quoting/naming/refusal-before-build; `bunx tsc --noEmit`, `bun run check .`, scoped tests green.
 
-Design source: doc-16 (the read-only + security model carries over unchanged); engine-specific deltas are captured in the tasks.
+Design source: doc-23 (SQLite Explorer — the read-only + security model carries over unchanged) and doc-25 (the DuckDB-specific design); engine-specific deltas are captured in the tasks.

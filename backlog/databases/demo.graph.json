@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "database": "demo",
+  "nodeTables": [
+    {
+      "name": "Person",
+      "properties": [
+        {
+          "name": "id",
+          "type": "STRING",
+          "primaryKey": true
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "role",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "age",
+          "type": "INT64",
+          "primaryKey": false
+        },
+        {
+          "name": "rating",
+          "type": "DOUBLE",
+          "primaryKey": false
+        },
+        {
+          "name": "city",
+          "type": "STRING",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "Project",
+      "properties": [
+        {
+          "name": "id",
+          "type": "STRING",
+          "primaryKey": true
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "budget",
+          "type": "DOUBLE",
+          "primaryKey": false
+        },
+        {
+          "name": "startYear",
+          "type": "INT64",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "Skill",
+      "properties": [
+        {
+          "name": "id",
+          "type": "STRING",
+          "primaryKey": true
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "category",
+          "type": "STRING",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "Company",
+      "properties": [
+        {
+          "name": "id",
+          "type": "STRING",
+          "primaryKey": true
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "industry",
+          "type": "STRING",
+          "primaryKey": false
+        },
+        {
+          "name": "founded",
+          "type": "INT64",
+          "primaryKey": false
+        },
+        {
+          "name": "listed",
+          "type": "BOOL",
+          "primaryKey": false
+        }
+      ]
+    }
+  ],
+  "relTables": [
+    {
+      "name": "WORKS_AT",
+      "from": "Person",
+      "to": "Company",
+      "fromKey": "id",
+      "toKey": "id"
+    },
+    {
+      "name": "LEADS",
+      "from": "Person",
+      "to": "Project",
+      "fromKey": "id",
+      "toKey": "id"
+    },
+    {
+      "name": "HAS_SKILL",
+      "from": "Person",
+      "to": "Skill",
+      "fromKey": "id",
+      "toKey": "id"
+    },
+    {
+      "name": "MEMBER_OF",
+      "from": "Person",
+      "to": "Project",
+      "fromKey": "id",
+      "toKey": "id"
+    },
+    {
+      "name": "COOPERATES_WITH",
+      "from": "Person",
+      "to": "Person",
+      "fromKey": "id",
+      "toKey": "id"
+    }
+  ],
+  "nodes": {
+    "Person": [
+      {
+        "id": "p1",
+        "name": "张三",
+        "role": "后端工程师",
+        "age": 29,
+        "rating": 4.5,
+        "city": "广州"
+      },
+      {
+        "id": "p2",
+        "name": "李四",
+        "role": "前端工程师",
+        "age": 26,
+        "rating": 4.2,
+        "city": "深圳"
+      },
+      {
+        "id": "p3",
+        "name": "王五",
+        "role": "产品经理",
+        "age": 34,
+        "rating": 4.8,
+        "city": "广州"
+      },
+      {
+        "id": "p4",
+        "name": "赵六",
+        "role": "数据工程师",
+        "age": 31,
+        "rating": 4.1,
+        "city": "北京"
+      },
+      {
+        "id": "p5",
+        "name": "钱七",
+        "role": "交互设计师",
+        "age": 27,
+        "rating": 3.9,
+        "city": "深圳"
+      },
+      {
+        "id": "p6",
+        "name": "孙八",
+        "role": "算法研究员",
+        "age": 33,
+        "rating": 4.7,
+        "city": "北京"
+      }
+    ],
+    "Project": [
+      {
+        "id": "proj1",
+        "name": "图数据库内核",
+        "status": "进行中",
+        "budget": 320.5,
+        "startYear": 2024
+      },
+      {
+        "id": "proj2",
+        "name": "Web 界面重构",
+        "status": "进行中",
+        "budget": 180,
+        "startYear": 2025
+      },
+      {
+        "id": "proj3",
+        "name": "文档站点",
+        "status": "已上线",
+        "budget": 60.25,
+        "startYear": 2023
+      },
+      {
+        "id": "proj4",
+        "name": "语音转写服务",
+        "status": "规划中",
+        "budget": 240,
+        "startYear": 2026
+      }
+    ],
+    "Skill": [
+      {
+        "id": "s1",
+        "name": "Cypher",
+        "category": "图查询"
+      },
+      {
+        "id": "s2",
+        "name": "TypeScript",
+        "category": "编程语言"
+      },
+      {
+        "id": "s3",
+        "name": "Rust",
+        "category": "编程语言"
+      },
+      {
+        "id": "s4",
+        "name": "Figma",
+        "category": "设计工具"
+      },
+      {
+        "id": "s5",
+        "name": "ASR",
+        "category": "语音算法"
+      }
+    ],
+    "Company": [
+      {
+        "id": "c1",
+        "name": "示例科技有限公司",
+        "industry": "软件",
+        "founded": 2015,
+        "listed": "True"
+      },
+      {
+        "id": "c2",
+        "name": "云图数据服务有限公司",
+        "industry": "数据服务",
+        "founded": 2018,
+        "listed": "False"
+      },
+      {
+        "id": "c3",
+        "name": "星尘互动传媒有限公司",
+        "industry": "文化传媒",
+        "founded": 2012,
+        "listed": "True"
+      }
+    ]
+  },
+  "edges": {
+    "WORKS_AT": [
+      {
+        "from": "p1",
+        "to": "c1"
+      },
+      {
+        "from": "p2",
+        "to": "c1"
+      },
+      {
+        "from": "p3",
+        "to": "c1"
+      },
+      {
+        "from": "p4",
+        "to": "c2"
+      },
+      {
+        "from": "p5",
+        "to": "c3"
+      },
+      {
+        "from": "p6",
+        "to": "c2"
+      }
+    ],
+    "LEADS": [
+      {
+        "from": "p3",
+        "to": "proj2"
+      },
+      {
+        "from": "p3",
+        "to": "proj1"
+      },
+      {
+        "from": "p6",
+        "to": "proj4"
+      }
+    ],
+    "HAS_SKILL": [
+      {
+        "from": "p1",
+        "to": "s1"
+      },
+      {
+        "from": "p2",
+        "to": "s2"
+      },
+      {
+        "from": "p4",
+        "to": "s1"
+      },
+      {
+        "from": "p5",
+        "to": "s4"
+      },
+      {
+        "from": "p6",
+        "to": "s5"
+      }
+    ],
+    "MEMBER_OF": [
+      {
+        "from": "p1",
+        "to": "proj1"
+      },
+      {
+        "from": "p2",
+        "to": "proj2"
+      },
+      {
+        "from": "p2",
+        "to": "proj3"
+      },
+      {
+        "from": "p4",
+        "to": "proj1"
+      },
+      {
+        "from": "p5",
+        "to": "proj2"
+      },
+      {
+        "from": "p6",
+        "to": "proj1"
+      }
+    ],
+    "COOPERATES_WITH": [
+      {
+        "from": "p1",
+        "to": "p2"
+      },
+      {
+        "from": "p1",
+        "to": "p4"
+      },
+      {
+        "from": "p1",
+        "to": "p6"
+      },
+      {
+        "from": "p2",
+        "to": "p4"
+      },
+      {
+        "from": "p3",
+        "to": "p5"
+      },
+      {
+        "from": "p4",
+        "to": "p6"
+      }
+    ]
+  }
+}

@@ -4,7 +4,7 @@ title: Make `sqlite-query` code blocks render live results
 status: Done
 assignee:
   - '@kimi'
-created_date: '2026-10-13 01:30'
+created_date: '2026-10-12 13:30'
 updated_date: '2026-10-12 18:21'
 labels:
   - web-ui
@@ -30,7 +30,7 @@ modified_files:
   - src/web/locales/zh-TW.ts
   - src/test/sqlite.test.ts
 ordinal: 331001
-actual_start: '2026-10-13 01:30'
+actual_start: '2026-10-12 13:30'
 actual_end: '2026-10-12 18:21'
 ---
 

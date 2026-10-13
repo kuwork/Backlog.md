@@ -14,7 +14,8 @@ labels:
 milestone: m-12
 dependencies: []
 documentation:
-  - backlog/docs/PRDS/sqlite/doc-16 - SQLite Explorer：只读 SQL 浏览与查询能力.md
+  - backlog/docs/PRDS/sqlite/doc-23 - SQLite Explorer：只读 SQL 浏览与查询能力.md
+  - backlog/docs/PRDS/duckdb/doc-25 - DuckDB-Explorer：只读-SQL-浏览与查询能力.md
 modified_files: []
 ordinal: 336001
 ---
