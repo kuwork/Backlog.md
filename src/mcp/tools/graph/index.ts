@@ -1,8 +1,8 @@
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
-import { GraphHandlers, type GraphQueryArgs, type GraphSchemaArgs } from "./handlers.ts";
-import { graphQuerySchema, graphSchemaSchema } from "./schemas.ts";
+import { GraphHandlers, type GraphListDatabasesArgs, type GraphQueryArgs, type GraphSchemaArgs } from "./handlers.ts";
+import { graphListDatabasesSchema, graphQuerySchema, graphSchemaSchema } from "./schemas.ts";
 
 export function registerGraphTools(server: McpServer): void {
 	const handlers = new GraphHandlers(server);
@@ -31,6 +31,19 @@ export function registerGraphTools(server: McpServer): void {
 		async (input) => handlers.schemaGraph(input as GraphSchemaArgs),
 	);
 
+	const listDatabasesTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_list_databases",
+			description:
+				"List the available graph databases: the read-only 'default' derived markdown knowledge graph plus every user database, each with its kind and node/edge counts.",
+			inputSchema: graphListDatabasesSchema,
+			annotations: { title: "List Graph Databases", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+		},
+		graphListDatabasesSchema,
+		async (input) => handlers.listDatabases(input as GraphListDatabasesArgs),
+	);
+
 	server.addTool(queryTool);
 	server.addTool(schemaTool);
+	server.addTool(listDatabasesTool);
 }

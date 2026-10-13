@@ -109,4 +109,31 @@ describe("MCP graph tools", () => {
 		const text = getText(result.content);
 		expect(text).toContain("不存在");
 	});
+
+	it("registers graph_list_databases in the MCP tool list", async () => {
+		const names = await listToolNames();
+		expect(names).toContain("graph_list_databases");
+	});
+
+	it("lists the default derived graph plus a user database with metadata", async () => {
+		createDatabase(TEST_DIR, "listdb", "list test database");
+		const result = await callTool("graph_list_databases", {});
+		expect(result.isError).toBeFalsy();
+		const databases = JSON.parse(getText(result.content)) as {
+			name: string;
+			kind: string;
+			nodes: number | null;
+			edges: number | null;
+		}[];
+		expect(Array.isArray(databases)).toBe(true);
+		const names = databases.map((db) => db.name);
+		expect(names).toContain("default");
+		expect(names).toContain("listdb");
+		const derived = databases.find((db) => db.name === "default");
+		expect(derived?.kind).toBe("derived");
+		const user = databases.find((db) => db.name === "listdb");
+		expect(user?.kind).toBe("user");
+		expect(typeof user?.nodes).toBe("number");
+		expect(typeof user?.edges).toBe("number");
+	});
 });

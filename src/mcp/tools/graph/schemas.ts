@@ -32,3 +32,10 @@ export const graphSchemaSchema: JsonSchema = {
 	required: ["db"],
 	additionalProperties: false,
 };
+
+export const graphListDatabasesSchema: JsonSchema = {
+	type: "object",
+	properties: {},
+	required: [],
+	additionalProperties: false,
+};
