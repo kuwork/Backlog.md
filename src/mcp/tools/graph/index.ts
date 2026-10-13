@@ -1,8 +1,19 @@
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
-import { GraphHandlers, type GraphListDatabasesArgs, type GraphQueryArgs, type GraphSchemaArgs } from "./handlers.ts";
-import { graphListDatabasesSchema, graphQuerySchema, graphSchemaSchema } from "./schemas.ts";
+import {
+	type GraphDescribeDatabaseArgs,
+	GraphHandlers,
+	type GraphListDatabasesArgs,
+	type GraphQueryArgs,
+	type GraphSchemaArgs,
+} from "./handlers.ts";
+import {
+	graphDescribeDatabaseSchema,
+	graphListDatabasesSchema,
+	graphQuerySchema,
+	graphSchemaSchema,
+} from "./schemas.ts";
 
 export function registerGraphTools(server: McpServer): void {
 	const handlers = new GraphHandlers(server);
@@ -43,7 +54,25 @@ export function registerGraphTools(server: McpServer): void {
 		async (input) => handlers.listDatabases(input as GraphListDatabasesArgs),
 	);
 
+	const describeDatabaseTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_describe_database",
+			description:
+				"Describe a single graph database ('default' or a user database): its kind, description, creation/updated timestamps, and node/edge counts.",
+			inputSchema: graphDescribeDatabaseSchema,
+			annotations: {
+				title: "Describe Graph Database",
+				readOnlyHint: true,
+				destructiveHint: false,
+				openWorldHint: false,
+			},
+		},
+		graphDescribeDatabaseSchema,
+		async (input) => handlers.describeDatabase(input as GraphDescribeDatabaseArgs),
+	);
+
 	server.addTool(queryTool);
 	server.addTool(schemaTool);
 	server.addTool(listDatabasesTool);
+	server.addTool(describeDatabaseTool);
 }

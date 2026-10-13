@@ -39,3 +39,17 @@ export const graphListDatabasesSchema: JsonSchema = {
 	required: [],
 	additionalProperties: false,
 };
+
+export const graphDescribeDatabaseSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		db: {
+			type: "string",
+			minLength: 1,
+			description:
+				"Database name to describe. 'default' is the derived markdown knowledge graph; any other value is a user database created with graph_create_database.",
+		},
+	},
+	required: ["db"],
+	additionalProperties: false,
+};
