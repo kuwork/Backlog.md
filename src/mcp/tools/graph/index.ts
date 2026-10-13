@@ -2,6 +2,7 @@ import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
 import {
+	type GraphCreateDatabaseArgs,
 	type GraphDescribeDatabaseArgs,
 	GraphHandlers,
 	type GraphListDatabasesArgs,
@@ -9,6 +10,7 @@ import {
 	type GraphSchemaArgs,
 } from "./handlers.ts";
 import {
+	graphCreateDatabaseSchema,
 	graphDescribeDatabaseSchema,
 	graphListDatabasesSchema,
 	graphQuerySchema,
@@ -71,8 +73,27 @@ export function registerGraphTools(server: McpServer): void {
 		async (input) => handlers.describeDatabase(input as GraphDescribeDatabaseArgs),
 	);
 
+	const createDatabaseTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_create_database",
+			description:
+				"Create a new user graph database from a name and description. Write operation: durable snapshot + registry entry are created. Pass acknowledged: true to confirm.",
+			inputSchema: graphCreateDatabaseSchema,
+			annotations: {
+				title: "Create Graph Database",
+				readOnlyHint: false,
+				destructiveHint: true,
+				idempotentHint: false,
+				openWorldHint: false,
+			},
+		},
+		graphCreateDatabaseSchema,
+		async (input) => handlers.createDatabase(input as GraphCreateDatabaseArgs),
+	);
+
 	server.addTool(queryTool);
 	server.addTool(schemaTool);
 	server.addTool(listDatabasesTool);
 	server.addTool(describeDatabaseTool);
+	server.addTool(createDatabaseTool);
 }

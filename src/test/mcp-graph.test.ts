@@ -164,4 +164,50 @@ describe("MCP graph tools", () => {
 		expect(result.isError).toBe(true);
 		expect(getText(result.content)).toContain("不存在");
 	});
+
+	it("registers graph_create_database in the MCP tool list", async () => {
+		const names = await listToolNames();
+		expect(names).toContain("graph_create_database");
+	});
+
+	it("creates a user database when acknowledged", async () => {
+		const result = await callTool("graph_create_database", {
+			name: "createdb",
+			description: "created in test",
+			acknowledged: true,
+		});
+		expect(result.isError).toBeFalsy();
+		const db = JSON.parse(getText(result.content)) as { name: string; kind: string };
+		expect(db.name).toBe("createdb");
+		expect(db.kind).toBe("user");
+	});
+
+	it("refuses to create without acknowledgement", async () => {
+		const result = await callTool("graph_create_database", {
+			name: "unacked",
+			description: "no ack",
+			acknowledged: false,
+		});
+		expect(result.isError).toBe(true);
+	});
+
+	it("returns a clear error on a duplicate name", async () => {
+		await callTool("graph_create_database", { name: "dupdb", description: "first", acknowledged: true });
+		const result = await callTool("graph_create_database", {
+			name: "dupdb",
+			description: "second",
+			acknowledged: true,
+		});
+		expect(result.isError).toBe(true);
+		expect(getText(result.content)).toContain("已存在");
+	});
+
+	it("returns a clear error on an illegal name", async () => {
+		const result = await callTool("graph_create_database", {
+			name: "bad name!",
+			description: "illegal",
+			acknowledged: true,
+		});
+		expect(result.isError).toBe(true);
+	});
 });
