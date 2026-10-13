@@ -12,6 +12,7 @@ import { areJsonEqual, preserveDirtyRefreshValue } from "../utils/form-refresh";
 import { isTypingTarget } from "../utils/keyboard";
 import { isDoneStatus, milestoneKey } from "../utils/milestones";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
+import FilePreviewModal from "./FilePreviewModal";
 import MermaidMarkdown from "./MermaidMarkdown";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import Modal from "./Modal";
@@ -91,6 +92,8 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [documentation, setDocumentation] = useState<string[]>([]);
+	// Path of the documentation entry currently open in the in-app file preview, if any.
+	const [previewPath, setPreviewPath] = useState<string | null>(null);
 	const [dueDate, setDueDate] = useState("");
 	const [plannedStart, setPlannedStart] = useState("");
 	const [plannedEnd, setPlannedEnd] = useState("");
@@ -180,6 +183,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 			setMode("preview");
 			setSortConfig(null);
 			setShowRemove(false);
+			setPreviewPath(null);
 		}
 		formBaselineRef.current = next;
 		previousMilestoneIdRef.current = milestoneId;
@@ -711,9 +715,14 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 																{doc}
 															</a>
 														) : (
-															<span className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all">
+															<button
+																type="button"
+																onClick={() => setPreviewPath(doc)}
+																className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
+																title={t.taskDetails.clickToPreview}
+															>
 																{doc}
-															</span>
+															</button>
 														)}
 													</span>
 													<button
@@ -1090,6 +1099,9 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 					</div>
 				</div>
 			</Modal>
+
+			{/* In-app preview for a documentation entry (parity with the task popup) */}
+			{isOpen && previewPath && <FilePreviewModal path={previewPath} onClose={() => setPreviewPath(null)} />}
 		</>
 	);
 };

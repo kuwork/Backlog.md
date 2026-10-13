@@ -250,7 +250,8 @@ describe("Web milestone timestamps", () => {
 				li.textContent?.includes("docs/guide.md"),
 			);
 			expect(docRow).toBeTruthy();
-			const removeButton = docRow?.querySelector("button");
+			// The entry itself is now a preview button, so target the remove control by its title.
+			const removeButton = docRow?.querySelector<HTMLButtonElement>('button[title="Remove document"]');
 			expect(removeButton).toBeTruthy();
 			await act(async () => {
 				removeButton?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
