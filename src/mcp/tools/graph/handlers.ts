@@ -1,11 +1,15 @@
 import type { Core } from "../../../core/backlog.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { CallToolResult } from "../../types.ts";
-import { isWriteStatement, queryDatabase } from "./graph-access.ts";
+import { isWriteStatement, queryDatabase, schemaDatabase } from "./graph-access.ts";
 
 export type GraphQueryArgs = {
 	db: string;
 	statement?: string;
+};
+
+export type GraphSchemaArgs = {
+	db: string;
 };
 
 /** Format a Cypher result set for an agent: machine-readable JSON plus a short summary line. */
@@ -40,6 +44,17 @@ export class GraphHandlers {
 		const result = await queryDatabase(this.core.filesystem.rootDir, db, statement);
 		return {
 			content: [{ type: "text", text: formatCypherResult(result) }],
+		};
+	}
+
+	async schemaGraph(args: GraphSchemaArgs): Promise<CallToolResult> {
+		const db = args.db;
+		if (!db) {
+			throw new BacklogToolError("Missing required argument: db", "VALIDATION_ERROR");
+		}
+		const schema = await schemaDatabase(this.core.filesystem.rootDir, db);
+		return {
+			content: [{ type: "text", text: JSON.stringify(schema, null, 2) }],
 		};
 	}
 }

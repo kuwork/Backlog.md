@@ -18,3 +18,17 @@ export const graphQuerySchema: JsonSchema = {
 	required: ["db"],
 	additionalProperties: false,
 };
+
+export const graphSchemaSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		db: {
+			type: "string",
+			minLength: 1,
+			description:
+				"Database name whose schema to introspect. 'default' is the derived markdown knowledge graph; any other value is a user database created with graph_create_database.",
+		},
+	},
+	required: ["db"],
+	additionalProperties: false,
+};

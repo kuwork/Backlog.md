@@ -7,10 +7,12 @@ import {
 	dumpDatabase,
 	hydrateDatabase,
 	loadSnapshotWithFingerprint,
+	readSnapshotSchema,
 	saveSnapshot,
 	snapshotFingerprint,
 } from "../../../graph/snapshot.ts";
 import { type CypherQueryResult, type GraphStore, openGraphStore } from "../../../graph/store.ts";
+import { BacklogToolError } from "../../errors/mcp-errors.ts";
 
 /**
  * Shared access layer for the Graph MCP tools.
@@ -55,7 +57,14 @@ export async function openDatabaseReadonly(
 	rootDir: string,
 	db: string,
 ): Promise<{ store: GraphStore; database: GraphDatabase; close: () => Promise<void> }> {
-	const database = resolveDatabase(rootDir, db);
+	let database: GraphDatabase;
+	try {
+		database = resolveDatabase(rootDir, db);
+	} catch (error) {
+		// `resolveDatabase` throws a plain Error listing what is available; surface it as a clear
+		// MCP error (the "不存在" text) instead of the generic "An unexpected error occurred".
+		throw new BacklogToolError(error instanceof Error ? error.message : String(error), "RESOURCE_NOT_FOUND");
+	}
 	mkdirSync(dirname(database.source.dbPath), { recursive: true });
 	const store = await openGraphStore(database.source.dbPath, {
 		backend: "ryu",
@@ -100,7 +109,12 @@ export async function withUserDatabaseWrite<T>(
 	db: string,
 	fn: (store: GraphStore, database: GraphDatabase) => Promise<T>,
 ): Promise<T> {
-	const database = resolveDatabase(rootDir, db);
+	let database: GraphDatabase;
+	try {
+		database = resolveDatabase(rootDir, db);
+	} catch (error) {
+		throw new BacklogToolError(error instanceof Error ? error.message : String(error), "RESOURCE_NOT_FOUND");
+	}
 	if (database.kind !== "user") {
 		throw new Error(
 			`"${DEFAULT_DATABASE}" 是 markdown 派生库、只读（每次从语料重建，写入会被覆盖）。` +
@@ -138,5 +152,18 @@ export async function withUserDatabaseWrite<T>(
 	} finally {
 		if (store.backend === "ryu") await store.close();
 		lock.release();
+	}
+}
+
+/** Introspect a database's schema (node tables + properties, relationship tables + endpoints). */
+export async function schemaDatabase(
+	rootDir: string,
+	db: string,
+): Promise<Awaited<ReturnType<typeof readSnapshotSchema>>> {
+	const { store, close } = await openDatabaseReadonly(rootDir, db);
+	try {
+		return await readSnapshotSchema(store);
+	} finally {
+		await close();
 	}
 }
