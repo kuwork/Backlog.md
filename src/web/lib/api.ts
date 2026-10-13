@@ -212,6 +212,42 @@ export interface SqliteCsvExport {
 	truncated: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// DuckDB query explorer (m-12). The result shape is identical to SQLite's, so the shared grid type
+// `SqliteQueryResult` is reused by the components; these types name the DuckDB wire contract.
+// ---------------------------------------------------------------------------
+
+export type DuckdbCell = SqliteCell;
+
+export interface DuckdbQueryResult {
+	columns: string[];
+	rows: DuckdbCell[][];
+	truncated: boolean;
+	elapsedMs: number;
+	dbPath: string;
+}
+
+export interface DuckdbQueryRequest {
+	/** Project-relative path of the database; a leading slash is refused server-side. */
+	source: string;
+	sql: string;
+	maxRows?: number;
+}
+
+export interface DuckdbFileEntry {
+	path: string;
+	size: number;
+	mtime: string;
+}
+
+/** A CSV export to be saved by the browser: the file body and a suggested name, never a path. */
+export interface DuckdbCsvExport {
+	filename: string;
+	csv: string;
+	rows: number;
+	truncated: boolean;
+}
+
 export class ApiClient {
 	private config: RequestConfig;
 
@@ -1165,6 +1201,45 @@ export class ApiClient {
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to export sqlite query");
+		}
+		return response.json();
+	}
+
+	/** Every DuckDB database the project contains, for `duckdb-query` blocks and future pickers. */
+	async fetchDuckdbFiles(): Promise<DuckdbFileEntry[]> {
+		const response = await fetch(`${API_BASE}/duckdb/files`);
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to list duckdb files");
+		}
+		const data = (await response.json()) as { files: DuckdbFileEntry[] };
+		return data.files;
+	}
+
+	/** Runs one read-only statement; the server answers 400 with a human-readable Chinese reason. */
+	async runDuckdbQuery(payload: DuckdbQueryRequest): Promise<DuckdbQueryResult> {
+		const response = await fetch(`${API_BASE}/duckdb/query`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to run duckdb query");
+		}
+		return response.json();
+	}
+
+	/**
+	 * Asks the server to build the CSV (it re-gates `source` and `sql` and re-runs the read-only
+	 * statement). The browser then saves the returned text where the user chooses.
+	 */
+	async exportDuckdbCsv(payload: DuckdbQueryRequest): Promise<DuckdbCsvExport> {
+		const response = await fetch(`${API_BASE}/duckdb/export-csv`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to export duckdb query");
 		}
 		return response.json();
 	}

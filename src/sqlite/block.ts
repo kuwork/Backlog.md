@@ -1,36 +1,44 @@
 /**
- * Parser for `sqlite-query` fenced blocks (doc-16 §3).
+ * Parser for `*-query` fenced blocks (doc-16 §3), shared by the SQLite and DuckDB explorers.
  *
  * The block body is a deliberately tiny YAML subset: top-level `key: value` pairs plus a `|`
  * block scalar for the SQL. Anything else is an error on purpose - a silently ignored typo in
  * `source` or `view` would render a block that quietly means something else.
+ *
+ * The parser is engine-agnostic: it never inspects the fence language, so both `sqlite-query` and
+ * `duckdb-query` blocks reuse it through `parseSqliteQueryBlock` / `parseDuckdbQueryBlock`.
  */
 
-export const SQLITE_BLOCK_LANG = "sqlite-query";
+export type QueryView = "table" | "list" | "value";
 
-export type SqliteQueryView = "table" | "list" | "value";
-
-export interface SqliteQueryBlock {
-	/** Database path as written in the block; resolved later (see paths.ts). */
+export interface QueryBlock {
+	/** Database path as written in the block; resolved later (see * /paths.ts). */
 	source: string;
 	/** The statement, trailing semicolon already stripped. */
 	sql: string;
-	view: SqliteQueryView;
+	view: QueryView;
 	refresh: string;
 }
 
-export type SqliteBlockParse = { ok: true; block: SqliteQueryBlock } | { ok: false; error: string };
+export type QueryBlockParse = { ok: true; block: QueryBlock } | { ok: false; error: string };
+
+export const SQLITE_BLOCK_LANG = "sqlite-query";
+
+/** Backwards-compatible aliases kept so existing SQLite callers and tests need no change. */
+export type SqliteQueryView = QueryView;
+export type SqliteQueryBlock = QueryBlock;
+export type SqliteBlockParse = QueryBlockParse;
 
 const KNOWN_FIELDS = ["source", "sql", "view", "refresh"] as const;
 type FieldName = (typeof KNOWN_FIELDS)[number];
 
 const FIELD_LINE = /^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
 
-function fail(error: string): SqliteBlockParse {
+function fail(error: string): QueryBlockParse {
 	return { ok: false, error };
 }
 
-export function parseSqliteQueryBlock(raw: string): SqliteBlockParse {
+export function parseQueryBlock(raw: string): QueryBlockParse {
 	const lines = raw.replace(/\r\n?/g, "\n").split("\n");
 	const fields = new Map<FieldName, string>();
 	let i = 0;
@@ -100,3 +108,6 @@ export function parseSqliteQueryBlock(raw: string): SqliteBlockParse {
 
 	return { ok: true, block: { source, sql, view, refresh } };
 }
+
+/** Backwards-compatible alias kept so existing SQLite callers and tests need no change. */
+export const parseSqliteQueryBlock = parseQueryBlock;

@@ -55,7 +55,8 @@ export function hasSqliteMagic(path: string): boolean {
  * (wiki/developer-notes/security-gotchas.md §1), so there is no `/`-means-project-root syntax
  * here: a source is always written relative to the project root, `backlog/databases/shop.sqlite`.
  */
-function isNonRelativeSource(source: string): boolean {
+/** @see duckdb/paths.ts - shared by both explorers' containment checks. */
+export function isNonRelativeSource(source: string): boolean {
 	if (isAbsolute(source)) return true;
 	if (/^[A-Za-z]:/.test(source)) return true;
 	if (source.startsWith("\\\\")) return true;
@@ -63,7 +64,8 @@ function isNonRelativeSource(source: string): boolean {
 	return source.startsWith("~");
 }
 
-function segmentsInsideProject(projectRoot: string, target: string): string[] | null {
+/** @see duckdb/paths.ts - shared by both explorers' containment checks. */
+export function segmentsInsideProject(projectRoot: string, target: string): string[] | null {
 	const rel = relative(projectRoot, target);
 	if (rel.length === 0 || rel.startsWith("..") || isAbsolute(rel)) return null;
 	return rel.split(/[\\/]/);
