@@ -324,11 +324,14 @@ export class GraphService {
 		return this.ready;
 	}
 
-	/** Run a read-only Cypher statement against the underlying store (ryu backend). */
-	async runCypher(statement: string): Promise<CypherQueryResult> {
+	/**
+	 * Run a read-only Cypher statement against the underlying store (ryu backend). `maxRows` of
+	 * `null` lifts the interactive display cap and returns every row.
+	 */
+	async runCypher(statement: string, options?: { maxRows?: number | null }): Promise<CypherQueryResult> {
 		const store = this.store;
 		if (!store) throw new Error("graph store unavailable");
-		return store.runCypher(statement);
+		return store.runCypher(statement, options);
 	}
 
 	/**

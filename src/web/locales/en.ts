@@ -1142,6 +1142,7 @@ export const en = {
 		columnDescription: "Description",
 		columnNodes: "Nodes",
 		columnEdges: "Edges",
+		actionViewAll: "View ALL",
 		kindDerived: "derived",
 		kindUser: "user",
 		countsUnavailable: "—",
@@ -1158,6 +1159,21 @@ export const en = {
 			"`default` is the derived markdown graph, kept warm in this process by the graph service and synced incrementally as the corpus changes: queries run against the built graph and never rebuild.",
 		schemaHint:
 			"Need the shape? The CLI's `backlog graph schema <db>` prints node tables, their properties and relationship endpoints. Click a statement to load it:",
+		allRows: "Every row (no 500 cap)",
+		viewLabel: "View",
+		viewTable: "Table",
+		viewGraph: "Graph",
+		viewSplit: "Both",
+		fullscreen: "Fullscreen",
+		exitFullscreen: "Exit fullscreen",
+		graphTitle: "Result graph",
+		graphTooLarge: "{1} nodes is past what this pane can lay out interactively",
+		graphTooLargeHint: "Read the table, or narrow the result with a LIMIT.",
+		graphEmpty: "The result carries no drawable node — try returning the nodes themselves, e.g. MATCH (n) RETURN n",
+		graphDangling: "{1} relationship(s) not drawn: their endpoints were not part of the result",
+		graphInternalHidden: "{1} internal node(s) hidden",
+		graphInternalHint:
+			"Written by Backlog.md for its own bookkeeping (the corpus fingerprint), not part of your data. Hidden by default — click to show it.",
 	},
 } as const;
 

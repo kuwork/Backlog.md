@@ -1114,6 +1114,7 @@ export const zhTW: TranslationDict = {
 		columnDescription: "描述",
 		columnNodes: "節點",
 		columnEdges: "邊",
+		actionViewAll: "View ALL",
 		kindDerived: "衍生",
 		kindUser: "使用者",
 		countsUnavailable: "—",
@@ -1130,6 +1131,20 @@ export const zhTW: TranslationDict = {
 			"`default` 是 markdown 衍生庫，由圖服務在本行程內維護：隨語料變更增量同步，查詢直接落在已建構的圖譜上，不會重建。",
 		schemaHint:
 			"查結構：CLI 用 `backlog graph schema <資料庫>` 印出節點表、欄位與關係表端點。下面兩句可直接點進輸入框：",
+		allRows: "回傳全部列（不限 500 列）",
+		viewLabel: "檢視",
+		viewTable: "表格",
+		viewGraph: "圖譜",
+		viewSplit: "並列",
+		fullscreen: "全螢幕",
+		exitFullscreen: "結束全螢幕",
+		graphTitle: "結果圖譜",
+		graphTooLarge: "結果有 {1} 個節點，超出圖譜可互動配置的規模",
+		graphTooLargeHint: "請在表格檢視查看，或用 LIMIT 縮小結果。",
+		graphEmpty: "結果中沒有可繪製的節點——試試回傳節點本身，例如 MATCH (n) RETURN n",
+		graphDangling: "有 {1} 條關係因端點未隨結果回傳而無法繪製",
+		graphInternalHidden: "已隱藏 {1} 個內部節點",
+		graphInternalHint: "由 Backlog.md 自行寫入的中繼資料節點（語料指紋），不屬於你的資料。預設隱藏，點擊可顯示。",
 	},
 };
 

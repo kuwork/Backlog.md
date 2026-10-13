@@ -127,7 +127,11 @@ export interface GraphStore {
 	 * for JSON. The ryu backend executes native Cypher; the memory backend does not support it and
 	 * rejects the call so the UI can surface a clear "use the ryu backend" message.
 	 */
-	runCypher(statement: string, options?: { maxRows?: number }): Promise<CypherQueryResult>;
+	/**
+	 * `maxRows` of `null` lifts the interactive display cap and returns every row - note this is
+	 * deliberately not expressible as `undefined`, which means "use the default".
+	 */
+	runCypher(statement: string, options?: { maxRows?: number | null }): Promise<CypherQueryResult>;
 	/**
 	 * Run a Cypher statement that may mutate the graph. Only user databases (opened with
 	 * `schema: "none"`) ever call this: the derived corpus graph is a rebuildable cache of the
@@ -378,6 +382,14 @@ function isCypherPath(value: unknown): value is { _nodes: unknown[]; _rels: unkn
 	);
 }
 
+/** An embind InternalID: ryu's structured form of the `table:offset` handle the text form prints. */
+function isInternalId(value: unknown): value is { offset: bigint | number; table: bigint | number } {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+	const candidate = value as { offset?: unknown; table?: unknown };
+	const numeric = (entry: unknown) => typeof entry === "number" || typeof entry === "bigint";
+	return numeric(candidate.offset) && numeric(candidate.table);
+}
+
 /**
  * Collect FileNode keys (path and id) from a result cell so the UI can highlight the matched
  * subgraph. Walks nodes, paths and arrays; a bare string that already looks like a node path
@@ -404,15 +416,38 @@ function collectCypherNodeKeys(value: unknown, keys: Set<string>): void {
 	if (typeof value === "string" && value.includes("/")) keys.add(value);
 }
 
-/** Flatten a kuzu/ryu value into a JSON-serializable shape for transport to the UI. */
+/**
+ * Flatten a kuzu/ryu value into a JSON-serializable shape for transport to the UI.
+ *
+ * The internal handles travel with the value: a node's `_id` and a relationship's `_src`/`_dst`
+ * are what let a client join an edge back to the two nodes it connects - the databases page
+ * renders a Cypher result as a graph (BACK-793), and without them a result row says nothing
+ * about which node a relationship touches. They are internal offsets, stable within one result
+ * set; the table renderers (Web UI and CLI) filter them back out for display. The toString
+ * recovery path (`parseCypherCell`) already normalises them onto the same keys.
+ */
 function serializeCypherValue(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
+	// embind maps INT64 to BigInt - a node's `_id`, a relationship's `_src`/`_dst`, a `count()` -
+	// and JSON has no BigInt, so `Response.json` used to throw on a fast-path result. Coerce to a
+	// number while it is exactly representable (offsets and counts sit far below 2^53), to a
+	// string after that.
+	if (typeof value === "bigint") {
+		const asNumber = Number(value);
+		return Number.isSafeInteger(asNumber) ? asNumber : String(value);
+	}
 	if (typeof value !== "object") return value;
 	if (Array.isArray(value)) return value.map(serializeCypherValue);
 	const out: Record<string, unknown> = {};
 	if (isCypherNode(value) || isCypherRel(value)) out._label = value._label;
 	for (const [key, val] of Object.entries(value)) {
-		if (key === "_id" || key === "_src" || key === "_dst") continue;
+		// The internal handles arrive as an embind InternalID struct ({offset, table}) on the
+		// structured path and as `table:offset` text on the string path; normalise both to the
+		// same string, so a client joins an edge to its two nodes the same way either path.
+		if ((key === "_id" || key === "_src" || key === "_dst") && isInternalId(val)) {
+			out[key] = `${val.table}:${val.offset}`;
+			continue;
+		}
 		out[key] = serializeCypherValue(val);
 	}
 	return out;
@@ -425,40 +460,123 @@ function serializeCypherValue(value: unknown): unknown {
  * lower-case `_label`/`_id`/`_src`/`_dst` shape the helpers expect. Anything else is a scalar: bare
  * numbers are coerced for display fidelity, everything else stays a string. This is the int64-safe
  * recovery path used when Bun's embind cannot convert an INT64 result column (see rowsFromResult).
+ *
+ * The text forms carry the graph structure too, so they are parsed rather than left as strings
+ * (BACK-793 draws a result as a graph, and the string path is the one an INT64 column forces):
+ * - a node is `{_ID: 0:0, _LABEL: Person, key: alice, ...}` - `_ID` is its table:offset handle;
+ * - a relationship is `(0:0)-{_LABEL: KNOWS, _ID: 2:0}->(0:1)` - the parens are the endpoints,
+ *   in the same table:offset namespace a node's `_ID` lives in, which is what makes an edge
+ *   joinable to its two nodes on this path exactly as on the structured one;
+ * - a path is `{_NODES: [node, node], _RELS: [rel]}` - lists the flat key:value scan cannot see.
  */
 function parseCypherCell(text: string): unknown {
 	const t = text.trim();
+	if (t.startsWith("(") && t.includes("-{")) return parseRelText(t);
 	if (t.startsWith("{") && t.endsWith("}")) {
-		const obj: Record<string, unknown> = {};
-		const re = /([A-Za-z_][\w]*):\s*("([^"]*)"|'([^']*)'|[^,}]*)/g;
-		let m = re.exec(t);
-		while (m) {
-			const rawKey = m[1];
-			let value = (m[2] ?? "").trim();
-			if (
-				value.length >= 2 &&
-				((value[0] === '"' && value[value.length - 1] === '"') || (value[0] === "'" && value[value.length - 1] === "'"))
-			) {
-				value = value.slice(1, -1);
-			}
-			const key =
-				rawKey === "_LABEL"
-					? "_label"
-					: rawKey === "_ID"
-						? "_id"
-						: rawKey === "_SRC"
-							? "_src"
-							: rawKey === "_DST"
-								? "_dst"
-								: rawKey;
-			if (key) obj[key] = value;
-			m = re.exec(t);
-		}
-		return obj;
+		if (/_NODES:\s*\[/.test(t) && /_RELS:\s*\[/.test(t)) return parsePathText(t);
+		return parseObjectText(t);
 	}
 	if (/^-?\d+$/.test(t)) return Number(t);
 	if (/^-?\d*\.\d+$/.test(t)) return Number(t);
 	return t;
+}
+
+/** `(0:0)-{_LABEL: KNOWS, _ID: 2:0}->(0:1)` into `{_label, _src, _dst, ...properties}`. */
+const REL_TEXT = /^\(([^)]*)\)-\{([\s\S]*)\}->\(([^)]*)\)$/;
+
+function parseRelText(text: string): unknown {
+	const match = REL_TEXT.exec(text);
+	// Not the three-part form after all: keep it as the plain string it looks like.
+	if (!match) return text;
+	const out = parseObjectText(`{${match[2] ?? ""}}`);
+	out._src = match[1] ?? "";
+	out._dst = match[3] ?? "";
+	return out;
+}
+
+/** `{_NODES: [a, b], _RELS: [r]}` into `{_nodes: [...], _rels: [...]}`, each element re-parsed. */
+function parsePathText(text: string): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	const nodes = parseListValue(text, "_NODES");
+	if (nodes) out._nodes = nodes;
+	const rels = parseListValue(text, "_RELS");
+	if (rels) out._rels = rels;
+	return out;
+}
+
+/** The elements of `key: [a, b, c]` inside a struct text, each parsed as its own cell. */
+function parseListValue(text: string, key: string): unknown[] | null {
+	const marker = `${key}: [`;
+	const start = text.indexOf(marker);
+	if (start < 0) return null;
+	const from = start + marker.length;
+	// Walk to the bracket that closes the list, tracking every kind of nesting: a property value
+	// may itself contain brackets, and a relationship element contains parens.
+	let depth = 1;
+	let end = -1;
+	for (let index = from; index < text.length; index += 1) {
+		const char = text[index];
+		if (char === "[" || char === "{" || char === "(") depth += 1;
+		else if (char === "]" || char === "}" || char === ")") {
+			depth -= 1;
+			if (depth === 0) {
+				end = index;
+				break;
+			}
+		}
+	}
+	if (end < 0) return null; // unbalanced: let the caller fall back to the flat parse
+	const inner = text.slice(from, end);
+	// Split on the commas that sit at the list's own level.
+	const elements: string[] = [];
+	let nesting = 0;
+	let current = "";
+	for (const char of inner) {
+		if (char === "[" || char === "{" || char === "(") nesting += 1;
+		else if (char === "]" || char === "}" || char === ")") nesting -= 1;
+		if (char === "," && nesting === 0) {
+			elements.push(current);
+			current = "";
+			continue;
+		}
+		current += char;
+	}
+	if (current.trim().length > 0) elements.push(current);
+	return elements.map((element) => parseCypherCell(element));
+}
+
+/** The flat `key: value, ...` scan: the object (node) form, and the property map of a relationship. */
+function parseObjectText(text: string): Record<string, unknown> {
+	const obj: Record<string, unknown> = {};
+	const re = /([A-Za-z_][\w]*):\s*("([^"]*)"|'([^']*)'|[^,}]*)/g;
+	let m = re.exec(text);
+	while (m) {
+		const rawKey = m[1];
+		let value = (m[2] ?? "").trim();
+		if (
+			value.length >= 2 &&
+			((value[0] === '"' && value[value.length - 1] === '"') || (value[0] === "'" && value[value.length - 1] === "'"))
+		) {
+			value = value.slice(1, -1);
+		}
+		const key =
+			rawKey === "_LABEL"
+				? "_label"
+				: rawKey === "_ID"
+					? "_id"
+					: rawKey === "_SRC"
+						? "_src"
+						: rawKey === "_DST"
+							? "_dst"
+							: rawKey === "_NODES"
+								? "_nodes"
+								: rawKey === "_RELS"
+									? "_rels"
+									: rawKey;
+		if (key) obj[key] = value;
+		m = re.exec(text);
+	}
+	return obj;
 }
 
 /**
@@ -726,7 +844,7 @@ export class RyuGraphStore implements GraphStore {
 	 * truth). The flattened rows carry plain JSON and the set of FileNode key/id values found, which
 	 * the UI uses to highlight the matched subgraph.
 	 */
-	async runCypher(statement: string, options: { maxRows?: number } = {}): Promise<CypherQueryResult> {
+	async runCypher(statement: string, options: { maxRows?: number | null } = {}): Promise<CypherQueryResult> {
 		const trimmed = statement.trim();
 		if (!trimmed) throw new Error("Cypher 语句为空");
 		// Read-only retrieval only: block write keywords to protect the cache. `CALL` (e.g.
@@ -739,7 +857,9 @@ export class RyuGraphStore implements GraphStore {
 		await this.closeResult(result);
 		// The cap keeps an interactive result renderable, but internal callers that must not lose
 		// rows (dumping a snapshot) pass Infinity - silently truncating a dump would be data loss.
-		const MAX_ROWS = options.maxRows ?? DEFAULT_CYPHER_ROW_CAP;
+		// A caller asking for every row passes null, which is the only way to say it: `undefined`
+		// has to keep meaning "default", or an unqualified call would lose rows by accident.
+		const MAX_ROWS = options.maxRows === null ? Number.POSITIVE_INFINITY : (options.maxRows ?? DEFAULT_CYPHER_ROW_CAP);
 		const truncated = rowObjects.length > MAX_ROWS;
 		const slice = truncated ? rowObjects.slice(0, MAX_ROWS) : rowObjects;
 		const nodeKeys = new Set<string>();

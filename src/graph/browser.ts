@@ -73,8 +73,18 @@ export function describeDatabases(projectRoot: string): DatabaseSummary[] {
 export class UserDatabaseBrowser {
 	private sessions = new Map<string, Session>();
 
-	/** Run a read-only Cypher statement against a user database, replaying it when the file changed. */
-	async query(projectRoot: string, name: string, statement: string): Promise<CypherQueryResult> {
+	/**
+	 * Run a read-only Cypher statement against a user database, replaying it when the file changed.
+	 *
+	 * `maxRows` defaults to the interactive display cap; pass `null` for "every row", which only
+	 * the databases page does when the reader explicitly asks for the whole result.
+	 */
+	async query(
+		projectRoot: string,
+		name: string,
+		statement: string,
+		maxRows?: number | null,
+	): Promise<CypherQueryResult> {
 		if (name === DEFAULT_DATABASE) {
 			// The derived corpus belongs to the graph service: it owns the rebuild and the lock, and
 			// the server routes `default` there before reaching this class. Fail loudly if a caller
@@ -87,7 +97,7 @@ export class UserDatabaseBrowser {
 		const fingerprint = snapshotFingerprint(database.source.snapshotPath);
 		const cached = this.sessions.get(database.source.dbPath);
 		if (cached && cached.fingerprint === fingerprint) {
-			return await cached.store.runCypher(statement);
+			return await cached.store.runCypher(statement, { maxRows });
 		}
 		// First query, or the snapshot moved under us: replay before answering.
 		await this.close(database.source.dbPath);
@@ -95,7 +105,7 @@ export class UserDatabaseBrowser {
 		try {
 			await hydrateDatabase(store, loadSnapshot(database.source.snapshotPath));
 			this.sessions.set(database.source.dbPath, { store, fingerprint });
-			return await store.runCypher(statement);
+			return await store.runCypher(statement, { maxRows });
 		} catch (error) {
 			await store.close();
 			throw error;
