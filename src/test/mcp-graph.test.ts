@@ -136,4 +136,32 @@ describe("MCP graph tools", () => {
 		expect(typeof user?.nodes).toBe("number");
 		expect(typeof user?.edges).toBe("number");
 	});
+
+	it("registers graph_describe_database in the MCP tool list", async () => {
+		const names = await listToolNames();
+		expect(names).toContain("graph_describe_database");
+	});
+
+	it("describes the default derived graph with its metadata", async () => {
+		const result = await callTool("graph_describe_database", { db: "default" });
+		expect(result.isError).toBeFalsy();
+		const db = JSON.parse(getText(result.content)) as {
+			name: string;
+			kind: string;
+			description: string;
+			nodes: number | null;
+			edges: number | null;
+		};
+		expect(db.name).toBe("default");
+		expect(db.kind).toBe("derived");
+		expect(typeof db.description).toBe("string");
+		expect(db.nodes).toBeNull();
+		expect(db.edges).toBeNull();
+	});
+
+	it("returns a clear error for an unknown database", async () => {
+		const result = await callTool("graph_describe_database", { db: "does-not-exist" });
+		expect(result.isError).toBe(true);
+		expect(getText(result.content)).toContain("不存在");
+	});
 });

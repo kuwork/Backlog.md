@@ -15,6 +15,10 @@ export type GraphSchemaArgs = {
 
 export type GraphListDatabasesArgs = Record<string, never>;
 
+export type GraphDescribeDatabaseArgs = {
+	db: string;
+};
+
 /** Format a Cypher result set for an agent: machine-readable JSON plus a short summary line. */
 function formatCypherResult(result: { columns: string[]; rows: unknown[][]; truncated?: boolean }): string {
 	const rowCount = result.rows.length;
@@ -65,6 +69,24 @@ export class GraphHandlers {
 		const databases = describeDatabases(this.core.filesystem.rootDir);
 		return {
 			content: [{ type: "text", text: JSON.stringify(databases, null, 2) }],
+		};
+	}
+
+	async describeDatabase(args: GraphDescribeDatabaseArgs): Promise<CallToolResult> {
+		const db = args.db;
+		if (!db) {
+			throw new BacklogToolError("Missing required argument: db", "VALIDATION_ERROR");
+		}
+		const databases = describeDatabases(this.core.filesystem.rootDir);
+		const found = databases.find((database) => database.name === db);
+		if (!found) {
+			throw new BacklogToolError(
+				`数据库 "${db}" 不存在。可用：${databases.map((database) => database.name).join(", ")}。`,
+				"RESOURCE_NOT_FOUND",
+			);
+		}
+		return {
+			content: [{ type: "text", text: JSON.stringify(found, null, 2) }],
 		};
 	}
 }
