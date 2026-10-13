@@ -88,6 +88,7 @@ describe("CLI Integration", () => {
 			expect(output).toContain("documents");
 			expect(output).toContain("decisions");
 			expect(output).toContain("drafts");
+			expect(output).toContain("graph");
 			expect(output).toContain("init-required");
 		});
 
@@ -102,6 +103,7 @@ describe("CLI Integration", () => {
 			);
 			const milestones = normalizeCliOutput(await $`bun ${CLI_PATH} instructions milestones`.cwd(TEST_DIR).text());
 			const initRequired = normalizeCliOutput(await $`bun ${CLI_PATH} instructions init-required`.cwd(TEST_DIR).text());
+			const graph = normalizeCliOutput(await $`bun ${CLI_PATH} instructions graph`.cwd(TEST_DIR).text());
 
 			expect(overview).toContain("## Backlog.md Overview (CLI)");
 			expect(overview).toContain("### Start Every Request Here");
@@ -172,6 +174,10 @@ describe("CLI Integration", () => {
 			expect(taskCreation).not.toContain("task_search");
 			expect(initRequired).toContain("This directory does not have Backlog.md initialized.");
 			expect(initRequired).toContain("backlog init --defaults");
+			// The CLI graph guide is wired back into the registry alongside the MCP one.
+			expect(graph).toContain("## Graph");
+			expect(graph).toContain("backlog graph schema");
+			expect(graph).toContain("backlog graph import");
 		}, 15_000);
 
 		it("renders task ID examples with the configured task prefix", async () => {
@@ -275,7 +281,7 @@ describe("CLI Integration", () => {
 			expect(initHelp).not.toContain("backlog init --integration-mode mcp");
 			expect(initHelp).toContain("Writes:");
 			expect(instructionsHelp).toContain(
-				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, memos, init-required",
+				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, memos, graph, init-required",
 			);
 			expect(instructionsHelp).toContain("Output:");
 		});

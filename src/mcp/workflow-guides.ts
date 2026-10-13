@@ -2,6 +2,7 @@ import {
 	CLI_DECISIONS_GUIDE,
 	CLI_DOCUMENTS_GUIDE,
 	CLI_DRAFTS_GUIDE,
+	CLI_GRAPH_GUIDE,
 	CLI_INIT_REQUIRED_GUIDE,
 	CLI_MEMOS_GUIDE,
 	CLI_MILESTONES_GUIDE,
@@ -14,6 +15,7 @@ import {
 	MCP_DECISIONS_GUIDE,
 	MCP_DOCUMENTS_GUIDE,
 	MCP_DRAFTS_GUIDE,
+	MCP_GRAPH_GUIDE,
 	MCP_MEMOS_GUIDE,
 	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
@@ -33,6 +35,7 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"decisions",
 	"drafts",
 	"memos",
+	"graph",
 ] as const;
 export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
 
@@ -123,6 +126,14 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 		mimeType: "text/markdown",
 		resourceText: MCP_MEMOS_GUIDE,
 	},
+	{
+		key: "graph",
+		uri: "backlog://workflow/graph",
+		name: "Graph Guide",
+		description: "How to query the task/knowledge graph and manage user graph databases over MCP",
+		mimeType: "text/markdown",
+		resourceText: MCP_GRAPH_GUIDE,
+	},
 ];
 
 const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
@@ -135,6 +146,7 @@ const CLI_INSTRUCTION_TEXT_BY_KEY: Record<WorkflowGuideKey, string> = {
 	decisions: CLI_DECISIONS_GUIDE,
 	drafts: CLI_DRAFTS_GUIDE,
 	memos: CLI_MEMOS_GUIDE,
+	graph: CLI_GRAPH_GUIDE,
 };
 
 export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [
