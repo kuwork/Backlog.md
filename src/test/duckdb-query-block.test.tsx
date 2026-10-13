@@ -2,8 +2,17 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { UTF8_BOM } from "../sqlite/csv.ts";
 import DuckdbQueryBlock from "../web/components/DuckdbQueryBlock.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+
+interface FakeWritable {
+	write(data: string): Promise<void>;
+	close(): Promise<void>;
+}
+interface FakeHandle {
+	createWritable(): Promise<FakeWritable>;
+}
 
 const RESULT = {
 	columns: ["name"],
@@ -21,6 +30,10 @@ let root: Root | null = null;
 let container: HTMLElement | null = null;
 let queryCalls = 0;
 let queryResult: unknown = RESULT;
+/** Every export request body, so the "no rows travel to the server" rule can be asserted. */
+const exportBodies: Record<string, unknown>[] = [];
+/** Every file the stubbed save dialog actually handed to a writable, so the write can be asserted. */
+const savedFiles: { name: string; contents: string }[] = [];
 
 function mount(block: string) {
 	act(() => {
@@ -64,8 +77,42 @@ beforeEach(() => {
 
 	queryCalls = 0;
 	queryResult = RESULT;
-	globalThis.fetch = ((input: RequestInfo | URL) => {
+	exportBodies.length = 0;
+	savedFiles.length = 0;
+	// The File System Access API is Chromium-only; stub it so the save path runs headless and the
+	// written text can be inspected. The dialog "suggests" the server's filename.
+	(globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker = async (options?: {
+		suggestedName?: string;
+	}) => {
+		const handle: FakeHandle = {
+			async createWritable() {
+				const writable: FakeWritable = {
+					async write(data: string) {
+						savedFiles.push({ name: options?.suggestedName ?? "", contents: data });
+					},
+					async close() {},
+				};
+				return writable;
+			},
+		};
+		return handle;
+	};
+	globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
+		if (url.includes("/api/duckdb/export-csv")) {
+			exportBodies.push(JSON.parse(String(init?.body ?? "{}")));
+			return Promise.resolve(
+				new Response(
+					JSON.stringify({
+						filename: "shop-20260101-000000.csv",
+						csv: `${UTF8_BOM}name\r\nAlice\r\n`,
+						rows: 1,
+						truncated: false,
+					}),
+					{ status: 200 },
+				),
+			);
+		}
 		if (url.includes("/api/duckdb/query")) {
 			queryCalls++;
 			return Promise.resolve(new Response(JSON.stringify(queryResult), { status: 200 }));
@@ -82,6 +129,7 @@ afterEach(() => {
 		root?.unmount();
 	});
 	globalThis.fetch = (() => Promise.resolve(new Response("{}", { status: 200 }))) as unknown as typeof fetch;
+	(globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined;
 });
 
 describe("DuckdbQueryBlock base render (BACK-778)", () => {
@@ -121,18 +169,6 @@ describe("DuckdbQueryBlock base render (BACK-778)", () => {
 		await settle();
 		expect(queryCalls).toBe(0);
 		expect(container?.textContent).toContain("第 2 行");
-	});
-
-	// Show/Hide (BACK-779) and Copy Markdown (BACK-780) are enabled; Export CSV (BACK-781) is the
-	// only action still gated, so it must stay absent, not merely disabled.
-	it("keeps the Export CSV action gated", async () => {
-		mount(BLOCK);
-		await settle();
-		expect(toggle()).toBeTruthy();
-		expect(button("Copy Markdown")).toBeTruthy();
-		expect(button("Export CSV")).toBeUndefined();
-		// Refresh is always present.
-		expect(button("Refresh")).toBeTruthy();
 	});
 });
 
@@ -283,5 +319,50 @@ describe("DuckdbQueryBlock Copy Markdown (BACK-780)", () => {
 		await settle();
 
 		expect(button("Copy Markdown")).toBeUndefined();
+	});
+});
+
+describe("DuckdbQueryBlock Export CSV (BACK-781)", () => {
+	it("fetches the CSV and saves it where the user chose, with no rows leaving the browser", async () => {
+		mount(BLOCK);
+		await settle();
+
+		await act(async () => {
+			button("Export CSV")?.click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		// The rows never leave the browser: the server re-runs `source` + `sql` behind its own gates,
+		// so an export request cannot carry a payload to write. The body is strictly those two keys.
+		expect(exportBodies).toEqual([{ source: "backlog/databases/shop.duckdb", sql: "SELECT name\nFROM people" }]);
+		expect(Object.keys(exportBodies[0] ?? {})).toEqual(["source", "sql"]);
+		expect(savedFiles).toEqual([{ name: "shop-20260101-000000.csv", contents: `${UTF8_BOM}name\r\nAlice\r\n` }]);
+		// The confirmation names the suggestion, not a server-decided path.
+		expect(container?.textContent).toContain("shop-20260101-000000.csv");
+	});
+
+	it("reports a refusal instead of pretending it worked", async () => {
+		mount(BLOCK);
+		await settle();
+		globalThis.fetch = (() =>
+			Promise.resolve(
+				new Response(JSON.stringify({ error: "source 指向项目目录之外：../outside/shop.duckdb" }), { status: 400 }),
+			)) as unknown as typeof fetch;
+
+		await act(async () => {
+			button("Export CSV")?.click();
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		expect(container?.textContent).toContain("Export failed");
+		expect(container?.textContent).toContain("source 指向项目目录之外");
+	});
+
+	it("hides the button when there is no result to export", async () => {
+		queryResult = { ...RESULT, rows: [] };
+		mount(BLOCK);
+		await settle();
+
+		expect(button("Export CSV")).toBeUndefined();
 	});
 });
