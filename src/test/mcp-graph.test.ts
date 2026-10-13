@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { $ } from "bun";
 import { createDatabase } from "../graph/databases.ts";
 import { McpServer } from "../mcp/server.ts";
@@ -208,6 +210,68 @@ describe("MCP graph tools", () => {
 			description: "illegal",
 			acknowledged: true,
 		});
+		expect(result.isError).toBe(true);
+	});
+
+	it("registers graph_import_csv in the MCP tool list", async () => {
+		const names = await listToolNames();
+		expect(names).toContain("graph_import_csv");
+	});
+
+	it("imports a node CSV into a user database, creating the table", async () => {
+		createDatabase(TEST_DIR, "importdb", "import test database");
+		const csv = join(TEST_DIR, "people.csv");
+		await writeFile(csv, "name,age\nAlice,30\nBob,41\n", "utf8");
+		const result = await callTool("graph_import_csv", { db: "importdb", csv, node: "Person" });
+		expect(result.isError).toBeFalsy();
+		const imported = JSON.parse(getText(result.content)) as {
+			table: string;
+			created: boolean;
+			inserted: number;
+			columns: { name: string; type: string }[];
+		};
+		expect(imported.table).toBe("Person");
+		expect(imported.created).toBe(true);
+		expect(imported.inserted).toBe(2);
+		expect(imported.columns.map((column) => column.type)).toEqual(["STRING", "INT64"]);
+	});
+
+	it("imports a relationship CSV as edges between existing nodes", async () => {
+		createDatabase(TEST_DIR, "reldb", "relation test database");
+		const people = join(TEST_DIR, "people.csv");
+		await writeFile(people, "name,age\nAlice,30\nBob,41\n", "utf8");
+		await callTool("graph_import_csv", { db: "reldb", csv: people, node: "Person" });
+		const knows = join(TEST_DIR, "knows.csv");
+		await writeFile(knows, "person,friend\nAlice,Bob\n", "utf8");
+		const result = await callTool("graph_import_csv", {
+			db: "reldb",
+			csv: knows,
+			rel: "KNOWS",
+			from: "person",
+			to: "friend",
+			fromNode: "Person",
+			toNode: "Person",
+		});
+		expect(result.isError).toBeFalsy();
+		const imported = JSON.parse(getText(result.content)) as { rel: string; created: boolean; inserted: number };
+		expect(imported.rel).toBe("KNOWS");
+		expect(imported.created).toBe(true);
+		expect(imported.inserted).toBe(1);
+	});
+
+	it("returns a clear error for a malformed CSV", async () => {
+		createDatabase(TEST_DIR, "baddb", "bad csv database");
+		const csv = join(TEST_DIR, "ragged.csv");
+		await writeFile(csv, "name,age\nFrank,60,extra\n", "utf8");
+		const result = await callTool("graph_import_csv", { db: "baddb", csv, node: "Person" });
+		expect(result.isError).toBe(true);
+		expect(getText(result.content)).toContain("第 2 行有 3 列");
+	});
+
+	it("refuses to import into the read-only default database", async () => {
+		const csv = join(TEST_DIR, "p.csv");
+		await writeFile(csv, "name\nAlice\n", "utf8");
+		const result = await callTool("graph_import_csv", { db: "default", csv });
 		expect(result.isError).toBe(true);
 	});
 });
