@@ -105,6 +105,7 @@
     "node-pty"
   ],
   "dependencies": {
+    "@duckdb/node-api": "^1.5.6-r.1",
     "d3": "^7.9.0",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
