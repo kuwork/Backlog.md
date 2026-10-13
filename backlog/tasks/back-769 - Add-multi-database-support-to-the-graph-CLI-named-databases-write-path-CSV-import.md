@@ -7,10 +7,11 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-12 13:58'
-updated_date: '2026-10-12 15:32'
+updated_date: '2026-10-13 05:37'
 labels:
   - cli
   - graph
+milestone: m-13
 dependencies:
   - BACK-767
   - BACK-768

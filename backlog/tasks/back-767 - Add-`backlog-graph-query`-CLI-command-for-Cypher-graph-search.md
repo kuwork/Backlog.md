@@ -5,9 +5,10 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-10-12 10:10'
-updated_date: '2026-10-12 13:34'
+updated_date: '2026-10-13 05:37'
 labels:
   - cli
+milestone: m-13
 dependencies: []
 modified_files:
   - src/cli.ts
