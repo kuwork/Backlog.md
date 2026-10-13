@@ -1,6 +1,7 @@
 [test]
-# Timeout for individual tests - increased for Windows compatibility
-timeout = 10000
+# Timeout for individual tests - increased for Windows compatibility and for the
+# graph MCP tests, which load the ryu WASM backend and rebuild the derived corpus.
+timeout = 30000
 
 # Reduce memory usage during test runs to prevent WSL2 crashes
 smol = true

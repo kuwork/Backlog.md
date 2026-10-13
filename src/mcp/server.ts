@@ -28,6 +28,7 @@ import { registerWorkflowResources } from "./resources/workflow/index.ts";
 import { registerDecisionTools } from "./tools/decisions/index.ts";
 import { registerDefinitionOfDoneTools } from "./tools/definition-of-done/index.ts";
 import { registerDocumentTools } from "./tools/documents/index.ts";
+import { registerGraphTools } from "./tools/graph/index.ts";
 import { registerMemoTools } from "./tools/memos/index.ts";
 import { registerMilestoneTools } from "./tools/milestones/index.ts";
 import { registerTaskTools } from "./tools/tasks/index.ts";
@@ -263,6 +264,7 @@ export class McpServer extends Core {
 		registerDefinitionOfDoneTools(this);
 		registerDocumentTools(this, config);
 		registerDecisionTools(this);
+		registerGraphTools(this);
 		registerMemoTools(this, config);
 
 		// Notify client that available tools/resources/prompts changed
@@ -544,6 +546,7 @@ export async function createMcpServer(projectRoot: string, options: ServerInitOp
 	registerDefinitionOfDoneTools(server);
 	registerDocumentTools(server, config);
 	registerDecisionTools(server);
+	registerGraphTools(server);
 	registerMemoTools(server, config);
 
 	// Follow the client workspace roots so a server launched in the main checkout
