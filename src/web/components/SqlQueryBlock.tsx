@@ -26,6 +26,8 @@ export interface QueryBlockDict {
 	exporting: string;
 	exported: string;
 	exportFailed: string;
+	/** Shown when a `copy_to` target was written: `{path}` is the project-relative destination. */
+	writtenTo: string;
 }
 
 /** Everything that differs between the two engines, so the render logic is written exactly once. */
@@ -35,7 +37,7 @@ export interface QueryEngineConfig {
 	/** The i18n strings for this engine's block. */
 	dict: QueryBlockDict;
 	/** Runs one read-only statement and returns the grid. */
-	run: (request: { source: string; sql: string; maxRows?: number }) => Promise<SqliteQueryResult>;
+	run: (request: { source: string; sql: string; maxRows?: number; copyTo?: string }) => Promise<SqliteQueryResult>;
 	/** Builds the CSV server-side and returns it with a suggested filename. */
 	exportCsv: (request: { source: string; sql: string }) => Promise<{
 		filename: string;
@@ -135,7 +137,11 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		let cancelled = false;
 		setState({ status: "loading" });
 		engine
-			.run({ source: parsed.block.source, sql: parsed.block.sql })
+			.run({
+				source: parsed.block.source,
+				sql: parsed.block.sql,
+				copyTo: parsed.block.copyTo,
+			})
 			.then((result) => {
 				if (!cancelled) setState({ status: "ready", result });
 			})
@@ -390,6 +396,11 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				{exportState.status === "failed" ? (
 					<p className="mt-2 text-xs text-red-600 dark:text-red-400">
 						{dict.exportFailed}：{exportState.message}
+					</p>
+				) : null}
+				{state.status === "ready" && state.result.writtenTo ? (
+					<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+						{fill(dict.writtenTo, { path: state.result.writtenTo })}
 					</p>
 				) : null}
 			</div>

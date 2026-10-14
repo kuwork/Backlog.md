@@ -3,7 +3,7 @@ id: doc-25
 title: DuckDB Explorer：只读 SQL 浏览与查询能力
 type: design
 created_date: '2026-10-13 01:30'
-updated_date: '2026-10-13 09:35'
+updated_date: '2026-10-14 08:35'
 ---
 # DuckDB Explorer：只读 SQL 浏览与查询能力
 
@@ -255,3 +255,56 @@ Embed 是单向操作：替换后原 SQL 不再保留在文档中，UI 需明确
 | DuckDB 版本升级改变值包装形态 | `toCell` 分派失效 | 按对象**形状**判别而非 import 类；`duckdb.test.ts` 覆盖全部类型 |
 
 **后续候选**（本期不做，按序排队）：Embed 静态快照 → 独立数据库浏览视图 → CLI 子命令 → MCP 只读查询工具 → 行数上限配置化。
+
+---
+
+## 11. 二期扩展：CSV / Excel 数据源（含读写示例）
+
+> 状态：设计稿 v2 增补（2026-10-14）。引擎可行性已实测：Bun + `@duckdb/node-api` 下 `INSTALL` / `LOAD` 官方扩展成功，`READ_ONLY` 实例上同样可装载扩展（扩展写入用户目录缓存 `~/.duckdb/extensions`，不触碰数据库文件）。
+
+### 11.1 扩展选型：只用官方扩展
+
+| 方案 | 结论 | 理由 |
+|---|---|---|
+| 内置 `read_csv_auto`（CSV） | ✅ 采用 | 无需任何扩展，DuckDB 内置 |
+| 官方 `excel` 扩展（`read_xlsx` / `COPY ... (FORMAT XLSX)`） | ✅ 采用 | core 签名扩展，读写均覆盖，体积可控 |
+| `spatial` 扩展（`st_read` 走 GDAL XLSX 驱动） | ❌ 不用 | 为读 Excel 装整个 GDAL 栈（数十 MB），过重 |
+| 社区 `rusty_sheet` 扩展（`read_sheet`） | ❌ 不用 | 社区扩展供应链信任需自行评估，能力被官方 `excel` 覆盖 |
+
+### 11.2 读示例
+
+```sql
+-- CSV：replacement scan 直接读裸路径，无需扩展、无需函数
+SELECT * FROM 'backlog/databases/demo-shop.csv';
+-- 需要 sniffing 参数时再用函数形式
+SELECT * FROM read_csv_auto('backlog/databases/demo-shop.csv');
+
+-- Excel：官方 excel 扩展（core 扩展，autoload 默认开启——首次查询自动联网安装，之后走本地缓存，无需手写 INSTALL/LOAD）
+SELECT * FROM 'backlog/databases/demo-shop.xlsx';
+-- 需要参数时用函数形式：指定工作表 / 无表头 / 范围
+SELECT * FROM read_xlsx('data.xlsx', sheet = 'Sheet2');
+SELECT * FROM read_xlsx('data.xlsx', header = false, range = 'A2:E100');
+```
+
+> 已实测（Bun 1.3.13 + `@duckdb/node-api`）：CSV / XLSX 裸路径查询均通过；XLSX 在不写 `LOAD excel` 时由 autoload 自动装载。
+
+### 11.3 写示例
+
+```sql
+-- 写 CSV：内置 COPY
+COPY (SELECT * FROM inventory) TO 'output/inventory.csv' (HEADER);
+
+-- 写 xlsx：官方 excel 扩展（HEADER true 才写表头行，否则 read_xlsx 回读得到 A1/B1 式列名）
+COPY (SELECT * FROM inventory) TO 'output/inventory.xlsx' (FORMAT XLSX, HEADER true);
+```
+
+> 已实测：`COPY ... TO '...xlsx' (FORMAT XLSX, HEADER true)` 与 `read_xlsx` 回读均通过（Bun 1.3.13 + `@duckdb/node-api`）。
+
+### 11.4 架构与约束
+
+- **非 `.duckdb` 数据源不挂库**：对 CSV / XLSX 数据源开内存实例（`:memory:`），SQL 里以文件为查询目标；`resolveDuckdbSource` 的扩展名白名单（`src/duckdb/paths.ts` 的 `DUCKDB_EXTENSIONS`）放宽为 `.duckdb` / `.csv` / `.xlsx`，魔数校验仅对 `.duckdb` 生效。
+- **`source` 保持必填，是所有数据源的安全锚点**：裸路径查询（`FROM 'file.csv'`）把文件引用挪进了 SQL 字符串，而 SQL 字面量无法可靠反向提取（拼接、变量、宏），所以访问控制不依赖解析 SQL，仍以 `source` 为基准过 §2 四道闸门；`source` 在 CSV / XLSX 场景的职责从"打开哪个库"变为"声明本块的主数据源"，同时用于决定实例类型（`.duckdb` → 只读挂库；`.csv` / `.xlsx` → 内存实例）与前端的文件列表 / 错误提示 / 缓存键。
+- **SQL 字面量补充校验（best-effort 兜底，fail-closed）**：扫描 SQL 字符串字面量，`http(s)://` / `s3://` 等 URL 一律拒绝（防止 replacement scan 经 `httpfs` autoload 变成任意外联通道）；出现的本地文件路径必须逐个过 §2 闸门。解析不出的动态形态不拦（拦不住），硬保证仍由 `source` 闸门承担。
+- **扩展装载不开放给用户 SQL**：`INSTALL` / `LOAD` / `COPY` 均被只读静态校验（§4 关键字黑名单）拦截——前两者是扩展装载，后者是写路径，二者都不允许出现在用户 SQL 里；扩展装载只走引擎 autoload，写路径只走服务端 `copy_to`。`excel` 是 core 扩展，引擎 autoload 默认开启——首次查询自动联网安装（之后命中本地缓存），服务端无需显式 `LOAD`；唯一要做的是把 autoload/autoinstall 失败转成块内可读错误，不静默失败。
+- **读路径只读语义不变**：CSV / XLSX 查询沿用 §4 三层只读与 §5 行数上限、类型强制。
+- **写路径是新增能力，与"数据源文件不被改"不冲突**：以块字段 `copy_to: <项目相对路径>` 显式开启（默认不开）；服务端把 `SELECT` 包装为 `COPY (<sql>) TO '<target>'`（`.csv` → `HEADER TRUE`；`.xlsx` → `FORMAT XLSX, HEADER TRUE`），在**当前实例**上执行——`.duckdb` 源是 `READ_ONLY` 句柄但 `COPY ... TO` 写的是独立文件，依旧被允许；**目标路径走 §2 同一套项目内闸门**（拒绝绝对路径 / `..` 逃逸 / 符号链接出界 / 被忽略目录），只允许写入项目内的 `.csv` / `.xlsx` 新文件，且禁止写入或覆盖 `.duckdb` 数据库本体。写随块运行（渲染 / 刷新）触发，幂等覆盖；响应带 `writtenTo`（项目相对路径）。`sqlite-query` 块携带 `copy_to` 会被服务端直接拒绝。

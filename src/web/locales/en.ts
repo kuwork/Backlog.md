@@ -894,6 +894,7 @@ export const en = {
 		exporting: "Exporting…",
 		exported: "Exported: {name}",
 		exportFailed: "Export failed",
+		writtenTo: "Written to: {path}",
 	},
 
 	duckdbQueryBlock: {
@@ -913,6 +914,7 @@ export const en = {
 		exporting: "Exporting…",
 		exported: "Exported: {name}",
 		exportFailed: "Export failed",
+		writtenTo: "Written to: {path}",
 	},
 
 	imageLightbox: {

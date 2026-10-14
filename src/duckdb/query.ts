@@ -10,6 +10,8 @@
 
 import { DuckDBInstance } from "@duckdb/node-api";
 import type { SqliteCell } from "../sqlite/query.ts";
+import type { DuckdbSourceKind } from "./paths.ts";
+import { resolveDuckdbWriteTarget } from "./paths.ts";
 
 /** Result cap. Also the memory guard: there is no pagination, so a bigger answer means a better SQL. */
 export const DUCKDB_MAX_ROWS = 500;
@@ -25,6 +27,8 @@ export interface DuckdbQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** Project-relative path of the file written by a `copy_to` target, when one was requested. */
+	writtenTo?: string;
 }
 
 /**
@@ -70,33 +74,105 @@ function toCell(value: unknown): SqliteCell {
 
 export async function runDuckdbQuery(options: {
 	dbPath: string;
+	/** How the source was resolved: a real database is attached read-only, a data file runs on `:memory:`. */
+	kind: DuckdbSourceKind;
 	sql: string;
 	maxRows?: number;
+	/** Optional write target (project-relative `.csv` / `.xlsx`). When set, the result is also copied out. */
+	copyTo?: string;
+	/** Project root, needed only to gate a `copyTo` target. */
+	projectRoot?: string;
 }): Promise<DuckdbQueryResult> {
 	const requested = options.maxRows ?? DUCKDB_MAX_ROWS;
 	const maxRows = Math.min(Math.max(Math.trunc(requested), 1), DUCKDB_ABS_MAX_ROWS);
 	const started = performance.now();
 
-	const instance = await DuckDBInstance.create(options.dbPath, { access_mode: "READ_ONLY" });
+	// A `.duckdb` source is attached read-only so the engine rejects any mutation; a CSV / XLSX data
+	// file opens an in-memory instance and the SQL's bare path is resolved by the engine's
+	// replacement scan (plus autoload of the official `excel` extension for xlsx).
+	const instance = await DuckDBInstance.create(
+		options.kind === "database" ? options.dbPath : ":memory:",
+		options.kind === "database" ? { access_mode: "READ_ONLY" } : undefined,
+	);
 	let connection: Awaited<ReturnType<typeof instance.connect>> | null = null;
 	try {
 		connection = await instance.connect();
-		const reader = await connection.runAndReadAll(options.sql);
+		const reader = await runWithExtensionGuard(connection, options.kind, options.sql);
 		const columns = reader.columnNames();
 		const records = reader.getRowObjects();
 		const truncated = records.length > maxRows;
 		const rows = records
 			.slice(0, maxRows)
 			.map((record) => columns.map((column) => toCell((record as Record<string, unknown>)[column])));
+
+		// Optional write path: copy the result set out to a gated project file. It runs on the same
+		// instance, so it inherits the read-only guarantee for `.duckdb` sources (a `COPY ... TO`
+		// writes a separate file and is allowed even on a read-only database handle).
+		let writtenTo: string | undefined;
+		const copyTo = options.copyTo;
+		const projectRoot = options.projectRoot;
+		if (copyTo && projectRoot) {
+			writtenTo = await runCopyTo(connection, { copyTo, projectRoot, sql: options.sql });
+		}
+
 		return {
 			columns,
 			rows,
 			truncated,
 			elapsedMs: Math.round(performance.now() - started),
 			dbPath: options.dbPath,
+			writtenTo,
 		};
 	} finally {
 		if (connection) connection.closeSync();
 		instance.closeSync();
 	}
+}
+
+/**
+ * Runs the read statement, translating an `excel` extension autoload/autoinstall failure (typically
+ * an offline environment with no local cache) into a readable, surfaced error instead of a raw
+ * stack trace. Only data-file sources depend on an extension, so `.duckdb` errors pass through.
+ */
+async function runWithExtensionGuard(
+	connection: Awaited<ReturnType<DuckDBInstance["connect"]>>,
+	kind: DuckdbSourceKind,
+	sql: string,
+): Promise<Awaited<ReturnType<typeof connection.runAndReadAll>>> {
+	try {
+		return await connection.runAndReadAll(sql);
+	} catch (error) {
+		if (kind === "data-file" && isExtensionLoadFailure(error)) {
+			throw new Error(
+				"无法加载 Excel 扩展（excel）：很可能是离线环境无法下载该扩展。请联网后重试，或确认本地已缓存该扩展。",
+			);
+		}
+		throw error;
+	}
+}
+
+/** Heuristic: does this error look like the `excel` extension could not be autoloaded / installed? */
+function isExtensionLoadFailure(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	const lower = message.toLowerCase();
+	return (
+		/extension/.test(message) &&
+		/(install|load|download|autoload|not found|could not|resolve|fetch|connection|network|timeout|unable to)/.test(
+			lower,
+		)
+	);
+}
+
+/** Writes the result of `sql` to the gated `copyTo` target and returns its project-relative path. */
+async function runCopyTo(
+	connection: Awaited<ReturnType<DuckDBInstance["connect"]>>,
+	options: { copyTo: string; projectRoot: string; sql: string },
+): Promise<string> {
+	const resolved = resolveDuckdbWriteTarget({ projectRoot: options.projectRoot, target: options.copyTo });
+	if (!resolved.ok) throw new Error(resolved.error);
+
+	const lower = options.copyTo.toLowerCase();
+	const format = lower.endsWith(".xlsx") ? "FORMAT XLSX, HEADER TRUE" : "FORMAT CSV, HEADER TRUE";
+	await connection.run(`COPY (${options.sql}) TO '${resolved.path}' (${format})`);
+	return options.copyTo;
 }

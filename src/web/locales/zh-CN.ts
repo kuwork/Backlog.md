@@ -866,6 +866,7 @@ export const zhCN: TranslationDict = {
 		exporting: "正在导出…",
 		exported: "已导出：{name}",
 		exportFailed: "导出失败",
+		writtenTo: "已写入：{path}",
 	},
 
 	duckdbQueryBlock: {
@@ -885,6 +886,7 @@ export const zhCN: TranslationDict = {
 		exporting: "正在导出…",
 		exported: "已导出：{name}",
 		exportFailed: "导出失败",
+		writtenTo: "已写入：{path}",
 	},
 
 	imageLightbox: {

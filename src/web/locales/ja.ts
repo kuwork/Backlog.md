@@ -887,6 +887,7 @@ export const ja: TranslationDict = {
 		exporting: "書き出し中…",
 		exported: "書き出し先: {name}",
 		exportFailed: "書き出しに失敗しました",
+		writtenTo: "書き出し完了: {path}",
 	},
 
 	duckdbQueryBlock: {
@@ -906,6 +907,7 @@ export const ja: TranslationDict = {
 		exporting: "書き出し中…",
 		exported: "書き出し先: {name}",
 		exportFailed: "書き出しに失敗しました",
+		writtenTo: "書き出し完了: {path}",
 	},
 
 	imageLightbox: {

@@ -192,6 +192,8 @@ export interface SqliteQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** DuckDB-only: when a `copy_to` was requested, the project-relative path written. */
+	writtenTo?: string;
 }
 
 export interface SqliteQueryRequest {
@@ -228,6 +230,8 @@ export interface DuckdbQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** When a `copy_to` was requested, the project-relative path the result was written to. */
+	writtenTo?: string;
 }
 
 export interface DuckdbQueryRequest {
@@ -235,6 +239,8 @@ export interface DuckdbQueryRequest {
 	source: string;
 	sql: string;
 	maxRows?: number;
+	/** Optional write target (project-relative `.csv` / `.xlsx`); honoured only by the DuckDB engine. */
+	copyTo?: string;
 }
 
 export interface DuckdbFileEntry {

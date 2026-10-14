@@ -26,6 +26,13 @@ const FORBIDDEN_KEYWORDS = [
 	"ROLLBACK",
 	"SAVEPOINT",
 	"RELEASE",
+	// Write / extension-management statements a read-only query block must never carry. `INSTALL` and
+	// `LOAD` are how an extension (the official `excel` one, or anything else) would be pulled in by
+	// user SQL - extension loading is reserved for engine autoload. `COPY` is the write path that the
+	// server performs on behalf of a block via `copy_to`; a block must not smuggle its own.
+	"INSTALL",
+	"LOAD",
+	"COPY",
 ] as const;
 
 export type SqliteSqlValidation = { ok: true; sql: string } | { ok: false; error: string };
