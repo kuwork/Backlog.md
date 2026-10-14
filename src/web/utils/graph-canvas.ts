@@ -78,6 +78,24 @@ export interface EdgeStrokeOptions {
 }
 
 /**
+ * One arrowhead: a triangle with its tip at `(tipX, tipY)`, pointing along `(dx, dy)`. Canvas has
+ * no marker elements, so both the batched painter and the single-edge one share this.
+ */
+function arrowHead(
+	ctx: CanvasRenderingContext2D,
+	tipX: number,
+	tipY: number,
+	dx: number,
+	dy: number,
+	size: number,
+): void {
+	ctx.moveTo(tipX, tipY);
+	ctx.lineTo(tipX - dx * size - dy * size * 0.5, tipY - dy * size + dx * size * 0.5);
+	ctx.lineTo(tipX - dx * size + dy * size * 0.5, tipY - dy * size - dx * size * 0.5);
+	ctx.closePath();
+}
+
+/**
  * One directed edge: the line stops at the target's rim plus a small gap so the arrowhead tip
  * lands just outside the circle instead of being buried under it, and the arrowhead is drawn
  * explicitly (canvas has no marker elements).
@@ -110,10 +128,7 @@ export function strokeEdge(
 		const uy = (ty - sy) / length;
 		ctx.fillStyle = stroke;
 		ctx.beginPath();
-		ctx.moveTo(ex, ey);
-		ctx.lineTo(ex - ux * size - uy * size * 0.5, ey - uy * size + ux * size * 0.5);
-		ctx.lineTo(ex - ux * size + uy * size * 0.5, ey - uy * size - ux * size * 0.5);
-		ctx.closePath();
+		arrowHead(ctx, ex, ey, ux, uy, size);
 		ctx.fill();
 	}
 }
@@ -130,8 +145,12 @@ export interface EdgeBatchItem {
 	ty: number;
 	/** Radius of the target node's circle on screen scale (already passed through scaledRadius). */
 	targetRadius: number;
-	/** Screen-space arrowhead size; 0 draws no arrowhead. */
+	/** Radius of the source node's circle on screen scale; only read when a start head is drawn. */
+	sourceRadius: number;
+	/** Screen-space arrowhead size at the target; 0 draws no arrowhead. */
 	arrowSize: number;
+	/** Screen-space arrowhead size at the source; 0 draws no arrowhead (the common case). */
+	startArrowSize: number;
 	/** Trimmed line end and unit direction, written by the batch painter. */
 	ex: number;
 	ey: number;
@@ -165,23 +184,30 @@ export function strokeEdgeBatch(
 		item.ey = item.sy + dy * u;
 		item.ux = length > 0 ? dx / length : 0;
 		item.uy = length > 0 ? dy / length : 0;
-		ctx.moveTo(item.sx, item.sy);
+		// Without a start head the line begins at the source centre, hidden under its circle.
+		// With one it has to stop at the rim, or the head would sit in the middle of the line.
+		const start = item.startArrowSize > 0 ? Math.min(1, (item.sourceRadius + arrowGap / k) / (length || 1)) : 0;
+		ctx.moveTo(item.sx + dx * start, item.sy + dy * start);
 		ctx.lineTo(item.ex, item.ey);
 	}
 	ctx.stroke();
 	ctx.setLineDash([]);
-	// Second pass: one fill covers every arrowhead of the batch.
+	// Second pass: one fill covers every arrowhead of the batch, both ends.
 	ctx.fillStyle = stroke;
 	ctx.beginPath();
 	let heads = 0;
 	for (const item of items) {
-		if (item.arrowSize <= 0 || (item.ux === 0 && item.uy === 0)) continue;
-		const size = item.arrowSize / k;
-		ctx.moveTo(item.ex, item.ey);
-		ctx.lineTo(item.ex - item.ux * size - item.uy * size * 0.5, item.ey - item.uy * size + item.ux * size * 0.5);
-		ctx.lineTo(item.ex - item.ux * size + item.uy * size * 0.5, item.ey - item.uy * size - item.ux * size * 0.5);
-		ctx.closePath();
-		heads += 1;
+		if (item.ux === 0 && item.uy === 0) continue;
+		if (item.arrowSize > 0) {
+			arrowHead(ctx, item.ex, item.ey, item.ux, item.uy, item.arrowSize / k);
+			heads += 1;
+		}
+		if (item.startArrowSize > 0) {
+			const tipX = item.sx + item.ux * (item.sourceRadius + arrowGap / k);
+			const tipY = item.sy + item.uy * (item.sourceRadius + arrowGap / k);
+			arrowHead(ctx, tipX, tipY, -item.ux, -item.uy, item.startArrowSize / k);
+			heads += 1;
+		}
 	}
 	if (heads > 0) ctx.fill();
 }
@@ -257,6 +283,8 @@ export function drawCaption(
 	alpha: number,
 	colors: { plateFill: string; plateStroke: string; label: string },
 ): void {
+	// An empty caption is no caption - a view that switches names off must not draw blank plates.
+	if (text.length === 0) return;
 	const fontSize = 10.5 / k;
 	const plateHeight = 16 / k;
 	const width = plateWidth / k;

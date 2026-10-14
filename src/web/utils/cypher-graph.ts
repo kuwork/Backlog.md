@@ -1,5 +1,6 @@
 import type { CypherResult } from "../lib/api.ts";
 import { truncateCaption } from "./graph-caption.ts";
+import type { ExprValue } from "./graph-expression.ts";
 
 /**
  * Turn a Cypher result set into the node/edge shape a graph view can draw.
@@ -46,6 +47,11 @@ export interface ResultGraphNode {
 	caption: string;
 	/** Full name for the tooltip - the caption before trimming. */
 	title: string;
+	/**
+	 * The node's own properties, internal handles and the label removed. This is what the legend
+	 * panel offers as fields - a caption template reads from it, and a colour rule tests it.
+	 */
+	properties: Record<string, ExprValue>;
 }
 
 /** One relationship of the result graph, already joined to its endpoints. */
@@ -63,6 +69,11 @@ export interface ResultGraph {
 	edges: ResultGraphEdge[];
 	/** Relationships whose endpoints were not part of the result: counted, not drawn. */
 	danglingEdges: number;
+	/**
+	 * Every property name the result's nodes carry, sorted. The panel offers these and nothing
+	 * else, so a field that would print as an empty placeholder is never offered.
+	 */
+	fields: string[];
 }
 
 /** Properties that name a node, best first. `key` is the CSV importer's primary key column. */
@@ -108,18 +119,46 @@ function nodeId(value: Record<string, unknown>): string {
 	return `${String(value._label)}#${fingerprint}`;
 }
 
+/**
+ * Flatten one property into something an expression can compare. Strings, numbers and booleans
+ * pass through; anything else (a nested value, a date object) is printed as text rather than
+ * dropped, so a caption can still name the node.
+ */
+function propertyValue(value: unknown): ExprValue {
+	if (value === null || value === undefined) return null;
+	if (typeof value === "string") return value;
+	if (typeof value === "number") return Number.isFinite(value) ? value : String(value);
+	if (typeof value === "boolean") return value;
+	if (Array.isArray(value)) return value.map((item) => text(item)).join(", ");
+	return JSON.stringify(value);
+}
+
+function text(value: unknown): string {
+	const flat = propertyValue(value);
+	return flat === null ? "" : String(flat);
+}
+
+/** The node's properties, stripped of the handles a reader has no use for. */
+function nodeProperties(value: Record<string, unknown>): Record<string, ExprValue> {
+	const properties: Record<string, ExprValue> = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (INTERNAL_KEYS.has(key) || key === "_label") continue;
+		properties[key] = propertyValue(entry);
+	}
+	return properties;
+}
+
 /** The string a reader recognises this node by: the first display property that carries one. */
-function nodeTitle(value: Record<string, unknown>): string {
+function nodeTitle(properties: Record<string, ExprValue>, label: string): string {
 	for (const key of DISPLAY_KEYS) {
-		const candidate = value[key];
+		const candidate = properties[key];
 		if (typeof candidate === "string" && candidate.trim().length > 0) return candidate;
 	}
-	for (const [key, candidate] of Object.entries(value)) {
-		if (INTERNAL_KEYS.has(key) || key === "_label") continue;
+	for (const candidate of Object.values(properties)) {
 		if (typeof candidate === "string" && candidate.trim().length > 0) return candidate;
 		if (typeof candidate === "number" || typeof candidate === "boolean") return String(candidate);
 	}
-	return typeof value._label === "string" ? value._label : "";
+	return label;
 }
 
 /** Every node value reachable from one cell: the cell itself, list members, or a path's chain. */
@@ -168,18 +207,22 @@ export function graphFromCypherResult(result: CypherResult): ResultGraph {
 
 	const nodes: ResultGraphNode[] = [];
 	const byId = new Map<string, ResultGraphNode>();
+	const fields = new Set<string>();
 	for (const value of rawNodes) {
 		const id = nodeId(value);
 		const existing = byId.get(id);
 		if (existing) continue; // the same node on many rows is one circle
-		const title = nodeTitle(value);
+		const properties = nodeProperties(value);
+		for (const key of Object.keys(properties)) fields.add(key);
 		const label = typeof value._label === "string" ? value._label : "";
+		const title = nodeTitle(properties, label);
 		const node: ResultGraphNode = {
 			id,
 			label,
 			internal: INTERNAL_LABELS.has(label),
 			caption: truncateCaption(title),
 			title,
+			properties,
 		};
 		byId.set(id, node);
 		nodes.push(node);
@@ -202,7 +245,7 @@ export function graphFromCypherResult(result: CypherResult): ResultGraph {
 		seenEdges.add(key);
 		edges.push({ from, to, type });
 	}
-	return { nodes, edges, danglingEdges };
+	return { nodes, edges, danglingEdges, fields: [...fields].sort() };
 }
 
 /**

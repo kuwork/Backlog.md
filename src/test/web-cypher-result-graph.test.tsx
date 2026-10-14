@@ -172,7 +172,7 @@ function legendToggle(label: string): HTMLButtonElement {
 
 function fullscreenButton(): HTMLButtonElement | null {
 	const button = [...document.querySelectorAll("button")].find((b) =>
-		["Fullscreen", "Exit fullscreen"].includes(b.getAttribute("aria-label") ?? ""),
+		["Fullscreen", "Exit fullscreen"].some((label) => (b.getAttribute("aria-label") ?? "").startsWith(label)),
 	);
 	return (button as HTMLButtonElement | undefined) ?? null;
 }
@@ -439,14 +439,9 @@ describe("databases page: the result as a graph (BACK-793)", () => {
 		expect(pageText()).toContain("2 nodes · 0 edges");
 		expect(pageText()).toContain("1 internal node(s) hidden");
 
-		// Meta stays reachable: its legend entry is there and switching it on draws it.
-		const meta = legendToggle("Meta");
-		expect(meta.getAttribute("aria-pressed")).toBe("false");
-		await act(async () => {
-			meta.click();
-			await new Promise((resolve) => setTimeout(resolve, 50));
-		});
-		expect(pageText()).toContain("3 nodes · 0 edges");
+		// Meta is out of the picture entirely: no legend entry, nothing to switch on - the store's
+		// bookkeeping is not the reader's data. The hint above still says what was left out.
+		expect(() => legendToggle("Meta")).toThrow();
 		expect(errors.filter((args) => String(args[0]).includes("Error"))).toEqual([]);
 	});
 

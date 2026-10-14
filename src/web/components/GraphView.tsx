@@ -212,7 +212,7 @@ export default function GraphView({ graphVersion, onEditTask, variant = "task" }
 		const edgeVisual = (edgeType: GraphEdgeDto["type"]) => ({
 			dash: EDGE_DASH[edgeType] ?? undefined,
 			// BelongsToMilestone is mere membership and stays plain (no arrowhead).
-			arrow: edgeType !== "BelongsToMilestone",
+			arrow: edgeType === "BelongsToMilestone" ? ("none" as const) : ("end" as const),
 			label:
 				edgeType === "DependsOn"
 					? t.graphView.edgeDependsOn
