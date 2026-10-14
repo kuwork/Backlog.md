@@ -1,76 +1,23 @@
 import { useTheme } from "../contexts/ThemeContext";
 import type { GraphEdgeDto, GraphNodeDto } from "../lib/api";
+import type { TranslationDict } from "../locales/types";
 import { edgeStroke } from "../utils/graph-canvas";
+import type { ArrowMode, LegendBucket } from "../utils/graph-legend-config";
+import { NEUTRAL_BUCKET, OTHER_BUCKET } from "../utils/graph-legend-config";
+import { corpusNodeStyle, type NodeStyle, nodeFill, nodeStroke } from "../utils/graph-palette";
 
 /**
- * Shared visual language of the graph views (/graph page and the relationship graph in the task
- * details modal): node palette, edge styles and the legend that explains them. Both views must
- * stay indistinguishable in look, so the palette and the legend live here instead of being
- * restated per view.
+ * Shared visual language of the graph views (/graph page, the relationship graph in the task
+ * details modal, and the Cypher result graph on the databases page): the legend's entries, its
+ * filter behaviour and the sample line that explains an edge style. Both corpus views must stay
+ * indistinguishable in look, so the legend lives here instead of being restated per view.
+ *
+ * The colours themselves are not here - they moved to `utils/graph-palette.ts`, which the result
+ * graph's configurable legend also reads. They are re-exported below so the corpus views keep
+ * importing them from the module that describes the legend.
  */
 
-/** Node kinds a graph view colors, one per legend entry. */
-export type NodeStyle = "task" | "completed" | "draft" | "milestone" | "wiki" | "decision" | "document" | "tag";
-
-/**
- * Blue for open work, amber for drafts, green for completed, purple for milestones; phase 3 adds
- * one hue per knowledge kind plus a low-contrast grey for Tag nodes (doc-15 §7 wants them
- * recessive).
- */
-export const NODE_FILL: Record<NodeStyle, string> = {
-	task: "#3b82f6",
-	completed: "#10b981",
-	draft: "#f59e0b",
-	milestone: "#a855f7",
-	wiki: "#06b6d4",
-	decision: "#ec4899",
-	document: "#6366f1",
-	tag: "#9ca3af",
-};
-
-/**
- * Node fill with theme compensation. The tag gray is tuned for light surfaces - on the dark
- * canvas it sinks into the background and the classification nodes read as absent (doc-15 §7
- * asks for recessive, not invisible). Used by the canvas painters and the legend dots alike,
- * so the dot and the node never disagree.
- */
-export function nodeFill(style: NodeStyle, theme: string): string {
-	return theme === "dark" && style === "tag" ? "#cbd5e1" : NODE_FILL[style];
-}
-
-/** Light tint of each fill, so nodes read as tiles instead of flat dots (Neo4j-style). */
-export const NODE_STROKE: Record<NodeStyle, string> = {
-	task: "#93c5fd",
-	completed: "#6ee7b7",
-	draft: "#fcd34d",
-	milestone: "#d8b4fe",
-	wiki: "#67e8f9",
-	decision: "#f9a8d4",
-	document: "#a5b4fc",
-	tag: "#d1d5db",
-};
-
-/** Same-hue 700 shade of each fill: a real outline on a light canvas. */
-const NODE_STROKE_LIGHT: Record<NodeStyle, string> = {
-	task: "#1d4ed8",
-	completed: "#047857",
-	draft: "#b45309",
-	milestone: "#7e22ce",
-	wiki: "#0e7490",
-	decision: "#be185d",
-	document: "#4338ca",
-	tag: "#6b7280",
-};
-
-/**
- * Node stroke with theme compensation. The pale tints double as a glow on the dark canvas but
- * vanish on a light one, so the light theme switches to a darker shade of the fill — the classic
- * fill-plus-dark-border read. The tag gray stays a step lighter to keep it recessive.
- */
-export function nodeStroke(style: NodeStyle, theme: string): string {
-	return theme === "dark" ? NODE_STROKE[style] : NODE_STROKE_LIGHT[style];
-}
-
+export type { NodeStyle };
 /**
  * Edge stroke with theme compensation. The slate-400 base is tuned for the dark canvas — on a
  * light surface it washes out and the relationships read as gaps, so the light theme steps two
@@ -78,7 +25,7 @@ export function nodeStroke(style: NodeStyle, theme: string): string {
  * other canvas colours (the graph views paint edges with it); re-exported here because the
  * legend's sample line is the same colour.
  */
-export { edgeStroke };
+export { edgeStroke, nodeFill, nodeStroke };
 
 /** DependsOn is the semantic backbone: solid with an arrowhead. The structural relations are dashed. */
 export const EDGE_DASH: Record<GraphEdgeDto["type"], string | null> = {
@@ -91,24 +38,13 @@ export const EDGE_DASH: Record<GraphEdgeDto["type"], string | null> = {
 	TaggedWith: "1 2",
 };
 
-/** Which legend entry a graph node belongs to. */
+/**
+ * Which legend entry a graph node belongs to. A thin alias of the palette's classifier, which the
+ * result graph calls directly from its node properties (`type` and `path`, the corpus tables' own
+ * column names).
+ */
 export function nodeStyle(node: Pick<GraphNodeDto, "kind" | "filePath">): NodeStyle {
-	switch (node.kind) {
-		case "tag":
-			return "tag";
-		case "milestone":
-			return "milestone";
-		case "draft":
-			return "draft";
-		case "wiki":
-			return "wiki";
-		case "decision":
-			return "decision";
-		case "document":
-			return "document";
-		default:
-			return node.filePath.startsWith("completed/") ? "completed" : "task";
-	}
+	return corpusNodeStyle(node);
 }
 
 /**
@@ -231,7 +167,9 @@ export function LegendDot({
 			}`}
 		>
 			<span className="h-2.5 w-2.5 rounded-circle" style={{ backgroundColor: color }} aria-hidden="true" />
-			<span className={active ? "" : "line-through"}>{label}</span>
+			<span className={active ? "text-gray-700 dark:text-gray-200" : "text-gray-700 line-through dark:text-gray-200"}>
+				{label}
+			</span>
 			<span className="text-gray-400 dark:text-gray-500">{count}</span>
 		</button>
 	);
@@ -256,4 +194,74 @@ export function LegendLine({ dash, label }: { dash: string | null; label: string
 			{label}
 		</span>
 	);
+}
+
+/**
+ * Legend entry for one relationship of the result graph: a sample of the line carrying whatever
+ * arrowheads and colour the reader chose, then the type. A list of names says nothing about how a
+ * dotted line reads next to a long-dashed one, so the sample is drawn rather than described.
+ */
+export function LegendRelation({
+	dash,
+	arrow,
+	color,
+	label,
+}: {
+	dash: string | null;
+	arrow: ArrowMode;
+	/** Line colour; absent falls back to the theme's default edge grey. */
+	color?: string;
+	label: string;
+}) {
+	const { theme } = useTheme();
+	const stroke = color ?? edgeStroke(theme);
+	const startArrow = arrow === "start" || arrow === "both";
+	const endArrow = arrow === "end" || arrow === "both";
+	const left = startArrow ? 6 : 1;
+	const right = endArrow ? 24 : 29;
+	return (
+		<span className="flex items-center gap-1.5">
+			<svg width="30" height="8" aria-hidden="true" className="shrink-0">
+				<line x1={left} y1="4" x2={right} y2="4" stroke={stroke} strokeWidth="1" strokeDasharray={dash ?? undefined} />
+				{endArrow && <polygon points="24,1.5 29,4 24,6.5" fill={stroke} />}
+				{startArrow && <polygon points="6,1.5 1,4 6,6.5" fill={stroke} />}
+			</svg>
+			{label}
+		</span>
+	);
+}
+
+/** The corpus legend's own word for one kind - the word `/graph` labels it with. */
+export function corpusLegendLabel(style: NodeStyle, t: TranslationDict): string {
+	switch (style) {
+		case "task":
+			return t.graphView.legendTask;
+		case "completed":
+			return t.graphView.legendCompleted;
+		case "draft":
+			return t.graphView.legendDraft;
+		case "milestone":
+			return t.graphView.legendMilestone;
+		case "wiki":
+			return t.graphView.legendWiki;
+		case "decision":
+			return t.graphView.legendDecision;
+		case "document":
+			return t.graphView.legendDocument;
+		default:
+			return t.graphView.legendTag;
+	}
+}
+
+/**
+ * How a result graph bucket names itself. A corpus kind borrows the corpus page's word; a rule is
+ * named by the reader, or by its condition until they do; a band is named by its interval; and the
+ * two catch-alls - Other, and the nodes the mode could not place - have words of their own.
+ */
+export function bucketLabel(bucket: LegendBucket, t: TranslationDict): string {
+	if (bucket.corpus) return corpusLegendLabel(bucket.corpus, t);
+	if (bucket.label.length > 0) return bucket.label;
+	if (bucket.key === OTHER_BUCKET) return t.databases.legendOther;
+	if (bucket.key === NEUTRAL_BUCKET) return t.databases.legendNoValue;
+	return t.databases.legendUntitled;
 }

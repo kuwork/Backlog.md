@@ -80,7 +80,7 @@ const GraphDatabases: React.FC<GraphDatabasesProps> = ({ graphVersion = 0 }) => 
 	// The same result read as a graph: nodes deduplicated, relationships joined to their endpoints,
 	// paths expanded. Recomputed per result; the view mode only decides whether it is drawn.
 	const resultGraph = useMemo(
-		() => (result ? graphFromCypherResult(result) : { nodes: [], edges: [], danglingEdges: 0 }),
+		() => (result ? graphFromCypherResult(result) : { nodes: [], edges: [], danglingEdges: 0, fields: [] }),
 		[result],
 	);
 	// Set once a list has arrived. A refresh failure must not blank a populated page, so the error
@@ -378,7 +378,7 @@ const GraphDatabases: React.FC<GraphDatabasesProps> = ({ graphVersion = 0 }) => 
 
 					{viewMode !== "table" && (
 						<div className={viewMode === "graph" ? "h-[78vh]" : "h-[48vh]"}>
-							<CypherResultGraph graph={resultGraph} cameraToken={`run:${runId}`} />
+							<CypherResultGraph graph={resultGraph} database={selected ?? "default"} cameraToken={`run:${runId}`} />
 						</div>
 					)}
 				</div>

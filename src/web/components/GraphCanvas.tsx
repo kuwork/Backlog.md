@@ -70,10 +70,12 @@ export interface GraphCanvasNodeVisual {
 export interface GraphCanvasEdgeVisual {
 	/** Dash pattern in graph units (e.g. "6 3"); solid when absent. */
 	dash?: string;
-	/** Whether the edge carries an arrowhead. */
-	arrow: boolean;
+	/** Where the arrowheads sit: at the target (the default), the source, at both ends, or nowhere. */
+	arrow: "none" | "end" | "start" | "both";
 	/** The relation name drawn along the edge at deep zoom. */
 	label: string;
+	/** Line colour; absent falls back to the theme's default edge grey. */
+	stroke?: string;
 }
 
 /** The view's visual vocabulary: how its styles and edge types look. */
@@ -618,8 +620,8 @@ export default function GraphCanvas({
 		};
 
 		// Paint batches: one reusable slot per link and per node, so a repaint allocates nothing.
-		// Edges bucket by (dash, alpha), nodes by (style, alpha); each bucket is one canvas path
-		// instead of one per element, which is the difference between thousands of draw calls a
+		// Edges bucket by (dash, stroke, alpha), nodes by (style, alpha); each bucket is one canvas
+		// path instead of one per element, which is the difference between thousands of draw calls a
 		// frame and a dozen. The visuals behind the buckets are resolved once per build, not per
 		// frame: a repaint must not allocate.
 		const edgeVisualFor = new Map<string, GraphCanvasEdgeVisual>();
@@ -630,27 +632,40 @@ export default function GraphCanvas({
 		for (const node of nodes) {
 			if (!nodeVisualFor.has(node.style)) nodeVisualFor.set(node.style, visual.node(node.style, theme));
 		}
-		const edgeGroups: Array<{ alpha: number; dash: string | undefined; items: EdgeBatchItem[] }> = [];
-		// Faded first, so a lit edge crossing a faded one stays on top. A solid line is stored as
-		// undefined so a group key reads the same for every view.
+		const edgeGroups: Array<{
+			alpha: number;
+			dash: string | undefined;
+			stroke: string | undefined;
+			items: EdgeBatchItem[];
+		}> = [];
+		// Faded first, so a lit edge crossing a faded one stays on top. A solid line and a default
+		// colour are stored as undefined so a group key reads the same for every view.
 		const dashVariants: Array<string | undefined> = [
 			undefined,
 			...new Set([...edgeVisualFor.values()].map((edgeVisual) => edgeVisual.dash ?? undefined)),
 		];
+		const strokeVariants: Array<string | undefined> = [
+			undefined,
+			...new Set([...edgeVisualFor.values()].map((edgeVisual) => edgeVisual.stroke ?? undefined)),
+		];
 		for (const alpha of [FOCUS_FADE, 1]) {
 			for (const dash of dashVariants) {
-				edgeGroups.push({ alpha, dash, items: [] });
+				for (const stroke of strokeVariants) {
+					edgeGroups.push({ alpha, dash, stroke, items: [] });
+				}
 			}
 		}
 		const edgeGroupFor = new Map<string, (typeof edgeGroups)[number]>();
-		for (const group of edgeGroups) edgeGroupFor.set(`${group.alpha}|${group.dash ?? ""}`, group);
+		for (const group of edgeGroups) edgeGroupFor.set(`${group.alpha}|${group.dash ?? ""}|${group.stroke ?? ""}`, group);
 		const edgeSlots: EdgeBatchItem[] = linkEnds.map(() => ({
 			sx: 0,
 			sy: 0,
 			tx: 0,
 			ty: 0,
 			targetRadius: 0,
+			sourceRadius: 0,
 			arrowSize: 0,
+			startArrowSize: 0,
 			ex: 0,
 			ey: 0,
 			ux: 0,
@@ -706,8 +721,9 @@ export default function GraphCanvas({
 			const focusNode = focusId;
 			const isCluster = (id: string) => id === focusNode || (lit?.has(id) ?? false);
 
-			// Edges: one path per (dash, alpha) bucket instead of one per edge. A view's own edge
-			// vocabulary decides the dash and whether the edge is mere membership (no arrowhead).
+			// Edges: one path per (dash, stroke, alpha) bucket instead of one per edge. A view's own
+			// edge vocabulary decides the dash, the colour and whether the edge is mere membership
+			// (no arrowhead).
 			for (const group of edgeGroups) group.items.length = 0;
 			for (let index = 0; index < linkEnds.length; index++) {
 				const link = linkEnds[index] as (typeof linkEnds)[number];
@@ -726,15 +742,19 @@ export default function GraphCanvas({
 				slot.tx = tx;
 				slot.ty = ty;
 				slot.targetRadius = scaledRadius(target.radius, k);
-				slot.arrowSize = edgeVisual.arrow ? ARROW_SIZE : 0;
-				const group = edgeGroupFor.get(`${alphaForEdge(source.id, target.id)}|${edgeVisual.dash ?? ""}`);
+				slot.sourceRadius = scaledRadius(source.radius, k);
+				slot.arrowSize = edgeVisual.arrow === "end" || edgeVisual.arrow === "both" ? ARROW_SIZE : 0;
+				slot.startArrowSize = edgeVisual.arrow === "start" || edgeVisual.arrow === "both" ? ARROW_SIZE : 0;
+				const group = edgeGroupFor.get(
+					`${alphaForEdge(source.id, target.id)}|${edgeVisual.dash ?? ""}|${edgeVisual.stroke ?? ""}`,
+				);
 				group?.items.push(slot);
 			}
 			for (const group of edgeGroups) {
 				strokeEdgeBatch(surface, group.items, {
 					k,
 					arrowGap: ARROW_GAP,
-					stroke: edgeStroke(theme),
+					stroke: group.stroke ?? edgeStroke(theme),
 					dash: group.dash,
 					alpha: group.alpha,
 				});
@@ -1137,13 +1157,18 @@ export default function GraphCanvas({
 		// owns double-click entirely (node -> open, empty canvas -> zoom in).
 		select(canvasEl).on("dblclick.zoom", null);
 
-		const width = cssWidth || container.clientWidth || 800;
-		const height = cssHeight || container.clientHeight || 600;
+		// Read live at call time, not captured at build: entering fullscreen resizes the container
+		// (the ResizeObserver updates cssWidth/cssHeight) without rebuilding, and a fit or fly that
+		// used the build-time size would centre the graph on the old, smaller viewport.
+		const liveWidth = () => cssWidth || container.clientWidth || 800;
+		const liveHeight = () => cssHeight || container.clientHeight || 600;
 		// Fit: frame the whole graph with a uniform (isotropic) scale so the layout keeps its
 		// natural circular shape and is centered in the viewport. Shared by the initial render
 		// and the overview button - after node drags it reframes around current positions.
 		const fitToView = () => {
 			const pad = 24;
+			const width = liveWidth();
+			const height = liveHeight();
 			const xs = nodes.map((n) => n.x ?? 0);
 			const ys = nodes.map((n) => n.y ?? 0);
 			const minX = Math.min(...xs);
@@ -1194,6 +1219,8 @@ export default function GraphCanvas({
 		};
 		const flyTo = (k: number, cx: number, cy: number) => {
 			stopFly();
+			const width = liveWidth();
+			const height = liveHeight();
 			const from = transformRef.current ?? zoomIdentity;
 			const fromCx = (width / 2 - from.x) / from.k;
 			const fromCy = (height / 2 - from.y) / from.k;
