@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
+import { formatMilestoneId } from "./core/milestones.ts";
 import type { Milestone, Task } from "./types/index.ts";
 import { getStoredUtcTimestamp } from "./utils/date-utc.ts";
 
@@ -287,7 +288,13 @@ Project: ${projectName}
 		);
 		if (milestoneTasks.length > 0) {
 			const milestoneLabel = milestoneLabelsByKey.get(milestone.toLowerCase()) ?? milestone;
-			sections.push(generateMilestoneSection(milestoneLabel, milestoneTasks, statuses));
+			// Section headers carry the uppercase id like task rows do (m-0 -> M-0); when the label
+			// is just the raw id (no entity title was found) the id alone is the header.
+			const sectionTitle =
+				milestoneLabel.toLowerCase() === milestone.toLowerCase()
+					? formatMilestoneId(milestone)
+					: `${formatMilestoneId(milestone)} - ${milestoneLabel}`;
+			sections.push(generateMilestoneSection(sectionTitle, milestoneTasks, statuses));
 		}
 	}
 

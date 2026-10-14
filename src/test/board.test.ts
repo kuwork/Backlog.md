@@ -384,7 +384,7 @@ describe("generateMilestoneGroupedBoard", () => {
 		];
 
 		const board = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project");
-		expect(board.match(/## Release 1\.0 \(\d+ tasks\)/g)?.length).toBe(1);
+		expect(board.match(/## M-0 - Release 1\.0 \(\d+ tasks\)/g)?.length).toBe(1);
 		expect(board).toContain("**TASK-1** - By ID");
 		expect(board).toContain("**TASK-2** - By title");
 	});
@@ -478,7 +478,10 @@ describe("generateMilestoneGroupedBoard", () => {
 		];
 
 		const board = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project");
-		expect(board.match(/## Shared \(\d+ tasks\)/g)?.length).toBe(2);
+		// The id-referenced task lands in the resolved milestone's section; the ambiguous title
+		// reference cannot resolve to an id, so it stays its own title-only section.
+		expect(board.match(/## M-2 - Shared \(\d+ tasks\)/g)?.length).toBe(1);
+		expect(board.match(/## Shared \(\d+ tasks\)/g)?.length).toBe(1);
 	});
 
 	it("excludes the No Milestone section by default and includes it only when asked", () => {
@@ -516,13 +519,13 @@ describe("generateMilestoneGroupedBoard", () => {
 		// unless the caller passes includeNoMilestone: true.
 		const board = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project");
 		expect(board).not.toContain("## No Milestone");
-		expect(board).toContain("## Release 1.0 (1 tasks)");
+		expect(board).toContain("## M-0 - Release 1.0 (1 tasks)");
 
 		const withNoMilestone = generateMilestoneGroupedBoard(tasks, ["To Do"], milestones, "Test Project", {
 			includeNoMilestone: true,
 		});
 		expect(withNoMilestone).toContain("## No Milestone (1 tasks)");
-		expect(withNoMilestone).toContain("## Release 1.0 (1 tasks)");
+		expect(withNoMilestone).toContain("## M-0 - Release 1.0 (1 tasks)");
 		expect(withNoMilestone).toContain("**TASK-2** - Milestone task");
 	});
 

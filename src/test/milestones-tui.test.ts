@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ScreenInterface } from "neo-neo-bblessed";
 import { Core } from "../core/backlog.ts";
+import { formatMilestoneId } from "../core/milestones.ts";
 import { serializeMilestone } from "../markdown/serializer.ts";
 import type { Milestone, Task } from "../types/index.ts";
 import { renderBoardTui } from "../ui/board.ts";
@@ -442,7 +443,7 @@ describe("milestones TUI", () => {
 		await withMilestonesTui(async ({ screen, sidebar, text, selectRow, quit }) => {
 			selectRow("Alpha rollout");
 			await Bun.sleep(0);
-			expect(sidebar()[1]).toContain("m-0 Alpha rollout · 2/2");
+			expect(sidebar()[1]).toContain("M-0 - Alpha rollout · 2/2");
 			expect(text()).toContain("2/5 tasks");
 
 			// The board takes the keyboard, then the search box takes it from the board, and the
@@ -468,8 +469,8 @@ describe("milestones TUI", () => {
 			// the left number follows the query, the right one is the milestone's total and holds.
 			const rows = sidebar();
 			expect(rows[0]).toContain("No milestone · 0");
-			expect(rows[1]).toContain("m-0 Alpha rollout · 1/2");
-			expect(rows[2]).toContain("m-1 Beta polish · 0/1");
+			expect(rows[1]).toContain("M-0 - Alpha rollout · 1/2");
+			expect(rows[2]).toContain("M-1 - Beta polish · 0/1");
 			// The first number follows the filters, the second is the corpus and holds still.
 			expect(text()).toContain("1/5 tasks");
 
@@ -484,9 +485,9 @@ describe("milestones TUI", () => {
 			// filtered the left number is the whole milestone, and the right one is too.
 			const rows = sidebar();
 			expect(rows[0]).toContain("No milestone · 1");
-			expect(rows[1]).toContain("m-0 Alpha rollout · 2/2");
-			expect(rows[2]).toContain("m-1 Beta polish · 1/1");
-			expect(rows[3]).toContain("m-2 Gamma shipped · 1/1");
+			expect(rows[1]).toContain("M-0 - Alpha rollout · 2/2");
+			expect(rows[2]).toContain("M-1 - Beta polish · 1/1");
+			expect(rows[3]).toContain("M-2 - Gamma shipped · 1/1");
 
 			await quit();
 		});
@@ -511,9 +512,9 @@ describe("milestones TUI", () => {
 			expect(text()).toContain("0/5 tasks");
 			const rows = sidebar();
 			expect(rows[0]).toContain("No milestone · 0");
-			expect(rows[1]).toContain("m-0 Alpha rollout · 0/2");
-			expect(rows[2]).toContain("m-1 Beta polish · 1/1");
-			expect(rows[3]).toContain("m-2 Gamma shipped · 0/1");
+			expect(rows[1]).toContain("M-0 - Alpha rollout · 0/2");
+			expect(rows[2]).toContain("M-1 - Beta polish · 1/1");
+			expect(rows[3]).toContain("M-2 - Gamma shipped · 0/1");
 
 			await quit();
 		});
@@ -658,7 +659,7 @@ describe("milestones TUI", () => {
 			pressKey(screen, "space");
 			await Bun.sleep(0);
 			expect(sidebar()[0]).not.toContain("▶");
-			expect(sidebar()[1]).toContain("▶ {default-fg}○{/} m-0 Alpha rollout");
+			expect(sidebar()[1]).toContain("▶ {default-fg}○{/} M-0 - Alpha rollout");
 			expect(text()).toContain("Tasks · Alpha rollout");
 
 			// Up walks back to the top row, and one more leaves for the filter bar above the panes.
@@ -669,7 +670,7 @@ describe("milestones TUI", () => {
 			await Bun.sleep(0);
 			// The bar holds the keyboard now, and the milestone it will filter is untouched.
 			expect(footer()).toContain("Back to Board");
-			expect(sidebar()[1]).toContain("▶ {default-fg}○{/} m-0 Alpha rollout");
+			expect(sidebar()[1]).toContain("▶ {default-fg}○{/} M-0 - Alpha rollout");
 			expect(text()).toContain("Tasks · Alpha rollout");
 
 			// Down steps out of the bar back onto the board, which is where a quit is heard.
@@ -891,7 +892,7 @@ describe("milestones TUI", () => {
 			await waitUntil(() => !text().includes("Progress:"), "the popup to close", 3000);
 
 			expect(hasBackdrop(screen as unknown as TreeWidget)).toBe(false);
-			expect(footer()).toContain(`Milestone ${alpha.id} is no longer in the list.`);
+			expect(footer()).toContain(`Milestone ${formatMilestoneId(alpha.id)} is no longer in the list.`);
 
 			await quit();
 		});

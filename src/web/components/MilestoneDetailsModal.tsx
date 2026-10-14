@@ -11,7 +11,7 @@ import { apiClient } from "../lib/api";
 import { dateTimeLocalToStoredUtc, parseStoredUtcDate, storedUtcToDateTimeLocal } from "../utils/date-display";
 import { areJsonEqual, preserveDirtyRefreshValue } from "../utils/form-refresh";
 import { isTypingTarget } from "../utils/keyboard";
-import { isDoneStatus, milestoneKey } from "../utils/milestones";
+import { formatMilestoneId, isDoneStatus, milestoneKey } from "../utils/milestones";
 import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import FilePreviewModal from "./FilePreviewModal";
@@ -622,7 +622,9 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 					}
 					onClose();
 				}}
-				title={activeMilestone ? activeMilestone.title : t.milestones.loading}
+				title={
+					activeMilestone ? `${formatMilestoneId(activeMilestone.id)} — ${activeMilestone.title}` : t.milestones.loading
+				}
 				maxWidthClass="max-w-5xl"
 				disableEscapeClose={mode === "edit" || showGraph}
 				leftActions={
@@ -1182,7 +1184,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 								>
 									{removeReassignOptions.map((candidate) => (
 										<option key={candidate.id} value={candidate.id}>
-											{candidate.title}
+											{formatMilestoneId(candidate.id)} — {candidate.title}
 										</option>
 									))}
 								</select>

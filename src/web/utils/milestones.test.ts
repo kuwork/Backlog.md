@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { Milestone, Task } from "../../types";
-import { buildMilestoneBuckets, collectMilestoneIds, validateMilestoneName } from "./milestones";
+import { buildMilestoneBuckets, collectMilestoneIds, formatMilestoneId, validateMilestoneName } from "./milestones";
 
 const makeTask = (overrides: Partial<Task>): Task => ({
 	id: "task-1",
@@ -139,6 +139,21 @@ describe("collectMilestoneIds", () => {
 		];
 		const result = collectMilestoneIds(variantTasks, milestones);
 		expect(result).toEqual(["M1", "New"]);
+	});
+});
+
+describe("formatMilestoneId", () => {
+	it("uppercases the id prefix like task ids", () => {
+		expect(formatMilestoneId("m-9")).toBe("M-9");
+		expect(formatMilestoneId("M-9")).toBe("M-9");
+	});
+
+	it("strips zero padding from the numeric body", () => {
+		expect(formatMilestoneId("m-01")).toBe("M-1");
+	});
+
+	it("passes references that are not ids through unchanged", () => {
+		expect(formatMilestoneId("Release 1")).toBe("Release 1");
 	});
 });
 

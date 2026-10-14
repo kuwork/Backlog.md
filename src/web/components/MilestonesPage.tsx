@@ -7,7 +7,13 @@ import { compareTaskIds, groupSubtasksUnderParents, sortByOrdinal } from "../../
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { parseStoredUtcDate } from "../utils/date-display";
-import { buildMilestoneBuckets, collectArchivedMilestoneKeys, isDoneStatus, milestoneKey } from "../utils/milestones";
+import {
+	buildMilestoneBuckets,
+	collectArchivedMilestoneKeys,
+	formatMilestoneId,
+	isDoneStatus,
+	milestoneKey,
+} from "../utils/milestones";
 import MilestoneAddModal from "./MilestoneAddModal";
 import MilestoneTaskRow from "./MilestoneTaskRow";
 import Modal from "./Modal";
@@ -527,7 +533,8 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 									}
 									className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
 								>
-									{bucket.label}
+									<span className="font-mono">{formatMilestoneId(bucket.milestone)}</span>
+									{milestoneKey(bucket.label) !== milestoneKey(bucket.milestone) ? ` — ${bucket.label}` : ""}
 								</button>
 							) : (
 								bucket.label
@@ -1133,7 +1140,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								>
 									{removeReassignOptions.map((milestone) => (
 										<option key={milestone.id} value={milestone.id}>
-											{milestone.title}
+											{formatMilestoneId(milestone.id)} — {milestone.title}
 										</option>
 									))}
 								</select>
