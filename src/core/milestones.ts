@@ -348,6 +348,20 @@ export function collectMilestoneIds(
 }
 
 /**
+ * Display form of a milestone id: numeric ids render with the same uppercase prefix
+ * style as task ids (m-9 -> M-9, zero padding stripped). Values that are not
+ * milestone ids (a raw title used as a reference) pass through unchanged.
+ */
+export function formatMilestoneId(id: string): string {
+	const normalized = normalizeMilestoneName(id);
+	const match = normalized.match(/^m-(\d+)$/i);
+	if (!match?.[1]) {
+		return normalized;
+	}
+	return `M-${String(Number.parseInt(match[1], 10))}`;
+}
+
+/**
  * Get the display label for a milestone
  * Uses the milestone entity title if available, otherwise returns the ID
  */

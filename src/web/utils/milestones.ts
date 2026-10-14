@@ -8,6 +8,7 @@ export {
 	collectArchivedMilestoneKeys,
 	collectMilestoneIds,
 	collectUnresolvedMilestoneIds,
+	formatMilestoneId,
 	getMilestoneLabel,
 	isDoneStatus,
 	milestoneKey,

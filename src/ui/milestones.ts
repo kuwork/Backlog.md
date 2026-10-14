@@ -17,7 +17,12 @@ import type { BoxInterface, ListInterface, ScreenInterface, ScrollableTextInterf
 import { box, line, list, scrollabletext } from "neo-neo-bblessed";
 import type { BoardLayout } from "../board.ts";
 import type { Core } from "../core/backlog.ts";
-import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "../core/milestones.ts";
+import {
+	buildMilestoneBuckets,
+	collectArchivedMilestoneKeys,
+	formatMilestoneId,
+	milestoneKey,
+} from "../core/milestones.ts";
 import { formatDateForDisplay } from "../formatters/task-plain-text.ts";
 import type { Milestone, MilestoneBucket, Task } from "../types/index.ts";
 import { collectAvailableLabels } from "../utils/label-filter.ts";
@@ -83,10 +88,12 @@ function clampSelection(index: number, total: number): number {
  * check once it is done.
  */
 function formatRowLabel(bucket: MilestoneBucket, shown: MilestoneBucket): string {
-	const id = bucket.milestone ?? "No milestone";
+	const id = bucket.milestone ? formatMilestoneId(bucket.milestone) : "No milestone";
 	const style = getStatusStyle(bucket.isCompleted ? "Done" : "To Do");
 	const marker = `${wrapStatusColor(style.icon, style.color)} `;
-	return `${marker}${id} ${bucket.label} · ${shown.total}/${bucket.total}`;
+	// The label falls back to the raw id when no entity is loaded; then the id alone is the row.
+	const title = milestoneKey(bucket.label) !== milestoneKey(bucket.milestone) ? ` - ${bucket.label}` : "";
+	return `${marker}${id}${title} · ${shown.total}/${bucket.total}`;
 }
 
 /**
@@ -127,7 +134,7 @@ function milestonePopupContent(
 	bucket: MilestoneBucket | undefined,
 ): { header: string; body: string } {
 	const header = [
-		` {bold}{blue-fg}${milestone.id}{/blue-fg}{/bold} - ${milestone.title}`,
+		` {bold}{blue-fg}${formatMilestoneId(milestone.id)}{/blue-fg}{/bold} - ${milestone.title}`,
 		`{bold}Progress:{/bold} ${bucket ? `${bucket.doneCount}/${bucket.total} done (${bucket.progress}%)` : "no tasks"}`,
 	].join("\n");
 
@@ -600,7 +607,7 @@ export async function renderMilestonesTui(options: MilestonesTuiOptions): Promis
 			if (!row?.milestone) {
 				openPopup = null;
 				popup.handle.close();
-				showHint(` {red-fg}Milestone ${popup.id} is no longer in the list.{/}`);
+				showHint(` {red-fg}Milestone ${formatMilestoneId(popup.id)} is no longer in the list.{/}`);
 				return;
 			}
 			const signature = popupSignature(row.milestone, row.bucket);

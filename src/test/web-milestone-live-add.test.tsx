@@ -231,7 +231,7 @@ describe("Web milestone live add", () => {
 	it("renders the title of a milestone added while the page is open", async () => {
 		milestones = [makeMilestone({ id: "m-0", title: "Alpha" })];
 		const container = await renderApp("/milestones");
-		await waitFor(() => milestoneHeadings(container).includes("Alpha"), "the milestone loaded at open");
+		await waitFor(() => milestoneHeadings(container).includes("M-0 — Alpha"), "the milestone loaded at open");
 
 		// The CLI writes the file and the server now broadcasts `milestones-updated`; the client
 		// answers it by refetching the milestone entities. Before that broadcast existed the page
@@ -240,14 +240,14 @@ describe("Web milestone live add", () => {
 		await act(async () => {
 			getAppDataWebSocket().deliver("milestones-updated");
 		});
-		await waitFor(() => milestoneHeadings(container).includes("Live Added"), "the live-added milestone title");
+		await waitFor(() => milestoneHeadings(container).includes("M-1 — Live Added"), "the live-added milestone title");
 		await settle();
 
 		const headings = milestoneHeadings(container);
-		expect(headings).toContain("Alpha");
-		expect(headings).toContain("Live Added");
+		expect(headings).toContain("M-0 — Alpha");
+		expect(headings).toContain("M-1 — Live Added");
 		// The bug's symptom was the bucket rendering the code alone.
-		expect(headings).not.toContain("m-1");
+		expect(headings).not.toContain("M-1");
 	});
 
 	it("resolves the title of a task's milestone that the entity list never contained", async () => {
@@ -275,14 +275,14 @@ describe("Web milestone live add", () => {
 
 		const container = await renderApp("/milestones");
 		await waitFor(
-			() => milestoneHeadings(container).includes("Out of band"),
+			() => milestoneHeadings(container).includes("M-9 — Out of band"),
 			"the title fetched for the task's unresolved milestone",
 		);
 		await settle();
 
 		const headings = milestoneHeadings(container);
-		expect(headings).toContain("Out of band");
-		expect(headings).not.toContain("m-9");
+		expect(headings).toContain("M-9 — Out of band");
+		expect(headings).not.toContain("M-9");
 	});
 
 	it("does not refetch entities the loaded list already covers", async () => {
@@ -307,7 +307,7 @@ describe("Web milestone live add", () => {
 		milestones = [makeMilestone({ id: "m-1", title: "Alpha" })];
 
 		const container = await renderApp("/milestones");
-		await waitFor(() => milestoneHeadings(container).includes("Alpha"), "the covered milestone title");
+		await waitFor(() => milestoneHeadings(container).includes("M-1 — Alpha"), "the covered milestone title");
 		await settle();
 
 		expect(milestoneByIdCalls).toEqual([]);
@@ -352,12 +352,12 @@ describe("Milestone bucket label source", () => {
 
 		// The task references m-1 but no entity has been fetched: the bucket can only show the id.
 		await render([]);
-		expect(milestoneHeadings(container)).toContain("m-1");
+		expect(milestoneHeadings(container)).toContain("M-1");
 
 		// Once the entity arrives the same bucket shows its title.
 		await render([makeMilestone({ id: "m-1", title: "Fetched Title" })]);
 		const headings = milestoneHeadings(container);
-		expect(headings).toContain("Fetched Title");
+		expect(headings).toContain("M-1 — Fetched Title");
 		expect(headings).not.toContain("m-1");
 	});
 });

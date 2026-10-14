@@ -388,8 +388,8 @@ describe("CLI milestone management", () => {
 		expect(output).toContain("- **TASK-3** - Unassigned");
 
 		const noMilestoneIndex = output.indexOf("## No Milestone (1 tasks)");
-		const releaseAIndex = output.indexOf("## Release A (1 tasks)");
-		const releaseBIndex = output.indexOf("## Release B (1 tasks)");
+		const releaseAIndex = output.indexOf("## M-0 - Release A (1 tasks)");
+		const releaseBIndex = output.indexOf("## M-1 - Release B (1 tasks)");
 		expect(noMilestoneIndex).toBeGreaterThan(-1);
 		expect(releaseAIndex).toBeGreaterThan(-1);
 		expect(releaseBIndex).toBeGreaterThan(-1);
@@ -404,7 +404,7 @@ describe("CLI milestone management", () => {
 		const list = await $`bun ${cliPath} milestone list`.cwd(TEST_DIR).quiet();
 		expect(list.exitCode).toBe(0);
 		const output = list.stdout.toString();
-		expect(output).toContain("## Release A (1 tasks)");
+		expect(output).toContain("## M-0 - Release A (1 tasks)");
 		expect(output).toContain("### To Do (1)");
 		expect(output).toContain("- **TASK-1** - Task A");
 	});
@@ -416,7 +416,7 @@ describe("CLI milestone management", () => {
 		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
 
 		const activeList = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
-		expect(activeList.stdout.toString()).toContain("## Release A (1 tasks)");
+		expect(activeList.stdout.toString()).toContain("## M-0 - Release A (1 tasks)");
 
 		await core.editTask("task-1", { status: "Done" }, false);
 		const success = await core.completeTask("task-1", false);
@@ -429,7 +429,7 @@ describe("CLI milestone management", () => {
 
 		const withCompleted = await $`bun ${cliPath} milestone list --plain --show-completed`.cwd(TEST_DIR).quiet();
 		const withOutput = withCompleted.stdout.toString();
-		expect(withOutput).toContain("## Release A (1 tasks)");
+		expect(withOutput).toContain("## M-0 - Release A (1 tasks)");
 		expect(withOutput).toContain("### Done (1)");
 		expect(withOutput).toContain("- **TASK-1** - Task A");
 	});
@@ -439,7 +439,7 @@ describe("CLI milestone management", () => {
 		await $`bun ${cliPath} task create "Task A" --milestone "Release A" --plain`.cwd(TEST_DIR).quiet();
 
 		const beforeArchive = await $`bun ${cliPath} milestone list --plain`.cwd(TEST_DIR).quiet();
-		expect(beforeArchive.stdout.toString()).toContain("## Release A (1 tasks)");
+		expect(beforeArchive.stdout.toString()).toContain("## M-0 - Release A (1 tasks)");
 
 		const archive = await $`bun ${cliPath} milestone archive "Release A"`.cwd(TEST_DIR).quiet();
 		expect(archive.exitCode).toBe(0);
