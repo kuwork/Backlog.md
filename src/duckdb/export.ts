@@ -44,7 +44,12 @@ export async function buildDuckdbCsv(options: {
 
 	// Gate 3 is the engine itself: a read-only instance, so even a validation hole cannot turn an
 	// export into a write statement against the database.
-	const result = await runDuckdbQuery({ dbPath: resolved.path, sql: validated.sql, maxRows: DUCKDB_MAX_ROWS });
+	const result = await runDuckdbQuery({
+		dbPath: resolved.path,
+		kind: resolved.kind,
+		sql: validated.sql,
+		maxRows: DUCKDB_MAX_ROWS,
+	});
 
 	return {
 		ok: true,

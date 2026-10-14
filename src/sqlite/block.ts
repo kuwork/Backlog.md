@@ -18,6 +18,11 @@ export interface QueryBlock {
 	sql: string;
 	view: QueryView;
 	refresh: string;
+	/**
+	 * Optional write target (project-relative `.csv` / `.xlsx`). Only the DuckDB explorer honours
+	 * it - the SQLite explorer rejects a block that sets it. The server gates and performs the copy.
+	 */
+	copyTo?: string;
 }
 
 export type QueryBlockParse = { ok: true; block: QueryBlock } | { ok: false; error: string };
@@ -29,7 +34,7 @@ export type SqliteQueryView = QueryView;
 export type SqliteQueryBlock = QueryBlock;
 export type SqliteBlockParse = QueryBlockParse;
 
-const KNOWN_FIELDS = ["source", "sql", "view", "refresh"] as const;
+const KNOWN_FIELDS = ["source", "sql", "view", "refresh", "copy_to"] as const;
 type FieldName = (typeof KNOWN_FIELDS)[number];
 
 const FIELD_LINE = /^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
@@ -56,7 +61,7 @@ export function parseQueryBlock(raw: string): QueryBlockParse {
 		const key = (match[1] ?? "").toLowerCase();
 		const inline = (match[2] ?? "").trim();
 		if (!(KNOWN_FIELDS as readonly string[]).includes(key)) {
-			return fail(`第 ${i + 1} 行：未知字段 "${key}"，可用字段为 source / sql / view / refresh。`);
+			return fail(`第 ${i + 1} 行：未知字段 "${key}"，可用字段为 source / sql / view / refresh / copy_to。`);
 		}
 		const field = key as FieldName;
 		if (fields.has(field)) return fail(`字段 "${field}" 重复定义。`);
@@ -106,7 +111,9 @@ export function parseQueryBlock(raw: string): QueryBlockParse {
 	const refresh = (fields.get("refresh") ?? "manual").trim().toLowerCase();
 	if (refresh !== "manual") return fail(`refresh 目前只支持 manual，收到 "${refresh}"。`);
 
-	return { ok: true, block: { source, sql, view, refresh } };
+	const copyTo = fields.get("copy_to")?.trim() ?? undefined;
+
+	return { ok: true, block: { source, sql, view, refresh, copyTo } };
 }
 
 /** Backwards-compatible alias kept so existing SQLite callers and tests need no change. */

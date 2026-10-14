@@ -866,6 +866,7 @@ export const zhTW: TranslationDict = {
 		exporting: "正在匯出…",
 		exported: "已匯出：{name}",
 		exportFailed: "匯出失敗",
+		writtenTo: "已寫入：{path}",
 	},
 
 	duckdbQueryBlock: {
@@ -885,6 +886,7 @@ export const zhTW: TranslationDict = {
 		exporting: "正在匯出…",
 		exported: "已匯出：{name}",
 		exportFailed: "匯出失敗",
+		writtenTo: "已寫入：{path}",
 	},
 
 	imageLightbox: {

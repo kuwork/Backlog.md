@@ -3,6 +3,7 @@ id: doc-26
 title: DuckDB Explorer 演示
 type: guide
 created_date: '2026-10-13 01:30'
+updated_date: '2026-10-14 22:00'
 ---
 
 # DuckDB Explorer 演示
@@ -112,12 +113,79 @@ source: /backlog/databases/demo-shop.duckdb
 sql: SELECT 1
 ```
 
-扩展名不是 `.duckdb` 也会被拒（白名单只认一个）：
+扩展名不在白名单也会被拒（`.sqlite` 不属于 DuckDB 数据源；白名单内容见第 7 节）：
 
 ```duckdb-query
 source: backlog/databases/demo-shop.sqlite
 sql: SELECT 1
 ```
+
+## 7. CSV / Excel 数据源（BACK-796，已实装）
+
+> [!IMPORTANT]
+> 本节示例对应 **BACK-796**（设计见 doc-25 §11），**已实装**：CSV / XLSX 数据源现已可查询与写入。选型结论：**只用官方扩展**——CSV 走内置 `read_csv_auto`（无需扩展），Excel 走官方 `excel` 扩展（`read_xlsx`）；不用 `spatial`（`st_read`，过重）与社区 `rusty_sheet`（供应链信任）。
+
+演示文件与 `demo-shop.duckdb` 同库派生，数据一致：
+
+| 文件 | 内容 |
+|---|---|
+| `backlog/databases/demo-shop-orders.csv` | `order_details` 全量（80 行，含表头） |
+| `backlog/databases/demo-shop.xlsx` | `products` 全量（15 行，含表头） |
+
+非 `.duckdb` 数据源打开的是**内存实例**，SQL 里以文件为查询目标。`source` 仍然必填，且 SQL 中引用的本地文件路径要与 `source` 一致（`source` 是安全闸门的锚点，SQL 字面量里的 URL 一律被拒——设计见 doc-25 §11.4）。
+
+### 7.1 读 CSV（内置，无需扩展）
+
+DuckDB 的 replacement scan 让 `FROM '文件路径'` 直接可用，不必写 `read_csv_auto`：
+
+```duckdb-query
+source: backlog/databases/demo-shop-orders.csv
+view: table
+sql: |
+  SELECT category,
+         COUNT(*)              AS orders,
+         ROUND(SUM(amount), 2) AS revenue
+  FROM 'backlog/databases/demo-shop-orders.csv'
+  WHERE status IN ('paid', 'shipped')
+  GROUP BY category
+  ORDER BY revenue DESC
+```
+
+### 7.2 读 Excel（官方 excel 扩展）
+
+`excel` 是 core 扩展，DuckDB 默认 autoload：首次查询自动联网下载安装（写入用户目录缓存 `~/.duckdb/extensions`，之后离线可用），**不必手写 `INSTALL` / `LOAD`**；下载失败时块内渲染可读错误。裸路径即可查询：
+
+```duckdb-query
+source: backlog/databases/demo-shop.xlsx
+view: table
+sql: |
+  SELECT name, category, price, stock
+  FROM 'backlog/databases/demo-shop.xlsx'
+  ORDER BY price DESC
+  LIMIT 10
+```
+
+需要参数时才写函数形式：`read_xlsx('data.xlsx', sheet = 'Sheet2')` 指定工作表、`header = false` 跳过表头、`range = 'A2:E100'` 指定范围。
+
+### 7.3 写 CSV / Excel（可选，字段 `copy_to`）
+
+写能力默认关闭，由块字段 `copy_to: <项目相对路径>` 显式开启；服务端把块里的 `SELECT` 包装成 `COPY (<sql>) TO '<target>'`（`.csv` → `HEADER TRUE`；`.xlsx` → `FORMAT XLSX, HEADER TRUE`），目标走与 `source` 相同的项目内闸门（设计见 doc-25 §11.4）。用户 SQL **不再允许写**——`COPY` 已被只读校验拦截，写只经由 `copy_to`：
+
+```duckdb-query
+source: backlog/databases/demo-shop.duckdb
+view: table
+copy_to: output/orders.csv
+sql: |
+  SELECT category, COUNT(*) AS orders
+  FROM people
+  GROUP BY category
+```
+
+- 目标扩展名限 `.csv` / `.xlsx`，且禁止写入或覆盖 `.duckdb` 数据库本体。
+- 写随块运行（渲染 / 刷新）触发，幂等覆盖；块内显示一行"已写入：<路径>"。
+- `sqlite-query` 块不支持 `copy_to`，携带会被服务端拒绝。
+
+无论读写，**`.duckdb` 数据源本体依旧不可写**（物理 `READ_ONLY` 兜底）；写只落在项目目录内的新文件上。
 
 ## 块的写法
 
@@ -125,10 +193,11 @@ sql: SELECT 1
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `source` | 是 | 项目相对路径，扩展名限 `.duckdb` |
-| `sql` | 是 | 单条 `SELECT` 或 `WITH … SELECT` |
+| `source` | 是 | 项目相对路径，扩展名限 `.duckdb` / `.csv` / `.xlsx`（见第 7 节） |
+| `sql` | 是 | 单条 `SELECT` 或 `WITH … SELECT`（只读；`INSTALL` / `LOAD` / `COPY` 均被拦截） |
 | `view` | 否 | `table`（默认）/ `list` / `value` |
 | `refresh` | 否 | 目前仅 `manual`（默认） |
+| `copy_to` | 否 | 仅 `duckdb-query` 支持；项目相对 `.csv` / `.xlsx` 目标，开启写路径（见 §7.3） |
 
 源码形态（本文档第 1 节的块，去掉外层四反引号即为其真实写法）：
 

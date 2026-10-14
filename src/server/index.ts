@@ -34,6 +34,7 @@ import { listDuckdbFiles } from "../duckdb/discover.ts";
 import { buildDuckdbCsv } from "../duckdb/export.ts";
 import { resolveDuckdbSource } from "../duckdb/paths.ts";
 import { DUCKDB_MAX_ROWS, runDuckdbQuery } from "../duckdb/query.ts";
+import { screenDuckdbSqlLiterals } from "../duckdb/sql-literals.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
@@ -2432,7 +2433,7 @@ export class BacklogServer {
 	 * inside the block that asked for them, so "bad request" would tell the author nothing.
 	 */
 	private async handleSqliteQuery(req: Request): Promise<Response> {
-		let body: { source?: unknown; sql?: unknown; maxRows?: unknown };
+		let body: { source?: unknown; sql?: unknown; maxRows?: unknown; copyTo?: unknown };
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
@@ -2440,6 +2441,11 @@ export class BacklogServer {
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
+
+		// `copy_to` is a DuckDB-only feature; a SQLite block that sets it is a misconfiguration.
+		if (typeof body?.copyTo === "string" && body.copyTo.trim().length > 0) {
+			return Response.json({ error: "copy_to 仅支持 duckdb-query 块，sqlite-query 块不支持写路径。" }, { status: 400 });
+		}
 
 		const validated = validateReadOnlySql(sql);
 		if (!validated.ok) return Response.json({ error: validated.error }, { status: 400 });
@@ -2497,7 +2503,7 @@ export class BacklogServer {
 	 * POST /api/duckdb/query - one read-only statement, answered with a JSON grid (mirrors SQLite).
 	 */
 	private async handleDuckdbQuery(req: Request): Promise<Response> {
-		let body: { source?: unknown; sql?: unknown; maxRows?: unknown };
+		let body: { source?: unknown; sql?: unknown; maxRows?: unknown; copyTo?: unknown };
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
@@ -2505,18 +2511,35 @@ export class BacklogServer {
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
+		const copyTo = typeof body?.copyTo === "string" ? body.copyTo : "";
 
 		const validated = validateReadOnlySql(sql);
 		if (!validated.ok) return Response.json({ error: validated.error }, { status: 400 });
 
 		// `source` is project-relative; the containment gates in resolveDuckdbSource keep a
-		// client-supplied path inside the project (security-gotchas.md §1).
+		// client-supplied path inside the project (security-gotchas.md §1) and report the source kind.
 		const resolved = resolveDuckdbSource({ projectRoot: this.core.filesystem.rootDir, source });
 		if (!resolved.ok) return Response.json({ error: resolved.error }, { status: 400 });
 
+		// Data-file sources name the file inside the SQL, so a path-like or URL literal there is a
+		// real exfiltration channel; screen them (the hard guarantee is still the `source` gate).
+		if (resolved.kind === "data-file") {
+			const screened = screenDuckdbSqlLiterals(this.core.filesystem.rootDir, validated.sql);
+			if (!screened.ok) return Response.json({ error: screened.error }, { status: 400 });
+		}
+
 		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : DUCKDB_MAX_ROWS;
 		try {
-			return Response.json(await runDuckdbQuery({ dbPath: resolved.path, sql: validated.sql, maxRows }));
+			return Response.json(
+				await runDuckdbQuery({
+					dbPath: resolved.path,
+					kind: resolved.kind,
+					sql: validated.sql,
+					maxRows,
+					copyTo: copyTo || undefined,
+					projectRoot: this.core.filesystem.rootDir,
+				}),
+			);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
