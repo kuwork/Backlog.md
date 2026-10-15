@@ -26,6 +26,14 @@ export interface SqliteQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** True total row count of the underlying statement (the page count derives from this). */
+	totalRows: number;
+	/** Present only in pagination mode: the 1-based page that was requested. */
+	page?: number;
+	/** Present only in pagination mode: the page size that was used. */
+	pageSize?: number;
+	/** Present only in pagination mode: total number of pages. */
+	totalPages?: number;
 }
 
 interface Handle {
@@ -89,12 +97,51 @@ function toCell(value: unknown): SqliteCell {
 	return String(value);
 }
 
-export function runSqliteQuery(options: { dbPath: string; sql: string; maxRows?: number }): SqliteQueryResult {
-	const requested = options.maxRows ?? SQLITE_MAX_ROWS;
-	const maxRows = Math.min(Math.max(Math.trunc(requested), 1), SQLITE_ABS_MAX_ROWS);
+export function runSqliteQuery(options: {
+	dbPath: string;
+	sql: string;
+	maxRows?: number;
+	/** 1-based page for the pagination browser; when set, the result is a single page, not capped. */
+	page?: number;
+	/** Rows per page for the pagination browser (default 50). */
+	pageSize?: number;
+}): SqliteQueryResult {
 	const db = openHandle(options.dbPath);
 	const started = performance.now();
 
+	// Pagination mode: push LIMIT / OFFSET down to the engine via a subquery wrap and count the
+	// total separately. Only one page is ever fetched, so this is exempt from the 5000 hard cap —
+	// that is why the pagination browser can browse data sets larger than 5000 rows.
+	if (options.page !== undefined && options.page >= 1) {
+		const pageSize = clamp(options.pageSize ?? 50, 1, 1000);
+		const offset = (Math.trunc(options.page) - 1) * pageSize;
+		const wrapped = stripSemicolon(options.sql);
+		const countRow = db.prepare(`SELECT COUNT(*) AS _c FROM (${wrapped}) AS _p`).get() as { _c: number };
+		const totalRows = Number(countRow?._c ?? 0);
+
+		const statement = db.prepare(`SELECT * FROM (${wrapped}) AS _p LIMIT ${pageSize} OFFSET ${offset}`);
+		const records = statement.all() as Record<string, unknown>[];
+		const declared = (statement as { columnNames?: string[] }).columnNames;
+		const firstRecord = records[0];
+		const columns = declared && declared.length > 0 ? declared : firstRecord ? Object.keys(firstRecord) : [];
+		const rows = records.map((record) => columns.map((column) => toCell(record[column])));
+
+		return {
+			columns,
+			rows,
+			truncated: false,
+			elapsedMs: Math.round(performance.now() - started),
+			dbPath: options.dbPath,
+			totalRows,
+			page: Math.trunc(options.page),
+			pageSize,
+			totalPages: Math.max(1, Math.ceil(totalRows / pageSize)),
+		};
+	}
+
+	// Preview mode: materialise the whole result and keep only `maxRows`, hard-capped at 5000.
+	const requested = options.maxRows ?? SQLITE_MAX_ROWS;
+	const maxRows = clamp(requested, 1, SQLITE_ABS_MAX_ROWS);
 	const statement = db.prepare(options.sql);
 	const records = statement.all() as Record<string, unknown>[];
 	const declared = (statement as { columnNames?: string[] }).columnNames;
@@ -109,5 +156,16 @@ export function runSqliteQuery(options: { dbPath: string; sql: string; maxRows?:
 		truncated,
 		elapsedMs: Math.round(performance.now() - started),
 		dbPath: options.dbPath,
+		totalRows: records.length,
 	};
+}
+
+/** Clamps `value` to [min, max] after truncating to an integer. */
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+/** Removes a single trailing statement terminator so the SQL can be wrapped in a subquery. */
+function stripSemicolon(sql: string): string {
+	return sql.replace(/;\s*$/, "");
 }

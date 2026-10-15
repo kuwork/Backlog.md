@@ -2113,6 +2113,18 @@ export class FileSystem {
 				case "max_column_width":
 					config.maxColumnWidth = Number.parseInt(value, 10);
 					break;
+				case "query_max_rows":
+				case "queryMaxRows":
+					config.queryMaxRows = Number.parseInt(value, 10);
+					break;
+				case "pagination_page_size":
+				case "paginationPageSize":
+					config.paginationPageSize = Number.parseInt(value, 10);
+					break;
+				case "default_pagination":
+				case "defaultPagination":
+					config.defaultPagination = value.toLowerCase() === "true";
+					break;
 				case "default_editor":
 					config.defaultEditor = value.replace(/["']/g, "");
 					break;
@@ -2209,6 +2221,9 @@ export class FileSystem {
 			defaultStatus: config.defaultStatus,
 			dateFormat: config.dateFormat || "yyyy-mm-dd",
 			maxColumnWidth: config.maxColumnWidth,
+			queryMaxRows: config.queryMaxRows,
+			paginationPageSize: config.paginationPageSize,
+			defaultPagination: config.defaultPagination,
 			defaultEditor: config.defaultEditor,
 			autoOpenBrowser: config.autoOpenBrowser,
 			autoPort: config.autoPort,
@@ -2246,6 +2261,9 @@ export class FileSystem {
 				: []),
 			`date_format: ${config.dateFormat}`,
 			...(config.maxColumnWidth ? [`max_column_width: ${config.maxColumnWidth}`] : []),
+			...(typeof config.queryMaxRows === "number" ? [`query_max_rows: ${config.queryMaxRows}`] : []),
+			...(typeof config.paginationPageSize === "number" ? [`pagination_page_size: ${config.paginationPageSize}`] : []),
+			...(typeof config.defaultPagination === "boolean" ? [`default_pagination: ${config.defaultPagination}`] : []),
 			...(config.defaultEditor ? [`default_editor: "${config.defaultEditor}"`] : []),
 			...(typeof config.autoOpenBrowser === "boolean" ? [`auto_open_browser: ${config.autoOpenBrowser}`] : []),
 			...(typeof config.hideEmptyColumns === "boolean" ? [`hide_empty_columns: ${config.hideEmptyColumns}`] : []),

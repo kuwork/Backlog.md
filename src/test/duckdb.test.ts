@@ -198,6 +198,80 @@ describe("runDuckdbQuery - database source", () => {
 	});
 });
 
+describe("runDuckdbQuery - pagination", () => {
+	async function makeNums(path: string, count: number): Promise<void> {
+		const instance = await DuckDBInstance.create(path);
+		const conn = await instance.connect();
+		await conn.run("CREATE TABLE nums (id INTEGER, name VARCHAR)");
+		// Bulk insert in a single statement; 6000 individual INSERTs time out the WASM round-trips.
+		await conn.run(`INSERT INTO nums SELECT i, 'p' || i FROM range(${count}) AS t(i)`);
+		conn.closeSync();
+		instance.closeSync();
+	}
+
+	test("paginates by page and reports totalPages", async () => {
+		const path = join(root, "people.duckdb");
+		await makeNums(path, 10);
+
+		const first = await runDuckdbQuery({
+			dbPath: path,
+			kind: "database",
+			sql: "SELECT id, name FROM nums ORDER BY id",
+			page: 1,
+			pageSize: 3,
+		});
+		expect(first.rows.length).toBe(3);
+		expect(first.totalRows).toBe(10);
+		expect(first.totalPages).toBe(4);
+		expect(first.page).toBe(1);
+		expect(first.truncated).toBe(false);
+		expect(first.rows[0]).toEqual([0, "p0"]);
+
+		const second = await runDuckdbQuery({
+			dbPath: path,
+			kind: "database",
+			sql: "SELECT id, name FROM nums ORDER BY id",
+			page: 2,
+			pageSize: 3,
+		});
+		expect(second.rows.length).toBe(3);
+		expect(second.rows[0]).toEqual([3, "p3"]);
+		expect(second.page).toBe(2);
+	});
+
+	test("preview mode reports totalRows and truncates", async () => {
+		const path = join(root, "people.duckdb");
+		await makeNums(path, 10);
+
+		const result = await runDuckdbQuery({
+			dbPath: path,
+			kind: "database",
+			sql: "SELECT id FROM nums ORDER BY id",
+			maxRows: 5,
+		});
+		expect(result.rows.length).toBe(5);
+		expect(result.totalRows).toBe(10);
+		expect(result.truncated).toBe(true);
+	});
+
+	test("pagination is exempt from the 5000 hard cap", async () => {
+		const path = join(root, "big.duckdb");
+		await makeNums(path, 6000);
+
+		const result = await runDuckdbQuery({
+			dbPath: path,
+			kind: "database",
+			sql: "SELECT id FROM nums ORDER BY id",
+			page: 1,
+			pageSize: 50,
+		});
+		expect(result.rows.length).toBe(50);
+		expect(result.totalRows).toBe(6000);
+		expect(result.totalPages).toBe(120);
+		expect(result.truncated).toBe(false);
+	});
+});
+
 describe("runDuckdbQuery - data-file sources", () => {
 	test("queries a CSV via the in-memory instance (absolute path in SQL)", async () => {
 		const csv = join(root, "orders.csv");

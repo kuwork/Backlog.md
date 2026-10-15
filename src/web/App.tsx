@@ -1023,6 +1023,7 @@ function AppContent() {
 				window.dispatchEvent(new Event("memos-updated"));
 			} else if (event.data === "config-updated") {
 				// Statuses and labels genuinely changed, which only a full load re-reads.
+				window.dispatchEvent(new Event("backlog-config-updated"));
 				void loadAllData();
 			} else if (event.data === "graph-started") {
 				setGraphStatus("building");

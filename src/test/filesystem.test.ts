@@ -785,6 +785,29 @@ Invalid content`,
 			expect(loaded?.defaultStatus).toBeUndefined();
 		});
 
+		it("persists the query/data-preview keys to disk and reads them back", async () => {
+			const config: BacklogConfig = {
+				projectName: "Preview Keys",
+				statuses: ["To Do", "Done"],
+				labels: [],
+				dateFormat: "yyyy-mm-dd",
+				queryMaxRows: 250,
+				paginationPageSize: 75,
+				defaultPagination: true,
+			};
+
+			await filesystem.saveConfig(config);
+
+			// Read the raw file with a fresh FileSystem so we exercise serialization + parsing,
+			// not just the in-memory cache.
+			const fresh = new FileSystem(TEST_DIR);
+			const loaded = await fresh.loadConfig();
+
+			expect(loaded?.queryMaxRows).toBe(250);
+			expect(loaded?.paginationPageSize).toBe(75);
+			expect(loaded?.defaultPagination).toBe(true);
+		});
+
 		it("should sanitize filenames correctly", async () => {
 			const taskWithSpecialChars: Task = {
 				id: "task-special",

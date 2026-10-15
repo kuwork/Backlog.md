@@ -262,6 +262,60 @@ describe("runSqliteQuery", () => {
 	});
 });
 
+describe("runSqliteQuery - pagination", () => {
+	function makePeople(path: string, count: number): void {
+		const db = new Database(path);
+		db.run("CREATE TABLE people (id INTEGER, name TEXT)");
+		db.run("BEGIN");
+		const insert = db.prepare("INSERT INTO people (id, name) VALUES (?, ?)");
+		for (let i = 0; i < count; i++) insert.run(i, `p${i}`);
+		db.run("COMMIT");
+		db.close();
+	}
+
+	test("paginates by page and reports totalPages", () => {
+		mkdirSync(join(root, "data"), { recursive: true });
+		const dbPath = join(root, "data", "people.sqlite");
+		makePeople(dbPath, 10);
+
+		const first = runSqliteQuery({ dbPath, sql: "SELECT id, name FROM people ORDER BY id", page: 1, pageSize: 3 });
+		expect(first.rows.length).toBe(3);
+		expect(first.totalRows).toBe(10);
+		expect(first.totalPages).toBe(4);
+		expect(first.page).toBe(1);
+		expect(first.truncated).toBe(false);
+		expect(first.rows[0]).toEqual([0, "p0"]);
+
+		const second = runSqliteQuery({ dbPath, sql: "SELECT id, name FROM people ORDER BY id", page: 2, pageSize: 3 });
+		expect(second.rows.length).toBe(3);
+		expect(second.rows[0]).toEqual([3, "p3"]);
+		expect(second.page).toBe(2);
+	});
+
+	test("preview mode reports totalRows and truncates past the cap", () => {
+		mkdirSync(join(root, "data"), { recursive: true });
+		const dbPath = join(root, "data", "people.sqlite");
+		makePeople(dbPath, 10);
+
+		const result = runSqliteQuery({ dbPath, sql: "SELECT id FROM people ORDER BY id", maxRows: 5 });
+		expect(result.rows.length).toBe(5);
+		expect(result.totalRows).toBe(10);
+		expect(result.truncated).toBe(true);
+	});
+
+	test("pagination is exempt from the 5000 hard cap", () => {
+		mkdirSync(join(root, "data"), { recursive: true });
+		const dbPath = join(root, "data", "big.sqlite");
+		makePeople(dbPath, 6000);
+
+		const result = runSqliteQuery({ dbPath, sql: "SELECT id FROM people ORDER BY id", page: 1, pageSize: 50 });
+		expect(result.rows.length).toBe(50);
+		expect(result.totalRows).toBe(6000);
+		expect(result.totalPages).toBe(120);
+		expect(result.truncated).toBe(false);
+	});
+});
+
 describe("listSqliteFiles", () => {
 	test("lists project databases and skips excluded directories", async () => {
 		mkdirSync(join(root, "data"), { recursive: true });
