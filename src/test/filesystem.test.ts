@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, readdir, rename, stat } from "node:fs/promises";
+import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
@@ -1088,6 +1088,11 @@ Invalid content`,
 
 		it("rejects wiki page traversal", async () => {
 			await expect(filesystem.readWikiPage("../secret")).rejects.toThrow("Page not found");
+		});
+
+		it("returns an empty tree when the wiki directory is missing", async () => {
+			await rm(join(TEST_DIR, "backlog", "wiki"), { recursive: true, force: true });
+			await expect(filesystem.getWikiTree()).resolves.toEqual([]);
 		});
 	});
 

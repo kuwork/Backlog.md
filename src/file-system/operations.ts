@@ -2574,7 +2574,15 @@ export class FileSystem {
 
 	async getWikiTree(): Promise<WikiTreeNode[]> {
 		const wikiRoot = join(this.resolvedBacklogDir, "wiki");
-		return this.buildWikiTreeRecursive(wikiRoot, "");
+		try {
+			return await this.buildWikiTreeRecursive(wikiRoot, "");
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+				console.warn(`Wiki directory not found at ${wikiRoot}; returning empty tree`);
+				return [];
+			}
+			throw error;
+		}
 	}
 
 	async listWikiPages(): Promise<WikiPage[]> {
