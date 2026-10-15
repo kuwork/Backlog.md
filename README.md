@@ -157,9 +157,11 @@ AI 研究代码库之后，把实施计划写进任务。
 - 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
 - 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
 - 🗂️ **Memos 快速笔记** —— 即想即记的第五种文件实体，信息流 / 日历 / 钉板三种视图，Markdown 与粘贴图片，可归档
+- 🕸️ **图谱查询** —— 对任务、文档、依赖与链接组成的项目图谱执行只读 Cypher 查询，与 Web UI 图谱搜索同源
 - 🎛️ **状态机可视化编辑器** —— 设置页中编辑项目状态流转，实时预览状态树
 - 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
 - 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
+- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出
 - 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
 - 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
 - ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
@@ -231,6 +233,53 @@ Memos 是 Backlog.md 的第五种文件实体：即想即记、无需标题的�
 ![Memos 钉板视图](./.github/memos-pinboard.jpg)
 
 ![Memos 信息流与日历](./.github/memos-feed-calendar.jpg)
+
+---
+
+## 🕸️ 图谱查询
+
+任务、文档、决策、备忘录与它们之间的依赖 / 链接 / 标签构成一张项目图谱。`backlog graph` 让你在命令行对这张图谱执行**只读 Cypher 查询**（与 `backlog browser` 里的图谱搜索同源），适合临时分析、脚本化或把结果管道给其他工具：
+
+```bash
+# 查看图谱结构（节点 / 关系表）
+backlog graph schema
+
+# 找出被最多任务依赖（阻塞面最大）的任务
+backlog graph query default "MATCH (t:FileNode)<-[:DependsOn]-(d:FileNode) RETURN t.title, count(d) AS blocked ORDER BY blocked DESC LIMIT 10"
+```
+
+- 查询严格只读：写关键字一律拒绝，图谱与 Markdown 语料不会被修改
+- 每次调用在进程内重建图谱（约数秒）；`--json` 输出机器可读结果
+- 也可以用 `backlog graph create` / `import` 建自己的用户数据库（存于 `backlog/databases/`），导入 CSV 自定义节点与关系
+
+![数据查询页：数据库列表、只读 Cypher 与结果图谱](./.github/graph-query.jpg)
+
+### 自定义图数据库
+
+`default` 是 Markdown 语料的派生图谱（只读缓存，拒绝写入——重建会覆盖一切）。写入只发生在你自己创建的**用户数据库**里：
+
+```bash
+# 建库，写 schema 与数据
+backlog graph create people "people and their relationships"
+backlog graph insert people "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"
+backlog graph insert people "CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob', age: 41})"
+
+# 或直接导入 CSV：首列为主键，重复导入即更新（upsert）
+backlog graph import people data/people.csv --node Person
+# 同一文件也能导成边：两列端点按键匹配已有节点
+backlog graph import people data/knows.csv --rel KNOWS --from person --to friend --node Person
+
+backlog graph query people "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
+```
+
+- 用户数据库以 JSON 快照持久化在 `backlog/databases/` 下；`insert` 每句一存，`import` 在打开前校验文件、出错不动数据库
+- `list` / `describe` / `drop` 管理库的生命周期；Web UI 的 **Databases** 页列出所有数据库并可执行同样的只读 Cypher
+
+### 图例与样式设置
+
+Web UI 图谱视图的图例面板按**节点类型**配置：标题模板（`{{field}}`，留空自动猜 `name` / `title` 等字段）、基础色，以及"先匹配先生效"的着色规则——可按字段用等宽分箱、分位数、阈值、枚举值等快捷方式批量生成规则，再逐条微调。关系类型可设置线型（实线 / 虚线 / 点线 / 长线）、箭头、颜色与显示名。图例条目可单独隐藏，节点标题可全局关闭。所有设置按数据库保存在浏览器本地。
+
+![图例设置面板](./.github/graph-legend.jpg)
 
 ---
 
@@ -385,6 +434,29 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 任务详情、Wiki 预览、文件预览三类弹窗内置书签式大纲：窄标签从弹窗左缘探出，点击展开与弹窗等高的浮动面板，条目按分区组织（描述 / 验收标准 / 计划 / 备注 / 评论等），scrollspy 随滚动高亮、点击平滑滚动；面板左缘距视口不足 300px 时自动切换为悬浮模式，窄窗口下大纲始终可用。
 
 ![大纲抽屉](./.github/toc-drawer.gif)
+
+### 实时 SQL 查询块
+
+任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入 `sqlite-query` / `duckdb-query` 围栏代码块；Web UI 的阅读视图会对项目内的数据文件**实时执行只读查询**并渲染结果，编辑态只显示源码：
+
+````markdown
+```sqlite-query
+source: backlog/databases/shop.sqlite
+view: table
+sql: |
+  SELECT product, price, stock
+  FROM inventory
+  ORDER BY price DESC
+```
+````
+
+- `source` 为项目相对路径：`sqlite-query` 支持 `.sqlite` / `.sqlite3` / `.db`；`duckdb-query` 支持 `.duckdb`，以及 `.csv` / `.xlsx`（开内存实例直接读文件，Excel 扩展自动装载）
+- 只读三层保证：语句形状白名单 → 关键字黑名单 → 引擎物理只读；结果上限 500 行
+- `view` 支持 `table`（默认）/ `list` / `value`；`duckdb-query` 还可用 `copy_to: <路径>` 把查询结果导出为项目内的 CSV / Excel 文件
+
+![实时 SQL 查询块：表格 / 列表 / 单值 / 空态](./.github/live-query1.jpg)
+
+![实时 SQL 查询块：CSV 与 Excel 数据源](./.github/live-query2.jpg)
 
 要使 Web UI 作为自动启动的本地服务持续运行，请参阅 [将 Backlog.md 作为服务运行](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md)。
 

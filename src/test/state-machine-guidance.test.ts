@@ -40,11 +40,10 @@ statuses:
 labels: []
 `;
 
-describe("the shipped overview texts", () => {
+describe("the shipped execution guides carry the machine", () => {
 	const texts: Array<[string, string]> = [
-		["CLI instructions", CLI_WORKFLOW_OVERVIEW],
-		["MCP overview resource", MCP_WORKFLOW_OVERVIEW],
-		["MCP overview tool", MCP_WORKFLOW_OVERVIEW_TOOLS],
+		["CLI task execution", CLI_TASK_EXECUTION_GUIDE],
+		["MCP task execution", MCP_TASK_EXECUTION_GUIDE],
 	];
 	const HEADING = "## The Project State Machine (`backlog/config.yml` -> `statuses`)";
 
@@ -69,36 +68,33 @@ describe("the shipped overview texts", () => {
 			// The no-transitions project is not left to guess either.
 			expect(text).toContain("may move between any pair of non-terminal statuses");
 		});
+
+		it(`${name} puts the machine before the planning workflow that uses it`, () => {
+			const sectionAt = text.indexOf(HEADING);
+			const planningAt = text.indexOf("### Planning Workflow");
+
+			expect(sectionAt).toBeGreaterThan(-1);
+			expect(sectionAt).toBeLessThan(planningAt);
+			expect(text.slice(sectionAt, planningAt)).toContain(STATE_MACHINE_PLACEHOLDER);
+		});
 	}
+});
 
-	/**
-	 * Placement is per surface: the CLI overview already has a "load the project state" section, so
-	 * the machine belongs there (and it absorbs that section's statuses paragraphs). The MCP texts
-	 * have no such spot, so theirs goes last.
-	 */
-	it("puts the machine where the CLI overview tells the reader to load the project state", () => {
-		const sectionAt = CLI_WORKFLOW_OVERVIEW.indexOf(HEADING);
-		const guidesAt = CLI_WORKFLOW_OVERVIEW.indexOf("### Detailed Guides");
-
-		expect(sectionAt).toBeGreaterThan(CLI_WORKFLOW_OVERVIEW.indexOf("### Start Every Request Here"));
-		expect(sectionAt).toBeLessThan(guidesAt);
-		expect(CLI_WORKFLOW_OVERVIEW.slice(sectionAt, guidesAt)).toContain(STATE_MACHINE_PLACEHOLDER);
-		// The two statuses paragraphs that used to live there are folded into the section.
-		expect(CLI_WORKFLOW_OVERVIEW).not.toContain("Pay special attention to statuses");
-		expect(CLI_WORKFLOW_OVERVIEW).not.toContain("**Validate defaultStatus:**");
-		expect(CLI_WORKFLOW_OVERVIEW).toContain("**`defaultStatus`** must be one of the configured `statuses`");
-	});
-
-	const mcpTexts: Array<[string, string]> = [
-		["MCP overview resource", MCP_WORKFLOW_OVERVIEW],
-		["MCP overview tool", MCP_WORKFLOW_OVERVIEW_TOOLS],
+describe("the shipped overview texts point at the machine", () => {
+	const texts: Array<[string, string, string]> = [
+		["CLI instructions", CLI_WORKFLOW_OVERVIEW, "backlog instructions task-execution"],
+		["MCP overview resource", MCP_WORKFLOW_OVERVIEW, "backlog://workflow/task-execution"],
+		["MCP overview tool", MCP_WORKFLOW_OVERVIEW_TOOLS, "backlog://workflow/task-execution"],
 	];
 
-	for (const [name, text] of mcpTexts) {
-		it(`${name} appends the machine as the final section`, () => {
-			// No statuses discussion to attach to, so it is reference material at the end.
-			expect(text.indexOf(HEADING)).toBe(text.lastIndexOf("\n## ") + 1);
-			expect(text.trimEnd().endsWith(STATE_MACHINE_PLACEHOLDER)).toBe(true);
+	for (const [name, text, pointer] of texts) {
+		it(`${name} keeps only a pointer, not the machine itself`, () => {
+			expect(text).toContain("## The Project State Machine");
+			expect(text).toContain(pointer);
+			expect(text).toContain("**`defaultStatus`** must be one of the configured `statuses`");
+			expect(text).not.toContain(STATE_MACHINE_PLACEHOLDER);
+			expect(text).not.toContain("**Using the machine.**");
+			expect(text).not.toContain("category: active");
 		});
 	}
 });
@@ -142,14 +138,14 @@ describe("composeGuideText", () => {
 
 describe("the shipped execution guides", () => {
 	const guides: Array<[string, string, string]> = [
-		["CLI task execution", CLI_TASK_EXECUTION_GUIDE, "backlog instructions overview"],
-		["MCP task execution", MCP_TASK_EXECUTION_GUIDE, "backlog://workflow/overview"],
+		["CLI task execution", CLI_TASK_EXECUTION_GUIDE, "backlog instructions task-execution"],
+		["MCP task execution", MCP_TASK_EXECUTION_GUIDE, "backlog://workflow/task-execution"],
 	];
 
-	for (const [name, text, overviewPointer] of guides) {
-		it(`${name} follows the machine and sends the reader back to the overview`, () => {
+	for (const [name, text, machinePointer] of guides) {
+		it(`${name} follows the machine and points the reader at this guide's rendered machine`, () => {
 			expect(text).toContain("state machine");
-			expect(text).toContain(overviewPointer);
+			expect(text).toContain(machinePointer);
 			expect(text).toContain("never set a status the machine does not list");
 			expect(text).toContain("`forbidden`");
 			// The old universal sequence is gone: no guide tells the reader to just set In Progress.
@@ -183,9 +179,9 @@ describe("the project's own machine", () => {
 		await Bun.write(join(testDir, "backlog", "config.yml"), content);
 	};
 
-	it("serves the project's statuses inside the overview", async () => {
+	it("serves the project's statuses inside the execution guide", async () => {
 		await write(HEALTHY_CONFIG);
-		const composed = await composeGuideTextWithProject(MCP_WORKFLOW_OVERVIEW, filesystem);
+		const composed = await composeGuideTextWithProject(MCP_TASK_EXECUTION_GUIDE, filesystem);
 
 		expect(composed).toContain("| To Do | active | - | shown |");
 		expect(composed).toContain("`To Do` -> `Done`");
@@ -193,9 +189,9 @@ describe("the project's own machine", () => {
 		expect(composed).not.toContain("### State machine config problem");
 	});
 
-	it("keeps the overview coming, and says why, when the statuses block is broken", async () => {
+	it("keeps the execution guide coming, and says why, when the statuses block is broken", async () => {
 		await write('project_name: "Broken"\nstatuses:\n  - name: "To Do"\n  - category: active\n');
-		const composed = await composeGuideTextWithProject(MCP_WORKFLOW_OVERVIEW, filesystem);
+		const composed = await composeGuideTextWithProject(MCP_TASK_EXECUTION_GUIDE, filesystem);
 
 		expect(composed).toContain("### State machine config problem");
 		expect(composed).toContain("entry 2: missing or empty `name`");

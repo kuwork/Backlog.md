@@ -158,11 +158,15 @@ After the code is done:
 
 * 🗂️ **Memos quick notes** -- Capture thoughts instantly with feed / calendar / pinboard views, Markdown & pasted images, archiving
 
+* 🕸️ **Graph queries** -- Read-only Cypher over the project graph of tasks, docs, dependencies, and links — the same graph behind the web UI's graph search
+
 * 🎛️ **State-machine visual editor** -- Edit project state transitions in Settings with a live preview tree
 
 * 📄 **Rich-text paste & document upload** -- Paste from Word or web pages as Markdown, with .docx upload and auto image extraction
 
 * 📅 **Tracking Gantt chart** -- Visual timeline based on `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` date fields, with planned vs. actual dual-layer comparison
+
+* 🗄️ **Live SQL query blocks** -- Embed read-only SQL queries in any Markdown body, rendered live from project-local SQLite / DuckDB / CSV / Excel data as table / list / value views, with export
 
 * 🔍 **Powerful search** -- fuzzy search across tasks, docs & decisions with `backlog search`
 
@@ -241,6 +245,53 @@ Memos are Backlog.md's fifth file entity: lightweight, title-less notes stored a
 ![Memos Pinboard View](./.github/memos-pinboard.jpg)
 
 ![Memos Feed & Calendar](./.github/memos-feed-calendar.jpg)
+
+---
+
+## 🕸️ Graph Queries
+
+Tasks, documents, decisions, memos, and the dependencies / links / tags between them form a project graph. `backlog graph` lets you run **read-only Cypher queries** against it from the command line (the same graph behind the graph search in `backlog browser`) — handy for ad-hoc analysis, scripting, or piping results into other tools:
+
+```bash
+# Inspect the graph structure (node / relationship tables)
+backlog graph schema
+
+# Find the tasks blocking the most other tasks
+backlog graph query default "MATCH (t:FileNode)<-[:DependsOn]-(d:FileNode) RETURN t.title, count(d) AS blocked ORDER BY blocked DESC LIMIT 10"
+```
+
+- Queries are strictly read-only: write keywords are rejected, and neither the graph nor the Markdown corpus is ever modified
+- Each call rebuilds the graph in-process (a few seconds); `--json` prints machine-readable results
+- You can also create your own user databases with `backlog graph create` / `import` (stored under `backlog/databases/`) and load custom nodes and relationships from CSV
+
+![Databases page: database list, read-only Cypher, and the result graph](./.github/graph-query.jpg)
+
+### Custom graph databases
+
+`default` is the derived graph of the Markdown corpus (a read-only cache — writes are refused because the next rebuild would overwrite them). Writes only happen in **user databases** you create yourself:
+
+```bash
+# Create a database, then a schema and data
+backlog graph create people "people and their relationships"
+backlog graph insert people "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"
+backlog graph insert people "CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob', age: 41})"
+
+# Or import a CSV straight away: first column is the key, re-importing updates (upsert)
+backlog graph import people data/people.csv --node Person
+# The same file can become edges: two endpoint columns matched against existing node keys
+backlog graph import people data/knows.csv --rel KNOWS --from person --to friend --node Person
+
+backlog graph query people "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
+```
+
+- User databases persist as JSON snapshots under `backlog/databases/`; `insert` snapshots after every statement, and `import` validates the file before opening the database, leaving it untouched on errors
+- `list` / `describe` / `drop` manage the lifecycle; the web UI's **Databases** page lists every database and runs the same read-only Cypher against it
+
+### Legend & style settings
+
+The graph view's legend panel in the web UI is configured **per node type**: a caption template (`{{field}}`, auto-guessed from `name` / `title` and friends when empty), a base colour, and first-match-wins colouring rules — quick methods like equal-width bins, quantiles, thresholds, or by-value generate a rule set from one field that you then refine by hand. Relationship types get their own line style (solid / dashed / dotted / long), arrows, colour, and display name. Legend entries can be hidden individually and node captions switched off entirely. All settings persist per database in the browser.
+
+![Legend settings panel](./.github/graph-legend.jpg)
 
 ---
 
@@ -390,6 +441,29 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 Task, wiki, and file modals include a bookmark-style outline: a narrow tab peeks from the modal's left edge; clicking expands a floating panel as tall as the modal itself. Sections are organized by region (description / acceptance criteria / plan / notes / comments), scrollspy highlights the active section as you scroll, and clicking an item smooth-scrolls to it. When the panel edge is <300 px from the viewport, the drawer switches to floating mode so the outline remains usable on narrow windows.
 
 ![TOC Drawer](./.github/toc-drawer.gif)
+
+### Live SQL Query Blocks
+
+Any Markdown body (tasks, documents, decisions, memos, wiki pages) can embed a `sqlite-query` / `duckdb-query` fenced block; the web UI's reading view **executes the read-only query live** against project-local data files and renders the result, while the editor keeps showing the raw source:
+
+````markdown
+```sqlite-query
+source: backlog/databases/shop.sqlite
+view: table
+sql: |
+  SELECT product, price, stock
+  FROM inventory
+  ORDER BY price DESC
+```
+````
+
+- `source` is a project-relative path: `.sqlite` / `.sqlite3` / `.db` for `sqlite-query`; `.duckdb` plus `.csv` / `.xlsx` for `duckdb-query` (CSV/Excel open an in-memory instance and read the file directly; the Excel extension autoloads)
+- Read-only is enforced in three layers: statement-shape allowlist, keyword blocklist, and a physically read-only engine handle; results cap at 500 rows
+- `view` supports `table` (default) / `list` / `value`; `duckdb-query` additionally accepts `copy_to: <path>` to export the result as a CSV / Excel file inside the project
+
+![Live SQL query blocks: table / list / value / empty views](./.github/live-query1.jpg)
+
+![Live SQL query blocks: CSV and Excel data sources](./.github/live-query2.jpg)
 
 To keep the Web UI running as an auto-starting local service, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
 

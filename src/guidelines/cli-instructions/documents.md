@@ -2,6 +2,10 @@
 
 Documents live under `backlog/docs/` and are used for long-term project reference information such as development standards, configuration guides, architecture documentation, and runbooks. They differ from `tasks/` (specific work items), `decisions/` (decision records), and `drafts/` (draft ideas).
 
+Documents (like any markdown body rendered by the Web UI) can embed **live SQL query blocks** (`sqlite-query` / `duckdb-query`) that execute against project-local SQLite / DuckDB / CSV / XLSX data sources and render results in the reading view — see [Live SQL Query Blocks](#live-sql-query-blocks-sqlite-query--duckdb-query) below before writing one.
+
+Documents also support **rich links**: in-document heading anchors for a table of contents, short aliased links to backlog items (`/task/506`, `/documentation/001`, `/decisions/042`, `/wiki/...`) including `:LINE` / `:START-END` suffixes that open the target scoped to specific lines, and project-relative code file links that open a file preview — see [Links in Documents](#links-in-documents) below before referencing other items or files.
+
 Always use Backlog.md CLI commands to create and update documents so IDs, frontmatter, paths, and search metadata stay consistent. Avoid editing document markdown files directly, except when adding complex content that cannot be safely passed through shell arguments (see [Complex content with backticks](#complex-content-with-backticks-or-shell-sensitive-characters) below).
 
 ### Document Commands
@@ -179,6 +183,82 @@ An item link opens the item modal; a code file link opens the file preview. Add 
 ### Searching Documents
 
 `backlog doc search <query>` lists matches across the document tree with id, title, path, type, tags, score, and a follow-up `backlog doc view` command for each hit. Add `--plain` for one line per hit, or `--json` for a versioned envelope. Paging works as it does on `doc list`: `--limit <n>` caps the list silently, and `--max-count <n>`, `--skip <n>` and `--count` page it. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog doc search <query> --max-count <n> --skip <m>`; run that command for the following hits and stop when the footer has no `Next:` part. `--count` prints only how many documents match and cannot be combined with `--json`.
+
+### Live SQL Query Blocks (`sqlite-query` / `duckdb-query`)
+
+Any markdown body rendered by the Web UI (documents, tasks, decisions, memos, wiki pages) can embed a **live** SQL query with a `sqlite-query` or `duckdb-query` fenced code block. In the reading view the block executes against the data source and renders the result; in the editor it stays raw source and never executes.
+
+````markdown
+```sqlite-query
+source: backlog/databases/shop.sqlite
+view: table
+sql: |
+  SELECT product, price, stock
+  FROM inventory
+  ORDER BY price DESC
+```
+````
+
+Fields are top-level `key: value` pairs; use the `sql: |` block scalar for multi-line SQL:
+
+| Field | Required | Default | Notes |
+|-------|----------|---------|-------|
+| `source` | yes | — | Project-root-relative path to the data source |
+| `sql` | yes | — | A single `SELECT` or `WITH ... SELECT` statement |
+| `view` | no | `table` | `table` (grid) / `list` (key-value per record) / `value` (first cell of the first row, inline — good for a single metric) |
+| `refresh` | no | `manual` | Manual refresh only; no auto/scheduled refresh |
+| `copy_to` | no | — | `duckdb-query` only: project-relative `.csv` / `.xlsx` target that enables the write path (see below) |
+
+Data sources:
+
+- `sqlite-query`: `.sqlite` / `.sqlite3` / `.db` files anywhere inside the project directory.
+- `duckdb-query`: `.duckdb` files, plus CSV / Excel data sources (`.csv` / `.xlsx`). For CSV/XLSX the block opens an in-memory instance and the SQL reads the file directly:
+
+  ````markdown
+  ```duckdb-query
+  source: backlog/databases/orders.csv
+  sql: SELECT * FROM 'backlog/databases/orders.csv'
+  ```
+  ````
+
+  ````markdown
+  ```duckdb-query
+  source: backlog/databases/products.xlsx
+  sql: SELECT * FROM read_xlsx('backlog/databases/products.xlsx', sheet = 'Sheet2')
+  ```
+  ````
+
+  The official `excel` extension autoloads on first use — never write `INSTALL` / `LOAD` yourself (both are rejected). `source` stays required for CSV/XLSX and must match the file the SQL reads: it is the security anchor the path gates are checked against.
+
+Rules (fail-closed — a violation renders an error inside the block and never affects the rest of the page):
+
+- `source` must be project-root-relative: no leading `/`, no absolute paths / drive letters / UNC / URLs / `~`, no `..` escape, no symlinks pointing outside the project. Files under ignored directories (`node_modules`, `.git`, `dist`, `build`, `.locks`, dot-directories except `.backlog`) are rejected.
+- SQL must be read-only: a single `SELECT` / `WITH ... SELECT`, no internal semicolons (one trailing `;` is tolerated and stripped). Write keywords (`INSERT` / `UPDATE` / `DELETE` / `CREATE` / `DROP` / `ATTACH` / `COPY` / `PRAGMA` / `INSTALL` / `LOAD` / ...) are rejected by static validation before the engine runs, and the engine itself is opened read-only as the final guarantee.
+- SQL string literals containing `http(s)://` / `s3://` URLs are rejected; local file paths inside literals must pass the same project gates as `source`.
+- Results are capped at 500 rows and flagged as truncated beyond that; there is no pagination — tighten the SQL instead.
+- `copy_to` (DuckDB only) wraps the block's `SELECT` in `COPY (<sql>) TO '<target>'` and writes a new `.csv` / `.xlsx` file inside the project on every run (idempotent overwrite; the block shows "written to: <path>"). The target passes the same project gates and can never be a `.duckdb` file — the database itself always stays read-only. A `sqlite-query` block carrying `copy_to` is rejected.
+- DuckDB values render coerced: BIGINT → decimal text, DECIMAL → scaled decimal string, TIMESTAMP / DATE → ISO strings, BLOB → `<blob N bytes>` placeholder, NULL → empty cell.
+
+Writing CSV / Excel output (`duckdb-query` only): add the `copy_to` field to export the query result as a new project-local file every time the block runs:
+
+````markdown
+```duckdb-query
+source: backlog/databases/shop.duckdb
+view: table
+copy_to: output/category-revenue.csv
+sql: |
+  SELECT category,
+         COUNT(*)              AS orders,
+         ROUND(SUM(amount), 2) AS revenue
+  FROM order_details
+  GROUP BY category
+  ORDER BY revenue DESC
+```
+````
+
+The server wraps the `SELECT` in `COPY (<sql>) TO '<target>'` (`.csv` → `HEADER TRUE`; `.xlsx` → `FORMAT XLSX, HEADER TRUE`), overwrites the target idempotently, and the block shows "written to: <path>". The written file stays inside the project, so it can itself become the `source` of another query block.
+
+Because these blocks contain backticks, do not pass them through `--content` / `--append-content` — the shell would try to execute the fence text. Use the [complex content workflow](#complex-content-with-backticks-or-shell-sensitive-characters): create the document with `backlog doc create`, then write the fenced blocks into the file directly, after the frontmatter.
 
 ### Key Rules
 

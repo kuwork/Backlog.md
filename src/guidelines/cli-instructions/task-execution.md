@@ -2,9 +2,61 @@
 
 Use this guide when you are working on an existing Backlog task.
 
+## The Project State Machine (`backlog/config.yml` -> `statuses`)
+
+`statuses` **is** the project's state machine: the columns a task can occupy and, optionally, the moves declared between them. Read the configured `statuses` and `defaultStatus` (with `backlog config list --plain`) before you set a task's status: a new project starts from the seven-column machine below, but projects customize or replace that list, so never assume `To Do / In Progress / Done`.
+
+**`defaultStatus`** must be one of the configured `statuses`. If it is not, warn the user and ask them to either add it to `statuses` or choose a different `defaultStatus`.
+
+**Object form.** Each entry is an object:
+
+```yaml
+statuses:
+  - name: "To Do"            # the column label; the only required field
+    category: active         # initial | active | wip | blocked | done | dropped
+    exit: complete           # terminal statuses only: complete | archive
+    display: false           # false hides the board column (the status still exists)
+    next:                    # optional; the declared moves out of this status
+      - to: "Planning"       # required on every transition
+        when: "why this move happens"   # human-readable trigger
+        ai: allowed          # allowed | allowed_if | propose | forbidden
+        if: "condition text" # required when ai: allowed_if
+        requires: "..."      # machine-checkable precondition
+        evidence: "..."      # what must exist before the move
+```
+
+- `category` decides behaviour: `done` / `dropped` are terminal (reaching one stamps the end date), `wip` and `blocked` are work in flight, `initial` is the start.
+- Terminality is never guessed from a name: `backlog config list --plain` prints the resolved **`terminalStatuses`**, and `GET /api/config` and `GET /api/statuses` return the same derived list. Read it there instead of assuming the last column or a column called `Done`.
+- `ai` says who may make the move: `allowed` (the AI may move on its own), `allowed_if` (only while `if` holds), `propose` (propose the move and wait for the user), `forbidden` (only the user may move).
+- `display: false` keeps a status working while hiding its board column.
+- `next` absent means no transitions are declared for that status.
+
+**Legacy form.** A plain string array is still valid and means the project declares no transitions:
+
+```yaml
+statuses: ["To Do", "In Progress", "Done"]
+```
+
+The last entry is treated as terminal, and a name that normalises to `inprogress` is `wip`; everything else is `active`.
+
+**Changing it on request.** Write the **whole** `statuses` array back and never drop a field you did not mean to change — `category`, `exit`, `display` and every `next` entry must survive. There is no `backlog config set statuses` command (the CLI refuses to set `statuses` directly on purpose), so object-form edits go through the settings page editor (`backlog browser` -> Settings -> state machine) or the config file itself. Ask before restructuring a machine, and never set a task to a status the config does not declare.
+
+**Using the machine.** Everything above describes the *format*. The block right below is *this* project's machine, rendered from `backlog/config.yml`, and it outranks any status list you remember from elsewhere or from the defaults. To move a task:
+
+1. Read its current `status` (`backlog task view <id> --plain`).
+2. Look that status up in the block below and read its `next` list - those edges are the only transitions declared out of it.
+3. Pick the edge whose `when` describes what actually happened. If none fits, do not move the task: say why and leave the status alone.
+4. Obey the edge's `ai` before acting. `forbidden`: only the user may make this move - ask and wait. `propose`: propose it and wait for confirmation. `allowed_if`: the edge's `if` must hold, and `requires` must be satisfiable, before you move. `allowed`: you may make the move yourself.
+5. Satisfy `evidence` first when the edge names something (a written comment, a filled field), then write the new status with `backlog task edit <id> -s "<target>"`.
+6. The block's "Stop and wait for the user" section collects every edge you may not take alone - never move along one without an explicit user answer.
+
+If the block says the project declares no transitions (a plain string array), there is no edge list to consult: a task may move between any pair of non-terminal statuses, so use the status the user asked for. Never set a status the machine does not list.
+
+{{STATE_MACHINE}}
+
 ### Planning Workflow
 
-**Follow this project's state machine, not a fixed sequence.** `backlog/config.yml` declares the statuses and the transitions between them, and the overview you load renders that machine under "This project's state machine". **Re-read the overview (`backlog instructions overview`) whenever you are about to move a task**, so you work from this project's machine rather than a remembered one:
+**Follow this project's state machine, not a fixed sequence.** `backlog/config.yml` declares the statuses and the transitions between them, and this guide renders that machine above under "This project's state machine". **Re-read this guide (`backlog instructions task-execution`) whenever you are about to move a task**, so you work from this project's machine rather than a remembered one:
 
 - Read the task's current status, then look that status up in the rendered machine.
 - Move only along a declared `next` edge whose `when` matches what actually happened, and obey that edge's `ai`: `forbidden` means the user makes the move (ask and wait), `propose` means propose it and wait for confirmation, `allowed_if` means the edge's `if` must hold and `requires` must be satisfiable, `allowed` means you may move.
@@ -17,7 +69,7 @@ Before writing code for non-trivial work:
 1. Read the task:
    - `backlog task view {{TASK_ID:123}} --plain`
 2. Move it along the machine and assign yourself:
-   - Re-read the overview for this project's machine if you have not seen it in this conversation: `backlog instructions overview`
+   - Re-read this guide for this project's machine if you have not seen it in this conversation: `backlog instructions task-execution`
    - Inspect accepted statuses if needed: `backlog task edit {{TASK_ID:123}} --help`
    - `backlog task edit {{TASK_ID:123}} -s "<the status your machine's matching edge leads to>" -a @your-name`
    - If the edge you need is `ai: forbidden` or `propose`, do not write the status yourself: propose the move and wait for the user.
@@ -108,6 +160,8 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 | Clear Parent            | `backlog task edit {{TASK_ID:123}} --clear-parent`       |
 
 `--modified-file` records project-root-relative paths of files changed by the task. Repeat the flag or use comma-separated values to record multiple files.
+
+`-t` updates only the frontmatter title; the task file keeps its creation-time name. If the filename should match the new title, rename it with `mv` (see the finalization guide).
 
 `--parent` files an existing task under another task; `--clear-parent` removes the assignment. The child keeps its own ID — only the parent edge changes. The target must exist and the change must not create a cycle, so a task can never be its own parent or sit under one of its own descendants.
 

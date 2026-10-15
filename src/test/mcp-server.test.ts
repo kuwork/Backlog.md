@@ -4,7 +4,6 @@ import {
 	MCP_DRAFTS_GUIDE,
 	MCP_MILESTONES_GUIDE,
 	MCP_TASK_CREATION_GUIDE,
-	MCP_TASK_EXECUTION_GUIDE,
 	MCP_TASK_FINALIZATION_GUIDE,
 	MCP_WORKFLOW_OVERVIEW,
 } from "../guidelines/mcp/index.ts";
@@ -102,21 +101,33 @@ describe("McpServer bootstrap", () => {
 		await server.stop();
 	});
 
-	it("workflow overview resource carries the static guide plus the project's machine", async () => {
+	it("workflow overview resource points at the machine; the execution guide carries it", async () => {
 		const server = await bootstrapServer();
 
-		const result = await server.testInterface.readResource({
+		const overviewResult = await server.testInterface.readResource({
 			params: { uri: "backlog://workflow/overview" },
 		});
 
-		expect(result.contents).toHaveLength(1);
-		const text = getContentsText(result.contents);
+		expect(overviewResult.contents).toHaveLength(1);
+		const overviewText = getContentsText(overviewResult.contents);
+		// The overview only points at the machine; the static format section and the rendered machine
+		// both live in the task execution guide.
+		expect(overviewText).toContain("## The Project State Machine");
+		expect(overviewText).toContain("backlog://workflow/task-execution");
+		expect(overviewText).not.toContain("## This project's state machine");
+		expect(overviewText).not.toContain("{{STATE_MACHINE}}");
+		expect(overviewResult.contents[0]?.mimeType).toBe("text/markdown");
+
+		const executionResult = await server.testInterface.readResource({
+			params: { uri: "backlog://workflow/task-execution" },
+		});
+
+		const executionText = getContentsText(executionResult.contents);
 		// The static half is the shipped text; the dynamic half is rendered from this project.
-		expect(text).toContain("## The Project State Machine (`backlog/config.yml` -> `statuses`)");
-		expect(text).toContain("## This project's state machine");
-		expect(text).toContain("| To Do | active | - | shown |");
-		expect(text).not.toContain("{{STATE_MACHINE}}");
-		expect(result.contents[0]?.mimeType).toBe("text/markdown");
+		expect(executionText).toContain("## The Project State Machine (`backlog/config.yml` -> `statuses`)");
+		expect(executionText).toContain("## This project's state machine");
+		expect(executionText).toContain("| To Do | active | - | shown |");
+		expect(executionText).not.toContain("{{STATE_MACHINE}}");
 
 		await server.stop();
 	});
@@ -167,7 +178,7 @@ describe("McpServer bootstrap", () => {
 		);
 	});
 
-	it("task execution guide resource returns correct content", async () => {
+	it("task execution guide resource returns the guide with the project's machine composed in", async () => {
 		const server = await bootstrapServer();
 
 		const result = await server.testInterface.readResource({
@@ -175,7 +186,12 @@ describe("McpServer bootstrap", () => {
 		});
 
 		expect(result.contents).toHaveLength(1);
-		expect(getContentsText(result.contents)).toBe(MCP_TASK_EXECUTION_GUIDE);
+		const text = getContentsText(result.contents);
+		// The guide carries the placeholder, so the served text is the shipped guide with this
+		// project's machine rendered into it — never byte-equal to the raw guide.
+		expect(text).toContain("## Task Execution Guide");
+		expect(text).toContain("## This project's state machine");
+		expect(text).not.toContain("{{STATE_MACHINE}}");
 
 		await server.stop();
 	});
@@ -225,10 +241,19 @@ describe("McpServer bootstrap", () => {
 		const overview = await server.testInterface.callTool({
 			params: { name: "get_backlog_instructions", arguments: {} },
 		});
-		// The overview tool text carries the project's machine too, not just the shipped static text.
+		// The overview only points at the machine; the rendered machine lives in the execution guide.
 		expect(getText(overview.content)).toContain("## The Project State Machine");
-		expect(getText(overview.content)).toContain("## This project's state machine");
+		expect(getText(overview.content)).toContain('instruction="task-execution"');
+		expect(getText(overview.content)).not.toContain("## This project's state machine");
 		expect(getText(overview.content)).not.toContain("{{STATE_MACHINE}}");
+
+		const execution = await server.testInterface.callTool({
+			params: { name: "get_backlog_instructions", arguments: { instruction: "task-execution" } },
+		});
+		// The execution guide text carries the project's machine, not just the shipped static text.
+		expect(getText(execution.content)).toContain("## The Project State Machine");
+		expect(getText(execution.content)).toContain("## This project's state machine");
+		expect(getText(execution.content)).not.toContain("{{STATE_MACHINE}}");
 
 		const creation = await server.testInterface.callTool({
 			params: { name: "get_backlog_instructions", arguments: { instruction: "task-creation" } },

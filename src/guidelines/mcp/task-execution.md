@@ -1,12 +1,61 @@
 ## Task Execution Guide
 
+## The Project State Machine (`backlog/config.yml` -> `statuses`)
+
+`statuses` **is** the project's state machine: the columns a task can occupy and, optionally, the moves declared between them. Read it before you set a task's status — never assume `To Do / In Progress / Done`.
+
+**Object form.** Each entry is an object:
+
+```yaml
+statuses:
+  - name: "To Do"            # the column label; the only required field
+    category: active         # initial | active | wip | blocked | done | dropped
+    exit: complete           # terminal statuses only: complete | archive
+    display: false           # false hides the board column (the status still exists)
+    next:                    # optional; the declared moves out of this status
+      - to: "Planning"       # required on every transition
+        when: "why this move happens"   # human-readable trigger
+        ai: allowed          # allowed | allowed_if | propose | forbidden
+        if: "condition text" # required when ai: allowed_if
+        requires: "..."      # machine-checkable precondition
+        evidence: "..."      # what must exist before the move
+```
+
+- `category` decides behaviour: `done` / `dropped` are terminal (reaching one stamps the end date), `wip` and `blocked` are work in flight, `initial` is the start.
+- `ai` says who may make the move: `allowed` (the AI may move on its own), `allowed_if` (only while `if` holds), `propose` (propose the move and wait for the user), `forbidden` (only the user may move).
+- `display: false` keeps a status working while hiding its board column.
+- `next` absent means no transitions are declared for that status.
+
+**Legacy form.** A plain string array is still valid and means the project declares no transitions:
+
+```yaml
+statuses: ["To Do", "In Progress", "Done"]
+```
+
+The last entry is treated as terminal, and a name that normalises to `inprogress` is `wip`; everything else is `active`.
+
+**Changing it on request.** Write the **whole** `statuses` array back and never drop a field you did not mean to change — `category`, `exit`, `display` and every `next` entry must survive. There is no CLI command that sets `statuses` (the CLI refuses it on purpose), so object-form edits go through the settings page editor (Settings -> state machine) or the config file itself. Ask before restructuring a machine, and never set a task to a status the config does not declare.
+
+**Using the machine.** Everything above describes the *format*. The block right below is *this* project's machine, rendered from `backlog/config.yml`, and it outranks any status list you remember from elsewhere or from the defaults. To move a task:
+
+1. Read its current `status` (`task_view`).
+2. Look that status up in the block below and read its `next` list - those edges are the only transitions declared out of it.
+3. Pick the edge whose `when` describes what actually happened. If none fits, do not move the task: say why and leave the status alone.
+4. Obey the edge's `ai` before acting. `forbidden`: only the user may make this move - ask and wait. `propose`: propose it and wait for confirmation. `allowed_if`: the edge's `if` must hold, and `requires` must be satisfiable, before you move. `allowed`: you may make the move yourself.
+5. Satisfy `evidence` first when the edge names something (a written comment, a filled field), then write the new status with `task_edit`.
+6. The block's "Stop and wait for the user" section collects every edge you may not take alone - never move along one without an explicit user answer.
+
+If the block says the project declares no transitions (a plain string array), there is no edge list to consult: a task may move between any pair of non-terminal statuses, so use the status the user asked for. Never set a status the machine does not list.
+
+{{STATE_MACHINE}}
+
 ### Planning Workflow
 
-> **Follow this project's state machine, not a fixed sequence.** `backlog/config.yml` declares the statuses and the transitions between them, and the overview renders that machine under "This project's state machine". Re-read it (`backlog://workflow/overview`, or `get_backlog_instructions` with no `instruction`) whenever you are about to move a task: read the task's current status, move only along a declared `next` edge whose `when` matches, obey that edge's `ai` (`forbidden` = the user makes the move, ask and wait; `propose` = propose and wait; `allowed_if` = the edge's `if` must hold; `allowed` = you may move), satisfy its `evidence` first, and never set a status the machine does not list. Status names are project data: never assume `In Progress` (or any other name) exists, comes next, or is yours to set.
+> **Follow this project's state machine, not a fixed sequence.** `backlog/config.yml` declares the statuses and the transitions between them, and this guide renders that machine above under "This project's state machine". Re-read this guide (`backlog://workflow/task-execution`, or `get_backlog_instructions` with `instruction="task-execution"`) whenever you are about to move a task: read the task's current status, move only along a declared `next` edge whose `when` matches, obey that edge's `ai` (`forbidden` = the user makes the move, ask and wait; `propose` = propose and wait; `allowed_if` = the edge's `if` must hold; `allowed` = you may move), satisfy its `evidence` first, and never set a status the machine does not list. Status names are project data: never assume `In Progress` (or any other name) exists, comes next, or is yours to set.
 
 > **Non-negotiable:** Capture an implementation plan in the Backlog task _before_ writing any code or running commands. The plan must live in the task record prior to implementation and remain up to date when you close the task.
 
-1. **Move the task along the machine and assign yourself** via `task_edit` - pick the status the matching `next` edge leads to (re-read the overview if you have not seen this project's machine yet), and if that edge is `ai: forbidden` or `propose`, do not set it yourself: propose the move and wait for the user
+1. **Move the task along the machine and assign yourself** via `task_edit` - pick the status the matching `next` edge leads to (re-read this guide if you have not seen this project's machine yet), and if that edge is `ai: forbidden` or `propose`, do not set it yourself: propose the move and wait for the user
 2. **Assign to yourself** via `task_edit` with assignee field
 3. **Review task description, acceptance criteria, references, and documentation** - Check the description for outcome and any local code context, review acceptance criteria to confirm scope and success conditions, check `references` for external links/issues, and check `documentation` for design docs or API specs before planning
 4. **Draft the implementation plan** - Think through the approach, review code, identify key files
@@ -79,6 +128,8 @@ Use `task_edit` to modify these fields:
 | Modified Files | `modifiedFiles` |
 | Milestone | `milestone` |
 | Parent | `parentTaskId` |
+
+`title` updates only the frontmatter title; the task file keeps its creation-time name. If the filename should match the new title, rename it with `mv` (see the finalization guide).
 
 ### Clearing List Fields
 

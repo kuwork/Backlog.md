@@ -52,8 +52,8 @@ function createWorkflowTool(server: McpServer): McpToolHandler {
 		workflowInstructionsSchema,
 		async (input: WorkflowInstructionsInput) => {
 			const guide = getToolPayload(input.instruction ?? "overview");
-			// The overview is assembled per call so the AI sees the project's current state machine,
-			// not the shipped static text (doc-19 FR-8).
+			// Guides are assembled per call so the AI sees the project's current state machine where a
+			// guide carries the placeholder, not the shipped static text (doc-19 FR-8).
 			const toolText = await composeGuideTextWithProject(guide.toolText ?? guide.resourceText, server.filesystem);
 
 			return {

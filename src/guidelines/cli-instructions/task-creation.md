@@ -85,6 +85,8 @@ Include:
 - Dependencies when work must happen in order.
 - An assignee with `-a` when the task has a known owner; omitting it applies the project's configured `defaultAssignee` when one is set; use `--unassign` to create the task with no assignee even when a default is configured. `-a` accepts multiple assignees: repeat the flag (`-a @alice -a @bob`) or pass comma-separated names (`-a "@alice,@bob"`).
 
+**Status:** omit `-s` so the task starts in the project's configured `defaultStatus` (read it with `backlog config list --plain`). Pass `-s` only when the user asked for a specific status, and never set one the config does not declare. The state machine's transition rules only matter when moving tasks between statuses — see `backlog instructions task-execution`.
+
 **Do NOT include an Implementation Plan when creating a task.** The plan is written later by the agent who executes the task. After the task is created, the executing agent will set it In Progress, assign themselves, draft a plan, share it with the user, and wait for approval before writing code.
 
 Examples:

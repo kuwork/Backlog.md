@@ -87,8 +87,8 @@ export function registerInstructionsCommand(program: Command): void {
 				process.exit(1);
 			}
 
-			// The overview carries the project's state machine, so it is assembled here from the current
-			// config instead of printing the shipped static text (doc-19 FR-8).
+			// Guides may carry the project's state machine placeholder, so the text is assembled here from
+			// the current config instead of printing the shipped static text verbatim (doc-19 FR-8).
 			const configText = readRuntimeConfigTextSync();
 			const composed = composeGuideText(
 				selectedGuide.resourceText,

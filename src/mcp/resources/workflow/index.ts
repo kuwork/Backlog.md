@@ -10,8 +10,8 @@ export function registerWorkflowResources(server: McpServer): void {
 			name: guide.name,
 			description: guide.description,
 			mimeType: guide.mimeType,
-			// The overview carries the project's own state machine, so it is assembled per read from
-			// the current config rather than served as the shipped static text.
+			// Guides may carry the project's own state machine placeholder, so they are assembled per read
+			// from the current config rather than served as the shipped static text.
 			handler: async () => ({
 				contents: [
 					{
