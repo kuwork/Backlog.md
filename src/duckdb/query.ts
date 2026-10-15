@@ -8,10 +8,67 @@
  * explorer already serialises and prints.
  */
 
-import { DuckDBInstance } from "@duckdb/node-api";
+import { existsSync, renameSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { DuckDBInstance } from "@duckdb/node-api";
 import type { SqliteCell } from "../sqlite/query.ts";
 import type { DuckdbSourceKind } from "./paths.ts";
 import { resolveDuckdbWriteTarget } from "./paths.ts";
+
+/**
+ * `duckdb.node` links against a sibling shared library (duckdb.dll / libduckdb.so /
+ * libduckdb.dylib). In a compiled single-file executable Bun extracts only the `.node` into the
+ * temp dir, so the OS loader cannot find the library (oven-sh/bun#44063). scripts/build.ts
+ * therefore embeds the sibling as a virtual module; it is written into the same temp dir before
+ * the binding is required. Running from source there is no virtual module and node_modules
+ * already keeps the files side by side, so this is a no-op.
+ */
+const DUCKDB_SIBLING_NAMES: Record<string, string> = {
+	win32: "duckdb.dll",
+	linux: "libduckdb.so",
+	darwin: "libduckdb.dylib",
+};
+
+async function ensureDuckdbSharedLibrary(): Promise<void> {
+	let embeddedPath: string | undefined;
+	try {
+		const mod: unknown = require("virtual:duckdb-sibling-lib");
+		embeddedPath = typeof mod === "string" ? mod : (mod as { default?: string })?.default;
+	} catch {
+		return; // not bundled: running from source (bun run / tests)
+	}
+	const name = DUCKDB_SIBLING_NAMES[process.platform];
+	if (!embeddedPath || !name) return;
+
+	// Bun extracts the embedded .node into the temp dir root; the sibling has to sit next to it
+	// under the exact name the binding links against. The size check keeps a leftover from an
+	// older build from shadowing the new library; write-then-rename keeps concurrent exes atomic.
+	const dest = join(tmpdir(), name);
+	const size = Bun.file(embeddedPath).size;
+	if (existsSync(dest) && statSync(dest).size === size) return;
+	const temp = `${dest}.${process.pid}.tmp`;
+	await Bun.write(temp, Bun.file(embeddedPath));
+	renameSync(temp, dest);
+}
+
+type DuckdbNodeApi = typeof import("@duckdb/node-api");
+
+let duckdbApiPromise: Promise<DuckdbNodeApi> | null = null;
+
+/**
+ * Loads @duckdb/node-api lazily: the binding loads at import time, so a static import would crash
+ * a compiled executable at startup before the sibling library above has been written out.
+ */
+function loadDuckdbNodeApi(): Promise<DuckdbNodeApi> {
+	if (!duckdbApiPromise) {
+		duckdbApiPromise = (async () => {
+			await ensureDuckdbSharedLibrary();
+			return await import("@duckdb/node-api");
+		})();
+	}
+	return duckdbApiPromise;
+}
 
 /** Result cap. Also the memory guard: there is no pagination, so a bigger answer means a better SQL. */
 export const DUCKDB_MAX_ROWS = 500;
@@ -100,6 +157,7 @@ export async function runDuckdbQuery(options: {
 	// A `.duckdb` source is attached read-only so the engine rejects any mutation; a CSV / XLSX data
 	// file opens an in-memory instance and the SQL's bare path is resolved by the engine's
 	// replacement scan (plus autoload of the official `excel` extension for xlsx).
+	const { DuckDBInstance } = await loadDuckdbNodeApi();
 	const instance = await DuckDBInstance.create(
 		options.kind === "database" ? options.dbPath : ":memory:",
 		options.kind === "database" ? { access_mode: "READ_ONLY" } : undefined,

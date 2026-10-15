@@ -63,10 +63,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: bun-linux-x64-baseline
+            duckOs: linux
+            duckCpu: x64
           - os: macos-latest
             target: bun-darwin-x64
+            duckOs: darwin
+            duckCpu: x64
           - os: windows-latest
             target: bun-windows-x64-baseline
+            duckOs: win32
+            duckCpu: x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -81,7 +87,10 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.os }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.os }}-bun-${{ env.BUN_VERSION }}-
-      - run: bun install --frozen-lockfile --linker=isolated
+      # --os/--cpu make bun install the build target's DuckDB native binding too; by default only
+      # the runner host's platform-specific optionalDependencies are installed, and the build
+      # embeds the target's binding (see scripts/build.ts).
+      - run: bun install --frozen-lockfile --linker=isolated --os ${{ matrix.duckOs }} --cpu ${{ matrix.duckCpu }}
       - name: Prime Bun cache for baseline target (Windows workaround)
         if: ${{ contains(matrix.target, 'baseline') && matrix.os == 'windows-latest' }}
         shell: bash

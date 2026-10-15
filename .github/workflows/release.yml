@@ -20,16 +20,28 @@ jobs:
         include:
           - os: ubuntu-latest
             target: bun-linux-x64-baseline
+            duckOs: linux
+            duckCpu: x64
           - os: ubuntu-latest
             target: bun-linux-arm64
+            duckOs: linux
+            duckCpu: arm64
           - os: macos-latest
             target: bun-darwin-x64
+            duckOs: darwin
+            duckCpu: x64
           - os: macos-latest
             target: bun-darwin-arm64
+            duckOs: darwin
+            duckCpu: arm64
           - os: windows-latest
             target: bun-windows-x64-baseline
+            duckOs: win32
+            duckCpu: x64
           - os: ubuntu-latest
             target: bun-windows-arm64
+            duckOs: win32
+            duckCpu: arm64
     runs-on: ${{ matrix.os }}
     env:
       BIN: backlog-bin${{ contains(matrix.target,'windows') && '.exe' || '' }}
@@ -46,7 +58,10 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-bun-${{ env.BUN_VERSION }}-
-      - run: bun install --frozen-lockfile
+      # --os/--cpu make bun install the build target's DuckDB native binding too; by default only
+      # the runner host's platform-specific optionalDependencies are installed, and the build
+      # embeds the target's binding (see scripts/build.ts).
+      - run: bun install --frozen-lockfile --os ${{ matrix.duckOs }} --cpu ${{ matrix.duckCpu }}
       - name: Sync version to tag
         shell: bash
         run: |
