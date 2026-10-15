@@ -116,6 +116,11 @@ const Settings: React.FC = () => {
 			errors.defaultPort = t.settings.portValidation;
 		}
 
+		// Validate query preview cap
+		if (config.queryMaxRows !== undefined && (config.queryMaxRows < 1 || config.queryMaxRows > 5000)) {
+			errors.queryMaxRows = t.settings.queryMaxRowsRange;
+		}
+
 		setValidationErrors(errors);
 		return Object.keys(errors).length === 0;
 	};
@@ -509,6 +514,87 @@ const Settings: React.FC = () => {
 											type="checkbox"
 											checked={config.autoOpenBrowser}
 											onChange={(e) => handleInputChange("autoOpenBrowser", e.target.checked)}
+											className="sr-only peer"
+										/>
+										<div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-circle peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-circle after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500" />
+									</div>
+								</label>
+							</div>
+						</div>
+					</div>
+
+					{/* Query / Data Preview Settings */}
+					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t.settings.queryPreview}</h2>
+						<div className="space-y-4">
+							<div>
+								<label
+									htmlFor="queryMaxRows"
+									className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
+									{t.settings.queryMaxRows}
+								</label>
+								<input
+									id="queryMaxRows"
+									type="number"
+									min="1"
+									max="5000"
+									value={config.queryMaxRows ?? 500}
+									onChange={(e) =>
+										handleInputChange(
+											"queryMaxRows",
+											Math.min(Math.max(Number.parseInt(e.target.value, 10) || 500, 1), 5000),
+										)
+									}
+									className={`w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200 ${
+										validationErrors.queryMaxRows
+											? "border-red-500 dark:border-red-400"
+											: "border-gray-300 dark:border-gray-600"
+									}`}
+								/>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.settings.queryMaxRowsMax}</p>
+								{validationErrors.queryMaxRows && (
+									<p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.queryMaxRows}</p>
+								)}
+							</div>
+
+							<div>
+								<label
+									htmlFor="paginationPageSize"
+									className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								>
+									{t.settings.paginationPageSize}
+								</label>
+								<input
+									id="paginationPageSize"
+									type="number"
+									min="1"
+									max="1000"
+									value={config.paginationPageSize ?? 50}
+									onChange={(e) =>
+										handleInputChange(
+											"paginationPageSize",
+											Math.min(Math.max(Number.parseInt(e.target.value, 10) || 50, 1), 1000),
+										)
+									}
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200"
+								/>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.settings.paginationPageSizeDesc}</p>
+							</div>
+
+							<div>
+								<label className="flex items-center justify-between">
+									<div>
+										<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+											{t.settings.defaultPagination}
+										</span>
+										<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.settings.defaultPaginationDesc}</p>
+									</div>
+									<div className="relative inline-flex items-center cursor-pointer">
+										<input
+											type="checkbox"
+											checked={config.defaultPagination ?? false}
+											onChange={(e) => handleInputChange("defaultPagination", e.target.checked)}
 											className="sr-only peer"
 										/>
 										<div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-circle peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-circle after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500" />

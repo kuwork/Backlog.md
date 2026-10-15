@@ -2433,7 +2433,14 @@ export class BacklogServer {
 	 * inside the block that asked for them, so "bad request" would tell the author nothing.
 	 */
 	private async handleSqliteQuery(req: Request): Promise<Response> {
-		let body: { source?: unknown; sql?: unknown; maxRows?: unknown; copyTo?: unknown };
+		let body: {
+			source?: unknown;
+			sql?: unknown;
+			maxRows?: unknown;
+			copyTo?: unknown;
+			page?: unknown;
+			pageSize?: unknown;
+		};
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
@@ -2455,9 +2462,20 @@ export class BacklogServer {
 		const resolved = resolveSqliteSource({ projectRoot: this.core.filesystem.rootDir, source });
 		if (!resolved.ok) return Response.json({ error: resolved.error }, { status: 400 });
 
-		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : SQLITE_MAX_ROWS;
+		// Config tunes the preview cap; the 5000 hard ceiling stays a constant in the engine.
+		const cfg = await this.core.filesystem.loadConfig();
+		const queryMaxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? SQLITE_MAX_ROWS)), 1), 5000);
+		const page =
+			typeof body?.page === "number" && Number.isFinite(body.page) && body.page >= 1
+				? Math.trunc(body.page)
+				: undefined;
+		const pageSize =
+			typeof body?.pageSize === "number" && Number.isFinite(body.pageSize) && body.pageSize >= 1
+				? Math.trunc(body.pageSize)
+				: undefined;
+		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : queryMaxRows;
 		try {
-			return Response.json(runSqliteQuery({ dbPath: resolved.path, sql: validated.sql, maxRows }));
+			return Response.json(runSqliteQuery({ dbPath: resolved.path, sql: validated.sql, maxRows, page, pageSize }));
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
@@ -2482,7 +2500,9 @@ export class BacklogServer {
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
 
-		const result = buildSqliteCsv({ projectRoot: this.core.filesystem.rootDir, source, sql });
+		const cfg = await this.core.filesystem.loadConfig();
+		const maxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? SQLITE_MAX_ROWS)), 1), 5000);
+		const result = buildSqliteCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, maxRows });
 		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
 		return Response.json(result.csv);
 	}
@@ -2503,7 +2523,14 @@ export class BacklogServer {
 	 * POST /api/duckdb/query - one read-only statement, answered with a JSON grid (mirrors SQLite).
 	 */
 	private async handleDuckdbQuery(req: Request): Promise<Response> {
-		let body: { source?: unknown; sql?: unknown; maxRows?: unknown; copyTo?: unknown };
+		let body: {
+			source?: unknown;
+			sql?: unknown;
+			maxRows?: unknown;
+			copyTo?: unknown;
+			page?: unknown;
+			pageSize?: unknown;
+		};
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
@@ -2528,7 +2555,18 @@ export class BacklogServer {
 			if (!screened.ok) return Response.json({ error: screened.error }, { status: 400 });
 		}
 
-		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : DUCKDB_MAX_ROWS;
+		// Config tunes the preview cap; the 5000 hard ceiling stays a constant in the engine.
+		const cfg = await this.core.filesystem.loadConfig();
+		const queryMaxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? DUCKDB_MAX_ROWS)), 1), 5000);
+		const page =
+			typeof body?.page === "number" && Number.isFinite(body.page) && body.page >= 1
+				? Math.trunc(body.page)
+				: undefined;
+		const pageSize =
+			typeof body?.pageSize === "number" && Number.isFinite(body.pageSize) && body.pageSize >= 1
+				? Math.trunc(body.pageSize)
+				: undefined;
+		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : queryMaxRows;
 		try {
 			return Response.json(
 				await runDuckdbQuery({
@@ -2536,6 +2574,8 @@ export class BacklogServer {
 					kind: resolved.kind,
 					sql: validated.sql,
 					maxRows,
+					page,
+					pageSize,
 					copyTo: copyTo || undefined,
 					projectRoot: this.core.filesystem.rootDir,
 				}),
@@ -2560,7 +2600,9 @@ export class BacklogServer {
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
 
-		const result = await buildDuckdbCsv({ projectRoot: this.core.filesystem.rootDir, source, sql });
+		const cfg = await this.core.filesystem.loadConfig();
+		const maxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? DUCKDB_MAX_ROWS)), 1), 5000);
+		const result = await buildDuckdbCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, maxRows });
 		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
 		return Response.json(result.csv);
 	}

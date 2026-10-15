@@ -27,6 +27,14 @@ export interface DuckdbQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** True total row count of the underlying statement (the page count derives from this). */
+	totalRows: number;
+	/** Present only in pagination mode: the 1-based page that was requested. */
+	page?: number;
+	/** Present only in pagination mode: the page size that was used. */
+	pageSize?: number;
+	/** Present only in pagination mode: total number of pages. */
+	totalPages?: number;
 	/** Project-relative path of the file written by a `copy_to` target, when one was requested. */
 	writtenTo?: string;
 }
@@ -78,13 +86,15 @@ export async function runDuckdbQuery(options: {
 	kind: DuckdbSourceKind;
 	sql: string;
 	maxRows?: number;
+	/** 1-based page for the pagination browser; when set, the result is a single page, not capped. */
+	page?: number;
+	/** Rows per page for the pagination browser (default 50). */
+	pageSize?: number;
 	/** Optional write target (project-relative `.csv` / `.xlsx`). When set, the result is also copied out. */
 	copyTo?: string;
 	/** Project root, needed only to gate a `copyTo` target. */
 	projectRoot?: string;
 }): Promise<DuckdbQueryResult> {
-	const requested = options.maxRows ?? DUCKDB_MAX_ROWS;
-	const maxRows = Math.min(Math.max(Math.trunc(requested), 1), DUCKDB_ABS_MAX_ROWS);
 	const started = performance.now();
 
 	// A `.duckdb` source is attached read-only so the engine rejects any mutation; a CSV / XLSX data
@@ -97,6 +107,49 @@ export async function runDuckdbQuery(options: {
 	let connection: Awaited<ReturnType<typeof instance.connect>> | null = null;
 	try {
 		connection = await instance.connect();
+
+		// Pagination mode: push LIMIT / OFFSET down to the engine via a subquery wrap and count the
+		// total separately. Only one page is fetched per request, so this is exempt from the 5000
+		// hard cap — the pagination browser can browse data sets larger than 5000 rows.
+		if (options.page !== undefined && options.page >= 1) {
+			const pageSize = clamp(options.pageSize ?? 50, 1, 1000);
+			const offset = (Math.trunc(options.page) - 1) * pageSize;
+			const wrapped = stripSemicolon(options.sql);
+			const countReader = await runWithExtensionGuard(
+				connection,
+				options.kind,
+				`SELECT COUNT(*) AS _c FROM (${wrapped}) AS _p`,
+			);
+			const countRows = countReader.getRowObjects();
+			const totalRows = Number(countRows[0]?.["_c"] ?? 0);
+
+			const reader = await runWithExtensionGuard(
+				connection,
+				options.kind,
+				`SELECT * FROM (${wrapped}) AS _p LIMIT ${pageSize} OFFSET ${offset}`,
+			);
+			const columns = reader.columnNames();
+			const records = reader.getRowObjects();
+			const rows = records.map((record) =>
+				columns.map((column) => toCell((record as Record<string, unknown>)[column])),
+			);
+
+			return {
+				columns,
+				rows,
+				truncated: false,
+				elapsedMs: Math.round(performance.now() - started),
+				dbPath: options.dbPath,
+				totalRows,
+				page: Math.trunc(options.page),
+				pageSize,
+				totalPages: Math.max(1, Math.ceil(totalRows / pageSize)),
+			};
+		}
+
+		// Preview mode: materialise the whole result and keep only `maxRows`, hard-capped at 5000.
+		const requested = options.maxRows ?? DUCKDB_MAX_ROWS;
+		const maxRows = clamp(requested, 1, DUCKDB_ABS_MAX_ROWS);
 		const reader = await runWithExtensionGuard(connection, options.kind, options.sql);
 		const columns = reader.columnNames();
 		const records = reader.getRowObjects();
@@ -107,11 +160,12 @@ export async function runDuckdbQuery(options: {
 
 		// Optional write path: copy the result set out to a gated project file. It runs on the same
 		// instance, so it inherits the read-only guarantee for `.duckdb` sources (a `COPY ... TO`
-		// writes a separate file and is allowed even on a read-only database handle).
+		// writes a separate file and is allowed even on a read-only database handle). Only the
+		// preview (non-paginated) result is written.
 		let writtenTo: string | undefined;
 		const copyTo = options.copyTo;
 		const projectRoot = options.projectRoot;
-		if (copyTo && projectRoot) {
+		if (copyTo && projectRoot && options.page === undefined) {
 			writtenTo = await runCopyTo(connection, { copyTo, projectRoot, sql: options.sql });
 		}
 
@@ -121,6 +175,7 @@ export async function runDuckdbQuery(options: {
 			truncated,
 			elapsedMs: Math.round(performance.now() - started),
 			dbPath: options.dbPath,
+			totalRows: records.length,
 			writtenTo,
 		};
 	} finally {
@@ -175,4 +230,14 @@ async function runCopyTo(
 	const format = lower.endsWith(".xlsx") ? "FORMAT XLSX, HEADER TRUE" : "FORMAT CSV, HEADER TRUE";
 	await connection.run(`COPY (${options.sql}) TO '${resolved.path}' (${format})`);
 	return options.copyTo;
+}
+
+/** Clamps `value` to [min, max] after truncating to an integer. */
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+/** Removes a single trailing statement terminator so the SQL can be wrapped in a subquery. */
+function stripSemicolon(sql: string): string {
+	return sql.replace(/;\s*$/, "");
 }

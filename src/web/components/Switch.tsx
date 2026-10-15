@@ -8,12 +8,16 @@ interface SwitchProps {
 
 /**
  * Presentational on/off switch. The real checkbox is visually hidden but stays
- * focusable; the track and knob are drawn by the sibling spans. Checked track
- * uses the completed-corpus emerald so the "on" state reads as "已完成".
+ * focusable; the track and knob are drawn by the sibling spans. The checked track
+ * uses the same blue as the Settings page switches.
  */
 export default function Switch({ id, checked, onChange, ariaLabel }: SwitchProps) {
 	return (
-		<>
+		// The relative wrapper is the input's positioning context: without it the sr-only checkbox
+		// resolves `position: absolute` against the initial containing block, stays at its unscrolled
+		// document position while an inner scroll container moves, and clicking the label then
+		// scroll-into-views the window to that stale spot (blank page jump).
+		<span className="relative inline-block">
 			<input
 				id={id}
 				type="checkbox"
@@ -26,7 +30,7 @@ export default function Switch({ id, checked, onChange, ariaLabel }: SwitchProps
 			/>
 			<span
 				aria-hidden="true"
-				className="relative inline-block w-9 h-5 rounded-circle bg-gray-300 dark:bg-gray-600 transition-colors duration-200 peer-checked:bg-emerald-600 dark:peer-checked:bg-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-stone-500 dark:peer-focus-visible:ring-stone-400"
+				className="relative inline-block w-9 h-5 rounded-circle bg-gray-300 dark:bg-gray-600 transition-colors duration-200 peer-checked:bg-blue-500 peer-focus-visible:ring-2 peer-focus-visible:ring-stone-500 dark:peer-focus-visible:ring-stone-400"
 			>
 				<span
 					aria-hidden="true"
@@ -35,6 +39,6 @@ export default function Switch({ id, checked, onChange, ariaLabel }: SwitchProps
 					}`}
 				/>
 			</span>
-		</>
+		</span>
 	);
 }

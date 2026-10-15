@@ -459,6 +459,15 @@ export interface BacklogConfig {
 	onStatusChange?: string;
 	/** Custom label colors mapped by label name to a color key. */
 	labelColors?: Record<string, string>;
+	/**
+	 * Preview row cap for `sqlite-query` / `duckdb-query` blocks (default 500). The hard safety
+	 * ceiling (5000) is a constant in the engine and is not configurable.
+	 */
+	queryMaxRows?: number;
+	/** Page size used by the pagination browser (default 50). */
+	paginationPageSize?: number;
+	/** When true, a query block opens directly in paginated mode (default false). */
+	defaultPagination?: boolean;
 	/** ID prefix configuration for tasks and drafts. Defaults to { task: "task", draft: "draft" } */
 	prefixes?: PrefixConfig;
 	mcp?: {

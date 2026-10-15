@@ -33,6 +33,8 @@ export async function buildDuckdbCsv(options: {
 	/** Project-relative database path, exactly as written in the block. */
 	source: string;
 	sql: string;
+	/** Preview row cap; defaults to {@link DUCKDB_MAX_ROWS} and is hard-capped at 5000. */
+	maxRows?: number;
 }): Promise<DuckdbCsvResult> {
 	// Gate 1: read-only SQL, re-validated rather than trusted.
 	const validated = validateReadOnlySql(options.sql);
@@ -43,12 +45,14 @@ export async function buildDuckdbCsv(options: {
 	if (!resolved.ok) return fail(resolved.error);
 
 	// Gate 3 is the engine itself: a read-only instance, so even a validation hole cannot turn an
-	// export into a write statement against the database.
+	// export into a write statement against the database. The export is a preview (not a single
+	// page), so its cap comes from config (`queryMaxRows`) when supplied.
+	const maxRows = Math.min(Math.max(Math.trunc(options.maxRows ?? DUCKDB_MAX_ROWS), 1), 5000);
 	const result = await runDuckdbQuery({
 		dbPath: resolved.path,
 		kind: resolved.kind,
 		sql: validated.sql,
-		maxRows: DUCKDB_MAX_ROWS,
+		maxRows,
 	});
 
 	return {

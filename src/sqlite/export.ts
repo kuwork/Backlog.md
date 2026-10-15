@@ -34,6 +34,8 @@ export function buildSqliteCsv(options: {
 	/** Project-relative database path, exactly as written in the block. */
 	source: string;
 	sql: string;
+	/** Preview row cap; defaults to {@link SQLITE_MAX_ROWS} and is hard-capped at 5000. */
+	maxRows?: number;
 }): SqliteCsvResult {
 	// Gate 1: read-only SQL, re-validated rather than trusted.
 	const validated = validateReadOnlySql(options.sql);
@@ -44,8 +46,10 @@ export function buildSqliteCsv(options: {
 	if (!resolved.ok) return fail(resolved.error);
 
 	// Gate 3 is the engine itself: a readonly handle plus PRAGMA query_only, so even a validation
-	// hole cannot turn an export into a write statement against the database.
-	const result = runSqliteQuery({ dbPath: resolved.path, sql: validated.sql, maxRows: SQLITE_MAX_ROWS });
+	// hole cannot turn an export into a write statement against the database. The export is a
+	// preview (not a single page), so its cap comes from config (`queryMaxRows`) when supplied.
+	const maxRows = Math.min(Math.max(Math.trunc(options.maxRows ?? SQLITE_MAX_ROWS), 1), 5000);
+	const result = runSqliteQuery({ dbPath: resolved.path, sql: validated.sql, maxRows });
 
 	return {
 		ok: true,

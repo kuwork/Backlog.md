@@ -192,6 +192,14 @@ export interface SqliteQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** True total row count of the underlying statement. */
+	totalRows: number;
+	/** Present only in pagination mode: the 1-based page requested. */
+	page?: number;
+	/** Present only in pagination mode: the page size used. */
+	pageSize?: number;
+	/** Present only in pagination mode: total number of pages. */
+	totalPages?: number;
 	/** DuckDB-only: when a `copy_to` was requested, the project-relative path written. */
 	writtenTo?: string;
 }
@@ -201,6 +209,10 @@ export interface SqliteQueryRequest {
 	source: string;
 	sql: string;
 	maxRows?: number;
+	/** 1-based page for the pagination browser; when set, the server returns a single page. */
+	page?: number;
+	/** Rows per page for the pagination browser. */
+	pageSize?: number;
 }
 
 export interface SqliteFileEntry {
@@ -230,6 +242,14 @@ export interface DuckdbQueryResult {
 	truncated: boolean;
 	elapsedMs: number;
 	dbPath: string;
+	/** True total row count of the underlying statement. */
+	totalRows: number;
+	/** Present only in pagination mode: the 1-based page requested. */
+	page?: number;
+	/** Present only in pagination mode: the page size used. */
+	pageSize?: number;
+	/** Present only in pagination mode: total number of pages. */
+	totalPages?: number;
 	/** When a `copy_to` was requested, the project-relative path the result was written to. */
 	writtenTo?: string;
 }
@@ -239,6 +259,10 @@ export interface DuckdbQueryRequest {
 	source: string;
 	sql: string;
 	maxRows?: number;
+	/** 1-based page for the pagination browser; when set, the server returns a single page. */
+	page?: number;
+	/** Rows per page for the pagination browser. */
+	pageSize?: number;
 	/** Optional write target (project-relative `.csv` / `.xlsx`); honoured only by the DuckDB engine. */
 	copyTo?: string;
 }

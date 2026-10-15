@@ -3,7 +3,38 @@ import { Fragment, useCallback, useEffect, useId, useMemo, useState } from "reac
 import { parseQueryBlock, type QueryBlock } from "../../sqlite/block.ts";
 import { cellToMarkdown, resultToMarkdownTable } from "../../sqlite/markdown.ts";
 import type { SqliteCell, SqliteQueryResult } from "../lib/api";
+import { apiClient } from "../lib/api";
 import { saveTextFile } from "../lib/save-file";
+import Switch from "./Switch";
+
+/**
+ * The pagination-relevant slice of {@link BacklogConfig}. Every block fetches it on mount and
+ * re-fetches on the `backlog-config-updated` window event (dispatched from App.tsx when the
+ * server broadcasts a config change), so a Settings save reaches mounted blocks without a
+ * reload; a failed fetch falls back to the engine defaults.
+ */
+interface QueryConfig {
+	queryMaxRows: number;
+	paginationPageSize: number;
+	defaultPagination: boolean;
+}
+
+function loadQueryConfig(): Promise<QueryConfig> {
+	return apiClient
+		.fetchConfig()
+		.then((config) => ({
+			queryMaxRows: clampNumber(config.queryMaxRows, 500, 1, 5000),
+			paginationPageSize: clampNumber(config.paginationPageSize, 50, 1, 1000),
+			defaultPagination: config.defaultPagination ?? false,
+		}))
+		.catch(() => ({ queryMaxRows: 500, paginationPageSize: 50, defaultPagination: false }));
+}
+
+/** Clamps `value` to [min, max] after truncating to an integer; non-finite values use `fallback`. */
+function clampNumber(value: number | undefined, fallback: number, min: number, max: number): number {
+	if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+	return Math.min(Math.max(Math.trunc(value), min), max);
+}
 
 /**
  * The set of strings a query block needs. Both the SQLite and DuckDB explorers supply one (under
@@ -28,6 +59,14 @@ export interface QueryBlockDict {
 	exportFailed: string;
 	/** Shown when a `copy_to` target was written: `{path}` is the project-relative destination. */
 	writtenTo: string;
+	/** Label for the pagination toggle switch. */
+	paginationToggle: string;
+	/** Pager text: `{page}` and `{total}` are the current and total page numbers. */
+	pageXofY: string;
+	/** aria-label / tooltip for the previous-page button. */
+	prevPage: string;
+	/** aria-label / tooltip for the next-page button. */
+	nextPage: string;
 }
 
 /** Everything that differs between the two engines, so the render logic is written exactly once. */
@@ -37,7 +76,16 @@ export interface QueryEngineConfig {
 	/** The i18n strings for this engine's block. */
 	dict: QueryBlockDict;
 	/** Runs one read-only statement and returns the grid. */
-	run: (request: { source: string; sql: string; maxRows?: number; copyTo?: string }) => Promise<SqliteQueryResult>;
+	run: (request: {
+		source: string;
+		sql: string;
+		maxRows?: number;
+		copyTo?: string;
+		/** 1-based page for the pagination browser. */
+		page?: number;
+		/** Rows per page for the pagination browser. */
+		pageSize?: number;
+	}) => Promise<SqliteQueryResult>;
 	/** Builds the CSV server-side and returns it with a suggested filename. */
 	exportCsv: (request: { source: string; sql: string }) => Promise<{
 		filename: string;
@@ -127,7 +175,12 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 	const [nonce, setNonce] = useState(0);
 	const [state, setState] = useState<State>({ status: "loading" });
 	const [queryOpen, setQueryOpen] = useState(false);
+	/** Pagination browser state: whether it is on, the current page, and the resolved page size. */
+	const [pagination, setPagination] = useState(false);
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(50);
 	const panelId = useId();
+	const paginationToggleId = useId();
 
 	useEffect(() => {
 		// `nonce` is the refresh signal: bumped, never read. That is the whole point of it - the
@@ -141,6 +194,8 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				source: parsed.block.source,
 				sql: parsed.block.sql,
 				copyTo: parsed.block.copyTo,
+				page: pagination ? page : undefined,
+				pageSize: pagination ? pageSize : undefined,
 			})
 			.then((result) => {
 				if (!cancelled) setState({ status: "ready", result });
@@ -152,10 +207,55 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		return () => {
 			cancelled = true;
 		};
-	}, [parsed, nonce, engine]);
+	}, [parsed, nonce, engine, pagination, page, pageSize]);
+
+	// Load the query config once (memoized) so `defaultPagination` can open the block in paginated
+	// mode and the page size matches what the user set in Settings.
+	useEffect(() => {
+		let cancelled = false;
+		void loadQueryConfig().then((config) => {
+			if (cancelled) return;
+			setPageSize(config.paginationPageSize);
+			if (config.defaultPagination) setPagination(true);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	// Re-fetch config when the server broadcasts a config change (e.g. from Settings save).
+	useEffect(() => {
+		const handle = () => {
+			void loadQueryConfig().then((config) => {
+				setPageSize(config.paginationPageSize);
+				setPagination(config.defaultPagination);
+			});
+		};
+		window.addEventListener("backlog-config-updated", handle);
+		return () => window.removeEventListener("backlog-config-updated", handle);
+	}, []);
+
+	const togglePagination = useCallback((next: boolean) => {
+		setPagination(next);
+		if (next) setPage(1);
+		setNonce((v) => v + 1);
+	}, []);
+
+	const goPrev = useCallback(() => setPage((current) => Math.max(1, current - 1)), []);
+	const goNext = useCallback(() => setPage((current) => current + 1), []);
 
 	const refresh = useCallback(() => setNonce((value) => value + 1), []);
 	const view: QueryBlock["view"] = parsed.ok ? parsed.block.view : "table";
+
+	// The row number shown in the 序号 column: a local 1-based index in preview mode, the global
+	// position across pages in pagination mode (so page 2 starts where page 1 ended).
+	const rowBase =
+		state.status === "ready" && state.result.page && state.result.pageSize
+			? (state.result.page - 1) * state.result.pageSize
+			: 0;
+
+	// The page the pager is currently on, falling back to 1 in preview mode.
+	const currentPage = state.status === "ready" ? (state.result.page ?? 1) : 1;
 
 	// Only what the reader already sees on screen is copied - a truncated grid copies the rows that
 	// were loaded, which is exactly what the truncation note under the table says is there.
@@ -225,46 +325,43 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 	} else if (view === "value") {
 		body = <span>{renderCell(state.result.rows[0]?.[0] ?? null)}</span>;
 	} else if (view === "list") {
-		// One grid for the whole result set. A per-row <dl> would size its label column against
-		// *that row's* longest column name, so the two columns drift out of alignment row by row.
+		// Each row is a flex row: a dedicated 序号 (row-number) gutter column on the left, then the
+		// field list. Keeping 序号 as its own leading column (rather than the old "1. id" prefix that
+		// merged it into the first field's label) lets it read as a column and stay aligned per row.
 		body = (
-			<dl className="grid grid-cols-[minmax(6rem,max-content)_1fr] gap-x-3 gap-y-1">
+			<div className="space-y-3">
 				{state.result.rows.map((row, rowIndex) => (
 					// A result row has no key of its own; the index is the identity.
 					// biome-ignore lint/suspicious/noArrayIndexKey: a result row has no identity of its own
-					<div key={`row-${rowIndex}`} className="contents">
-						{state.result.columns.map((column, columnIndex) => (
-							<Fragment key={column}>
-								{/*
-								 * Inline styles, not utility classes: the surrounding `.wmde-markdown` ships
-								 * `dl dt { margin-top; font-style: italic; font-weight: 600 }` and
-								 * `dl dd { padding: 0 16px; margin-bottom: 16px }` at (0,2,1) specificity, which
-								 * no single Tailwind class on the element can beat.
-								 */}
-								<dt
-									className="text-gray-500 dark:text-gray-400"
-									style={{ margin: 0, fontStyle: "normal", fontWeight: 400 }}
-								>
-									{column}
-								</dt>
-								<dd
-									className="break-words"
-									style={{
-										margin: 0,
-										padding: 0,
-										marginBottom:
-											columnIndex === state.result.columns.length - 1 && rowIndex < state.result.rows.length - 1
-												? "0.75rem"
-												: 0,
-									}}
-								>
-									{renderCell(row[columnIndex] ?? null)}
-								</dd>
-							</Fragment>
-						))}
+					<div key={`row-${rowIndex}`} className="flex gap-3 items-start">
+						{/* 序号: its own column, leading the data fields. */}
+						<div className="shrink-0 w-10 pr-2 text-right tabular-nums text-gray-400 dark:text-gray-500 select-none border-r border-gray-200 dark:border-gray-700">
+							{rowBase + rowIndex + 1}
+						</div>
+						<dl className="grid grid-cols-[minmax(6rem,max-content)_1fr] gap-x-3 gap-y-1 flex-1 min-w-0">
+							{state.result.columns.map((column, columnIndex) => (
+								<Fragment key={column}>
+									{/*
+									 * Inline styles, not utility classes: the surrounding `.wmde-markdown` ships
+									 * `dl dt { margin-top; font-style: italic; font-weight: 600 }` and
+									 * `dl dd { padding: 0 16px; margin-bottom: 16px }` at (0,2,1) specificity, which
+									 * no single Tailwind class on the element can beat.
+									 */}
+									<dt
+										className="text-gray-500 dark:text-gray-400"
+										style={{ margin: 0, fontStyle: "normal", fontWeight: 400 }}
+									>
+										{column}
+									</dt>
+									<dd className="break-words" style={{ margin: 0, padding: 0 }}>
+										{renderCell(row[columnIndex] ?? null)}
+									</dd>
+								</Fragment>
+							))}
+						</dl>
 					</div>
 				))}
-			</dl>
+			</div>
 		);
 	} else {
 		body = (
@@ -272,6 +369,9 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				<table className="w-full text-left border-collapse">
 					<thead>
 						<tr>
+							<th className="px-2 py-1 border-b border-gray-200 dark:border-gray-700 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap w-10 text-right">
+								#
+							</th>
 							{state.result.columns.map((column) => (
 								<th
 									key={column}
@@ -286,6 +386,9 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 						{state.result.rows.map((row, rowIndex) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: a result row has no identity of its own
 							<tr key={`row-${rowIndex}`} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+								<td className="px-2 py-1 align-top text-right text-gray-400 dark:text-gray-500 tabular-nums">
+									{rowBase + rowIndex + 1}
+								</td>
 								{row.map((cell, columnIndex) => (
 									<td
 										key={state.result.columns[columnIndex] ?? columnIndex}
@@ -351,6 +454,19 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 					>
 						{dict.refresh}
 					</button>
+					<label
+						htmlFor={paginationToggleId}
+						className="flex items-center gap-1.5 cursor-pointer select-none"
+						title={dict.paginationToggle}
+					>
+						<span className="text-xs text-gray-600 dark:text-gray-300">{dict.paginationToggle}</span>
+						<Switch
+							id={paginationToggleId}
+							checked={pagination}
+							onChange={togglePagination}
+							ariaLabel={dict.paginationToggle}
+						/>
+					</label>
 				</span>
 			</div>
 			{engine.actions.showHide && queryOpen ? (
@@ -378,9 +494,42 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 			) : null}
 			<div className="p-3">
 				{body}
+				{state.status === "ready" && pagination ? (
+					<div className="mt-1 flex items-center gap-2 text-xs leading-none text-gray-600 dark:text-gray-300">
+						<button
+							type="button"
+							onClick={goPrev}
+							disabled={currentPage <= 1}
+							aria-label={dict.prevPage}
+							className={`text-xs transition-colors ${
+								currentPage <= 1
+									? "opacity-0 cursor-default"
+									: "cursor-pointer text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+							}`}
+						>
+							{"←"}
+						</button>
+						<span className="tabular-nums">
+							{fill(dict.pageXofY, { page: currentPage, total: state.result.totalPages ?? 1 })}
+						</span>
+						<button
+							type="button"
+							onClick={goNext}
+							disabled={currentPage >= (state.result.totalPages ?? 1)}
+							aria-label={dict.nextPage}
+							className={`text-xs transition-colors ${
+								currentPage >= (state.result.totalPages ?? 1)
+									? "opacity-0 cursor-default"
+									: "cursor-pointer text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+							}`}
+						>
+							{"→"}
+						</button>
+					</div>
+				) : null}
 				{state.status === "ready" && state.result.truncated ? (
 					<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-						{fill(dict.truncated, { count: state.result.rows.length })}
+						{fill(dict.truncated, { count: state.result.rows.length, total: state.result.totalRows })}
 					</p>
 				) : null}
 				{exportState.status === "saved" ? (
