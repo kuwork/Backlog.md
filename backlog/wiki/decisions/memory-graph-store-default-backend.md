@@ -3,7 +3,7 @@ title: 图存储双后端抽象，默认 MemoryGraphStore
 description: BACK-702 因 kuzu 原生绑定在 Bun/Windows 下段错误而采用可切换后端
 labels: [decision, graph, kuzu]
 created_date: 2026-09-26 14:45
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-16 01:00
 ---
 
 # 图存储双后端抽象，默认 MemoryGraphStore
@@ -26,8 +26,17 @@ doc-014 设计以 kuzu 作为依赖图的嵌入式数据库，但实测 kuzu 0.1
 - 强制 kuzu 唯一后端——在 Bun/Windows 下根本起不来
 - 等待上游修复绑定——阻塞整个图计划，且无时间表
 
+## 后继变化
+
+BACK-766（2026-10-12）把默认后端从 MemoryGraphStore 换成 `RyuGraphStore`（ryugraph-wasm）：WASM 在 Bun 的 WebAssembly 运行时执行，绕开了 kuzu 原生绑定的段错误，用户无需再设 `BACKLOG_GRAPH_BACKEND`；`KuzuGraphStore` 与 kuzu 依赖整体移除，`memory` 降级为失败回退与显式覆盖项。本决策的「抽象接口 + 可切换后端」结构仍然成立，变化的只是默认实现。
+
 ## Related Sources
 
 - [[sources/back-702-kuzu-graph-foundation]] — 双后端抽象的落地点
 - [[sources/back-713-filenode-rename]] — 在同一抽象上做的 schema 重构
 - [[sources/back-709-dependency-closure-query]] — 因默认后端是纯 JS map 而选择语料闭包查询
+- [[sources/back-766-ryugraph-wasm-backend-switch]] — 默认后端后继切换为 RyuGraph WASM
+
+## Related Decisions
+
+- [[decisions/ryugraph-wasm-default-backend]] — 本决策的后继：ryu WASM 成为默认后端
