@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-16 18:20
 ---
 
 # Knowledge Base Overview
@@ -231,7 +231,7 @@ updated_date: 2026-10-16 01:00
 
 ## 统计
 
-- Sources ingested: 387
+- Sources ingested: 388
 - Concepts extracted: 44
 - Entities catalogued: 2
 - Execution notes: 28
@@ -240,5 +240,5 @@ updated_date: 2026-10-16 01:00
 - Comparisons: 1
 - Reasoning traces: 5
 - Retrospectives: 1
-- User manual pages: 45
+- User manual pages: 46
 - Reports generated: 10
