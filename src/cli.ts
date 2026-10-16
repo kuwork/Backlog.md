@@ -19,6 +19,7 @@ import {
 } from "./commands/help-schema.ts";
 import { registerInstructionsCommand } from "./commands/instructions.ts";
 import { registerMcpCommand } from "./commands/mcp.ts";
+import { formatMigrateInstallResult, installMigrateSkill } from "./commands/migrate-install.ts";
 import { pickTaskForEditWizard, runTaskCreateWizard, runTaskEditWizard } from "./commands/task-wizard.ts";
 import { watchJson } from "./commands/watch-json.ts";
 import { formatInstallResult, installWikiSkill } from "./commands/wiki-install.ts";
@@ -5938,6 +5939,32 @@ wikiCmd
 				dryRun: options.dryRun,
 			});
 			console.log(formatInstallResult(result, !!options.dryRun));
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(`Error: ${message}`);
+			process.exit(1);
+		}
+	});
+
+// Migrate command group
+const migrateCmd = program.command("migrate");
+
+migrateCmd
+	.description("manage task-driven branch merge tooling")
+	.command("install <agent>")
+	.description(
+		"install the task-migration-architect skill into the specified agent's skills directory (claude, codex, agents)",
+	)
+	.option("--force", "overwrite existing skill files (project memory files are never overwritten)")
+	.option("--dry-run", "preview operations without writing")
+	.action(async (agent: string, options: { force?: boolean; dryRun?: boolean }) => {
+		try {
+			const cwd = await requireProjectRoot();
+			const result = await installMigrateSkill(cwd, agent, {
+				force: options.force,
+				dryRun: options.dryRun,
+			});
+			console.log(formatMigrateInstallResult(result, !!options.dryRun));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			console.error(`Error: ${message}`);

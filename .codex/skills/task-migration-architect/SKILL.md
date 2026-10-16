@@ -17,8 +17,48 @@ updated_date: '2026-08-23 08:54'
 
 ## 参考文件
 
-- `references/current-branch-migration-exclusions.md` — 当前分支已演进的定制能力清单。迁移前必须阅读，避免将上游旧实现回退到当前代码库。
+- `references/current-branch-migration-exclusions.md` — 当前分支已演进的定制能力清单。迁移前必须阅读，避免将上游旧实现回退到当前代码库。该文件是**项目私有记忆**：由 `backlog migrate install` 首次安装时从模板生成，升级技能不会覆盖它；若文件缺失或仍是未填写的模板，先按下文「排除清单 Bootstrap」完成初始化。
 - 运行 `backlog instructions documents` 获取文档管理 CLI 指南。如迁移涉及 `backlog doc view --plain` 或其他文档相关 CLI 行为变更，需参考该指南并保持同步更新。
+
+### 排除清单 Bootstrap
+
+若 `references/current-branch-migration-exclusions.md` 不存在，或标题仍含「（模板）」（即 `backlog migrate install` 生成后尚未填写），必须先完成初始化再开始任何分析：
+
+1. 询问用户当前 fork 相对上游的定制范围；若用户不确定，建议从 fork 点之后的 `git log` 差异分析生成初版。
+2. 按模板章节结构（每个能力一节：`不应回退的内容` / `替代方向`，编号连续）将定制能力写入该文件，并删除标题中的「（模板）」后缀。
+3. 初始化完成前，不要在确认请求中声称「已读取定制范围」。
+4. 初始化完成后，执行下文「迁移指引注入 Agent 指令文件」。
+
+### 迁移指引注入 Agent 指令文件
+
+与 wiki 的「Wiki Guidelines」机制一致：迁移记忆的项目级规则存放在项目根目录的 agent 指令文件（`AGENTS.md`、`CLAUDE.md` 或 `GEMINI.md`）中，用 marker 幂等注入，而不是单独建文件。
+
+**触发时机**：「排除清单 Bootstrap」完成时执行一次；之后任何迁移流程中发现 agent 指令文件缺少该块时补注。
+
+**步骤**：
+
+1. 定位项目根目录的 agent 指令文件（`AGENTS.md`、`CLAUDE.md`、`GEMINI.md`，取第一个存在的；都不存在则跳过并告知用户）。
+2. 检查是否已包含 `<!-- MIGRATION GUIDELINES START -->` marker；已存在则跳过，避免重复。
+3. 不存在时，把下方「Migration Guidelines Content」段落（含 marker 原样）追加到文件末尾。
+
+**Migration Guidelines Content：**
+
+~~~markdown
+<!-- MIGRATION GUIDELINES START -->
+
+## 上游迁移记忆（Migration Memory）
+
+本项目是独立于上游演进的分支。`.agents/skills/task-migration-architect/references/current-branch-migration-exclusions.md` 是项目的迁移记忆：记录当前分支已演进、**不得回退**为上游旧实现的定制能力。
+
+### 规则
+
+- **迁移前必读**：做任何上游合并/迁移分析前，先读排除清单。凡与清单中「不应回退的内容」重合的上游改动，归为 C类（跳过）并引用对应条目。
+- **保持记忆更新**：当完成的任务有意识地与上游分叉（替代上游行为、新增上游没有的子系统），在任务收尾时把该能力追加或更新到排除清单。
+- **项目私有文件**：`backlog migrate install` 仅在该文件缺失时从模板生成，重新安装或 `--force` 都不会覆盖它。若标题仍含「（模板）」，先完成填写再做迁移分析。
+- 迁移分析使用 `task-migration-architect` 技能（触发词：「分析上游新分布的内容」「上游合并分析」「差异分类」「摘樱桃合并」）。
+
+<!-- MIGRATION GUIDELINES END -->
+~~~
 
 ---
 

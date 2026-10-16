@@ -70,6 +70,12 @@ export function formatRootEntry({ version, initialized, color = false }: RootEnt
 	lines.push(commandLine("backlog wiki install <agent>", "Install the LLM wiki skill for your agent"));
 	lines.push("");
 
+	lines.push(sectionTitle("Task-driven branch merge:", color));
+	lines.push(
+		commandLine("backlog migrate install <agent>", "Install the task-migration-architect skill for your agent"),
+	);
+	lines.push("");
+
 	lines.push(sectionTitle("Command help:", color));
 	lines.push(commandLine("backlog <command> --help", "Show options, fields, and examples"));
 	lines.push("");

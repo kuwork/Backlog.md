@@ -30,6 +30,16 @@ Backlog.md includes an LLM-managed wiki under `backlog/wiki/`. To enable wiki op
 
 Use `--dry-run` to preview the operation and `--force` to overwrite an existing installation. After installing, refer to the skill guide for ingestion, query, lint, and flowback workflows.
 
+### Migration Skill Installation
+
+For projects that fork an upstream repository and merge changes selectively, task by task, install the bundled `task-migration-architect` skill:
+
+- `backlog migrate install claude` — Claude Code / Claude Desktop
+- `backlog migrate install codex` — OpenAI Codex CLI
+- `backlog migrate install agents` — Generic agents directory
+
+The installer seeds `references/current-branch-migration-exclusions.md` (project-owned migration memory) from a template only when missing; it is never overwritten, even with `--force`. After installing, fill in the template before running migration analysis — the skill's bootstrap flow handles this.
+
 Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use the `backlog` CLI so metadata, relationships, and history stay consistent.
 
 - If you encounter duplicate or ambiguous task IDs (e.g., `task-1` and `task-01`), run `backlog doctor` first. Do not rename files or edit frontmatter IDs manually. Apply `backlog doctor --fix` only after reviewing the preview, then use `backlog doctor --commit` to finalize or `backlog doctor --rollback` to undo before committing.

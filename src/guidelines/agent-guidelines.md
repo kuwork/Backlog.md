@@ -1027,6 +1027,7 @@ backlog board --milestones
 | Archive task       | `backlog task archive 42`                    |
 | Demote to draft    | `backlog task demote 42`                     |
 | Install wiki skill | `backlog wiki install claude`                |
+| Install branch-merge skill | `backlog migrate install claude`        |
 
 ### Project Overview
 
