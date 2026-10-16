@@ -1088,3 +1088,17 @@ Chronological, append-only record of all wiki operations.
 **新建** `comparisons/migration-decision-process.md`（comparisons/ 首条）——按决策类型综合五波（v1.47.1→v1.53.0）：① 分类判断的口径演进（单源枚举 → 深分析重分类 → 双源并集；撞号按链接目标判断的教训）；② 刻意分叉台账（emptyClears、sequences、BACK-646/647、状态机校验器、CLI 分页 + 五条常驻约束），含留痕强度演进观察（散文→台账→decision 页）；③ 验证策略（AC#1 审查纪律、三段式、byte-identical+revert-check、复现先行、存量失败分诊）；④ 范围与节奏（JIT、B16 前置拆解、波末清算、draft 管道）；数据一览（三/四/五波 54/69/30 任务全 Done，中位 0/1/0 天，frontmatter 现算）；6 条元经验。
 
 **更新**：`patterns/upstream-migration-wave` 验证范围三波 60+ → 五波 153 任务全 Done，步骤表补双源并集与 revert-check，陷阱表加「撞号按号码判断」「未复现就建议迁移」两条；`concepts/upstream-migration` 迁移文档补 doc-21/22、新增第五波节。index Comparisons 占位替换为实表；overview 统计 Comparisons 0→1 并加指针。
+
+## [2026-10-16 01:00] ingest+usermanual | 增量摄取 47 源（BACK-763~800、doc-23~26、m-11~m-14、归档 back-24.02），手册新增图谱与数据查询章
+
+**摄取范围**（git-aware，上次摄取 2026-10-10 14:15 之后）：任务 BACK-763~800 共 38 个（全部 Done），PRD 文档 doc-23/24（SQLite Explorer）与 doc-25/26（DuckDB Explorer），里程碑 m-11~m-14，归档任务 back-24.02。新增 source 页 47 个，经 AgentSwarm 五批并行（B1 graph CLI+memo、B2 SQL 查询块、B3 graph MCP、B4 web 杂项、B5 文档/里程碑/归档）。
+
+**知识层更新**：concept [[concepts/kuzu-graph]] 更名「任务图谱引擎」并改写后端现状（filename 不变避免外链断裂）；新建 concept [[concepts/graph-cli]]、[[concepts/sql-query-blocks]]；新建 decision [[decisions/ryugraph-wasm-default-backend]]（BACK-766 默认后端切换），[[decisions/memory-graph-store-default-backend]] 补后继变化节；新建 execution [[execution/ryugraph-wasm-gotchas]]（MEMFS 不持久 / INT64 ToBigInt / COPY FROM 静默零行）；concepts/memos、mcp-server、milestones 分别补 BACK-763/764、graph_* 六工具、BACK-782/795 增量。overview.md 统计更新并新增本波章节。
+
+**用户手册**：新增「80-图谱与数据查询」章四页（图谱 CLI 命令 / 图谱 MCP 工具 / SQL 查询块 / 数据库页面），SUMMARY 登记；修正 11-图谱视图的过时 kuzu 后端表述；00-文档管理增「实况 SQL 查询块」节；00-MCP工作流补图谱工具组（工具总数 27→33）与 graph 指南资源；02-里程碑管理补 documentation 预览与 M-N 大写显示；README 核心特性补图谱与 SQL 查询块两条。
+
+**手册任务代号清理**（用户裁决：手册不得出现任务代号）：脚本两波 + 定点改写清理 37 个文件的全部 BACK-xxx 出处标注（纯引用括号整删、混合括号留语义部分、「升级到包含 BACK-522 的版本」类改写为「最新版本」）；ID 语法示例改用与手册一致的 back-N 占位（如 `/task/123` 与 `/task/back-123`、`back-101~105`）；frontmatter 示例中的 back-10 等字段占位保留。merged manual.md 零 BACK 代号。
+
+**产物**：重写给围栏感知合并脚本（tmp/merge-usermanual.py，旧 merge.py 不识别代码围栏、把 bash 注释计入章节编号）重新合并 manual.md：9 章 44 页 5949 行，编号连续无误。index.md 登记 47 source + 2 concept + 1 decision + 1 execution，并补登手册表漏登的 11-图谱视图与 70-快速笔记五页。统计：Sources 340→387、Concepts 42→44、Decisions 80→81、Execution 27→28、User manual 42→45。
+
+**异常留痕**：① doc-24 与 m-11 正文引用的 "doc-16" 是旧编号，实指 doc-23（源文件事实，未改）；② m-11 created_date 晚于 actual_end（里程碑完成后补建）；③ back-793 源文件记录了一个未修的 `graph insert` 对用户库报成功但 dump 空快照的缺陷，建议单独立任务；④ 第二波 concept 子代理曾因配额中断，C1~C3 由主代理直接完成。

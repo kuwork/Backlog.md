@@ -1,13 +1,13 @@
 ---
-title: Kuzu 任务图谱
-labels: [concept, graph, kuzu]
+title: 任务图谱引擎
+labels: [concept, graph, ryugraph]
 created_date: 2026-09-26 14:45
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-16 01:00
 ---
 
-# Kuzu 任务图谱
+# 任务图谱引擎
 
-`src/graph/` 模块在 backlog 语料之上构建依赖图谱，支撑 Web UI 的 `/graph`（任务图谱）与 `/knowledge`（知识图谱）双视图。Markdown 文件是唯一真实来源，图谱是可丢弃的派生缓存。设计见 doc-14（冷启动与热更新）与 doc-15（知识图谱关系），阶段 1 由 m-9 里程碑范围化。
+`src/graph/` 模块在 backlog 语料之上构建依赖图谱，支撑 Web UI 的 `/graph`（任务图谱）、`/knowledge`（知识图谱）与 `/databases`（数据库页）视图，以及 `backlog graph` CLI 子命令与六个 `graph_*` MCP 工具。Markdown 文件是唯一真实来源，图谱是可丢弃的派生缓存。设计见 doc-14（冷启动与热更新）与 doc-15（知识图谱关系），阶段 1 由 m-9 里程碑范围化；BACK-766 起执行引擎从 Kuzu 原生绑定切换为 RyuGraph WASM。
 
 ## 数据模型
 
@@ -17,9 +17,15 @@ updated_date: 2026-10-09 23:30
 - 节点类型仅由白名单目录决定（`wiki/`、`docs/`、`decisions/`），不从 frontmatter 推断；`wiki/index.md` 与 `wiki/log.md` 扫描时排除
 - **语料目录跟随配置**（BACK-758）：`scanWhitelistedDirs()` 与 service watcher 的目录拼接经 `resolveBacklogDirectory()` 解析（`.backlog`/自定义路径），未配置回退 `backlog`——此前硬编码字面量使自定义目录项目图谱为空。图数据库本体在全局缓存目录，不受影响（[[sources/back-758-graph-backlog-dir-resolution]]）
 
-## 后端：MemoryGraphStore 默认
+## 后端：RyuGraph WASM 默认（BACK-766 起）
 
-kuzu 0.11.3 原生绑定在 Bun 1.3.14（Windows）下段错误（BACK-702 实测，doc-14 §5 已预警），因此 `GraphStore` 抽象提供双后端：默认纯 JS `MemoryGraphStore`（doc-14 的降级模式），`BACKLOG_GRAPH_BACKEND=kuzu` 可选原生 `KuzuGraphStore`。进程单例按项目根键控。
+BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯 JS `MemoryGraphStore` 为默认、`BACKLOG_GRAPH_BACKEND=kuzu` 可选原生。BACK-766 用 RyuGraph 的 WebAssembly 构建（`ryugraph-wasm`，Kuzu 的 MIT fork）替换原生引擎——WASM 在 Bun 的 WebAssembly 运行时执行，绕开 NAPI 崩溃；自此 `RyuGraphStore` 为默认后端（无需设环境变量），仅识别 `BACKLOG_GRAPH_BACKEND=memory` 强制降级，init 失败自动回退 memory；kuzu npm 依赖与 `KuzuGraphStore` 整体移除，后端类型收敛为 `"ryu" | "memory"`。进程单例按项目根键控。ryu WASM 的三大坑（MEMFS 不持久、INT64 `ToBigInt` 崩溃、`COPY FROM` 静默零行）见 [[execution/ryugraph-wasm-gotchas]]。
+
+## CLI、MCP 与数据库页（m-13 / m-14）
+
+- `backlog graph` 子命令体系（BACK-767~772）：`query` / `schema` / `list` / `describe` / `create` / `drop` / `import`，named databases 写路径与 CSV 节点/边导入；CLI 运行复用 derived-graph 快照而非每次全量重建（BACK-772）。详见 [[concepts/graph-cli]]
+- 六个 `graph_*` MCP 工具（BACK-784~790）镜像 CLI 的一次性开-跑-关模型，MCP 启动不触发全量重建；配套 `backlog://workflow/graph` 指南（BACK-790）
+- Web `/databases` 页：真实行数随 graph-updated 刷新（BACK-783）、Cypher 结果图谱视图（BACK-793）与按库持久化的可配置图例（BACK-794）
 
 ## 冷启动：指纹校验
 
@@ -74,6 +80,10 @@ kuzu 0.11.3 原生绑定在 Bun 1.3.14（Windows）下段错误（BACK-702 实�
 - [[sources/back-714-knowledge-graph-ingest]] — wiki/docs/decisions 入图与 /knowledge 视图
 - [[sources/back-756-graph-canvas-high-dpi]] — 高 DPI 下 canvas 裁剪/批绘/DPR 上限/文本 LOD
 - [[sources/back-758-graph-backlog-dir-resolution]] — 扫描与监听的配置目录解析
+- [[sources/back-766-ryugraph-wasm-backend-switch]] — 默认后端切换 RyuGraph WASM 与 kuzu 移除
+- [[sources/m-13-graph-cli]] — graph CLI 子命令里程碑
+- [[sources/m-14-graph-mcp]] — graph MCP 工具里程碑
+- [[sources/back-783-databases-real-row-counts]] — /databases 页真实行数
 
 ## Related Reasoning
 

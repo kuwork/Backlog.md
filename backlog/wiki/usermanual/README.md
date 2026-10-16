@@ -2,6 +2,7 @@
 title: Backlog.md 用户手册
 labels: [usermanual]
 created_date: 2026-05-07 00:00
+updated_date: 2026-10-16 01:00
 ---
 
 
@@ -22,6 +23,8 @@ Backlog.md 将任意 Git 仓库目录转变为自包含的项目看板。每个�
 - **日期与计划**：任务与里程碑支持 `dueDate`、`plannedStart`、`plannedEnd`，看板卡片实时显示计划窗口与逾期高亮
 - **项目健康度**：临期、逾期、停滞、阻塞四维指标，Web 统计页与 CLI `overview` 命令统一呈现
 - **Wiki 知识库**：LLM 维护的增量式项目知识库，人类可读可编辑；浏览器中支持文件树导航、在线编辑、labels 标签与实时同步；内置 skill 可安装到 Claude/Codex
+- **任务图谱**：任务关系知识图谱，支持 Cypher 查询（CLI `backlog graph` 与 MCP 图谱工具）与 Web 可视化，默认使用 RyuGraph WASM 后端，零原生依赖
+- **实况 SQL 查询块**：文档内嵌入 `sqlite-query` / `duckdb-query` 围栏块，Web 阅读视图渲染只读实况查询结果（SQLite / DuckDB，500 行上限）
 - **快速笔记 Memos**：`backlog/memos/` 轻量捕获收件箱，终端 / Web / MCP / 搜索四入口共享同一存储，正文实体 ID 与 `[[wikilink]]` 自动接入知识网
 - **跨平台**：macOS、Linux、Windows
 
