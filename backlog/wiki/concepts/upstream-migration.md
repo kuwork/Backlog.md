@@ -2,7 +2,7 @@
 title: 上游迁移策略
 labels: [concept, migration, upstream]
 created_date: 2026-08-17 23:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-16 18:20
 ---
 
 # 上游迁移策略
@@ -76,6 +76,8 @@ Fork 对上游 `MrLesk/Backlog.md` 版本差异进行 A/B/C 分类并按领域�
 沿用第四波的双源并集口径与七维分析格式，落地 BACK-715~744 共 30 个任务全部 Done（周期中位 0 天）。同期 fork 自主线（memos 子系统、状态机语义化）与迁移线并行，刻意分叉直接以 decision 页留痕（自研状态机校验器、CLI 窗口分页）。决策过程的综合总结见 [[comparisons/migration-decision-process]]。
 
 ## Related Sources
+
+- [[sources/back-801-migrate-install-task-migration-architect]] — task-migration-architect 技能嵌入二进制并可经 `backlog migrate install` 安装，把本页方法论产品化
 
 - [[sources/doc-4-upstream-migration-classification]] — v1.47.1→v1.48.0
 - [[sources/doc-7-upstream-v1-48-0-to-v1-49-3-migration-classification]] — v1.48.0→v1.49.3 分类

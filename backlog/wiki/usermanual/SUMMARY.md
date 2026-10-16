@@ -46,6 +46,7 @@
 - [支持的 AI 工具](50-AI集成/01-支持的AI工具.md)
 - [代理指令文件](50-AI集成/02-代理指令文件.md)
 - [Wiki Skill 安装](50-AI集成/03-Wiki Skill 安装.md)
+- [Migration Skill 安装](50-AI集成/04-Migration Skill 安装.md)
 
 ## 快速笔记
 
