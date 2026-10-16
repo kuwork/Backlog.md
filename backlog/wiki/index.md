@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: '2026-10-09 22:00'
+updated_date: 2026-10-16 01:00
 ---
 
 
@@ -355,6 +355,53 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-760-cross-branch-settings-toggles]] |  BACK-760 设置页暴露跨分支可见性开关 | source, web-ui, config |
 | [[sources/back-761-terminal-card-actual-end]] |  BACK-761 终态看板卡片显示 actualEnd | source, web-ui, dates |
 | [[sources/back-762-terminal-statuses-readonly]] |  BACK-762 终态集显式化并退出设置编辑 | source, config, web-ui, cli |
+| [[sources/back-763-memo-update-tags]] |  BACK-763 - memo update 支持 --tags | source, cli, memos, feature |
+| [[sources/back-764-interactive-memo-capture]] |  BACK-764 - TTY 交互式多行 memo 捕获 | source, cli, memos, feature |
+| [[sources/back-765-knowledge-graph-cypher-search]] |  BACK-765 - 图谱页面 Cypher 搜索 | source, web-ui, graph, kuzu, feature |
+| [[sources/back-766-ryugraph-wasm-backend-switch]] |  BACK-766 - 图谱后端切换 RyuGraph WASM | source, graph, kuzu, wasm, migration |
+| [[sources/back-767-graph-query-cli-command]] |  BACK-767 - graph query CLI 命令 | source, cli, graph, feature |
+| [[sources/back-768-graph-schema-cli-command]] |  BACK-768 - graph schema 子命令 | source, cli, graph, feature |
+| [[sources/back-769-graph-cli-multi-database]] |  BACK-769 - 图谱 CLI 多数据库支持 | source, cli, graph, feature |
+| [[sources/back-770-graph-import-csv]] |  BACK-770 - graph import CSV 导入 | source, cli, graph, feature |
+| [[sources/back-771-graph-cli-followups]] |  BACK-771 - 图谱 CLI 后续：关系导入与 Web 浏览 | source, cli, graph, web-ui, feature |
+| [[sources/back-772-derived-graph-snapshot-reuse]] |  BACK-772 - 派生图谱快照复用 | source, cli, graph, performance |
+| [[sources/back-773-sqlite-query-live-blocks]] |  BACK-773 - sqlite-query 代码块渲染实时结果 | source, sqlite, web-ui, feature |
+| [[sources/back-774-sqlite-query-show-hide-toggle]] |  BACK-774 - sqlite-query 块显示/隐藏查询开关 | source, sqlite, web-ui, ux |
+| [[sources/back-775-sqlite-copy-markdown]] |  BACK-775 - sqlite-query 结果复制为 Markdown | source, sqlite, web-ui, feature |
+| [[sources/back-776-sqlite-export-csv]] |  BACK-776 - sqlite-query 结果导出 CSV | source, sqlite, server, web-ui, security |
+| [[sources/back-777-duckdb-node-api-bun-spike]] |  BACK-777 - 验证 DuckDB 原生绑定在 Bun 下只读运行 | source, duckdb, bun, spike |
+| [[sources/back-778-duckdb-query-live-blocks]] |  BACK-778 - duckdb-query 代码块渲染实时结果 | source, duckdb, web-ui, feature |
+| [[sources/back-779-duckdb-query-show-hide-toggle]] |  BACK-779 - duckdb-query 块显示/隐藏查询开关 | source, duckdb, web-ui, ux |
+| [[sources/back-780-duckdb-copy-markdown]] |  BACK-780 - duckdb-query 结果复制为 Markdown | source, duckdb, web-ui, feature |
+| [[sources/back-781-duckdb-export-csv]] |  BACK-781 - duckdb-query 结果导出 CSV | source, duckdb, server, web-ui |
+| [[sources/back-782-milestone-popup-doc-preview]] |  BACK-782 - 里程碑弹窗本地文档预览 | source, web-ui, bug, milestones |
+| [[sources/back-783-databases-real-row-counts]] |  BACK-783 - Databases 页真实行数与自动刷新 | source, graph, web-ui |
+| [[sources/back-784-graph-mcp-foundation]] |  BACK-784 - Graph MCP 基础与 graph_query 工具 | source, mcp, graph |
+| [[sources/back-785-graph-schema-mcp-tool]] |  BACK-785 - graph_schema MCP 工具 | source, mcp, graph |
+| [[sources/back-786-graph-list-databases-mcp-tool]] |  BACK-786 - graph_list_databases MCP 工具 | source, mcp, graph |
+| [[sources/back-787-graph-describe-database-mcp-tool]] |  BACK-787 - graph_describe_database MCP 工具 | source, mcp, graph |
+| [[sources/back-788-graph-create-database-mcp-tool]] |  BACK-788 - graph_create_database MCP 工具 | source, mcp, graph |
+| [[sources/back-789-graph-import-csv-mcp-tool]] |  BACK-789 - graph_import_csv MCP 工具 | source, mcp, graph |
+| [[sources/back-790-mcp-graph-usage-guide]] |  BACK-790 - MCP graph 使用指南 | source, mcp, graph, docs |
+| [[sources/back-791-milestone-detail-graph-entry]] |  BACK-791 - 里程碑详情页任务关系图谱入口 | source, web-ui, graph, milestones |
+| [[sources/back-792-milestone-live-add-title-fix]] |  BACK-792 - 修复带外里程碑变更不达 Web 客户端 | source, bug, web-ui, milestones, live-sync |
+| [[sources/back-793-cypher-result-graph-view]] |  BACK-793 - 数据库页 Cypher 结果图谱视图 | source, web-ui, graph, cypher |
+| [[sources/back-794-cypher-graph-configurable-legend]] |  BACK-794 - Cypher 结果图可配置图例 | source, web-ui, graph, cypher |
+| [[sources/back-795-unify-milestone-id-display]] |  BACK-795 - 统一里程碑 ID 大写 M-N 显示 | source, web-ui, tui, cli, milestones |
+| [[sources/back-796-duckdb-csv-excel-sources]] |  BACK-796 - DuckDB Explorer 支持 CSV 与 Excel 数据源 | source, duckdb, web-ui, core, sql |
+| [[sources/back-797-query-block-pagination]] |  BACK-797 - 查询块可配置行上限与分页浏览 | source, web-ui, duckdb, sqlite, pagination, config |
+| [[sources/back-798-wiki-tree-missing-crash-fix]] |  BACK-798 - 修复缺 backlog/wiki 时 wiki 树请求崩溃刷屏 | source, bug, web, wiki |
+| [[sources/back-799-agent-guidelines-refinement]] |  BACK-799 - 代理指南精炼：SQL 查询块、收尾完整性与状态机迁移 | source, docs, agent-guidance, cli, mcp |
+| [[sources/back-800-duckdb-native-binding-bundling]] |  BACK-800 - 修复编译二进制中 DuckDB 原生绑定打包 | source, bug, build, duckdb, release |
+| [[sources/doc-23-sqlite-explorer-prd]] |  doc-23 - SQLite Explorer 只读查询设计 | source, design, sqlite, web-ui |
+| [[sources/doc-24-sqlite-explorer-demo]] |  doc-24 - SQLite Explorer 演示 | source, guide, sqlite, web-ui |
+| [[sources/doc-25-duckdb-explorer-prd]] |  doc-25 - DuckDB Explorer 只读查询设计 | source, design, duckdb, web-ui |
+| [[sources/doc-26-duckdb-explorer-demo]] |  doc-26 - DuckDB Explorer 演示 | source, guide, duckdb, web-ui |
+| [[sources/m-11-sqlite-explorer]] |  m-11 - SQLite Explorer 里程碑 | source, milestone, sqlite, web-ui |
+| [[sources/m-12-duckdb-explorer]] |  m-12 - DuckDB Explorer 里程碑 | source, milestone, duckdb, web-ui |
+| [[sources/m-13-graph-cli]] |  m-13 - Graph CLI 里程碑 | source, milestone, graph, cli |
+| [[sources/m-14-graph-mcp]] |  m-14 - Graph MCP 里程碑 | source, milestone, graph, mcp |
+| [[sources/back-24-02-milestone-swimlanes]] |  BACK-24.02 - TUI 看板里程碑泳道 | source, tui, enhancement, archived, milestones |
 
 ## Execution Notes
 
@@ -387,6 +434,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/two-list-paging-models-wiring]] |  两套列表分页模型接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
 | [[execution/webgl-html-overlay-hover-control]] |  WebGL canvas HTML 控件悬挂模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
 | [[execution/custom-backlog-dir-rollout-audit]] |  backlog-dir 推广硬编码路径审计模式 | 症状归族→grep 字面量→纯模块直调解析函数→每处 .backlog 种子回归用例，BACK-757/758 提炼 |
+| [[execution/ryugraph-wasm-gotchas]] |  RyuGraph WASM 在 Bun 下的陷阱集 | MEMFS 不持久、INT64 ToBigInt 崩溃、COPY FROM 静默零行，BACK-766~771 提炼 |
 
 ## Decisions
 
@@ -447,7 +495,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/hand-rolled-virtual-list-over-dependency]] |  手写定高虚拟列表替代依赖库 | BACK-624 零新依赖，代价是行高必须恒定 |
 | [[decisions/mermaid-11-16-1-supply-chain-maturity]] |  mermaid 选 11.16.1 重供应链成熟度 | BACK-626 供应链验证成熟度优先于版本新度 |
 | [[decisions/pure-task-id-module-in-browser-bundle]] |  浏览器 bundle 只导入纯模块 | BACK-628 从 task-path 改 task-id 以避免 Core 入包白屏 |
-| [[decisions/memory-graph-store-default-backend]] |  图存储默认 MemoryGraphStore | BACK-702 Kuzu 图谱默认内存后端，Kuzu 可选 |
+| [[decisions/memory-graph-store-default-backend]] |  图存储双后端抽象，默认 MemoryGraphStore | BACK-702 双后端抽象（默认后被 BACK-766 的 ryu WASM 取代，memory 降为兜底） |
 | [[decisions/filenode-path-primary-key]] |  图节点以文件路径为主键（FileNode）+ 版本自描述 | BACK-713 Task(id) 改名 FileNode(path PK) |
 | [[decisions/doctor-dependency-defects-warning-exit-zero]] |  doctor 依赖缺陷 warning 级诊断与零退出码 | BACK-708 缺陷报告不阻断 CI |
 | [[decisions/tolerate-history-not-new-mistakes]] |  依赖写门禁容忍历史不容新错误 | BACK-707 存量坏数据容忍、新写入拒绝环 |
@@ -472,6 +520,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/cross-branch-config-default-param-override]] |  跨分支可见性：配置为默认、URL 参数为覆盖 | BACK-759 裁决收敛到纯函数 resolveCrossBranchVisibility，前端不再强制加参 |
 | [[decisions/scan-show-two-axes]] |  扫描与展示是两个轴 | BACK-760 扫描归 check_active_branches，否则默认禁用跨分支加载、ID 分配回退 |
 | [[decisions/terminal-set-derived-not-stored]] |  终态集是派生值 | BACK-762 拒绝设置页多选写 category 与独立配置键双写 |
+| [[decisions/ryugraph-wasm-default-backend]] |  默认图谱后端切换为 RyuGraph WASM | BACK-766 用 Kuzu MIT fork 的 WASM 构建取代原生 NAPI 绑定，kuzu 依赖移除 |
 
 ## Concepts
 
@@ -510,7 +559,9 @@ Read this file FIRST on any wiki operation.
 | [[concepts/ci-platform-contracts]] |  CI 平台契约测试策略 | Ubuntu 全量 + Windows/macOS 平台契约子集、预构建 CLI、有界并发 |
 | [[concepts/task-locking]] |  任务锁与并发编辑 | withTaskLock fail-fast 文件锁、锁序、TaskLockError |
 | [[concepts/spotlight-search]] |  全局搜索对话框 | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
-| [[concepts/kuzu-graph]] |  Kuzu 任务图谱 | FileNode 图模型、MemoryGraphStore 默认后端、冷启动指纹校验、/graph 与 /knowledge 视图、wiki LinksTo |
+| [[concepts/kuzu-graph]] |  任务图谱引擎 | FileNode 图模型、RyuGraph WASM 默认后端（BACK-766 起）、冷启动指纹校验、/graph 与 /knowledge 与 /databases 视图、graph CLI/MCP 面 |
+| [[concepts/graph-cli]] |  图谱 CLI 子命令体系 | query/schema/list/describe/create/drop/import、named databases、CSV 导入、derived 快照复用 |
+| [[concepts/sql-query-blocks]] |  文档内实况 SQL 查询块 | sqlite-query/duckdb-query 围栏块、只读安全模型、四个块动作、双引擎复用结构 |
 | [[concepts/memos]] |  快速笔记子系统 | `backlog/memos/` 下第五种文件实体，极简捕获 + 日历，刻意与 ContentStore 重量级体系保持边界 |
 | [[concepts/memo-board]] |  Memo 钉板视图 | 离屏 canvas 烘焙 + 裸 WebGL 单 quad，FNV-1a 三层确定性布局，固定黑板无平移缩放 |
 | [[concepts/state-machine]] |  状态机语义 | `statuses` 配置从显示层列定义升级为带语义的状态机：状态类别、转换条件、AI 可读指引 |
@@ -591,10 +642,20 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/40-Web界面/08-统计页面]] | 统计页面 | 项目健康度、状态概览、优先级分布、最近活动 |
 | [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、跟踪甘特图、五级粒度、依赖箭头、任务排序 |
 | [[usermanual/40-Web界面/10-全局搜索]] | 全局搜索 | Spotlight 搜索对话框、分组结果、键盘导航 |
+| [[usermanual/40-Web界面/11-图谱视图]] | 图谱视图 | /graph 任务图谱与 /knowledge 知识图谱、Cypher 搜索、RyuGraph WASM 默认后端 |
 | [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
 | [[usermanual/50-AI集成/03-Wiki Skill 安装]] | Wiki Skill 安装 | backlog wiki install、skill 嵌入二进制、Agent 符号链接 |
+| [[usermanual/70-快速笔记/00-Memos简介]] | Memos 简介 | 轻量捕获收件箱、四入口共享存储、知识网链接 |
+| [[usermanual/70-快速笔记/01-CLI备忘命令]] | CLI 备忘命令 | memo create/list/view/update/delete、--tags 三态、TTY 多行捕获 |
+| [[usermanual/70-快速笔记/02-Web备忘页面]] | Web 备忘页面 | Feed 信息流、日历模式、标签过滤 |
+| [[usermanual/70-快速笔记/03-搜索与知识互联]] | 搜索与知识互联 | 全局搜索纳入 memos、实体 ID 与 wikilink 自动链接 |
+| [[usermanual/70-快速笔记/04-钉板视图与归档]] | 钉板视图与归档 | WebGL 便利贴钉板、memo 归档语义 |
+| [[usermanual/80-图谱与数据查询/00-图谱CLI命令]] | 图谱 CLI 命令 | backlog graph 子命令、named databases、CSV 导入、快照复用 |
+| [[usermanual/80-图谱与数据查询/01-图谱MCP工具]] | 图谱 MCP 工具 | 六个 graph_* 工具、一次性开关模型 |
+| [[usermanual/80-图谱与数据查询/02-SQL查询块]] | SQL 查询块 | sqlite-query/duckdb-query 围栏块、只读安全模型、四个块动作 |
+| [[usermanual/80-图谱与数据查询/03-数据库页面]] | 数据库页面 | Databases 页真实行数、Cypher 结果图谱视图、可配置图例 |
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
 | [[usermanual/60-配置与运维/02-项目概览]] | 项目概览 | CLI overview 命令、项目级统计、健康指标 |

@@ -2,7 +2,7 @@
 title: 快速笔记（Memos）子系统
 labels: [concept, memos]
 created_date: 2026-10-03 01:13
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-16 01:00
 ---
 
 # 快速笔记（Memos）子系统
@@ -22,7 +22,7 @@ Backlog.md 的轻量随手记子系统：一行会议记录不再需要套用任
 
 CLI、HTTP API、MCP 三方共享同一存储模块、同一 ID 方案、同一文件格式：
 
-- **CLI**：`backlog memo` 命令组（create / list / view / update / delete），参照 decision 命令组风格，create 支持 `--content` 或 stdin，backlog/memos/ 刻意不入版本库（[[sources/back-730-cli-memo-subcommand]]）。
+- **CLI**：`backlog memo` 命令组（create / list / view / update / delete），参照 decision 命令组风格，create 支持 `--content` 或 stdin，backlog/memos/ 刻意不入版本库（[[sources/back-730-cli-memo-subcommand]]）。`memo update --tags` 三态语义：省略不动原标签、空串清空、有值替换（[[sources/back-763-memo-update-tags]]）；TTY 下省略 `--content` 进入交互式多行捕获——提示走 stderr 不混入正文、`Ctrl+C` 退出码 130 不建文件、空正文报错 `Memo content is empty.`（[[sources/back-764-interactive-memo-capture]]）。
 - **HTTP API**：`/api/memos` 路由镜像 docs 路由蓝本；server 层不做任何文件写入——handler 只校验输入、委托 core、广播。因 memos 不在 ContentStore 中，每次写操作后 handler 必须显式 `broadcastDataUpdated("memos")` 发出 memos-updated websocket 消息（[[sources/back-729-memo-http-api]]）。
 - **MCP**：memo_create / memo_list / memo_view / memo_update / memo_delete 五工具，完全镜像 documents 工具组结构，注册到双引导路径（[[sources/back-740-memo-mcp-tools]]）。
 - **Web UI**：/memos 单页信息流 + 日历双模式，共享单一 selectedDate；feed 分页基于游标 + IntersectionObserver 哨兵自动加载（[[sources/back-731-memos-feed-page]]、[[sources/back-732-memos-calendar-mode]]）。
