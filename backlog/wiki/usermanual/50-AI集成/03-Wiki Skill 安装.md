@@ -2,7 +2,7 @@
 title: Wiki Skill 安装
 labels: [usermanual]
 created_date: 2026-05-12 00:00
-updated_date: '2026-10-09 23:30'
+updated_date: 2026-10-16 18:20
 ---
 
 
@@ -113,3 +113,7 @@ backlog wiki install claude --force
 - backlog 源目录（`tasks/`、`docs/` 等）对 wiki 操作是**只读**的
 - 摄取永不递归处理 `wiki/`、`wiki_output/` 自身
 - `wiki/log.md` 只追加；所有跨页引用使用 wikilink（`[[path/to/page]]`，不带 `.md`）
+
+## 相关
+
+- [Migration Skill 安装](04-Migration%20Skill%20安装.md) — 安装 `task-migration-architect` skill（`backlog migrate install`），用于上游变更分析与任务驱动的分支合并
