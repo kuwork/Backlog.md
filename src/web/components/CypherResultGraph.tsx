@@ -38,8 +38,8 @@ import GraphLegendSettings from "./GraphLegendSettings";
  * kept per database: what a circle is called, which property decides its colour, and how each
  * relationship is drawn.
  */
-/** Past this many nodes the force layout - 250 synchronous ticks over the whole set - stops being an interaction and becomes a freeze, so the pane declines to draw and says why instead. */
-const GRAPH_NODE_LIMIT = 3000;
+/** Past this many nodes the force layout - 250 synchronous ticks over the whole set - stops being an interaction and becomes a freeze, so the pane declines to draw and says why instead. Exported so the `cypher-query` block's graph view falls back to its table at the same line (BACK-803). */
+export const GRAPH_NODE_LIMIT = 3000;
 
 interface CypherResultGraphProps {
 	graph: ResultGraph;
