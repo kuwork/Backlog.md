@@ -2,7 +2,7 @@
 title: MCP 工作流
 labels: [usermanual]
 created_date: 2026-05-07 00:00
-updated_date: '2026-10-09 23:30'
+updated_date: 2026-10-16 01:00
 ---
 
 
@@ -85,7 +85,7 @@ backlog task edit <id> -s Done
 
 ## MCP 工具能力清单
 
-通过 MCP 连接后，AI 代理可调用 **27 个工具**，按域分类如下（必填参数以（必填）标注）。
+通过 MCP 连接后，AI 代理可调用 **33 个工具**，按域分类如下（必填参数以（必填）标注）。
 
 ### 任务（7 个）
 
@@ -149,11 +149,26 @@ backlog task edit <id> -s Done
 
 | 工具 | 能力 | 关键参数 |
 |------|------|----------|
-| `get_backlog_instructions` | 获取工作流指南（markdown），默认 overview；overview 末尾自动渲染当前项目的完整状态机：状态表、类别、迁移边、终态表（BACK-716） | `instruction`（`overview` / `task-creation` / `task-execution` / `task-finalization` / `milestones` / `documents` / `decisions` / `drafts` / `memos`） |
+| `get_backlog_instructions` | 获取工作流指南（markdown），默认 overview；overview 末尾自动渲染当前项目的完整状态机：状态表、类别、迁移边、终态表 | `instruction`（`overview` / `task-creation` / `task-execution` / `task-finalization` / `milestones` / `documents` / `decisions` / `drafts` / `memos` / `graph`） |
+
+### 图谱（6 个）
+
+任务关系图谱的查询与用户数据库管理工具。图谱工具采用**一次性开关模型**：每次调用按 `open → 查询 → close` 走完全程（`default` 派生图谱复用 Web UI `GraphService` 已写入的快照），不在 MCP 进程里常驻 `GraphService`，因此不会在启动时重建语料、不会拖慢 MCP 服务器启动。
+
+| 工具 | 能力 | 关键参数 |
+|------|------|----------|
+| `graph_query` | 对指定图谱库执行只读 Cypher 查询（CREATE/MERGE/SET/DELETE 等写关键字直接拒绝），`readOnlyHint: true` | `db`（必填，`default` 或用户库名）、`statement` |
+| `graph_schema` | 输出库的 schema：节点表及属性（名称/类型/主键）、关系表及端点 | `db`（必填） |
+| `graph_list_databases` | 列出全部可用库（`default` 派生图谱 + 各用户库）及名称、kind、节点/边数 | 无参数 |
+| `graph_describe_database` | 返回单个库的描述、时间戳与逐表行数/边数 | `db`（必填） |
+| `graph_create_database` | 创建用户图谱库（写操作，`destructiveHint: true`，未传确认不写入任何内容） | `name`、`description`、`acknowledged: true`（均必填） |
+| `graph_import_csv` | 把 CSV 导入用户库：默认按节点导入（缺表按推断类型建表、主键幂等更新），加 `rel`/`from`/`to` 切换为关系导入（端点只匹配不新建）；文件先整体验证再开库，`destructiveHint: true` | `db`、`csv`（必填）、`node` / `map` / `header` / `rel` / `from` / `to` |
+
+配套的 `graph` 指南分册（`backlog instructions graph` / `backlog://workflow/graph`）覆盖六个工具的参数与 Cypher / CSV 用法。
 
 ### 列表分页
 
-所有 MCP 列表工具统一支持 `offset` + `limit` 分页（BACK-742），结构化结果通过统一信封返回：
+所有 MCP 列表工具统一支持 `offset` + `limit` 分页，结构化结果通过统一信封返回：
 
 ```json
 { "items": [], "total": 128, "offset": 0, "limit": 50, "hasMore": true }
@@ -178,6 +193,7 @@ Backlog.md MCP 服务器向客户端注册以下工作流资源，AI 代理可�
 | `backlog://workflow/decisions` | 决策指南：创建与列出决策，含输出模式与状态处理 |
 | `backlog://workflow/drafts` | 草稿指南：创建、晋级、降级、归档草稿 |
 | `backlog://workflow/memos` | 备忘指南：创建、列出、查看、更新、删除快速备忘 |
+| `backlog://workflow/graph` | 图谱指南：六个图谱 MCP 工具的参数、Cypher 查询与 CSV 导入用法 |
 | `backlog://init-required` | 未初始化项目时的回退资源：如何在本目录初始化 Backlog.md |
 
 AI 代理在首次连接或遇到不确定的场景时，会优先读取 `backlog://workflow/overview` 获取上下文指导。CLI 侧的 `backlog instructions <分册>` 与上述分册一一对应，详见[代理指令文件](02-代理指令文件.md)。
@@ -189,7 +205,7 @@ Backlog.md 的 MCP 实现从设计层面保障安全性：
 - **stdio-only 传输**：AI 客户端与 MCP 服务器之间仅通过标准输入输出通信，不监听任何网络端口，外部无法直接访问
 - **localhost-only 运行时验证**：Web UI 等服务默认仅绑定本地地址
 - **纯协议包装器**：MCP 层不包含任何业务逻辑，所有操作最终通过 Core 层统一处理，与 CLI 和 Web UI 共享同一套数据验证规则
-- **roots 发现机制**：MCP 客户端发送 workspace 根目录列表，Backlog.md 自动在目录中查找有效项目。正常启动路径也会跟随客户端 workspace roots 变化（BACK-522），未找到时降级为最小功能模式，仅暴露 `init` 相关工具
+- **roots 发现机制**：MCP 客户端发送 workspace 根目录列表，Backlog.md 自动在目录中查找有效项目。正常启动路径也会跟随客户端 workspace roots 变化，未找到时降级为最小功能模式，仅暴露 `init` 相关工具
 - **固定项目根目录**：如需锁定到固定目录（例如全局 `~/.backlog`），使用 `--cwd` 或 `BACKLOG_CWD` 环境变量启动；此时服务器不会跟随客户端 workspace roots
 
 ## 常见问题
@@ -205,4 +221,4 @@ Backlog.md 的 MCP 实现从设计层面保障安全性：
 **共享 MCP 服务器写入错误项目**
 - 现象：在用户级或共享服务器场景下，AI 创建的任务出现在错误目录
 - 原因：旧版本服务器只在启动时解析一次 project root
-- 解决：升级到已包含 BACK-522 的版本；如需固定目录，使用 `backlog mcp start --cwd <path>`
+- 解决：升级到最新版本；如需固定目录，使用 `backlog mcp start --cwd <path>`
