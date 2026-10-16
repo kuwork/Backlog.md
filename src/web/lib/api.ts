@@ -281,6 +281,32 @@ export interface DuckdbCsvExport {
 	truncated: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Cypher live query blocks (doc-27). The grid comes back in the SQL explorers' shape (cells are
+// already coerced to `SqliteCell` server-side, §5.4), so `SqliteQueryResult` is reused; these types
+// name the Cypher wire contract.
+// ---------------------------------------------------------------------------
+
+export interface CypherQueryRequest {
+	/** Database registry name (e.g. `default`, `tasks`) - never a path; the server refuses anything unregistered. */
+	source: string;
+	query: string;
+	maxRows?: number;
+	/** `"graph"` asks the server to attach the raw node/rel rows alongside the coerced grid (BACK-803). */
+	view?: "graph";
+}
+
+/** The Cypher grid plus the FileNode keys the graph canvas can highlight; otherwise the SQL shape. */
+export interface CypherQueryResult extends SqliteQueryResult {
+	nodeKeys: string[];
+	/**
+	 * The un-coerced rows (node/relationship/path structures with their internal handles), present
+	 * only when the request carried `view: "graph"`. The graph view joins these into a drawable
+	 * graph; the coerced `rows` remain the table fallback.
+	 */
+	graphRows?: unknown[][];
+}
+
 export class ApiClient {
 	private config: RequestConfig;
 
@@ -1279,6 +1305,38 @@ export class ApiClient {
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to export duckdb query");
+		}
+		return response.json();
+	}
+
+	/** Runs one read-only Cypher statement against a registered graph database. */
+	async runCypherQuery(payload: CypherQueryRequest): Promise<CypherQueryResult> {
+		const response = await fetch(`${API_BASE}/graph/cypher-query`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to run cypher query");
+		}
+		const result = (await response.json()) as Omit<CypherQueryResult, "dbPath">;
+		// The server never echoes a path (a registry name is not one), but the shared grid type
+		// requires the field; the registry name is the honest identifier.
+		return { ...result, dbPath: payload.source };
+	}
+
+	/**
+	 * Asks the server to build the CSV (it re-gates `source` and `query` and re-runs the read-only
+	 * statement). The browser then saves the returned text where the user chooses.
+	 */
+	async exportCypherCsv(payload: CypherQueryRequest): Promise<SqliteCsvExport> {
+		const response = await fetch(`${API_BASE}/graph/export-csv`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ source: payload.source, query: payload.query }),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to export cypher query");
 		}
 		return response.json();
 	}

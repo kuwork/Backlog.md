@@ -18,7 +18,7 @@ export default function DuckdbQueryBlock({ block }: { block: string }) {
 		dict: t.duckdbQueryBlock,
 		run: (request) => apiClient.runDuckdbQuery(request),
 		exportCsv: (request) => apiClient.exportDuckdbCsv(request),
-		actions: { showHide: true, copy: true, export: true },
+		actions: { showHide: true, copy: true, export: true, pagination: true },
 	};
 	return <SqlQueryBlock block={block} engine={engine} />;
 }

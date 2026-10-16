@@ -72,6 +72,8 @@ export interface CypherQueryResult {
 	nodeKeys: string[];
 	/** True when the raw result exceeded the row cap and was truncated for display. */
 	truncated: boolean;
+	/** Total rows of the untruncated result; set by the ryu backend, absent in test fixtures. */
+	totalRows?: number;
 }
 
 /** How many rows an interactive Cypher result is capped at before it is truncated for display. */
@@ -872,7 +874,7 @@ export class RyuGraphStore implements GraphStore {
 		);
 		const firstRow = rowObjects[0];
 		const columns = firstRow ? Object.keys(firstRow) : [];
-		return { columns, rows, nodeKeys: [...nodeKeys], truncated };
+		return { columns, rows, nodeKeys: [...nodeKeys], truncated, totalRows: rowObjects.length };
 	}
 
 	/**

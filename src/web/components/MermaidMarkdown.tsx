@@ -4,6 +4,7 @@ import type { Element, ElementContent, Parent, Root, RootContent } from "hast";
 import React, { useEffect, useMemo, useRef } from "react";
 import { visit } from "unist-util-visit";
 import { DUCKDB_BLOCK_LANG } from "../../duckdb/block.ts";
+import { CYPHER_BLOCK_LANG } from "../../graph/block.ts";
 import { SQLITE_BLOCK_LANG } from "../../sqlite/block.ts";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
@@ -14,6 +15,7 @@ import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-targe
 import { renderMermaidIn } from "../utils/mermaid";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
+import CypherQueryBlock from "./CypherQueryBlock";
 import DuckdbQueryBlock from "./DuckdbQueryBlock";
 import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
 import SqliteQueryBlock from "./SqliteQueryBlock";
@@ -432,6 +434,9 @@ function PreBlock(props: React.ComponentProps<"pre">) {
 	}
 	if (className.includes(`language-${DUCKDB_BLOCK_LANG}`)) {
 		return <DuckdbQueryBlock block={textOf(child?.props?.children)} />;
+	}
+	if (className.includes(`language-${CYPHER_BLOCK_LANG}`)) {
+		return <CypherQueryBlock block={textOf(child?.props?.children)} />;
 	}
 	return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
 }

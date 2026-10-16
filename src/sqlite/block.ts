@@ -9,7 +9,7 @@
  * `duckdb-query` blocks reuse it through `parseSqliteQueryBlock` / `parseDuckdbQueryBlock`.
  */
 
-export type QueryView = "table" | "list" | "value";
+export type QueryView = "table" | "list" | "value" | "graph";
 
 export interface QueryBlock {
 	/** Database path as written in the block; resolved later (see * /paths.ts). */
@@ -34,18 +34,31 @@ export type SqliteQueryView = QueryView;
 export type SqliteQueryBlock = QueryBlock;
 export type SqliteBlockParse = QueryBlockParse;
 
-const KNOWN_FIELDS = ["source", "sql", "view", "refresh", "copy_to"] as const;
-type FieldName = (typeof KNOWN_FIELDS)[number];
-
 const FIELD_LINE = /^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
 
 function fail(error: string): QueryBlockParse {
 	return { ok: false, error };
 }
 
-export function parseQueryBlock(raw: string): QueryBlockParse {
+/** The views every engine accepts. `graph` is the Cypher explorer's alone (BACK-803). */
+const DEFAULT_VIEWS: readonly QueryView[] = ["table", "list", "value"];
+
+/**
+ * Parse one block body. `statementField` is the name of the statement field: `sql` for the SQL
+ * explorers, `query` for the Cypher explorer (doc-27 §3) - everything else about the grammar is
+ * identical, so the engines share this one parser. `views` lists the `view` values the calling
+ * engine accepts; only the Cypher explorer widens it with `graph`. `refreshModes` lists the
+ * `refresh` values accepted; only the Cypher explorer widens it with `auto` (BACK-804).
+ */
+export function parseQueryBlock(
+	raw: string,
+	statementField: "sql" | "query" = "sql",
+	views: readonly QueryView[] = DEFAULT_VIEWS,
+	refreshModes: readonly string[] = ["manual"],
+): QueryBlockParse {
+	const knownFields: readonly string[] = ["source", statementField, "view", "refresh", "copy_to"];
 	const lines = raw.replace(/\r\n?/g, "\n").split("\n");
-	const fields = new Map<FieldName, string>();
+	const fields = new Map<string, string>();
 	let i = 0;
 
 	while (i < lines.length) {
@@ -54,16 +67,16 @@ export function parseQueryBlock(raw: string): QueryBlockParse {
 			i++;
 			continue;
 		}
-		if (/^\s/.test(line)) return fail(`第 ${i + 1} 行不该缩进：字段必须顶格写，多行内容用 "sql: |"。`);
+		if (/^\s/.test(line)) return fail(`第 ${i + 1} 行不该缩进：字段必须顶格写，多行内容用 "${statementField}: |"。`);
 		const match = FIELD_LINE.exec(line);
 		if (!match) return fail(`第 ${i + 1} 行无法解析：应为 "字段: 值"。`);
 
 		const key = (match[1] ?? "").toLowerCase();
 		const inline = (match[2] ?? "").trim();
-		if (!(KNOWN_FIELDS as readonly string[]).includes(key)) {
-			return fail(`第 ${i + 1} 行：未知字段 "${key}"，可用字段为 source / sql / view / refresh / copy_to。`);
+		if (!knownFields.includes(key)) {
+			return fail(`第 ${i + 1} 行：未知字段 "${key}"，可用字段为 ${knownFields.join(" / ")}。`);
 		}
-		const field = key as FieldName;
+		const field = key;
 		if (fields.has(field)) return fail(`字段 "${field}" 重复定义。`);
 
 		if (inline === "|" || inline === "|-") {
@@ -101,19 +114,20 @@ export function parseQueryBlock(raw: string): QueryBlockParse {
 
 	const source = fields.get("source")?.trim() ?? "";
 	if (source.length === 0) return fail("缺少必填字段 source（数据库路径）。");
-	const sql = fields.get("sql")?.trim() ?? "";
-	if (sql.length === 0) return fail("缺少必填字段 sql（查询语句）。");
+	const sql = fields.get(statementField)?.trim() ?? "";
+	if (sql.length === 0) return fail(`缺少必填字段 ${statementField}（查询语句）。`);
 
 	const view = (fields.get("view") ?? "table").trim().toLowerCase();
-	if (view !== "table" && view !== "list" && view !== "value") {
-		return fail(`view 只支持 table / list / value，收到 "${view}"。`);
+	if (!(views as readonly string[]).includes(view)) {
+		return fail(`view 只支持 ${views.join(" / ")}，收到 "${view}"。`);
 	}
 	const refresh = (fields.get("refresh") ?? "manual").trim().toLowerCase();
-	if (refresh !== "manual") return fail(`refresh 目前只支持 manual，收到 "${refresh}"。`);
+	if (!refreshModes.includes(refresh))
+		return fail(`refresh 目前只支持 ${refreshModes.join(" / ")}，收到 "${refresh}"。`);
 
 	const copyTo = fields.get("copy_to")?.trim() ?? undefined;
 
-	return { ok: true, block: { source, sql, view, refresh, copyTo } };
+	return { ok: true, block: { source, sql, view: view as QueryView, refresh, copyTo } };
 }
 
 /** Backwards-compatible alias kept so existing SQLite callers and tests need no change. */

@@ -16,7 +16,7 @@ export default function SqliteQueryBlock({ block }: { block: string }) {
 		dict: t.sqliteQueryBlock,
 		run: (request) => apiClient.runSqliteQuery(request),
 		exportCsv: (request) => apiClient.exportSqliteCsv(request),
-		actions: { showHide: true, copy: true, export: true },
+		actions: { showHide: true, copy: true, export: true, pagination: true },
 	};
 	return <SqlQueryBlock block={block} engine={engine} />;
 }

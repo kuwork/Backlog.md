@@ -37,10 +37,15 @@ import { DUCKDB_MAX_ROWS, runDuckdbQuery } from "../duckdb/query.ts";
 import { screenDuckdbSqlLiterals } from "../duckdb/sql-literals.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
+import { coerceCypherRows } from "../graph/coerce.ts";
+import { listDatabases } from "../graph/databases.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
 import { type GraphLockConflictHandler, type GraphService, startGraphService } from "../graph/service";
+import { type CypherQueryResult, DEFAULT_CYPHER_ROW_CAP } from "../graph/store.ts";
+import { encodeGraphUpdatedMessage } from "../graph/updated.ts";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
+import { defaultExportName, renderCsvFile } from "../sqlite/csv.ts";
 import { listSqliteFiles } from "../sqlite/discover.ts";
 import { buildSqliteCsv } from "../sqlite/export.ts";
 import { resolveSqliteSource } from "../sqlite/paths.ts";
@@ -315,7 +320,7 @@ export class BacklogServer {
 		const service = await startGraphService(this.core, {
 			slot: this.graphSlot,
 			onLockConflict: this.onGraphLockConflict,
-			onChanged: () => this.sendToSockets("graph-updated"),
+			onChanged: () => this.sendToSockets(encodeGraphUpdatedMessage(DEFAULT_DATABASE)),
 			// Startup messages run in parallel with the normal browser loading flow: one line when
 			// the cold start begins, one when the graph is ready (doc-014 §3.3).
 			onColdStart: (phase) => {
@@ -912,6 +917,12 @@ export class BacklogServer {
 					},
 					"/api/graph/db-cypher": {
 						POST: async (req: Request) => await this.handlePostDatabaseCypher(req),
+					},
+					"/api/graph/cypher-query": {
+						POST: async (req: Request) => await this.handleGraphCypherQuery(req),
+					},
+					"/api/graph/export-csv": {
+						POST: async (req: Request) => await this.handleGraphExportCsv(req),
 					},
 					"/api/status": {
 						GET: async () => await this.handleGetStatus(),
@@ -3164,6 +3175,115 @@ export class BacklogServer {
 			const message = error instanceof Error ? error.message : "Cypher 查询失败";
 			return Response.json({ error: message }, { status: 400 });
 		}
+	}
+
+	/**
+	 * POST /api/graph/cypher-query - one read-only Cypher statement from a `cypher-query` block,
+	 * answered with the same grid shape the SQL explorers return (doc-27 §5.1) so the shared query
+	 * block renders it untouched. Cells are coerced to plain scalars (doc-27 §5.4): the raw node and
+	 * relationship structures stay on /api/graph/db-cypher, which the databases page consumes.
+	 *
+	 * A request carrying `view: "graph"` (BACK-803) additionally gets the raw rows under `graphRows`
+	 * - node/relationship/path structures with their internal handles, which the graph view joins
+	 * into a drawable graph. The coerced grid still rides along: it is the fallback the block drops
+	 * to when the graph is too large to draw.
+	 */
+	private async handleGraphCypherQuery(req: Request): Promise<Response> {
+		let body: { source?: unknown; query?: unknown; maxRows?: unknown; view?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source.trim() : "";
+		const query = typeof body?.query === "string" ? body.query : "";
+
+		const gate = this.validateCypherBlockSource(source);
+		if (gate) return Response.json({ error: gate }, { status: 400 });
+
+		// Same config-driven cap as the SQL explorers: queryMaxRows (default 500), hard ceiling 5000.
+		const cfg = await this.core.filesystem.loadConfig();
+		const queryMaxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? DEFAULT_CYPHER_ROW_CAP)), 1), 5000);
+		const maxRows =
+			typeof body?.maxRows === "number" && Number.isFinite(body.maxRows)
+				? Math.min(Math.max(Math.trunc(body.maxRows), 1), 5000)
+				: queryMaxRows;
+
+		const started = performance.now();
+		try {
+			const result = await this.runCypherForSource(source, query, maxRows);
+			return Response.json({
+				columns: result.columns,
+				rows: coerceCypherRows(result.rows),
+				truncated: result.truncated,
+				elapsedMs: Math.round(performance.now() - started),
+				totalRows: result.totalRows ?? result.rows.length,
+				nodeKeys: result.nodeKeys,
+				// `undefined` drops the key: a text view never pays for the raw structures twice.
+				graphRows: body?.view === "graph" ? result.rows : undefined,
+			});
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+		}
+	}
+
+	/**
+	 * POST /api/graph/export-csv - build the CSV of one read-only Cypher statement for the browser
+	 * to save (mirrors /api/sqlite/export-csv). The request is exactly `{ source, query }`: the
+	 * server re-gates both and re-runs the query, so no row payload ever travels from the client.
+	 */
+	private async handleGraphExportCsv(req: Request): Promise<Response> {
+		let body: { source?: unknown; query?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source.trim() : "";
+		const query = typeof body?.query === "string" ? body.query : "";
+
+		const gate = this.validateCypherBlockSource(source);
+		if (gate) return Response.json({ error: gate }, { status: 400 });
+
+		const cfg = await this.core.filesystem.loadConfig();
+		const maxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? DEFAULT_CYPHER_ROW_CAP)), 1), 5000);
+		try {
+			const result = await this.runCypherForSource(source, query, maxRows);
+			const rows = coerceCypherRows(result.rows);
+			return Response.json({
+				filename: defaultExportName(source),
+				csv: renderCsvFile(result.columns, rows),
+				rows: rows.length,
+				truncated: result.truncated,
+			});
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+		}
+	}
+
+	/**
+	 * A block's `source` is a database's registry name, never a path (doc-27 §2): names resolve
+	 * through `databases/registry.json`, so "must be registered" is the whole containment gate - a
+	 * path-shaped value simply cannot match. Returns the error message, or null when usable.
+	 */
+	private validateCypherBlockSource(source: string): string | null {
+		if (!source) return "缺少必填字段 source（数据库名）。";
+		const known = listDatabases(this.core.filesystem.rootDir).map((db) => db.name);
+		if (known.includes(source)) return null;
+		return `数据库 "${source}" 不存在。可用：${known.join(", ")}。`;
+	}
+
+	/** Run one read-only statement against a validated source, exactly as /api/graph/db-cypher does. */
+	private async runCypherForSource(source: string, statement: string, maxRows: number): Promise<CypherQueryResult> {
+		if (source === DEFAULT_DATABASE) {
+			const service = await this.getGraphService();
+			if (!service) throw new Error("graph service unavailable");
+			return service.runCypher(statement, { maxRows });
+		}
+		this.databaseBrowser ??= new UserDatabaseBrowser();
+		return this.databaseBrowser.query(this.core.filesystem.rootDir, source, statement, maxRows);
 	}
 
 	private async handleGetVersion(): Promise<Response> {
