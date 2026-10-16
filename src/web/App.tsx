@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { BrowserRouter, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
 import type { DuplicateRepairPlan } from "../core/duplicate-task-repair.ts";
 import { hiddenStatusNames } from "../core/state-machine.ts";
+import { GRAPH_UPDATED_EVENT, parseGraphUpdatedMessage } from "../graph/updated.ts";
 import type {
 	BacklogConfig,
 	Decision,
@@ -1033,11 +1034,21 @@ function AppContent() {
 				// `graph-updated` that build emitted, so this is its only signal to refetch.
 				setGraphVersion((version) => version + 1);
 			} else if (event.data === "graph-updated") {
+				// The legacy bare-string broadcast: only the corpus graph ever sent it.
 				setGraphVersion((version) => version + 1);
+				window.dispatchEvent(new CustomEvent(GRAPH_UPDATED_EVENT, { detail: { database: "default" } }));
 			} else if (event.data === "graph-failed") {
 				// No retry signal exists yet; dropping the chip beats a spinner that never ends.
 				setGraphStatus(null);
 			} else {
+				const graphUpdated = parseGraphUpdatedMessage(event.data);
+				if (graphUpdated) {
+					// The corpus graph feeds the graph page and the databases table, so its change bumps
+					// the version; blocks with `refresh: auto` match the database name themselves.
+					if (graphUpdated.database === "default") setGraphVersion((version) => version + 1);
+					window.dispatchEvent(new CustomEvent(GRAPH_UPDATED_EVENT, { detail: graphUpdated }));
+					return;
+				}
 				const loadingState = parseBrowserLoadingState(event.data);
 				if (loadingState?.type === "loading") {
 					// Once content is on screen it stays interactive; the header indexing
