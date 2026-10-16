@@ -2,7 +2,7 @@
 title: MCP Server 实现
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-16 01:00
 ---
 
 # MCP Server 实现
@@ -38,7 +38,12 @@ McpServer extends Core
 | 里程碑 | `create_milestone`、`list_milestones`、`milestone_edit`、`archive_milestone` |
 | 决策记录 | `create_decision`、`list_decisions` |
 | DoD | `add_definition_of_done`、`check_definition_of_done` |
+| 图谱 | `graph_query`、`graph_schema`、`graph_list_databases`、`graph_describe_database`、`graph_create_database`、`graph_import_csv` |
 | 工作流 | `get_workflow_instructions` |
+
+## 图谱工具组（m-14，BACK-784~790）
+
+六个 `graph_*` 工具把 `backlog graph` CLI 子命令暴露给 AI 代理。刻意采用与 CLI 一致的一次性「打开→准备→执行→关闭」模型，不持有长驻 GraphService，因此 MCP 启动从不触发全量语料重建（[[sources/back-784-graph-mcp-foundation]]）。写路径工具（`graph_create_database` / `graph_import_csv`）带 `destructiveHint` 注解并要求 `acknowledged` 确认；错误码分层为 VALIDATION_ERROR / RESOURCE_NOT_FOUND / RESOURCE_CONFLICT / OPERATION_FAILED。配套注册 `backlog://workflow/graph` 使用指南，镜像 CLI 的 graph 指南（[[sources/back-790-mcp-graph-usage-guide]]）。
 
 ## Roots 发现机制
 
