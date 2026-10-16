@@ -95,7 +95,11 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 
 ## documentation 字段（BACK-619）
 
-里程碑新增 `documentation` 字段：CLI / MCP / Web 三个 surface 经 `MilestoneHandlers` 一次实现，三端同时获得读写能力，无逐端补丁。
+里程碑新增 `documentation` 字段：CLI / MCP / Web 三个 surface 经 `MilestoneHandlers` 一次实现，三端同时获得读写能力，无逐端补丁。BACK-782 起 Web 里程碑弹窗可直接预览渲染本地 documentation 条目（http(s) 条目仍为外链）（[[sources/back-782-milestone-popup-doc-preview]]）。
+
+## ID 显示统一大写 M-N（BACK-795）
+
+里程碑 ID 在 Web UI、TUI 与 CLI plain 输出统一大写 `M-N` 风格显示：Web 用 em dash（`M-9 — Title`），TUI/CLI plain 用连字符（`M-9 - Title`）。纯显示层变更，不改变存储格式（[[sources/back-795-unify-milestone-id-display]]）。
 
 ## created_date / updated_date 字段（BACK-618）
 
@@ -134,6 +138,8 @@ Web 里程碑卡片内的任务表与 All Tasks 对齐（[[sources/back-543-mile
 - [[sources/back-543-milestone-cards-created-column]] — BACK-543 里程碑 Created 列
 - [[sources/back-618-milestone-created-updated-dates]] — BACK-618 里程碑创建/更新时间戳
 - [[sources/back-619-milestone-documentation-field]] — BACK-619 documentation 字段
+- [[sources/back-782-milestone-popup-doc-preview]] — BACK-782 弹窗内 documentation 预览
+- [[sources/back-795-unify-milestone-id-display]] — BACK-795 里程碑 ID 大写 M-N 显示统一
 - [[sources/back-622-milestone-archive-remove-dialogs]] — BACK-622 archive/remove 语义与对话框
 - [[sources/back-706-milestone-actual-end-stamp]] — BACK-706 actualEnd 自动盖章修复
 - [[sources/back-687-milestone-board-tui]] — BACK-687 里程碑 board TUI

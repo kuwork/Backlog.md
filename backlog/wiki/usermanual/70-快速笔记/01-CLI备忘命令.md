@@ -26,7 +26,7 @@ backlog memo create --tags debug
 # 第二行
 ```
 
-> 交互终端下省略 `--content` 会进入键盘捕获（BACK-764）：提示语输出到 stderr（不会混进正文），多行原样落盘；`Ctrl+C` 中断，不建文件（退出码 130）；直接结束输入（空正文）报 `Memo content is empty.`，不建文件。
+> 交互终端下省略 `--content` 会进入键盘捕获：提示语输出到 stderr（不会混进正文），多行原样落盘；`Ctrl+C` 中断，不建文件（退出码 130）；直接结束输入（空正文）报 `Memo content is empty.`，不建文件。
 >
 > **结束键**：优先用 `Ctrl+D`——VS Code 集成终端、Git Bash、Windows Terminal 都会把这个按键原样交给程序，Unix/macOS/WSL 上它还产生真正的 EOF。经典 Windows 控制台（cmd/PowerShell）不投递任何 EOF，此时改用 `Ctrl+Z`；注意 `Ctrl+Z` 在 VS Code 里被拦截、在 mintty(Git Bash) 里是挂起信号，所以这两个环境统一用 `Ctrl+D`。
 >
@@ -52,7 +52,7 @@ backlog memo list --tags meeting,debug
 
 ### 列表分页
 
-`memo list` 与其他列表命令一样支持统一的分页窗口选项（BACK-741）：
+`memo list` 与其他列表命令一样支持统一的分页窗口选项：
 
 | 选项 | 说明 | 示例 |
 |------|------|------|

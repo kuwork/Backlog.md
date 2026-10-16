@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: '2026-10-09 22:00'
+updated_date: 2026-10-16 01:00
 ---
 
 # Knowledge Base Overview
@@ -134,6 +134,13 @@ updated_date: '2026-10-09 22:00'
 - **可视化**（BACK-704/705/710/711）：Web UI D3.js /graph 页面与任务详情模态框关系图谱，两视图对齐
 - **依赖治理**（BACK-706~709）：validateDependencies 拒绝环（容忍历史存量）、doctor 报告依赖缺陷（warning 退出码 0）、本地语料闭包/跳数查询、里程碑 actualEnd 自动打戳
 - **知识图谱**（BACK-714）：wiki/docs/decisions 入图，FileNode 类型 + tags + provenance + wikilinks LinksTo，/knowledge 视图
+- **后端换代**（BACK-766，2026-10-12）：默认后端从 MemoryGraphStore 切换为 RyuGraph WASM（kuzu 原生绑定在 Bun/Windows 段错误的根治），kuzu 依赖整体移除，详见 [[decisions/ryugraph-wasm-default-backend]] 与 [[execution/ryugraph-wasm-gotchas]]；概念页已更名 [[concepts/kuzu-graph|任务图谱引擎]]
+
+### 图谱 CLI/MCP 与文档实况 SQL 查询块（BACK-763~800，2026-10-12~15）
+- **图谱 CLI**（m-13，BACK-767~772）：`backlog graph` 子命令家族——query/schema/list/describe/create/drop/import，named databases 写路径、CSV 节点/边导入、derived-graph 快照复用提速；概念页 [[concepts/graph-cli]]，用户手册新增「图谱与数据查询」章
+- **图谱 MCP**（m-14，BACK-784~790）：六个 `graph_*` 工具镜像 CLI 的一次性开-跑-关模型，MCP 启动不触发全量重建；`backlog://workflow/graph` 指南注册
+- **文档实况 SQL 查询块**（m-11/m-12，BACK-773~781）：`sqlite-query`/`duckdb-query` 围栏块在阅读视图渲染只读实况结果，四重路径闸门 + 引擎级只读 + 500 行上限，Refresh/Show-Hide/Copy Markdown/Export CSV 四动作；DuckDB 侧复用 SQLite 的校验与序列化模块，BACK-796 扩展 CSV/Excel 数据源，BACK-797 行上限可配置 + 分页；概念页 [[concepts/sql-query-blocks]]，设计文档 doc-23~26
+- **Web/其他增量**：Databases 页真实行数与 Cypher 结果图谱视图 + 可配置图例（BACK-783/793/794）、里程碑弹窗文档预览与 M-N 大写 ID 统一（BACK-782/795）、里程碑详情图谱入口（BACK-791）、memo update --tags 与 TTY 交互多行捕获（BACK-763/764）、wiki 树缺失崩溃修复（BACK-798）、DuckDB 二进制打包修复（BACK-800）
 
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
@@ -224,14 +231,14 @@ updated_date: '2026-10-09 22:00'
 
 ## 统计
 
-- Sources ingested: 340
-- Concepts extracted: 42
+- Sources ingested: 387
+- Concepts extracted: 44
 - Entities catalogued: 2
-- Execution notes: 27
-- Decisions recorded: 80
+- Execution notes: 28
+- Decisions recorded: 81
 - Patterns: 6
 - Comparisons: 1
 - Reasoning traces: 5
 - Retrospectives: 1
-- User manual pages: 42
+- User manual pages: 45
 - Reports generated: 10
