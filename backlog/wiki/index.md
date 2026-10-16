@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-16 18:20
 ---
 
 
@@ -402,6 +402,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/m-13-graph-cli]] |  m-13 - Graph CLI 里程碑 | source, milestone, graph, cli |
 | [[sources/m-14-graph-mcp]] |  m-14 - Graph MCP 里程碑 | source, milestone, graph, mcp |
 | [[sources/back-24-02-milestone-swimlanes]] |  BACK-24.02 - TUI 看板里程碑泳道 | source, tui, enhancement, archived, milestones |
+| [[sources/back-801-migrate-install-task-migration-architect]] |  BACK-801 - migrate install 捆绑 task-migration-architect 技能 | source, cli, skill, migration |
 
 ## Execution Notes
 
@@ -647,6 +648,7 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
 | [[usermanual/50-AI集成/03-Wiki Skill 安装]] | Wiki Skill 安装 | backlog wiki install、skill 嵌入二进制、Agent 符号链接 |
+| [[usermanual/50-AI集成/04-Migration Skill 安装]] | Migration Skill 安装 | backlog migrate install、seed-only 项目记忆、排除清单 bootstrap |
 | [[usermanual/70-快速笔记/00-Memos简介]] | Memos 简介 | 轻量捕获收件箱、四入口共享存储、知识网链接 |
 | [[usermanual/70-快速笔记/01-CLI备忘命令]] | CLI 备忘命令 | memo create/list/view/update/delete、--tags 三态、TTY 多行捕获 |
 | [[usermanual/70-快速笔记/02-Web备忘页面]] | Web 备忘页面 | Feed 信息流、日历模式、标签过滤 |

@@ -2,7 +2,7 @@
 title: BACK-474 - Wiki Install 命令
 labels: [source]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-16 18:20
 source_path: backlog/tasks/back-474 - Add-wiki-install-command.md
 ---
 
@@ -15,7 +15,7 @@ source_path: backlog/tasks/back-474 - Add-wiki-install-command.md
 ## Skill 嵌入策略
 
 由于 CLI 编译为独立可执行文件（`bun build --compile`），skill 文件必须在构建时嵌入二进制中：
-- `scripts/embed-wiki-skill.ts` 扫描 `.codex/skills/llm-wiki-for-backlog/` 并生成 `src/skills/embedded/llm-wiki-for-backlog.ts`
+- `scripts/embed-wiki-skill.ts` 扫描 `.codex/skills/llm-wiki-for-backlog/` 并生成 `src/skills/embedded/llm-wiki-for-backlog.ts`（BACK-801 起该脚本泛化为 `scripts/embed-skills.ts`，见 [[sources/back-801-migrate-install-task-migration-architect]]）
 - 生成模块导出 `Record<string, string>` 映射（相对路径 → 文件内容）
 - 嵌入脚本已加入 `package.json` 的 build pipeline
 
@@ -68,3 +68,7 @@ backlog wiki install <agent>
 ## Related Concepts
 
 - [[concepts/embedded-skills]] — 构建时嵌入 skill 到 CLI 二进制以支持离线安装
+
+## Related Sources
+
+- [[sources/back-801-migrate-install-task-migration-architect]] — BACK-801 复刻本命令机制新增 `backlog migrate install`，并引入 seed-only 项目记忆

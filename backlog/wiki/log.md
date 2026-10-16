@@ -1102,3 +1102,11 @@ Chronological, append-only record of all wiki operations.
 **产物**：重写给围栏感知合并脚本（tmp/merge-usermanual.py，旧 merge.py 不识别代码围栏、把 bash 注释计入章节编号）重新合并 manual.md：9 章 44 页 5949 行，编号连续无误。index.md 登记 47 source + 2 concept + 1 decision + 1 execution，并补登手册表漏登的 11-图谱视图与 70-快速笔记五页。统计：Sources 340→387、Concepts 42→44、Decisions 80→81、Execution 27→28、User manual 42→45。
 
 **异常留痕**：① doc-24 与 m-11 正文引用的 "doc-16" 是旧编号，实指 doc-23（源文件事实，未改）；② m-11 created_date 晚于 actual_end（里程碑完成后补建）；③ back-793 源文件记录了一个未修的 `graph insert` 对用户库报成功但 dump 空快照的缺陷，建议单独立任务；④ 第二波 concept 子代理曾因配额中断，C1~C3 由主代理直接完成。
+
+## [2026-10-16 18:23:22] ingest+usermanual | BACK-801 migrate install 捆绑 task-migration-architect 技能
+
+**摄取范围**：单任务 BACK-801（Done）——新增 `backlog migrate install <agent>` 命令，把 task-migration-architect 技能嵌入二进制并可安装到其他项目；嵌入脚本由 embed-wiki-skill.ts 泛化为 embed-skills.ts（多技能 + seed-file 映射）；fork 私有记忆 `current-branch-migration-exclusions.md` 不嵌入，模板以 seed-only 语义写入（`--force` 也不覆盖）。
+
+**新建** source 页 [[sources/back-801-migrate-install-task-migration-architect]]；新建手册页 `usermanual/50-AI集成/04-Migration Skill 安装.md`（SUMMARY 登记，无任务代号）。
+
+**更新**：concept [[concepts/embedded-skills]] 改写为多技能架构 + `<NAME>_SKILL` / `<NAME>_SEED_FILES` 双导出与 seed-only 语义；concept [[concepts/upstream-migration]] 与 source [[sources/wiki-install-task]]（BACK-474）补 BACK-801 互链；手册 `03-Wiki Skill 安装` 末尾加「相关」指向新页。index.md 登记 1 source + 1 手册页；overview 统计 Sources 387→388、User manual 45→46。
