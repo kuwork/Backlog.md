@@ -2,7 +2,7 @@
 title: BACK-793 - 数据库页 Cypher 结果图谱视图
 labels: [source, web-ui, graph, cypher]
 created_date: 2026-10-16 01:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-16 18:52
 source_path: backlog/tasks/back-793 - Cypher-result-graph-view-on-the-databases-page.md
 ---
 
@@ -30,7 +30,9 @@ source_path: backlog/tasks/back-793 - Cypher-result-graph-view-on-the-databases-
 - 第 1600 个节点是我们自己的：1599 个业务节点的语料（FileNode 1418 + Tag 181）被 `MATCH (n) RETURN n` 答出 1600 行，多出的 `Meta` 是 store 自用的键值簿记节点表（语料指纹）。`INTERNAL_LABELS` 在抽取时标记内部标签，结果图默认隐藏它们（但仅当结果还含有别的东西——`MATCH (m:Meta)` 不许打开成空窗格）；标题说明隐藏了几个，图例保留条目；表格不动。
 - "View ALL" 与一键 schema 示例并列：语句为 `MATCH (n) OPTIONAL MATCH (n)-[r]-() RETURN n,r`（`OPTIONAL MATCH` 承力——去掉它会静默丢掉所有无关系节点）；一次点击同时填框并执行，因此 `run` 接受显式 `{ db, statement }` 对（先 `setStatement` 再点击会在同一拍执行旧文本）。
 
-发现未修的既有 bug：`graph insert "<cypher>"` 对用户库报成功但 dump 出空快照（干净树上复现，dump 时 `countNodes=0`）；CSV 导入不受影响。值得单独立任务。
+~~发现未修的既有 bug：`graph insert "<cypher>"` 对用户库报成功但 dump 出空快照（干净树上复现，dump 时 `countNodes=0`）；CSV 导入不受影响。值得单独立任务。~~
+
+> **更正（2026-10-16）**：经实测复核，上述"bug"是误报。`countNodes` 只统计节点实例，`CREATE NODE TABLE` 等纯 schema 语句 dump 时显示 0 属正常；数据语句（`CREATE (:Person {...})`）的快照实测正确落盘（schema 与节点俱在），后续进程水合读回正常。原观察很可能来自 CLI 帮助示例恰好是纯 schema 语句。
 
 ## 验证
 

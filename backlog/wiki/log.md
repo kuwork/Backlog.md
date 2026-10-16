@@ -1110,3 +1110,5 @@ Chronological, append-only record of all wiki operations.
 **新建** source 页 [[sources/back-801-migrate-install-task-migration-architect]]；新建手册页 `usermanual/50-AI集成/04-Migration Skill 安装.md`（SUMMARY 登记，无任务代号）。
 
 **更新**：concept [[concepts/embedded-skills]] 改写为多技能架构 + `<NAME>_SKILL` / `<NAME>_SEED_FILES` 双导出与 seed-only 语义；concept [[concepts/upstream-migration]] 与 source [[sources/wiki-install-task]]（BACK-474）补 BACK-801 互链；手册 `03-Wiki Skill 安装` 末尾加「相关」指向新页。index.md 登记 1 source + 1 手册页；overview 统计 Sources 387→388、User manual 45→46。
+
+## [2026-10-16 18:52:54] lint-fix | 更正 BACK-793 source 页：graph insert 空快照系误报（schema-only 语句 countNodes=0 属正常），RELEASE-v1.53.5-CN 未跟进条目同步更正
