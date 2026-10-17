@@ -2,7 +2,7 @@
 title: 图谱 CLI 子命令体系
 labels: [concept, graph, cli]
 created_date: 2026-10-16 01:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-18 01:00
 ---
 
 # 图谱 CLI 子命令体系
@@ -16,6 +16,7 @@ updated_date: 2026-10-16 01:00
 - `list` / `describe` / `create` / `drop`：named database 管理
 - `insert`：对用户数据库的 Cypher 写路径
 - `import`：CSV 导入节点与边到用户数据库（BACK-770/771）
+- `legend get/set/remove <db>`：图例配置的 CLI 读写面（m-16，BACK-808），直接读写 `backlog/databases/graph-legends.yaml`——不经 HTTP、离线可用，与 Web 面板和 MCP 是同一份存储；默认打印人类可读摘要，`--json` 输出原始 JSON，删除沿用 CLI 惯例命名 `remove` 且幂等
 
 ## 两类数据库
 
@@ -34,6 +35,7 @@ BACK-772 起 CLI 的 derived 分支优先复用派生图谱快照（`reuseSnapsh
 
 - [[concepts/kuzu-graph]] — CLI 所操作的图谱引擎与数据模型
 - [[concepts/cli-entry]] — 命令注册与 plain/json 输出惯例
+- [[concepts/graph-legend-persistence]] — `graph legend` 所读写的配置与三面共享存储
 
 ## Related Sources
 
