@@ -2,7 +2,7 @@
 title: Web UI 实时同步复用模式
 labels: [concept, web-ui, realtime]
 created_date: 2026-10-03 01:13
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-18 01:00
 ---
 
 # Web UI 实时同步复用模式
@@ -32,6 +32,8 @@ Web UI 中"外部编辑实时反映到页面"的标准接线模式，三件套�
 - **memos**：memos-updated → MemosPage，feed 按 id 并入 + 日历计数与展开日子面板刷新（[[sources/back-735-memos-realtime-sync]]）。
 - **drafts**：drafts-updated 是同形状的先例（memos-updated 转发模式复刻自它）。
 - **board**：ContentStore 实体广播刷新的既有先例（[[sources/back-700-content-entity-broadcast-refresh]]）。
+- **图谱 / 查询块**（`graph-updated`）：GraphService 的热更新链（core notify hook + 递归 `fs.watch` + 定时 reconcile，150ms 防抖）推到 WebSocket；块侧收到后置脏、**再等 500ms 静默期**才重跑，并用结果指纹深比较（排除 `elapsedMs`）跳过无变化重渲染。服务端零新状态——推的只是「变了」，重跑仍是客户端发起的普通 HTTP 查询（[[sources/back-804-cypher-query-refresh-auto]]）。
+- **图例配置**（`graph-legend-updated`）：`backlog/databases/` 是唯一没有 watcher 的内容目录，因此除 API 路由自广播外另加 `graph-legend-watcher`（监听目录而非文件——存储走临时文件 + rename），让 CLI / MCP / 编辑器手改也能热更新；三层「无变化不刷新」（路由只在语义变化时广播并在请求内同步更新 watcher 基线、watcher 深度且键序不敏感比对、浏览器取回后与屏上配置比对）保证一次变化只刷新一次（[[sources/back-810-graph-legend-watcher]]）。
 
 注意区分：TUI 侧的实时同步是另一套机制——fs.watch 经 watcher 会话直接喂 board update funnel（[[sources/back-694-board-popup-live-sync]]、[[sources/back-695-drafts-session-live-sync]]、[[sources/back-696-milestone-popup-live-sync]]），不经 websocket/window 事件。
 
@@ -47,3 +49,5 @@ Web UI 中"外部编辑实时反映到页面"的标准接线模式，三件套�
 - [[sources/back-735-memos-realtime-sync]] — 模式的 memos 落地（三件套全貌）
 - [[sources/back-700-content-entity-broadcast-refresh]] — ContentStore 实体广播刷新先例
 - [[sources/back-695-drafts-session-live-sync]] — drafts-updated 模式来源（TUI 侧 watcher 变体）
+- [[sources/back-804-cypher-query-refresh-auto]] — `graph-updated` 变体：500ms 静默期 + 结果指纹深比较
+- [[sources/back-810-graph-legend-watcher]] — 目录 watcher 补最后一个内容目录，三层无变化不刷新

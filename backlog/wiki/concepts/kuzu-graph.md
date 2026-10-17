@@ -25,7 +25,8 @@ BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯
 
 - `backlog graph` 子命令体系（BACK-767~772）：`query` / `schema` / `list` / `describe` / `create` / `drop` / `import`，named databases 写路径与 CSV 节点/边导入；CLI 运行复用 derived-graph 快照而非每次全量重建（BACK-772）。详见 [[concepts/graph-cli]]
 - 六个 `graph_*` MCP 工具（BACK-784~790）镜像 CLI 的一次性开-跑-关模型，MCP 启动不触发全量重建；配套 `backlog://workflow/graph` 指南（BACK-790）
-- Web `/databases` 页：真实行数随 graph-updated 刷新（BACK-783）、Cypher 结果图谱视图（BACK-793）与按库持久化的可配置图例（BACK-794）
+- Web `/databases` 页：真实行数随 graph-updated 刷新（BACK-783）、Cypher 结果图谱视图（BACK-793）与按库持久化的可配置图例（BACK-794，后迁移到项目文件，见 [[concepts/graph-legend-persistence]]）
+- 文档内 `cypher-query` 块（m-15，BACK-802~805）把同一套 Cypher 能力带进任意文档的阅读视图，并复用 `graph-updated` 做 `refresh: auto`（[[concepts/cypher-live-query-block]]）
 
 ## 冷启动：指纹校验
 
