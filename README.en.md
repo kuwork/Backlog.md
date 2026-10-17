@@ -166,7 +166,7 @@ After the code is done:
 
 * 📅 **Tracking Gantt chart** -- Visual timeline based on `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` date fields, with planned vs. actual dual-layer comparison
 
-* 🗄️ **Live SQL query blocks** -- Embed read-only SQL queries in any Markdown body, rendered live from project-local SQLite / DuckDB / CSV / Excel data as table / list / value views, with export
+* 🗄️ **Live SQL query blocks** -- Embed read-only SQL queries in any Markdown body, rendered live from project-local SQLite / DuckDB / CSV / Excel data as table / list / value views, with export; a `cypher-query` fenced block runs read-only Cypher against the graph databases, with a force-directed graph view and `refresh: auto` hot updates
 
 * 🔍 **Powerful search** -- fuzzy search across tasks, docs & decisions with `backlog search`
 
@@ -444,7 +444,7 @@ Task, wiki, and file modals include a bookmark-style outline: a narrow tab peeks
 
 ### Live SQL Query Blocks
 
-Any Markdown body (tasks, documents, decisions, memos, wiki pages) can embed a `sqlite-query` / `duckdb-query` fenced block; the web UI's reading view **executes the read-only query live** against project-local data files and renders the result, while the editor keeps showing the raw source:
+Any Markdown body (tasks, documents, decisions, memos, wiki pages) can embed read-only query fenced blocks; the web UI's reading view **executes the query live** against the project's data sources and renders the result, while the editor keeps showing the raw source. SQL data uses `sqlite-query` / `duckdb-query`:
 
 ````markdown
 ```sqlite-query
@@ -460,6 +460,24 @@ sql: |
 - `source` is a project-relative path: `.sqlite` / `.sqlite3` / `.db` for `sqlite-query`; `.duckdb` plus `.csv` / `.xlsx` for `duckdb-query` (CSV/Excel open an in-memory instance and read the file directly; the Excel extension autoloads)
 - Read-only is enforced in three layers: statement-shape allowlist, keyword blocklist, and a physically read-only engine handle; results cap at 500 rows
 - `view` supports `table` (default) / `list` / `value`; `duckdb-query` additionally accepts `copy_to: <path>` to export the result as a CSV / Excel file inside the project
+
+Graph databases (the `default` corpus graph and databases created with `backlog graph create`) use `cypher-query` instead — the statement field is `query` rather than `sql`, `source` is a database registry name rather than a path, and the block additionally supports `view: graph` (a force-directed drawing) and `refresh: auto` (re-run on graph hot updates):
+
+````markdown
+```cypher-query
+source: default
+view: graph
+refresh: auto
+query: |
+  MATCH (t:FileNode)-[:DependsOn]->(d:FileNode)
+  RETURN t, d
+  LIMIT 50
+```
+````
+
+- Read-only: write keywords (`CREATE` / `MERGE` / `SET` / `DELETE`, ...) are rejected outright; only `MATCH` / `RETURN` / `WITH` / `CALL` read-only introspection is allowed. The same 500-row cap applies (`queryMaxRows` configurable, hard ceiling 5000)
+- `view: graph` renders nodes / relationships with the same force-directed pane as the Databases page, reusing that database's legend configuration; beyond 3000 nodes it falls back to the table with a notice
+- `refresh: auto` subscribes to the graph-updated broadcast: a CLI / MCP write or a corpus-graph rebuild naming this block's database re-runs it, one re-run per burst
 
 ![Live SQL query blocks: table / list / value / empty views](./.github/live-query1.jpg)
 

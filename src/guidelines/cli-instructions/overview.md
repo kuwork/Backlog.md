@@ -54,7 +54,7 @@ Use the output of these commands when creating tasks, choosing default assignees
 - `backlog instructions milestones`
   -> Read before managing milestones: how to create, edit, remove, and archive milestones
 - `backlog instructions documents`
-  -> Read when creating or updating project documents: doc types, paths, multi-line content, append rules, and embedding live `sqlite-query` / `duckdb-query` SQL blocks
+  -> Read when creating or updating project documents: doc types, paths, multi-line content, append rules, and embedding live `sqlite-query` / `duckdb-query` / `cypher-query` blocks
 - `backlog instructions decisions`
   -> Read when creating or listing decisions: create status, list output modes, and key rules
 - `backlog instructions drafts`

@@ -11,9 +11,6 @@
 
 export type QueryView = "table" | "list" | "value" | "graph";
 
-/** The block-level style presets (doc-27 §8.3, BACK-805), shared by all three engines. */
-export type QueryBlockStyle = "compact" | "striped" | "borderless";
-
 export interface QueryBlock {
 	/** Database path as written in the block; resolved later (see * /paths.ts). */
 	source: string;
@@ -26,11 +23,6 @@ export interface QueryBlock {
 	 * it - the SQLite explorer rejects a block that sets it. The server gates and performs the copy.
 	 */
 	copyTo?: string;
-	/**
-	 * The valid `style` presets, in the order written. Absent (not empty) when the block sets no
-	 * usable preset - invalid values are dropped, never rejected, so a typo cannot break the render.
-	 */
-	style?: QueryBlockStyle[];
 }
 
 export type QueryBlockParse = { ok: true; block: QueryBlock } | { ok: false; error: string };
@@ -51,9 +43,6 @@ function fail(error: string): QueryBlockParse {
 /** The views every engine accepts. `graph` is the Cypher explorer's alone (BACK-803). */
 const DEFAULT_VIEWS: readonly QueryView[] = ["table", "list", "value"];
 
-/** The style presets every engine accepts (BACK-805); anything else is dropped, not rejected. */
-const KNOWN_STYLES: readonly QueryBlockStyle[] = ["compact", "striped", "borderless"];
-
 /**
  * Parse one block body. `statementField` is the name of the statement field: `sql` for the SQL
  * explorers, `query` for the Cypher explorer (doc-27 §3) - everything else about the grammar is
@@ -67,7 +56,7 @@ export function parseQueryBlock(
 	views: readonly QueryView[] = DEFAULT_VIEWS,
 	refreshModes: readonly string[] = ["manual"],
 ): QueryBlockParse {
-	const knownFields: readonly string[] = ["source", statementField, "view", "refresh", "copy_to", "style"];
+	const knownFields: readonly string[] = ["source", statementField, "view", "refresh", "copy_to"];
 	const lines = raw.replace(/\r\n?/g, "\n").split("\n");
 	const fields = new Map<string, string>();
 	let i = 0;
@@ -138,19 +127,9 @@ export function parseQueryBlock(
 
 	const copyTo = fields.get("copy_to")?.trim() ?? undefined;
 
-	// `style` is a space-separated preset list (doc-27 §8.3). Unlike `view` / `refresh`, an unknown
-	// token is ignored rather than rejected: styling is decorative, so a typo must fall back to the
-	// default look instead of failing the block.
-	const style: QueryBlockStyle[] = [];
-	for (const token of (fields.get("style") ?? "").toLowerCase().split(/\s+/)) {
-		if ((KNOWN_STYLES as readonly string[]).includes(token) && !style.includes(token as QueryBlockStyle)) {
-			style.push(token as QueryBlockStyle);
-		}
-	}
-
 	return {
 		ok: true,
-		block: { source, sql, view: view as QueryView, refresh, copyTo, style: style.length > 0 ? style : undefined },
+		block: { source, sql, view: view as QueryView, refresh, copyTo },
 	};
 }
 

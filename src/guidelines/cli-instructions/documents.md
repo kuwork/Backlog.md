@@ -2,7 +2,7 @@
 
 Documents live under `backlog/docs/` and are used for long-term project reference information such as development standards, configuration guides, architecture documentation, and runbooks. They differ from `tasks/` (specific work items), `decisions/` (decision records), and `drafts/` (draft ideas).
 
-Documents (like any markdown body rendered by the Web UI) can embed **live SQL query blocks** (`sqlite-query` / `duckdb-query`) that execute against project-local SQLite / DuckDB / CSV / XLSX data sources and render results in the reading view — see [Live SQL Query Blocks](#live-sql-query-blocks-sqlite-query--duckdb-query) below before writing one.
+Documents (like any markdown body rendered by the Web UI) can embed **live query blocks** — SQL blocks (`sqlite-query` / `duckdb-query`) that execute against project-local SQLite / DuckDB / CSV / XLSX data sources, and Cypher blocks (`cypher-query`) that execute against the project's graph databases — and render results in the reading view. See [Live SQL Query Blocks](#live-sql-query-blocks-sqlite-query--duckdb-query) and [Live Cypher Query Blocks](#live-cypher-query-blocks-cypher-query) below before writing one.
 
 Documents also support **rich links**: in-document heading anchors for a table of contents, short aliased links to backlog items (`/task/506`, `/documentation/001`, `/decisions/042`, `/wiki/...`) including `:LINE` / `:START-END` suffixes that open the target scoped to specific lines, and project-relative code file links that open a file preview — see [Links in Documents](#links-in-documents) below before referencing other items or files.
 
@@ -186,7 +186,7 @@ An item link opens the item modal; a code file link opens the file preview. Add 
 
 ### Live SQL Query Blocks (`sqlite-query` / `duckdb-query`)
 
-Any markdown body rendered by the Web UI (documents, tasks, decisions, memos, wiki pages) can embed a **live** SQL query with a `sqlite-query` or `duckdb-query` fenced code block. In the reading view the block executes against the data source and renders the result; in the editor it stays raw source and never executes.
+Any markdown body rendered by the Web UI (documents, tasks, decisions, memos, wiki pages) can embed a **live** SQL query with a `sqlite-query` or `duckdb-query` fenced code block. In the reading view the block executes against the data source and renders the result; in the editor it stays raw source and never executes. A `cypher-query` block does the same for the project's graph databases — see [Live Cypher Query Blocks](#live-cypher-query-blocks-cypher-query) below.
 
 ````markdown
 ```sqlite-query
@@ -207,7 +207,6 @@ Fields are top-level `key: value` pairs; use the `sql: |` block scalar for multi
 | `sql` | yes | — | A single `SELECT` or `WITH ... SELECT` statement |
 | `view` | no | `table` | `table` (grid) / `list` (key-value per record) / `value` (first cell of the first row, inline — good for a single metric) |
 | `refresh` | no | `manual` | Manual refresh only; no auto/scheduled refresh |
-| `style` | no | — | Space-separated style presets: `compact` (tighter rows, smaller text) / `striped` (zebra rows) / `borderless` (no frame or rule lines) — e.g. `style: compact striped`. Unknown values are ignored and fall back to the default look |
 | `copy_to` | no | — | `duckdb-query` only: project-relative `.csv` / `.xlsx` target that enables the write path (see below) |
 
 Data sources:
@@ -259,7 +258,56 @@ sql: |
 
 The server wraps the `SELECT` in `COPY (<sql>) TO '<target>'` (`.csv` → `HEADER TRUE`; `.xlsx` → `FORMAT XLSX, HEADER TRUE`), overwrites the target idempotently, and the block shows "written to: <path>". The written file stays inside the project, so it can itself become the `source` of another query block.
 
-Because these blocks contain backticks, do not pass them through `--content` / `--append-content` — the shell would try to execute the fence text. Use the [complex content workflow](#complex-content-with-backticks-or-shell-sensitive-characters): create the document with `backlog doc create`, then write the fenced blocks into the file directly, after the frontmatter.
+#### Live Cypher Query Blocks (`cypher-query`)
+
+Any markdown body rendered by the Web UI can also embed a **live** Cypher query with a `cypher-query` fenced code block, executed against the project's graph databases — the `default` corpus graph (tasks, docs, decisions, memos and their dependencies / links) or a user database created with `backlog graph create`. In the reading view the block executes and renders the result; in the editor it stays raw source and never executes.
+
+````markdown
+```cypher-query
+source: default
+view: table
+query: |
+  MATCH (t:FileNode)-[:DependsOn]->(d:FileNode)
+  RETURN t.id AS task, d.id AS dependency
+  ORDER BY task
+  LIMIT 20
+```
+````
+
+The grammar is the same tiny YAML subset with two deliberate differences: the statement field is `query` (not `sql`), and `source` is a **database registry name** (what `backlog graph list` prints, e.g. `default` or `people`), never a path.
+
+| Field | Required | Default | Notes |
+|-------|----------|---------|-------|
+| `source` | yes | — | Registered graph database name; an unknown name fails the block |
+| `query` | yes | — | A single read-only statement: `MATCH` / `RETURN` / `WITH` / `CALL` |
+| `view` | no | `table` | `table` / `list` / `value` as above, plus `graph` — a force-directed node/relationship drawing rendered by the same pane as the Databases page, reusing that database's legend configuration |
+| `refresh` | no | `manual` | `manual`, or `auto` — re-run when a graph-updated broadcast names this block's database (one re-run per burst) |
+There is no `copy_to` on a `cypher-query` block — the graph engine is read-only, full stop.
+
+The `graph` view with `refresh: auto` (the block re-runs itself when the graph changes):
+
+````markdown
+```cypher-query
+source: people
+view: graph
+refresh: auto
+query: |
+  MATCH (a:Person)-[:KNOWS]->(b:Person)
+  RETURN a, b
+```
+````
+
+Rules (fail-closed — a violation renders an error inside the block and never affects the rest of the page):
+
+- Read-only: write keywords (`CREATE` / `DROP` / `DELETE` / `INSERT` / `MERGE` / `SET` / `UPDATE`) are rejected by static validation before the engine runs; `CALL` stays allowed for read-only introspection (e.g. `CALL show_tables() RETURN name, type`).
+- `source` must be a registered database name — names resolve through `backlog/databases/registry.json`, so a path-shaped value simply cannot match.
+- Results are capped at 500 rows by default (`queryMaxRows` config, hard ceiling 5000) and flagged as truncated beyond that; there is no pagination — tighten the query instead.
+- The `graph` view draws up to 3000 nodes; a larger result falls back to the coerced table with a notice.
+- `refresh: auto` is opt-in: it re-runs only when a graph-updated broadcast names this block's database (a CLI / MCP write, or the corpus graph being rebuilt), coalesced into one re-run per burst; `manual` blocks re-run only via the toolbar button.
+- Cells are coerced to plain scalars: nodes render as a compact JSON string, relationships and paths as `(a)-[TYPE]->(b)` text, NULL as an empty cell.
+- Toolbar actions: refresh, show/hide query, copy as Markdown, export CSV. No pagination, no `copy_to`.
+
+Because these blocks (SQL and Cypher alike) contain backticks, do not pass them through `--content` / `--append-content` — the shell would try to execute the fence text. Use the [complex content workflow](#complex-content-with-backticks-or-shell-sensitive-characters): create the document with `backlog doc create`, then write the fenced blocks into the file directly, after the frontmatter.
 
 ### Key Rules
 

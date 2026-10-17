@@ -332,28 +332,29 @@ describe("SqliteQueryBlock Export CSV", () => {
 	});
 });
 
-describe("SqliteQueryBlock style field (BACK-805)", () => {
-	it("inherits the shared presets: compact tightens, striped zebras, borderless deframes", async () => {
+describe("SqliteQueryBlock after the style field was removed (BACK-811)", () => {
+	it("renders the one fixed look regardless of what a block asks for", async () => {
 		queryResult = { ...RESULT, rows: [["Alice"], ["Bob"]], totalRows: 2 };
 		mount(`${BLOCK}\nstyle: compact striped borderless`);
 		await settle();
 
-		const frame = container?.querySelector("div.my-3");
-		expect(frame?.className).toContain("text-xs");
-		expect(frame?.className).not.toContain("border");
-		const rows = container?.querySelectorAll("tbody tr");
-		expect(rows?.[0]?.className).not.toContain("bg-blue-50");
-		expect(rows?.[1]?.className).toContain("bg-blue-50");
-		expect(container?.querySelector("td")?.className).toContain("py-0");
+		// `style` is an unknown field now, so the block fails closed rather than dressing itself.
+		expect(container?.textContent).toContain("未知字段");
 	});
 
-	it("ignores unknown style values and keeps the default look", async () => {
-		mount(`${BLOCK}\nstyle: rainbow`);
+	it("keeps the default look: framed, normal text, rule line on every row but the last", async () => {
+		queryResult = { ...RESULT, rows: [["Alice"], ["Bob"]], totalRows: 2 };
+		mount(BLOCK);
 		await settle();
 
 		expect(container?.textContent).toContain("Alice");
 		const frame = container?.querySelector("div.my-3");
 		expect(frame?.className).toContain("text-sm");
 		expect(frame?.className).toContain("border");
+		const rows = container?.querySelectorAll("tbody tr");
+		expect(rows?.[0]?.className).toContain("border-b");
+		expect(rows?.[1]?.className).not.toContain("border-b");
+		expect(rows?.[1]?.className).not.toContain("bg-blue-50");
+		expect(container?.querySelector("td")?.className).toContain("py-1");
 	});
 });

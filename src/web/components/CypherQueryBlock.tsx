@@ -19,8 +19,7 @@ import SqlQueryBlock, { type QueryEngineConfig } from "./SqlQueryBlock.tsx";
  * reader tuned on the databases page applies here untouched (and the pane's own settings gear edits
  * the same entry). Past {@link GRAPH_NODE_LIMIT} nodes the shared core falls back to the coerced
  * table with a notice. `refresh: auto` (BACK-804) re-runs the statement when the app shell's
- * graph-updated window event names this block's database. The `style` presets (BACK-805) come from
- * the shared core unchanged; the graph view ignores them.
+ * graph-updated window event names this block's database.
  */
 export default function CypherQueryBlock({ block }: { block: string }) {
 	const { t } = useI18n();
@@ -28,6 +27,7 @@ export default function CypherQueryBlock({ block }: { block: string }) {
 		id: "cypher",
 		dict: t.cypherQueryBlock,
 		parse: parseCypherQueryBlock,
+		highlightLanguage: "cypher",
 		run: (request) =>
 			apiClient.runCypherQuery({
 				source: request.source,

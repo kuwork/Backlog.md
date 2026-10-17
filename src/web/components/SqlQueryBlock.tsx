@@ -5,6 +5,7 @@ import { cellToMarkdown, resultToMarkdownTable } from "../../sqlite/markdown.ts"
 import type { SqliteCell, SqliteQueryResult } from "../lib/api";
 import { apiClient } from "../lib/api";
 import { saveTextFile } from "../lib/save-file";
+import { highlightCode } from "../utils/code-highlight";
 import type { ResultGraph } from "../utils/cypher-graph";
 import Switch from "./Switch";
 
@@ -99,6 +100,12 @@ export interface QueryEngineConfig {
 	 * its statement field is `query`, not `sql` (doc-27 §3) - the parsed shape is identical.
 	 */
 	parse?: (block: string) => QueryBlockParse;
+	/**
+	 * The grammar the 显示查询 panel tokenizes the statement with - `sql` for the SQL explorers,
+	 * `cypher` for the graph one. Both come from the same Prism instance the reading view paints
+	 * fenced code with, and an unknown name falls back to plain text rather than failing the render.
+	 */
+	highlightLanguage?: "sql" | "cypher";
 	/** Runs one read-only statement and returns the grid. */
 	run: (request: {
 		source: string;
@@ -323,17 +330,13 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 	const refresh = useCallback(() => setNonce((value) => value + 1), []);
 	const view: QueryBlock["view"] = parsed.ok ? parsed.block.view : "table";
 
-	// The style presets (BACK-805) dress the text views only; the graph view draws its own pane and
-	// ignores them. `compact` tightens padding and shrinks the body text, `striped` paints zebra
-	// rows, `borderless` drops the frame and rule lines. Zebra rows and the last-row border are
-	// computed in JS rather than via `odd:`/`last:` variants on purpose: the dev-server Tailwind
-	// plugin (bun-plugin-tailwind serve path) silently drops every candidate containing `:` or `.`,
-	// so variant classes would render only in production builds. The zebra tint has no `dark:` twin
-	// for the same reason - dark-mode variants are off the table until the plugin handles them.
-	const style = parsed.ok && view !== "graph" ? (parsed.block.style ?? []) : [];
-	const compact = style.includes("compact");
-	const striped = style.includes("striped");
-	const borderless = style.includes("borderless");
+	// The statement painted by the very Prism pass that colours every fenced code block in the
+	// surrounding markdown (BACK-811): a query is code, and the 显示查询 panel used to show it as
+	// one flat run of text.
+	const highlightedQuery = useMemo(
+		() => (parsed.ok ? highlightCode(parsed.block.sql, engine.highlightLanguage ?? "sql") : null),
+		[parsed, engine.highlightLanguage],
+	);
 
 	// Live mode (BACK-804): only an auto block on an engine that declared `refresh.auto` subscribes.
 	const autoRefresh = parsed.ok && parsed.block.refresh === "auto" ? engine.refresh?.auto : undefined;
@@ -463,15 +466,13 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				<table className="w-full text-left border-collapse">
 					<thead>
 						<tr>
-							<th
-								className={`px-2 ${compact ? "py-0" : "py-1"}${borderless ? "" : " border-b border-gray-200 dark:border-gray-700"} font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap w-10 text-right`}
-							>
+							<th className="px-2 py-1 border-b border-gray-200 dark:border-gray-700 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap w-10 text-right">
 								#
 							</th>
 							{state.result.columns.map((column) => (
 								<th
 									key={column}
-									className={`px-2 ${compact ? "py-0" : "py-1"}${borderless ? "" : " border-b border-gray-200 dark:border-gray-700"} font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap`}
+									className="px-2 py-1 border-b border-gray-200 dark:border-gray-700 font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"
 								>
 									{column}
 								</th>
@@ -483,17 +484,17 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 							<tr
 								// biome-ignore lint/suspicious/noArrayIndexKey: a result row has no identity of its own
 								key={`row-${rowIndex}`}
-								className={`${borderless || rowIndex === state.result.rows.length - 1 ? "" : "border-b border-gray-100 dark:border-gray-800"}${striped && rowIndex % 2 === 1 ? " bg-blue-50" : ""}`}
+								className={
+									rowIndex === state.result.rows.length - 1 ? "" : "border-b border-gray-100 dark:border-gray-800"
+								}
 							>
-								<td
-									className={`px-2 ${compact ? "py-0" : "py-1"} align-top text-right text-gray-400 dark:text-gray-500 tabular-nums`}
-								>
+								<td className="px-2 py-1 align-top text-right text-gray-400 dark:text-gray-500 tabular-nums">
 									{rowBase + rowIndex + 1}
 								</td>
 								{row.map((cell, columnIndex) => (
 									<td
 										key={state.result.columns[columnIndex] ?? columnIndex}
-										className={`px-2 ${compact ? "py-0" : "py-1"} align-top break-words`}
+										className="px-2 py-1 align-top break-words"
 									>
 										{renderCell(cell)}
 									</td>
@@ -548,12 +549,10 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 					<div
 						// biome-ignore lint/suspicious/noArrayIndexKey: a result row has no identity of its own
 						key={`row-${rowIndex}`}
-						className={`flex gap-3 items-start${striped ? " rounded px-2 py-1" : ""}${striped && rowIndex % 2 === 1 ? " bg-blue-50" : ""}`}
+						className="flex gap-3 items-start"
 					>
 						{/* 序号: its own column, leading the data fields. */}
-						<div
-							className={`shrink-0 w-10 pr-2 text-right tabular-nums text-gray-400 dark:text-gray-500 select-none${borderless ? "" : " border-r border-gray-200 dark:border-gray-700"}`}
-						>
+						<div className="shrink-0 w-10 pr-2 text-right tabular-nums text-gray-400 dark:text-gray-500 select-none border-r border-gray-200 dark:border-gray-700">
 							{rowBase + rowIndex + 1}
 						</div>
 						<dl className="grid grid-cols-[minmax(6rem,max-content)_1fr] gap-x-3 gap-y-1 flex-1 min-w-0">
@@ -586,12 +585,8 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 	}
 
 	return (
-		<div
-			className={`my-3 rounded-md${borderless ? "" : " border border-gray-200 dark:border-gray-700"} overflow-hidden ${compact ? "text-xs" : "text-sm"}`}
-		>
-			<div
-				className={`flex items-center justify-between gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/60${borderless ? "" : " border-b border-gray-200 dark:border-gray-700"} text-xs text-gray-600 dark:text-gray-300`}
-			>
+		<div className="my-3 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
+			<div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
 				<span className="truncate">
 					{dict.title}
 					{parsed.ok ? <span className="ml-1 font-mono">{parsed.block.source}</span> : null}
@@ -676,7 +671,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 			{engine.actions.showHide && queryOpen ? (
 				<div
 					id={panelId}
-					className={`px-3 py-2 bg-gray-50/50 dark:bg-gray-900/40${borderless ? "" : " border-b border-gray-200 dark:border-gray-700"}`}
+					className="px-3 py-2 bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700"
 				>
 					{parsed.ok ? (
 						<>
@@ -684,7 +679,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 								source: <span className="font-mono">{parsed.block.source}</span>
 							</div>
 							<pre className="font-mono text-xs overflow-x-auto" style={PRE_RESET}>
-								{parsed.block.sql}
+								<code className={`language-${engine.highlightLanguage ?? "sql"}`}>{highlightedQuery}</code>
 							</pre>
 						</>
 					) : (
@@ -696,7 +691,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 					)}
 				</div>
 			) : null}
-			<div className={compact ? "p-2" : "p-3"}>
+			<div className="p-3">
 				{body}
 				{state.status === "ready" && pagination ? (
 					<div className="mt-1 flex items-center gap-2 text-xs leading-none text-gray-600 dark:text-gray-300">

@@ -161,7 +161,7 @@ AI 研究代码库之后，把实施计划写进任务。
 - 🎛️ **状态机可视化编辑器** —— 设置页中编辑项目状态流转，实时预览状态树
 - 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
 - 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
-- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出
+- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出；`cypher-query` 围栏块对图谱数据库执行只读 Cypher，支持表格 / 力导向图视图与图热更新自动重跑
 - 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
 - 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
 - ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
@@ -437,7 +437,7 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 
 ### 实时 SQL 查询块
 
-任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入 `sqlite-query` / `duckdb-query` 围栏代码块；Web UI 的阅读视图会对项目内的数据文件**实时执行只读查询**并渲染结果，编辑态只显示源码：
+任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入只读查询围栏代码块；Web UI 的阅读视图会对项目内的数据源**实时执行查询**并渲染结果，编辑态只显示源码。SQL 数据用 `sqlite-query` / `duckdb-query`：
 
 ````markdown
 ```sqlite-query
@@ -453,6 +453,24 @@ sql: |
 - `source` 为项目相对路径：`sqlite-query` 支持 `.sqlite` / `.sqlite3` / `.db`；`duckdb-query` 支持 `.duckdb`，以及 `.csv` / `.xlsx`（开内存实例直接读文件，Excel 扩展自动装载）
 - 只读三层保证：语句形状白名单 → 关键字黑名单 → 引擎物理只读；结果上限 500 行
 - `view` 支持 `table`（默认）/ `list` / `value`；`duckdb-query` 还可用 `copy_to: <路径>` 把查询结果导出为项目内的 CSV / Excel 文件
+
+图谱数据库（`default` 语料图与 `backlog graph create` 自建库）则用 `cypher-query` —— 语句字段是 `query` 而非 `sql`，`source` 是数据库注册名而不是路径，并额外支持 `view: graph` 力导向图视图与 `refresh: auto` 图热更新自动重跑：
+
+````markdown
+```cypher-query
+source: default
+view: graph
+refresh: auto
+query: |
+  MATCH (t:FileNode)-[:DependsOn]->(d:FileNode)
+  RETURN t, d
+  LIMIT 50
+```
+````
+
+- 只读保证：`CREATE` / `MERGE` / `SET` / `DELETE` 等写关键字一律拒绝，只允许 `MATCH` / `RETURN` / `WITH` / `CALL` 只读内省；行数上限同样为 500 行（`queryMaxRows` 可调，硬顶 5000）
+- `view: graph` 由 Databases 页同款组件渲染节点 / 关系力导向图，并按库复用同一套图例配置；超过 3000 个节点自动降级为表格
+- `refresh: auto` 订阅图谱更新广播：CLI / MCP 写入或语料图重建命中所查库即自动重跑，一次变更只触发一次
 
 ![实时 SQL 查询块：表格 / 列表 / 单值 / 空态](./.github/live-query1.jpg)
 

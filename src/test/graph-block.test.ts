@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { parseDuckdbQueryBlock } from "../duckdb/block.ts";
 import { CYPHER_BLOCK_LANG, parseCypherQueryBlock } from "../graph/block.ts";
-import { parseQueryBlock, type QueryBlockStyle } from "../sqlite/block.ts";
+import { parseQueryBlock } from "../sqlite/block.ts";
 
 describe("parseCypherQueryBlock (BACK-802)", () => {
 	it("parses a block whose statement field is `query`", () => {
@@ -70,52 +70,31 @@ describe("parseCypherQueryBlock (BACK-802)", () => {
 	});
 });
 
-describe("query block style field (BACK-805)", () => {
-	it("parses a single preset", () => {
+describe("query block style field removed (BACK-811)", () => {
+	it("rejects `style` on the SQL grammar - it is no longer a known field", () => {
 		const result = parseQueryBlock("source: a.db\nstyle: compact\nsql: SELECT 1");
-		expect(result).toEqual({
-			ok: true,
-			block: {
-				source: "a.db",
-				sql: "SELECT 1",
-				view: "table",
-				refresh: "manual",
-				copyTo: undefined,
-				style: ["compact"],
-			},
-		});
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.error).toContain("未知字段");
+			expect(result.error).toContain("style");
+			// The error lists what is left, so an agent writing a block sees the new field set.
+			expect(result.error).toContain("source / sql / view / refresh / copy_to");
+		}
 	});
 
-	it("parses a space-separated multi-value combo, in the order written", () => {
-		const result = parseQueryBlock("source: a.db\nstyle: compact   striped\nsql: SELECT 1");
-		expect(result.ok && result.block.style).toEqual(["compact", "striped"]);
-	});
-
-	it("drops unknown tokens instead of rejecting the block, and dedupes repeats", () => {
-		const mixed = parseQueryBlock("source: a.db\nstyle: compact bogus compact\nsql: SELECT 1");
-		expect(mixed.ok && mixed.block.style).toEqual(["compact"]);
-	});
-
-	it("treats a fully invalid style as absent - the default look, no error", () => {
-		const result = parseQueryBlock("source: a.db\nstyle: rainbow\nsql: SELECT 1");
-		expect(result).toEqual({
-			ok: true,
-			block: { source: "a.db", sql: "SELECT 1", view: "table", refresh: "manual", copyTo: undefined, style: undefined },
-		});
-	});
-
-	it("is absent when the block sets no style", () => {
-		const result = parseQueryBlock("source: a.db\nsql: SELECT 1");
-		expect(result.ok && result.block.style).toBeUndefined();
-	});
-
-	it("is accepted by all three engines with the same result", () => {
-		const expected: QueryBlockStyle[] = ["borderless"];
-		const sql = parseQueryBlock("source: a.db\nstyle: borderless\nsql: SELECT 1");
-		expect(sql.ok && sql.block.style).toEqual(expected);
-		const duckdb = parseDuckdbQueryBlock("source: a.duckdb\nstyle: borderless\nsql: SELECT 1");
-		expect(duckdb.ok && duckdb.block.style).toEqual(expected);
+	it("rejects it on every engine's grammar, cypher included", () => {
+		const duckdb = parseDuckdbQueryBlock("source: a.duckdb\nstyle: striped\nsql: SELECT 1");
+		expect(duckdb.ok).toBe(false);
 		const cypher = parseCypherQueryBlock("source: tasks\nstyle: borderless\nquery: RETURN 1");
-		expect(cypher.ok && cypher.block.style).toEqual(expected);
+		expect(cypher.ok).toBe(false);
+		if (!cypher.ok) expect(cypher.error).toContain("source / query / view / refresh / copy_to");
+	});
+
+	it("leaves a block without the field parsing exactly as before", () => {
+		const result = parseQueryBlock("source: a.db\nsql: SELECT 1");
+		expect(result).toEqual({
+			ok: true,
+			block: { source: "a.db", sql: "SELECT 1", view: "table", refresh: "manual", copyTo: undefined },
+		});
 	});
 });
