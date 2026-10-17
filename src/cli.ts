@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { closeSync, mkdirSync, openSync, unlinkSync, writeSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { stdin as input } from "node:process";
 import { createInterface } from "node:readline/promises";
 import * as clack from "@clack/prompts";
 import { Command, type OptionValues } from "commander";
+import { parse as parseYAML } from "yaml";
 import { generateMilestoneGroupedBoard, generateMilestoneSection } from "./board.ts";
 import { runAdvancedConfigWizard } from "./commands/advanced-config-wizard.ts";
 import { type CompletionInstallResult, installCompletion, registerCompletionCommand } from "./commands/completion.ts";
@@ -54,6 +55,7 @@ import {
 	resolveDatabase,
 	validateDatabaseName,
 } from "./graph/databases.ts";
+import { loadLegendConfig, saveLegendConfig } from "./graph/legend-store.ts";
 import { DEFAULT_SLOT, graphPaths } from "./graph/paths.ts";
 import { reconcileGraphStoreOnce } from "./graph/reconcile-once.ts";
 import type { GraphLockInfo } from "./graph/service.ts";
@@ -7372,6 +7374,203 @@ graphCommand
 			},
 			{ write: true, requireUser: true, force: options.force === true },
 		);
+	});
+
+// Graph legend persistence (M-16 / doc-29): direct file access to the same store the server and web
+// panel use, so the CLI works offline and stays authoritative for scripting and piping.
+const graphLegendCommand = addHelpSchema(graphCommand.command("legend"), {
+	reads: "The per-database graph legend config store (backlog/databases/graph-legends.yaml)",
+	required: [],
+	optional: [
+		{
+			name: "database",
+			type: "String",
+			description: "The database whose legend config is read or written (e.g. `default` or a user database name)",
+		},
+	],
+	output: "The legend config as a human-readable summary (or raw JSON with --json), or a confirmation message",
+	examples: [
+		"backlog graph legend get default",
+		"backlog graph legend get default --json",
+		"backlog graph legend set demo legend.yaml",
+		"backlog graph legend set demo --stdin < legend.yaml",
+		"backlog graph legend remove demo",
+	],
+});
+
+/**
+ * A parsed legend payload is only acceptable when it is a plain YAML mapping. Sequences and
+ * primitives are rejected so the store never holds a value the web panel cannot normalize back
+ * into a config.
+ */
+function isPlainLegendObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Coerce an unknown store value into a record without assuming it is well-formed. */
+function asLegendRecord(value: unknown): Record<string, unknown> {
+	return isPlainLegendObject(value) ? value : {};
+}
+
+/** The stored line-style and arrowhead vocabularies, in the reader's words. */
+const LEGEND_LINE_STYLE_LABELS: Record<string, string> = {
+	solid: "实线",
+	dashed: "虚线",
+	dotted: "点线",
+	long: "长虚线",
+};
+const LEGEND_ARROW_LABELS: Record<string, string> = {
+	none: "无",
+	end: "终点",
+	start: "起点",
+	both: "两端",
+};
+
+/**
+ * A human-readable rendering of a stored legend config - what the browser panel shows, as text.
+ * The store is tolerant of partial or hand-edited entries, so this reads defensively: a missing
+ * field degrades to its automatic default rather than throwing. `--json` stays the machine path;
+ * this is the default so a bare `get` is legible to a person, not just to a script.
+ */
+function formatLegendConfigText(database: string, config: unknown): string {
+	const root = asLegendRecord(config);
+	const lines: string[] = [`图例配置（数据库 ${database}）：`];
+	lines.push(`  节点标题：${root.captionsVisible === false ? "隐藏" : "显示"}`);
+
+	const types = asLegendRecord(root.types);
+	const typeLabels = Object.keys(types).sort((left, right) => left.localeCompare(right));
+	lines.push(`  节点类型（${typeLabels.length}）：`);
+	if (typeLabels.length === 0) {
+		lines.push("    （无 — 全部按标签自动取色）");
+	}
+	for (const label of typeLabels) {
+		const type = asLegendRecord(types[label]);
+		lines.push(`    ${label}`);
+		lines.push(`      颜色：${typeof type.color === "string" ? type.color : "自动（按标签取色）"}`);
+		const caption = typeof type.caption === "string" ? type.caption.trim() : "";
+		lines.push(`      标题模板：${caption.length > 0 ? caption : "自动"}`);
+		const rules = Array.isArray(type.rules) ? type.rules : [];
+		if (rules.length === 0) {
+			lines.push("      颜色规则：无");
+		} else {
+			lines.push(`      颜色规则（${rules.length}，首个命中生效）：`);
+			rules.forEach((entry, index) => {
+				const rule = asLegendRecord(entry);
+				const name =
+					typeof rule.name === "string" && rule.name.trim().length > 0 ? rule.name.trim() : `规则 ${index + 1}`;
+				const expression = typeof rule.expression === "string" ? rule.expression : "";
+				const color = typeof rule.color === "string" ? `，色 ${rule.color}` : "";
+				lines.push(`        - ${name}：${expression.length > 0 ? expression : "（无条件）"}${color}`);
+			});
+		}
+	}
+
+	const relations = asLegendRecord(root.relations);
+	const relationTypes = Object.keys(relations).sort((left, right) => left.localeCompare(right));
+	lines.push(`  关系类型（${relationTypes.length}）：`);
+	if (relationTypes.length === 0) {
+		lines.push("    （无 — 默认实线 + 终点箭头）");
+	}
+	for (const type of relationTypes) {
+		const relation = asLegendRecord(relations[type]);
+		const dashKey = typeof relation.dash === "string" ? relation.dash : "";
+		const arrowKey = typeof relation.arrow === "string" ? relation.arrow : "";
+		const dash = LEGEND_LINE_STYLE_LABELS[dashKey] ?? "实线";
+		const arrow = LEGEND_ARROW_LABELS[arrowKey] ?? "终点";
+		const name =
+			typeof relation.name === "string" && relation.name.trim().length > 0 ? `（${relation.name.trim()}）` : "";
+		const color = typeof relation.color === "string" ? `，色 ${relation.color}` : "";
+		lines.push(`    ${type}${name}：${dash}，箭头 ${arrow}${color}`);
+	}
+
+	const hidden = Array.isArray(root.hidden)
+		? root.hidden.filter((entry): entry is string => typeof entry === "string")
+		: [];
+	lines.push(`  隐藏（${hidden.length}）：${hidden.length > 0 ? hidden.join("、") : "无"}`);
+
+	return `${lines.join("\n")}\n`;
+}
+
+graphLegendCommand
+	.command("get <database>")
+	.description(
+		"Print the stored legend config for a database. The default is a human-readable summary; `--json` prints the raw JSON. An unknown database prints a clear message and exits 0.",
+	)
+	.option("--json", "print the raw JSON config")
+	.action(async (database: string, options) => {
+		const cwd = await requireProjectRoot();
+		const config = loadLegendConfig(cwd, database);
+		if (config === null) {
+			if (options.json) {
+				process.stdout.write("null\n");
+			} else {
+				console.log(`数据库 "${database}" 尚无图例配置。`);
+			}
+			return;
+		}
+		if (options.json) {
+			process.stdout.write(`${JSON.stringify(config, null, 2)}\n`);
+		} else {
+			process.stdout.write(formatLegendConfigText(database, config));
+		}
+	});
+
+graphLegendCommand
+	.command("set <database> [file]")
+	.description(
+		"Store a legend config for a database from a YAML file. `--stdin` reads the YAML from standard input instead. " +
+			"Invalid YAML or a non-mapping payload exits non-zero and leaves the store untouched.",
+	)
+	.option("--stdin", "read the YAML config from standard input instead of a file")
+	.action(async (database: string, file: string | undefined, options) => {
+		let raw: string;
+		if (options.stdin) {
+			raw = await readStdinText();
+		} else if (file) {
+			try {
+				raw = readFileSync(file, "utf8");
+			} catch (error) {
+				console.error(`无法读取文件 "${file}"：${error instanceof Error ? error.message : String(error)}`);
+				process.exitCode = 1;
+				return;
+			}
+		} else {
+			console.error("需要 <file> 或 --stdin 之一来提供图例配置 YAML。");
+			process.exitCode = 1;
+			return;
+		}
+
+		let parsed: unknown;
+		try {
+			parsed = parseYAML(raw);
+		} catch {
+			console.error("图例配置不是合法的 YAML，已取消写入（存储文件未被改动）。");
+			process.exitCode = 1;
+			return;
+		}
+		if (!isPlainLegendObject(parsed)) {
+			console.error("图例配置必须是 YAML 映射（mapping），已取消写入（存储文件未被改动）。");
+			process.exitCode = 1;
+			return;
+		}
+
+		const cwd = await requireProjectRoot();
+		saveLegendConfig(cwd, database, parsed);
+		console.log(`已保存数据库 "${database}" 的图例配置。`);
+	});
+
+graphLegendCommand
+	.command("remove <database>")
+	.description("Remove a database's legend config entry. Idempotent: removing an absent entry is a no-op.")
+	.action(async (database: string) => {
+		const cwd = await requireProjectRoot();
+		const existed = loadLegendConfig(cwd, database) !== null;
+		saveLegendConfig(cwd, database, null);
+		if (existed) {
+			console.log(`已移除数据库 "${database}" 的图例配置。`);
+		} else {
+			console.log(`数据库 "${database}" 没有图例配置，无需移除。`);
+		}
 	});
 
 // Browser command for web UI

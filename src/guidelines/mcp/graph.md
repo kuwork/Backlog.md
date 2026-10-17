@@ -187,6 +187,95 @@ The graph mirrors the Markdown corpus under `backlog/`:
 
 > **Note**: the node label is `FileNode`, **not** `File`. `MATCH (n:File)` returns `Table File does not exist`.
 
+### Graph legend config
+
+The graph legend (per-type colours, captions, rule buckets, relation line styles, hidden buckets) is a project file, not a tool in this toolset: `backlog/databases/graph-legends.yaml`, a YAML mapping of database name → config. The CLI, the server and the Web UI's legend panel all read and write this one file, so every edit lands in the same place. Manage it through the CLI `backlog graph legend` family (direct file access - no server, no HTTP) or by editing the file itself:
+
+```bash
+# Print the stored legend config for a database (human-readable summary)
+backlog graph legend get default
+
+# Same, as raw JSON (for scripts / piping)
+backlog graph legend get default --json
+
+# Import one database's config from a YAML file (a JSON payload parses too - YAML is a superset)
+backlog graph legend set demo legend.yaml
+
+# Or read the config from standard input
+cat legend.yaml | backlog graph legend set demo --stdin
+
+# Remove a database's legend entry (idempotent: removing an absent one is a no-op)
+backlog graph legend remove demo
+```
+
+- `get <database>` prints a human-readable summary by default (captions toggle, per-type colour / caption / rules, per-relation line style, hidden buckets); `--json` prints the raw JSON. An unknown database prints a "no config" message and exits 0.
+- `set <database> <file>` takes **one database's config** - the inner mapping in the example below, not the whole store (the CLI wraps it under the database name). Invalid YAML, or a non-mapping payload (array / scalar), exits non-zero and leaves the store file untouched.
+- Saving in the Web UI's legend panel **pins the automatic type colours** into the file: every type that had no explicit colour gets the one it was painted with, so the file records the whole picture instead of leaving those colours to be re-derived from the type name on every visit. The `×` next to a colour in the panel returns that type to automatic again.
+
+#### Config structure
+
+`graph-legends.yaml` maps each database name to its config. One config - the payload `set` writes - has four top-level keys:
+
+- `captionsVisible` — bool, default `true`; `false` hides every node caption.
+- `types` — map of node label → type settings. **Always include the key** (`{}` when empty): a config without `types` resets wholesale to the defaults on load.
+- `relations` — map of relationship type → line settings; a type with no entry draws as a solid arrowed line.
+- `hidden` — list of switched-off bucket keys: `"t:FileNode|s:r2"` (one rule bucket), `"t:Meta|s:type:only"` (a whole type), `"t:FileNode|s:rule:other"` (a type's catch-all).
+
+Type settings (one entry of `types`):
+
+- `caption` — template with `{{field}}` placeholders; empty guesses the first of `name` / `title` / `key` / `label` / `id` the type's nodes carry.
+- `color` — `#rrggbb`; absent = an automatic hue derived from the label.
+- `otherColor` — `#rrggbb`; the catch-all bucket's colour; absent = the type's deepest lightness step.
+- `rules` — ordered list; the first match wins, the rest land in the catch-all.
+
+Rule settings (one entry of `rules`):
+
+- `id` — **required**, any non-empty unique string; a rule without one is dropped on load.
+- `name` — the bucket's label in the legend.
+- `expression` — a boolean condition over the node's own properties (grammar below); empty matches nothing.
+- `color` — `#rrggbb`; absent = the type's lightness ramp decides.
+
+Relation settings (one entry of `relations`):
+
+- `dash` — `solid` | `dashed` | `dotted` | `long`; absent or unknown degrades to `solid`.
+- `arrow` — `none` | `end` | `start` | `both`; absent or unknown degrades to `end`.
+- `color` — `#rrggbb`; absent = the theme's default grey.
+- `name` — display name replacing the raw type in the legend and on the edge.
+
+A complete store file (`set` takes the part under one database name):
+
+```yaml
+demo:
+  captionsVisible: true
+  types:
+    Person:
+      caption: "{{name}} ({{age}})"  # {{field}} placeholders; empty guesses name/title/key/label/id
+      color: "#204af3"               # absent = automatic hue derived from the label
+      otherColor: "#93b4ff"          # catch-all bucket colour; absent = deepest lightness step
+      rules:                         # ordered, first match wins; the rest land in the catch-all
+        - id: r1                     # required: a rule without a non-empty id is dropped on load
+          name: young
+          expression: "age < 30"
+        - id: r2
+          name: senior
+          expression: "age >= 60"
+          color: "#b91c1c"           # absent = the type's lightness ramp decides
+    Company:
+      caption: "{{name}}"
+      color: "#42d78c"
+  relations:
+    KNOWS:
+      dash: dashed                   # solid | dashed | dotted | long (unknown degrades to solid)
+      arrow: both                    # none | end | start | both (unknown degrades to end)
+      color: "#0ef19a"               # absent = the theme's default grey
+      name: works at                 # display name replacing the raw type in the legend
+  hidden: []
+```
+
+**Rule expressions** are boolean conditions over a node's own properties: the comparisons `== != > >= < <=` over numbers, strings and booleans, plus `contains` and `startsWith` over text (case-insensitive), combined with `&&`, `||`, `!` and parentheses. String literals are quoted (`type == "task"`); a bare property is a value, never a test. A property a node does not carry reads as null and fails to match, so a rule written for one result never breaks the next. Within a type the matched rule owns the colour's lightness step (or its explicit colour) while the type owns the hue.
+
+**Writing by hand.** The loader keeps whatever still makes sense and drops the rest rather than refusing to open, so a typo degrades quietly instead of failing loudly: write colours as 6-digit hex (`#f00`, `rgb(...)` and named colours are dropped), and match the graph's own vocabulary with exact casing (node labels as Cypher returns them, relationship types uppercase) - unknown fields are ignored and an expression that fails to compile matches nothing. After writing, read it back with `backlog graph legend get <database>` to confirm it parses the way you intended.
+
 ### Key Rules
 
 - `default` is read-only: it is a derived cache of the Markdown corpus, and no tool writes to it. Writing is possible only on a user database, via `graph_create_database` (create) and `graph_import_csv` (rows/edges).
@@ -194,3 +283,4 @@ The graph mirrors the Markdown corpus under `backlog/`:
 - `graph_schema` describes a database (node tables + properties, relationship tables + endpoints); `graph_list_databases` inventories databases; `graph_describe_database` reports one database's metadata and counts; `graph_query` reads; `graph_import_csv` writes a CSV; `graph_create_database` creates a user database.
 - Results are capped at 500 rows; the response notes truncation when the cap is hit. Narrow the query with `WHERE` / `LIMIT` to see more.
 - A write tool requires explicit intent (`graph_create_database` needs `acknowledged: true`) and is refused for `default`.
+- The graph legend (per-type colours, captions, rule buckets, line styles, hidden buckets) is a project file, `backlog/databases/graph-legends.yaml`, managed through the CLI `backlog graph legend` family - this toolset has no legend tool. See Graph legend config.
