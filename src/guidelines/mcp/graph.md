@@ -18,8 +18,11 @@ Each call opens the database, answers, and closes it. `default` is reconciled an
 | Run a Cypher query (read-only) | `graph_query` |
 | Create a user database (write) | `graph_create_database` |
 | Import a CSV as nodes or edges (write) | `graph_import_csv` |
+| Read a database's legend config | `graph_legend_get` |
+| Write a database's legend config (write) | `graph_legend_set` |
+| Delete a database's legend entry (write) | `graph_legend_remove` |
 
-`graph_list_databases`, `graph_describe_database`, `graph_schema`, and `graph_query` are read-only (`readOnlyHint: true`). `graph_create_database` and `graph_import_csv` are write operations (`destructiveHint: true`) and are refused for `default`.
+`graph_list_databases`, `graph_describe_database`, `graph_schema`, `graph_query`, and `graph_legend_get` are read-only (`readOnlyHint: true`). `graph_create_database` and `graph_import_csv` are write operations (`destructiveHint: true`) and are refused for `default`. The legend tools are the other write pair: `graph_legend_set` is an idempotent write and `graph_legend_remove` a destructive (idempotent) one - neither is refused for `default`, because the legend file is per-database styling, not graph data.
 
 ### Listing and Describing Databases
 
@@ -189,28 +192,47 @@ The graph mirrors the Markdown corpus under `backlog/`:
 
 ### Graph legend config
 
-The graph legend (per-type colours, captions, rule buckets, relation line styles, hidden buckets) is a project file, not a tool in this toolset: `backlog/databases/graph-legends.yaml`, a YAML mapping of database name → config. The CLI, the server and the Web UI's legend panel all read and write this one file, so every edit lands in the same place. Manage it through the CLI `backlog graph legend` family (direct file access - no server, no HTTP) or by editing the file itself:
+The graph legend (per-type colours, captions, rule buckets, relation line styles, hidden buckets) is a project file, `backlog/databases/graph-legends.yaml` - a YAML mapping of database name → config. The tools below, the CLI, the server and the Web UI's legend panel all read and write this one file, so every edit lands in the same place.
 
-```bash
-# Print the stored legend config for a database (human-readable summary)
-backlog graph legend get default
+| Action | Tool |
+|--------|------|
+| Read a database's legend config | `graph_legend_get` |
+| Write a database's legend config (write) | `graph_legend_set` |
+| Delete a database's legend entry (write) | `graph_legend_remove` |
 
-# Same, as raw JSON (for scripts / piping)
-backlog graph legend get default --json
+`graph_legend_get` takes just the database and returns the stored config as JSON:
 
-# Import one database's config from a YAML file (a JSON payload parses too - YAML is a superset)
-backlog graph legend set demo legend.yaml
-
-# Or read the config from standard input
-cat legend.yaml | backlog graph legend set demo --stdin
-
-# Remove a database's legend entry (idempotent: removing an absent one is a no-op)
-backlog graph legend remove demo
+```json
+{ "db": "default" }
 ```
 
-- `get <database>` prints a human-readable summary by default (captions toggle, per-type colour / caption / rules, per-relation line style, hidden buckets); `--json` prints the raw JSON. An unknown database prints a "no config" message and exits 0.
-- `set <database> <file>` takes **one database's config** - the inner mapping in the example below, not the whole store (the CLI wraps it under the database name). Invalid YAML, or a non-mapping payload (array / scalar), exits non-zero and leaves the store file untouched.
-- Saving in the Web UI's legend panel **pins the automatic type colours** into the file: every type that had no explicit colour gets the one it was painted with, so the file records the whole picture instead of leaving those colours to be re-derived from the type name on every visit. The `×` next to a colour in the panel returns that type to automatic again.
+```json
+{
+  "database": "default",
+  "configured": true,
+  "config": { "captionsVisible": true, "types": {}, "relations": {}, "hidden": [] }
+}
+```
+
+A database with no stored config is not an error: the result carries `configured: false` and a short message. The CLI's `backlog graph legend get/set/remove` family edits the same file from the shell (`get` prints a human-readable summary, `--json` the raw JSON; `set` also reads a YAML file or `--stdin`).
+
+`graph_legend_set` takes the **whole config for one database** - the inner mapping in the file example below, not the store wrapper - and validates it is an object before any write, so a non-object payload is rejected and leaves the file untouched:
+
+```json
+{
+  "db": "demo",
+  "config": {
+    "captionsVisible": true,
+    "types": {
+      "Person": { "caption": "{{name}} ({{age}})", "color": "#204af3" }
+    },
+    "relations": {},
+    "hidden": []
+  }
+}
+```
+
+`graph_legend_remove` deletes the entry and is idempotent: removing a database that has none is a successful no-op, reported as `removed: false`. Both writes land in the same file the Web UI reads, so the legend panel shows the change after a reload. Saving in the Web UI's legend panel **pins the automatic type colours** into the file: every type that had no explicit colour gets the one it was painted with, so the file records the whole picture instead of leaving those colours to be re-derived from the type name on every visit. The `×` next to a colour in the panel returns that type to automatic again.
 
 #### Config structure
 
@@ -283,4 +305,4 @@ demo:
 - `graph_schema` describes a database (node tables + properties, relationship tables + endpoints); `graph_list_databases` inventories databases; `graph_describe_database` reports one database's metadata and counts; `graph_query` reads; `graph_import_csv` writes a CSV; `graph_create_database` creates a user database.
 - Results are capped at 500 rows; the response notes truncation when the cap is hit. Narrow the query with `WHERE` / `LIMIT` to see more.
 - A write tool requires explicit intent (`graph_create_database` needs `acknowledged: true`) and is refused for `default`.
-- The graph legend (per-type colours, captions, rule buckets, line styles, hidden buckets) is a project file, `backlog/databases/graph-legends.yaml`, managed through the CLI `backlog graph legend` family - this toolset has no legend tool. See Graph legend config.
+- The graph legend (per-type colours, captions, rule buckets, line styles, hidden buckets) lives in the project file `backlog/databases/graph-legends.yaml`: `graph_legend_get` / `graph_legend_set` / `graph_legend_remove` (and the CLI family of the same name) read and write it. See Graph legend config.

@@ -6,6 +6,9 @@ import {
 	type GraphDescribeDatabaseArgs,
 	GraphHandlers,
 	type GraphImportCsvArgs,
+	type GraphLegendGetArgs,
+	type GraphLegendRemoveArgs,
+	type GraphLegendSetArgs,
 	type GraphListDatabasesArgs,
 	type GraphQueryArgs,
 	type GraphSchemaArgs,
@@ -14,6 +17,9 @@ import {
 	graphCreateDatabaseSchema,
 	graphDescribeDatabaseSchema,
 	graphImportCsvSchema,
+	graphLegendGetSchema,
+	graphLegendRemoveSchema,
+	graphLegendSetSchema,
 	graphListDatabasesSchema,
 	graphQuerySchema,
 	graphSchemaSchema,
@@ -111,10 +117,61 @@ export function registerGraphTools(server: McpServer): void {
 		async (input) => handlers.importCsv(input as GraphImportCsvArgs),
 	);
 
+	const legendGetTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_legend_get",
+			description:
+				"Read a database's graph legend config (per-type colors, captions, rule buckets, relation line styles, hidden buckets) from the project file backlog/databases/graph-legends.yaml. Returns the stored config as JSON, or configured: false when the database has none - an unknown database is not an error.",
+			inputSchema: graphLegendGetSchema,
+			annotations: { title: "Get Graph Legend", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+		},
+		graphLegendGetSchema,
+		async (input) => handlers.getLegend(input as GraphLegendGetArgs),
+	);
+
+	const legendSetTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_legend_set",
+			description:
+				"Write a database's graph legend config into the project file backlog/databases/graph-legends.yaml - the same file the Web UI's legend panel and the CLI read and write. The config is validated as a mapping before any write; an invalid payload is rejected and leaves the store untouched.",
+			inputSchema: graphLegendSetSchema,
+			annotations: {
+				title: "Set Graph Legend",
+				readOnlyHint: false,
+				destructiveHint: false,
+				idempotentHint: true,
+				openWorldHint: false,
+			},
+		},
+		graphLegendSetSchema,
+		async (input) => handlers.setLegend(input as GraphLegendSetArgs),
+	);
+
+	const legendRemoveTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "graph_legend_remove",
+			description:
+				"Delete a database's graph legend entry from backlog/databases/graph-legends.yaml. Idempotent: removing a database that has no legend config is a successful no-op.",
+			inputSchema: graphLegendRemoveSchema,
+			annotations: {
+				title: "Remove Graph Legend",
+				readOnlyHint: false,
+				destructiveHint: true,
+				idempotentHint: true,
+				openWorldHint: false,
+			},
+		},
+		graphLegendRemoveSchema,
+		async (input) => handlers.removeLegend(input as GraphLegendRemoveArgs),
+	);
+
 	server.addTool(queryTool);
 	server.addTool(schemaTool);
 	server.addTool(listDatabasesTool);
 	server.addTool(describeDatabaseTool);
 	server.addTool(createDatabaseTool);
 	server.addTool(importCsvTool);
+	server.addTool(legendGetTool);
+	server.addTool(legendSetTool);
+	server.addTool(legendRemoveTool);
 }

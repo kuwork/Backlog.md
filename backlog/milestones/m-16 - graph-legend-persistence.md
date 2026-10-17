@@ -2,9 +2,9 @@
 id: m-16
 title: graph-legend-persistence
 created_date: '2026-10-17 02:44'
-updated_date: '2026-10-17 10:16'
+updated_date: '2026-10-17 13:13'
 actual_start: '2026-10-17 03:18'
-actual_end: '2026-10-17 09:56'
+actual_end: '2026-10-17 13:08'
 documentation:
   - backlog/docs/PRDS/cypher/doc-29 - Graph-Legend-配置持久化：项目级存储与启动恢复.md
 ---

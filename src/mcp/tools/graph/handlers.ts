@@ -10,6 +10,7 @@ import {
 	readCsvFile,
 } from "../../../graph/csv-import.ts";
 import { createDatabase } from "../../../graph/databases.ts";
+import { loadLegendConfig, saveLegendConfig } from "../../../graph/legend-store.ts";
 import { BacklogToolError } from "../../errors/mcp-errors.ts";
 import type { CallToolResult } from "../../types.ts";
 import { isWriteStatement, queryDatabase, schemaDatabase, withUserDatabaseWrite } from "./graph-access.ts";
@@ -47,6 +48,24 @@ export type GraphImportCsvArgs = {
 	fromNode?: string;
 	toNode?: string;
 };
+
+export type GraphLegendGetArgs = {
+	db: string;
+};
+
+export type GraphLegendSetArgs = {
+	db: string;
+	config: unknown;
+};
+
+export type GraphLegendRemoveArgs = {
+	db: string;
+};
+
+/** A legend payload is only acceptable when it is a plain object; arrays and scalars are rejected. */
+function isPlainMapping(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 /** Format a Cypher result set for an agent: machine-readable JSON plus a short summary line. */
 function formatCypherResult(result: { columns: string[]; rows: unknown[][]; truncated?: boolean }): string {
@@ -232,6 +251,67 @@ export class GraphHandlers {
 		}
 		return {
 			content: [{ type: "text", text: JSON.stringify(outcome.result, null, 2) }],
+		};
+	}
+
+	/**
+	 * Read one database's legend config from the shared store file. An absent config is a normal
+	 * answer (configured: false), not an error - a database nobody styled yet is the common case.
+	 */
+	async getLegend(args: GraphLegendGetArgs): Promise<CallToolResult> {
+		const db = args.db;
+		if (!db) {
+			throw new BacklogToolError("Missing required argument: db", "VALIDATION_ERROR");
+		}
+		const config = loadLegendConfig(this.core.filesystem.rootDir, db);
+		if (config === null) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{ database: db, configured: false, message: `No legend config is stored for database "${db}".` },
+							null,
+							2,
+						),
+					},
+				],
+			};
+		}
+		return {
+			content: [{ type: "text", text: JSON.stringify({ database: db, configured: true, config }, null, 2) }],
+		};
+	}
+
+	/** Write one database's legend config into the shared store file (validated before any write). */
+	async setLegend(args: GraphLegendSetArgs): Promise<CallToolResult> {
+		const db = args.db;
+		if (!db) {
+			throw new BacklogToolError("Missing required argument: db", "VALIDATION_ERROR");
+		}
+		if (!isPlainMapping(args.config)) {
+			throw new BacklogToolError(
+				"config must be a legend config object (a mapping of captionsVisible / types / relations / hidden). " +
+					"Arrays and scalars are rejected; the store file was not modified.",
+				"VALIDATION_ERROR",
+			);
+		}
+		saveLegendConfig(this.core.filesystem.rootDir, db, args.config);
+		return {
+			content: [{ type: "text", text: JSON.stringify({ database: db, saved: true, config: args.config }, null, 2) }],
+		};
+	}
+
+	/** Delete one database's legend entry. Idempotent: an absent entry is a successful no-op. */
+	async removeLegend(args: GraphLegendRemoveArgs): Promise<CallToolResult> {
+		const db = args.db;
+		if (!db) {
+			throw new BacklogToolError("Missing required argument: db", "VALIDATION_ERROR");
+		}
+		const existed = loadLegendConfig(this.core.filesystem.rootDir, db) !== null;
+		saveLegendConfig(this.core.filesystem.rootDir, db, null);
+		return {
+			content: [{ type: "text", text: JSON.stringify({ database: db, removed: existed }, null, 2) }],
 		};
 	}
 }

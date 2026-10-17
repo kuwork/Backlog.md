@@ -133,3 +133,48 @@ export const graphImportCsvSchema: JsonSchema = {
 	required: ["db", "csv"],
 	additionalProperties: false,
 };
+
+export const graphLegendGetSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		db: {
+			type: "string",
+			minLength: 1,
+			description:
+				"Database whose legend config to read. 'default' is the derived markdown knowledge graph; any other value is a user database. An unknown database is not an error - the result says no config is stored.",
+		},
+	},
+	required: ["db"],
+	additionalProperties: false,
+};
+
+export const graphLegendSetSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		db: {
+			type: "string",
+			minLength: 1,
+			description: "Database whose legend config to write. 'default' or a user database name.",
+		},
+		config: {
+			description:
+				"The database's whole legend config as an object: captionsVisible (bool), types (node label -> {caption, color?, otherColor?, rules[]}), relations (relationship type -> {dash, arrow, color?, name?}), hidden (string[]). Stored verbatim; the legend panel normalizes on load (unknown fields ignored, bad values degrade). A non-object payload is rejected and leaves the store untouched.",
+		},
+	},
+	required: ["db", "config"],
+	additionalProperties: false,
+};
+
+export const graphLegendRemoveSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		db: {
+			type: "string",
+			minLength: 1,
+			description:
+				"Database whose legend entry to delete. Idempotent: removing a database that has no legend config is a successful no-op.",
+		},
+	},
+	required: ["db"],
+	additionalProperties: false,
+};
