@@ -184,6 +184,7 @@ Fields are top-level `key: value` pairs; use the `sql: |` block scalar for multi
 | `sql` | yes | — | A single `SELECT` or `WITH ... SELECT` statement |
 | `view` | no | `table` | `table` (grid) / `list` (key-value per record) / `value` (first cell of the first row, inline — good for a single metric) |
 | `refresh` | no | `manual` | Manual refresh only; no auto/scheduled refresh |
+| `style` | no | — | Space-separated style presets: `compact` (tighter rows, smaller text) / `striped` (zebra rows) / `borderless` (no frame or rule lines) — e.g. `style: compact striped`. Unknown values are ignored and fall back to the default look |
 | `copy_to` | no | — | `duckdb-query` only: project-relative `.csv` / `.xlsx` target that enables the write path (see below) |
 
 Data sources:

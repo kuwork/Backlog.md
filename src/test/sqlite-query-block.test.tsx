@@ -331,3 +331,29 @@ describe("SqliteQueryBlock Export CSV", () => {
 		expect(button("Export CSV")).toBeUndefined();
 	});
 });
+
+describe("SqliteQueryBlock style field (BACK-805)", () => {
+	it("inherits the shared presets: compact tightens, striped zebras, borderless deframes", async () => {
+		queryResult = { ...RESULT, rows: [["Alice"], ["Bob"]], totalRows: 2 };
+		mount(`${BLOCK}\nstyle: compact striped borderless`);
+		await settle();
+
+		const frame = container?.querySelector("div.my-3");
+		expect(frame?.className).toContain("text-xs");
+		expect(frame?.className).not.toContain("border");
+		const rows = container?.querySelectorAll("tbody tr");
+		expect(rows?.[0]?.className).not.toContain("bg-blue-50");
+		expect(rows?.[1]?.className).toContain("bg-blue-50");
+		expect(container?.querySelector("td")?.className).toContain("py-0");
+	});
+
+	it("ignores unknown style values and keeps the default look", async () => {
+		mount(`${BLOCK}\nstyle: rainbow`);
+		await settle();
+
+		expect(container?.textContent).toContain("Alice");
+		const frame = container?.querySelector("div.my-3");
+		expect(frame?.className).toContain("text-sm");
+		expect(frame?.className).toContain("border");
+	});
+});

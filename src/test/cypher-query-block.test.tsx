@@ -43,6 +43,9 @@ const RESULT = {
 	nodeKeys: [],
 };
 
+/** Three rows, so a zebra-striped render has both unpainted and painted rows to assert on. */
+const THREE_ROWS = { ...RESULT, rows: [["BACK-1"], ["BACK-2"], ["BACK-3"]], totalRows: 3 };
+
 const BLOCK = ["source: tasks", "query: |", "  MATCH (t:Task)", "  RETURN t.id AS id"].join("\n");
 
 const BROKEN_BLOCK = ["source: tasks", "  query: RETURN 1"].join("\n");
@@ -497,5 +500,93 @@ describe("CypherQueryBlock refresh: auto (BACK-804)", () => {
 		expect(container?.textContent).not.toContain("Live");
 		await dispatchGraphUpdated("tasks");
 		expect(queryCalls).toBe(1);
+	});
+});
+
+describe("CypherQueryBlock style field (BACK-805)", () => {
+	/** The block's outer frame: the root div the presets dress. */
+	function frame(): Element | null | undefined {
+		return container?.querySelector("div.my-3");
+	}
+
+	it("applies compact: smaller body text and tighter cells", async () => {
+		mount(`${BLOCK}\nstyle: compact`);
+		await settle();
+
+		expect(frame()?.className).toContain("text-xs");
+		expect(container?.querySelector("td")?.className).toContain("py-0");
+	});
+
+	it("applies striped: zebra rows in the table", async () => {
+		queryResult = THREE_ROWS;
+		mount(`${BLOCK}\nstyle: striped`);
+		await settle();
+
+		const rows = container?.querySelectorAll("tbody tr");
+		expect(rows?.[0]?.className).not.toContain("bg-blue-50");
+		expect(rows?.[1]?.className).toContain("bg-blue-50");
+		expect(rows?.[2]?.className).not.toContain("bg-blue-50");
+	});
+
+	it("applies borderless: no frame and no rule lines", async () => {
+		mount(`${BLOCK}\nstyle: borderless`);
+		await settle();
+
+		expect(frame()?.className).not.toContain("border");
+		expect(container?.querySelector("tbody tr")?.className ?? "").not.toContain("border-b");
+	});
+
+	it("combines presets, ignores unknown values, and still renders the rows", async () => {
+		queryResult = THREE_ROWS;
+		mount(`${BLOCK}\nstyle: compact bogus striped`);
+		await settle();
+
+		expect(container?.textContent).toContain("BACK-1");
+		expect(frame()?.className).toContain("text-xs");
+		expect(container?.querySelectorAll("tbody tr")?.[1]?.className).toContain("bg-blue-50");
+	});
+
+	it("dresses the list view too: zebra rows, and no gutter rule when borderless", async () => {
+		queryResult = THREE_ROWS;
+		mount(`${BLOCK}\nview: list\nstyle: striped borderless`);
+		await settle();
+
+		const rows = container?.querySelectorAll("div.space-y-3 > div");
+		// The padding lands on every row so painted and unpainted rows stay aligned.
+		expect(rows?.[0]?.className).toContain("px-2");
+		expect(rows?.[0]?.className).not.toContain("bg-blue-50");
+		expect(rows?.[1]?.className).toContain("bg-blue-50");
+		expect(rows?.[0]?.querySelector("div")?.className).not.toContain("border-r");
+	});
+
+	it("leaves the default look untouched when no style is set", async () => {
+		queryResult = THREE_ROWS;
+		mount(BLOCK);
+		await settle();
+
+		expect(frame()?.className).toContain("text-sm");
+		expect(frame()?.className).toContain("border");
+		const rows = container?.querySelectorAll("tbody tr");
+		// Every row but the last carries the rule line; nothing is painted without `striped`.
+		expect(rows?.[0]?.className).toContain("border-b");
+		expect(rows?.[2]?.className).not.toContain("border-b");
+		expect(rows?.[1]?.className).not.toContain("bg-blue-50");
+	});
+
+	it("ignores the presets in the graph view, which draws its own pane", async () => {
+		queryResult = {
+			columns: ["n"],
+			rows: [['{"_label":"Person","name":"Alice"}']],
+			graphRows: [[{ _id: "0:0", _label: "Person", name: "Alice" }]],
+			truncated: false,
+			elapsedMs: 3,
+			totalRows: 1,
+			nodeKeys: [],
+		};
+		mountThemed(`${BLOCK}\nview: graph\nstyle: compact borderless`);
+		await settle();
+
+		expect(frame()?.className).toContain("text-sm");
+		expect(frame()?.className).toContain("border");
 	});
 });

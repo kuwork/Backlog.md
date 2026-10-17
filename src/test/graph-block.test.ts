@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { parseDuckdbQueryBlock } from "../duckdb/block.ts";
 import { CYPHER_BLOCK_LANG, parseCypherQueryBlock } from "../graph/block.ts";
-import { parseQueryBlock } from "../sqlite/block.ts";
+import { parseQueryBlock, type QueryBlockStyle } from "../sqlite/block.ts";
 
 describe("parseCypherQueryBlock (BACK-802)", () => {
 	it("parses a block whose statement field is `query`", () => {
@@ -66,5 +67,55 @@ describe("parseCypherQueryBlock (BACK-802)", () => {
 		const sql = parseQueryBlock("source: a.db\nrefresh: auto\nsql: SELECT 1");
 		expect(sql.ok).toBe(false);
 		if (!sql.ok) expect(sql.error).toContain("manual");
+	});
+});
+
+describe("query block style field (BACK-805)", () => {
+	it("parses a single preset", () => {
+		const result = parseQueryBlock("source: a.db\nstyle: compact\nsql: SELECT 1");
+		expect(result).toEqual({
+			ok: true,
+			block: {
+				source: "a.db",
+				sql: "SELECT 1",
+				view: "table",
+				refresh: "manual",
+				copyTo: undefined,
+				style: ["compact"],
+			},
+		});
+	});
+
+	it("parses a space-separated multi-value combo, in the order written", () => {
+		const result = parseQueryBlock("source: a.db\nstyle: compact   striped\nsql: SELECT 1");
+		expect(result.ok && result.block.style).toEqual(["compact", "striped"]);
+	});
+
+	it("drops unknown tokens instead of rejecting the block, and dedupes repeats", () => {
+		const mixed = parseQueryBlock("source: a.db\nstyle: compact bogus compact\nsql: SELECT 1");
+		expect(mixed.ok && mixed.block.style).toEqual(["compact"]);
+	});
+
+	it("treats a fully invalid style as absent - the default look, no error", () => {
+		const result = parseQueryBlock("source: a.db\nstyle: rainbow\nsql: SELECT 1");
+		expect(result).toEqual({
+			ok: true,
+			block: { source: "a.db", sql: "SELECT 1", view: "table", refresh: "manual", copyTo: undefined, style: undefined },
+		});
+	});
+
+	it("is absent when the block sets no style", () => {
+		const result = parseQueryBlock("source: a.db\nsql: SELECT 1");
+		expect(result.ok && result.block.style).toBeUndefined();
+	});
+
+	it("is accepted by all three engines with the same result", () => {
+		const expected: QueryBlockStyle[] = ["borderless"];
+		const sql = parseQueryBlock("source: a.db\nstyle: borderless\nsql: SELECT 1");
+		expect(sql.ok && sql.block.style).toEqual(expected);
+		const duckdb = parseDuckdbQueryBlock("source: a.duckdb\nstyle: borderless\nsql: SELECT 1");
+		expect(duckdb.ok && duckdb.block.style).toEqual(expected);
+		const cypher = parseCypherQueryBlock("source: tasks\nstyle: borderless\nquery: RETURN 1");
+		expect(cypher.ok && cypher.block.style).toEqual(expected);
 	});
 });
