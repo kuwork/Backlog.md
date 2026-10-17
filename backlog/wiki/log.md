@@ -1112,3 +1112,21 @@ Chronological, append-only record of all wiki operations.
 **更新**：concept [[concepts/embedded-skills]] 改写为多技能架构 + `<NAME>_SKILL` / `<NAME>_SEED_FILES` 双导出与 seed-only 语义；concept [[concepts/upstream-migration]] 与 source [[sources/wiki-install-task]]（BACK-474）补 BACK-801 互链；手册 `03-Wiki Skill 安装` 末尾加「相关」指向新页。index.md 登记 1 source + 1 手册页；overview 统计 Sources 387→388、User manual 45→46。
 
 ## [2026-10-16 18:52:54] lint-fix | 更正 BACK-793 source 页：graph insert 空快照系误报（schema-only 语句 countNodes=0 属正常），RELEASE-v1.53.5-CN 未跟进条目同步更正
+
+## [2026-10-18 01:09:04] batch-ingest | 摄取 Cypher 实时查询块（m-15，BACK-802~805）与图例持久化（m-16，BACK-806~811）
+
+**摄取范围**：git-aware 增量（基线 2026-10-16 18:52 的 lint-fix 条目）检出 15 份新源——PRD doc-27（Cypher Live Query 设计稿 v2）、doc-28（演示）、doc-29（图例持久化设计），里程碑 m-15 / m-16，任务 BACK-802~811（全部 Done）。README 双语与 `src/guidelines/{cli-instructions,mcp}/{documents,graph,overview}`、cli-agent-nudge 的改动系这批任务的结果面，无独立知识增量，未单独建源页。
+
+**新建** 15 个 source 页：doc-27/28/29、m-15/m-16、back-802~811。两件事在源页里被刻意记牢：① BACK-805 的 `style` 字段由 BACK-811 移除，根因是 `@uiw/react-markdown-preview/markdown.css` 未分层导入压过所有 Tailwind 工具类（jsdom 只断言类名，测试绿而像素不变），移除是 fail-closed；② BACK-810 直接产自 BACK-809 实现时发现的缺口——`backlog/databases/` 是唯一没有 watcher 的内容目录。
+
+**新建** concept 页 [[concepts/cypher-live-query-block]]（注册名数据源、四视图、refresh:auto、类型强制、共享 QueryBlock 内核）与 [[concepts/graph-legend-persistence]]（四写入面一份存储、恢复/迁移/写穿、三层「无变化不刷新」）。
+
+**更新**：[[concepts/sql-query-blocks]] 新增「第三引擎：Cypher」节（含 style 引入与推翻、查询源码高亮）；[[concepts/live-sync-pattern]] 复用面补 `graph-updated` 与 `graph-legend-updated` 两个变体；[[concepts/graph-cli]] 补 `graph legend` 子命令；[[concepts/kuzu-graph]] 补 cypher-query 块互链。回刷互链：back-793、back-794、back-797 三个旧源页补指向新页的 Related Sources。
+
+**手册**：`80-图谱与数据查询` 新增 `04-Cypher查询块.md` 与 `05-图例配置持久化.md`（SUMMARY 登记），`03-数据库页面.md` 的「可配置图例」段改为项目文件存储（原 localStorage 表述已过时）并指向新页；`tmp/merge-usermanual.py` 重新合并 manual.md：9 章 47 页 6136 行。
+
+**统计**：Sources 388→403、Concepts 44→46、User manual 46→48。
+
+**mini-lint**：403 个 source 页 `source_path` 全量校验，新增 15 页全部解析成功；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）均已有历史 lint 批注与人工裁决，本次不改写。校验脚本落在 `tmp/wiki-lint-source-path.py`。
+
+**异常留痕**：① doc-28 演示页记录的 `style` 六段演示在本批次内已成为历史（字段被移除），源页保留事实并标注；② `backlog/databases/graph-legends.yaml` 在本仓为未跟踪产物（BACK-807/810 的本地写入结果），未纳入摄取。

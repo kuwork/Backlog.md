@@ -47,3 +47,4 @@ source_path: backlog/tasks/back-797 - Query-blocks-configurable-row-cap-plus-pag
 - [[sources/back-796-duckdb-csv-excel-sources]] — 查询块的 CSV/XLSX 数据源与 copy_to 写路径
 - [[sources/back-800-duckdb-native-binding-bundling]] — DuckDB 原生绑定打包修复
 - [[sources/back-581-web-settings-default-assignee]] — Web 设置页编辑配置项的既有通路
+- [[sources/back-802-cypher-query-block-core]] — 第三引擎接入共享内核；行上限同源但 Cypher 不做分页

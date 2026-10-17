@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-10-16 18:20
+updated_date: 2026-10-18 01:00
 ---
 
 
@@ -403,6 +403,21 @@ Read this file FIRST on any wiki operation.
 | [[sources/m-14-graph-mcp]] |  m-14 - Graph MCP 里程碑 | source, milestone, graph, mcp |
 | [[sources/back-24-02-milestone-swimlanes]] |  BACK-24.02 - TUI 看板里程碑泳道 | source, tui, enhancement, archived, milestones |
 | [[sources/back-801-migrate-install-task-migration-architect]] |  BACK-801 - migrate install 捆绑 task-migration-architect 技能 | source, cli, skill, migration |
+| [[sources/doc-27-cypher-live-query-prd]] |  doc-27 - Cypher Live Query 只读图查询块设计 | source, design, cypher, graph, web-ui |
+| [[sources/doc-28-cypher-live-query-demo]] |  doc-28 - Cypher Live Query 演示 | source, guide, cypher, graph, web-ui |
+| [[sources/doc-29-graph-legend-persistence-prd]] |  doc-29 - Graph Legend 配置持久化设计 | source, design, graph, web-ui, config |
+| [[sources/m-15-cypher-live-query]] |  m-15 - Cypher Live Query 里程碑 | source, milestone, cypher, graph, web-ui |
+| [[sources/m-16-graph-legend-persistence]] |  m-16 - 图例配置持久化里程碑 | source, milestone, graph, web-ui, config |
+| [[sources/back-802-cypher-query-block-core]] |  BACK-802 - cypher-query 块核心：解析 / 路由 / 文本视图 / QueryBlock 泛化 | source, web-ui, cypher, graph |
+| [[sources/back-803-cypher-query-graph-view]] |  BACK-803 - cypher-query 图视图与图例配置集成 | source, web-ui, cypher, graph |
+| [[sources/back-804-cypher-query-refresh-auto]] |  BACK-804 - cypher-query refresh:auto 订阅 graph-updated | source, web-ui, cypher, graph, realtime |
+| [[sources/back-805-query-block-style-presets]] |  BACK-805 - 查询块 style 字段三预设并回灌 SQL 块 | source, web-ui, docs |
+| [[sources/back-806-legend-persistence-server]] |  BACK-806 - 图例持久化：服务端存储与 /api/graph/legend 端点 | source, docs, graph, web-ui |
+| [[sources/back-807-legend-persistence-browser]] |  BACK-807 - 图例持久化：浏览器启动恢复与 write-through 保存 | source, web-ui, graph, config |
+| [[sources/back-808-cli-graph-legend]] |  BACK-808 - CLI: backlog graph legend get/set/remove | source, cli, docs, graph |
+| [[sources/back-809-mcp-graph-legend-tools]] |  BACK-809 - MCP: graph_legend_get/set/remove 工具 | source, docs, mcp, graph |
+| [[sources/back-810-graph-legend-watcher]] |  BACK-810 - 服务端监听 graph-legends.yaml 并广播图例更新 | source, web-ui, docs, graph, realtime |
+| [[sources/back-811-remove-style-field-add-highlight]] |  BACK-811 - 移除查询块 style 字段并为查询源码加语法高亮 | source, web-ui, docs |
 
 ## Execution Notes
 
@@ -570,7 +585,9 @@ Read this file FIRST on any wiki operation.
 | [[concepts/json-watch]] |  task list --watch 生命周期契约 | JSON 行流能力：全量替换帧 + 启动方存活性 + 空转成本控制 |
 | [[concepts/statistics-corpus-scope]] |  统计语料范围 | 项目统计默认活跃语料、completed 显式 opt-in，语料范围是所有统计读数的前置参数 |
 | [[concepts/toc-scrollspy]] |  模态框 TOC 抽屉与 scrollspy | 书签式大纲抽屉 + scrollspy 高亮，解决 Modal 类弹窗无大纲问题 |
-| [[concepts/live-sync-pattern]] |  Web UI 实时同步复用模式 | window 事件转发 + 防抖广播 + refreshInPlace 原地刷新三件套，memos/drafts/board 复用 |
+| [[concepts/live-sync-pattern]] |  Web UI 实时同步复用模式 | window 事件转发 + 防抖广播 + refreshInPlace 原地刷新三件套，memos/drafts/board/graph-updated/图例 复用 |
+| [[concepts/cypher-live-query-block]] |  文档内实况 Cypher 查询块 | cypher-query 围栏块：注册名数据源、四视图、refresh:auto、只读门禁、共享 QueryBlock 内核 |
+| [[concepts/graph-legend-persistence]] |  图例配置持久化 | 图例从 localStorage 迁到 graph-legends.yaml，服务端/浏览器/CLI/MCP 四写入面一份存储 + watcher 热更新 |
 
 ## Entities
 
@@ -657,7 +674,9 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/80-图谱与数据查询/00-图谱CLI命令]] | 图谱 CLI 命令 | backlog graph 子命令、named databases、CSV 导入、快照复用 |
 | [[usermanual/80-图谱与数据查询/01-图谱MCP工具]] | 图谱 MCP 工具 | 六个 graph_* 工具、一次性开关模型 |
 | [[usermanual/80-图谱与数据查询/02-SQL查询块]] | SQL 查询块 | sqlite-query/duckdb-query 围栏块、只读安全模型、四个块动作 |
+| [[usermanual/80-图谱与数据查询/04-Cypher查询块]] | Cypher 查询块 | cypher-query 围栏块、注册名数据源、四视图、refresh:auto、只读门禁 |
 | [[usermanual/80-图谱与数据查询/03-数据库页面]] | 数据库页面 | Databases 页真实行数、Cypher 结果图谱视图、可配置图例 |
+| [[usermanual/80-图谱与数据查询/05-图例配置持久化]] | 图例配置持久化 | graph-legends.yaml 项目级存储、四个写入面、启动恢复与热更新 |
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
 | [[usermanual/60-配置与运维/02-项目概览]] | 项目概览 | CLI overview 命令、项目级统计、健康指标 |

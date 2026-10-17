@@ -45,3 +45,5 @@ BACK-793 的结果图按标签给节点上色、关系一律实心带箭头线�
 - [[sources/back-793-cypher-result-graph-view]] — 本任务配置的结果图本体（依赖关系）
 - [[sources/back-720-graph-canvas-2d-renderer]] — GraphCanvas 引擎的来源
 - [[sources/back-704-graph-view-web-ui]] — 语料图谱页，共享引擎与图例交互的基准
+- [[sources/doc-29-graph-legend-persistence-prd]] — 本图例配置从 localStorage 迁到项目文件的设计稿
+- [[sources/back-807-legend-persistence-browser]] — 本任务的 localStorage 存储被改造为项目文件 + 本地缓存
