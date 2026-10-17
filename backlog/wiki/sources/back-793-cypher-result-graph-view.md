@@ -48,3 +48,5 @@ source_path: backlog/tasks/back-793 - Cypher-result-graph-view-on-the-databases-
 - [[sources/back-720-graph-canvas-2d-renderer]] — 图视图 Canvas 2D 渲染器，GraphCanvas 提取自这套机制
 - [[sources/back-704-graph-view-web-ui]] — D3.js 任务图谱可视化页面，交互对齐的基准
 - [[sources/back-746-memo-board-webgl-pinboard]] — 全屏开关图标复用自 memo 钉板
+- [[sources/back-803-cypher-query-graph-view]] — 本图组件被文档内 `cypher-query` 块复用为 `view: graph`
+- [[sources/back-807-legend-persistence-browser]] — 本组件的图例配置后被持久化并在此处恢复

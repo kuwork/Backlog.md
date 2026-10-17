@@ -2,7 +2,7 @@
 title: 文档内实况 SQL 查询块
 labels: [concept, sqlite, duckdb, web-ui]
 created_date: 2026-10-16 01:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-18 01:00
 ---
 
 # 文档内实况 SQL 查询块
@@ -23,10 +23,19 @@ YAML 子集字段：`source`（数据库文件的项目相对路径）、`sql`�
 
 `src/sqlite/validation.ts`（只读形状校验，引擎无关）、`markdown.ts`、`csv.ts`（只触碰通用 `{columns, rows}` 网格）被 DuckDB 原样共享；React 侧 `SqliteQueryBlock` 重构为按引擎配置（块语言、i18n 命名空间、API 方法）参数化的通用 `SqlQueryBlock`，`SqliteQueryBlock` 保留为薄封装。驱动特定部分才新建于 `src/duckdb/`（block/discover/paths/query/export）。BACK-777 是先导 spike：验证 `@duckdb/node-api` 能在 Bun 下跑只读查询且 DuckDB 类型可归一到共享 `SqliteCell` 契约，失败则回退 `@duckdb/duckdb-wasm`。BACK-796 起 DuckDB 块经官方 excel 扩展额外支持 `.csv`/`.xlsx` 数据源；BACK-800 修复编译二进制中 DuckDB 原生绑定的打包。
 
+## 第三引擎：Cypher（m-15）
+
+BACK-802 把 `SqlQueryBlock` 进一步泛化为**引擎无关的 `QueryBlock`**，Cypher 成为第三个薄壳，共享同一内核与解析器（语句字段参数化为 `sql` / `query`）。差异集中在 `QueryEngineConfig` 的五个差异项，后续再扩 `graph` 视图、`refresh.auto.subscribe` 与 `highlightLanguage`。验收硬约束是 **SQL 两块表面逐字节不变**——27 个既有测试一字未改通过。
+
+Cypher 侧刻意与 SQL 不同的三点：`source` 是数据库**注册名**而非路径（图库是目录，注册名天然没有逃逸面）、多出 `view: graph` 与 `refresh: auto`（图库有 `graph-updated` 广播）、以及 node/relationship/path 的类型强制。详见 [[concepts/cypher-live-query-block]]。
+
+BACK-805 曾给三块回灌 `style` 字段（compact/striped/borderless），BACK-811 因级联不可用而 **fail-closed 移除**：带该字段的块直接报未知字段错误并列出剩余字段。同期为「显示查询」面板接上阅读视图自己的代码高亮（refractor `all` 实例 + `markdown.css` 的 `.token.*`，Cypher 走 `cypher` 语法、SQL 走 `sql`，未知语法回退纯文本）。
+
 ## Related Concepts
 
+- [[concepts/cypher-live-query-block]] — 共享同一内核的第三引擎（Cypher）
 - [[concepts/web-ui-features]] — 查询块挂载的 Markdown 渲染链（MermaidMarkdown 围栏分支）
-- [[concepts/markdown-pipeline]] — 文档渲染与序列化流水线
+- [[concepts/markdown-pipeline]] — 文档渲染与序列化流水线；未分层 CSS 压过 Tailwind 工具类是 style 字段失效的根因
 
 ## Related Sources
 
@@ -38,3 +47,6 @@ YAML 子集字段：`source`（数据库文件的项目相对路径）、`sql`�
 - [[sources/back-796-duckdb-csv-excel-sources]] — CSV/Excel 数据源扩展
 - [[sources/back-797-query-block-pagination]] — 行上限配置与分页浏览
 - [[sources/back-800-duckdb-native-binding-bundling]] — 编译二进制原生绑定打包修复
+- [[sources/back-802-cypher-query-block-core]] — 共享内核泛化与 Cypher 引擎接入
+- [[sources/back-805-query-block-style-presets]] — style 三预设引入（后被移除）
+- [[sources/back-811-remove-style-field-add-highlight]] — style 移除与查询源码语法高亮

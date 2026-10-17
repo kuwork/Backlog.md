@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-10-16 18:20
+updated_date: 2026-10-18 01:00
 ---
 
 # Knowledge Base Overview
@@ -142,6 +142,13 @@ updated_date: 2026-10-16 18:20
 - **文档实况 SQL 查询块**（m-11/m-12，BACK-773~781）：`sqlite-query`/`duckdb-query` 围栏块在阅读视图渲染只读实况结果，四重路径闸门 + 引擎级只读 + 500 行上限，Refresh/Show-Hide/Copy Markdown/Export CSV 四动作；DuckDB 侧复用 SQLite 的校验与序列化模块，BACK-796 扩展 CSV/Excel 数据源，BACK-797 行上限可配置 + 分页；概念页 [[concepts/sql-query-blocks]]，设计文档 doc-23~26
 - **Web/其他增量**：Databases 页真实行数与 Cypher 结果图谱视图 + 可配置图例（BACK-783/793/794）、里程碑弹窗文档预览与 M-N 大写 ID 统一（BACK-782/795）、里程碑详情图谱入口（BACK-791）、memo update --tags 与 TTY 交互多行捕获（BACK-763/764）、wiki 树缺失崩溃修复（BACK-798）、DuckDB 二进制打包修复（BACK-800）
 
+### Cypher 实时查询块与图例持久化（m-15 / m-16，BACK-802~811，2026-10-16~17）
+- **Cypher 实时查询块**（m-15，BACK-802~805，设计稿 doc-27 / 演示 doc-28）：`cypher-query` 围栏块是 [[concepts/sql-query-blocks]] 的**引擎对偶**——`source` 用数据库**注册名**而非路径（图库是目录，拒绝未知名即全部闸门）、多出 `view: graph` 与 `refresh: auto`（图库有 `graph-updated` 广播，磁盘文件没有）、以及 node/relationship/path 的类型强制。`SqlQueryBlock` 泛化为引擎无关的共享 `QueryBlock`，薄壳只留五个差异项，SQL 两块 27 个既有测试一字未改通过（逐字节不变）。详见 [[concepts/cypher-live-query-block]]
+- **style 字段的引入与推翻**：BACK-805 为三块回灌 `compact`/`striped`/`borderless` 预设；验证发现 `@uiw/react-markdown-preview/markdown.css` 未分层导入压过所有 Tailwind 工具类，预设在像素上不生效（jsdom 只断言类名，测试绿而效果无）——BACK-811 用户裁决**不修级联、直接移除**，且移除是 fail-closed（带该字段的块报未知字段错误并列出剩余字段）。同任务为「显示查询」面板接上 refractor 语法高亮（`cypher` / `sql`，配色走 `--color-prettylights-syntax-*`）
+- **图例持久化**（m-16，BACK-806~810，PRD doc-29）：图例配置从浏览器 localStorage 迁到版本化的 `backlog/databases/graph-legends.yaml`，解决易丢、不可共享与文档渲染不确定三个问题。**四个写入面一份存储**——服务端 `GET/PUT /api/graph/legend`、浏览器（启动恢复 + 一次性迁移 + write-through）、CLI `graph legend get/set/remove`、MCP `graph_legend_get/set/remove`，全部复用 `legend-store.ts`
+- **三层「无变化不刷新」**：`backlog/databases/` 是唯一没有 watcher 的内容目录（BACK-809 实现时发现），BACK-810 补上目录级 watcher（监听目录而非文件——存储走 temp+rename），并让路由层（只在语义变化时广播、请求内同步更新基线）、watcher 层（深度且键序不敏感比对）、浏览器层（取回后与屏上配置比对）合力，使一次真正的变化只刷新一次
+- **为真实用法设计的恢复链路**：localActivity 计数器丢弃「回来时本地已有新编辑」的在途响应；pending 标记让失败的本地副本下次挂载推上去；write-through 失败时面板保持打开并显示原因而非假装成功；保存时钉住自动配色，让 YAML 记录读者实际看到的画面
+
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
 - **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
@@ -231,8 +238,8 @@ updated_date: 2026-10-16 18:20
 
 ## 统计
 
-- Sources ingested: 388
-- Concepts extracted: 44
+- Sources ingested: 403
+- Concepts extracted: 46
 - Entities catalogued: 2
 - Execution notes: 28
 - Decisions recorded: 81
@@ -240,5 +247,5 @@ updated_date: 2026-10-16 18:20
 - Comparisons: 1
 - Reasoning traces: 5
 - Retrospectives: 1
-- User manual pages: 46
+- User manual pages: 48
 - Reports generated: 10
