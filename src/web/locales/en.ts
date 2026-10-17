@@ -1252,6 +1252,7 @@ export const en = {
 		legendLine: "Line",
 		legendArrow: "Arrow",
 		legendReset: "Reset",
+		legendSaveFailed: "Not saved to the server",
 		legendRuleName: "Name",
 		legendRuleColor: "Rule colour",
 		legendTypeColor: "Type colour",

@@ -1248,6 +1248,7 @@ export const ja: TranslationDict = {
 		legendLine: "線",
 		legendArrow: "矢印",
 		legendReset: "リセット",
+		legendSaveFailed: "サーバーに保存できませんでした",
 		legendRuleName: "名前",
 		legendRuleColor: "ルールの色",
 		legendTypeColor: "タイプの基色",

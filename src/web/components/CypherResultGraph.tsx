@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GRAPH_LEGEND_UPDATED_EVENT } from "../../graph/legend-updated.ts";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
+import { apiClient } from "../lib/api";
 import type { ResultGraph } from "../utils/cypher-graph";
 import { degreeRadius } from "../utils/graph-canvas";
 import {
+	clearLegendPending,
 	defaultLegendConfig,
 	fieldsByType,
 	type GraphLegendConfig,
+	hasLegendConfig,
+	hasLegendPending,
 	LINE_DASH,
 	loadLegendConfig,
+	markLegendPending,
 	NEUTRAL_BUCKET,
 	OTHER_BUCKET,
+	pinAutomaticTypeColors,
 	relationStyle,
 	resolveLegend,
 	saveLegendConfig,
@@ -58,17 +65,73 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 	const { theme } = useTheme();
 	const [config, setConfig] = useState<GraphLegendConfig>(() => loadLegendConfig(database));
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	// The last write-through that did not reach the server. The edit itself survives in
+	// localStorage (and is marked pending, so the next mount pushes it up); this only carries the
+	// message, because a save that quietly did nothing is worse than one that says so.
+	const [saveError, setSaveError] = useState<string | null>(null);
 	// The configuration as it stood when the panel opened: edits preview live on the canvas but
 	// only reach storage on 保存; 取消 and the X restore this snapshot.
 	const [snapshot, setSnapshot] = useState<GraphLegendConfig | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 
+	/**
+	 * Bumped by every reader-initiated change - opening the panel, 保存, a legend-dot toggle. A
+	 * server read carries the counter it started with: when the counter has moved by the time the
+	 * response lands, local work is newer than that response, and applying it would silently
+	 * revert work done while it was in flight. That is how a colour picked in a card header (the
+	 * first thing a reader touches) used to vanish when a slow restore landed on top of it, while
+	 * rules added afterwards survived. Automatic changes - the default-hide of internal nodes, a
+	 * database switch - deliberately leave the counter alone.
+	 */
+	const localActivity = useRef(0);
+	const bumpActivity = useCallback(() => {
+		localActivity.current += 1;
+	}, []);
+
 	// Switching databases switches configurations: a corpus database and a user database want
 	// different defaults, and what was tuned for one is meaningless to the other.
 	useEffect(() => {
 		setConfig(loadLegendConfig(database));
 		setSettingsOpen(false);
+	}, [database]);
+
+	// Restore from the server on mount / database switch. localStorage wins for the first frame (zero
+	// latency, offline), then the server config is applied when it differs and cached locally. When the
+	// server has nothing but localStorage does, the local config is pushed up once (migration). A
+	// server that cannot be reached leaves behaviour exactly as before (localStorage only).
+	useEffect(() => {
+		let cancelled = false;
+		const activityAtRequest = localActivity.current;
+		void (async () => {
+			try {
+				const serverConfig = await apiClient.fetchGraphLegend(database);
+				if (cancelled) return;
+				// Local work moved on while this response was in flight: it is stale by definition,
+				// and applying it would revert an edit (or a save) that is newer than the response.
+				if (localActivity.current !== activityAtRequest) return;
+				const local = loadLegendConfig(database);
+				if (serverConfig !== null) {
+					if (hasLegendPending(database)) {
+						// A save that never reached the server: the local copy is the newest truth,
+						// so it is pushed up instead of letting the older server copy win.
+						await apiClient.saveGraphLegend(database, local);
+						clearLegendPending(database);
+						return;
+					}
+					if (JSON.stringify(serverConfig) !== JSON.stringify(local)) setConfig(serverConfig);
+					saveLegendConfig(database, serverConfig);
+				} else if (hasLegendConfig(database)) {
+					await apiClient.saveGraphLegend(database, local);
+					clearLegendPending(database);
+				}
+			} catch {
+				// Server unreachable: keep the localStorage-only behaviour, do not crash.
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
 	}, [database]);
 
 	// While the panel is open the edits are a draft: the canvas previews them, storage keeps the
@@ -78,18 +141,63 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 	}, [database, config, settingsOpen]);
 
 	const openSettings = () => {
+		bumpActivity();
+		setSaveError(null);
 		setSnapshot(config);
 		setSettingsOpen(true);
 	};
-	const saveSettings = useCallback(() => {
-		saveLegendConfig(database, config);
-		setSettingsOpen(false);
-	}, [database, config]);
+	// Persist a configuration to the server (write-through). localStorage is written immediately and
+	// the copy is marked pending until the PUT lands, so a failed write-through leaves the edit
+	// recoverable - the next mount pushes it up rather than letting the server copy win - and the
+	// panel stays open with the reason, because a save that quietly did nothing is worse than one
+	// that says so. This is the only place that writes through to the server.
+	const saveSettings = useCallback(async () => {
+		// A save records the picture: the automatic colour each type paints with is pinned into the
+		// stored configuration, so the file says what the canvas and the colour pickers already show
+		// instead of leaving those colours to be re-derived from the label hash on every visit.
+		const pinned = pinAutomaticTypeColors(config, theme);
+		setConfig(pinned);
+		saveLegendConfig(database, pinned);
+		markLegendPending(database);
+		bumpActivity();
+		try {
+			await apiClient.saveGraphLegend(database, pinned);
+			clearLegendPending(database);
+			setSaveError(null);
+			setSettingsOpen(false);
+		} catch (error) {
+			markLegendPending(database);
+			setSaveError(error instanceof Error ? error.message : String(error));
+		}
+	}, [database, config, theme, bumpActivity]);
 	const cancelSettings = useCallback(() => {
 		if (snapshot !== null) setConfig(snapshot);
 		setSnapshot(null);
 		setSettingsOpen(false);
 	}, [snapshot]);
+
+	// A legend edit broadcast for this database (from another open tab) re-fetches and applies it live;
+	// broadcasts for other databases are ignored, and one that lands on top of local work - an open
+	// draft or a save that has not been pushed yet - is dropped rather than reverting that work.
+	useEffect(() => {
+		const handle = (event: Event) => {
+			const detail = (event as CustomEvent<{ database: string }>).detail;
+			if (!detail || detail.database !== database) return;
+			const activityAtRequest = localActivity.current;
+			void (async () => {
+				try {
+					const serverConfig = await apiClient.fetchGraphLegend(database);
+					if (localActivity.current !== activityAtRequest) return;
+					if (hasLegendPending(database)) return;
+					if (serverConfig !== null) setConfig(serverConfig);
+				} catch {
+					// Ignore: keep the current configuration.
+				}
+			})();
+		};
+		window.addEventListener(GRAPH_LEGEND_UPDATED_EVENT, handle);
+		return () => window.removeEventListener(GRAPH_LEGEND_UPDATED_EVENT, handle);
+	}, [database]);
 
 	const resolved = useMemo(() => resolveLegend(graph.nodes, config, theme), [graph, config, theme]);
 
@@ -217,14 +325,18 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 		[visible],
 	);
 
-	const toggleBucket = useCallback((key: string) => {
-		setConfig((prev) => {
-			const next = new Set(prev.hidden);
-			if (next.has(key)) next.delete(key);
-			else next.add(key);
-			return { ...prev, hidden: [...next] };
-		});
-	}, []);
+	const toggleBucket = useCallback(
+		(key: string) => {
+			bumpActivity();
+			setConfig((prev) => {
+				const next = new Set(prev.hidden);
+				if (next.has(key)) next.delete(key);
+				else next.add(key);
+				return { ...prev, hidden: [...next] };
+			});
+		},
+		[bumpActivity],
+	);
 
 	const resetConfig = useCallback(() => {
 		setConfig(defaultLegendConfig(database));
@@ -277,6 +389,7 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 					onReset={resetConfig}
 					onSave={saveSettings}
 					onCancel={cancelSettings}
+					saveError={saveError}
 				/>
 			)}
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-200 px-4 py-2 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">

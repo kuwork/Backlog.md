@@ -1221,6 +1221,7 @@ export const zhCN: TranslationDict = {
 		legendLine: "线型",
 		legendArrow: "箭头",
 		legendReset: "重置",
+		legendSaveFailed: "未能保存到服务端",
 		legendRuleName: "名称",
 		legendRuleColor: "规则颜色",
 		legendTypeColor: "类型基色",

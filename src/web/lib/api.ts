@@ -17,6 +17,7 @@ import type {
 } from "../../types/index.ts";
 import type { DependencyQueryAnswer } from "../../utils/dependency-query.ts";
 import type { ListPage } from "../../utils/list-page.ts";
+import { type GraphLegendConfig, normalizeLegendConfig } from "../utils/graph-legend-config.ts";
 import { encodeWikiPath } from "../utils/urlHelpers.ts";
 
 export function isAmbiguousIdConflict(error: unknown): error is ApiError {
@@ -747,6 +748,24 @@ export class ApiClient {
 		}
 		const payload = (await response.json()) as { databases?: GraphDatabaseSummary[] };
 		return payload.databases ?? [];
+	}
+
+	/** Read a database's persisted legend config from the server; null when nothing is stored. */
+	async fetchGraphLegend(database: string): Promise<GraphLegendConfig | null> {
+		const response = await fetch(`${API_BASE}/graph/legend?database=${encodeURIComponent(database)}`);
+		if (response.status === 204) return null;
+		if (!response.ok) return throwResponseError(response, "获取图例配置失败");
+		return normalizeLegendConfig(await response.json(), database);
+	}
+
+	/** Persist a database's legend config on the server; `config: null` resets (removes) the entry. */
+	async saveGraphLegend(database: string, config: GraphLegendConfig | null): Promise<void> {
+		const response = await fetch(`${API_BASE}/graph/legend`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ database, config }),
+		});
+		if (!response.ok) return throwResponseError(response, "保存图例配置失败");
 	}
 
 	/**

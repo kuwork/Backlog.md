@@ -10,12 +10,21 @@ import {
 	legendStorageKey,
 	loadLegendConfig,
 	normalizeLegendConfig,
+	pinAutomaticTypeColors,
 	relationStyle,
 	renderCaption,
 	resolveLegend,
 	saveLegendConfig,
 } from "../web/utils/graph-legend-config.ts";
-import { explicitNodeColors, hueOfHex, isHexColor, labelHue, subclassColors } from "../web/utils/graph-palette.ts";
+import {
+	explicitNodeColors,
+	hueNodeColors,
+	hueOfHex,
+	isHexColor,
+	labelHue,
+	labelNodeColors,
+	subclassColors,
+} from "../web/utils/graph-palette.ts";
 
 /**
  * The per-type legend configuration (BACK-794, redesign): every node type carries its own caption
@@ -354,5 +363,53 @@ describe("palette colour picks", () => {
 		// The override hue feeds the same ramp the automatic hue would: same lightness steps.
 		expect(subclassColors(0, 0, 2, "light").fill).toBe(subclassColors(hueOfHex("#ff0000"), 0, 2, "light").fill);
 		expect(subclassColors(labelHue("Person"), 0, 2, "light").fill).not.toBe(subclassColors(0, 0, 2, "light").fill);
+	});
+});
+
+describe("pinAutomaticTypeColors", () => {
+	const theme = "light";
+
+	it("pins the colour the picture already uses for a type that carries none", () => {
+		const config = withType("Person", {});
+		const pinned = pinAutomaticTypeColors(config, theme);
+		// The pinned value is the fill the resolver paints the type-only bucket with, so the file
+		// ends up recording exactly what the canvas and the colour pickers showed.
+		const resolved = resolveLegend(nodes, config, theme);
+		const bucket = resolved.buckets.find((entry) => entry.key === "t:Person|s:type:only");
+		expect(pinned.types.Person?.color).toBe(bucket?.colors.fill);
+		expect(pinned.types.Person?.color).toBe(labelNodeColors("Person", theme).fill);
+	});
+
+	it("leaves an explicit type colour alone", () => {
+		const config = withType("Person", { color: "#ff0000" });
+		const pinned = pinAutomaticTypeColors(config, theme);
+		expect(pinned.types.Person?.color).toBe("#ff0000");
+	});
+
+	it("keeps rule and catch-all colours derived, so the ramp keeps re-flowing", () => {
+		const config = withType("Person", {
+			rules: [
+				{ id: "r1", name: "young", expression: "age < 30" },
+				{ id: "r2", name: "old", expression: "age >= 60" },
+			],
+		});
+		const pinned = pinAutomaticTypeColors(config, theme);
+		expect(pinned.types.Person?.rules.map((rule) => rule.color)).toEqual([undefined, undefined]);
+		expect(pinned.types.Person?.otherColor).toBeUndefined();
+	});
+
+	it("pins per theme, the way an explicit colour would", () => {
+		const config = withType("Person", {});
+		const light = pinAutomaticTypeColors(config, "light").types.Person?.color;
+		const dark = pinAutomaticTypeColors(config, "dark").types.Person?.color;
+		expect(light).toBe(labelNodeColors("Person", "light").fill);
+		expect(dark).toBe(hueNodeColors(labelHue("Person"), "dark").fill);
+		expect(light).not.toBe(dark);
+	});
+
+	it("is idempotent: pinning what was already pinned changes nothing", () => {
+		const config = withType("Person", { caption: "{{name}}" });
+		const once = pinAutomaticTypeColors(config, theme);
+		expect(pinAutomaticTypeColors(once, theme)).toEqual(once);
 	});
 });

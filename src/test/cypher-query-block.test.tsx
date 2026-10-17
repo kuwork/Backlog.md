@@ -9,6 +9,13 @@ import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
 import { legendStorageKey } from "../web/utils/graph-legend-config.ts";
 
+/**
+ * Bun runs every test file in one process, so a fetch mock left behind by this file's afterEach
+ * would answer the next file's requests (a leaked `{}`-mock once made the server legend endpoint
+ * tests see 200 instead of 204). Capture the original and restore it, like the sibling suites do.
+ */
+const originalFetch = globalThis.fetch;
+
 interface FakeWritable {
 	write(data: string): Promise<void>;
 	close(): Promise<void>;
@@ -175,6 +182,12 @@ beforeEach(() => {
 			queryBodies.push(JSON.parse(String(init?.body ?? "{}")));
 			return Promise.resolve(new Response(JSON.stringify(queryResult), { status: 200 }));
 		}
+		if (url.includes("/api/graph/legend")) {
+			// A real server answers 204 when the database has no stored config (BACK-806), so the
+			// pane migrates the localStorage copy up. The catch-all's `200 {}` below would be read
+			// as a stored (default) config and silently override what the test just wrote.
+			return Promise.resolve(new Response(null, { status: 204 }));
+		}
 		return Promise.resolve(new Response("{}", { status: 200 }));
 	}) as unknown as typeof fetch;
 
@@ -186,7 +199,8 @@ afterEach(() => {
 	act(() => {
 		root?.unmount();
 	});
-	globalThis.fetch = (() => Promise.resolve(new Response("{}", { status: 200 }))) as unknown as typeof fetch;
+	// Restore the real fetch: leaving a mock behind answers the next test file's requests.
+	globalThis.fetch = originalFetch;
 	(globalThis as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined;
 });
 

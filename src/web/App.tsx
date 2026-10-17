@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { BrowserRouter, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
 import type { DuplicateRepairPlan } from "../core/duplicate-task-repair.ts";
 import { hiddenStatusNames } from "../core/state-machine.ts";
+import { GRAPH_LEGEND_UPDATED_EVENT, parseGraphLegendUpdatedMessage } from "../graph/legend-updated.ts";
 import { GRAPH_UPDATED_EVENT, parseGraphUpdatedMessage } from "../graph/updated.ts";
 import type {
 	BacklogConfig,
@@ -1041,6 +1042,13 @@ function AppContent() {
 				// No retry signal exists yet; dropping the chip beats a spinner that never ends.
 				setGraphStatus(null);
 			} else {
+				const legendUpdated = parseGraphLegendUpdatedMessage(event.data);
+				if (legendUpdated) {
+					// A legend config changed in another tab/session: tell the only consumer (the graph
+					// pane), which matches the database name itself.
+					window.dispatchEvent(new CustomEvent(GRAPH_LEGEND_UPDATED_EVENT, { detail: legendUpdated }));
+					return;
+				}
 				const graphUpdated = parseGraphUpdatedMessage(event.data);
 				if (graphUpdated) {
 					// The corpus graph feeds the graph page and the databases table, so its change bumps

@@ -1221,6 +1221,7 @@ export const zhTW: TranslationDict = {
 		legendLine: "線型",
 		legendArrow: "箭頭",
 		legendReset: "重設",
+		legendSaveFailed: "未能儲存到伺服器",
 		legendRuleName: "名稱",
 		legendRuleColor: "規則顏色",
 		legendTypeColor: "類型基色",

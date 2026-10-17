@@ -74,6 +74,12 @@ interface GraphLegendSettingsProps {
 	onSave: () => void;
 	/** Discard the draft (back to the configuration the panel opened with) and close. */
 	onCancel: () => void;
+	/**
+	 * Set when the last write-through did not reach the server. The draft itself is safe in
+	 * localStorage (and marked pending, so the next mount pushes it up); this only tells the
+	 * reader, next to the button they pressed, that the save did not land.
+	 */
+	saveError?: string | null;
 }
 
 /** Quick-add options the string methods never read; kept so the call sites stay uniform. */
@@ -96,6 +102,7 @@ export default function GraphLegendSettings({
 	onReset,
 	onSave,
 	onCancel,
+	saveError = null,
 }: GraphLegendSettingsProps) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
@@ -278,7 +285,16 @@ export default function GraphLegendSettings({
 				)}
 			</div>
 
-			<div className="mt-4 flex items-center justify-end gap-2">
+			<div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+				{saveError && (
+					<span
+						role="alert"
+						title={`${t.databases.legendSaveFailed}：${saveError}`}
+						className="mr-auto max-w-[60%] truncate text-xs text-red-600 dark:text-red-400"
+					>
+						{t.databases.legendSaveFailed}：{saveError}
+					</span>
+				)}
 				<button
 					type="button"
 					onClick={onReset}

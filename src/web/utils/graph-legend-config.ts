@@ -228,6 +228,30 @@ export function normalizeLegendConfig(value: unknown, _database: string): GraphL
 	};
 }
 
+/* ------------------------------------------------------------------ save-time pinning */
+
+/**
+ * The same configuration with every type's automatic colour pinned as an explicit one.
+ *
+ * A type without an explicit colour paints with its label's slot on the hue ring: the canvas and
+ * the colour pickers both show it, but the stored file never said so - a reader who tuned the
+ * legend and saved it got a file recording captions and rules while the colours they had been
+ * looking at existed only as a hash of the type name. Saving pins them, so the file records the
+ * picture. A type that already carries an explicit colour is left alone (and the panel's × still
+ * returns one to automatic), the ramp-driven colours of rules and the catch-all stay derived -
+ * they are meant to re-flow as rules come and go, which pinning would freeze - and pinning what
+ * was already pinned changes nothing.
+ */
+export function pinAutomaticTypeColors(config: GraphLegendConfig, theme: string): GraphLegendConfig {
+	const types: Record<string, TypeConfig> = {};
+	for (const [label, typeConf] of Object.entries(config.types)) {
+		types[label] = isHexColor(typeConf.color)
+			? typeConf
+			: { ...typeConf, color: hueNodeColors(labelHue(label), theme).fill };
+	}
+	return { ...config, types };
+}
+
 /* ------------------------------------------------------------------ persistence */
 
 const STORAGE_PREFIX = "backlog.graph.";
@@ -282,8 +306,68 @@ export function clearLegendConfig(database: string): void {
 	if (!store) return;
 	try {
 		store.removeItem(legendStorageKey(database));
+		store.removeItem(legendPendingKey(database));
 	} catch {
 		// Nothing to do: the entry is simply not going away.
+	}
+}
+
+/* ------------------------------------------------------------------ push tracking */
+
+/**
+ * The key marking a database's stored configuration as edited but not yet pushed to the server.
+ *
+ * A save marks the copy pending before its PUT and clears the mark when the PUT lands. A failed
+ * PUT leaves the mark behind on purpose: the local copy is then the newest truth there is, and
+ * the next mount pushes it up instead of letting the (older) server copy win. Without the mark,
+ * a save that never reached the server used to be silently reverted on the next visit - the
+ * reader saw their colour again for one session and then watched it disappear.
+ */
+function legendPendingKey(database: string): string {
+	return `${legendStorageKey(database)}.pending`;
+}
+
+/** Mark a database's stored configuration as still owing the server a push. */
+export function markLegendPending(database: string): void {
+	const store = storage();
+	if (!store) return;
+	try {
+		store.setItem(legendPendingKey(database), "1");
+	} catch {
+		// A blocked store: the mark is best-effort, and the copy itself is already at risk.
+	}
+}
+
+/** Drop the mark after a successful push (or a reset). */
+export function clearLegendPending(database: string): void {
+	const store = storage();
+	if (!store) return;
+	try {
+		store.removeItem(legendPendingKey(database));
+	} catch {
+		// Nothing to do.
+	}
+}
+
+/** Whether a database's stored configuration still owes the server a push. */
+export function hasLegendPending(database: string): boolean {
+	const store = storage();
+	if (!store) return false;
+	try {
+		return store.getItem(legendPendingKey(database)) !== null;
+	} catch {
+		return false;
+	}
+}
+
+/** Whether a stored (non-default) legend configuration exists in localStorage for this database. */
+export function hasLegendConfig(database: string): boolean {
+	const store = storage();
+	if (!store) return false;
+	try {
+		return store.getItem(legendStorageKey(database)) !== null;
+	} catch {
+		return false;
 	}
 }
 
