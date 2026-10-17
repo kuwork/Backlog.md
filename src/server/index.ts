@@ -39,6 +39,8 @@ import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts
 import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
 import { coerceCypherRows } from "../graph/coerce.ts";
 import { listDatabases } from "../graph/databases.ts";
+import { loadLegendConfig, saveLegendConfig } from "../graph/legend-store.ts";
+import { encodeGraphLegendUpdatedMessage } from "../graph/legend-updated.ts";
 import { DEFAULT_SLOT, type GraphSlot, portSlot } from "../graph/paths";
 import { type GraphLockConflictHandler, type GraphService, startGraphService } from "../graph/service";
 import { type CypherQueryResult, DEFAULT_CYPHER_ROW_CAP } from "../graph/store.ts";
@@ -923,6 +925,10 @@ export class BacklogServer {
 					},
 					"/api/graph/export-csv": {
 						POST: async (req: Request) => await this.handleGraphExportCsv(req),
+					},
+					"/api/graph/legend": {
+						GET: async (req: Request) => await this.handleGetGraphLegend(req),
+						PUT: async (req: Request) => await this.handlePutGraphLegend(req),
 					},
 					"/api/status": {
 						GET: async () => await this.handleGetStatus(),
@@ -3261,6 +3267,60 @@ export class BacklogServer {
 			const detail = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
 		}
+	}
+
+	/**
+	 * GET /api/graph/legend?database=X - read the stored legend config for one database.
+	 *
+	 * Returns the config JSON when present, or 204 when that database has no stored config. A missing
+	 * `database` query param is a client error (400).
+	 */
+	private async handleGetGraphLegend(req: Request): Promise<Response> {
+		const database = new URL(req.url).searchParams.get("database");
+		if (!database) {
+			return Response.json({ error: "缺少 database 参数。" }, { status: 400 });
+		}
+		const config = loadLegendConfig(this.core.filesystem.rootDir, database);
+		if (config === null) {
+			return new Response(null, { status: 204 });
+		}
+		return Response.json(config);
+	}
+
+	/**
+	 * PUT /api/graph/legend - upsert or remove a database's legend config.
+	 *
+	 * Body: `{ database: string, config: object | null }`. A non-plain-object `config` (string,
+	 * number, array, ...) is rejected with 400 and the store file is left untouched. `config: null`
+	 * removes the database's entry (the migration/reset path). Success broadcasts
+	 * `graph-legend-updated` over the existing WS channel so other open tabs hot-reload.
+	 */
+	private async handlePutGraphLegend(req: Request): Promise<Response> {
+		let body: unknown;
+		try {
+			body = await req.json();
+		} catch {
+			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+		}
+		const payload = body as { database?: unknown; config?: unknown };
+		const database = typeof payload.database === "string" ? payload.database : "";
+		if (!database) {
+			return Response.json({ error: "缺少 database 字段。" }, { status: 400 });
+		}
+		const config = payload.config;
+		// null means "reset/remove"; anything else must be a plain object (arrays are not plain objects).
+		const isPlainObject = typeof config === "object" && config !== null && !Array.isArray(config);
+		if (config !== null && !isPlainObject) {
+			return Response.json({ error: "config 必须是对象或 null。" }, { status: 400 });
+		}
+		try {
+			saveLegendConfig(this.core.filesystem.rootDir, database, config ?? null);
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return Response.json({ error: `写入图例配置失败：${detail}` }, { status: 500 });
+		}
+		this.sendToSockets(encodeGraphLegendUpdatedMessage(database));
+		return new Response(null, { status: 204 });
 	}
 
 	/**
