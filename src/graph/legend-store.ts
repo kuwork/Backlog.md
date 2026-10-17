@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { parse as parseYAML, stringify as stringifyYAML } from "yaml";
 import { userDatabasesDir } from "./databases.ts";
 
@@ -25,15 +26,29 @@ export function graphLegendsPath(projectRoot: string): string {
 }
 
 /**
+ * Parse the store's text tolerantly. A half-written or hand-broken file yields an empty map
+ * rather than throwing - the same fail-safe a missing file gets. Exported so the file watcher
+ * can parse a read it has already confirmed stable instead of re-reading through this module.
+ */
+export function parseLegendStoreText(text: string): LegendConfigMap {
+	try {
+		const parsed = parseYAML(text) as unknown;
+		if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+			return parsed as LegendConfigMap;
+		}
+	} catch {
+		/* unparseable: an empty map is the correct fail-safe */
+	}
+	return {};
+}
+
+/**
  * Load the whole map. Tolerant read: a missing or corrupt file yields an empty map rather than
  * throwing, so the server and CLI never crash on a half-written or hand-edited file.
  */
 export function loadLegendConfigs(projectRoot: string): LegendConfigMap {
 	try {
-		const parsed = parseYAML(readFileSync(graphLegendsPath(projectRoot), "utf8")) as unknown;
-		if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
-			return parsed as LegendConfigMap;
-		}
+		return parseLegendStoreText(readFileSync(graphLegendsPath(projectRoot), "utf8"));
 	} catch {
 		/* missing or unreadable: an empty map is the correct fail-safe */
 	}
@@ -44,6 +59,19 @@ export function loadLegendConfigs(projectRoot: string): LegendConfigMap {
 export function loadLegendConfig(projectRoot: string, database: string): unknown | null {
 	const all = loadLegendConfigs(projectRoot);
 	return Object.hasOwn(all, database) ? all[database] : null;
+}
+
+/**
+ * What a write left behind: the stored map as it now stands plus whether the touched database's
+ * legend actually changed. `changed: false` means the new config is semantically identical to the
+ * old one (key order aside) - callers that announce writes use it to stay silent, because an
+ * unchanged legend must not refresh anyone.
+ */
+export interface SaveLegendResult {
+	/** The stored map after the upsert or the removal. */
+	map: LegendConfigMap;
+	/** Whether the stored legend for `database` is different from what it was before. */
+	changed: boolean;
 }
 
 /**
@@ -59,10 +87,11 @@ export function loadLegendConfig(projectRoot: string, database: string): unknown
  * mid-write never truncates the store. YAML is a superset of JSON, so a config that arrived over
  * the HTTP API as JSON is stored verbatim in block style.
  */
-export function saveLegendConfig(projectRoot: string, database: string, config: unknown | null): void {
+export function saveLegendConfig(projectRoot: string, database: string, config: unknown | null): SaveLegendResult {
 	const all = loadLegendConfigs(projectRoot);
+	const before = all[database];
 	if (config === null) {
-		if (!Object.hasOwn(all, database)) return; // idempotent remove
+		if (!Object.hasOwn(all, database)) return { map: all, changed: false }; // idempotent remove
 		delete all[database];
 	} else {
 		all[database] = config;
@@ -73,4 +102,5 @@ export function saveLegendConfig(projectRoot: string, database: string, config: 
 	const tmp = `${path}.tmp`;
 	writeFileSync(tmp, `${stringifyYAML(all, { indent: 2, lineWidth: 0 })}\n`, "utf8");
 	renameSync(tmp, path); // atomic: a crash mid-write never truncates the store
+	return { map: all, changed: !isDeepStrictEqual(before, config) };
 }

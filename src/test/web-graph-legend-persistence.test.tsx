@@ -96,6 +96,9 @@ function stubContext2d() {
 	}) as unknown as CanvasRenderingContext2D;
 }
 
+/** The Proxy's legend-key write count; the component persists whenever it adopts a config. */
+let storageCounter: { writes: number } | null = null;
+
 function setupDom() {
 	const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
 		url: "http://localhost:6421/databases",
@@ -104,7 +107,24 @@ function setupDom() {
 	globalThis.window = dom.window as unknown as Window & typeof globalThis;
 	globalThis.document = dom.window.document as unknown as Document;
 	globalThis.navigator = dom.window.navigator as unknown as Navigator;
-	globalThis.localStorage = dom.window.localStorage as unknown as Storage;
+	// localStorage's own methods cannot be shadowed on the instance (jsdom ignores the
+	// assignment), so interpose a Proxy: it counts legend-key writes while every other access
+	// passes through untouched - that count is how a test tells "adopted a config" (the component
+	// persists on adoption) from "kept what was on screen".
+	storageCounter = { writes: 0 };
+	const counter = storageCounter;
+	globalThis.localStorage = new Proxy(dom.window.localStorage, {
+		get(target, prop) {
+			if (prop === "setItem") {
+				return (key: string, value: string) => {
+					if (typeof key === "string" && key.includes(".legend")) counter.writes += 1;
+					return target.setItem(key, value);
+				};
+			}
+			const value = Reflect.get(target, prop, target) as unknown;
+			return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+		},
+	}) as unknown as Storage;
 	globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) =>
 		setTimeout(() => cb(performance.now()), 0)) as unknown as typeof requestAnimationFrame;
 	globalThis.cancelAnimationFrame = ((id: number) => clearTimeout(id)) as unknown as typeof cancelAnimationFrame;
@@ -344,6 +364,31 @@ describe("graph legend persistence in the browser pane (BACK-807/809)", () => {
 		});
 
 		expect(legendGets).toBe(before);
+	});
+
+	it("skips re-applying a broadcast that carries the config already on screen (BACK-810)", async () => {
+		setupDom();
+		installFetch(SERVER_CONFIG, 200);
+		await mountGraph();
+		await openGraph();
+		await settle();
+		const writesBefore = storageCounter?.writes ?? 0;
+		expect(writesBefore).toBeGreaterThanOrEqual(1); // the mount restore cached it
+
+		// The server answers with the very config the pane is already showing.
+		await act(async () => {
+			window.dispatchEvent(
+				new (window as unknown as { CustomEvent: typeof CustomEvent }).CustomEvent(GRAPH_LEGEND_UPDATED_EVENT, {
+					detail: { database: "demo" },
+				}),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 80));
+		});
+
+		// The panel still went and looked - the broadcast is a hint, not the payload...
+		expect(legendGets).toBeGreaterThan(0);
+		// ...but adopted nothing: an unchanged legend must not repaint the graph.
+		expect(storageCounter?.writes ?? 0).toBe(writesBefore);
 	});
 
 	it("keeps an edit made while a restore is in flight: a stale response must not revert it", async () => {

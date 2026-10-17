@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { parse as parseYAML } from "yaml";
-import { graphLegendsPath } from "../graph/legend-store.ts";
+import { graphLegendsPath, saveLegendConfig } from "../graph/legend-store.ts";
 import type { GraphLegendUpdatedDetail } from "../graph/legend-updated.ts";
 import { encodeGraphLegendUpdatedMessage, parseGraphLegendUpdatedMessage } from "../graph/legend-updated.ts";
 import { BacklogServer } from "../server/index.ts";
@@ -185,5 +185,146 @@ describe("graph legend persistence endpoints (BACK-806)", () => {
 		expect(encoded).toContain("graph-legend-updated");
 		expect(parseGraphLegendUpdatedMessage(encoded)).toEqual({ database: "default" });
 		expect(parseGraphLegendUpdatedMessage("graph-updated")).toBeNull();
+	});
+
+	test("an out-of-band write to graph-legends.yaml broadcasts graph-legend-updated (BACK-810)", async () => {
+		const detail = await new Promise<GraphLegendUpdatedDetail | null>((resolve, reject) => {
+			const ws = new WebSocket(`ws://127.0.0.1:${ctx.server.getPort()}`);
+			const timer = setTimeout(() => {
+				ws.close();
+				reject(new Error("timed out waiting for the watcher's graph-legend-updated broadcast"));
+			}, 10000);
+			ws.addEventListener("open", () => {
+				// What the CLI, an MCP tool, or an editor does: write the store file directly, with
+				// no HTTP request - the watcher must turn that into the same broadcast.
+				try {
+					saveLegendConfig(ctx.dir, "demo", SAMPLE);
+				} catch (error) {
+					clearTimeout(timer);
+					ws.close();
+					reject(error instanceof Error ? error : new Error(String(error)));
+				}
+			});
+			ws.addEventListener("message", (event) => {
+				const parsed = parseGraphLegendUpdatedMessage(event.data);
+				if (!parsed) return;
+				clearTimeout(timer);
+				ws.close();
+				resolve(parsed);
+			});
+			ws.addEventListener("error", (event) => {
+				clearTimeout(timer);
+				reject(new Error(`ws error: ${JSON.stringify(event)}`));
+			});
+		});
+		expect(detail?.database).toBe("demo");
+	});
+
+	test("the file watcher does not echo the API route's own write (BACK-810)", async () => {
+		const seen: string[] = [];
+		await new Promise<void>((resolve, reject) => {
+			const ws = new WebSocket(`ws://127.0.0.1:${ctx.server.getPort()}`);
+			const timer = setTimeout(() => {
+				ws.close();
+				reject(new Error("timed out waiting for the API route's legend broadcast"));
+			}, 10000);
+			ws.addEventListener("open", () => {
+				fetch(`${ctx.baseUrl}/api/graph/legend`, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ database: "demo", config: SAMPLE }),
+				}).catch(reject);
+			});
+			ws.addEventListener("message", (event) => {
+				const parsed = parseGraphLegendUpdatedMessage(event.data);
+				if (!parsed) return;
+				seen.push(parsed.database);
+				// The route's own broadcast has landed; hold the socket open a while longer so a
+				// watcher echo would certainly arrive inside the window if it were going to.
+				setTimeout(() => {
+					clearTimeout(timer);
+					ws.close();
+					resolve();
+				}, 800);
+			});
+			ws.addEventListener("error", (event) => {
+				clearTimeout(timer);
+				reject(new Error(`ws error: ${JSON.stringify(event)}`));
+			});
+		});
+		expect(seen).toEqual(["demo"]);
+	});
+
+	test("re-saving an unchanged legend broadcasts nothing (BACK-810)", async () => {
+		const seen: string[] = [];
+		await new Promise<void>((resolve, reject) => {
+			const ws = new WebSocket(`ws://127.0.0.1:${ctx.server.getPort()}`);
+			const timer = setTimeout(() => {
+				ws.close();
+				reject(new Error("timed out waiting for the first legend broadcast"));
+			}, 10000);
+			ws.addEventListener("open", () => {
+				fetch(`${ctx.baseUrl}/api/graph/legend`, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ database: "demo", config: SAMPLE }),
+				}).catch(reject);
+			});
+			ws.addEventListener("message", (event) => {
+				const parsed = parseGraphLegendUpdatedMessage(event.data);
+				if (!parsed) return;
+				seen.push(parsed.database);
+				// Save the exact same config again: the legend did not change, so nothing may be
+				// broadcast - hold the socket open well past the watcher's settle window to prove
+				// the silence (neither the route nor the watcher may speak).
+				fetch(`${ctx.baseUrl}/api/graph/legend`, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ database: "demo", config: SAMPLE }),
+				})
+					.then(() =>
+						setTimeout(() => {
+							clearTimeout(timer);
+							ws.close();
+							resolve();
+						}, 800),
+					)
+					.catch(reject);
+			});
+			ws.addEventListener("error", (event) => {
+				clearTimeout(timer);
+				reject(new Error(`ws error: ${JSON.stringify(event)}`));
+			});
+		});
+		expect(seen).toEqual(["demo"]);
+	});
+
+	test("removing an absent legend entry broadcasts nothing (BACK-810)", async () => {
+		const seen: string[] = [];
+		await new Promise<void>((resolve, reject) => {
+			const ws = new WebSocket(`ws://127.0.0.1:${ctx.server.getPort()}`);
+			// No frame is expected: the entry was never there, so nothing changed.
+			const timer = setTimeout(() => {
+				ws.close();
+				resolve();
+			}, 800);
+			ws.addEventListener("open", () => {
+				fetch(`${ctx.baseUrl}/api/graph/legend`, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ database: "demo", config: null }),
+				}).catch(reject);
+			});
+			ws.addEventListener("message", (event) => {
+				const parsed = parseGraphLegendUpdatedMessage(event.data);
+				if (!parsed) return;
+				seen.push(parsed.database);
+			});
+			ws.addEventListener("error", (event) => {
+				clearTimeout(timer);
+				reject(new Error(`ws error: ${JSON.stringify(event)}`));
+			});
+		});
+		expect(seen).toEqual([]);
 	});
 });

@@ -70,6 +70,7 @@ import { watchConfig } from "../utils/config-watcher.ts";
 import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import { DependencyQuery } from "../utils/dependency-query.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
+import { type GraphLegendWatcherHandle, watchGraphLegendStore } from "../utils/graph-legend-watcher.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { watchMilestones } from "../utils/milestone-watcher.ts";
 import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
@@ -279,6 +280,9 @@ export class BacklogServer {
 	// Milestones live outside the ContentStore too (see startMilestoneWatcher), so this is the
 	// only thing that turns an out-of-band milestone write into a client refresh.
 	private milestoneWatcher: { stop: () => void } | null = null;
+	// The legend store lives outside the ContentStore as well and has several writers (API route,
+	// CLI, MCP tools, editor); this is the only one that covers the writers other than the route.
+	private graphLegendWatcher: GraphLegendWatcherHandle | null = null;
 	private storeReadyBroadcasted = false;
 	private taskBroadcastTimer?: ReturnType<typeof setTimeout>;
 	// Content-entity scopes (documents/decisions/wikis) are independent: each pending scope is
@@ -472,6 +476,28 @@ export class BacklogServer {
 		}
 	}
 
+	/**
+	 * Watches `backlog/databases/graph-legends.yaml` for out-of-band edits - a CLI set, an MCP
+	 * set, or a hand edit - and broadcasts the same `graph-legend-updated` message the API route
+	 * sends, so an open Web UI legend panel hot-reloads instead of waiting for a manual refresh.
+	 * The route hands the watcher the state it just published, so a web-side edit is never echoed
+	 * as a second refresh.
+	 */
+	private startGraphLegendWatcher(): void {
+		if (this.graphLegendWatcher) return;
+		try {
+			this.graphLegendWatcher = watchGraphLegendStore(this.core.filesystem.rootDir, {
+				onLegendChanged: (database) => {
+					this.sendToSockets(encodeGraphLegendUpdatedMessage(database));
+				},
+			});
+		} catch (error) {
+			// A project whose databases directory is not readable yet is not fatal: the first
+			// registry or legend write creates it, and the watcher waits for it to appear.
+			console.warn("Could not watch the graph legend store for external edits:", error);
+		}
+	}
+
 	private publishBrowserLoadingState(state: BrowserLoadingState) {
 		this.browserLoadingState = state;
 		const message = JSON.stringify(state);
@@ -649,6 +675,11 @@ export class BacklogServer {
 				this.broadcastConfigUpdated();
 			},
 		});
+
+		// The legend store has writers outside the API route (CLI, MCP tools, editor); watching it
+		// here - with the config watcher, not the lazily-initialized services - means the watcher
+		// is live before the first client can connect, so no out-of-band edit can slip through.
+		this.startGraphLegendWatcher();
 
 		let bindPort: number;
 
@@ -1104,6 +1135,12 @@ export class BacklogServer {
 		try {
 			this.milestoneWatcher?.stop();
 			this.milestoneWatcher = null;
+		} catch {}
+
+		// Stop the graph legend store watcher (outside the ContentStore too)
+		try {
+			this.graphLegendWatcher?.stop();
+			this.graphLegendWatcher = null;
 		} catch {}
 
 		// Stop the Graph Service (releases the single-holder lock)
@@ -3292,8 +3329,11 @@ export class BacklogServer {
 	 *
 	 * Body: `{ database: string, config: object | null }`. A non-plain-object `config` (string,
 	 * number, array, ...) is rejected with 400 and the store file is left untouched. `config: null`
-	 * removes the database's entry (the migration/reset path). Success broadcasts
-	 * `graph-legend-updated` over the existing WS channel so other open tabs hot-reload.
+	 * removes the database's entry (the migration/reset path). A write that leaves the legend
+	 * semantically unchanged - the same config saved again, or removing an absent entry - is
+	 * acknowledged but broadcasts nothing: an unchanged legend must not refresh anyone. A real
+	 * change broadcasts `graph-legend-updated` over the existing WS channel so other open tabs
+	 * hot-reload.
 	 */
 	private async handlePutGraphLegend(req: Request): Promise<Response> {
 		let body: unknown;
@@ -3313,13 +3353,20 @@ export class BacklogServer {
 		if (config !== null && !isPlainObject) {
 			return Response.json({ error: "config 必须是对象或 null。" }, { status: 400 });
 		}
+		let changed = false;
 		try {
-			saveLegendConfig(this.core.filesystem.rootDir, database, config ?? null);
+			const stored = saveLegendConfig(this.core.filesystem.rootDir, database, config ?? null);
+			changed = stored.changed;
+			// The write above also trips the file watcher; hand it the exact state just published so
+			// a web-side edit is never echoed as a second refresh.
+			this.graphLegendWatcher?.notePublishedStore(stored.map);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: `写入图例配置失败：${detail}` }, { status: 500 });
 		}
-		this.sendToSockets(encodeGraphLegendUpdatedMessage(database));
+		// Silent no-op when the legend did not actually change (same config re-saved, or removing
+		// an entry that was never there): clients keep what they have.
+		if (changed) this.sendToSockets(encodeGraphLegendUpdatedMessage(database));
 		return new Response(null, { status: 204 });
 	}
 

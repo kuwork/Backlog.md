@@ -232,7 +232,7 @@ A database with no stored config is not an error: the result carries `configured
 }
 ```
 
-`graph_legend_remove` deletes the entry and is idempotent: removing a database that has none is a successful no-op, reported as `removed: false`. Both writes land in the same file the Web UI reads, so the legend panel shows the change after a reload. Saving in the Web UI's legend panel **pins the automatic type colours** into the file: every type that had no explicit colour gets the one it was painted with, so the file records the whole picture instead of leaving those colours to be re-derived from the type name on every visit. The `×` next to a colour in the panel returns that type to automatic again.
+`graph_legend_remove` deletes the entry and is idempotent: removing a database that has none is a successful no-op, reported as `removed: false`. Both writes land in the same file the Web UI reads, and the server watches that file: an open legend panel picks the change up live, without a reload. Saving in the Web UI's legend panel **pins the automatic type colours** into the file: every type that had no explicit colour gets the one it was painted with, so the file records the whole picture instead of leaving those colours to be re-derived from the type name on every visit. The `×` next to a colour in the panel returns that type to automatic again.
 
 #### Config structure
 

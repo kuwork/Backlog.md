@@ -274,7 +274,7 @@ backlog graph legend remove demo
 - `get <database>` prints a **human-readable summary** by default (captions toggle, per-type color / caption / rules, per-relation line style, hidden buckets); `--json` prints the raw JSON for scripts. An unknown database prints a "no config" message and exits 0.
 - `set <database> <file>` takes **one database's config** - the inner mapping in the example below, not the whole store (the CLI wraps it under the database name). Invalid YAML, or a non-mapping payload (array / scalar), exits non-zero and leaves the store file untouched.
 - `remove <database>` deletes that database's entry; removing one that has no config is a no-op (exits 0).
-- The CLI edits the file directly (no HTTP, no server needed); the next page load picks the change up. Saving in the Web UI's legend panel **pins the automatic type colors** into the file: every type that had no explicit color gets the one it was painted with, so the file records the whole picture instead of leaving those colors to be re-derived from the type name on every visit. The `×` next to a color in the panel returns that type to automatic again.
+- The CLI edits the file directly (no HTTP, no server needed); a running server watches that file, so an open legend panel picks the change up live. Saving in the Web UI's legend panel **pins the automatic type colors** into the file: every type that had no explicit color gets the one it was painted with, so the file records the whole picture instead of leaving those colors to be re-derived from the type name on every visit. The `×` next to a color in the panel returns that type to automatic again.
 
 ##### Config structure
 

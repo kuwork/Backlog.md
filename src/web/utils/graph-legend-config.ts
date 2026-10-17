@@ -254,6 +254,31 @@ export function pinAutomaticTypeColors(config: GraphLegendConfig, theme: string)
 
 /* ------------------------------------------------------------------ persistence */
 
+/**
+ * Deep, key-order-insensitive equality for legend configs. A broadcast or a fetch that lands with
+ * the config the panel is already showing must not repaint the graph - an unchanged legend is not
+ * a change - so callers compare before adopting.
+ */
+export function legendConfigsEqual(a: GraphLegendConfig, b: GraphLegendConfig): boolean {
+	return stableStringify(a) === stableStringify(b);
+}
+
+/** JSON.stringify with object keys sorted, so equal content compares equal regardless of order. */
+function stableStringify(value: unknown): string {
+	return JSON.stringify(value, (_key, val) => {
+		if (val && typeof val === "object" && !Array.isArray(val)) {
+			const source = val as Record<string, unknown>;
+			return Object.keys(source)
+				.sort()
+				.reduce<Record<string, unknown>>((sorted, key) => {
+					sorted[key] = source[key];
+					return sorted;
+				}, {});
+		}
+		return val;
+	});
+}
+
 const STORAGE_PREFIX = "backlog.graph.";
 const STORAGE_SUFFIX = ".legend";
 

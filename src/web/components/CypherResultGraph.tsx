@@ -13,6 +13,7 @@ import {
 	hasLegendConfig,
 	hasLegendPending,
 	LINE_DASH,
+	legendConfigsEqual,
 	loadLegendConfig,
 	markLegendPending,
 	NEUTRAL_BUCKET,
@@ -179,6 +180,8 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 	// A legend edit broadcast for this database (from another open tab) re-fetches and applies it live;
 	// broadcasts for other databases are ignored, and one that lands on top of local work - an open
 	// draft or a save that has not been pushed yet - is dropped rather than reverting that work.
+	// A fetch that comes back with the config already on screen changes nothing: an unchanged
+	// legend must not repaint the graph.
 	useEffect(() => {
 		const handle = (event: Event) => {
 			const detail = (event as CustomEvent<{ database: string }>).detail;
@@ -189,7 +192,7 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 					const serverConfig = await apiClient.fetchGraphLegend(database);
 					if (localActivity.current !== activityAtRequest) return;
 					if (hasLegendPending(database)) return;
-					if (serverConfig !== null) setConfig(serverConfig);
+					if (serverConfig !== null && !legendConfigsEqual(config, serverConfig)) setConfig(serverConfig);
 				} catch {
 					// Ignore: keep the current configuration.
 				}
@@ -197,7 +200,7 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 		};
 		window.addEventListener(GRAPH_LEGEND_UPDATED_EVENT, handle);
 		return () => window.removeEventListener(GRAPH_LEGEND_UPDATED_EVENT, handle);
-	}, [database]);
+	}, [database, config]);
 
 	const resolved = useMemo(() => resolveLegend(graph.nodes, config, theme), [graph, config, theme]);
 
