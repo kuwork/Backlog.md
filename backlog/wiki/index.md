@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-10-18 01:00
+updated_date: 2026-10-18 22:00
 ---
 
 
@@ -418,6 +418,12 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-809-mcp-graph-legend-tools]] |  BACK-809 - MCP: graph_legend_get/set/remove 工具 | source, docs, mcp, graph |
 | [[sources/back-810-graph-legend-watcher]] |  BACK-810 - 服务端监听 graph-legends.yaml 并广播图例更新 | source, web-ui, docs, graph, realtime |
 | [[sources/back-811-remove-style-field-add-highlight]] |  BACK-811 - 移除查询块 style 字段并为查询源码加语法高亮 | source, web-ui, docs |
+| [[sources/m-17-echarts-chart-engine]] |  m-17 - ECharts 图表引擎里程碑 | source, milestone, web-ui, charts |
+| [[sources/doc-30-echarts-chart-engine-prd]] |  doc-30 - ECharts 图表引擎设计 | source, design, web-ui, charts, markdown |
+| [[sources/doc-31-echarts-demo]] |  doc-31 - ECharts 图表演示 | source, guide, web-ui, charts, demo |
+| [[sources/back-812-core-echarts-engine]] |  BACK-812 - 核心 ECharts 图表引擎 | source, web-ui, charts, markdown |
+| [[sources/back-813-query-block-view-echarts]] |  BACK-813 - 查询块 view: echarts（方式 B） | source, web-ui, charts, query-block |
+| [[sources/back-814-echarts-from-query]] |  BACK-814 - fromQuery 引用命名查询块（方式 A） | source, web-ui, charts, query-block, realtime |
 
 ## Execution Notes
 
@@ -537,6 +543,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/scan-show-two-axes]] |  扫描与展示是两个轴 | BACK-760 扫描归 check_active_branches，否则默认禁用跨分支加载、ID 分配回退 |
 | [[decisions/terminal-set-derived-not-stored]] |  终态集是派生值 | BACK-762 拒绝设置页多选写 category 与独立配置键双写 |
 | [[decisions/ryugraph-wasm-default-backend]] |  默认图谱后端切换为 RyuGraph WASM | BACK-766 用 Kuzu MIT fork 的 WASM 构建取代原生 NAPI 绑定，kuzu 依赖移除 |
+| [[decisions/mermaid-into-chartblock]] |  图表渲染选择彻底统一而非最小改动 | BACK-812 把 mermaid 折进 ChartBlock，移除 post-render 替换与 key={theme} 重挂载 |
 
 ## Concepts
 
@@ -588,6 +595,8 @@ Read this file FIRST on any wiki operation.
 | [[concepts/live-sync-pattern]] |  Web UI 实时同步复用模式 | window 事件转发 + 防抖广播 + refreshInPlace 原地刷新三件套，memos/drafts/board/graph-updated/图例 复用 |
 | [[concepts/cypher-live-query-block]] |  文档内实况 Cypher 查询块 | cypher-query 围栏块：注册名数据源、四视图、refresh:auto、只读门禁、共享 QueryBlock 内核 |
 | [[concepts/graph-legend-persistence]] |  图例配置持久化 | 图例从 localStorage 迁到 graph-legends.yaml，服务端/浏览器/CLI/MCP 四写入面一份存储 + watcher 热更新 |
+| [[concepts/chart-block-engine]] |  统一图表引擎（ChartBlock + 注册表） | fence 语言查表渲染，mermaid 与 echarts 同级；全系列注册守卫、JSON-only 安全、per-block dispose |
+| [[concepts/query-chart-binding]] |  图表与查询结果的两种绑定方式 | 紧耦合 view: echarts 与松耦合 fromQuery 的分工、占位符语义与刷新边界 |
 
 ## Entities
 
@@ -616,6 +625,7 @@ Read this file FIRST on any wiki operation.
 | [[reasoning/back-624-global-search-dialog]] |  全局搜索对话框设计与分解推理 | PRD 到 Router 语义的适配、六项方案对比、风险与缓解 |
 | [[reasoning/kuzu-graph-backend-and-lifecycle]] |  Kuzu 图谱的后端、生命周期与存储治理设计推理 | 双后端、FileNode 路径主键、指纹冷启动、三层热更新、自描述版本与 slot 缓存/锁 |
 | [[reasoning/knowledge-graph-relations]] |  知识图谱关系模型的设计推理 | 类型来源反转（frontmatter → 目录决定）、机械派生三边、语义关系暂缓、两视图与 caption 宽度 |
+| [[reasoning/m-17-echarts-task-decomposition]] |  m-17 图表引擎的任务分解推理 | 7 项拆分压到 3 个任务：按耦合度合并、测试并入 AC、B 先于 A |
 
 ## Retrospectives
 
@@ -677,6 +687,7 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/80-图谱与数据查询/04-Cypher查询块]] | Cypher 查询块 | cypher-query 围栏块、注册名数据源、四视图、refresh:auto、只读门禁 |
 | [[usermanual/80-图谱与数据查询/03-数据库页面]] | 数据库页面 | Databases 页真实行数、Cypher 结果图谱视图、可配置图例 |
 | [[usermanual/80-图谱与数据查询/05-图例配置持久化]] | 图例配置持久化 | graph-legends.yaml 项目级存储、四个写入面、启动恢复与热更新 |
+| [[usermanual/80-图谱与数据查询/06-图表块]] | 图表块 | mermaid / echarts 围栏块、支持系列、view: echarts、fromQuery 引用、使用约定 |
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
 | [[usermanual/60-配置与运维/02-项目概览]] | 项目概览 | CLI overview 命令、项目级统计、健康指标 |

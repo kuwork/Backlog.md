@@ -2,7 +2,7 @@
 title: Markdown 解析与序列化流水线
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-18 22:00
 ---
 
 # Markdown 解析与序列化流水线
@@ -119,6 +119,12 @@ notes 序列化时的连续空行折叠现在是 fence-aware 的：围栏代码�
 
 Mermaid 渲染修复的一部分是围栏标记大小写处理——大写/混合大小写的 ` ```mermaid ` 围栏此前无法识别渲染；连同应用主题与编辑器预览 pane 一并修复（[[sources/back-640-mermaid-rendering-fixes|BACK-640]]）。
 
+## 围栏图表路由统一（BACK-812）
+
+原先是两条路：mermaid 在渲染完成后扫描 DOM、把 `<pre>` 替换成图（`renderMermaidIn`），并靠 `key={theme}` 重挂载整棵 markdown 树跟随主题；query-block 则在 `PreBlock` 里做组件级路由。BACK-812 把前者也并进后者——`PreBlock` 按 fence 语言查引擎注册表，命中就返回 `ChartBlock`，post-render 扫描与重挂载 hack 一并删除。
+
+这一改动的副作用是**编辑器预览必须与正文同源**：`MermaidAwarePre` 改名 `ChartAwarePre`，同样查表，否则会出现「正文渲染成图、编辑预览还是代码块」。新引擎的接入方式、生命周期与注册守卫见 [[concepts/chart-block-engine]]。
+
 ## Related Sources
 - [[sources/back-537-deterministic-checklist-serialization]] — BACK-537 清单确定性解析
 - [[sources/back-536-in-document-hash-links]] — BACK-536 文档锚点链接
@@ -128,3 +134,4 @@ Mermaid 渲染修复的一部分是围栏标记大小写处理——大写/混�
 - [[sources/back-640-mermaid-rendering-fixes]] — BACK-640 Mermaid 围栏大小写与渲染修复
 - [[sources/back-643-fence-aware-blank-line-collapse]] — BACK-643 围栏感知空行折叠
 - [[sources/back-655-section-marker-safety]] — BACK-655 嵌套哨兵拒绝与 append 截断修复
+- [[sources/back-812-core-echarts-engine]] — 围栏图表路由统一，移除 post-render 替换

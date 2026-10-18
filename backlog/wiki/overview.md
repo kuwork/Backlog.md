@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-10-18 01:00
+updated_date: 2026-10-18 22:00
 ---
 
 # Knowledge Base Overview
@@ -148,6 +148,13 @@ updated_date: 2026-10-18 01:00
 - **图例持久化**（m-16，BACK-806~810，PRD doc-29）：图例配置从浏览器 localStorage 迁到版本化的 `backlog/databases/graph-legends.yaml`，解决易丢、不可共享与文档渲染不确定三个问题。**四个写入面一份存储**——服务端 `GET/PUT /api/graph/legend`、浏览器（启动恢复 + 一次性迁移 + write-through）、CLI `graph legend get/set/remove`、MCP `graph_legend_get/set/remove`，全部复用 `legend-store.ts`
 - **三层「无变化不刷新」**：`backlog/databases/` 是唯一没有 watcher 的内容目录（BACK-809 实现时发现），BACK-810 补上目录级 watcher（监听目录而非文件——存储走 temp+rename），并让路由层（只在语义变化时广播、请求内同步更新基线）、watcher 层（深度且键序不敏感比对）、浏览器层（取回后与屏上配置比对）合力，使一次真正的变化只刷新一次
 - **为真实用法设计的恢复链路**：localActivity 计数器丢弃「回来时本地已有新编辑」的在途响应；pending 标记让失败的本地副本下次挂载推上去；write-through 失败时面板保持打开并显示原因而非假装成功；保存时钉住自动配色，让 YAML 记录读者实际看到的画面
+
+### 图表引擎：从 mermaid 单通道到统一 ChartBlock（m-17，BACK-812~814，2026-10-18）
+
+- **一个入口两个引擎**：BACK-812 把 markdown 里的图表渲染收敛成「fence 语言查注册表 → `ChartBlock` → 引擎 `load()` / `render()` / `dispose()`」，mermaid 与 ECharts 同级，**删除**了 mermaid 原先的 post-render DOM 替换（`renderMermaidIn`）与 `key={theme}` 重挂载。ECharts 走 `echarts/core` 动态 import，覆盖 23 个内置 series 与全部坐标/图形组件，不进首屏包；option 只吃 JSON，与 mermaid 的 `securityLevel: strict` 同口径。详见 [[concepts/chart-block-engine]]
+- **漏注册 = 静默白屏**：首版漏了 `SingleAxisComponent`，`themeRiver` 的 `setOption` 抛错被 promise 的 catch 吞成一行 warn，块安静留白。修复时审计整张注册表并补上 `chord`（v6 第 23 个 series），加 `echarts-engine-registration.test.ts` 对照 `echarts/charts` 每个导出断言「已注册」，让漏注册变成构建失败
+- **两种吃查询结果的方式**：BACK-813 让查询块自己出图（`view: echarts` + `chart`，简单映射或 `option` + `@result` / `@result:<列>` 占位符）；BACK-814 让独立图表引用命名查询块（`id` + `fromQuery`，dataset 级或 series 级），表格与图并存、按文档作用域发布结果。两者共用同一套 option 与引擎，取舍见 [[concepts/query-chart-binding]]
+- **文档形态的教训**：示例文档先写成 `cli-instructions/echarts-examples.md`，因未在 `index.ts` 注册而运行时不可达、链接点不开，迁移为 doc-31 活演示（28 个 `echarts` fence + 4 个 `chart` 字段 + 5 个 `sqlite-query` 块）；验证从「数 SVG 节点」改为 SSR 渲 SVG 再栅格化看图——只数节点会漏掉「图形贴错位置」
 
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
