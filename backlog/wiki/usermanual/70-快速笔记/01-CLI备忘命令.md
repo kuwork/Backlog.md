@@ -60,7 +60,7 @@ backlog memo list --tags meeting,debug
 | `--skip <n>` | 跳过前 n 条（取下一页） | `--skip 20` |
 | `--count` | 只输出匹配总数（一个数字） | `--count` |
 
-被截断的文本输出以 `Showing <first>-<last> of <total> items. Next: backlog memo list --skip <n>` 结尾，照抄即可翻页；`--count` 只输出数字且不能与 `--json` 组合。各列表命令分页语义的集中说明见 [搜索与序列](../../10-任务管理/04-搜索与序列.md) 的「列表分页」一节。
+被截断的文本输出以 `Showing <first>-<last> of <total> items. Next: backlog memo list --skip <n>` 结尾，照抄即可翻页；`--count` 只输出数字且不能与 `--json` 组合。各列表命令分页语义的集中说明见 [搜索与序列](../10-任务管理/04-搜索与序列.md) 的「列表分页」一节。
 
 ### 纯文本输出
 

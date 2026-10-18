@@ -1130,3 +1130,21 @@ Chronological, append-only record of all wiki operations.
 **mini-lint**：403 个 source 页 `source_path` 全量校验，新增 15 页全部解析成功；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）均已有历史 lint 批注与人工裁决，本次不改写。校验脚本落在 `tmp/wiki-lint-source-path.py`。
 
 **异常留痕**：① doc-28 演示页记录的 `style` 六段演示在本批次内已成为历史（字段被移除），源页保留事实并标注；② `backlog/databases/graph-legends.yaml` 在本仓为未跟踪产物（BACK-807/810 的本地写入结果），未纳入摄取。
+
+## [2026-10-18 22:05:23] batch-ingest | 摄取 ECharts 图表引擎（m-17，BACK-812~814）与用户手册图表章
+
+**新增源页 6**：[[sources/m-17-echarts-chart-engine]]、[[sources/doc-30-echarts-chart-engine-prd]]、[[sources/doc-31-echarts-demo]]、[[sources/back-812-core-echarts-engine]]、[[sources/back-813-query-block-view-echarts]]、[[sources/back-814-echarts-from-query]]。
+
+**新建 concept 页** [[concepts/chart-block-engine]]（fence 语言 → 引擎注册表、ChartBlock 生命周期、23 系列全注册与守卫测试、JSON-only 安全、与旧 `renderMermaidIn` 路径的差异）与 [[concepts/query-chart-binding]]（`view: echarts` 紧耦合 vs `fromQuery` 松耦合的分工、`@result` 占位符语义、刷新与作用域边界）。
+
+**配对记忆**：新建 [[decisions/mermaid-into-chartblock]]（「彻底统一」与「最小改动」之间的裁决与被否决方案的代价）与 [[reasoning/m-17-echarts-task-decomposition]]（doc-30 的 7 项拆分如何压到 3 个任务：按耦合度合并、测试并入 AC、B 先于 A）。
+
+**更新**：[[concepts/sql-query-blocks]] 块模型补 `echarts` 视图、`chart` 与 `id` 字段，新增「第四视图：echarts（m-17）」节；[[concepts/markdown-pipeline]] 新增「围栏图表路由统一（BACK-812）」节，记录 post-render 扫描与 `key={theme}` 重挂载被移除、编辑器预览必须同源改名 `ChartAwarePre`。
+
+**手册**：`80-图谱与数据查询` 新增 `06-图表块.md`（mermaid / echarts 两种围栏、支持系列表、`view: echarts` 简单与高级形式、`fromQuery` 引用与生命周期、使用约定），SUMMARY 登记；`02-SQL查询块`、`04-Cypher查询块` 的 `view` 行补 `echarts` 并互链；`30-文档与决策/00-文档管理` 补图表入口，并修正「不提供分页」的过期表述（BACK-797 早已支持分页）；手册 README 核心特性补一条。`tmp/merge-usermanual.py` 重新合并：9 章 48 页 6303 行，同时给脚本加了**跨页链接转文内锚点**（含 URL 解码），产物里 57 条锚点链接 0 断链，顺带修掉 `70-快速笔记/01-CLI备忘命令.md` 一处 `../../` 层级写错的链接。
+
+**统计**：Sources 403→409、Concepts 46→48、User manual 47→48 页。
+
+**mini-lint**：409 个 source 页 `source_path` 全量校验，新增 6 页全部解析成功；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）与上次裁决一致，本次不改写。
+
+**异常留痕**：`backlog/databases/graph-legends.yaml` 仍是未跟踪运行时产物，未纳入摄取；`backlog doc view <id>` 解析不了 id 引用的既有 bug 未修，文档里改用路径引用。
