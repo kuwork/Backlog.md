@@ -17,6 +17,7 @@ Backlog.md 将任意 Git 仓库目录转变为自包含的项目看板。每个�
 - **Wiki 知识库**：LLM 维护的增量式项目知识库，人类可读可编辑；浏览器中支持文件树导航、在线编辑、labels 标签与实时同步；内置 skill 可安装到 Claude/Codex
 - **任务图谱**：任务关系知识图谱，支持 Cypher 查询（CLI `backlog graph` 与 MCP 图谱工具）与 Web 可视化，默认使用 RyuGraph WASM 后端，零原生依赖
 - **实况 SQL 查询块**：文档内嵌入 `sqlite-query` / `duckdb-query` 围栏块，Web 阅读视图渲染只读实况查询结果（SQLite / DuckDB，500 行上限）
+- **图表块**：正文用 `mermaid` / `echarts` 围栏块画流程图与数据图，ECharts 覆盖全部内置系列并跟随明暗主题；查询结果可直接出图，也可用 `fromQuery` 引用命名的查询块
 - **快速笔记 Memos**：`backlog/memos/` 轻量捕获收件箱，终端 / Web / MCP / 搜索四入口共享同一存储，正文实体 ID 与 `[[wikilink]]` 自动接入知识网
 - **跨平台**：macOS、Linux、Windows
 
@@ -745,7 +746,7 @@ backlog task edit back-1 back-2 --add-label sprint-3
 - 单个任务失败不中断整批，命令结束时汇总报告每个失败
 - 多 ID 调用若未携带任何可批量应用的标志，会报错而不是打开编辑向导
 
-对应地，服务端提供 `POST /api/tasks/move` 批量移动接口，Web 看板的多选拖拽即通过它一次提交（见 [看板视图](../40-Web界面/01-看板视图.md) 的多选小节）。
+对应地，服务端提供 `POST /api/tasks/move` 批量移动接口，Web 看板的多选拖拽即通过它一次提交（见 [看板视图](#52-看板视图) 的多选小节）。
 
 #### 2.2.3.3 常用编辑选项
 
@@ -1017,7 +1018,7 @@ backlog task list --plain
 | `--skip <n>` | 跳过前 n 条（取下一页） | `--skip 20` |
 | `--count` | 只输出匹配总数（一个数字） | `--count` |
 
-窗口在过滤、排序、`--limit` 之后按输出顺序应用，连续翻页不重叠不遗漏；被截断的文本输出以 `Showing <first>-<last> of <total> items. Next: backlog task list --skip <n>` 结尾，照抄命令即可翻页。`--count` 只输出数字且不能与 `--json` 组合（返回非零退出）；JSON 信封仅在窗口截断时附加 `total` / `nextSkip` 字段，未截断时逐字节不变。分页语义的集中说明见 [搜索与序列](04-搜索与序列.md) 的「列表分页」一节。
+窗口在过滤、排序、`--limit` 之后按输出顺序应用，连续翻页不重叠不遗漏；被截断的文本输出以 `Showing <first>-<last> of <total> items. Next: backlog task list --skip <n>` 结尾，照抄命令即可翻页。`--count` 只输出数字且不能与 `--json` 组合（返回非零退出）；JSON 信封仅在窗口截断时附加 `total` / `nextSkip` 字段，未截断时逐字节不变。分页语义的集中说明见 [搜索与序列](#25-搜索与序列) 的「列表分页」一节。
 
 #### 2.2.4.2 依赖就绪过滤（`--ready`）
 
@@ -1104,7 +1105,7 @@ backlog task edit back-10 --actual-end "2026-05-30 18:00" --clear-actual-start
 backlog task demote <id>
 ```
 
-降级后任务将移入 `backlog/drafts/` 目录，并获得独立的草稿 ID（如 `draft-3`）。其他任务对原 ID 的引用会被自动清理（见 [归档与清理](05-归档与清理.md)）。
+降级后任务将移入 `backlog/drafts/` 目录，并获得独立的草稿 ID（如 `draft-3`）。其他任务对原 ID 的引用会被自动清理（见 [归档与清理](#26-归档与清理)）。
 
 Web 界面的降级操作带有防误触保护：降级进行中所有编辑、状态变更与快捷键都被锁定，网络错误时会明确提示"降级可能已成功"并刷新视图供你核对，避免重复提交。
 
@@ -1223,7 +1224,7 @@ backlog draft list
 | 选项 | 说明 |
 |------|------|
 | `--sort <field>` | 按 `priority` 或 `id` 排序 |
-| `--max-count <n>` / `--skip <n>` / `--count` | 分页窗口：最多 n 条 / 跳过 n 条 / 只输出总数（语义见 [搜索与序列](04-搜索与序列.md) 的「列表分页」） |
+| `--max-count <n>` / `--skip <n>` / `--count` | 分页窗口：最多 n 条 / 跳过 n 条 / 只输出总数（语义见 [搜索与序列](#25-搜索与序列) 的「列表分页」） |
 | `--plain` | 纯文本输出 |
 
 ### 2.3.5 草稿提升为任务
@@ -1578,7 +1579,7 @@ backlog search "api" --count
 
 #### 2.5.1.4 Web 搜索
 
-运行 `backlog browser` 启动 Web 界面后，按 **Ctrl+K**（Windows/Linux）或 **Cmd+K**（macOS），或点击侧边栏的搜索触发按钮，即可打开全局搜索对话框，一次检索任务、草稿、文档、决策、Wiki 页面与[快速笔记](../70-快速笔记/00-Memos简介.md)。结果按类型分组，关键词与资源 ID 高亮、支持键盘操作与滚动位置记忆；查询与类型过滤同步到 `/search?q=...&type=...` 链接，可刷新或分享。详见[全局搜索](../40-Web界面/10-全局搜索.md)。
+运行 `backlog browser` 启动 Web 界面后，按 **Ctrl+K**（Windows/Linux）或 **Cmd+K**（macOS），或点击侧边栏的搜索触发按钮，即可打开全局搜索对话框，一次检索任务、草稿、文档、决策、Wiki 页面与[快速笔记](#71-memos-简介)。结果按类型分组，关键词与资源 ID 高亮、支持键盘操作与滚动位置记忆；查询与类型过滤同步到 `/search?q=...&type=...` 链接，可刷新或分享。详见[全局搜索](#511-全局搜索)。
 
 > CLI 的 `backlog search` 纯文本输出只覆盖任务、文档与决策；memo 与 Wiki 结果视为 Web-only 类型，仅出现在 Web 搜索与 JSON 输出中。
 
@@ -1780,7 +1781,7 @@ MCP 侧对应工具为 `task_complete`（参数 `id`），语义一致：仅接�
 backlog board
 ```
 
-首次启动时，看板会自动加载项目配置中的状态列，并将任务按状态归入对应列。旧式字符串配置默认 `To Do`、`In Progress`、`Done` 三列；新初始化的项目使用内置的七列默认状态机（见[任务生命周期](../10-任务管理/00-任务生命周期.md)）。状态机中 `display: false` 的状态列会与列内任务一起隐藏。如果启用了里程碑模式，任务会按里程碑分组展示。
+首次启动时，看板会自动加载项目配置中的状态列，并将任务按状态归入对应列。旧式字符串配置默认 `To Do`、`In Progress`、`Done` 三列；新初始化的项目使用内置的七列默认状态机（见[任务生命周期](#21-任务生命周期)）。状态机中 `display: false` 的状态列会与列内任务一起隐藏。如果启用了里程碑模式，任务会按里程碑分组展示。
 
 #### 3.1.1.1 常用启动选项
 
@@ -2038,7 +2039,7 @@ backlog browser --no-open
 - 任务依赖关系以 SVG 箭头可视化
 - 支持拖拽平移时间轴
 
-详见[甘特图视图](../40-Web界面/09-甘特图视图.md)章节。
+详见[甘特图视图](#510-甘特图视图)章节。
 
 ### 3.2.5 里程碑管理页
 
@@ -2233,7 +2234,7 @@ backlog doc list --count
 backlog search "部署"
 ```
 
-分页选项（`--max-count` / `--skip` / `--count`）与 `search`、`task list` 等 8 个列表命令语义一致，集中说明见 [搜索与序列](../10-任务管理/04-搜索与序列.md) 的「列表分页」一节。搜索范围同时覆盖任务、文档和决策记录（memo 与 Wiki 结果见 Web 全局搜索）。
+分页选项（`--max-count` / `--skip` / `--count`）与 `search`、`task list` 等 8 个列表命令语义一致，集中说明见 [搜索与序列](#25-搜索与序列) 的「列表分页」一节。搜索范围同时覆盖任务、文档和决策记录（memo 与 Wiki 结果见 Web 全局搜索）。
 
 ### 4.1.4 查看文档
 
@@ -2296,10 +2297,12 @@ sql: |
 |------|------|------|------|
 | `source` | 是 | — | 数据库的**项目相对路径**（不接受前导 `/`、绝对路径、`..` 逃逸）；SQLite 支持 `.sqlite` / `.sqlite3` / `.db`，DuckDB 支持 `.duckdb`（二期放宽到 `.csv` / `.xlsx`） |
 | `sql` | 是 | — | 查询语句，必须只读（`SELECT` 或 `WITH … SELECT` 开头，写类关键字一律拒绝，底层再以只读句柄物理兜底） |
-| `view` | 否 | `table` | 展示模式：`table`（网格）、`list`（竖向键值列表）、`value`（只取首行首单元格） |
+| `view` | 否 | `table` | 展示模式：`table`（网格）、`list`（竖向键值列表）、`value`（只取首行首单元格）、`echarts`（直接出图，见 [图表块](#87-图表块)） |
 | `refresh` | 否 | `manual` | 仅手动刷新，不支持自动/定时刷新 |
 
-结果最多返回 500 行，超出即截断并在块内提示（不提供分页）。块头提供四个动作：**Refresh**（按磁盘当前状态重跑）、**Show / Hide Query**（展开/收起只读的 `source` + SQL，默认收起）、**Copy Markdown**（把当前结果序列化为 GFM 表格复制到剪贴板）、**Export CSV**（服务端重跑并生成 CSV，浏览器保存到用户所选位置）。安全路径校验不通过或查询出错时，错误信息就地渲染在块内，不影响页面其余部分。
+结果默认最多返回 500 行，上限由 `config.yml` 的 `query_max_rows` 配置，超出即截断并在块内提示；块头可开启分页浏览，分页由引擎侧 `LIMIT` / `OFFSET` 下推，不受预览上限约束。块头提供四个动作：**Refresh**（按磁盘当前状态重跑）、**Show / Hide Query**（展开/收起只读的 `source` + SQL，默认收起）、**Copy Markdown**（把当前结果序列化为 GFM 表格复制到剪贴板）、**Export CSV**（服务端重跑并生成 CSV，浏览器保存到用户所选位置）。安全路径校验不通过或查询出错时，错误信息就地渲染在块内，不影响页面其余部分。
+
+查询块还可以直接出图（`view: echarts`），或让独立图表用 `fromQuery` 引用它；流程图与数据图的完整用法见 [图表块](#87-图表块)。
 
 ### 4.1.7 文档组织建议
 
@@ -2358,7 +2361,7 @@ backlog decision update decision-3 --status accepted
 backlog decision update decision-3 --status superseded --append-content "## 补充\n\n已被 decision-7 替代"
 ```
 
-`--status` 接受自由文本，文档约定的值为 `proposed` / `accepted` / `rejected` / `superseded`；显式传入的状态优先于正文中 frontmatter 的值。也可直接编辑决策文件的 frontmatter，或在 Web 界面决策详情页编辑（见 [文档与决策](../40-Web界面/04-文档与决策.md)）。MCP 侧提供 `decision_update` 工具（`content` / `appendContent` / `status` 参数）。建议在正文中记录状态变更的原因和时间，保持审计轨迹完整。
+`--status` 接受自由文本，文档约定的值为 `proposed` / `accepted` / `rejected` / `superseded`；显式传入的状态优先于正文中 frontmatter 的值。也可直接编辑决策文件的 frontmatter，或在 Web 界面决策详情页编辑（见 [文档与决策](#55-文档与决策)）。MCP 侧提供 `decision_update` 工具（`content` / `appendContent` / `status` 参数）。建议在正文中记录状态变更的原因和时间，保持审计轨迹完整。
 
 ### 4.2.3 列出决策
 
@@ -2385,7 +2388,7 @@ backlog decision list --json
 
 非 TTY 环境默认回退为纯文本输出；决策日志为空时打印 `No decisions found.`。
 
-决策列表也已在 MCP 暴露：`decision_list` 工具支持 `limit` / `offset` / `status` / `search` 过滤，返回统一的 `{ items, total, offset, limit, hasMore }` 分页信封。详见 [MCP 工作流](../50-AI集成/00-MCP工作流.md)。
+决策列表也已在 MCP 暴露：`decision_list` 工具支持 `limit` / `offset` / `status` / `search` 过滤，返回统一的 `{ items, total, offset, limit, hasMore }` 分页信封。详见 [MCP 工作流](#61-mcp-工作流)。
 
 ### 4.2.4 查看决策
 
@@ -2593,7 +2596,7 @@ backlog milestone list --count
 
 #### 4.3.3.2 TUI 里程碑看板
 
-在 TTY 中运行 `backlog milestones` 进入交互式里程碑看板：左侧为里程碑列表（`Space` 限定范围、`Enter` 查看元数据、`N` 新建），右侧为嵌入式任务看板，里程碑详情弹窗支持按 `E` 编辑日期与描述。详见 [TUI 看板](../20-看板与可视化/00-TUI看板.md)。
+在 TTY 中运行 `backlog milestones` 进入交互式里程碑看板：左侧为里程碑列表（`Space` 限定范围、`Enter` 查看元数据、`N` 新建），右侧为嵌入式任务看板，里程碑详情弹窗支持按 `E` 编辑日期与描述。详见 [TUI 看板](#31-tui-看板)。
 
 ### 4.3.4 任务分配到里程碑
 
@@ -3092,7 +3095,7 @@ Web 界面的加载反馈分为两层：
 
 #### 5.3.2.6 显示已完成任务
 
-筛选栏还提供「显示已完成」复选框：勾选后 `backlog/completed/` 中的历史任务与活跃任务一并展示（带 Completed 徽章），状态同步到 URL，点击打开只读弹窗。详见 [看板视图](01-看板视图.md) 的同名小节。
+筛选栏还提供「显示已完成」复选框：勾选后 `backlog/completed/` 中的历史任务与活跃任务一并展示（带 Completed 徽章），状态同步到 URL，点击打开只读弹窗。详见 [看板视图](#52-看板视图) 的同名小节。
 
 #### 5.3.2.7 验收标准进度条
 
@@ -3102,7 +3105,7 @@ Web 界面的加载反馈分为两层：
 
 任务列表顶部的搜索框是一个触发按钮（显示「搜索 (⌘K)…」）。点击它，或按 **Ctrl+K** / **Cmd+K**，会打开全局搜索对话框，在其中检索任务、文档、决策与 Wiki 页面。
 
-对话框的完整说明（类型过滤、分组结果、键盘操作、分享链接、位置记忆）见 [全局搜索](10-全局搜索.md)。
+对话框的完整说明（类型过滤、分组结果、键盘操作、分享链接、位置记忆）见 [全局搜索](#511-全局搜索)。
 
 - 搜索支持中文和英文，关键词在结果的标题与资源 ID 中高亮
 - 对话框始终是全局范围，不与列表页的筛选条件叠加；要按状态、优先级、标签或里程碑缩小任务范围，请使用页面上的筛选下拉框
@@ -3168,7 +3171,7 @@ http://localhost:6420/task/506/Fix-CLI-actualStart-actualEnd-missing-local-to-UT
 
 #### 5.3.4.7 依赖关系图切换
 
-任务详情模态框的 **Dependencies** 区域标题右侧有一个关系图按钮，点击后将模态框正文切换为以当前任务为中心的可交互依赖子图（缩放、拖拽、图例过滤、节点钻取），每个任务的视图状态独立记忆。详见 [图谱视图](11-图谱视图.md)。
+任务详情模态框的 **Dependencies** 区域标题右侧有一个关系图按钮，点击后将模态框正文切换为以当前任务为中心的可交互依赖子图（缩放、拖拽、图例过滤、节点钻取），每个任务的视图状态独立记忆。详见 [图谱视图](#512-图谱视图)。
 
 模态框还会按跳数列出「等待谁 / 被谁等待」的依赖闭包，标注根阻塞任务与无法解析的引用；被拒绝的依赖编辑（如构成循环）会回滚并显示原因。
 
@@ -3392,7 +3395,7 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 - 面板头部提供「全部折叠 / 全部展开」总开关
 - 页面没有标题（或处于编辑模式）时目录按钮不出现
 
-> 任务详情、Wiki 预览与文件预览**弹窗**内也有同款大纲，以书签式抽屉从弹窗左边缘探出（不改动弹窗宽度），详见[任务列表](02-任务列表.md)的「大纲抽屉」小节。
+> 任务详情、Wiki 预览与文件预览**弹窗**内也有同款大纲，以书签式抽屉从弹窗左边缘探出（不改动弹窗宽度），详见[任务列表](#53-任务列表)的「大纲抽屉」小节。
 
 #### 5.5.3.3 内容变更静默重载
 
@@ -3448,7 +3451,7 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 - **自动打开浏览器（`autoOpenBrowser`）**
 - **任务解析策略（`taskResolutionStrategy`）**：同名任务存在于多个分支时的冲突解决策略——`最新`（`most_recent`，取最近修改的版本）或`最完整`（`most_progressed`，取状态推进最远的版本，同进度再比修改时间）；新项目初始为 `most_recent`
 - **Advanced Settings 跨分支三开关**：Task Resolution Strategy 下方依次是 Cross-Branch Tasks（`includeCrossBranch`，默认关——扫描到的其他分支任务是否进入看板/任务列表/搜索）、Check Active Branches（`checkActiveBranches`，默认开——是否扫描其他本地分支，同时决定任务 ID 分配的候选分支集）与 Active Branch Days（`activeBranchDays`，默认 30 天，仅扫描开关打开时显示）
-- Git 相关选项（详见[配置管理](../60-配置与运维/00-配置管理.md)）
+- Git 相关选项（详见[配置管理](#91-配置管理)）
 
 点击需要修改的配置项，在输入框中输入新值，修改完成后点击「保存」按钮。配置变更会立即写回项目配置文件，部分设置（如端口）在重启 `backlog browser` 后生效。
 
@@ -3469,7 +3472,7 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 - **Reset**：仅在有未保存改动时出现，丢弃修改并从 `config.yml` 重新加载当前内容（绝不覆盖文件）
 - **Default**：用内置的七列默认状态机整体替换当前配置（相当于恢复出厂值）
 
-状态机**只声明、不强制**：编辑器可以展示 lint 警告，但不会阻止保存；保存后服务端广播 `config-updated`，看板列与终态判定立即刷新。AI 侧的三份 overview（CLI `backlog instructions overview`、MCP 资源与指令工具）会自动渲染同一份状态机，代理按声明的机器工作。状态机的语义详见[任务生命周期](../10-任务管理/00-任务生命周期.md)。
+状态机**只声明、不强制**：编辑器可以展示 lint 警告，但不会阻止保存；保存后服务端广播 `config-updated`，看板列与终态判定立即刷新。AI 侧的三份 overview（CLI `backlog instructions overview`、MCP 资源与指令工具）会自动渲染同一份状态机，代理按声明的机器工作。状态机的语义详见[任务生命周期](#21-任务生命周期)。
 
 **终态集合由状态机派生、仅此一处可改**：设置页曾有一个 "terminal status" 多选，但它并不存储列表、而是悄悄改写各状态的 `category`——与状态机编辑器写同一字段造成混乱。现在设置页只以只读区块展示派生的终态集合（如 `Done`、`Dropped`）并注明来源；`backlog config list` 也会打印 `terminalStatuses: [Done, Dropped] (derived from statuses)`。要增删终态，请在上方状态机编辑器中修改对应状态的 `category`。
 
@@ -4032,7 +4035,7 @@ Wiki 内容在所有打开的标签页中实时同步：
 
 ## 5.11 全局搜索
 
-Web 界面提供 macOS Spotlight 风格的居中搜索对话框，一次检索任务、草稿、文档、决策、Wiki 页面与[快速笔记](../70-快速笔记/00-Memos简介.md)。它取代了早期只能显示 5 条结果的侧边栏内联搜索。
+Web 界面提供 macOS Spotlight 风格的居中搜索对话框，一次检索任务、草稿、文档、决策、Wiki 页面与[快速笔记](#71-memos-简介)。它取代了早期只能显示 5 条结果的侧边栏内联搜索。
 
 ### 5.11.1 打开与关闭
 
@@ -4113,8 +4116,8 @@ http://localhost:6420/search?q=timezone&type=task
 
 ### 5.11.9 相关章节
 
-- [任务列表](02-任务列表.md) — 列表页筛选与任务详情模态框
-- [Wiki 浏览与编辑](07-Wiki浏览与编辑.md) — Wiki 页面阅读与编辑
+- [任务列表](#53-任务列表) — 列表页筛选与任务详情模态框
+- [Wiki 浏览与编辑](#58-wiki-浏览与编辑) — Wiki 页面阅读与编辑
 
 ## 5.12 图谱视图
 
@@ -4182,7 +4185,7 @@ http://localhost:6420/search?q=timezone&type=task
 - **热更新**：CLI / TUI / Web / MCP 的任何写入都会通过钩子通知图谱服务做增量同步，另有目录监听与定期 reconciliation 兜底
 - **缓存位置**：图数据存放在操作系统缓存目录（而非项目树内），按项目路径哈希分槽存放，两个浏览器会话各自持有独立数据库互不争抢；可用环境变量 `BACKLOG_GRAPH_CACHE_DIR` 覆盖缓存目录
 - **后端**：默认使用 RyuGraph WASM 后端（Kuzu 的 MIT fork 的 WebAssembly 构建，在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需环境变量）；原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher 搜索）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃
-- **锁冲突**：同一项目的图谱槽位同一时刻只允许一个进程持有；持有方进程已退出时自动回收锁，持有方仍存活时在交互终端中询问是否接管（卡 building 与接管的排查见[故障排查](../60-配置与运维/03-故障排查.md)）
+- **锁冲突**：同一项目的图谱槽位同一时刻只允许一个进程持有；持有方进程已退出时自动回收锁，持有方仍存活时在交互终端中询问是否接管（卡 building 与接管的排查见[故障排查](#94-故障排查)）
 
 > 图谱只做可视化与查询，从不回写 Markdown 文件——所有数据仍以 `backlog/` 下的文件为唯一事实来源。
 
@@ -4311,7 +4314,7 @@ backlog task edit <id> -s Done
 | `memo_update` | 替换（`content`）或追加（`append`）正文，二选一必填 | `id`（必填）、`content` / `append`、`tags` |
 | `memo_delete` | 删除备忘 | `id`（必填） |
 
-备忘工具与 CLI、Web 共享同一 ID 方案（`YYYYMMDD-N`）与文件格式，详见[快速笔记](../70-快速笔记/00-Memos简介.md)。
+备忘工具与 CLI、Web 共享同一 ID 方案（`YYYYMMDD-N`）与文件格式，详见[快速笔记](#71-memos-简介)。
 
 #### 6.1.4.5 决策（2 个）
 
@@ -4378,7 +4381,7 @@ Backlog.md MCP 服务器向客户端注册以下工作流资源，AI 代理可�
 | `backlog://workflow/graph` | 图谱指南：六个图谱 MCP 工具的参数、Cypher 查询与 CSV 导入用法 |
 | `backlog://init-required` | 未初始化项目时的回退资源：如何在本目录初始化 Backlog.md |
 
-AI 代理在首次连接或遇到不确定的场景时，会优先读取 `backlog://workflow/overview` 获取上下文指导。CLI 侧的 `backlog instructions <分册>` 与上述分册一一对应，详见[代理指令文件](02-代理指令文件.md)。
+AI 代理在首次连接或遇到不确定的场景时，会优先读取 `backlog://workflow/overview` 获取上下文指导。CLI 侧的 `backlog instructions <分册>` 与上述分册一一对应，详见[代理指令文件](#63-代理指令文件)。
 
 ### 6.1.6 安全特性
 
@@ -4803,7 +4806,7 @@ Skill 内容在构建时嵌入编译后的二进制文件中：
 backlog wiki install claude --force
 ```
 
-建议在每次升级 Backlog.md 后检查并更新已安装的 skill（升级 CLI 本身的方法见[安装与初始化](../00-快速开始/01-安装与初始化.md)的「升级 Backlog.md」一节）。
+建议在每次升级 Backlog.md 后检查并更新已安装的 skill（升级 CLI 本身的方法见[安装与初始化](#12-安装与初始化)的「升级 Backlog.md」一节）。
 
 ### 6.4.6 安装后的工作流
 
@@ -4825,11 +4828,11 @@ backlog wiki install claude --force
 
 ### 6.4.7 相关
 
-- [Migration Skill 安装](04-Migration%20Skill%20安装.md) — 安装 `task-migration-architect` skill（`backlog migrate install`），用于上游变更分析与任务驱动的分支合并
+- [Migration Skill 安装](#65-migration-skill-安装) — 安装 `task-migration-architect` skill（`backlog migrate install`），用于上游变更分析与任务驱动的分支合并
 
 ## 6.5 Migration Skill 安装
 
-Backlog.md 内置 `task-migration-architect` skill，帮助 AI 代理在 fork 项目中分析上游变更并按任务驱动的方式完成分支合并。通过 `backlog migrate install` 命令，可将该 skill 一键安装到支持的 AI 工具中。安装机制与 [Wiki Skill 安装](03-Wiki%20Skill%20安装.md) 一致。
+Backlog.md 内置 `task-migration-architect` skill，帮助 AI 代理在 fork 项目中分析上游变更并按任务驱动的方式完成分支合并。通过 `backlog migrate install` 命令，可将该 skill 一键安装到支持的 AI 工具中。安装机制与 [Wiki Skill 安装](#64-wiki-skill-安装) 一致。
 
 ### 6.5.1 什么是 Migration Skill
 
@@ -4890,7 +4893,7 @@ backlog migrate install codex --dry-run
 
 ### 6.5.5 安装机制
 
-与 wiki install 相同：skill 文件集中存储在 `.agents/skills/task-migration-architect/`，各 Agent 的 skills 目录通过符号链接指向该统一位置；Windows 上符号链接创建失败时自动回退为直接复制。skill 内容在构建时嵌入编译后的二进制，离线环境也能安装。细节见 [Wiki Skill 安装](03-Wiki%20Skill%20安装.md) 的「安装机制」一节。
+与 wiki install 相同：skill 文件集中存储在 `.agents/skills/task-migration-architect/`，各 Agent 的 skills 目录通过符号链接指向该统一位置；Windows 上符号链接创建失败时自动回退为直接复制。skill 内容在构建时嵌入编译后的二进制，离线环境也能安装。细节见 [Wiki Skill 安装](#64-wiki-skill-安装) 的「安装机制」一节。
 
 # 7 快速笔记
 
@@ -4907,7 +4910,7 @@ Memos（快速笔记）是 Backlog.md 的第五种文件实体，用于承载**�
 | **标题** | 必填 | 必填 | 无标题，由正文首行派生 |
 | **结构要求** | 状态、验收标准等元数据 | 类型、目录组织 | 仅正文 + 可选标签 |
 
-Memo 刻意保持轻量：没有状态流转、没有里程碑、没有验收标准，也不进入依赖图谱（[图谱视图](../40-Web界面/11-图谱视图.md)）。它的价值在于**出站连接**——正文中裸写的实体 ID 和 `[[wiki/path]]` 会自动变成链接，让随手记成为知识网的可生长节点（见 [搜索与知识互联](03-搜索与知识互联.md)）。
+Memo 刻意保持轻量：没有状态流转、没有里程碑、没有验收标准，也不进入依赖图谱（[图谱视图](#512-图谱视图)）。它的价值在于**出站连接**——正文中裸写的实体 ID 和 `[[wiki/path]]` 会自动变成链接，让随手记成为知识网的可生长节点（见 [搜索与知识互联](#74-搜索与知识互联)）。
 
 ### 7.1.2 存储格式
 
@@ -4933,12 +4936,12 @@ tags: [meeting]
 
 同一份存储被四个表面共享，ID 方案与文件格式完全一致：
 
-- **CLI**：`backlog memo create/list/view/update/delete`，最快的终端捕获路径，见 [CLI 备忘命令](01-CLI备忘命令.md)
-- **Web**：`/memos` 页面的信息流快速捕获 + 日历模式，见 [Web 备忘页面](02-Web备忘页面.md)
+- **CLI**：`backlog memo create/list/view/update/delete`，最快的终端捕获路径，见 [CLI 备忘命令](#72-cli-备忘命令)
+- **Web**：`/memos` 页面的信息流快速捕获 + 日历模式，见 [Web 备忘页面](#73-web-备忘页面)
 - **MCP**：`memo_create` / `memo_list` / `memo_view` / `memo_update` / `memo_delete` 工具组，AI 代理可直接读写
 - **HTTP API**：`/api/memos*` 路由（列表、日历计数、按 ID 读写），供脚本与第三方工具调用
 
-此外 memo 已接入[全局搜索](../40-Web界面/10-全局搜索.md)，CLI 侧提供 `backlog instructions memos` 使用指南，MCP 侧提供 `backlog://workflow/memos` 工作流资源。
+此外 memo 已接入[全局搜索](#511-全局搜索)，CLI 侧提供 `backlog instructions memos` 使用指南，MCP 侧提供 `backlog://workflow/memos` 工作流资源。
 
 ### 7.1.4 使用建议
 
@@ -5001,7 +5004,7 @@ backlog memo list --tags meeting,debug
 | `--skip <n>` | 跳过前 n 条（取下一页） | `--skip 20` |
 | `--count` | 只输出匹配总数（一个数字） | `--count` |
 
-被截断的文本输出以 `Showing <first>-<last> of <total> items. Next: backlog memo list --skip <n>` 结尾，照抄即可翻页；`--count` 只输出数字且不能与 `--json` 组合。各列表命令分页语义的集中说明见 [搜索与序列](../../10-任务管理/04-搜索与序列.md) 的「列表分页」一节。
+被截断的文本输出以 `Showing <first>-<last> of <total> items. Next: backlog memo list --skip <n>` 结尾，照抄即可翻页；`--count` 只输出数字且不能与 `--json` 组合。各列表命令分页语义的集中说明见 [搜索与序列](#25-搜索与序列) 的「列表分页」一节。
 
 #### 7.2.2.2 纯文本输出
 
@@ -5072,19 +5075,19 @@ backlog instructions memos
 
 #### 7.3.1.1 快速捕获
 
-- 顶部 composer 复用[富文本粘贴](../40-Web界面/06-富文本粘贴与文档上传.md)同款编辑器：支持粘贴图片、拖入文件、Word 文档转换，粘贴的图片在保存前自动提升到 `assets/paste/`
+- 顶部 composer 复用[富文本粘贴](#57-富文本粘贴与文档上传)同款编辑器：支持粘贴图片、拖入文件、Word 文档转换，粘贴的图片在保存前自动提升到 `assets/paste/`
 - 点击保存按钮或按 **Cmd/Ctrl+Enter** 保存，新 memo 立即置顶显示，无需刷新
 - 保存失败时笔记内容被保留并显示本地化错误横幅，不会静默丢失
 
 #### 7.3.1.2 卡片流
 
 - 卡片显示创建时间、正文渲染结果（Markdown、Mermaid 图表、`[[wiki]]` 链接与实体 ID 自动链接）与只读标签 chips。正文中的实体 ID **区间**（如 `back-101~105`）与**斜杠列表**（如 `back-101/102/103`）会被渲染为单个触发器，点击展开 portal 下拉列出区间内每个 ID 的可点击链接
-- 标签栏采用**单行折叠**的历史标签条：近期使用过的标签压缩为一行、active 标签置顶，点击展开可过滤；卡片支持内联编辑、归档与删除（归档详见[钉板视图与归档](04-钉板视图与归档.md)）。在 composer 中输入 `#话题#`（如 `#login#`）可标注该 memo 的主题而不污染正文，该闭合语法会被识别为话题标签
+- 标签栏采用**单行折叠**的历史标签条：近期使用过的标签压缩为一行、active 标签置顶，点击展开可过滤；卡片支持内联编辑、归档与删除（归档详见[钉板视图与归档](#75-钉板视图与归档)）。在 composer 中输入 `#话题#`（如 `#login#`）可标注该 memo 的主题而不污染正文，该闭合语法会被识别为话题标签
 - 无限滚动基于 IntersectionObserver 哨兵自动加载后续分页；memo 变更通过 WebSocket `memos-updated` 广播实时同步到所有打开的标签页
 
 ### 7.3.2 钉板模式
 
-`/memos` 还有第三种视图——WebGL 便利贴钉板：`?view=board` 直达，便签落点确定、黑板固定不滚动、支持全屏，hover 便签可归档、点击打开编辑弹窗。详见[钉板视图与归档](04-钉板视图与归档.md)。
+`/memos` 还有第三种视图——WebGL 便利贴钉板：`?view=board` 直达，便签落点确定、黑板固定不滚动、支持全屏，hover 便签可归档、点击打开编辑弹窗。详见[钉板视图与归档](#75-钉板视图与归档)。
 
 ### 7.3.3 日历模式
 
@@ -5098,7 +5101,7 @@ backlog instructions memos
 
 ### 7.3.4 与全局搜索联动
 
-全局搜索对话框的「备忘」标签页检索 memo，结果行点击后跳转到 `/memos?date=<day>` 的当日视图（memo 没有独立详情路由）。详见[全局搜索](../40-Web界面/10-全局搜索.md)与[搜索与知识互联](03-搜索与知识互联.md)。
+全局搜索对话框的「备忘」标签页检索 memo，结果行点击后跳转到 `/memos?date=<day>` 的当日视图（memo 没有独立详情路由）。详见[全局搜索](#511-全局搜索)与[搜索与知识互联](#74-搜索与知识互联)。
 
 ### 7.3.5 界面语言
 
@@ -5291,7 +5294,7 @@ sql: |
 |------|------|------|------|
 | `source` | 是 | — | 数据源路径，**项目相对路径**（见下） |
 | `sql` | 是 | — | 查询语句，支持 `sql: |` 多行写法 |
-| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值） |
+| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值）/ `echarts`（直接出图，见 [图表块](#87-图表块)） |
 | `refresh` | 否 | `manual` | 仅支持手动刷新；自动/定时刷新不支持 |
 
 ### 8.3.2 安全约束与只读保证
@@ -5325,7 +5328,7 @@ sql: |
 
 ## 8.4 Cypher 查询块
 
-在文档（任务 / 文档 / 决策 / Wiki 等 Markdown）里可以用 `cypher-query` 围栏代码块嵌入一条只读 Cypher 查询；Web 界面的阅读视图会把块渲染成实时查询结果，编辑模式下仍显示原始块文本。它是 [SQL 查询块](02-SQL查询块.md)在图数据库上的**对应物**：交互语义与安全模型一致，执行栈换成图引擎。
+在文档（任务 / 文档 / 决策 / Wiki 等 Markdown）里可以用 `cypher-query` 围栏代码块嵌入一条只读 Cypher 查询；Web 界面的阅读视图会把块渲染成实时查询结果，编辑模式下仍显示原始块文本。它是 [SQL 查询块](#83-sql-查询块)在图数据库上的**对应物**：交互语义与安全模型一致，执行栈换成图引擎。
 
 ````
 ```cypher-query
@@ -5342,7 +5345,7 @@ query: |
 |------|------|------|------|
 | `source` | 是 | — | **数据库注册名**（`backlog graph list` 列出的名称），不是文件路径 |
 | `query` | 是 | — | 查询语句，支持 `query: \|` 多行写法；必须只读 |
-| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值）/ `graph`（力导向图） |
+| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值）/ `graph`（力导向图）/ `echarts`（直接出图，见 [图表块](#87-图表块)） |
 | `refresh` | 否 | `manual` | `manual`（手动）/ `auto`（图数据变化时自动重跑） |
 
 未知字段一律报错并列出可用字段，不会静默忽略。
@@ -5401,7 +5404,7 @@ Web 界面的 **Databases** 页面列出项目的所有图谱数据库——派�
 
 ### 8.5.3 可配置图例
 
-图谱窗格的齿轮按钮打开图例设置面板，配置按数据库保存在**项目内**的 `backlog/databases/graph-legends.yaml`（随 git 版本化），下次访问自动恢复；浏览器本地另留一份即时缓存与离线副本。面板是草稿式的：修改即时预览，点「保存」才落盘，「取消」/ 关闭 / 再点齿轮都会还原到打开时的快照。完整的存储、迁移与热更新机制见[图例配置持久化](05-图例配置持久化.md)。
+图谱窗格的齿轮按钮打开图例设置面板，配置按数据库保存在**项目内**的 `backlog/databases/graph-legends.yaml`（随 git 版本化），下次访问自动恢复；浏览器本地另留一份即时缓存与离线副本。面板是草稿式的：修改即时预览，点「保存」才落盘，「取消」/ 关闭 / 再点齿轮都会还原到打开时的快照。完整的存储、迁移与热更新机制见[图例配置持久化](#86-图例配置持久化)。
 
 - **两层颜色模型**：第一层按节点类型（表标签）决定色相；第二层在类型内部按某个字段的子类（等宽分箱、分位数、单阈值、按值、包含、前缀、布尔等快捷方法，或手写的有序布尔规则）区分明暗。「生成」一键产出可继续编辑的规则列表，隐含一个 Other 兜底桶。
 - 配置按节点类型分组（手风琴面板，每类型一张卡）：标题模板用 `{{field}}` 占位符（留空则自动猜测），类型可指定显式颜色覆盖自动色相，每条规则与 Other 都可单独钉色。
@@ -5468,6 +5471,170 @@ default:
 ### 8.6.6 冲突策略
 
 同一配置的并发写入采用**后写者胜**，不做合并——图例是低频的单人配置。文件写入是原子的（临时文件 + 重命名），不会留下半截文件。
+
+## 8.7 图表块
+
+任何 Markdown 正文都能用围栏代码块嵌入图表：`mermaid` 画流程图、时序图、甘特图，`echarts` 画数据图。阅读视图把它渲染成图，编辑模式仍显示源码；两种图都自动跟随应用的明暗主题。
+
+文档、Wiki、备忘、任务与决策的正文都走同一条渲染链，所以这些块在任何正文里都能用。
+
+### 8.7.1 流程图：mermaid
+
+````markdown
+```mermaid
+graph LR
+  A[解析围栏] --> B{语言已注册?}
+  B -->|是| C[渲染成图]
+  B -->|否| D[保持代码块]
+```
+````
+
+### 8.7.2 数据图：echarts
+
+正文是一段标准 ECharts option 的 **JSON**，不需要学新的方言：
+
+````markdown
+```echarts
+{
+  "title": { "text": "每周完成任务" },
+  "tooltip": { "trigger": "axis" },
+  "legend": {},
+  "xAxis": { "type": "category", "data": ["W1", "W2", "W3", "W4"] },
+  "yAxis": { "type": "value" },
+  "series": [
+    { "name": "完成", "type": "bar", "data": [10, 18, 25, 33] },
+    { "name": "新增", "type": "line", "smooth": true, "data": [14, 20, 22, 30] }
+  ]
+}
+```
+````
+
+同一个 `series` 数组里可以混排多种图，上面就是柱状图叠加折线图。
+
+### 8.7.3 支持的图表类型
+
+`series[].type` 可用的值：
+
+| 类别 | 类型 |
+|---|---|
+| 直角坐标 | `bar` `line` `scatter` `effectScatter` `candlestick` `boxplot` `heatmap` `pictorialBar` `themeRiver` |
+| 比例与流向 | `pie` `funnel` `sankey` |
+| 层级与关系 | `tree` `treemap` `sunburst` `graph` `chord` |
+| 多维与仪表 | `radar` `parallel` `gauge` `lines` |
+
+两个例外需要额外条件，引擎不内置：
+
+- `custom` 依赖 `renderItem` **函数**，JSON 表达不了，写了也只会得到空图。
+- `map` 需要先注册 GeoJSON，且地图数据必须来自合规来源，所以由使用方显式接入。
+
+坐标系统默认是直角坐标 `xAxis` / `yAxis`；`polar`、`singleAxis`、`calendar`、`parallel`、`geo` 组件都已注册。`themeRiver` 必须配 `singleAxis`，且 `type` 要写成 `"time"`，否则不出河流带。
+
+### 8.7.4 图表直接吃查询结果：view: echarts
+
+查询块可以把结果**直接画成图**，不再显示表格。`sqlite-query`、`duckdb-query`、`cypher-query` 都支持，加 `view: echarts` 与 `chart` 字段即可：
+
+````markdown
+```sqlite-query
+source: backlog/databases/demo-shop.sqlite
+view: echarts
+chart: { "type": "bar", "categoryField": "category", "valueField": "revenue", "title": "各类目成交额" }
+sql: |
+  SELECT category, ROUND(SUM(amount), 2) AS revenue
+  FROM order_details GROUP BY category ORDER BY revenue DESC
+```
+````
+
+简单映射形式的字段：
+
+| 字段 | 说明 |
+|---|---|
+| `type` | `bar` / `line` / `pie` / `scatter` / `effectScatter` |
+| `categoryField` | 类目列；`pie` 用它作扇区名 |
+| `valueField` | 数值列 |
+| `title` / `name` | 图表标题 / 系列名，可选 |
+| `categoryAxisName` / `valueAxisName` | 轴名，可选 |
+
+需要多系列、双轴或自定义样式时用高级形式：`chart` 里写 `option`，数据位置用占位符。
+
+````markdown
+```sqlite-query
+source: backlog/databases/demo-shop.sqlite
+view: echarts
+chart: |
+  {
+    "option": {
+      "title": { "text": "月度成交额" },
+      "tooltip": { "trigger": "axis" },
+      "xAxis": { "type": "category", "data": "@result:month" },
+      "yAxis": { "type": "value" },
+      "series": [{ "type": "bar", "data": "@result:revenue" }]
+    }
+  }
+sql: |
+  SELECT substr(ordered_at, 1, 7) AS month, ROUND(SUM(amount), 2) AS revenue
+  FROM order_details GROUP BY month ORDER BY month
+```
+````
+
+两个占位符：
+
+| 占位符 | 替换为 |
+|---|---|
+| `"@result"` | 整个结果集，每行一个 `{列名: 值}` 对象，适合 `dataset.source` |
+| `"@result:<列名>"` | 该列的值数组，适合 `series.data` / `xAxis.data` |
+
+占位符必须**整值**出现，不能拼在字符串里；写错列名会得到空数组。
+
+### 8.7.5 引用命名查询块：fromQuery
+
+想让表格和图表并存时，给查询块一个 `id`，再用独立的 `echarts` block 引用它：
+
+````markdown
+```sqlite-query
+id: monthly
+source: backlog/databases/demo-shop.sqlite
+sql: |
+  SELECT substr(ordered_at, 1, 7) AS month, ROUND(SUM(amount), 2) AS revenue
+  FROM order_details GROUP BY month ORDER BY month
+```
+
+```echarts
+{
+  "dataset": { "fromQuery": "monthly" },
+  "tooltip": { "trigger": "axis" },
+  "xAxis": { "type": "category" },
+  "yAxis": { "type": "value" },
+  "series": [{ "type": "bar", "encode": { "x": "month", "y": "revenue" } }]
+}
+```
+````
+
+也可以把引用写在 series 上，直接指定取哪两列：
+
+```json
+{ "type": "bar", "fromQuery": "monthly", "categoryField": "month", "valueField": "revenue" }
+```
+
+`categoryField` / `valueField` 只是引用侧的取列指令，不会留在最终配置里。option 没有 `xAxis` 时，引擎会用第一个解析成功的 series 的 `categoryField` 补一条类目轴。
+
+### 8.7.6 使用约定
+
+| 事项 | 行为 |
+|---|---|
+| 主题 | 自动跟随明暗模式，无需配置 |
+| 加载 | ECharts 按需加载，不进首屏包 |
+| JSON 限制 | 只解析 JSON，函数表达式不会执行；动态文本用模板串，如 `"{b}: {c}"` |
+| 出错表现 | JSON 非法、series 类型未知、必填字段缺失时，块内显示错误或回退为代码块，不会崩 |
+| 引用作用域 | `fromQuery` 只在**同一篇文档**内有效，重复 `id` 会以后写者为准 |
+| 刷新联动 | 被引用的查询重跑后，引用它的图表自动重绘；没用 `fromQuery` 的图表不受影响 |
+
+完整的图表示例，包括每种系列的可复制配置与坑位说明，见文档 `doc-31 ECharts 图表演示`。
+
+### 8.7.7 相关
+
+- [SQL 查询块](#83-sql-查询块) — `sqlite-query` / `duckdb-query` 的字段与只读约束
+- [Cypher 查询块](#84-cypher-查询块) — 图库查询块，同样支持 `view: echarts`
+- [图例配置持久化](#86-图例配置持久化) — 图视图的配色与图例设置
 
 # 9 配置与运维
 
@@ -5589,7 +5756,7 @@ statuses:
 | `next` | 允许的迁移边数组，可附加 `when` / `ai` / `if` / `requires` / `evidence` 声明 |
 | `display` | `false` 时看板隐藏该列及列内任务（默认 `true`） |
 
-旧式字符串数组写法仍然兼容（末位为终态）。没有 CLI 命令设置 `statuses`：推荐在 Web 设置页的[状态机编辑器](../40-Web界面/05-设置与主题.md)中可视化维护，或直接编辑本文件——整体写回、不丢字段。`backlog instructions overview`（及 MCP 同名 overview 资源）会自动渲染当前状态机的完整可读描述。首次 `backlog init` 直接写入内置的七列默认状态机（To Do / Planning / Plan Review / In Progress / In Review / Done / Dropped，随界面语言本地化）。语义细节见[任务生命周期](../10-任务管理/00-任务生命周期.md)。
+旧式字符串数组写法仍然兼容（末位为终态）。没有 CLI 命令设置 `statuses`：推荐在 Web 设置页的[状态机编辑器](#56-设置与主题)中可视化维护，或直接编辑本文件——整体写回、不丢字段。`backlog instructions overview`（及 MCP 同名 overview 资源）会自动渲染当前状态机的完整可读描述。首次 `backlog init` 直接写入内置的七列默认状态机（To Do / Planning / Plan Review / In Progress / In Review / Done / Dropped，随界面语言本地化）。语义细节见[任务生命周期](#21-任务生命周期)。
 
 #### 9.1.3.3 任务默认值
 
@@ -5698,7 +5865,7 @@ backlog config set defaultEditor nvim
 
 #### 9.1.3.8 MCP HTTP 传输
 
-`mcp.http.*` 系列键（`mcp.http.host` / `mcp.http.port` / `mcp.http.auth.*`）目前只是**预留配置**：当前版本 MCP 仅实现 stdio 传输（`backlog mcp start`），不监听任何网络端口，也没有 HTTP 传输的消费逻辑。配置这些键不会产生任何效果，请保持 stdio 方式接入，详见[MCP 工作流](../50-AI集成/00-MCP工作流.md)。
+`mcp.http.*` 系列键（`mcp.http.host` / `mcp.http.port` / `mcp.http.auth.*`）目前只是**预留配置**：当前版本 MCP 仅实现 stdio 传输（`backlog mcp start`），不监听任何网络端口，也没有 HTTP 传输的消费逻辑。配置这些键不会产生任何效果，请保持 stdio 方式接入，详见[MCP 工作流](#61-mcp-工作流)。
 
 ### 9.1.4 配置存储位置
 
@@ -6056,7 +6223,7 @@ backlog overview --plain --completed
 - 若关了 `autoPort`，占用会直接报 `EADDRINUSE`——用 `backlog browser --port 8080` 显式指定端口。
 - 自动扫描只接受用户端口范围（1024–65535）内的端口，拒绝操作系统临时分配的随机高位端口。
 
-详见[启动与访问](../40-Web界面/00-启动与访问.md)与[配置管理](00-配置管理.md)的 Web UI 一节。
+详见[启动与访问](#51-启动与访问)与[配置管理](#91-配置管理)的 Web UI 一节。
 
 ### 9.4.2 图谱一直 building / 锁冲突
 
@@ -6104,7 +6271,7 @@ arch -arm64 npm i -g @kuwork/backlog.md
 arch -arm64 bun add -g @kuwork/backlog.md
 ```
 
-刻意在 Rosetta 下运行 x64 Node 也可以：启动器会回退到实际已安装的任一 `backlog.md-darwin-*` 包。详见[安装与初始化](../00-快速开始/01-安装与初始化.md)。
+刻意在 Rosetta 下运行 x64 Node 也可以：启动器会回退到实际已安装的任一 `backlog.md-darwin-*` 包。详见[安装与初始化](#12-安装与初始化)。
 
 ### 9.4.5 watch 进程空转 CPU 高（旧版本）
 
@@ -6118,7 +6285,7 @@ arch -arm64 bun add -g @kuwork/backlog.md
 
 **症状**：AI 客户端报告 MCP 服务器启动失败、超时，或任务写入到了错误项目。
 
-**处置**：详见 [MCP 工作流](../50-AI集成/00-MCP工作流.md)的「常见问题」：
+**处置**：详见 [MCP 工作流](#61-mcp-工作流)的「常见问题」：
 
 - 启动失败/超时：多为本地 `backlog` 命令解析到陈旧二进制——重新构建、用 `codex mcp add backlog -- backlog mcp start` 格式注册，并单独测试 `backlog mcp start`。
 - 写入错误项目：升级到最新版本（服务器跟随客户端 workspace roots），或 `backlog mcp start --cwd <path>` 固定目录。
@@ -6133,4 +6300,4 @@ arch -arm64 bun add -g @kuwork/backlog.md
 - 或用 `EDITOR` 环境变量按次覆盖：`EDITOR=nvim backlog board`
 - 编辑器路径含参数时请写完整可执行路径或用包装脚本；颜色异常时设 `TERM=xterm-256color`
 
-详见[配置管理](00-配置管理.md)的「编辑器解析优先级」一节。
+详见[配置管理](#91-配置管理)的「编辑器解析优先级」一节。

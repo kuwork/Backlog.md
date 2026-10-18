@@ -2,7 +2,7 @@
 title: 文档内实况 SQL 查询块
 labels: [concept, sqlite, duckdb, web-ui]
 created_date: 2026-10-16 01:00
-updated_date: 2026-10-18 01:00
+updated_date: 2026-10-18 22:00
 ---
 
 # 文档内实况 SQL 查询块
@@ -11,7 +11,7 @@ updated_date: 2026-10-18 01:00
 
 ## 块模型
 
-YAML 子集字段：`source`（数据库文件的项目相对路径）、`sql`（查询语句）、`view`（`table` / `list` / `value`）、`refresh`（自动刷新间隔）。块动作四个：Refresh（BACK-773/778）、Show/Hide Query（BACK-774/779）、Copy Markdown（BACK-775/780）、Export CSV（BACK-776/781——服务端重建 CSV，浏览器经 File System Access API 由用户自选保存位置，客户端永远不提供行数据或目标路径）。
+YAML 子集字段：`source`（数据库文件的项目相对路径）、`sql`（查询语句）、`view`（`table` / `list` / `value` / `echarts`）、`chart`（`view: echarts` 的图表 JSON）、`id`（供图表 `fromQuery` 引用的名字，m-17）、`refresh`（自动刷新间隔）。块动作四个：Refresh（BACK-773/778）、Show/Hide Query（BACK-774/779）、Copy Markdown（BACK-775/780）、Export CSV（BACK-776/781——服务端重建 CSV，浏览器经 File System Access API 由用户自选保存位置，客户端永远不提供行数据或目标路径）。
 
 ## 安全模型
 
@@ -31,8 +31,16 @@ Cypher 侧刻意与 SQL 不同的三点：`source` 是数据库**注册名**而�
 
 BACK-805 曾给三块回灌 `style` 字段（compact/striped/borderless），BACK-811 因级联不可用而 **fail-closed 移除**：带该字段的块直接报未知字段错误并列出剩余字段。同期为「显示查询」面板接上阅读视图自己的代码高亮（refractor `all` 实例 + `markdown.css` 的 `.token.*`，Cypher 走 `cypher` 语法、SQL 走 `sql`，未知语法回退纯文本）。
 
+## 第四视图：echarts（m-17）
+
+BACK-813 把 `view` 枚举扩到 `echarts`，块可以**不画表格直接出图**：新增 `chart` 字段放图表 JSON（简单映射 `type`/`categoryField`/`valueField`，或高级 `option` + `@result` / `@result:<列名>` 占位符）。它是 `value` 视图的图表版——结果就是图表本身。
+
+BACK-814 又加了可选 `id`：命名后的块把自己的结果发布到每文档一个的 `QueryResultProvider`，独立 `echarts` fence 用 `fromQuery` 引用它，表格与图并存。两者都不改只读与行数上限，都不引入函数执行面。详见 [[concepts/query-chart-binding]]。
+
 ## Related Concepts
 
+- [[concepts/query-chart-binding]] — `view: echarts` 与 `fromQuery` 两种图表联动
+- [[concepts/chart-block-engine]] — 图表视图复用的引擎与生命周期
 - [[concepts/cypher-live-query-block]] — 共享同一内核的第三引擎（Cypher）
 - [[concepts/web-ui-features]] — 查询块挂载的 Markdown 渲染链（MermaidMarkdown 围栏分支）
 - [[concepts/markdown-pipeline]] — 文档渲染与序列化流水线；未分层 CSS 压过 Tailwind 工具类是 style 字段失效的根因
@@ -50,3 +58,5 @@ BACK-805 曾给三块回灌 `style` 字段（compact/striped/borderless），BAC
 - [[sources/back-802-cypher-query-block-core]] — 共享内核泛化与 Cypher 引擎接入
 - [[sources/back-805-query-block-style-presets]] — style 三预设引入（后被移除）
 - [[sources/back-811-remove-style-field-add-highlight]] — style 移除与查询源码语法高亮
+- [[sources/back-813-query-block-view-echarts]] — `view: echarts` 与 `chart` 字段
+- [[sources/back-814-echarts-from-query]] — `id` 字段与 `fromQuery` 引用
