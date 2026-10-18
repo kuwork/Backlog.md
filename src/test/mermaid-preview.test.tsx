@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "react-dom/server";
-import { MermaidAwarePre } from "../web/components/MermaidDiagram.tsx";
+import { ChartAwarePre } from "../web/components/MermaidDiagram.tsx";
 import { PasteAwareMDEditor } from "../web/components/PasteAwareMDEditor.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 
@@ -20,10 +20,9 @@ function preNode(language: string, code: string) {
 	};
 }
 
-const renderPre = (language: string, code: string) =>
-	renderToString(<MermaidAwarePre node={preNode(language, code)} />);
+const renderPre = (language: string, code: string) => renderToString(<ChartAwarePre node={preNode(language, code)} />);
 
-describe("MermaidAwarePre", () => {
+describe("ChartAwarePre", () => {
 	it("turns a mermaid fence into a diagram container", () => {
 		const html = renderPre("mermaid", "graph TD\nA --> B");
 
@@ -41,9 +40,9 @@ describe("MermaidAwarePre", () => {
 
 	it("leaves other code blocks untouched", () => {
 		const html = renderToString(
-			<MermaidAwarePre node={preNode("typescript", "const a = 1;")}>
+			<ChartAwarePre node={preNode("typescript", "const a = 1;")}>
 				<code className="language-typescript">const a = 1;</code>
-			</MermaidAwarePre>,
+			</ChartAwarePre>,
 		);
 
 		expect(html).toContain("<pre");

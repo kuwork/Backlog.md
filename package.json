@@ -116,6 +116,7 @@
     "d3-selection": "^3.0.0",
     "d3-transition": "^3.0.1",
     "d3-zoom": "^3.0.0",
+    "echarts": "^6.1.0",
     "get-port": "^7.2.0",
     "ryugraph-wasm": "25.9.2",
     "yaml": "^2.9.1"

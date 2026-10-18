@@ -10,7 +10,7 @@ import { apiClient } from "../lib/api";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
 import { registerTopicHighlight } from "../utils/topic-highlight";
 import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
-import { MermaidAwarePre } from "./MermaidDiagram";
+import { ChartAwarePre } from "./MermaidDiagram";
 import { TopicAutocompleteMenu } from "./TopicAutocompleteMenu";
 
 type MDEditorProps = React.ComponentProps<typeof MDEditor>;
@@ -107,7 +107,7 @@ export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 		const callerComponents = (previewOptions?.components ?? {}) as Record<string, unknown>;
 		return {
 			...previewOptions,
-			components: { ...callerComponents, pre: MermaidAwarePre },
+			components: { ...callerComponents, pre: ChartAwarePre },
 			// biome-ignore lint/suspicious/noExplicitAny: library types narrow `components` per element
 		} as any;
 	}, [previewOptions]);

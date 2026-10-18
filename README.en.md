@@ -168,6 +168,8 @@ After the code is done:
 
 * 🗄️ **Live SQL query blocks** -- Embed read-only SQL queries in any Markdown body, rendered live from project-local SQLite / DuckDB / CSV / Excel data as table / list / value views, with export; a `cypher-query` fenced block runs read-only Cypher against the graph databases, with a force-directed graph view and `refresh: auto` hot updates
 
+* 📈 **Chart Blocks** -- Draw flowcharts and data charts from `mermaid` / `echarts` fenced blocks in any Markdown body, covering every built-in ECharts series and following the app's light/dark mode; a query block can render its result as a chart, and a chart can bind a named query block in the same document via `fromQuery`
+
 * 🔍 **Powerful search** -- fuzzy search across tasks, docs & decisions with `backlog search`
 
 * 📋 **Rich query commands** -- view, list, filter, or archive tasks with ease

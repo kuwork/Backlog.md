@@ -358,3 +358,54 @@ describe("SqliteQueryBlock after the style field was removed (BACK-811)", () => 
 		expect(container?.querySelector("td")?.className).toContain("py-1");
 	});
 });
+
+describe("SqliteQueryBlock echarts view (BACK-813)", () => {
+	const ECHARTS_RESULT = {
+		columns: ["day", "cnt"],
+		rows: [
+			["Mon", 3],
+			["Tue", 5],
+		],
+		truncated: false,
+		elapsedMs: 2,
+		dbPath: "backlog/databases/shop.sqlite",
+	};
+
+	const ECHARTS_BLOCK = [
+		"source: backlog/databases/shop.sqlite",
+		"sql: SELECT day, cnt FROM tasks GROUP BY day",
+		"view: echarts",
+		"chart: |",
+		"  {",
+		'    "type": "bar",',
+		'    "categoryField": "day",',
+		'    "valueField": "cnt"',
+		"  }",
+	].join("\n");
+
+	it("renders an echarts chart container instead of the table grid", async () => {
+		queryResult = ECHARTS_RESULT;
+		mount(ECHARTS_BLOCK);
+		await settle();
+
+		expect(queryCalls).toBe(1);
+		expect(container?.querySelector(".chart-block")).not.toBeNull();
+		expect(container?.querySelector("table")).toBeNull();
+	});
+
+	it("reports a missing chart field instead of crashing", async () => {
+		mount(["source: backlog/databases/shop.sqlite", "sql: SELECT name FROM people", "view: echarts"].join("\n"));
+		await settle();
+
+		expect(container?.textContent).toContain("需要 chart 字段");
+	});
+
+	it("reports an invalid chart JSON instead of crashing", async () => {
+		mount(
+			["source: backlog/databases/shop.sqlite", "sql: SELECT 1", "view: echarts", "chart: |", "  {not json"].join("\n"),
+		);
+		await settle();
+
+		expect(container?.textContent).toContain("chart 配置无效");
+	});
+});

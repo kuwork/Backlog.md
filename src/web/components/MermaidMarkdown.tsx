@@ -6,15 +6,16 @@ import { visit } from "unist-util-visit";
 import { DUCKDB_BLOCK_LANG } from "../../duckdb/block.ts";
 import { CYPHER_BLOCK_LANG } from "../../graph/block.ts";
 import { SQLITE_BLOCK_LANG } from "../../sqlite/block.ts";
+import { QueryResultProvider } from "../charts/query-result-registry";
+import { getChartEngine } from "../charts/registry";
 import { useImageLightbox } from "../contexts/ImageLightboxContext";
 import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
-import { useOptionalTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-target";
-import { renderMermaidIn } from "../utils/mermaid";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
+import ChartBlock from "./ChartBlock";
 import CypherQueryBlock from "./CypherQueryBlock";
 import DuckdbQueryBlock from "./DuckdbQueryBlock";
 import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
@@ -429,6 +430,10 @@ function PreBlock(props: React.ComponentProps<"pre">) {
 	if (!className.includes("language-")) {
 		return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
 	}
+	const lang = className.match(/language-([\w-]+)/)?.[1]?.toLowerCase();
+	if (lang && getChartEngine(lang)) {
+		return <ChartBlock lang={lang} source={textOf(child?.props?.children)} />;
+	}
 	if (className.includes(`language-${SQLITE_BLOCK_LANG}`)) {
 		return <SqliteQueryBlock block={textOf(child?.props?.children)} />;
 	}
@@ -460,7 +465,6 @@ export default function MermaidMarkdown({
 		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(source, wikilinkBasePath))
 		: sanitizeMarkdownSource(encodeLocalFileLinkDestinations(source));
 	const { t } = useI18n();
-	const theme = useOptionalTheme();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
 	const activeTagSet = useMemo(() => new Set((activeTags ?? []).map((tag) => tag.toLowerCase())), [activeTags]);
@@ -513,21 +517,8 @@ export default function MermaidMarkdown({
 		[],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
-	useEffect(() => {
-		if (!ref.current) return;
-
-		// Render mermaid diagrams after the markdown has been rendered
-		// Use requestAnimationFrame to ensure MDEditor has finished rendering
-		const frameId = requestAnimationFrame(() => {
-			if (ref.current) {
-				void renderMermaidIn(ref.current, { mode: theme });
-			}
-		});
-
-		return () => cancelAnimationFrame(frameId);
-	}, [safeSource, theme]);
-
+	// Charts (mermaid, echarts, …) are routed through ChartBlock from PreBlock,
+	// so no post-render DOM pass is needed here.
 	const LinkComponent = React.useCallback(
 		({
 			href,
@@ -779,23 +770,22 @@ export default function MermaidMarkdown({
 	);
 
 	return (
-		<div ref={ref} className="wmde-markdown">
-			<MDEditor.Markdown
-				// Re-mounting on theme change restores the original code blocks, which
-				// `renderMermaidIn` replaces with its own SVG containers.
-				key={theme}
-				source={safeSource}
-				components={{
-					a: LinkComponent,
-					pre: PreBlock,
-					img: LightboxImage,
-					video: VideoPlayer,
-					audio: AudioPlayer,
-					input: TaskCheckbox,
-				}}
-				rehypePlugins={rehypePlugins}
-				remarkPlugins={remarkPlugins}
-			/>
-		</div>
+		<QueryResultProvider>
+			<div ref={ref} className="wmde-markdown">
+				<MDEditor.Markdown
+					source={safeSource}
+					components={{
+						a: LinkComponent,
+						pre: PreBlock,
+						img: LightboxImage,
+						video: VideoPlayer,
+						audio: AudioPlayer,
+						input: TaskCheckbox,
+					}}
+					rehypePlugins={rehypePlugins}
+					remarkPlugins={remarkPlugins}
+				/>
+			</div>
+		</QueryResultProvider>
 	);
 }

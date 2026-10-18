@@ -1,7 +1,8 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useOptionalTheme } from "../contexts/ThemeContext";
+import { getChartEngine } from "../charts/registry";
 import { hasMermaidLanguageClass, type MermaidMode, renderMermaidDiagram } from "../utils/mermaid";
+import ChartBlock from "./ChartBlock";
 
 interface MermaidDiagramProps {
 	/** Fenced code block body, exactly as authored. */
@@ -46,7 +47,7 @@ function hastText(node: HastNode | undefined): string {
 	return node.children.map((child) => hastText(child)).join("");
 }
 
-interface MermaidAwarePreProps extends React.HTMLAttributes<HTMLPreElement> {
+interface ChartAwarePreProps extends React.HTMLAttributes<HTMLPreElement> {
 	/** hast node injected by react-markdown. */
 	node?: unknown;
 }
@@ -54,16 +55,23 @@ interface MermaidAwarePreProps extends React.HTMLAttributes<HTMLPreElement> {
 /**
  * `<pre>` override for react-markdown based previews (the Markdown editor's
  * "Live code" / "Preview code" panes), which render markdown themselves and never
- * go through {@link MermaidMarkdown}. Fenced ` ```mermaid ` blocks become diagrams;
+ * go through {@link MermaidMarkdown}. Any fenced block whose language is registered
+ * in the chart engine registry (mermaid, echarts, …) renders via ChartBlock;
  * everything else stays a plain code block.
  */
-export function MermaidAwarePre({ node, children, ...rest }: MermaidAwarePreProps) {
-	const mode = useOptionalTheme();
+export function ChartAwarePre({ node, children, ...rest }: ChartAwarePreProps) {
 	const codeNode = (node as HastNode | undefined)?.children?.[0];
-
-	if (codeNode?.tagName === "code" && hasMermaidLanguageClass(codeNode.properties?.className)) {
-		return <MermaidDiagram source={hastText(codeNode)} mode={mode} />;
+	if (codeNode?.tagName === "code") {
+		const className = codeNode.properties?.className;
+		const names = Array.isArray(className) ? className : typeof className === "string" ? className.split(/\s+/) : [];
+		const lang = names.map((n) => n.replace(/^language-/, "")).find((l) => getChartEngine(l));
+		if (lang) {
+			return <ChartBlock lang={lang} source={hastText(codeNode)} />;
+		}
 	}
 
 	return <pre {...rest}>{children}</pre>;
 }
+
+// Re-exported for callers that only care about mermaid detection.
+export { hasMermaidLanguageClass };

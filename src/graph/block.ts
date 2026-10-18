@@ -11,5 +11,5 @@ export const CYPHER_BLOCK_LANG = "cypher-query";
  * `sql` - so the query-block component needs no Cypher branch.
  */
 export function parseCypherQueryBlock(raw: string): QueryBlockParse {
-	return parseQueryBlock(raw, "query", ["table", "list", "value", "graph"], ["manual", "auto"]);
+	return parseQueryBlock(raw, "query", ["table", "list", "value", "graph", "echarts"], ["manual", "auto"]);
 }

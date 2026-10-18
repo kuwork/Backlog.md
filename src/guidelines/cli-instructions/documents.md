@@ -4,6 +4,8 @@ Documents live under `backlog/docs/` and are used for long-term project referenc
 
 Documents (like any markdown body rendered by the Web UI) can embed **live query blocks** — SQL blocks (`sqlite-query` / `duckdb-query`) that execute against project-local SQLite / DuckDB / CSV / XLSX data sources, and Cypher blocks (`cypher-query`) that execute against the project's graph databases — and render results in the reading view. See [Live SQL Query Blocks](#live-sql-query-blocks-sqlite-query--duckdb-query) and [Live Cypher Query Blocks](#live-cypher-query-blocks-cypher-query) below before writing one.
 
+Documents can also embed **Mermaid and ECharts chart blocks**: a `mermaid` fenced block for diagrams such as flowcharts, sequence diagrams, gantt charts and state machines, and an `echarts` fenced block for data charts, whose body is a standard ECharts `option` written as JSON. Every built-in series type is available from that one fence language — bar, line, pie, scatter, radar, heatmap, gauge, funnel, sankey, tree, treemap, sunburst, graph, candlestick, boxplot, themeRiver and more. Both render in the reading view and follow the app's light/dark mode. A query block can draw its own chart instead of a table with `view: echarts`, and an `echarts` block can bind a named query block with `fromQuery` — see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks) below before writing one.
+
 Documents also support **rich links**: in-document heading anchors for a table of contents, short aliased links to backlog items (`/task/506`, `/documentation/001`, `/decisions/042`, `/wiki/...`) including `:LINE` / `:START-END` suffixes that open the target scoped to specific lines, and project-relative code file links that open a file preview — see [Links in Documents](#links-in-documents) below before referencing other items or files.
 
 Always use Backlog.md CLI commands to create and update documents so IDs, frontmatter, paths, and search metadata stay consistent. Avoid editing document markdown files directly, except when adding complex content that cannot be safely passed through shell arguments (see [Complex content with backticks](#complex-content-with-backticks-or-shell-sensitive-characters) below).
@@ -184,7 +186,7 @@ An item link opens the item modal; a code file link opens the file preview. Add 
 
 `backlog doc search <query>` lists matches across the document tree with id, title, path, type, tags, score, and a follow-up `backlog doc view` command for each hit. Add `--plain` for one line per hit, or `--json` for a versioned envelope. Paging works as it does on `doc list`: `--limit <n>` caps the list silently, and `--max-count <n>`, `--skip <n>` and `--count` page it. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog doc search <query> --max-count <n> --skip <m>`; run that command for the following hits and stop when the footer has no `Next:` part. `--count` prints only how many documents match and cannot be combined with `--json`.
 
-### Live SQL Query Blocks (`sqlite-query` / `duckdb-query`)
+### Live SQL Query Blocks: `sqlite-query` / `duckdb-query`
 
 Any markdown body rendered by the Web UI (documents, tasks, decisions, memos, wiki pages) can embed a **live** SQL query with a `sqlite-query` or `duckdb-query` fenced code block. In the reading view the block executes against the data source and renders the result; in the editor it stays raw source and never executes. A `cypher-query` block does the same for the project's graph databases — see [Live Cypher Query Blocks](#live-cypher-query-blocks-cypher-query) below.
 
@@ -205,7 +207,9 @@ Fields are top-level `key: value` pairs; use the `sql: |` block scalar for multi
 |-------|----------|---------|-------|
 | `source` | yes | — | Project-root-relative path to the data source |
 | `sql` | yes | — | A single `SELECT` or `WITH ... SELECT` statement |
-| `view` | no | `table` | `table` (grid) / `list` (key-value per record) / `value` (first cell of the first row, inline — good for a single metric) |
+| `view` | no | `table` | `table` (grid) / `list` (key-value per record) / `value` (first cell of the first row, inline — good for a single metric) / `echarts` (draw the result as a chart — see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks)) |
+| `chart` | no | — | `view: echarts` only: the JSON chart config (see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks)) |
+| `id` | no | — | Optional name a standalone `echarts` block references via `fromQuery` (see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks)) |
 | `refresh` | no | `manual` | Manual refresh only; no auto/scheduled refresh |
 | `copy_to` | no | — | `duckdb-query` only: project-relative `.csv` / `.xlsx` target that enables the write path (see below) |
 
@@ -258,7 +262,7 @@ sql: |
 
 The server wraps the `SELECT` in `COPY (<sql>) TO '<target>'` (`.csv` → `HEADER TRUE`; `.xlsx` → `FORMAT XLSX, HEADER TRUE`), overwrites the target idempotently, and the block shows "written to: <path>". The written file stays inside the project, so it can itself become the `source` of another query block.
 
-#### Live Cypher Query Blocks (`cypher-query`)
+#### Live Cypher Query Blocks: `cypher-query`
 
 Any markdown body rendered by the Web UI can also embed a **live** Cypher query with a `cypher-query` fenced code block, executed against the project's graph databases — the `default` corpus graph (tasks, docs, decisions, memos and their dependencies / links) or a user database created with `backlog graph create`. In the reading view the block executes and renders the result; in the editor it stays raw source and never executes.
 
@@ -280,7 +284,9 @@ The grammar is the same tiny YAML subset with two deliberate differences: the st
 |-------|----------|---------|-------|
 | `source` | yes | — | Registered graph database name; an unknown name fails the block |
 | `query` | yes | — | A single read-only statement: `MATCH` / `RETURN` / `WITH` / `CALL` |
-| `view` | no | `table` | `table` / `list` / `value` as above, plus `graph` — a force-directed node/relationship drawing rendered by the same pane as the Databases page, reusing that database's legend configuration |
+| `view` | no | `table` | `table` / `list` / `value` as above, plus `graph` — a force-directed node/relationship drawing rendered by the same pane as the Databases page, reusing that database's legend configuration — and `echarts` (draw the result as a chart — see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks)) |
+| `chart` | no | — | `view: echarts` only: the JSON chart config (see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks)) |
+| `id` | no | — | Optional name a standalone `echarts` block references via `fromQuery` (see [Mermaid and ECharts Chart Blocks](#mermaid-and-echarts-chart-blocks)) |
 | `refresh` | no | `manual` | `manual`, or `auto` — re-run when a graph-updated broadcast names this block's database (one re-run per burst) |
 There is no `copy_to` on a `cypher-query` block — the graph engine is read-only, full stop.
 
@@ -308,6 +314,195 @@ Rules (fail-closed — a violation renders an error inside the block and never a
 - Toolbar actions: refresh, show/hide query, copy as Markdown, export CSV. No pagination, no `copy_to`.
 
 Because these blocks (SQL and Cypher alike) contain backticks, do not pass them through `--content` / `--append-content` — the shell would try to execute the fence text. Use the [complex content workflow](#complex-content-with-backticks-or-shell-sensitive-characters): create the document with `backlog doc create`, then write the fenced blocks into the file directly, after the frontmatter.
+
+### Mermaid and ECharts Chart Blocks
+
+Any markdown body rendered by the Web UI can embed a diagram or data chart with a fenced
+code block. Two fence languages are supported, both rendered through the same `ChartBlock`
+engine; the chart follows the app's light/dark mode automatically.
+
+#### Mermaid
+
+Write [Mermaid](https://mermaid.js.org) syntax inside a ` ```mermaid ` block — flowcharts,
+sequence diagrams, gantt charts, state machines, and so on. This is the same engine used
+everywhere else in the app, so the result looks identical.
+
+````markdown
+```mermaid
+graph TD
+  A[Parse] --> B[Validate]
+  B --> C{Render?}
+  C -->|yes| D[ChartBlock]
+  C -->|no| E[Plain code]
+```
+````
+
+#### ECharts
+
+Write a standard ECharts [`option`](https://echarts.apache.org/en/option.html) as **JSON**
+inside a ` ```echarts ` block. Every built-in series type is available from this single
+fence language — no custom dialect to learn. See doc-31 ("ECharts 图表演示", under
+`docs/PRDS/echarts/`) for a live block for each type, plus the `view: echarts` and `fromQuery`
+forms.
+
+````markdown
+```echarts
+{
+  "title": { "text": "Tasks completed by week" },
+  "tooltip": {},
+  "xAxis": { "type": "category", "data": ["W1", "W2", "W3", "W4"] },
+  "yAxis": { "type": "value" },
+  "series": [
+    { "name": "done", "type": "bar", "data": [10, 18, 25, 33] }
+  ]
+}
+```
+````
+
+- **Theme**: follows the app's light/dark mode automatically — nothing to configure.
+- **Supported series** (set `series[].type`): `bar`, `line`, `pie`, `scatter`, `effectScatter`,
+  `radar`, `heatmap`, `gauge`, `funnel`, `sankey`, `tree`, `treemap`, `sunburst`, `graph`,
+  `map`, `parallel`, `candlestick`, `boxplot`, `lines`, `pictorialBar`, `themeRiver`,
+  `custom`, `chord` (ECharts 6). Combine several series (e.g. a `bar` + a `line`) by adding
+  more entries to `series`.
+- **Coordinate systems**: cartesian (`xAxis`/`yAxis`) is the default; `polar`, `singleAxis`
+  (required by `themeRiver`, and it must be `type: "time"`), `calendar`, `parallel` and `geo`
+  are registered too. A series whose coordinate component is missing throws and leaves the
+  block blank, so copy the shapes from doc-31 rather than hand-assembling them.
+- **JSON only — no functions**: the option is parsed with `JSON.parse`; function expressions
+  (e.g. an axis `formatter`) are not evaluated. This keeps the render free of any scripting
+  surface. Use ECharts template strings (e.g. `"{b}: {c}"`) for dynamic text instead.
+- **Invalid input falls back gracefully**: if the JSON does not parse (or names an unknown
+  series `type`), the block renders as a plain code block instead of crashing.
+
+#### Charts from a query-block
+
+A query block can draw its own chart instead of a table: add `view: echarts` and a `chart` field
+holding JSON. It is the query-block's version of the `value` view — the result *is* the chart, so no
+separate ` ```echarts ` block or visible data-source block is needed. It works for `sqlite-query`,
+`duckdb-query`, and `cypher-query` alike.
+
+**Simple mapping form** — name the category and value columns:
+
+````markdown
+```sqlite-query
+source: backlog/databases/tasks.sqlite
+view: echarts
+chart: |
+  { "type": "bar", "categoryField": "day", "valueField": "cnt", "title": "Tasks per day" }
+sql: |
+  SELECT day, COUNT(*) AS cnt FROM tasks GROUP BY day ORDER BY day
+```
+````
+
+`type` is any ECharts series type (`bar`, `line`, `pie`, `scatter`, …). For `pie`, `categoryField`
+is the slice name and `valueField` is the slice value; for `scatter`, the two fields become the
+x/y coordinates; everything else draws a category x-axis plus a value y-axis. Optional `name`
+labels the series (and its legend), and `categoryAxisName` / `valueAxisName` label the axes.
+
+**Advanced full form** — write a normal ECharts `option` under `chart.option` and reference this
+query's own result with two placeholders:
+
+| Placeholder | Injects |
+|---|---|
+| `@result` | the whole result as an array of column-keyed objects (`[{day, cnt}, …]`) |
+| `@result:<column>` | that column's values as a flat array |
+
+````markdown
+```sqlite-query
+source: backlog/databases/tasks.sqlite
+view: echarts
+chart: |
+  {
+    "option": {
+      "title": { "text": "Done vs todo" },
+      "tooltip": { "trigger": "axis" },
+      "legend": { "data": ["done", "todo"] },
+      "xAxis": { "type": "category", "data": "@result:day" },
+      "yAxis": { "type": "value" },
+      "series": [
+        { "name": "done", "type": "bar", "data": "@result:done" },
+        { "name": "todo", "type": "line", "data": "@result:todo" }
+      ]
+    }
+  }
+sql: |
+  SELECT day, done, todo FROM tasks GROUP BY day
+```
+````
+
+Using `dataset.source: "@result"` injects the whole table; declare which column is which axis with
+`series.encode` (e.g. `{ "x": "day", "y": "cnt" }`) — the dataset fills the data, `encode` maps the
+columns to axes.
+
+- **Which form**: the advanced form is used when `chart.option` is present, the simple form
+  otherwise. The two are mutually exclusive.
+- **Placeholders match exactly**: a string value that is exactly `@result` or `@result:<column>` is
+  replaced; anything else (including `@result:<column>` embedded in longer text) is left as-is. An
+  unknown `@result:<column>` yields an empty array.
+- **Still JSON-only**: `chart` is parsed with `JSON.parse`; no functions are executed. An invalid
+  `chart` (bad JSON, or a simple form missing `type` / `categoryField` / `valueField`) shows an
+  inline error inside the block instead of crashing.
+- **`chart` shape**: either a single-line JSON string (`chart: {...}`) or a block scalar
+  (`chart: |`); multi-line JSON must be indented under `chart: |` (standard YAML block-scalar rules).
+
+#### Referencing a named query from an `echarts` block: `fromQuery`
+
+The `view: echarts` form above draws the query's own result. To keep the query block visible (as a
+table) and draw one or more separate charts from it, give the query block an `id` and reference that
+id from a standalone ` ```echarts ` block with `fromQuery`.
+
+**1. Name the query block** with an `id` (works for all three query-block types):
+
+````markdown
+```sqlite-query
+id: tasks-by-day
+source: backlog/databases/tasks.sqlite
+sql: SELECT day, done, todo FROM tasks GROUP BY day
+```
+````
+
+**2. Reference it from an `echarts` block** with `fromQuery`. Whole-dataset form uses
+`dataset.source` plus `encode`:
+
+````markdown
+```echarts
+{
+  "dataset": { "fromQuery": "tasks-by-day" },
+  "xAxis": { "type": "category" },
+  "yAxis": { "type": "value" },
+  "series": [{ "type": "bar", "encode": { "x": "day", "y": "done" } }]
+}
+```
+````
+
+Series-level field mapping is a shorthand — it fills the series `data` from `valueField` and, when
+the option has no `xAxis`, adds a category axis from `categoryField`:
+
+````markdown
+```echarts
+{
+  "series": [{ "type": "line", "fromQuery": "tasks-by-day", "categoryField": "day", "valueField": "done" }]
+}
+```
+````
+
+- **Scope**: `fromQuery` resolves only against query blocks in the **same document** — the registry
+  is mounted per rendered body, so an `id` can be reused in another document without colliding.
+  Cross-document references are not supported.
+- **Duplicate ids**: two query blocks sharing an `id` in one document collide; the later result
+  overwrites the earlier and a warning is logged to the console.
+- **Lifecycle**: a chart that uses `fromQuery` re-renders when its query re-runs (Refresh, or
+  `refresh: auto`); before the query has produced a result it shows a "未找到查询 id" message and
+  updates as soon as the result arrives.
+- **Still JSON-only**: `fromQuery` is resolved by data substitution on the parsed option — no
+  function is executed. An `id` that does not exist renders the message inline instead of crashing.
+
+> Because these blocks contain JSON (and sometimes backticks), do not pass them through
+> `--content` / `--append-content` — the shell would mangle the fence text. Use the
+> [complex content workflow](#complex-content-with-backticks-or-shell-sensitive-characters):
+> create the document with `backlog doc create`, then write the fenced blocks into the file
+> directly, after the frontmatter.
 
 ### Key Rules
 

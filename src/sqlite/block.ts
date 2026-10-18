@@ -9,7 +9,7 @@
  * `duckdb-query` blocks reuse it through `parseSqliteQueryBlock` / `parseDuckdbQueryBlock`.
  */
 
-export type QueryView = "table" | "list" | "value" | "graph";
+export type QueryView = "table" | "list" | "value" | "graph" | "echarts";
 
 export interface QueryBlock {
 	/** Database path as written in the block; resolved later (see * /paths.ts). */
@@ -23,6 +23,18 @@ export interface QueryBlock {
 	 * it - the SQLite explorer rejects a block that sets it. The server gates and performs the copy.
 	 */
 	copyTo?: string;
+	/**
+	 * Optional ECharts chart config (JSON) for `view: echarts`. The block body carries it as a
+	 * `chart:` field; the value is the raw text (block scalar or inline JSON) the renderer parses.
+	 * Absent unless the block declares `view: echarts`.
+	 */
+	chart?: string;
+	/**
+	 * Optional stable id for referencing this block's result from a standalone `echarts` block's
+	 * `fromQuery` (Approach A, BACK-814). Scoped to the containing document; a block without an
+	 * `id` is never registered, so its behaviour is unchanged.
+	 */
+	id?: string;
 }
 
 export type QueryBlockParse = { ok: true; block: QueryBlock } | { ok: false; error: string };
@@ -41,7 +53,7 @@ function fail(error: string): QueryBlockParse {
 }
 
 /** The views every engine accepts. `graph` is the Cypher explorer's alone (BACK-803). */
-const DEFAULT_VIEWS: readonly QueryView[] = ["table", "list", "value"];
+const DEFAULT_VIEWS: readonly QueryView[] = ["table", "list", "value", "echarts"];
 
 /**
  * Parse one block body. `statementField` is the name of the statement field: `sql` for the SQL
@@ -56,7 +68,7 @@ export function parseQueryBlock(
 	views: readonly QueryView[] = DEFAULT_VIEWS,
 	refreshModes: readonly string[] = ["manual"],
 ): QueryBlockParse {
-	const knownFields: readonly string[] = ["source", statementField, "view", "refresh", "copy_to"];
+	const knownFields: readonly string[] = ["id", "source", statementField, "view", "refresh", "copy_to", "chart"];
 	const lines = raw.replace(/\r\n?/g, "\n").split("\n");
 	const fields = new Map<string, string>();
 	let i = 0;
@@ -126,10 +138,12 @@ export function parseQueryBlock(
 		return fail(`refresh 目前只支持 ${refreshModes.join(" / ")}，收到 "${refresh}"。`);
 
 	const copyTo = fields.get("copy_to")?.trim() ?? undefined;
+	const chart = fields.get("chart")?.trim() || undefined;
+	const id = fields.get("id")?.trim() || undefined;
 
 	return {
 		ok: true,
-		block: { source, sql, view: view as QueryView, refresh, copyTo },
+		block: { source, sql, view: view as QueryView, refresh, copyTo, chart, id },
 	};
 }
 

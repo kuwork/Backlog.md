@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { parseQueryBlock, type QueryBlock, type QueryBlockParse } from "../../sqlite/block.ts";
 import { cellToMarkdown, resultToMarkdownTable } from "../../sqlite/markdown.ts";
+import EchartsFromResult from "../charts/EchartsFromResult";
+import { useQueryResultRegistry } from "../charts/query-result-registry";
 import type { SqliteCell, SqliteQueryResult } from "../lib/api";
 import { apiClient } from "../lib/api";
 import { saveTextFile } from "../lib/save-file";
@@ -250,6 +252,10 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 	const dict = engine.dict;
 	const parseBlock = engine.parse ?? parseQueryBlock;
 	const parsed = useMemo(() => parseBlock(block), [block, parseBlock]);
+	// Approach A (BACK-814): a block with an `id` publishes its result so an `echarts` block in the
+	// same document can reference it via `fromQuery`. No Provider -> no-op, behaviour unchanged.
+	const registry = useQueryResultRegistry();
+	const setQueryResult = registry?.set;
 	/** Pagination is a SQL-only browser; the Cypher engine treats its row cap as the whole answer. */
 	const allowPagination = engine.actions.pagination;
 	const [nonce, setNonce] = useState(0);
@@ -281,7 +287,9 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				pageSize: pagination ? pageSize : undefined,
 			})
 			.then((result) => {
-				if (!cancelled) setState({ status: "ready", result });
+				if (cancelled) return;
+				setState({ status: "ready", result });
+				if (parsed.ok && parsed.block.id) setQueryResult?.(parsed.block.id, result);
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return;
@@ -290,7 +298,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		return () => {
 			cancelled = true;
 		};
-	}, [parsed, nonce, engine, pagination, page, pageSize]);
+	}, [parsed, nonce, engine, pagination, page, pageSize, setQueryResult]);
 
 	// Load the query config once (memoized) so `defaultPagination` can open the block in paginated
 	// mode and the page size matches what the user set in Settings.
@@ -363,6 +371,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				pageSize: pagination ? pageSize : undefined,
 			})
 			.then((result) => {
+				if (parsed.ok && parsed.block.id) setQueryResult?.(parsed.block.id, result);
 				setState((current) =>
 					current.status === "ready" && resultFingerprint(current.result) === resultFingerprint(result)
 						? current
@@ -373,7 +382,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				// A failed live re-run (graph service restarting, database dropped) leaves the current
 				// result untouched: the next change notice tries again.
 			});
-	}, [parsed, engine, pagination, page, pageSize]);
+	}, [parsed, engine, pagination, page, pageSize, setQueryResult]);
 
 	const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	useEffect(() => {
@@ -579,6 +588,14 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 					</div>
 				))}
 			</div>
+		);
+	} else if (view === "echarts") {
+		// Tight coupling (doc-30 §8.3.B): the block is its own chart, no separate visible data source
+		// needed. Builds the option from `chart` and reuses the echarts engine's load/render/dispose.
+		body = parsed.block.chart ? (
+			<EchartsFromResult result={state.result} chart={parsed.block.chart} />
+		) : (
+			<p className="text-red-600 dark:text-red-400">view: echarts 需要 chart 字段（JSON 形式的图表配置）。</p>
 		);
 	} else {
 		body = renderTable();
