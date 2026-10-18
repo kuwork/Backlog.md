@@ -2,7 +2,7 @@
 title: SQL 查询块
 labels: [usermanual]
 created_date: 2026-10-16 01:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-18 22:00
 ---
 
 
@@ -27,7 +27,7 @@ sql: |
 |------|------|------|------|
 | `source` | 是 | — | 数据源路径，**项目相对路径**（见下） |
 | `sql` | 是 | — | 查询语句，支持 `sql: |` 多行写法 |
-| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值） |
+| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值）/ `echarts`（直接出图，见 [图表块](06-图表块.md)） |
 | `refresh` | 否 | `manual` | 仅支持手动刷新；自动/定时刷新不支持 |
 
 ## 安全约束与只读保证
