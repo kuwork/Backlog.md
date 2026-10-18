@@ -2,7 +2,7 @@
 title: Cypher 查询块
 labels: [usermanual]
 created_date: 2026-10-18 01:00
-updated_date: 2026-10-18 01:00
+updated_date: 2026-10-18 22:00
 ---
 
 
@@ -25,7 +25,7 @@ query: |
 |------|------|------|------|
 | `source` | 是 | — | **数据库注册名**（`backlog graph list` 列出的名称），不是文件路径 |
 | `query` | 是 | — | 查询语句，支持 `query: \|` 多行写法；必须只读 |
-| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值）/ `graph`（力导向图） |
+| `view` | 否 | `table` | `table`（表格）/ `list`（逐行字段列表）/ `value`（单值）/ `graph`（力导向图）/ `echarts`（直接出图，见 [图表块](06-图表块.md)） |
 | `refresh` | 否 | `manual` | `manual`（手动）/ `auto`（图数据变化时自动重跑） |
 
 未知字段一律报错并列出可用字段，不会静默忽略。
