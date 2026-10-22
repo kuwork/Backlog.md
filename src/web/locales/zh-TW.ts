@@ -1308,10 +1308,10 @@ export const defaultStateMachine: StatusDefinition[] = [
 		next: [
 			{
 				to: "In Review",
-				when: "實現完成，diff / 測試 / 驗收說明已就緒",
+				when: "實現完成",
 				ai: "allowed_if",
-				if: "finalSummary 非空",
-				requires: "finalSummary 非空",
+				if: "已按照 task-finalization 完成收尾準備，並完成任務資訊補充",
+				requires: "任務檔案已依 task-finalization 補充",
 			},
 			{ to: "Planning", when: "實施中發現計畫需要調整", ai: "allowed" },
 		],
@@ -1325,6 +1325,7 @@ export const defaultStateMachine: StatusDefinition[] = [
 				when: "使用者驗收通過",
 				ai: "allowed_if",
 				if: "使用者已在對話或評論中明確驗收通過",
+				requires: "任務檔案已依 task-finalization 核實完整",
 			},
 			{ to: "In Progress", when: "驗收未通過，需返工", ai: "propose", evidence: "comments（寫明返工理由）" },
 		],

@@ -1348,10 +1348,10 @@ export const defaultStateMachine: StatusDefinition[] = [
 		next: [
 			{
 				to: "In Review",
-				when: "Implementation is complete; diff / tests / acceptance notes are ready",
+				when: "Implementation is done",
 				ai: "allowed_if",
-				if: "finalSummary is not empty",
-				requires: "finalSummary is not empty",
+				if: "the task-finalization handoff steps are complete and task info is filled in",
+				requires: "the task file is complete per task-finalization",
 			},
 			{ to: "Planning", when: "The plan needs adjustment discovered during implementation", ai: "allowed" },
 		],
@@ -1365,6 +1365,7 @@ export const defaultStateMachine: StatusDefinition[] = [
 				when: "The user has accepted the work",
 				ai: "allowed_if",
 				if: "the user has explicitly accepted the work in conversation or comments",
+				requires: "the task file is verified complete per task-finalization",
 			},
 			{
 				to: "In Progress",

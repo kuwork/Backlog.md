@@ -1,6 +1,6 @@
 ## Task Finalization Guide
 
-Use this guide when implementation is complete and you are ready to hand off the task.
+Use this guide when implementation is done and you are ready to hand off the task.
 
 ### Finalization Workflow
 

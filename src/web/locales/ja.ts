@@ -1344,10 +1344,10 @@ export const defaultStateMachine: StatusDefinition[] = [
 		next: [
 			{
 				to: "In Review",
-				when: "実装が完了し、diff / テスト / 受入説明が準備できた",
+				when: "実装が完了",
 				ai: "allowed_if",
-				if: "finalSummary が空でない",
-				requires: "finalSummary が空でない",
+				if: "task-finalization の引き継ぎ手順が完了し、タスク情報が記入済み",
+				requires: "task-finalization に基づきタスクファイルが完全である",
 			},
 			{ to: "Planning", when: "実施中に計画の調整が必要と判明", ai: "allowed" },
 		],
@@ -1361,6 +1361,7 @@ export const defaultStateMachine: StatusDefinition[] = [
 				when: "ユーザーが作業を受け入れた",
 				ai: "allowed_if",
 				if: "ユーザーが会話またはコメントで作業を明示的に受け入れている",
+				requires: "task-finalization に基づきタスクファイルが完全であることを確認",
 			},
 			{
 				to: "In Progress",
