@@ -1006,9 +1006,16 @@ function AppContent() {
 	}, [tasks]);
 
 	useEffect(() => {
+		let closedByUs = false;
+		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+		let currentWs: WebSocket | null = null;
+		// The first open is the initial connect (data already loaded or loading); only reconnects
+		// after an idle/network drop need to re-pull what the client missed while disconnected.
+		let connectedOnce = false;
+		const RECONNECT_DELAY_MS = 2000;
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-		const ws = new WebSocket(`${protocol}//${window.location.host}`);
-		ws.onmessage = (event) => {
+
+		const handleMessage = (event: MessageEvent) => {
 			if (event.data === "tasks-updated") {
 				void refreshData();
 			} else if (event.data === "milestones-updated") {
@@ -1076,7 +1083,45 @@ function AppContent() {
 				}
 			}
 		};
-		return () => ws.close();
+
+		// After a reconnect, pull every entity scope so broadcasts missed during the gap are recovered.
+		const catchUpAfterReconnect = () => {
+			void refreshData();
+			void refreshMilestoneData();
+			void refreshDocumentsData();
+			void refreshDecisionsData();
+			void refreshWikisData();
+		};
+
+		const connect = () => {
+			if (closedByUs) return;
+			const ws = new WebSocket(`${protocol}//${window.location.host}`);
+			currentWs = ws;
+			ws.onmessage = handleMessage;
+			ws.onopen = () => {
+				if (connectedOnce) catchUpAfterReconnect();
+				connectedOnce = true;
+			};
+			ws.onclose = () => {
+				currentWs = null;
+				if (closedByUs) return;
+				reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
+			};
+			ws.onerror = () => {
+				// The browser fires close right after error; let onclose drive the reconnect.
+				try {
+					ws.close();
+				} catch {}
+			};
+		};
+
+		connect();
+
+		return () => {
+			closedByUs = true;
+			if (reconnectTimer) clearTimeout(reconnectTimer);
+			currentWs?.close();
+		};
 	}, [
 		refreshData,
 		refreshMilestoneData,

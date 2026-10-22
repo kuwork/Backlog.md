@@ -80,6 +80,12 @@ interface RenameReconciliation<T> {
 
 type IdentityLookup<T> = { state: "found"; item: T } | { state: "absent" } | { state: "incomplete" };
 
+/** Cheap per-file signature (mtime + size) used by the periodic self-heal scan. */
+interface FileFingerprint {
+	mtimeMs: number;
+	size: number;
+}
+
 const CONTENT_RETRY_ATTEMPTS = 12;
 const CONTENT_RETRY_DELAY_MS = 75;
 
@@ -141,12 +147,24 @@ export class ContentStore {
 	private taskBatchDepth = 0;
 	private pendingTaskNotification = false;
 	private localTaskRefreshPromise: Promise<void> | null = null;
+	private rescanTimer: ReturnType<typeof setInterval> | null = null;
+	private watcherRebindTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Per-collection mtime/size fingerprints, keyed by `${collection}:${absolutePath}`. */
+	private readonly fileFingerprints = new Map<string, FileFingerprint>();
+	/** Directory relative-path sets for doc/wiki trees, reconciled by existence only.
+	 *  null = not seeded yet; the first scan seeds silently instead of broadcasting. */
+	private readonly directorySets: { documents: Set<string> | null; wikis: Set<string> | null } = {
+		documents: null,
+		wikis: null,
+	};
 
 	private attachWatcherErrorHandler(watcher: FSWatcher, context: string): void {
 		watcher.on("error", (error) => {
-			if (process.env.DEBUG) {
-				console.warn(`Watcher error (${context})`, error);
-			}
+			// A watcher error can mean the underlying handle died; silently swallowing it used to
+			// leave the cache blind until a restart. Surface it and schedule a rebind so event-driven
+			// watching recovers (the periodic scan is the independent safety net).
+			console.warn(`ContentStore watcher error (${context}); scheduling a watcher rebind`, error);
+			this.scheduleWatcherRebind();
 		});
 	}
 
@@ -508,6 +526,11 @@ export class ContentStore {
 		this.closed = true;
 		this.invalidateRootWatchers();
 		this.stopConfigWatcher();
+		this.stopPeriodicRescan();
+		if (this.watcherRebindTimer) {
+			clearTimeout(this.watcherRebindTimer);
+			this.watcherRebindTimer = null;
+		}
 		if (this.restoreFilesystemPatch) {
 			this.restoreFilesystemPatch();
 			this.restoreFilesystemPatch = undefined;
@@ -641,6 +664,10 @@ export class ContentStore {
 
 		this.initialized = true;
 		this.notify("ready");
+		// Capture a fingerprint baseline before any external deletion can occur, so the first
+		// periodic scan can detect removals instead of silently seeding an already-stale view.
+		await this.seedFingerprintBaseline();
+		this.startPeriodicRescan();
 	}
 
 	private async setupWatchers(): Promise<void> {
@@ -1638,6 +1665,314 @@ export class ContentStore {
 			if (recheck.timer) clearTimeout(recheck.timer);
 		}
 		this.deferredRechecks.clear();
+	}
+
+	/**
+	 * Background self-heal: the in-memory cache relies on fs.watch, which drops events on Windows
+	 * rm, idle event coalescing/overflow, or a silently dead listener - leaving the cache stale
+	 * until a restart. A periodic fingerprint scan catches anything the watcher missed so the
+	 * server reconciles within BACKLOG_RESCAN_INTERVAL_MS without a restart.
+	 */
+	private startPeriodicRescan(): void {
+		if (!this.enableWatchers || this.closed) return;
+		const intervalMs = this.parseRescanInterval();
+		if (intervalMs <= 0) return;
+		this.rescanTimer = setInterval(() => {
+			void this.runBackgroundReconciliation().catch((error) => {
+				if (process.env.DEBUG) {
+					console.error("ContentStore periodic rescan failed", error);
+				}
+			});
+		}, intervalMs);
+		this.rescanTimer.unref?.();
+	}
+
+	private stopPeriodicRescan(): void {
+		if (this.rescanTimer) {
+			clearInterval(this.rescanTimer);
+			this.rescanTimer = null;
+		}
+	}
+
+	private parseRescanInterval(): number {
+		const raw = Number(process.env.BACKLOG_RESCAN_INTERVAL_MS);
+		if (!Number.isFinite(raw)) return 10000;
+		return Math.max(1000, raw);
+	}
+
+	private async runBackgroundReconciliation(): Promise<void> {
+		const epoch = this.rootWatcherEpoch;
+		if (this.closed || !this.initialized || !this.isRootWatcherCurrent(epoch)) return;
+		await this.reconcileFromFingerprints(epoch);
+		await this.reconcileDirectories(epoch);
+		// Heartbeat so a quiet server console still shows the self-heal scan is alive. On a TTY it
+		// rewrites one line in place (\r + clear-line) instead of stacking a line per interval;
+		// piped logs keep one timestamped line per scan.
+		const heartbeat = `ContentStore periodic rescan completed at ${new Date().toISOString()}`;
+		if (process.stdout.isTTY) {
+			process.stdout.write(`\r\x1b[K${heartbeat}`);
+		} else {
+			console.log(heartbeat);
+		}
+	}
+
+	/**
+	 * Cheap mtime/size fingerprint gate: stat every tracked file and only fire the (already
+	 * fingerprint-aware) full disk reload for a collection whose signature actually changed. This
+	 * reuses the battle-tested merge + broadcast path, so watcher-missed adds/edits/deletes are
+	 * detected within one scan without clobbering in-process upserts.
+	 */
+	private async reconcileFromFingerprints(epoch: number): Promise<void> {
+		if (!this.isRootWatcherCurrent(epoch)) return;
+		await Promise.all([
+			this.scanCollectionFingerprints(
+				epoch,
+				"tasks",
+				[this.filesystem.tasksDir, this.filesystem.completedDir],
+				"**/*.md",
+				async () => this.refreshTasksFromDisk(undefined, epoch),
+			),
+			this.scanCollectionFingerprints(epoch, "decisions", [this.filesystem.decisionsDir], "**/*.md", async () =>
+				this.refreshDecisionsFromDisk(undefined, epoch),
+			),
+			this.scanCollectionFingerprints(epoch, "documents", [this.filesystem.docsDir], "**/*.md", async () =>
+				this.refreshDocumentsFromDisk(undefined, epoch),
+			),
+			this.scanCollectionFingerprints(
+				epoch,
+				"wikis",
+				[this.wikiRoot()],
+				"**/*.md",
+				async () => this.refreshWikisFromDisk(),
+				(relativePath) => relativePath.includes("wiki_output"),
+			),
+		]);
+	}
+
+	/**
+	 * Captures the current mtime/size fingerprint of every content file exactly once, at startup,
+	 * mirroring the collection roots the periodic scan follows. Without this baseline a deletion
+	 * that happens before the first background scan is invisible: the scan only seeds new
+	 * fingerprints and can never prove a file used to exist. Seeding here closes that gap so the
+	 * next scan can drive an explicit removal.
+	 */
+	private async seedFingerprintBaseline(): Promise<void> {
+		const seeds: Array<{
+			collection: "tasks" | "decisions" | "documents" | "wikis";
+			rootDirs: string[];
+			pattern: string;
+			exclude?: (relativePath: string) => boolean;
+		}> = [
+			{ collection: "tasks", rootDirs: [this.filesystem.tasksDir, this.filesystem.completedDir], pattern: "**/*.md" },
+			{ collection: "decisions", rootDirs: [this.filesystem.decisionsDir], pattern: "**/*.md" },
+			{ collection: "documents", rootDirs: [this.filesystem.docsDir], pattern: "**/*.md" },
+			{
+				collection: "wikis",
+				rootDirs: [this.wikiRoot()],
+				pattern: "**/*.md",
+				exclude: (relativePath) => relativePath.includes("wiki_output"),
+			},
+		];
+		await Promise.all(
+			seeds.map(async (seed) => {
+				const prefix = `${seed.collection}:`;
+				for (const rootDir of seed.rootDirs) {
+					const dirInfo = await stat(rootDir).catch(() => null);
+					if (!dirInfo?.isDirectory()) continue;
+					const entries = await Array.fromAsync(
+						new Bun.Glob(seed.pattern).scan({ cwd: rootDir, followSymlinks: true }),
+					);
+					for (const relativePath of entries) {
+						if (seed.exclude?.(relativePath)) continue;
+						const absolutePath = join(rootDir, relativePath);
+						const info = await stat(absolutePath).catch(() => null);
+						if (!info?.isFile()) continue;
+						this.fileFingerprints.set(`${prefix}${absolutePath}`, { mtimeMs: info.mtimeMs, size: info.size });
+					}
+				}
+			}),
+		);
+	}
+
+	private async scanCollectionFingerprints(
+		epoch: number,
+		collection: "tasks" | "decisions" | "documents" | "wikis",
+		rootDirs: string[],
+		pattern: string,
+		refresh: () => Promise<void>,
+		exclude?: (relativePath: string) => boolean,
+	): Promise<void> {
+		if (!this.isRootWatcherCurrent(epoch)) return;
+		const prefix = `${collection}:`;
+		const next = new Map<string, FileFingerprint>();
+		let dirty = false;
+		try {
+			for (const rootDir of rootDirs) {
+				const dirInfo = await stat(rootDir).catch(() => null);
+				if (!dirInfo?.isDirectory()) continue;
+				const entries = await Array.fromAsync(new Bun.Glob(pattern).scan({ cwd: rootDir, followSymlinks: true }));
+				for (const relativePath of entries) {
+					if (exclude?.(relativePath)) continue;
+					const absolutePath = join(rootDir, relativePath);
+					const info = await stat(absolutePath).catch(() => null);
+					if (!info?.isFile()) continue;
+					const key = `${prefix}${absolutePath}`;
+					const fingerprint: FileFingerprint = { mtimeMs: info.mtimeMs, size: info.size };
+					next.set(key, fingerprint);
+					const previous = this.fileFingerprints.get(key);
+					if (!previous || previous.mtimeMs !== fingerprint.mtimeMs || previous.size !== fingerprint.size) {
+						dirty = true;
+					}
+				}
+			}
+			// A previously-tracked file under this collection that is no longer present was removed.
+			// The reloads below protect in-memory upserts via mergeConcurrentChanges, so they will NOT
+			// drop an item whose file vanished - explicit removal is required for deletions to self-heal.
+			for (const key of [...this.fileFingerprints.keys()]) {
+				if (!key.startsWith(prefix) || next.has(key)) continue;
+				dirty = true;
+				this.fileFingerprints.delete(key);
+				const absolutePath = key.slice(prefix.length);
+				const rootDir = rootDirs.find((dir) => absolutePath.startsWith(dir)) ?? rootDirs[0];
+				if (rootDir) this.removeCollectionItemByPath(collection, absolutePath, rootDir);
+			}
+			for (const [key, fingerprint] of next) {
+				this.fileFingerprints.set(key, fingerprint);
+			}
+		} catch (error) {
+			if (process.env.DEBUG) {
+				console.error(`ContentStore fingerprint scan failed for ${collection}`, error);
+			}
+			return;
+		}
+		if (dirty && !this.closed && this.isRootWatcherCurrent(epoch)) {
+			await this.enqueueRoot(epoch, refresh);
+		}
+	}
+
+	private wikiRoot(): string {
+		const docsDir = this.filesystem.docsDir;
+		if (!docsDir) return "";
+		return join(dirname(docsDir), "wiki");
+	}
+
+	/**
+	 * Removes a single in-memory item whose file disappeared, mirroring the watcher's deletion
+	 * handling. Reloads deliberately preserve in-memory upserts (mergeConcurrentChanges), so a
+	 * periodic scan must drive removal explicitly or a deleted file stays cached until restart.
+	 * Wiki removals are covered by refreshWikisFromDisk (mergeWikis), so they are skipped here.
+	 */
+	private removeCollectionItemByPath(
+		collection: "tasks" | "decisions" | "documents" | "wikis",
+		absolutePath: string,
+		rootDir: string,
+	): void {
+		switch (collection) {
+			case "tasks":
+				// Match by path (the watcher's canonical contract) with the id as a secondary key.
+				this.removeWatchedTask(normalizeTaskId(basename(absolutePath)), absolutePath);
+				break;
+			case "decisions": {
+				const [id] = basename(absolutePath).split(" - ");
+				if (id) this.removeWatchedDecision(id);
+				break;
+			}
+			case "documents":
+				this.removeWatchedDocument(normalizeDocumentRelativePath(relative(rootDir, absolutePath)));
+				break;
+			case "wikis":
+				break;
+		}
+	}
+
+	/**
+	 * Doc/wiki trees include empty directories, but the reloads above only follow files. Reconcile
+	 * the directory set (existence only, no fingerprint) so creating or deleting an empty folder -
+	 * or emptying a folder by deleting its last file - still re-syncs the sidebar tree.
+	 */
+	private async reconcileDirectories(epoch: number): Promise<void> {
+		if (!this.isRootWatcherCurrent(epoch)) return;
+		await Promise.all([
+			this.reconcileDirectorySet(epoch, "documents", this.filesystem.docsDir),
+			this.reconcileDirectorySet(epoch, "wikis", this.wikiRoot()),
+		]);
+	}
+
+	private async reconcileDirectorySet(
+		epoch: number,
+		collection: "documents" | "wikis",
+		rootDir: string,
+	): Promise<void> {
+		if (!this.isRootWatcherCurrent(epoch)) return;
+		let current: Set<string> | null = null;
+		try {
+			current = await this.collectDirectorySet(rootDir, collection === "wikis");
+		} catch (error) {
+			if (process.env.DEBUG) {
+				console.error(`ContentStore directory scan failed for ${collection}`, error);
+			}
+			return;
+		}
+		const previous = this.directorySets[collection];
+		this.directorySets[collection] = current;
+		// First scan only seeds the baseline: nothing was "added" relative to startup, and the
+		// initial page load already fetched the current tree, so broadcasting would be spurious.
+		if (previous === null || this.setsEqual(previous, current)) return;
+		if (collection === "documents") this.notify("documents");
+		else this.notify("wikis");
+	}
+
+	private async collectDirectorySet(rootDir: string, isWiki: boolean): Promise<Set<string>> {
+		const rootInfo = await stat(rootDir).catch(() => null);
+		if (!rootInfo?.isDirectory()) return new Set();
+		const set = new Set<string>();
+		const walk = async (dir: string, relativePath: string): Promise<void> => {
+			const entries = await readdir(dir, { withFileTypes: true });
+			for (const entry of entries) {
+				if (entry.name.toLowerCase() === "readme.md") continue;
+				if (isWiki && entry.name === "wiki_output") continue;
+				if (!entry.isDirectory()) continue;
+				const childRelativePath = relativePath ? join(relativePath, entry.name) : entry.name;
+				set.add(childRelativePath);
+				await walk(join(dir, entry.name), childRelativePath);
+			}
+		};
+		await walk(rootDir, "");
+		return set;
+	}
+
+	private setsEqual(a: ReadonlySet<string>, b: ReadonlySet<string> | Set<string>): boolean {
+		if (a.size !== b.size) return false;
+		for (const value of a) {
+			if (!b.has(value)) return false;
+		}
+		return true;
+	}
+
+	private scheduleWatcherRebind(): void {
+		if (this.watcherRebindTimer) return;
+		this.watcherRebindTimer = setTimeout(() => {
+			this.watcherRebindTimer = null;
+			void this.rebindRootWatchers();
+		}, 1000);
+		this.watcherRebindTimer.unref?.();
+	}
+
+	private async rebindRootWatchers(): Promise<void> {
+		if (this.closed || !this.enableWatchers) return;
+		const epoch = this.rootWatcherEpoch + 1;
+		this.invalidateRootWatchers();
+		try {
+			await this.bindRootWatchers(epoch);
+		} catch (error) {
+			if (process.env.DEBUG) {
+				console.error("ContentStore failed to rebind content watchers", error);
+			}
+			return;
+		}
+		if (!this.isRootWatcherCurrent(epoch)) return;
+		// Catch anything the dead watcher missed during the gap.
+		await this.runBackgroundReconciliation();
 	}
 
 	private async refreshTasksFromDisk(expectedId?: string, epoch = this.rootWatcherEpoch): Promise<void> {

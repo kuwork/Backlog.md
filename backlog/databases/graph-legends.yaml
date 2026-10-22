@@ -1,0 +1,26 @@
+demo:
+  captionsVisible: true
+  types:
+    Person:
+      caption: "{{name}}"
+      rules: []
+      color: "#204af3"
+    Company:
+      caption: "{{name}}"
+      rules: []
+      color: "#42d78c"
+    Project:
+      caption: "{{name}}"
+      rules: []
+      color: "#428cd7"
+    Skill:
+      caption: "{{name}}"
+      rules: []
+      color: "#d742d7"
+  relations:
+    WORKS_AT:
+      dash: solid
+      arrow: end
+      color: "#0ef19a"
+  hidden: []
+
