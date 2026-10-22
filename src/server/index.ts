@@ -284,6 +284,11 @@ export class BacklogServer {
 	// CLI, MCP tools, editor); this is the only one that covers the writers other than the route.
 	private graphLegendWatcher: GraphLegendWatcherHandle | null = null;
 	private storeReadyBroadcasted = false;
+	// One file write reaches the store through several independent paths (the in-process
+	// filesystem patch, the per-file watcher, the root-watcher rescan), each producing its own
+	// notification more than a few milliseconds apart. The window has to span the whole ingest
+	// pipeline - graph rebuild included - or one edit still fans out into several broadcasts.
+	private static readonly DATA_BROADCAST_DEBOUNCE_MS = 300;
 	private taskBroadcastTimer?: ReturnType<typeof setTimeout>;
 	// Content-entity scopes (documents/decisions/wikis) are independent: each pending scope is
 	// delivered as its own message, while tasks/milestones keep their merge-to-widest semantics.
@@ -433,7 +438,7 @@ export class BacklogServer {
 			const dir = memoDir(this.core.filesystem.rootDir);
 			this.memoWatcher = watch(dir, { recursive: false }, (_eventType, filename) => {
 				// Any change inside the memo directory - create, edit or delete - means the list
-				// the client holds is stale. The 75ms debounce in broadcastDataUpdated coalesces
+				// the client holds is stale. The debounce in broadcastDataUpdated coalesces
 				// the burst of events a single save produces.
 				if (filename && typeof filename === "string") {
 					this.broadcastDataUpdated("memos");
@@ -458,7 +463,7 @@ export class BacklogServer {
 	 * by the CLI or an editor reaches the Web UI without a manual reload - the same job
 	 * startMemoWatcher does for memos. Reuses the TUI's `watchMilestones`, which owns the settle and
 	 * double-read logic and drops a signature it already published, so a REST write is not echoed
-	 * twice: the API broadcast and this one coalesce in the 75ms debounce anyway.
+	 * twice: the API broadcast and this one coalesce in the broadcastDataUpdated debounce anyway.
 	 *
 	 * The milestone list is not held by the ContentStore, so nothing else in this class would ever
 	 * notice the new file.
@@ -559,7 +564,7 @@ export class BacklogServer {
 					} catch {}
 				}
 			}
-		}, 75);
+		}, BacklogServer.DATA_BROADCAST_DEBOUNCE_MS);
 	}
 
 	private broadcastConfigUpdated() {

@@ -93,6 +93,13 @@ type TaskUpdatePayload = Partial<Task> & {
 	commentAuthor?: string;
 };
 
+/**
+ * Trailing debounce for preview-mode checklist toggles. Each click updates the checkbox
+ * optimistically; the save goes out only once the user has paused for this long, so a burst
+ * of consecutive checks collapses into a single PUT instead of one request per click.
+ */
+export const CHECKLIST_SAVE_DEBOUNCE_MS = 1000;
+
 type InlineMetaUpdatePayload = Omit<Partial<Task>, "milestone"> & {
 	milestone?: string | null;
 };
@@ -288,6 +295,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	);
 	const initialDefinitionOfDone = task?.definitionOfDoneItems ?? (isCreateMode ? defaultDefinitionOfDone : []);
 	const [definitionOfDone, setDefinitionOfDone] = useState<AcceptanceCriterion[]>(initialDefinitionOfDone);
+	// Pending batched checklist save: the latest criteria array for AC (full-array replace) and
+	// the final checked state per index for DoD (granular ops). Null/empty means nothing to send.
+	const checklistSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const pendingCriteriaSaveRef = useRef<AcceptanceCriterion[] | null>(null);
+	const pendingDodTogglesRef = useRef<Map<number, boolean>>(new Map());
 	const resolveMilestoneToId = useCallback(
 		(value?: string | null): string => {
 			const normalized = (value ?? "").trim();
@@ -1269,39 +1281,82 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		}
 	};
 
-	const handleToggleCriterion = async (index: number, checked: boolean) => {
+	/**
+	 * Sends every pending checklist change in one PUT: the AC array replaces wholesale while DoD
+	 * rides its granular check/uncheck ops. Both can share one request - the server applies each
+	 * field it finds. A failed save restores the last server-known state for both lists.
+	 */
+	const flushChecklistSave = useCallback(async () => {
+		checklistSaveTimerRef.current = null;
+		if (!task) return;
+		const payload: TaskUpdatePayload = {};
+		const pendingCriteria = pendingCriteriaSaveRef.current;
+		pendingCriteriaSaveRef.current = null;
+		if (pendingCriteria) {
+			payload.acceptanceCriteriaItems = pendingCriteria;
+		}
+		const dodToggles = pendingDodTogglesRef.current;
+		pendingDodTogglesRef.current = new Map();
+		if (dodToggles.size > 0) {
+			const checks = [...dodToggles].filter(([, checked]) => checked).map(([index]) => index);
+			const unchecks = [...dodToggles].filter(([, checked]) => !checked).map(([index]) => index);
+			if (checks.length > 0) payload.definitionOfDoneCheck = checks;
+			if (unchecks.length > 0) payload.definitionOfDoneUncheck = unchecks;
+		}
+		if (!payload.acceptanceCriteriaItems && !payload.definitionOfDoneCheck && !payload.definitionOfDoneUncheck) {
+			return;
+		}
+		try {
+			await apiClient.updateTask(task.id, payload);
+			if (onSaved) await onSaved();
+		} catch (err) {
+			setCriteria(task.acceptanceCriteriaItems || []);
+			setDefinitionOfDone(task.definitionOfDoneItems || []);
+			console.error(t.common.failedToSave, err);
+		}
+	}, [task, onSaved, t]);
+
+	const scheduleChecklistSave = useCallback(() => {
+		if (checklistSaveTimerRef.current) clearTimeout(checklistSaveTimerRef.current);
+		checklistSaveTimerRef.current = setTimeout(() => void flushChecklistSave(), CHECKLIST_SAVE_DEBOUNCE_MS);
+	}, [flushChecklistSave]);
+
+	// Closing the modal inside the debounce window must not drop a toggle: flush whatever is
+	// pending on unmount. The ref indirection keeps this effect from re-running its cleanup
+	// (and flushing early) every time the flush closure is recreated.
+	const latestFlushRef = useRef(flushChecklistSave);
+	useEffect(() => {
+		latestFlushRef.current = flushChecklistSave;
+	}, [flushChecklistSave]);
+	useEffect(() => {
+		return () => {
+			if (checklistSaveTimerRef.current) {
+				clearTimeout(checklistSaveTimerRef.current);
+				checklistSaveTimerRef.current = null;
+				void latestFlushRef.current();
+			}
+		};
+	}, []);
+
+	const handleToggleCriterion = (index: number, checked: boolean) => {
 		if (demoting) return;
 		if (!task) return; // Can't toggle in create mode
 		if (isReadOnly) return; // Can't toggle for records the board does not own
 		// Optimistic update
 		const next = (criteria || []).map((c) => (c.index === index ? { ...c, checked } : c));
 		setCriteria(next);
-		try {
-			await apiClient.updateTask(task.id, { acceptanceCriteriaItems: next });
-			if (onSaved) await onSaved();
-		} catch (err) {
-			// rollback
-			setCriteria(criteria);
-			console.error(t.common.failedToSave, err);
-		}
+		pendingCriteriaSaveRef.current = next;
+		scheduleChecklistSave();
 	};
 
-	const handleToggleDefinitionOfDone = async (index: number, checked: boolean) => {
+	const handleToggleDefinitionOfDone = (index: number, checked: boolean) => {
 		if (demoting) return;
 		if (!task) return; // Can't toggle in create mode
 		if (isReadOnly) return; // Can't toggle for records the board does not own
 		const next = (definitionOfDone || []).map((c) => (c.index === index ? { ...c, checked } : c));
 		setDefinitionOfDone(next);
-		try {
-			const updates: TaskUpdatePayload = checked
-				? { definitionOfDoneCheck: [index] }
-				: { definitionOfDoneUncheck: [index] };
-			await apiClient.updateTask(task.id, updates);
-			if (onSaved) await onSaved();
-		} catch (err) {
-			setDefinitionOfDone(definitionOfDone);
-			console.error(t.common.failedToSave, err);
-		}
+		pendingDodTogglesRef.current.set(index, checked);
+		scheduleChecklistSave();
 	};
 
 	const handleInlineMetaUpdate = async (updates: InlineMetaUpdatePayload) => {
