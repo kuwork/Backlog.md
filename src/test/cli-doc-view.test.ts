@@ -156,6 +156,17 @@ describe("CLI doc view command", () => {
 		expect(stderr).toContain('backlog doc view "notes/doc-30 - Beta-Two"');
 	});
 
+	it("resolves a subdirectory document by its bare ID", async () => {
+		await writeDocFile("memos/doc-20 - Quick-Note.md", makeDocument("doc-20", "Quick Note", "Quick note body."));
+
+		for (const reference of ["doc-20", "20"]) {
+			const result = await $`bun ${[cliPath, "doc", "view", reference, "--plain"]}`.cwd(TEST_DIR).quiet();
+
+			expect(result.exitCode).toBe(0);
+			expect(result.stdout.toString()).toContain("Quick note body.");
+		}
+	});
+
 	it("reports an unknown reference without matching anything", async () => {
 		const result = await $`bun ${[cliPath, "doc", "view", "no-such-doc", "--plain"]}`.cwd(TEST_DIR).quiet().nothrow();
 

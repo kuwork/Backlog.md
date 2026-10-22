@@ -142,7 +142,8 @@ export function findDocumentByReference<T extends DocumentIdentity>(
 	reference: string,
 ): T | null {
 	// An ambiguous ID must fail closed here; later forms must not rescue a bare-ID collision.
-	findDocumentById(documents, reference);
+	const byId = findDocumentById(documents, reference);
+	if (byId) return byId;
 
 	const pathKey = referencePathKey(reference);
 	if (pathKey !== null) {
