@@ -1148,3 +1148,21 @@ Chronological, append-only record of all wiki operations.
 **mini-lint**：409 个 source 页 `source_path` 全量校验，新增 6 页全部解析成功；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）与上次裁决一致，本次不改写。
 
 **异常留痕**：`backlog/databases/graph-legends.yaml` 仍是未跟踪运行时产物，未纳入摄取；`backlog doc view <id>` 解析不了 id 引用的既有 bug 未修，文档里改用路径引用。
+
+## [2026-10-23 17:25:00] batch-ingest | 增量摄取 BACK-815~820 与 doc-32（7 源），覆盖图表引擎深化与 Web 稳健性
+
+**摄取范围**：git-aware 增量（基线 2026-10-18 22:05:23 的 batch-ingest 条目）检出 7 份新源——doc-32（Mermaid 图表画廊）与 BACK-815~820（全部 Done）。git status 干净，改动均已提交；无未跟踪产物纳入。
+
+**新建** 7 个 source 页：doc-32、back-815、back-816、back-817、back-818、back-819、back-820。
+
+**更新** 4 个 concept 页：[[concepts/chart-block-engine]]（可切换引擎 Pele 默认 / Mermaid 回退、registry 按 activeEngine 解析、diagram-engine 反应式 store）、[[concepts/web-server]]（指纹对账缓存自愈 + WS 重连 + 广播防抖 75ms→300ms）、[[concepts/file-preview]]（YAML frontmatter 元数据面板）、[[concepts/state-machine]]（收尾门禁同步进四语言默认机器）。
+
+**overview**：新增「图表引擎深化与 Web 稳健性（BACK-815~820，2026-10-21~23）」小节，串起 Pele 引擎、缓存自愈、清单批量保存、bare ID 修复、frontmatter 分离、收尾门禁同步六件事。
+
+**统计**：Sources 409→416、Concepts 48→48、User manual 48→48 页（4 个概念页与若干手册页为更新，无新增页）。
+
+**mini-lint**：7 个新增 source 页 `source_path` 全部解析成功；既有断链与历史裁决一致，本次不改写。
+
+## [2026-10-23 17:25:30] usermanual-update | 用户手册覆盖 BACK-815~820 与 doc-32
+
+**手册更新（已有页面，无新增章节，SUMMARY 不变）**：`80-图谱与数据查询/06-图表块.md` 新增「图表引擎切换（Pele / Mermaid）」节并指向 doc-32；`40-Web界面/05-设置与主题.md` 新增「图表引擎（diagramEngine）」配置项并补清单批量保存说明；`40-Web界面/02-任务列表.md` 补 Web 弹窗清单合并保存与文件预览 frontmatter 元数据面板；`40-Web界面/04-文档与决策.md` 补按 ID 定位文档（含子目录）；`10-任务管理/00-任务生命周期.md` 补默认机器收尾门禁。全部 5 页 `updated_date` 刷新为 2026-10-23。
