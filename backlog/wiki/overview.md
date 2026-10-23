@@ -156,6 +156,17 @@ updated_date: 2026-10-18 22:00
 - **两种吃查询结果的方式**：BACK-813 让查询块自己出图（`view: echarts` + `chart`，简单映射或 `option` + `@result` / `@result:<列>` 占位符）；BACK-814 让独立图表引用命名查询块（`id` + `fromQuery`，dataset 级或 series 级），表格与图并存、按文档作用域发布结果。两者共用同一套 option 与引擎，取舍见 [[concepts/query-chart-binding]]
 - **文档形态的教训**：示例文档先写成 `cli-instructions/echarts-examples.md`，因未在 `index.ts` 注册而运行时不可达、链接点不开，迁移为 doc-31 活演示（28 个 `echarts` fence + 4 个 `chart` 字段 + 5 个 `sqlite-query` 块）；验证从「数 SVG 节点」改为 SSR 渲 SVG 再栅格化看图——只数节点会漏掉「图形贴错位置」
 
+### 图表引擎深化与 Web 稳健性（BACK-815~820，2026-10-21~23）
+
+m-17 收口后的一波收尾与稳健性工作，覆盖图表引擎、服务端缓存与 Web 交互。
+
+- **可切换图表引擎 Pele 默认 + Mermaid 回退**（BACK-819，画廊 doc-32）：把原先硬接线的 Mermaid 渲染器换成可切换引擎——Pele（Obsidian 团队开源，Mermaid 12.1.0 语法渲染为 SVG、零依赖）作为默认，Mermaid 11.16.1 保留为可选回退；引擎由设置项 `diagramEngine` 在运行时选择并持久化到 config（`diagram_engine: pele` 为出厂默认）。顺带发布 doc-32 Mermaid 图表画廊（18 类、25 个可复制示例，覆盖项目工作流与微信/支付宝场景），修好三张此前无法预览的图（XY 图中文 x 轴标签加引号、architecture-beta 标签改 ASCII），并修复暗色主题下 Pele 线条/箭头对比度。概念页 [[concepts/chart-block-engine]] 已更新引擎注册表解析逻辑。
+- **服务端缓存自愈**（BACK-815）：根因是服务器内存缓存只靠 `fs.watch`、无轮询兜底，且 CLI 与服务器是独立进程——Windows `rm`、空闲事件合并/溢出、watcher 静默失败都会让缓存永久陈旧，Web 主数据 WebSocket 也缺重连。改用知识图谱式指纹对账：为每个被追踪文件记录指纹（mtime+size，必要时内容哈希），每 `BACKLOG_RESCAN_INTERVAL_MS`（默认 10000ms，最小 1000ms）扫描数据目录并与内存指纹表 diff，将 `fs.watch` 漏掉的增/改/删经同一 reconcile 管线刷新内存并广播，无需重启；Web 主数据 socket 加 2s 退避自动重连并在重连后 `refreshData`；doc/wiki 空目录的增删由周期性目录存在性对账覆盖。概念页 [[concepts/web-server]] 已更新。
+- **Web 看板弹窗验收清单批量保存 + 服务端广播防抖加宽**（BACK-818）：服务端把广播防抖从 75ms 提到 300ms（`DATA_BROADCAST_DEBOUNCE_MS`），让一次编辑只发一条 `tasks-updated`；Web 弹窗预览态 AC/DoD 勾选改为乐观更新、用户停顿 1000ms（`CHECKLIST_SAVE_DEBOUNCE_MS`）后合并为一次 PUT（AC 发整数组、DoD 发批量勾/消索引操作），弹窗卸载时 flush 待保存，失败回滚到服务器已知状态。
+- **文档视图 bare ID 修复**（BACK-817）：BACK-598 回归，`findDocumentByReference` 只为歧义副作用调用 `findDocumentById` 却丢弃返回值，导致子目录文档用裸 ID（`doc-20` 或 `20`）查不到；现非冲突时直接返回 ID 匹配，冲突仍 fail-closed。
+- **文件预览模态框分离 YAML frontmatter**（BACK-820）：`FilePreviewModal` 原先把含 YAML frontmatter 的原始文件直接喂给 markdown 渲染器，顶部 `---` 块显示为破损横线与原文；新增轻量 extractor（故意不引入 gray-matter 以控制 web 包体积）把前置 YAML 拆为独立元数据面板、正文只渲染 body。部分/行范围预览与无 frontmatter 文件不受影响。概念页 [[concepts/file-preview]] 已更新。
+- **收尾门禁同步进默认状态机**（BACK-816）：定稿的 config.yml 给 `In Progress → In Review`（`requires` 任务文件按 task-finalization 完成）与 `In Review → Done`（`requires` 按 task-finalization 验收通过）加了门禁，但 `backlog init` 写入的默认机器来自 `DEFAULT_STATE_MACHINES`（`src/web/locales/*`）仍是旧 gate。现已把两道门禁同步进四语言默认机器，新项目开箱即带。概念页 [[concepts/state-machine]] 已更新。
+
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
 - **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
