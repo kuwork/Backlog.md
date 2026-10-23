@@ -817,22 +817,6 @@ describe("MermaidMarkdown", () => {
 			expect(container).toBeTruthy();
 			root = createRoot(container as HTMLElement);
 
-			// biome-ignore lint/suspicious/noExplicitAny: Mock signature flexibility
-			const configs: Record<string, any>[] = [];
-			// biome-ignore lint/suspicious/noExplicitAny: Mock needed for testing
-			(globalThis as any).__MERMAID_MOCK__ = {
-				default: {
-					// biome-ignore lint/suspicious/noExplicitAny: Mock signature flexibility
-					initialize: (config: Record<string, any>) => {
-						configs.push(config);
-					},
-					// biome-ignore lint/suspicious/noExplicitAny: Mock signature flexibility
-					run: async ({ nodes }: any) => {
-						nodes?.[0]?.setAttribute("data-mocked", "true");
-					},
-				},
-			};
-
 			const source = "```mermaid\ngraph TD\nA-->B\n```";
 
 			function Harness() {
@@ -859,23 +843,32 @@ describe("MermaidMarkdown", () => {
 				);
 			});
 
+			// Let the chart engine (Pele) run its deferred, requestAnimationFrame-gated render.
 			await act(async () => {
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				await new Promise((resolve) => setTimeout(resolve, 100));
 			});
 
-			expect(container?.querySelector(".mermaid")?.getAttribute("data-mocked")).toBe("true");
-			expect(configs.at(-1)?.theme).toBe("default");
+			const diagram = container?.querySelector(".pele") as HTMLElement | null;
+			expect(diagram).toBeTruthy();
+			expect(diagram?.querySelector("svg")).toBeTruthy();
+			// Light mode: transparent background, dark foreground.
+			expect(diagram?.style.getPropertyValue("--pele-bg")).toBe("transparent");
+			expect(diagram?.style.getPropertyValue("--pele-fg")).toBe("#1f2328");
 
 			const toggle = container?.querySelector("#toggle-theme") as HTMLButtonElement;
 			await act(async () => {
 				toggle.click();
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				await new Promise((resolve) => setTimeout(resolve, 100));
 			});
 
-			expect(configs.at(-1)?.theme).toBe("dark");
-			// The diagram must be rebuilt from the restored code block, not left as-is.
-			expect(container?.querySelector(".mermaid")?.getAttribute("data-mocked")).toBe("true");
-			expect(container?.querySelectorAll(".mermaid")).toHaveLength(1);
+			const diagramAfter = container?.querySelector(".pele") as HTMLElement | null;
+			expect(diagramAfter).toBeTruthy();
+			expect(diagramAfter?.querySelector("svg")).toBeTruthy();
+			// Dark mode: light foreground, dark surface/border, light connectors.
+			expect(diagramAfter?.style.getPropertyValue("--pele-fg")).toBe("#e6edf3");
+			expect(diagramAfter?.style.getPropertyValue("--pele-surface")).toBe("#21262d");
+			expect(diagramAfter?.style.getPropertyValue("--pele-border")).toBe("#8b949e");
+			expect(diagramAfter?.style.getPropertyValue("--pele-line")).toBe("#c9d1d9");
 		});
 	});
 });

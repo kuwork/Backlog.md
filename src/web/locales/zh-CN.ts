@@ -591,6 +591,11 @@ export const zhCN: TranslationDict = {
 		paginationPageSizeDesc: "开启分页浏览时每页显示的条数（默认 50）。",
 		defaultPagination: "默认分页浏览",
 		defaultPaginationDesc: "查询块首次渲染即进入分页模式。",
+		diagramEngine: "图表渲染引擎",
+		diagramEngineDesc:
+			"Mermaid 语法图表的渲染后端。Pele 为轻量默认引擎；Mermaid 为经典引擎（若某图渲染异常可在此切换）。",
+		diagramEnginePele: "Pele（默认）",
+		diagramEngineMermaid: "Mermaid",
 		saveChanges: "保存更改",
 		saveSuccess: "设置保存成功！",
 	},

@@ -470,6 +470,12 @@ export interface BacklogConfig {
 	defaultPagination?: boolean;
 	/** ID prefix configuration for tasks and drafts. Defaults to { task: "task", draft: "draft" } */
 	prefixes?: PrefixConfig;
+	/**
+	 * Renderer for ```mermaid blocks. `pele` (default) is Obsidian's themeable,
+	 * zero-dependency SVG renderer; `mermaid` falls back to the classic Mermaid
+	 * engine. Unknown/missing values resolve to `pele`.
+	 */
+	diagramEngine?: "pele" | "mermaid";
 	mcp?: {
 		http?: {
 			host?: string;

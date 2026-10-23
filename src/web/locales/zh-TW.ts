@@ -591,6 +591,11 @@ export const zhTW: TranslationDict = {
 		paginationPageSizeDesc: "開啟分頁瀏覽時每頁顯示的筆數（預設 50）。",
 		defaultPagination: "預設分頁瀏覽",
 		defaultPaginationDesc: "查詢區塊首次渲染即進入分頁模式。",
+		diagramEngine: "圖表渲染引擎",
+		diagramEngineDesc:
+			"Mermaid 語法圖表的渲染後端。Pele 為輕量預設引擎；Mermaid 為經典引擎（若某圖渲染異常可在此切換）。",
+		diagramEnginePele: "Pele（預設）",
+		diagramEngineMermaid: "Mermaid",
 		saveChanges: "保存更改",
 		saveSuccess: "設定保存成功！",
 	},

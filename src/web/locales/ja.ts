@@ -604,6 +604,11 @@ export const ja: TranslationDict = {
 		paginationPageSizeDesc: "ページネーション閲覧をオンにしたときの 1 ページの行数（既定 50）。",
 		defaultPagination: "既定でページネーション",
 		defaultPaginationDesc: "クエリブロックを最初からページネーション模式で開きます。",
+		diagramEngine: "図表レンダリングエンジン",
+		diagramEngineDesc:
+			"Mermaid 構文図表のレンダリング先。Pele が軽量なデフォルト、Mermaid が従来のエンジン（図が正しく描画されない場合はこちらへ切り替え）です。",
+		diagramEnginePele: "Pele（デフォルト）",
+		diagramEngineMermaid: "Mermaid",
 		saveChanges: "変更を保存",
 		saveSuccess: "設定が保存されました！",
 	},

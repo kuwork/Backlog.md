@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useDiagramEngine } from "../charts/diagram-engine";
 import { useQueryResultRegistry } from "../charts/query-result-registry";
 import { getChartEngine } from "../charts/registry";
 import { useOptionalTheme } from "../contexts/ThemeContext";
@@ -19,6 +20,7 @@ interface ChartBlockProps {
 export default function ChartBlock({ lang, source }: ChartBlockProps) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const mode = useOptionalTheme();
+	const engineId = useDiagramEngine();
 	const engine = getChartEngine(lang);
 	const registry = useQueryResultRegistry();
 	const resolveQuery = registry?.get;
@@ -30,6 +32,8 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 		// `registryKey` is the subscription signal: bumped, never read, so a query result arriving
 		// later re-runs the effect (and therefore `setOption`) for charts that use `fromQuery`.
 		void registryKey;
+		// `engineId` is the active diagram backend; a Settings switch must re-render the diagram.
+		void engineId;
 		const el = ref.current;
 		const engine = getChartEngine(lang);
 		if (!el || !engine) return;
@@ -56,7 +60,8 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 			cancelAnimationFrame(frame);
 			if (renderer && el) renderer.dispose?.(el);
 		};
-	}, [lang, source, mode, resolveQuery, registryKey]);
+		// `engineId` is the active diagram backend; a Settings switch must re-render the diagram.
+	}, [lang, source, mode, resolveQuery, registryKey, engineId]);
 
 	return <div ref={ref} className={engine?.containerClassName ?? "chart-block"} style={engine?.containerStyle} />;
 }

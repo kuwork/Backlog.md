@@ -2128,6 +2128,10 @@ export class FileSystem {
 				case "default_editor":
 					config.defaultEditor = value.replace(/["']/g, "");
 					break;
+				case "diagram_engine":
+				case "diagramEngine":
+					config.diagramEngine = value === "mermaid" ? "mermaid" : "pele";
+					break;
 				case "auto_open_browser":
 					config.autoOpenBrowser = value.toLowerCase() === "true";
 					break;
@@ -2265,6 +2269,7 @@ export class FileSystem {
 			...(typeof config.paginationPageSize === "number" ? [`pagination_page_size: ${config.paginationPageSize}`] : []),
 			...(typeof config.defaultPagination === "boolean" ? [`default_pagination: ${config.defaultPagination}`] : []),
 			...(config.defaultEditor ? [`default_editor: "${config.defaultEditor}"`] : []),
+			...(config.diagramEngine ? [`diagram_engine: "${config.diagramEngine}"`] : []),
 			...(typeof config.autoOpenBrowser === "boolean" ? [`auto_open_browser: ${config.autoOpenBrowser}`] : []),
 			...(typeof config.hideEmptyColumns === "boolean" ? [`hide_empty_columns: ${config.hideEmptyColumns}`] : []),
 			...(typeof config.autoPort === "boolean" ? [`auto_port: ${config.autoPort}`] : []),

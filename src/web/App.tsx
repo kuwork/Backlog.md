@@ -20,6 +20,7 @@ import type {
 import { parseBrowserLoadingState } from "../utils/browser-loading-state";
 import { collectAvailableLabels } from "../utils/label-filter";
 import { stripAnyPrefix } from "../utils/prefix-config";
+import { normalizeDiagramEngine, setActiveDiagramEngine } from "./charts/diagram-engine";
 import BoardPage from "./components/BoardPage";
 import DecisionDetail from "./components/DecisionDetail";
 import DocumentationDetail from "./components/DocumentationDetail";
@@ -497,6 +498,11 @@ function AppContent() {
 			setProjectName(configData.projectName);
 			setAvailableLabels(configData.labels || []);
 			setConfig(configData);
+			// Pele is the default diagram renderer; the persisted `diagramEngine`
+			// setting (if any) selects the classic Mermaid backend instead.
+			if (isFirstLoad) {
+				setActiveDiagramEngine(normalizeDiagramEngine(configData.diagramEngine));
+			}
 			if (isFirstLoad && configData.locale && isValidLocale(configData.locale)) {
 				setLocale(configData.locale);
 			}

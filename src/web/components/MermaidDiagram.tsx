@@ -1,35 +1,25 @@
 import type React from "react";
-import { useEffect, useRef } from "react";
 import { getChartEngine } from "../charts/registry";
-import { hasMermaidLanguageClass, type MermaidMode, renderMermaidDiagram } from "../utils/mermaid";
 import ChartBlock from "./ChartBlock";
 
 interface MermaidDiagramProps {
 	/** Fenced code block body, exactly as authored. */
 	source: string;
-	mode: MermaidMode;
+	/**
+	 * Retained for backward compatibility: `StateMachineEditor` still passes the
+	 * color mode it resolved from `useOptionalTheme`. The actual mode is now read
+	 * from `ThemeContext` inside `ChartBlock`, so this prop is ignored.
+	 */
+	mode?: "light" | "dark";
 }
 
 /**
- * Renders a single mermaid diagram into a container React owns. The container is
- * left empty on purpose: `renderMermaidDiagram` replaces its content with mermaid's
- * SVG, so React never has to reconcile children it did not create.
+ * Renders a single Mermaid-syntax diagram. The diagram is owned by the unified
+ * chart engine registry (`mermaid` language → Pele), so theming and rendering
+ * flow through {@link ChartBlock} like every other chart type.
  */
-export default function MermaidDiagram({ source, mode }: MermaidDiagramProps) {
-	const ref = useRef<HTMLDivElement | null>(null);
-
-	useEffect(() => {
-		const element = ref.current;
-		if (!element) return;
-
-		const frameId = requestAnimationFrame(() => {
-			void renderMermaidDiagram(element, source, { mode });
-		});
-
-		return () => cancelAnimationFrame(frameId);
-	}, [source, mode]);
-
-	return <div ref={ref} className="mermaid" />;
+export default function MermaidDiagram({ source }: MermaidDiagramProps) {
+	return <ChartBlock lang="mermaid" source={source} />;
 }
 
 type HastNode = {
@@ -72,6 +62,3 @@ export function ChartAwarePre({ node, children, ...rest }: ChartAwarePreProps) {
 
 	return <pre {...rest}>{children}</pre>;
 }
-
-// Re-exported for callers that only care about mermaid detection.
-export { hasMermaidLanguageClass };

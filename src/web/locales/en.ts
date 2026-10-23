@@ -602,6 +602,11 @@ export const en = {
 		paginationPageSizeDesc: "Rows shown per page when the pagination browser is on (default 50).",
 		defaultPagination: "Default to Pagination",
 		defaultPaginationDesc: "Open query blocks directly in paginated mode.",
+		diagramEngine: "Diagram Rendering Engine",
+		diagramEngineDesc:
+			"Backend for Mermaid-syntax diagrams. Pele is the lightweight default; Mermaid is the classic engine (switch here if a diagram renders incorrectly).",
+		diagramEnginePele: "Pele (default)",
+		diagramEngineMermaid: "Mermaid",
 		saveChanges: "Save Changes",
 		saveSuccess: "Settings saved successfully!",
 	},

@@ -42,7 +42,6 @@
     "jsdom": "29.0.2",
     "lint-staged": "16.4.0",
     "mammoth": "1.12.0",
-    "mermaid": "11.16.1",
     "neo-neo-bblessed": "1.0.10",
     "patch-package": "^8.0.1",
     "picocolors": "1.1.1",
@@ -118,6 +117,8 @@
     "d3-zoom": "^3.0.0",
     "echarts": "^6.1.0",
     "get-port": "^7.2.0",
+    "mermaid": "11.16.1",
+    "pele": "^1.8.0",
     "ryugraph-wasm": "25.9.2",
     "yaml": "^2.9.1"
   }

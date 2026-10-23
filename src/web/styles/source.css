@@ -630,3 +630,36 @@
 	text-decoration: line-through;
 	text-decoration-thickness: 1px;
 }
+
+/* Pele-rendered Mermaid diagrams. Colors come from the --pele-* custom
+   properties set on the container by the chart engine (per light/dark mode);
+   here we only handle responsive scaling. */
+@layer components {
+	.pele {
+		display: block;
+	}
+
+	.pele > svg {
+		max-width: 100%;
+		height: auto;
+	}
+
+	.pele-error {
+		margin: 0;
+		padding: 0.75rem 1rem;
+		overflow: auto;
+		border-radius: 0.375rem;
+		background: var(--pele-surface, #f6f8fa);
+		border: 1px solid var(--pele-border, #d0d7de);
+		color: var(--pele-fg, #1f2328);
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.85rem;
+		white-space: pre-wrap;
+	}
+
+	.dark .pele-error {
+		background: #161b22;
+		border-color: #30363d;
+		color: #e6edf3;
+	}
+}

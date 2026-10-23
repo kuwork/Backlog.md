@@ -26,7 +26,7 @@ describe("ChartAwarePre", () => {
 	it("turns a mermaid fence into a diagram container", () => {
 		const html = renderPre("mermaid", "graph TD\nA --> B");
 
-		expect(html).toContain('class="mermaid"');
+		expect(html).toContain('class="pele"');
 		expect(html).not.toContain("<pre");
 	});
 
@@ -34,8 +34,8 @@ describe("ChartAwarePre", () => {
 		const lower = renderPre("mermaid", "graph TD\nA --> B");
 		const upper = renderPre("Mermaid", "graph TD\nA --> B");
 
-		expect(lower).toContain('class="mermaid"');
-		expect(upper).toContain('class="mermaid"');
+		expect(lower).toContain('class="pele"');
+		expect(upper).toContain('class="pele"');
 	});
 
 	it("leaves other code blocks untouched", () => {
@@ -48,7 +48,7 @@ describe("ChartAwarePre", () => {
 		expect(html).toContain("<pre");
 		expect(html).toContain("language-typescript");
 		expect(html).toContain("const a = 1;");
-		expect(html).not.toContain('class="mermaid"');
+		expect(html).not.toContain('class="pele"');
 	});
 });
 
@@ -66,14 +66,14 @@ describe("PasteAwareMDEditor preview panes", () => {
 		const html = renderEditor("preview");
 
 		expect(html).toContain("w-md-editor-show-preview");
-		expect(html).toContain('class="mermaid"');
+		expect(html).toContain('class="pele"');
 	});
 
 	it("renders diagrams in the 'Live code' pane too", () => {
 		const html = renderEditor("live");
 
 		expect(html).toContain("w-md-editor-show-live");
-		expect(html).toContain('class="mermaid"');
+		expect(html).toContain('class="pele"');
 	});
 
 	it("keeps non-mermaid code blocks highlighted in the preview", () => {
