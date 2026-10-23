@@ -2,7 +2,7 @@
 title: 状态机语义
 labels: [concept, state-machine, config]
 created_date: 2026-10-03 01:13
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-23 17:20
 ---
 
 # 状态机语义
@@ -40,6 +40,7 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 - `Dropped` 是"留档"终态：不推进里程碑、**不自动归档**（archive 是软删除、ID 可复用，与留档冲突）；彻底清除走 To Do 显式归档。
 - `ready` 语义不动，新增 `isActionable`（ready 且未被认领，category ∈ active/initial）。
 - `backlog config reset statuses` 可整体重置回默认；`init` 首次初始化直接写入七列对象形式（[[sources/back-715-state-machine-editor-settings]]）。
+- **收尾门禁已同步进默认机器**（BACK-816）：定稿的 task-finalization 门禁此前只在已落地的 `config.yml` 里，`init` 写入的默认机器仍是旧 gate。BACK-816 把它同步进四语言（zh-CN/en/ja/zh-TW）默认机器——`In Progress → In Review` 改为 `requires` 任务文件按 task-finalization 完成、`In Review → Done` 补上按 task-finalization 验收通过的 `requires`（此前缺失），新项目开箱即带这两道门禁。
 
 ## 编辑与指引交付
 
@@ -80,3 +81,4 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 - [[sources/back-721-state-machine-localization-guidance]] — 四语言变体与可读性优化
 - [[sources/back-761-terminal-card-actual-end]] — 终态判定 API 分层（isTerminalStatus vs isTerminalStatusName）
 - [[sources/back-762-terminal-statuses-readonly]] — 终态集读取路径显式化与设置页只读化
+- [[sources/back-816-finalization-gates-default-machine]] — 收尾门禁同步进默认机器，新项目开箱即带
