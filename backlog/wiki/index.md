@@ -424,6 +424,13 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-812-core-echarts-engine]] |  BACK-812 - 核心 ECharts 图表引擎 | source, web-ui, charts, markdown |
 | [[sources/back-813-query-block-view-echarts]] |  BACK-813 - 查询块 view: echarts（方式 B） | source, web-ui, charts, query-block |
 | [[sources/back-814-echarts-from-query]] |  BACK-814 - fromQuery 引用命名查询块（方式 A） | source, web-ui, charts, query-block, realtime |
+| [[sources/doc-32-mermaid-diagram-gallery]] |  doc-32 - Mermaid 图表画廊 | source, web-ui, charts, markdown |
+| [[sources/back-815-server-cache-self-heal]] |  BACK-815 - 服务端缓存自愈（指纹对账） | source, server, web-ui, bug |
+| [[sources/back-816-finalization-gates-default-machine]] |  BACK-816 - 收尾门禁同步进默认状态机 | source, config, state-machine |
+| [[sources/back-817-doc-view-bare-ids]] |  BACK-817 - 修复子目录文档的 bare ID 文档视图 | source, cli, doc, bug |
+| [[sources/back-818-checklist-batching-broadcast-debounce]] |  BACK-818 - 看板弹窗清单批量保存 + 服务端广播防抖加宽 | source, web-ui, core, server |
+| [[sources/back-819-switchable-diagram-engine]] |  BACK-819 - 可切换图表引擎：Pele 默认 + Mermaid 回退 | source, web-ui, charts, markdown |
+| [[sources/back-820-file-preview-frontmatter]] |  BACK-820 - 文件预览模态框分离 YAML frontmatter | source, web-ui, bug |
 
 ## Execution Notes
 

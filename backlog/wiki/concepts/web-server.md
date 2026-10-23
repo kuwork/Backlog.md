@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-23 17:20
 ---
 
 # Web Server 与浏览器界面
@@ -114,10 +114,18 @@ RESTful API 按资源组织：
 - Board/SideNavigation/Layout 显示真实骨架屏/加载阶段/可重试错误面板
 - 加载阶段文案通过 `loadingPhases` 本地化，未知消息回退英文
 
-### 广播防抖与 reorder 原子应用（BACK-568）
+### 广播防抖与 reorder 原子应用（BACK-568 / BACK-818）
 
-- `tasks-updated` WebSocket 广播 75ms 防抖，批量更新只发布一次
+- `tasks-updated` WebSocket 广播防抖：BACK-568 引入 75ms，BACK-818 加宽到 300ms（`BacklogServer.DATA_BROADCAST_DEBOUNCE_MS`）。一次任务写入经三条路径进入 ContentStore（进程内补丁 / 逐文件 watcher / 根 watcher 重扫），75ms 无法合并、扇出 2–3 条消息；300ms 让一次编辑只发一条
 - Reorder 返回 `changedTasks`，前端通过 `applyReorderedTasks` 原子合并而非全量刷新
+
+### 缓存自愈：指纹对账与 WebSocket 重连（BACK-815）
+
+Web UI 显示陈旧数据、只能重启恢复的根因：内存缓存只靠 `fs.watch`、无轮询兜底，且 CLI 与服务器是独立进程——Windows `rm`、空闲事件合并/溢出、watcher 静默失败都会让缓存永久陈旧；主数据 WebSocket 也无重连。修复：
+
+- `src/core/content-store.ts`：每个 task/doc/decision/wiki 文件记录指纹（mtime+size，必要时内容哈希），启动建基线 `seedFingerprintBaseline`；每 `BACKLOG_RESCAN_INTERVAL_MS`（默认 10000ms，最小 1000ms）扫描并与内存指纹表 diff，增/改/删经现有 refresh + 广播管线刷新（删除走显式 `remove*` 而非 reload，保护进程内 upsert）；`reconcileDirectories` 覆盖 doc/wiki 空目录增删对账；`wikiRoot()` 加防御判空；watcher 错误调度 rebind 而非静默吞掉。
+- `src/web/App.tsx`：主数据 WebSocket 加 `onclose`/`onerror` 驱动的自动重连（2s 退避），重连后对所有 scope 调 `refreshData()` 追赶。
+- 约束：周期扫描受 `enableWatchers` 门控；首次扫描静默存基线、不广播；指纹扫描与 watcher 事件去重，不覆盖进程内 upsert。
 
 ## Related Concepts
 
@@ -135,3 +143,5 @@ RESTful API 按资源组织：
 - [[sources/back-703-graph-incremental-sync]] — BACK-703 /api/graph 与 graph-updated 推送
 - [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 resolveCrossBranchVisibility 与 /api/search 过滤
 - [[sources/back-762-terminal-statuses-readonly]] — BACK-762 /api/config 与 /api/statuses 形状
+- [[sources/back-815-server-cache-self-heal]] — BACK-815 指纹对账自愈与 WS 重连
+- [[sources/back-818-checklist-batching-broadcast-debounce]] — BACK-818 广播防抖 75ms→300ms
