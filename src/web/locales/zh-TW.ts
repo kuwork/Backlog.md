@@ -851,6 +851,7 @@ export const zhTW: TranslationDict = {
 		lineCountTotal: "共 {count} 行",
 		showingLines: "顯示第 {start}-{end} 行",
 		linesOfTotal: "第 {start}-{end} 行，共 {total} 行",
+		frontmatter: "Frontmatter（YAML 頭）",
 	},
 
 	pasteAwareMDEditor: {

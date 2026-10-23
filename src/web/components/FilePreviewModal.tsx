@@ -1,8 +1,8 @@
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
+import { extractFrontmatter } from "../utils/frontmatter-extract";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import MermaidMarkdown from "./MermaidMarkdown";
 import Modal from "./Modal";
@@ -117,6 +117,14 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 	const isPartial = lineStart !== undefined && lineEnd !== undefined;
 	const startLineNumber = (lineStart ?? 1) - 1;
 
+	// For a full markdown file, lift a leading YAML frontmatter block out of the body so it renders
+	// as a metadata panel instead of broken markdown (mirrors how the document view renders `rawContent`
+	// without frontmatter). A line-range preview never starts at the fence, so it is left alone.
+	const frontmatter = useMemo(
+		() => (isMarkdown && !isPartial ? extractFrontmatter(content) : { body: content, entries: [] }),
+		[content, isMarkdown, isPartial],
+	);
+
 	return (
 		<Modal isOpen onClose={onClose} title={title} maxWidthClass="max-w-6xl" toc>
 			{loading && <div className="text-sm text-gray-500 dark:text-gray-400">{t.filePreview.loading}</div>}
@@ -132,19 +140,38 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 						)}
 					</div>
 					{isMarkdown ? (
-						<div
-							className="prose prose-sm !max-w-none wmde-markdown rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800"
-							data-color-mode={theme}
-						>
-							<MermaidMarkdown
-								source={content}
-								onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
-								onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
-								onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
-								onDecisionClick={(decisionId) => window.open(`/decisions/${decisionId}`, "_blank")}
-								onWikiClick={(wikiPath) => window.open(`/wiki/${encodeWikiPath(wikiPath)}`, "_blank")}
-							/>
-						</div>
+						<>
+							{frontmatter.entries.length > 0 && (
+								<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3 mb-3">
+									<div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+										{t.filePreview.frontmatter}
+									</div>
+									<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+										{frontmatter.entries.map((entry) => (
+											<React.Fragment key={entry.key}>
+												<dt className="font-mono text-gray-600 dark:text-gray-300 break-words">{entry.key}</dt>
+												<dd className="text-gray-800 dark:text-gray-100 break-words whitespace-pre-wrap">
+													{entry.value}
+												</dd>
+											</React.Fragment>
+										))}
+									</dl>
+								</div>
+							)}
+							<div
+								className="prose prose-sm !max-w-none wmde-markdown rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800"
+								data-color-mode={theme}
+							>
+								<MermaidMarkdown
+									source={frontmatter.body}
+									onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
+									onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
+									onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
+									onDecisionClick={(decisionId) => window.open(`/decisions/${decisionId}`, "_blank")}
+									onWikiClick={(wikiPath) => window.open(`/wiki/${encodeWikiPath(wikiPath)}`, "_blank")}
+								/>
+							</div>
+						</>
 					) : (
 						<div className="rounded-lg border border-gray-200 dark:border-gray-700 max-h-[60vh] overflow-auto">
 							{isPartial && (

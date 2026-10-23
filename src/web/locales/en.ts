@@ -879,6 +879,7 @@ export const en = {
 		lineCountTotal: "{count} lines total",
 		showingLines: "showing lines {start}-{end}",
 		linesOfTotal: "Lines {start}-{end} of {total}",
+		frontmatter: "Frontmatter",
 	},
 
 	pasteAwareMDEditor: {

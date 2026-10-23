@@ -872,6 +872,7 @@ export const ja: TranslationDict = {
 		lineCountTotal: "合計 {count} 行",
 		showingLines: "{start}-{end} 行を表示",
 		linesOfTotal: "{start}-{end} 行 / 合計 {total} 行",
+		frontmatter: "Frontmatter（YAML ヘッダ）",
 	},
 
 	pasteAwareMDEditor: {
