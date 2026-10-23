@@ -448,6 +448,7 @@ Draft（草稿） → To Do → In Progress → Done → Archived / Completed
 要点：
 
 - 新初始化的项目使用内置**七列默认状态机**（To Do → Planning → Plan Review → In Progress → In Review → Done，另含留档终态 Dropped）。CLI 的 `config` 只有 get/set/list 子命令，没有重置命令；要恢复默认状态机，需在 Web 设置页的状态机编辑器中点 **Default** 按钮——该按钮只把默认状态机载入编辑器，仍需保存才生效
+- 默认机器已内置**收尾门禁**：`In Progress → In Review` 要求任务文件按 task-finalization 完成、`In Review → Done` 要求按 task-finalization 验收通过——新项目开箱即带，无需手动配置（BACK-816 把定稿门禁同步进了四语言默认机器）
 - 状态机**只声明、不强制**：越界推进不报错，但 CLI/MCP 指南（`backlog instructions overview`）会渲染完整的状态表、类别、迁移边与「停下等人工」清单，AI 代理按声明的机器工作
 - 旧式字符串数组配置仍兼容；设置页提供可视化**状态机编辑器**维护对象形式配置
 - 完整语义见 wiki 概念页 [[concepts/state-machine]]
@@ -3181,6 +3182,7 @@ http://localhost:6420/task/506/Fix-CLI-actualStart-actualEnd-missing-local-to-UT
 
 - 默认标签随任务状态选择：已完成任务默认落在 Modified Files，其余任务默认 References；点击切换仅对当前任务生效
 - 修改文件以等宽路径 chip 展示，点击可在文件预览中打开；只允许项目相对路径，URL 形式的输入会被拒绝
+- 文件预览打开含 YAML frontmatter 的文档时，顶部 `--- … ---` 块会作为独立的**元数据面板**呈现，不再混进正文渲染（部分预览、行范围预览与无 frontmatter 的文件保持原行为）
 - 两个列表都支持在编辑模式下增删，保存后写入任务文件
 
 #### 5.3.4.9 日期的 UTC 悬停提示
@@ -3386,6 +3388,8 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 
 带锚点的链接（如 `/documentation/5#A2`）在**首次加载**时也会自动滚动到目标标题：内容异步渲染完成后由观察器定位标题，地址栏中的锚点在 URL 规范化（裸 ID 补齐标题 slug）过程中不会丢失。
 
+文档同样支持**按 ID 直接定位**：无论是根目录还是子目录下的文档，输入裸 ID（如 `doc-20`）或纯数字（`20`）都能精确打开对应文档；ID 存在歧义时仍按 fail-closed 抛出冲突提示并给出候选列表。
+
 #### 5.5.3.2 页面目录（TOC）
 
 文档、决策与 Wiki 详情页的头部提供**目录按钮**：点击展开当前页面的标题大纲，条目层级来自实际渲染的标题（含重复标题与 CJK 标题）：
@@ -3451,6 +3455,7 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 - **自动打开浏览器（`autoOpenBrowser`）**
 - **任务解析策略（`taskResolutionStrategy`）**：同名任务存在于多个分支时的冲突解决策略——`最新`（`most_recent`，取最近修改的版本）或`最完整`（`most_progressed`，取状态推进最远的版本，同进度再比修改时间）；新项目初始为 `most_recent`
 - **Advanced Settings 跨分支三开关**：Task Resolution Strategy 下方依次是 Cross-Branch Tasks（`includeCrossBranch`，默认关——扫描到的其他分支任务是否进入看板/任务列表/搜索）、Check Active Branches（`checkActiveBranches`，默认开——是否扫描其他本地分支，同时决定任务 ID 分配的候选分支集）与 Active Branch Days（`activeBranchDays`，默认 30 天，仅扫描开关打开时显示）
+- **图表引擎（`diagramEngine`）**：Mermaid 图用哪个引擎渲染——`pele`（默认，Obsidian 团队开源、零依赖、把 Mermaid 12.1.0 语法渲染为 SVG）或 `mermaid`（11.16.1 回退）；选择持久化到 `config.yml` 的 `diagram_engine` 键，重启浏览器后依然生效，仅影响 Mermaid 图、不影响 ECharts 数据图
 - Git 相关选项（详见[配置管理](#91-配置管理)）
 
 点击需要修改的配置项，在输入框中输入新值，修改完成后点击「保存」按钮。配置变更会立即写回项目配置文件，部分设置（如端口）在重启 `backlog browser` 后生效。
@@ -3523,6 +3528,8 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 
 在任务编辑器中找到「验收标准」区域。每条验收标准左侧带有复选框，点击即可标记为已完成或未完成。勾选状态会自动同步保存到 Markdown 文件的对应章节。
 
+在 Web 弹窗的预览模式下连续勾选多条验收标准或 DoD 时，系统会把操作**合并保存**：停顿约 1 秒后才发送一次请求（携带完整的勾选数组），而不是每次点击都发请求；关闭弹窗前若有未保存的勾选会立即 flush，失败则回滚到服务器已知状态。这样过一遍长清单时不会产生请求风暴，看板与任务列表的刷新也更平稳。
+
 若手动修改 Markdown 源文件中的验收标准格式，编辑器会在加载时自动修复和同步列表结构，确保复选框正常显示。
 
 #### 5.6.7.3 任务内容目录
@@ -3545,7 +3552,7 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 
 ### 5.6.8 Mermaid 图表自动渲染
 
-若任务正文中包含 Mermaid 语法代码块，Web 界面会自动将其渲染为可视化图表，包括流程图、时序图、甘特图等。无需额外操作，保存任务后图表即时呈现。
+若任务正文中包含 Mermaid 语法代码块，Web 界面会自动将其渲染为可视化图表，包括流程图、时序图、甘特图等。无需额外操作，保存任务后图表即时呈现。默认用 Pele 引擎渲染，可在设置页的 Diagram Engine 下拉切换为 Mermaid 11.16.1 回退（见上方「图表引擎」配置项）。
 
 ### 5.6.9 图片与附件查看
 
@@ -5489,7 +5496,18 @@ graph LR
 ```
 ````
 
-### 8.7.2 数据图：echarts
+### 8.7.2 图表引擎切换（Pele / Mermaid）
+
+mermaid 图由哪个引擎渲染现在是**可切换**的，不再硬接线：
+
+- **Pele**（默认）：Obsidian 团队开源，把 Mermaid 12.1.0 语法渲染为 SVG，零依赖；线条与箭头随主题自动适配（暗色下已修正对比度）。
+- **Mermaid 11.16.1**：保留为可选回退引擎。
+
+在 Web 设置页的 **Diagram Engine** 下拉里切换（Pele 默认 / Mermaid），选择会持久化到项目配置（`diagram_engine`，默认 `pele`），重启浏览器后依然生效。两种引擎都只在渲染 Mermaid 图时生效，ECharts 数据图不受影响。
+
+> 想要现成的 Mermaid 模板？见文档 `doc-32 Mermaid 图表画廊`——18 个类别、25 个可直接复制的复杂示例（流程图、时序图、类图、甘特图、ER 图、用户旅程、思维导图、XY 图、架构图等），覆盖项目工作流与微信/支付宝场景。
+
+### 8.7.3 数据图：echarts
 
 正文是一段标准 ECharts option 的 **JSON**，不需要学新的方言：
 
@@ -5511,7 +5529,7 @@ graph LR
 
 同一个 `series` 数组里可以混排多种图，上面就是柱状图叠加折线图。
 
-### 8.7.3 支持的图表类型
+### 8.7.4 支持的图表类型
 
 `series[].type` 可用的值：
 
@@ -5529,7 +5547,7 @@ graph LR
 
 坐标系统默认是直角坐标 `xAxis` / `yAxis`；`polar`、`singleAxis`、`calendar`、`parallel`、`geo` 组件都已注册。`themeRiver` 必须配 `singleAxis`，且 `type` 要写成 `"time"`，否则不出河流带。
 
-### 8.7.4 图表直接吃查询结果：view: echarts
+### 8.7.5 图表直接吃查询结果：view: echarts
 
 查询块可以把结果**直接画成图**，不再显示表格。`sqlite-query`、`duckdb-query`、`cypher-query` 都支持，加 `view: echarts` 与 `chart` 字段即可：
 
@@ -5585,7 +5603,7 @@ sql: |
 
 占位符必须**整值**出现，不能拼在字符串里；写错列名会得到空数组。
 
-### 8.7.5 引用命名查询块：fromQuery
+### 8.7.6 引用命名查询块：fromQuery
 
 想让表格和图表并存时，给查询块一个 `id`，再用独立的 `echarts` block 引用它：
 
@@ -5617,7 +5635,7 @@ sql: |
 
 `categoryField` / `valueField` 只是引用侧的取列指令，不会留在最终配置里。option 没有 `xAxis` 时，引擎会用第一个解析成功的 series 的 `categoryField` 补一条类目轴。
 
-### 8.7.6 使用约定
+### 8.7.7 使用约定
 
 | 事项 | 行为 |
 |---|---|
@@ -5628,9 +5646,9 @@ sql: |
 | 引用作用域 | `fromQuery` 只在**同一篇文档**内有效，重复 `id` 会以后写者为准 |
 | 刷新联动 | 被引用的查询重跑后，引用它的图表自动重绘；没用 `fromQuery` 的图表不受影响 |
 
-完整的图表示例，包括每种系列的可复制配置与坑位说明，见文档 `doc-31 ECharts 图表演示`。
+完整的图表示例，包括每种系列的可复制配置与坑位说明，见文档 `doc-31 ECharts 图表演示`；Mermaid 图的复制模板见文档 `doc-32 Mermaid 图表画廊`。
 
-### 8.7.7 相关
+### 8.7.8 相关
 
 - [SQL 查询块](#83-sql-查询块) — `sqlite-query` / `duckdb-query` 的字段与只读约束
 - [Cypher 查询块](#84-cypher-查询块) — 图库查询块，同样支持 `view: echarts`
