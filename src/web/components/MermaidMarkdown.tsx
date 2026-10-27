@@ -2,6 +2,8 @@ import MDEditor from "@uiw/react-md-editor";
 import Slugger from "github-slugger";
 import type { Element, ElementContent, Parent, Root, RootContent } from "hast";
 import React, { useEffect, useMemo, useRef } from "react";
+import rehypeSanitize, { defaultSchema, type Options as SanitizeOptions } from "rehype-sanitize";
+import type { PluggableList } from "unified";
 import { visit } from "unist-util-visit";
 import { DUCKDB_BLOCK_LANG } from "../../duckdb/block.ts";
 import { CYPHER_BLOCK_LANG } from "../../graph/block.ts";
@@ -14,7 +16,7 @@ import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-target";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
-import { parseStyleString, prepareWikiMarkdown } from "../utils/wikiLinks";
+import { parseStyleString, prepareWikiMarkdown, sanitizeRawHtmlAngleBrackets } from "../utils/wikiLinks";
 import ChartBlock from "./ChartBlock";
 import CypherQueryBlock from "./CypherQueryBlock";
 import DuckdbQueryBlock from "./DuckdbQueryBlock";
@@ -55,8 +57,37 @@ interface Props {
 	confirmNavigation?: () => boolean;
 }
 
-const URI_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*>/;
-const EMAIL_AUTOLINK_PREFIX_REGEX = /^<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+>/;
+const SAFE_HTML_SCHEMA: SanitizeOptions = {
+	...defaultSchema,
+	// Keep author-written `id`s (e.g. heading slugs) intact for in-page anchor links.
+	clobber: [],
+	tagNames: [...(defaultSchema.tagNames ?? []), "col", "colgroup", "video", "audio"],
+	attributes: {
+		...defaultSchema.attributes,
+		"*": [...(defaultSchema.attributes?.["*"] ?? []), "className", "style", "data*"],
+		a: [...(defaultSchema.attributes?.a ?? []), "target", "rel"],
+		img: [...(defaultSchema.attributes?.img ?? []), "alt", "className", "width", "height", "data*"],
+		video: ["src", "controls", "width", "height", "poster", "className", "data*"],
+		audio: ["src", "controls", "className", "data*"],
+		source: ["src", "type", "data*"],
+		code: [...(defaultSchema.attributes?.code ?? []), "className"],
+		pre: [...(defaultSchema.attributes?.pre ?? []), "className"],
+		td: [...(defaultSchema.attributes?.td ?? []), "colSpan", "rowSpan", "align"],
+		th: [...(defaultSchema.attributes?.th ?? []), "colSpan", "rowSpan", "align", "scope"],
+	},
+	protocols: defaultSchema.protocols,
+};
+
+function getMarkdownCodeRanges(source: string): { start: number; end: number }[] {
+	const ranges: { start: number; end: number }[] = [];
+	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
+		ranges.push({ start: match.index ?? 0, end: (match.index ?? 0) + match[0].length });
+	}
+	for (const match of source.matchAll(/`[^`\n]+`/g)) {
+		ranges.push({ start: match.index ?? 0, end: (match.index ?? 0) + match[0].length });
+	}
+	return ranges;
+}
 
 function getTextContent(node: Element): string {
 	let text = "";
@@ -178,34 +209,6 @@ function rehypeInlineTags(activeTags: ReadonlySet<string>) {
 	return () => (tree: Root) => {
 		decorateInlineTags(tree, activeTags);
 	};
-}
-
-function sanitizeMarkdownSource(source: string): string {
-	const protectedRanges: { start: number; end: number }[] = [];
-
-	// Protect code blocks (```...```)
-	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
-		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
-	}
-
-	// Protect inline code (`...`)
-	for (const match of source.matchAll(/`[^`\n]+`/g)) {
-		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
-	}
-
-	return source.replace(/<(?=[A-Za-z])/g, (match, offset, fullText) => {
-		// Skip replacement inside code blocks and inline code
-		for (const range of protectedRanges) {
-			if (offset >= range.start && offset < range.end) {
-				return match;
-			}
-		}
-		const remaining = fullText.slice(offset);
-		if (URI_AUTOLINK_PREFIX_REGEX.test(remaining) || EMAIL_AUTOLINK_PREFIX_REGEX.test(remaining)) {
-			return match;
-		}
-		return "&lt;";
-	});
 }
 
 function encodeLocalFileLinkDestinations(source: string): string {
@@ -461,18 +464,22 @@ export default function MermaidMarkdown({
 	confirmNavigation,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
+	const encoded = encodeLocalFileLinkDestinations(source);
 	const safeSource = wikilinkBasePath
 		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(source, wikilinkBasePath))
-		: sanitizeMarkdownSource(encodeLocalFileLinkDestinations(source));
+		: sanitizeRawHtmlAngleBrackets(encoded, getMarkdownCodeRanges(encoded));
 	const { t } = useI18n();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
 	const activeTagSet = useMemo(() => new Set((activeTags ?? []).map((tag) => tag.toLowerCase())), [activeTags]);
-	const rehypePlugins = useMemo(
+	const rehypePlugins = useMemo<PluggableList>(
 		() =>
-			inlineTagChips
-				? [rehypeHeadingMetadata, rehypeTaskListIndex, rehypeInlineTags(activeTagSet)]
-				: [rehypeHeadingMetadata, rehypeTaskListIndex],
+			[
+				rehypeSanitize(SAFE_HTML_SCHEMA),
+				...(inlineTagChips
+					? [rehypeHeadingMetadata, rehypeTaskListIndex, rehypeInlineTags(activeTagSet)]
+					: [rehypeHeadingMetadata, rehypeTaskListIndex]),
+			] as PluggableList,
 		[inlineTagChips, activeTagSet],
 	);
 

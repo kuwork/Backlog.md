@@ -52,6 +52,90 @@ function isInsideRange(offset: number, ranges: ProtectedRange[]): boolean {
 	return false;
 }
 
+/**
+ * Tags safe to pass through to the HTML renderer (rehype-raw). Anything not listed here
+ * (e.g. type-parameter angle brackets like `Result<List<T>>`) is escaped to text so it can
+ * never crash the React renderer (BACK-377) or inject layout. Dangerous attributes on the
+ * allowed tags are still scrubbed afterwards by rehype-sanitize in MermaidMarkdown.
+ */
+export const RAW_HTML_ALLOWED_TAGS = new Set<string>([
+	"a",
+	"abbr",
+	"b",
+	"blockquote",
+	"br",
+	"code",
+	"col",
+	"colgroup",
+	"dd",
+	"del",
+	"details",
+	"div",
+	"dl",
+	"dt",
+	"em",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"hr",
+	"i",
+	"img",
+	"ins",
+	"kbd",
+	"li",
+	"ol",
+	"p",
+	"picture",
+	"pre",
+	"q",
+	"rp",
+	"rt",
+	"ruby",
+	"s",
+	"samp",
+	"section",
+	"source",
+	"span",
+	"strike",
+	"strong",
+	"sub",
+	"summary",
+	"sup",
+	"table",
+	"tbody",
+	"td",
+	"tfoot",
+	"th",
+	"thead",
+	"tr",
+	"tt",
+	"ul",
+	"var",
+	"video",
+	"audio",
+]);
+
+export function sanitizeRawHtmlAngleBrackets(
+	source: string,
+	protectedRanges: { start: number; end: number }[],
+): string {
+	return source.replace(/<\/?([A-Za-z][A-Za-z0-9-]*)/g, (match, tag, offset, fullText) => {
+		const index = offset as number;
+		for (const range of protectedRanges) {
+			if (index >= range.start && index < range.end) return match;
+		}
+		const remaining = fullText.slice(index);
+		if (URI_AUTOLINK_PREFIX_REGEX.test(remaining) || EMAIL_AUTOLINK_PREFIX_REGEX.test(remaining)) {
+			return match;
+		}
+		if (RAW_HTML_ALLOWED_TAGS.has((tag as string).toLowerCase())) return match;
+		return `&lt;${(match as string).slice(1)}`;
+	});
+}
+
 function getCodeProtectedRanges(source: string): ProtectedRange[] {
 	const ranges: ProtectedRange[] = [];
 	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
@@ -190,14 +274,7 @@ function attrsToHtmlString(attrs: ParsedAttrs, marker?: string): string {
 }
 
 function sanitizeWithRanges(source: string, protectedRanges: ProtectedRange[]): string {
-	return source.replace(/<(?=[A-Za-z])/g, (match, offset) => {
-		if (isInsideRange(offset, protectedRanges)) return match;
-		const remaining = source.slice(offset);
-		if (URI_AUTOLINK_PREFIX_REGEX.test(remaining) || EMAIL_AUTOLINK_PREFIX_REGEX.test(remaining)) {
-			return match;
-		}
-		return "&lt;";
-	});
+	return sanitizeRawHtmlAngleBrackets(source, protectedRanges);
 }
 
 /**
