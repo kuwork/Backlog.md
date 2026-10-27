@@ -251,6 +251,14 @@
         max-width: 100% !important;
     }
 
+    /* Raw HTML tables (via rehype-raw) wrap each cell in <p>, whose 10px bottom
+       margin makes rows taller than GFM pipe tables (plain text cells). Collapse
+       paragraph margins inside table cells so both render with equal row height. */
+    .wmde-markdown table p {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
     /* Ensure the markdown container itself doesn't overflow */
     .wmde-markdown,
     .wmde-markdown-color {

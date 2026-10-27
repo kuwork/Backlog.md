@@ -871,4 +871,49 @@ describe("MermaidMarkdown", () => {
 			expect(diagramAfter?.style.getPropertyValue("--pele-line")).toBe("#c9d1d9");
 		});
 	});
+
+	describe("raw HTML and sanitization", () => {
+		it("renders allowed raw HTML tables instead of escaping them", () => {
+			const source = "<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>";
+			const html = render(source);
+			expect(html).toContain("<table>");
+			expect(html).toContain("<td>1</td>");
+			expect(html).not.toContain("&lt;table");
+		});
+
+		it("renders allowed raw HTML tables on the wikilink path too", () => {
+			const source = "<table><tr><td>cell</td></tr></table>";
+			const html = render(source, { wikilinkBasePath: "index.md" });
+			expect(html).toContain("<td>cell</td>");
+			expect(html).not.toContain("&lt;table");
+		});
+
+		it("still escapes type-parameter angle brackets to avoid the BACK-377 crash", () => {
+			const source = "Result<List<MenuItem>>";
+			expect(() => render(source)).not.toThrow();
+			expect(render(source)).toContain("Result&lt;List&lt;MenuItem&gt;&gt;");
+		});
+
+		it("strips <script> tags via rehype-sanitize", () => {
+			const source = '<script>alert("xss")</script><p>safe</p>';
+			const html = render(source);
+			expect(html).not.toContain("<script");
+			expect(html).toContain("safe");
+		});
+
+		it("strips on* event handler attributes on allowed tags", () => {
+			const source = '<img src="/a.png" onerror="alert(1)">';
+			const html = render(source);
+			expect(html).not.toContain("onerror");
+			expect(html).toContain("<img");
+		});
+
+		it("neutralizes javascript: hrefs (payload cannot execute)", () => {
+			const source = '<a href="javascript:alert(1)">click</a>';
+			const html = render(source);
+			// The original payload is gone; only React's own safe rewrite remains.
+			expect(html).not.toContain("alert(1)");
+			expect(html).not.toContain('href="javascript:alert');
+		});
+	});
 });
