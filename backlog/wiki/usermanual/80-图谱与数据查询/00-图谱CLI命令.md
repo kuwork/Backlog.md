@@ -2,7 +2,7 @@
 title: 图谱 CLI 命令
 labels: [usermanual]
 created_date: 2026-10-16 01:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-28 15:35
 ---
 
 
@@ -18,7 +18,7 @@ backlog instructions graph
 
 ## 后端与性能
 
-- **后端现状**：默认后端是 **RyuGraph WASM**（Kuzu 的 MIT fork 的 WebAssembly 构建），在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需任何环境变量。原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃。
+- **后端现状**：默认后端是 **RyuGraph WASM**（Kuzu 的 MIT fork 的 WebAssembly 构建），在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需任何环境变量。原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃，并打印一行英文告警说明失败路径与原因（`database path not visible to the WASM filesystem` 表示 MEMFS 看不到该路径，`engine error` 表示引擎自身故障——后者才需要上报）。数据库本体在 WASM 的内存文件系统里，缓存目录只存锁与指纹边车，这是正常现象。
 - **快照复用**：对 `default` 图谱的命令首次运行需要完整构建（本仓库约 6–11 秒）；CLI 会把构建结果作为 JSON 快照写入操作系统缓存目录，之后只要语料指纹、解析器版本与图结构版本都未变，就直接从快照恢复（约快一倍），语料一变则自动重建并刷新快照。快照只是缓存，删除它最多损失一次重建。
 - **每次调用独立**：CLI 每次运行都在内存中打开数据库、退出时关闭，与 Web 界面各自持有的图谱互不争抢（各自使用独立的槽位与锁）。
 

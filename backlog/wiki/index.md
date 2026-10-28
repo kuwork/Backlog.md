@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-10-18 22:00
+updated_date: 2026-10-28 15:28
 ---
 
 
@@ -426,11 +426,15 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-814-echarts-from-query]] |  BACK-814 - fromQuery 引用命名查询块（方式 A） | source, web-ui, charts, query-block, realtime |
 | [[sources/doc-32-mermaid-diagram-gallery]] |  doc-32 - Mermaid 图表画廊 | source, web-ui, charts, markdown |
 | [[sources/back-815-server-cache-self-heal]] |  BACK-815 - 服务端缓存自愈（指纹对账） | source, server, web-ui, bug |
+| [[sources/back-815.01-pinned-rescan-status-line]] |  BACK-815.01 - 重扫心跳钉住终端末行 | source, server, cli, windows |
 | [[sources/back-816-finalization-gates-default-machine]] |  BACK-816 - 收尾门禁同步进默认状态机 | source, config, state-machine |
 | [[sources/back-817-doc-view-bare-ids]] |  BACK-817 - 修复子目录文档的 bare ID 文档视图 | source, cli, doc, bug |
 | [[sources/back-818-checklist-batching-broadcast-debounce]] |  BACK-818 - 看板弹窗清单批量保存 + 服务端广播防抖加宽 | source, web-ui, core, server |
 | [[sources/back-819-switchable-diagram-engine]] |  BACK-819 - 可切换图表引擎：Pele 默认 + Mermaid 回退 | source, web-ui, charts, markdown |
 | [[sources/back-820-file-preview-frontmatter]] |  BACK-820 - 文件预览模态框分离 YAML frontmatter | source, web-ui, bug |
+| [[sources/back-821-raw-html-table-doc-preview]] |  BACK-821 - 文档预览恢复原始 HTML 表格并统一行高 | source, web-ui, markdown |
+| [[sources/back-822-remove-state-machine-injection]] |  BACK-822 - 状态机不再注入 agent 指令文件 | source, cli, agent-guidance |
+| [[sources/back-823-ryugraph-wasm-memfs-handle]] |  BACK-823 - RyuGraph WASM 改用 MEMFS 句柄路径与图谱文案英文化 | source, graph, wasm, i18n |
 
 ## Execution Notes
 
@@ -463,7 +467,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/two-list-paging-models-wiring]] |  两套列表分页模型接线约定 | list-window.ts（CLI --max-count/--skip 窗口）与 list-page.ts（MCP/REST offset 信封）的接线步骤与反模式 |
 | [[execution/webgl-html-overlay-hover-control]] |  WebGL canvas HTML 控件悬挂模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
 | [[execution/custom-backlog-dir-rollout-audit]] |  backlog-dir 推广硬编码路径审计模式 | 症状归族→grep 字面量→纯模块直调解析函数→每处 .backlog 种子回归用例，BACK-757/758 提炼 |
-| [[execution/ryugraph-wasm-gotchas]] |  RyuGraph WASM 在 Bun 下的陷阱集 | MEMFS 不持久、INT64 ToBigInt 崩溃、COPY FROM 静默零行，BACK-766~771 提炼 |
+| [[execution/ryugraph-wasm-gotchas]] |  RyuGraph WASM 在 Bun 下的陷阱集 | MEMFS 路径不可达/不持久、INT64 ToBigInt 崩溃、COPY FROM 静默零行，BACK-766~771/823 提炼 |
 
 ## Decisions
 
@@ -551,6 +555,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/terminal-set-derived-not-stored]] |  终态集是派生值 | BACK-762 拒绝设置页多选写 category 与独立配置键双写 |
 | [[decisions/ryugraph-wasm-default-backend]] |  默认图谱后端切换为 RyuGraph WASM | BACK-766 用 Kuzu MIT fork 的 WASM 构建取代原生 NAPI 绑定，kuzu 依赖移除 |
 | [[decisions/mermaid-into-chartblock]] |  图表渲染选择彻底统一而非最小改动 | BACK-812 把 mermaid 折进 ChartBlock，移除 post-render 替换与 key={theme} 重挂载 |
+| [[decisions/memfs-handle-over-nodejs-backend]] |  用 MEMFS 句柄而非 NODEFS 构建 | BACK-823 宿主路径换成 /tmp 句柄；NODEFS 构建在 Bun 下 abort、basename 会跨项目撞库 |
 
 ## Concepts
 

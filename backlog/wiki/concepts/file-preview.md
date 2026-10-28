@@ -2,7 +2,7 @@
 title: 本地文件预览
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-23 17:20
+updated_date: 2026-10-28 15:25
 ---
 
 # 本地文件预览
@@ -54,7 +54,19 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 - 正文里靠后出现 `---` 不会被误判为围栏（正则锚定开头）；部分/行范围预览与无 frontmatter 文件保持原行为；非 markdown 分支未改动。
 - 四语言 `filePreview.frontmatter` 标签（en/zh-CN/zh-TW/ja），6 例单测覆盖无 frontmatter、带引号键、列表值、非前置 `---`、CRLF 行尾。
 
+## 原始 HTML 表格恢复渲染（BACK-821）
+
+文档预览里手写的 `<table>` 曾经只能看到标签原文——源码预处理的全量转义把所有 `<` 变成 `&lt;`（BACK-377 为挡 TypeScript 泛型字符串而加）。BACK-821 改为**只转义类型字符串形状的尖括号**，并给渲染器接 `rehype-raw` + table-aware `rehype-sanitize`（剥 `script`/`onerror`/危险 `href`），因此原始 HTML 表格与 GFM 管道表格一样正常渲染，XSS 面仍被允许列表挡住（细节见 [[concepts/markdown-pipeline]]）。
+
+行高差异另有一条 CSS 修复：`.wmde-markdown p` 的 `margin-bottom` 作用在原始 HTML 单元格内的 `<p>` 包装上，`source.css` 用 `.wmde-markdown table p { margin: 0 }` 拉平，GFM 表格不受影响。
+
 ## Related Concepts
 
 - [[concepts/web-ui-features]] — Web UI 功能集，含任务详情弹窗集成点
 - [[concepts/markdown-pipeline]] — frontmatter 剥离与正文渲染
+- [[concepts/query-chart-binding]] — 同一渲染树里的图表路由
+
+## Related Sources
+
+- [[sources/back-820-file-preview-frontmatter]] — frontmatter 元数据面板
+- [[sources/back-821-raw-html-table-doc-preview]] — 原始 HTML 表格恢复渲染与行高统一
