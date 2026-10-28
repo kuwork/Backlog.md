@@ -88,8 +88,11 @@ Use the detailed guides when needed:
 - `backlog instructions task-execution` for planning and implementation workflow
 - `backlog instructions task-finalization` for completion and handoff
 - `backlog instructions milestones` for creating, editing, removing, and archiving milestones
-- `backlog instructions documents` for creating, updating, listing, and viewing project documents
+- `backlog instructions documents` for creating, updating, listing, and viewing project documents (including live `sqlite-query` / `duckdb-query` / `cypher-query` blocks)
+- `backlog instructions decisions` for creating or listing decisions
 - `backlog instructions drafts` for creating, promoting, demoting, or archiving drafts
+- `backlog instructions graph` for running Cypher graph queries from the CLI
+- `backlog instructions memos` for capturing or managing memos (quick notes, stdin capture, listing, updating, deleting)
 
 Use `backlog <command> --help` before running unfamiliar commands. Help shows options, fields, and examples.
 
@@ -110,76 +113,6 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 </CRITICAL_INSTRUCTION>
 <!-- BACKLOG.MD GUIDELINES END -->
 
-<!-- BACKLOG.MD STATE MACHINE START -->
-## This project's state machine
-
-**Moving a task:**
-- Find the task's current status below and follow the matching `next` edge; obey the edge's `ai` and gather its `evidence` first.
-- Never take an edge listed under "Stop and wait for the user" without the user's answer.
-
-### Statuses
-
-| Status | Category | Exit | Board |
-| --- | --- | --- | --- |
-| To Do | active | - | shown |
-| Planning | wip | - | shown |
-| Plan Review | blocked | - | shown |
-| In Progress | wip | - | shown |
-| In Review | blocked | - | shown |
-| Done | done | complete | shown |
-| Dropped | dropped | archive | hidden |
-
-### AI permission tiers
-
-| `ai` | What it means |
-| --- | --- |
-| `allowed` | the AI may make this move on its own |
-| `allowed_if` | the AI may move only while the edge's `if` holds |
-| `propose` | the AI proposes the move and waits for the user |
-| `forbidden` | only the user may make this move |
-
-### Transitions
-
-Every declared `next` edge, grouped by the status it starts from.
-
-#### To Do
-
-- `To Do` -> `Planning` · when: 用户已确认描述与验收标准完整，可以开工 · ai: allowed
-- `To Do` -> `Dropped` · when: 任务已过时或被放弃；提示用户将其移动到 Dropped 即归档 · ai: propose
-
-#### Planning
-
-- `Planning` -> `Plan Review` · when: 实现计划已写入 implementationPlan · ai: allowed_if · if: implementationPlan 非空
-
-#### Plan Review
-
-- `Plan Review` -> `In Progress` · when: 用户已批准实现计划 · ai: allowed_if · if: 用户已在对话或评论中明确批准实现计划
-- `Plan Review` -> `Planning` · when: 计划被驳回或需修改 · ai: propose · evidence: comments（写明驳回理由）
-
-#### In Progress
-
-- `In Progress` -> `In Review` · when: 实现完成 · ai: allowed_if · if: 已按照task-finalization完成收尾准备，并完成任务信息补充 · requires: 任务文件已按 task-finalization 补充
-- `In Progress` -> `Planning` · when: 实施中发现计划需要调整 · ai: allowed
-
-#### In Review
-
-- `In Review` -> `Done` · when: 用户验收通过 · ai: allowed_if · if: 用户已在对话或评论中明确验收通过 · requires: 任务文件已按 task-finalization 核实完整
-- `In Review` -> `In Progress` · when: 验收未通过，需返工 · ai: propose · evidence: comments（写明返工理由）
-
-`Done` and `Dropped` have no outgoing transitions.
-
-### Terminal statuses
-
-Reaching a status whose `category` is `done` or `dropped` (see the Statuses table) stamps `actualEnd`: `exit: complete` marks finished work, `exit: archive` marks work set aside, archived rather than completed.
-
-### Stop and wait for the user
-
-These edges are not the AI's to take:
-
-- `To Do` -> `Dropped` · ai: propose
-- `Plan Review` -> `Planning` · ai: propose
-- `In Review` -> `In Progress` · ai: propose
-<!-- BACKLOG.MD STATE MACHINE END -->
 
 <!-- WIKI GUIDELINES START -->
 

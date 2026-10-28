@@ -18,7 +18,6 @@ import {
 import { getTaskPrefixError } from "../utils/prefix-config.ts";
 import type { Core } from "./backlog.ts";
 import { defaultStateMachineForLocale, detectDefaultLocale } from "./state-machine.ts";
-import { renderProjectStateMachine } from "./state-machine-guidance.ts";
 
 export const MCP_SERVER_NAME = "backlog";
 export const MCP_GUIDE_URL = "https://github.com/MrLesk/Backlog.md#-mcp-integration-model-context-protocol";
@@ -297,7 +296,6 @@ export async function initializeProject(
 				core.gitOps,
 				agentInstructions,
 				config.autoCommit,
-				await renderProjectStateMachine(core.filesystem),
 			);
 			mcpResults.agentFiles = formatAgentInstructionResults(agentInstructionResults);
 		} catch (error) {

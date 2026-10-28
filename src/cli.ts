@@ -32,7 +32,6 @@ import { createMemo, deleteMemo, getMemo, listMemosPage, updateMemo } from "./co
 import { foldArchivedMilestoneTasks } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
 import { hiddenStatusNames, statusNames } from "./core/state-machine.ts";
-import { renderProjectStateMachine } from "./core/state-machine-guidance.ts";
 import {
 	decisionListJson,
 	documentListJson,
@@ -5819,13 +5818,7 @@ agentsCmd
 				// Get autoCommit setting from config
 				const config = await core.filesystem.loadConfig();
 				const shouldAutoCommit = config?.autoCommit ?? false;
-				await addAgentInstructions(
-					cwd,
-					core.gitOps,
-					files,
-					shouldAutoCommit,
-					await renderProjectStateMachine(core.filesystem),
-				);
+				await addAgentInstructions(cwd, core.gitOps, files, shouldAutoCommit);
 				console.log(`Updated ${files.length} agent instruction file(s): ${files.join(", ")}`);
 			} else {
 				console.log("No files selected for update.");
