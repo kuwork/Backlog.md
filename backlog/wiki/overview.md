@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-10-18 22:00
+updated_date: 2026-10-28 15:30
 ---
 
 # Knowledge Base Overview
@@ -167,6 +167,16 @@ m-17 收口后的一波收尾与稳健性工作，覆盖图表引擎、服务端
 - **文件预览模态框分离 YAML frontmatter**（BACK-820）：`FilePreviewModal` 原先把含 YAML frontmatter 的原始文件直接喂给 markdown 渲染器，顶部 `---` 块显示为破损横线与原文；新增轻量 extractor（故意不引入 gray-matter 以控制 web 包体积）把前置 YAML 拆为独立元数据面板、正文只渲染 body。部分/行范围预览与无 frontmatter 文件不受影响。概念页 [[concepts/file-preview]] 已更新。
 - **收尾门禁同步进默认状态机**（BACK-816）：定稿的 config.yml 给 `In Progress → In Review`（`requires` 任务文件按 task-finalization 完成）与 `In Review → Done`（`requires` 按 task-finalization 验收通过）加了门禁，但 `backlog init` 写入的默认机器来自 `DEFAULT_STATE_MACHINES`（`src/web/locales/*`）仍是旧 gate。现已把两道门禁同步进四语言默认机器，新项目开箱即带。概念页 [[concepts/state-machine]] 已更新。
 
+### 图谱发动机修复与指令面收敛（BACK-815.01 / 821~823，2026-10-27~28）
+
+v1.53.9 一波四件事，其中一件是把「能起但检索全死」的图谱恢复成真引擎。
+
+- **RyuGraph WASM 用 MEMFS 句柄路径开库**（BACK-823）：`ryugraph-wasm/sync` 是浏览器 Emscripten 构建，根目录是 MEMFS，只有 `/tmp`、`/home` 等预建目录；`RyuGraphStore.init()` 却把宿主绝对路径交给 `new ryu.Database(...)`，必然 ENOENT 并静默降级 memory——Cypher 检索（Web 放大镜、`backlog graph query`、graph MCP 查询）全部失效，指纹缓存也失去意义。修法是把完整宿主路径 sha256 成 `/tmp/ryu-<hex>.kuzu` 交给引擎，宿主路径只留给 `.lock` 与 `.kuzu.meta.json`；换 `ryugraph-wasm/nodejs/sync`（真 NODEFS）在 Bun 下直接 abort，被否。附带把整条图谱表面约 147 行中文用户可见文案转英文（含 `/api/*` 的 `error` 体，Web UI 原样渲染 `error.message`）。概念页 [[concepts/kuzu-graph]]、陷阱集 [[execution/ryugraph-wasm-gotchas]]、决策 [[decisions/memfs-handle-over-nodejs-backend]] 均已更新。
+- **状态机不再写进 agent 指令文件**（BACK-822）：`init`、`agents --update-instructions`、服务端 statuses 保存三处原本都把渲染后的机器作为 `state-machine` marker 块复制进 AGENTS/CLAUDE/GEMINI.md，等于给 `config.yml` 造一份会漂移的副本。现在三处写入全删、旧块只剥不写，`renderProjectStateMachine` 保留供 `backlog instructions` 与 MCP 资源按需渲染；同时把 AGENTS.md 的指南清单补齐 `decisions`/`graph`/`memos`，与 overview.md 对齐。概念页 [[concepts/state-machine]]、[[concepts/cli-instructions]] 已更新。
+- **文档预览恢复原始 HTML 表格**（BACK-821）：BACK-377 为挡 TypeScript 泛型字符串把所有 `<` 一律转义，代价是手写 `<table>` 只剩标签原文。现改为白名单式源码转义 + `rehype-raw`/`rehype-sanitize` 双保险（剥 `script`/`onerror`/危险 href），并用一条 CSS 消掉原始 HTML 单元格内 `<p>` 的 `margin-bottom`，让行高与 GFM 管道表格一致。概念页 [[concepts/markdown-pipeline]]、[[concepts/file-preview]] 已更新。
+- **重扫心跳钉住终端末行**（BACK-815.01）：BACK-815 的心跳用裸 `\r\x1b[K` 覆写末行，遇到 watcher/请求日志插入就顶到错误行、表现为不断追加。新增 `StatusLine` 单例 + console hooks：TTY 下原地重写、非 TTY 退化为普通行，其它日志先 `lift()` 把状态行推进 scrollback；winpty/Git Bash 下 `isTTY` 假，自动开启只收窄在 `backlog browser` 命令内。概念页 [[concepts/web-server]] 已更新。
+
+
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
 - **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
@@ -256,14 +266,14 @@ m-17 收口后的一波收尾与稳健性工作，覆盖图表引擎、服务端
 
 ## 统计
 
-- Sources ingested: 403
-- Concepts extracted: 46
+- Sources ingested: 420
+- Concepts extracted: 48
 - Entities catalogued: 2
 - Execution notes: 28
-- Decisions recorded: 81
+- Decisions recorded: 83
 - Patterns: 6
 - Comparisons: 1
-- Reasoning traces: 5
+- Reasoning traces: 6
 - Retrospectives: 1
 - User manual pages: 48
 - Reports generated: 10

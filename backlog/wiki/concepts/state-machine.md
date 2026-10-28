@@ -2,7 +2,7 @@
 title: 状态机语义
 labels: [concept, state-machine, config]
 created_date: 2026-10-03 01:13
-updated_date: 2026-10-23 17:20
+updated_date: 2026-10-28 15:22
 ---
 
 # 状态机语义
@@ -45,7 +45,9 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 ## 编辑与指引交付
 
 - **设置页状态机编辑器**：左右布局，左侧状态卡片与迁移边表单，右侧以 initialStatus 为根、沿 next 递归展开的 Mermaid 实时预览树（回边降级为虚线回引）。Reset（丢弃未保存改动）与 Default（载入七列默认）语义严格区分；只声明不强制，可展示 lint 警告但不阻止保存（[[sources/back-715-state-machine-editor-settings]]）。保存走 PUT/POST `/api/config/statuses` 并广播 `config-updated`。
-- **AI 指引**：`StateMachine.describe()` 从配置只读渲染本项目的机器（状态/类别/exit 表、ai 层级、每状态 next 边、终态表、"停下等人工"清单），经 `{{STATE_MACHINE}}` 占位符注入三份 overview 文本，并经 `state-machine` marker 幂等注入 AGENTS.md/CLAUDE.md（[[sources/back-716-state-machine-guidance-overviews]]）。
+- **AI 指引**：`StateMachine.describe()` 从配置只读渲染本项目的机器（状态/类别/exit 表、ai 层级、每状态 next 边、终态表、"停下等人工"清单），经 `{{STATE_MACHINE}}` 占位符注入三份 overview 文本（[[sources/back-716-state-machine-guidance-overviews]]）。
+- **不写入 agent 指令文件（BACK-822）**：曾经 `init`、`agents --update-instructions`、服务端 statuses 保存三处都会把渲染结果作为 `state-machine` marker 块复制进 `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`，等于给 `config.yml` 再造一份会漂移的副本，还得靠服务端刷新才能同步。BACK-822 删掉三个写入入口与注入 helper，只保留 `stripGuidelineSection(..., "state-machine")` **剥离**旧块；`renderProjectStateMachine` 仍在，`backlog instructions` 与 MCP 资源按需渲染。单一真源 + 按需读取，取代文件镜像（[[sources/back-822-remove-state-machine-injection]]）。
+
 - **四语言本地化**：默认状态机做成 en / zh-CN / zh-TW / ja 变体（`defaultStateMachineForLocale()` 经 LC_ALL/LANG 或 Windows 上 Intl 检测），仅本地化 when/if/requires/evidence 散文，状态名与分类不变；Plan Review→In Progress 与 In Review→Done 两条边为 `allowed_if`，默认机器无 forbidden 边（[[sources/back-721-state-machine-localization-guidance]]）。
 - 设置页卡片顺序与"Hide empty columns"开关位置见 [[sources/back-717-settings-page-reorder]]；差异化定位（GAP 2 状态列无语义是五缺口之一）见 [[sources/doc-18-differentiation-gap-analysis]]。
 
@@ -65,7 +67,7 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 ## Related Concepts
 
 - [[concepts/task-lifecycle]] — 状态机定义任务生命周期：双终态、actionable、完成/归档语义
-- [[concepts/embedded-skills]] — 机器指引经 agent-instructions marker 注入 AGENTS.md/CLAUDE.md
+- [[concepts/embedded-skills]] — agent-instructions 标记块机制；状态机自 BACK-822 起只剥离不再写入
 - [[concepts/mcp-workflow]] — overview 资源与 get_backlog_instructions 是机器指引的交付表面
 - [[concepts/cli-instructions]] — CLI overview 中的静态章节与 {{STATE_MACHINE}} 占位符
 - [[concepts/web-ui-features]] — 设置页编辑器与看板 display:false 隐藏列
@@ -82,3 +84,4 @@ To Do → Planning → Plan Review → In Progress → In Review → Done
 - [[sources/back-761-terminal-card-actual-end]] — 终态判定 API 分层（isTerminalStatus vs isTerminalStatusName）
 - [[sources/back-762-terminal-statuses-readonly]] — 终态集读取路径显式化与设置页只读化
 - [[sources/back-816-finalization-gates-default-machine]] — 收尾门禁同步进默认机器，新项目开箱即带
+- [[sources/back-822-remove-state-machine-injection]] — 停止把机器写进 agent 指令文件，改为按需渲染
