@@ -231,9 +231,9 @@ function projectRow(row: Record<string, unknown>, table: SnapshotNodeTable): Rec
 		if (key === "_label") continue; // added by the dump, never declared
 		if (!table.properties.some((property) => property.name === key)) {
 			throw new Error(
-				`快照损坏：${table.name} 的一行含未声明的字段 "${key}"（该表的字段：${table.properties
+				`Corrupt snapshot: a row of ${table.name} carries an undeclared field "${key}" (declared fields: ${table.properties
 					.map((p) => p.name)
-					.join(", ")}；该行：${JSON.stringify(row)}）。`,
+					.join(", ")}; row: ${JSON.stringify(row)}).`,
 			);
 		}
 	}
@@ -261,7 +261,7 @@ function bindableRow(row: Record<string, unknown>, table: SnapshotNodeTable): Re
 			// Creating a node with a NULL primary key segfaults the ryu WASM build - a corrupt
 			// snapshot must say so instead of taking the process down with it.
 			throw new Error(
-				`快照损坏：${table.name} 有主键 "${property.name}" 为空的行，无法还原（该行：${JSON.stringify(projected)}）。`,
+				`Corrupt snapshot: a row of ${table.name} has an empty primary key "${property.name}" and cannot be restored (row: ${JSON.stringify(projected)}).`,
 			);
 		}
 		bound[property.name] = value === null ? null : isTextType(property.type) ? value : String(value);

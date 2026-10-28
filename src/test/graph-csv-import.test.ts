@@ -31,7 +31,7 @@ describe("csv parsing (pure)", () => {
 	});
 
 	test("an unterminated quote is reported with its line instead of guessed at", () => {
-		expect(() => parseCsvText('a,b\n"oops,2\n')).toThrow(/第 2 行/);
+		expect(() => parseCsvText('a,b\n"oops,2\n')).toThrow(/line 2/);
 	});
 
 	test("type inference narrows to the narrowest type that fits, and ignores empty cells", () => {
@@ -47,7 +47,7 @@ describe("csv parsing (pure)", () => {
 		expect(coerceCsvValue("", "INT64", "age", 3)).toBeNull();
 		expect(coerceCsvValue("", "STRING", "name", 3)).toBe("");
 		expect(coerceCsvValue("yes", "BOOLEAN", "flag", 4)).toBe("true");
-		expect(() => coerceCsvValue("abc", "INT64", "age", 5)).toThrow(/第 5 行.*"age"/);
+		expect(() => coerceCsvValue("abc", "INT64", "age", 5)).toThrow(/line 5.*"age"/);
 	});
 });
 
@@ -104,18 +104,18 @@ describe("reading a csv file", () => {
 
 	test("malformed files say exactly what is wrong, before any store is opened", async () => {
 		const ragged = await write("ragged.csv", "name,age\nFrank,60,extra\n");
-		expect(() => readCsvFile(ragged)).toThrow(/第 2 行有 3 列/);
+		expect(() => readCsvFile(ragged)).toThrow(/line 2 has 3 columns/);
 
 		const headerOnly = await write("empty.csv", "name,age\n");
-		expect(() => readCsvFile(headerOnly)).toThrow(/只有表头/);
+		expect(() => readCsvFile(headerOnly)).toThrow(/header but no data rows/);
 
 		const badName = await write("bad.csv", "First Name,age\nAnn,22\n");
-		expect(() => readCsvFile(badName)).toThrow(/不是合法的属性名/);
+		expect(() => readCsvFile(badName)).toThrow(/not a valid property name/);
 
 		const duplicate = await write("dup.csv", "a,a\n1,2\n");
-		expect(() => readCsvFile(duplicate, { map: { a: "x" } })).toThrow(/重复/);
+		expect(() => readCsvFile(duplicate, { map: { a: "x" } })).toThrow(/duplicated/);
 
-		expect(() => readCsvFile(join(root, "missing.csv"))).toThrow(/无法读取/);
+		expect(() => readCsvFile(join(root, "missing.csv"))).toThrow(/Cannot read/);
 	});
 });
 
@@ -219,7 +219,7 @@ describe("importing a csv into a database", () => {
 			await importCsvTable(store, readCsvFile(await write("a.csv", "name,age\nAlice,30\n")));
 			await expect(
 				importCsvTable(store, readCsvFile(await write("b2.csv", "name,city\nBob,Beijing\n"), { table: "a" })),
-			).rejects.toThrow(/没有列 "city"/);
+			).rejects.toThrow(/has no column "city"/);
 		} finally {
 			await store.close();
 		}
@@ -231,7 +231,7 @@ describe("importing a csv into a database", () => {
 			await importCsvTable(store, readCsvFile(await write("a.csv", "name,age\nAlice,30\n")));
 			await expect(
 				importCsvTable(store, readCsvFile(await write("b3.csv", "name,age\nBob,not-a-number\n"), { table: "a" })),
-			).rejects.toThrow(/第 2 行.*不是合法的 INT64/);
+			).rejects.toThrow(/line 2.*not a valid INT64/);
 			const rows = await store.runCypher("MATCH (n:a) RETURN count(n)");
 			expect(String(rows.rows[0]?.[0])).toBe("1");
 		} finally {
@@ -382,14 +382,14 @@ describe("importing a csv as edges", () => {
 					fromNode: "Person",
 					toNode: "Ghost",
 				}),
-			).rejects.toThrow(/节点表 "Ghost" 不存在/);
+			).rejects.toThrow(/Node table "Ghost" does not exist/);
 			await expect(
 				importCsvRelations(store, readCsvFile(await write("z.csv", "who,where\nAlice,Bob\n")), {
 					rel: "WORKS_AT",
 					from: "who",
 					to: "nope",
 				}),
-			).rejects.toThrow(/--to 指定的列 "nope"/);
+			).rejects.toThrow(/--to names the column "nope"/);
 		} finally {
 			await store.close();
 		}

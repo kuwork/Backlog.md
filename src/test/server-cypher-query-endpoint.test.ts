@@ -119,7 +119,7 @@ describe("BacklogServer cypher-query block endpoints (BACK-802)", () => {
 	])("rejects the path-shaped source %s with the same registry gate", async (source) => {
 		const { status, json } = await post("/api/graph/cypher-query", { source, query: "RETURN 1" });
 		expect(status).toBe(400);
-		expect(String(json.error)).toContain("可用");
+		expect(String(json.error)).toContain("Available");
 	});
 
 	it("surfaces the read-only gate for a write statement", async () => {
@@ -128,7 +128,7 @@ describe("BacklogServer cypher-query block endpoints (BACK-802)", () => {
 			query: "CREATE (:Shop {id: 'x'})",
 		});
 		expect(status).toBe(400);
-		expect(String(json.error)).toContain("只读");
+		expect(String(json.error)).toContain("read-only");
 	});
 
 	it("export-csv takes exactly { source, query } and returns the file body plus a suggested name", async () => {

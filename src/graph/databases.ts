@@ -89,10 +89,12 @@ export function userDatabaseSource(projectRoot: string, name: string): DatabaseS
 
 /** Validate a user database name; returns an error message, or null when the name is usable. */
 export function validateDatabaseName(name: string): string | null {
-	if (name.length === 0) return "数据库名不能为空。";
-	if (name === DEFAULT_DATABASE) return `"${DEFAULT_DATABASE}" 是内置数据库名，不能占用。`;
-	if (name.length > MAX_DATABASE_NAME_LENGTH) return `数据库名过长（上限 ${MAX_DATABASE_NAME_LENGTH} 字符）。`;
-	if (!NAME_PATTERN.test(name)) return "数据库名只能包含字母、数字、下划线和连字符，且必须以字母开头。";
+	if (name.length === 0) return "Database name must not be empty.";
+	if (name === DEFAULT_DATABASE) return `"${DEFAULT_DATABASE}" is a built-in database name and cannot be taken.`;
+	if (name.length > MAX_DATABASE_NAME_LENGTH)
+		return `Database name is too long (limit ${MAX_DATABASE_NAME_LENGTH} characters).`;
+	if (!NAME_PATTERN.test(name))
+		return "Database name may contain letters, digits, underscores and hyphens, and must start with a letter.";
 	return null;
 }
 
@@ -167,7 +169,7 @@ export function resolveDatabase(projectRoot: string, name: string): GraphDatabas
 	}
 	const known = listDatabases(projectRoot).map((db) => db.name);
 	throw new Error(
-		`数据库 "${name}" 不存在。可用：${known.join(", ")}；用 \`backlog graph create ${name} "<描述>"\` 新建。`,
+		`Database "${name}" does not exist. Available: ${known.join(", ")}; create it with \`backlog graph create ${name} "<description>"\`.`,
 	);
 }
 
@@ -176,7 +178,7 @@ export function createDatabase(projectRoot: string, name: string, description: s
 	const invalid = validateDatabaseName(name);
 	if (invalid) throw new Error(invalid);
 	const registry = readRegistry(projectRoot);
-	if (Object.hasOwn(registry.databases, name)) throw new Error(`数据库 "${name}" 已存在。`);
+	if (Object.hasOwn(registry.databases, name)) throw new Error(`Database "${name}" already exists.`);
 	const source = userDatabaseSource(projectRoot, name);
 	saveSnapshot(source.snapshotPath, emptySnapshot(name));
 	const now = timestamp();
@@ -195,7 +197,7 @@ export function dropDatabase(projectRoot: string, name: string): void {
 	const invalid = validateDatabaseName(name);
 	if (invalid) throw new Error(invalid);
 	const registry = readRegistry(projectRoot);
-	if (!Object.hasOwn(registry.databases, name)) throw new Error(`数据库 "${name}" 不存在。`);
+	if (!Object.hasOwn(registry.databases, name)) throw new Error(`Database "${name}" does not exist.`);
 	delete registry.databases[name];
 	writeRegistry(projectRoot, registry);
 	const source = userDatabaseSource(projectRoot, name);

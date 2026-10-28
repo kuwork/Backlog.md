@@ -2506,14 +2506,17 @@ export class BacklogServer {
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
 
 		// `copy_to` is a DuckDB-only feature; a SQLite block that sets it is a misconfiguration.
 		if (typeof body?.copyTo === "string" && body.copyTo.trim().length > 0) {
-			return Response.json({ error: "copy_to 仅支持 duckdb-query 块，sqlite-query 块不支持写路径。" }, { status: 400 });
+			return Response.json(
+				{ error: "copy_to is only supported for duckdb-query blocks; sqlite-query blocks have no write path." },
+				{ status: 400 },
+			);
 		}
 
 		const validated = validateReadOnlySql(sql);
@@ -2540,7 +2543,7 @@ export class BacklogServer {
 			return Response.json(runSqliteQuery({ dbPath: resolved.path, sql: validated.sql, maxRows, page, pageSize }));
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
-			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+			return Response.json({ error: `Query failed: ${detail}` }, { status: 400 });
 		}
 	}
 
@@ -2557,7 +2560,7 @@ export class BacklogServer {
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
@@ -2596,7 +2599,7 @@ export class BacklogServer {
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
@@ -2644,7 +2647,7 @@ export class BacklogServer {
 			);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
-			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+			return Response.json({ error: `Query failed: ${detail}` }, { status: 400 });
 		}
 	}
 
@@ -2657,7 +2660,7 @@ export class BacklogServer {
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const source = typeof body?.source === "string" ? body.source : "";
 		const sql = typeof body?.sql === "string" ? body.sql : "";
@@ -3129,7 +3132,7 @@ export class BacklogServer {
 		try {
 			body = await req.json();
 		} catch {
-			return Response.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const statement =
 			typeof (body as { statement?: unknown })?.statement === "string"
@@ -3143,7 +3146,7 @@ export class BacklogServer {
 			const result = await service.runCypher(statement);
 			return Response.json(result, { headers: { "Content-Type": "application/json" } });
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Cypher 查询失败";
+			const message = error instanceof Error ? error.message : "Cypher query failed";
 			return Response.json({ error: message }, { status: 400 });
 		}
 	}
@@ -3184,7 +3187,7 @@ export class BacklogServer {
 		try {
 			body = await req.json();
 		} catch {
-			return Response.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const payload = body as { db?: unknown; statement?: unknown; maxRows?: unknown };
 		const db = typeof payload.db === "string" ? payload.db : "";
@@ -3192,7 +3195,7 @@ export class BacklogServer {
 		// A row cap of `null` means "every row": the interactive cap is a rendering budget, and the
 		// reader asking for the whole result is choosing to pay for it.
 		const maxRows = payload.maxRows === null ? null : typeof payload.maxRows === "number" ? payload.maxRows : undefined;
-		if (!db) return Response.json({ error: "缺少数据库名" }, { status: 400 });
+		if (!db) return Response.json({ error: "Missing database name." }, { status: 400 });
 		try {
 			if (db === DEFAULT_DATABASE) {
 				const service = await this.getGraphService();
@@ -3205,7 +3208,7 @@ export class BacklogServer {
 			const result = await this.databaseBrowser.query(this.core.filesystem.rootDir, db, statement, maxRows);
 			return Response.json(result, { headers: { "Content-Type": "application/json" } });
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Cypher 查询失败";
+			const message = error instanceof Error ? error.message : "Cypher query failed";
 			return Response.json({ error: message }, { status: 400 });
 		}
 	}
@@ -3226,7 +3229,7 @@ export class BacklogServer {
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const source = typeof body?.source === "string" ? body.source.trim() : "";
 		const query = typeof body?.query === "string" ? body.query : "";
@@ -3257,7 +3260,7 @@ export class BacklogServer {
 			});
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
-			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+			return Response.json({ error: `Query failed: ${detail}` }, { status: 400 });
 		}
 	}
 
@@ -3271,7 +3274,7 @@ export class BacklogServer {
 		try {
 			body = (await req.json()) as typeof body;
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const source = typeof body?.source === "string" ? body.source.trim() : "";
 		const query = typeof body?.query === "string" ? body.query : "";
@@ -3292,7 +3295,7 @@ export class BacklogServer {
 			});
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
-			return Response.json({ error: `查询失败：${detail}` }, { status: 400 });
+			return Response.json({ error: `Query failed: ${detail}` }, { status: 400 });
 		}
 	}
 
@@ -3305,7 +3308,7 @@ export class BacklogServer {
 	private async handleGetGraphLegend(req: Request): Promise<Response> {
 		const database = new URL(req.url).searchParams.get("database");
 		if (!database) {
-			return Response.json({ error: "缺少 database 参数。" }, { status: 400 });
+			return Response.json({ error: "Missing database parameter." }, { status: 400 });
 		}
 		const config = loadLegendConfig(this.core.filesystem.rootDir, database);
 		if (config === null) {
@@ -3330,18 +3333,18 @@ export class BacklogServer {
 		try {
 			body = await req.json();
 		} catch {
-			return Response.json({ error: "请求体不是合法 JSON。" }, { status: 400 });
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
 		}
 		const payload = body as { database?: unknown; config?: unknown };
 		const database = typeof payload.database === "string" ? payload.database : "";
 		if (!database) {
-			return Response.json({ error: "缺少 database 字段。" }, { status: 400 });
+			return Response.json({ error: "Missing database field." }, { status: 400 });
 		}
 		const config = payload.config;
 		// null means "reset/remove"; anything else must be a plain object (arrays are not plain objects).
 		const isPlainObject = typeof config === "object" && config !== null && !Array.isArray(config);
 		if (config !== null && !isPlainObject) {
-			return Response.json({ error: "config 必须是对象或 null。" }, { status: 400 });
+			return Response.json({ error: "config must be an object or null." }, { status: 400 });
 		}
 		let changed = false;
 		try {
@@ -3352,7 +3355,7 @@ export class BacklogServer {
 			this.graphLegendWatcher?.notePublishedStore(stored.map);
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
-			return Response.json({ error: `写入图例配置失败：${detail}` }, { status: 500 });
+			return Response.json({ error: `Failed to write legend config: ${detail}` }, { status: 500 });
 		}
 		// Silent no-op when the legend did not actually change (same config re-saved, or removing
 		// an entry that was never there): clients keep what they have.
@@ -3366,10 +3369,10 @@ export class BacklogServer {
 	 * path-shaped value simply cannot match. Returns the error message, or null when usable.
 	 */
 	private validateCypherBlockSource(source: string): string | null {
-		if (!source) return "缺少必填字段 source（数据库名）。";
+		if (!source) return "Missing required field source (database name).";
 		const known = listDatabases(this.core.filesystem.rootDir).map((db) => db.name);
 		if (known.includes(source)) return null;
-		return `数据库 "${source}" 不存在。可用：${known.join(", ")}。`;
+		return `Database "${source}" does not exist. Available: ${known.join(", ")}.`;
 	}
 
 	/** Run one read-only statement against a validated source, exactly as /api/graph/db-cypher does. */

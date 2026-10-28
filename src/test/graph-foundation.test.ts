@@ -585,7 +585,9 @@ describe("RyuGraphStore (WASM Cypher backend, BACK-766)", () => {
 	test("rejects write statements to protect the graph cache", async () => {
 		const store = new RyuGraphStore(":memory:");
 		await store.init();
-		await expect(store.runCypher("CREATE (:FileNode {path:'x.md', id:'X', type:'task'})")).rejects.toThrow(/只读/i);
+		await expect(store.runCypher("CREATE (:FileNode {path:'x.md', id:'X', type:'task'})")).rejects.toThrow(
+			/read-only/i,
+		);
 		await store.close();
 	});
 

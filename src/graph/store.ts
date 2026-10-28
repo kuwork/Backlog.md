@@ -19,6 +19,8 @@
  * every mutation here is driven by file-system reconciliation only.
  */
 
+import { createHash } from "node:crypto";
+
 export type GraphKind = "task" | "draft" | "milestone" | "wiki" | "decision" | "document";
 
 /**
@@ -248,12 +250,12 @@ export class MemoryGraphStore implements GraphStore {
 
 	async runCypher(): Promise<CypherQueryResult> {
 		throw new Error(
-			"Cypher 检索需要支持 Cypher 的图后端（ryu）；当前运行在 memory 降级模式，不支持 Cypher。设置 BACKLOG_GRAPH_BACKEND=ryu 后重启，或移除该变量以回退到默认的 ryu 后端。",
+			"Cypher retrieval needs a Cypher-capable graph backend (ryu); this process runs the memory fallback, which has none. Restart with BACKLOG_GRAPH_BACKEND=ryu, or unset the variable to use the default ryu backend.",
 		);
 	}
 
 	async runWrite(): Promise<void> {
-		throw new Error("Cypher 写入需要支持 Cypher 的图后端（ryu）；当前运行在 memory 降级模式，不支持写入。");
+		throw new Error("Cypher writes need a Cypher-capable graph backend (ryu); the memory fallback cannot write.");
 	}
 }
 
@@ -360,6 +362,58 @@ async function loadRyu(): Promise<RyuModule> {
 		await ryuModule.init();
 	}
 	return ryuModule;
+}
+
+/**
+ * The database handle ryu is actually given.
+ *
+ * `ryugraph-wasm/sync` is a browser build: Emscripten mounts MEMFS at `/`, so the host filesystem is
+ * invisible to it and a host absolute path (macOS `~/Library/Caches/...`, Windows `%LOCALAPPDATA%\...`)
+ * can never be opened - the engine answers `Cannot open file` and the backend degrades to memory,
+ * silently killing Cypher. The handle is therefore a virtual MEMFS path. It is derived from a digest
+ * of the full host path rather than from its basename, because basenames collide across projects (two
+ * user databases can both be `articles.kuzu`) and carry a platform separator; a hex digest is unique
+ * and POSIX-safe everywhere. It is built by string concatenation, never `path.join`, so Windows still
+ * hands MEMFS forward slashes.
+ *
+ * The MEMFS file is not durable (it lives as long as the process), which is why the snapshot sidecar
+ * beside the host path - not this file - is the persistent copy.
+ */
+function memfsDatabasePath(dbPath: string): string {
+	const digest = createHash("sha256").update(dbPath).digest("hex").slice(0, 32);
+	return `/tmp/ryu-${digest}.kuzu`;
+}
+
+/**
+ * Make sure MEMFS `/tmp` exists before ryu creates its database there.
+ *
+ * `init()` already creates its default directories (`createDefaultDirectories()` mkdirs `/tmp`,
+ * `/home`), so this is only a guard for a build that skips them. It must never reach for the host
+ * `/tmp` - that path is just as invisible to MEMFS as the project cache directory, so the fallback
+ * would fail in exactly the same way.
+ */
+function ensureMemfsTmp(ryu: RyuModule): void {
+	try {
+		const fs = ryu?.getFS?.();
+		if (!fs) return;
+		if (fs.analyzePath?.("/tmp")?.exists) return;
+		fs.mkdirTree?.("/tmp");
+	} catch {
+		// Not fatal on its own: constructing the Database below is the real check.
+	}
+}
+
+/**
+ * Label a ryu init failure so the degraded notice says *why*.
+ *
+ * A path the WASM filesystem cannot see and a genuine engine fault both end in the same catch, but
+ * they mean opposite things: the first is a build/path regression that silently disables Cypher, the
+ * second is the environment being unhealthy. Naming them apart keeps the warning actionable.
+ */
+function describeRyuFailure(err: unknown): string {
+	const message = err instanceof Error ? err.message : String(err);
+	const unreachablePath = /cannot open file|enoent|no such file|ioexception/i.test(message);
+	return `${unreachablePath ? "database path not visible to the WASM filesystem" : "engine error"}: ${message}`;
 }
 
 /** A kuzu/ryu node value: has `_label` and no relationship endpoints. */
@@ -603,7 +657,9 @@ export class RyuGraphStore implements GraphStore {
 
 	async init(): Promise<void> {
 		const ryu = await loadRyu();
-		this.db = new ryu.Database(this.dbPath);
+		ensureMemfsTmp(ryu);
+		// ryu opens this handle inside its own WASM filesystem, not on the host - see memfsDatabasePath.
+		this.db = new ryu.Database(memfsDatabasePath(this.dbPath));
 		this.conn = new ryu.Connection(this.db);
 		// A user database owns its schema: create nothing of our own. It must still start **empty**,
 		// because ryu keeps the file in WASM memory and `close()` does not release it: in a long-lived
@@ -848,11 +904,13 @@ export class RyuGraphStore implements GraphStore {
 	 */
 	async runCypher(statement: string, options: { maxRows?: number | null } = {}): Promise<CypherQueryResult> {
 		const trimmed = statement.trim();
-		if (!trimmed) throw new Error("Cypher 语句为空");
+		if (!trimmed) throw new Error("Cypher statement is empty");
 		// Read-only retrieval only: block write keywords to protect the cache. `CALL` (e.g.
 		// show_tables) stays allowed because it is read-only introspection.
 		if (/\b(CREATE|DROP|DELETE|INSERT|MERGE|SET|UPDATE)\b/i.test(trimmed)) {
-			throw new Error("Cypher 检索仅支持只读查询（MATCH / RETURN / WITH / CALL），已阻止写操作以保护图谱缓存。");
+			throw new Error(
+				"Cypher retrieval is read-only (MATCH / RETURN / WITH / CALL); the write was blocked to protect the graph cache.",
+			);
 		}
 		const result = await this.query(trimmed);
 		const rowObjects = await this.rowsFromResult(result);
@@ -884,9 +942,9 @@ export class RyuGraphStore implements GraphStore {
 	 */
 	async runWrite(statement: string, params?: Record<string, unknown>): Promise<void> {
 		const trimmed = statement.trim();
-		if (!trimmed) throw new Error("Cypher 语句为空");
+		if (!trimmed) throw new Error("Cypher statement is empty");
 		if (/\b(DROP\s+DATABASE|ATTACH|DETACH|INSTALL|LOAD\s+EXTENSION)\b/i.test(trimmed)) {
-			throw new Error("该语句超出用户数据库的写入范围，已被拒绝。");
+			throw new Error("Statement refused: it reaches outside this user database.");
 		}
 		if (params) {
 			await this.executePrepared(trimmed, params);
@@ -1038,7 +1096,12 @@ export async function openGraphStore(dbPath: string, options: OpenGraphStoreOpti
 		await store.init();
 		return store;
 	} catch (err) {
-		console.warn(`[graph] RyuGraph (WASM) 后端初始化失败，回退到 memory 降级模式（Cypher 检索不可用）：${String(err)}`);
+		// Console output has no i18n layer (src/web/locales/ is Web-UI only), so this diagnostic is
+		// English like the rest of the CLI/server messages. The reason label keeps a path regression
+		// distinguishable from an unhealthy engine.
+		console.warn(
+			`[graph] RyuGraph (WASM) backend init failed for ${dbPath}, falling back to memory (Cypher unavailable) - ${describeRyuFailure(err)}`,
+		);
 		return openMemoryStore(dbPath);
 	}
 }

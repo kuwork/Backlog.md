@@ -70,8 +70,8 @@ function isPlainMapping(value: unknown): value is Record<string, unknown> {
 /** Format a Cypher result set for an agent: machine-readable JSON plus a short summary line. */
 function formatCypherResult(result: { columns: string[]; rows: unknown[][]; truncated?: boolean }): string {
 	const rowCount = result.rows.length;
-	const truncated = result.truncated ? " ｜ 已截断（上限 500 行）" : "";
-	const summary = `匹配行数：${rowCount}${truncated}`;
+	const truncated = result.truncated ? " | truncated (500 row cap)" : "";
+	const summary = `Matched rows: ${rowCount}${truncated}`;
 	return `${JSON.stringify(result, null, 2)}\n\n${summary}`;
 }
 
@@ -145,7 +145,7 @@ export class GraphHandlers {
 		const found = databases.find((database) => database.name === db);
 		if (!found) {
 			throw new BacklogToolError(
-				`数据库 "${db}" 不存在。可用：${databases.map((database) => database.name).join(", ")}。`,
+				`Database "${db}" does not exist. Available: ${databases.map((database) => database.name).join(", ")}.`,
 				"RESOURCE_NOT_FOUND",
 			);
 		}

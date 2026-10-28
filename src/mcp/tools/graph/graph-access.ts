@@ -62,7 +62,7 @@ export async function openDatabaseReadonly(
 		database = resolveDatabase(rootDir, db);
 	} catch (error) {
 		// `resolveDatabase` throws a plain Error listing what is available; surface it as a clear
-		// MCP error (the "不存在" text) instead of the generic "An unexpected error occurred".
+		// MCP error (the "does not exist" text) instead of the generic "An unexpected error occurred".
 		throw new BacklogToolError(error instanceof Error ? error.message : String(error), "RESOURCE_NOT_FOUND");
 	}
 	mkdirSync(dirname(database.source.dbPath), { recursive: true });
@@ -72,7 +72,9 @@ export async function openDatabaseReadonly(
 	});
 	if (store.backend !== "ryu") {
 		await store.close();
-		throw new Error("Cypher 操作需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+		throw new Error(
+			"Cypher needs the ryu backend; this process runs the memory fallback, which has no Cypher support. Check that RyuGraph WASM is available.",
+		);
 	}
 	if (database.kind === "derived") {
 		// Reuse the snapshot the Web UI / GraphService already wrote when it still matches; otherwise
@@ -117,22 +119,24 @@ export async function withUserDatabaseWrite<T>(
 	}
 	if (database.kind !== "user") {
 		throw new Error(
-			`"${DEFAULT_DATABASE}" 是 markdown 派生库、只读（每次从语料重建，写入会被覆盖）。` +
-				"请先 graph_create_database 建库，再写入那个库。",
+			`"${DEFAULT_DATABASE}" is the markdown-derived database and is read-only (it is rebuilt from the corpus, so writes are overwritten). ` +
+				"Create a database with graph_create_database and write to that one.",
 		);
 	}
 	mkdirSync(dirname(database.source.dbPath), { recursive: true });
 	const lock = tryAcquireGraphLock(database.source.lockPath);
 	if (!lock) {
 		throw new Error(
-			`数据库 "${database.name}" 正被另一个进程写入（锁：${database.source.lockPath}）。` +
-				"为避免覆盖对方的写入，本次写入已中止，请稍后重试。",
+			`Database "${database.name}" is being written by another process (lock: ${database.source.lockPath}). ` +
+				"The write was aborted to avoid overwriting it; try again later.",
 		);
 	}
 	const store = await openGraphStore(database.source.dbPath, { backend: "ryu", schema: "none" });
 	try {
 		if (store.backend !== "ryu") {
-			throw new Error("Cypher 写入需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+			throw new Error(
+				"Cypher writes need the ryu backend; this process runs the memory fallback, which has no Cypher support. Check that RyuGraph WASM is available.",
+			);
 		}
 		const loaded = loadSnapshotWithFingerprint(database.source.snapshotPath);
 		const loadedFingerprint = loaded.fingerprint;
@@ -142,8 +146,8 @@ export async function withUserDatabaseWrite<T>(
 		const current = snapshotFingerprint(database.source.snapshotPath);
 		if (current !== loadedFingerprint) {
 			throw new Error(
-				`数据库 "${database.name}" 的快照在本次加载之后被改动过（记录 ${loadedFingerprint ?? "无文件"}，` +
-					`实际 ${current ?? "无文件"}）。为避免覆盖这些改动，本次写入已中止。`,
+				`The snapshot of database "${database.name}" changed after it was loaded (recorded ${loadedFingerprint ?? "no file"}, ` +
+					`actual ${current ?? "no file"}). The write was aborted to avoid overwriting those changes.`,
 			);
 		}
 		saveSnapshot(database.source.snapshotPath, await dumpDatabase(store, database.name));

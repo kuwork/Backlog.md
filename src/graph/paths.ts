@@ -5,12 +5,16 @@ import { join, resolve } from "node:path";
 /**
  * Where the derived task graph lives (doc-014 §0/§3.3).
  *
- * The Kuzu database is nothing but a cache of the markdown truth, so it is never written into the
- * repository. Every instance gets its own database, named after hash(project path + slot):
+ * The graph database is nothing but a cache of the markdown truth, so it is never written into the
+ * repository. Every instance gets its own cache entry, named after hash(project path + slot):
  *
- *   <cache dir>/backlog-graph-<hash>.kuzu             the database (Kuzu creates a directory)
- *   <cache dir>/backlog-graph-<hash>.kuzu.meta.json   the fingerprint sidecar
- *   <cache dir>/backlog-graph-<hash>.kuzu.lock        the single-holder lock
+ *   <cache dir>/backlog-graph-<hash>.kuzu.meta.json   the fingerprint sidecar (durable)
+ *   <cache dir>/backlog-graph-<hash>.kuzu.lock        the single-holder lock (durable)
+ *
+ * `dbPath` names that entry but is **not a file on disk**: the ryu backend is the WASM build, which
+ * lives entirely in MEMFS, so no `.kuzu` is ever created here - the path is only a handle name, and
+ * `store.ts` turns it into a MEMFS path before opening it. The sidecar and the lock are the real
+ * host artifacts, which is why a cache entry is identified by them.
  *
  * The slot is the instance discriminator, and it is what keeps concurrent processes from fighting
  * over one library: the Web UI claims `port-<port>` (a bound port already identifies that session
@@ -36,8 +40,9 @@ export function portSlot(port: number): GraphSlot {
 }
 
 export interface GraphPaths {
-	/** Every file below sits here; handy when a stale cache needs a look. */
+	/** Every artifact below sits here; handy when a stale cache needs a look. */
 	dir: string;
+	/** Cache-entry name, not an on-disk file: the WASM backend opens it inside MEMFS. */
 	dbPath: string;
 	metaPath: string;
 	lockPath: string;

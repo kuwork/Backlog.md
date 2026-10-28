@@ -146,7 +146,7 @@ export function parseCsvText(text: string): string[][] {
 		}
 		cell += char;
 	}
-	if (quoted) throw new Error(`CSV 解析失败：第 ${recordStart} 行的引号没有闭合。`);
+	if (quoted) throw new Error(`CSV parse failed: the quote opened on line ${recordStart} is never closed.`);
 	if (cell.length > 0 || record.length > 0) {
 		record.push(cell);
 		records.push(record);
@@ -187,24 +187,24 @@ export function coerceCsvValue(raw: string, type: CsvColumnType, column: string,
 		case "STRING":
 			return value;
 		case "INT64":
-			if (!INT_PATTERN.test(value)) throw csvError(line, column, value, "INT64 整数");
+			if (!INT_PATTERN.test(value)) throw csvError(line, column, value, "INT64 integer");
 			return value;
 		case "DOUBLE":
 			if (!DOUBLE_PATTERN.test(value) || !Number.isFinite(Number(value)))
-				throw csvError(line, column, value, "DOUBLE 数值");
+				throw csvError(line, column, value, "DOUBLE number");
 			return value;
 		case "BOOLEAN": {
 			const word = value.toLowerCase();
 			if (TRUE_WORDS.has(word)) return "true";
 			if (FALSE_WORDS.has(word)) return "false";
-			throw csvError(line, column, value, "BOOLEAN（true/false/1/0/yes/no）");
+			throw csvError(line, column, value, "BOOLEAN (true/false/1/0/yes/no)");
 		}
 	}
 }
 
 function csvError(line: number, column: string, value: string, expected: string): Error {
 	return new Error(
-		`CSV 第 ${line} 行 "${column}" 的值 "${value}" 不是合法的 ${expected}。请修正该行，或用 --map 把它映射为 STRING 列。`,
+		`CSV line ${line}: value "${value}" of column "${column}" is not a valid ${expected}. Fix that row, or use --map to map the column to STRING.`,
 	);
 }
 
@@ -226,22 +226,22 @@ export function readCsvFile(filePath: string, options: ReadCsvOptions = {}): Csv
 	try {
 		text = readFileSync(filePath, "utf8");
 	} catch (error) {
-		throw new Error(`无法读取 CSV 文件 "${filePath}"：${error instanceof Error ? error.message : String(error)}`);
+		throw new Error(`Cannot read CSV file "${filePath}": ${error instanceof Error ? error.message : String(error)}`);
 	}
 	if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // a BOM would become part of the first header
 	const records = parseCsvText(text);
-	if (records.length === 0) throw new Error(`CSV 文件 "${filePath}" 没有可解析的内容。`);
+	if (records.length === 0) throw new Error(`CSV file "${filePath}" has no parseable content.`);
 
 	const hasHeader = options.hasHeader !== false;
 	const headerRow = hasHeader ? records[0] : undefined;
 	const dataRows = hasHeader ? records.slice(1) : records;
-	if (dataRows.length === 0) throw new Error(`CSV 文件 "${filePath}" 只有表头、没有数据行。`);
+	if (dataRows.length === 0) throw new Error(`CSV file "${filePath}" has a header but no data rows.`);
 
 	const width = hasHeader ? (headerRow?.length ?? 0) : (dataRows[0]?.length ?? 0);
 	for (const [index, row] of dataRows.entries()) {
 		if (row.length !== width) {
 			throw new Error(
-				`CSV 第 ${index + (hasHeader ? 2 : 1)} 行有 ${row.length} 列，应为 ${width} 列（与${hasHeader ? "表头" : "第一行"}一致）。`,
+				`CSV line ${index + (hasHeader ? 2 : 1)} has ${row.length} columns, expected ${width} (same as the ${hasHeader ? "header" : "first row"}).`,
 			);
 		}
 	}
@@ -252,15 +252,16 @@ export function readCsvFile(filePath: string, options: ReadCsvOptions = {}): Csv
 	for (let i = 0; i < width; i++) {
 		const source = hasHeader ? (headerRow?.[i] ?? "").trim() : `column${i + 1}`;
 		if (hasHeader && source.length === 0)
-			throw new Error(`CSV 表头第 ${i + 1} 列的列名为空，请补一个列名或改用 --no-header。`);
+			throw new Error(`CSV header column ${i + 1} has no name; add one or use --no-header.`);
 		// hasOwn, not `map[source]`: a header named "toString" would otherwise pick up a prototype.
 		const name = Object.hasOwn(map, source) ? (map[source] ?? source) : source;
 		if (!IDENTIFIER.test(name)) {
 			throw new Error(
-				`列名 "${name}"（来自 "${source}"）不是合法的属性名（需以字母或下划线开头，只含字母、数字、下划线）。请用 --map "${source}"=<新名> 重命名。`,
+				`Column name "${name}" (from "${source}") is not a valid property name (start with a letter or underscore, then letters, digits and underscores only). Rename it with --map "${source}"=<new name>.`,
 			);
 		}
-		if (seen.has(name)) throw new Error(`列名 "${name}" 重复（--map 后冲突），请检查表头或 --map。`);
+		if (seen.has(name))
+			throw new Error(`Column name "${name}" is duplicated (conflict after --map); check the header or --map.`);
 		seen.add(name);
 		columns.push({
 			name,
@@ -273,7 +274,7 @@ export function readCsvFile(filePath: string, options: ReadCsvOptions = {}): Csv
 	const table = options.table?.trim() || tableNameFromPath(filePath);
 	if (!IDENTIFIER.test(table)) {
 		throw new Error(
-			`表名 "${table}" 不是合法的表名（需以字母或下划线开头，只含字母、数字、下划线）。请用 --node <表名> 指定。`,
+			`Table name "${table}" is not a valid table name (start with a letter or underscore, then letters, digits and underscores only). Set one with --node <table>.`,
 		);
 	}
 	return { table, columns, rows: dataRows };
@@ -333,7 +334,7 @@ export async function importCsvTable(store: GraphStore, csv: CsvTableData): Prom
 		// same value in any other column is stored intact - so the key is the one place it matters.
 		if (primaryKey && /[\r\n]/.test(key)) {
 			throw new Error(
-				`CSV 第 ${line} 行主键列 "${primaryKey}" 的值含换行符，ryu 会把它拆成多行（静默丢数据）。请改用不含换行的键。`,
+				`CSV line ${line}: the primary key column "${primaryKey}" contains a newline, which ryu would split into two nodes (silently losing data). Use a key without newlines.`,
 			);
 		}
 		if (primaryKey && keysWithinFile.has(key)) skipped++; // the later row wins, so count it rather than drop it
@@ -401,7 +402,8 @@ export async function importCsvRelations(
 		["--from", options.from, fromIndex],
 		["--to", options.to, toIndex],
 	] as const) {
-		if (index < 0) throw new Error(`${flag} 指定的列 "${column}" 不在 CSV 的列中（${names.join(", ")}）。`);
+		if (index < 0)
+			throw new Error(`${flag} names the column "${column}", which is not in the CSV (columns: ${names.join(", ")}).`);
 	}
 
 	const schema = await readSnapshotSchema(store);
@@ -412,7 +414,9 @@ export async function importCsvRelations(
 		// The table's own declaration wins: its endpoints and their keys are what the snapshot was
 		// built from, so re-linking has to use exactly those.
 		if (!existing.fromKey || !existing.toKey) {
-			throw new Error(`关系表 "${options.rel}" 的端点表没有主键，无法按主键匹配端点。`);
+			throw new Error(
+				`The endpoint tables of relation "${options.rel}" have no primary key, so endpoints cannot be matched by key.`,
+			);
 		}
 		endpoints = {
 			fromNode: existing.from,
@@ -427,7 +431,7 @@ export async function importCsvRelations(
 		const toNode = options.toNode;
 		if (!fromNode || !toNode) {
 			throw new Error(
-				`关系表 "${options.rel}" 还不存在，请用 --from-node / --to-node 指定端点节点表（两端同一张表时用 --node）。`,
+				`Relation "${options.rel}" does not exist yet; set the endpoint node tables with --from-node / --to-node (use --node when both ends share one table).`,
 			);
 		}
 		const fromTable = requireNodeTable(schema, fromNode, options.rel);
@@ -480,7 +484,7 @@ function requireNodeTable(schema: { nodeTables: SnapshotNodeTable[] }, name: str
 	const table = schema.nodeTables.find((candidate) => candidate.name === name);
 	if (!table) {
 		throw new Error(
-			`节点表 "${name}" 不存在，无法导入 "${rel}" 的边。请先导入节点：backlog graph import <db> <csv> --node ${name}`,
+			`Node table "${name}" does not exist, so the edges of "${rel}" cannot be imported. Import the nodes first: backlog graph import <db> <csv> --node ${name}`,
 		);
 	}
 	return table;
@@ -489,7 +493,9 @@ function requireNodeTable(schema: { nodeTables: SnapshotNodeTable[] }, name: str
 function primaryKeyOf(table: SnapshotNodeTable): string {
 	const key = table.properties.find((property) => property.primaryKey)?.name;
 	if (!key) {
-		throw new Error(`节点表 "${table.name}" 没有主键，无法作为边的端点（端点按主键匹配）。`);
+		throw new Error(
+			`Node table "${table.name}" has no primary key, so it cannot be an edge endpoint (endpoints are matched by key).`,
+		);
 	}
 	return key;
 }
@@ -512,17 +518,17 @@ function resolveAgainstExisting(csv: CsvTableData, existing: SnapshotNodeTable):
 	const unknown = csv.columns.filter((column) => !declared.has(column.name));
 	if (unknown.length > 0) {
 		throw new Error(
-			`表 "${csv.table}" 已存在，且没有列 ${unknown.map((c) => `"${c.name}"`).join("、")}（已有列：${existing.properties
+			`Table "${csv.table}" already exists and has no column ${unknown.map((c) => `"${c.name}"`).join(", ")} (existing columns: ${existing.properties
 				.map((p) => p.name)
-				.join(", ")}）。请用 --map 把这些列映射到已有列。`,
+				.join(", ")}). Map those columns onto existing ones with --map.`,
 		);
 	}
 	const primaryKey = existing.properties.find((property) => property.primaryKey)?.name;
 	if (primaryKey && !csv.columns.some((column) => column.name === primaryKey)) {
 		throw new Error(
-			`表 "${csv.table}" 的主键列 "${primaryKey}" 不在 CSV 的列中（CSV 列：${csv.columns
+			`Primary key column "${primaryKey}" of table "${csv.table}" is not in the CSV (CSV columns: ${csv.columns
 				.map((c) => c.name)
-				.join(", ")}）。主键不能为空，请用 --map 补上。`,
+				.join(", ")}). A primary key cannot be empty; supply it with --map.`,
 		);
 	}
 	return csv.columns.map((column) => {
@@ -530,7 +536,7 @@ function resolveAgainstExisting(csv: CsvTableData, existing: SnapshotNodeTable):
 		const type = property ? normalizeType(property.type) : null;
 		if (!type) {
 			throw new Error(
-				`表 "${csv.table}" 的列 "${column.name}" 类型为 "${property?.type ?? "?"}"，CSV 导入只支持 STRING / INT64 / DOUBLE / BOOLEAN。`,
+				`Column "${column.name}" of table "${csv.table}" has type "${property?.type ?? "?"}"; CSV import supports STRING / INT64 / DOUBLE / BOOLEAN only.`,
 			);
 		}
 		return { ...column, type, primaryKey: column.name === primaryKey };

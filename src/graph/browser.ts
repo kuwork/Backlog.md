@@ -90,7 +90,7 @@ export class UserDatabaseBrowser {
 			// the server routes `default` there before reaching this class. Fail loudly if a caller
 			// ever bypasses that route rather than silently opening nothing.
 			throw new Error(
-				`"${DEFAULT_DATABASE}" 是 markdown 派生库，由 graph service 提供（见 /api/graph/cypher），不应交给 UserDatabaseBrowser。`,
+				`"${DEFAULT_DATABASE}" is the markdown-derived database, served by the graph service (see /api/graph/cypher); it must not be handed to UserDatabaseBrowser.`,
 			);
 		}
 		const database = resolveDatabase(projectRoot, name);

@@ -58,7 +58,7 @@ describe("MCP graph tools", () => {
 		const text = getText(result.content);
 		expect(text).toContain('"columns"');
 		expect(text).toContain('"n"');
-		expect(text).toContain("匹配行数：1");
+		expect(text).toContain("Matched rows: 1");
 	});
 
 	it("rejects write keywords with a clear error", async () => {
@@ -109,7 +109,7 @@ describe("MCP graph tools", () => {
 		const result = await callTool("graph_schema", { db: "does-not-exist" });
 		expect(result.isError).toBe(true);
 		const text = getText(result.content);
-		expect(text).toContain("不存在");
+		expect(text).toContain("does not exist");
 	});
 
 	it("registers graph_list_databases in the MCP tool list", async () => {
@@ -164,7 +164,7 @@ describe("MCP graph tools", () => {
 	it("returns a clear error for an unknown database", async () => {
 		const result = await callTool("graph_describe_database", { db: "does-not-exist" });
 		expect(result.isError).toBe(true);
-		expect(getText(result.content)).toContain("不存在");
+		expect(getText(result.content)).toContain("does not exist");
 	});
 
 	it("registers graph_create_database in the MCP tool list", async () => {
@@ -201,7 +201,7 @@ describe("MCP graph tools", () => {
 			acknowledged: true,
 		});
 		expect(result.isError).toBe(true);
-		expect(getText(result.content)).toContain("已存在");
+		expect(getText(result.content)).toContain("already exists");
 	});
 
 	it("returns a clear error on an illegal name", async () => {
@@ -265,7 +265,7 @@ describe("MCP graph tools", () => {
 		await writeFile(csv, "name,age\nFrank,60,extra\n", "utf8");
 		const result = await callTool("graph_import_csv", { db: "baddb", csv, node: "Person" });
 		expect(result.isError).toBe(true);
-		expect(getText(result.content)).toContain("第 2 行有 3 列");
+		expect(getText(result.content)).toContain("CSV line 2 has 3 columns");
 	});
 
 	it("refuses to import into the read-only default database", async () => {

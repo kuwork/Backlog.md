@@ -38,7 +38,7 @@ describe("CLI graph legend (BACK-808)", () => {
 		const result = await $`bun ${CLI_PATH} graph legend get demo`.cwd(TEST_DIR).nothrow().quiet();
 		const output = normalize(result.stdout.toString() + result.stderr.toString());
 		expect(result.exitCode).toBe(0);
-		expect(output).toContain("尚无图例配置");
+		expect(output).toContain("has no legend config yet");
 	});
 
 	it("get --json on an unknown database prints null and exits 0", async () => {
@@ -52,7 +52,7 @@ describe("CLI graph legend (BACK-808)", () => {
 		const result = await $`bun ${CLI_PATH} graph legend get demo`.cwd(TEST_DIR).nothrow().quiet();
 		expect(result.exitCode).toBe(0);
 		const out = result.stdout.toString();
-		expect(out).toContain("图例配置（数据库 demo）");
+		expect(out).toContain("Legend config (database demo)");
 		expect(out).toContain("FileNode");
 		expect(out).toContain("#ff0000");
 		expect(out).toContain("Task");
@@ -79,13 +79,13 @@ describe("CLI graph legend (BACK-808)", () => {
 		const result = await $`bun ${CLI_PATH} graph legend get demo`.cwd(TEST_DIR).nothrow().quiet();
 		expect(result.exitCode).toBe(0);
 		const out = result.stdout.toString();
-		expect(out).toContain("节点标题：隐藏");
+		expect(out).toContain("node captions: hidden");
 		expect(out).toContain("{{name}}");
 		expect(out).toContain("Young");
 		expect(out).toContain("age < 30");
 		expect(out).toContain("依赖");
-		expect(out).toContain("虚线");
-		expect(out).toContain("两端");
+		expect(out).toContain("dashed");
+		expect(out).toContain("both");
 		expect(out).toContain("t:Person|s:rule:other");
 	});
 
@@ -99,7 +99,7 @@ describe("CLI graph legend (BACK-808)", () => {
 
 		const setResult = await $`bun ${CLI_PATH} graph legend set demo ${file}`.cwd(TEST_DIR).nothrow().quiet();
 		expect(setResult.exitCode).toBe(0);
-		expect(setResult.stdout.toString()).toContain("已保存");
+		expect(setResult.stdout.toString()).toContain("Saved the legend config");
 
 		const getResult = await $`bun ${CLI_PATH} graph legend get demo --json`.cwd(TEST_DIR).nothrow().quiet();
 		expect(getResult.exitCode).toBe(0);
@@ -140,7 +140,7 @@ describe("CLI graph legend (BACK-808)", () => {
 			.nothrow()
 			.quiet();
 		expect(setResult.exitCode).not.toBe(0);
-		expect(setResult.stderr.toString()).toContain("合法的 YAML");
+		expect(setResult.stderr.toString()).toContain("not valid YAML");
 
 		// Store file must not have been created by a failed write.
 		expect(loadLegendConfig(TEST_DIR, "demo")).toBeNull();
@@ -152,7 +152,7 @@ describe("CLI graph legend (BACK-808)", () => {
 			.nothrow()
 			.quiet();
 		expect(setResult.exitCode).not.toBe(0);
-		expect(setResult.stderr.toString()).toContain("YAML 映射");
+		expect(setResult.stderr.toString()).toContain("must be a YAML mapping");
 		expect(loadLegendConfig(TEST_DIR, "demo")).toBeNull();
 	});
 
@@ -160,12 +160,12 @@ describe("CLI graph legend (BACK-808)", () => {
 		saveLegendConfig(TEST_DIR, "demo", SAMPLE);
 		const removeResult = await $`bun ${CLI_PATH} graph legend remove demo`.cwd(TEST_DIR).nothrow().quiet();
 		expect(removeResult.exitCode).toBe(0);
-		expect(removeResult.stdout.toString()).toContain("已移除");
+		expect(removeResult.stdout.toString()).toContain("Removed the legend config");
 		expect(loadLegendConfig(TEST_DIR, "demo")).toBeNull();
 
 		const removeAgain = await $`bun ${CLI_PATH} graph legend remove demo`.cwd(TEST_DIR).nothrow().quiet();
 		expect(removeAgain.exitCode).toBe(0);
-		expect(removeAgain.stdout.toString()).toContain("无需移除");
+		expect(removeAgain.stdout.toString()).toContain("nothing to remove");
 	});
 
 	it("round-trips with the server-side reader: a direct write is visible to get", async () => {

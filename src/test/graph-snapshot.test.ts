@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -211,7 +212,7 @@ describe("graph snapshot round-trip", () => {
 				nodeTables: [{ name: "P", properties: [{ name: "name", type: "STRING", primaryKey: true }] }],
 				nodes: { P: [{ _label: "P", name: "ok" }, { other: 1 }] },
 			};
-			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/未声明的字段/);
+			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/undeclared field/);
 		} finally {
 			await store.close();
 		}
@@ -227,7 +228,7 @@ describe("graph snapshot round-trip", () => {
 				nodeTables: [{ name: "P", properties: [{ name: "name", type: "STRING", primaryKey: true }] }],
 				nodes: { P: [{ name: "ok" }, { name: null }] },
 			};
-			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/主键/);
+			await expect(hydrateDatabase(store, snapshot)).rejects.toThrow(/primary key/);
 		} finally {
 			await store.close();
 		}
@@ -360,6 +361,35 @@ describe("graph snapshot round-trip", () => {
 		expect(store.backend).toBe("ryu"); // fail loudly: a memory fallback would make the assertions vacuous
 		try {
 			await expect(store.runCypher("CREATE (:FileNode {path: 'x'})")).rejects.toThrow();
+		} finally {
+			await store.close();
+		}
+	});
+
+	test("the WASM backend opens a MEMFS handle, so no database file lands on the host", async () => {
+		// The regression this pins (BACK-823): the host absolute path used to be handed to ryu
+		// directly, but ryugraph-wasm runs on MEMFS, which cannot see the host filesystem - opening
+		// it threw ENOENT and the store silently degraded to memory (no Cypher at all).
+		const dbPath = join(root, "host-handle.kuzu");
+		const store = await openGraphStore(dbPath, { backend: "ryu", schema: "none" });
+		expect(store.backend).toBe("ryu");
+		try {
+			await store.runWrite("CREATE NODE TABLE Person(name STRING PRIMARY KEY)");
+
+			// The path is a handle name, not an artifact: nothing appears where the host path points.
+			expect(existsSync(dbPath)).toBe(false);
+			expect(existsSync(`${dbPath}.meta.json`)).toBe(false);
+
+			// Two host paths must not collapse into one MEMFS database: a second store hydrating its
+			// own (empty) database would wipe the first one if they shared a handle.
+			const other = await openGraphStore(join(root, "another-handle.kuzu"), { backend: "ryu", schema: "none" });
+			try {
+				expect(other.backend).toBe("ryu");
+			} finally {
+				await other.close();
+			}
+			const tables = await store.runCypher("CALL show_tables() RETURN name");
+			expect(tables.rows.flat()).toEqual(["Person"]);
 		} finally {
 			await store.close();
 		}

@@ -6858,11 +6858,11 @@ function tryAcquireGraphLock(lockPath: string): { release: () => void } | null {
 /** Render a CypherQueryResult as an aligned table for human reading. */
 function printCypherResult(result: { columns: string[]; rows: unknown[][] }): void {
 	if (result.columns.length === 0) {
-		console.log("（无结果列）");
+		console.log("(no result columns)");
 		return;
 	}
 	if (result.rows.length === 0) {
-		console.log("（无匹配行）");
+		console.log("(no matching rows)");
 		return;
 	}
 	const cellText = (cell: unknown): string => {
@@ -6980,8 +6980,8 @@ async function withGraphDatabase(
 		// Check before opening: writing to `default` is pointless (the next rebuild overwrites it)
 		// and a full rebuild just to say so would waste several seconds.
 		console.error(
-			`"${DEFAULT_DATABASE}" 是 markdown 派生库、只读（每次从语料重建，写入会被覆盖）。` +
-				`请先 \`backlog graph create <名称> "<描述>"\` 建库，再写入那个库。`,
+			`"${DEFAULT_DATABASE}" is the markdown-derived database and is read-only (it is rebuilt from the corpus, so writes are overwritten). ` +
+				`Create one first with \`backlog graph create <name> "<description>"\`, then write to that database.`,
 		);
 		process.exitCode = 1;
 		return;
@@ -6999,8 +6999,8 @@ async function withGraphDatabase(
 	const lock = tryAcquireGraphLock(database.source.lockPath);
 	if (!lock && options.write) {
 		console.error(
-			`⚠️ 数据库 "${database.name}" 正被另一个进程写入（锁：${database.source.lockPath}）。\n` +
-				"为避免覆盖对方的写入，本次写入已中止，请稍后重试。",
+			`⚠️ Database "${database.name}" is being written by another process (lock: ${database.source.lockPath}).\n` +
+				"The write was aborted to avoid overwriting it; try again later.",
 		);
 		process.exitCode = 1;
 		return;
@@ -7013,7 +7013,9 @@ async function withGraphDatabase(
 		console.error(`[graph] backend=${store.backend}`);
 	}
 	if (store.backend !== "ryu") {
-		console.error("Cypher 操作需要 ryu 后端；当前已降级为 memory（不支持 Cypher）。请确认 RyuGraph WASM 可用。");
+		console.error(
+			"Cypher needs the ryu backend; this process runs the memory fallback, which has no Cypher support. Check that RyuGraph WASM is available.",
+		);
 		process.exitCode = 1;
 		await store.close();
 		lock?.release();
@@ -7022,7 +7024,7 @@ async function withGraphDatabase(
 	let loadedFingerprint: string | null = null;
 	try {
 		if (!lock) {
-			console.warn(`⚠️ 未能获取数据库 "${database.name}" 的锁；本次为只读查询，仍会继续。`);
+			console.warn(`⚠️ Could not lock database "${database.name}"; this is a read-only query, so it continues.`);
 		}
 		if (database.kind === "derived") {
 			// A cold process cannot reuse the store itself, but it can reuse the derived graph's
@@ -7051,11 +7053,13 @@ async function withGraphDatabase(
 			if (database.snapshotFingerprint !== null && loaded.fingerprint !== database.snapshotFingerprint) {
 				if (options.write && !options.force) {
 					throw new Error(
-						`数据库 "${database.name}" 的快照被 CLI 之外的改动修改过（记录 ${shortFingerprint(database.snapshotFingerprint)}，实际 ${shortFingerprint(loaded.fingerprint)}）。\n` +
-							"为避免覆盖这些改动，本次写入已中止；确认要覆盖请加 --force。",
+						`The snapshot of database "${database.name}" was changed outside the CLI (recorded ${shortFingerprint(database.snapshotFingerprint)}, actual ${shortFingerprint(loaded.fingerprint)}).\n` +
+							"The write was aborted to avoid overwriting those changes; pass --force to overwrite.",
 					);
 				}
-				console.warn(`⚠️ 数据库 "${database.name}" 的快照与 CLI 记录不一致，可能被手工编辑或其他工具修改过。`);
+				console.warn(
+					`⚠️ The snapshot of database "${database.name}" does not match the CLI record; it may have been edited by hand or by another tool.`,
+				);
 			}
 			// A query that names its labels only needs those tables; anything we cannot pin down
 			// (a `show_tables()` call, an unlabelled `MATCH (n)`) hydrates the whole database, so a
@@ -7063,7 +7067,7 @@ async function withGraphDatabase(
 			const scope = options.statement ? referencedTables(options.statement, loaded.snapshot) : null;
 			if (graphDebug) {
 				console.error(
-					`[graph] hydrate scope: ${scope ? `${scope.nodeTables.join(",") || "-"} | rel ${scope.relTables.join(",") || "-"}` : "全部表"}`,
+					`[graph] hydrate scope: ${scope ? `${scope.nodeTables.join(",") || "-"} | rel ${scope.relTables.join(",") || "-"}` : "all tables"}`,
 				);
 			}
 			await hydrateDatabase(store, loaded.snapshot, scope ?? undefined);
@@ -7076,14 +7080,14 @@ async function withGraphDatabase(
 			const current = snapshotFingerprint(database.source.snapshotPath);
 			if (current !== loadedFingerprint && !options.force) {
 				throw new Error(
-					`数据库 "${database.name}" 的快照在本次加载之后被改动过（记录 ${shortFingerprint(loadedFingerprint)}，实际 ${shortFingerprint(current)}）。\n` +
-						"为避免覆盖这些改动，本次写入已中止；确认要覆盖请加 --force。",
+					`The snapshot of database "${database.name}" changed after it was loaded (recorded ${shortFingerprint(loadedFingerprint)}, actual ${shortFingerprint(current)}).\n` +
+						"The write was aborted to avoid overwriting those changes; pass --force to overwrite.",
 				);
 			}
 			if (graphDebug) console.error(`[graph] dumping snapshot (countNodes=${await store.countNodes()})`);
 			saveSnapshot(database.source.snapshotPath, await dumpDatabase(store, database.name));
 			recordSnapshot(cwd, database.name, snapshotFingerprint(database.source.snapshotPath));
-			console.log(`\n已写入快照: ${database.source.snapshotPath}`);
+			console.log(`\nSnapshot written: ${database.source.snapshotPath}`);
 		}
 	} catch (error) {
 		console.error(String(error instanceof Error ? error.message : error));
@@ -7116,7 +7120,7 @@ function looksLikeCypher(value: string): boolean {
 
 /** Abbreviate a snapshot fingerprint for an error message; a missing file is called out explicitly. */
 function shortFingerprint(fingerprint: string | null): string {
-	return fingerprint === null ? "无文件" : `${fingerprint.slice(0, 12)}…`;
+	return fingerprint === null ? "no file" : `${fingerprint.slice(0, 12)}…`;
 }
 
 /**
@@ -7148,7 +7152,7 @@ graphCommand
 				} else {
 					printCypherResult(result);
 					console.log(
-						`\n匹配节点: ${result.nodeKeys.length} ｜ 行数: ${result.rows.length}${result.truncated ? " ｜ 已截断(上限500)" : ""}`,
+						`\nMatched nodes: ${result.nodeKeys.length} | rows: ${result.rows.length}${result.truncated ? " | truncated (500 cap)" : ""}`,
 					);
 				}
 			},
@@ -7186,7 +7190,7 @@ graphCommand
 			return [database.name, database.kind, database.description, String(stats.nodes), String(stats.edges)];
 		});
 		printCypherResult({ columns: ["name", "kind", "description", "nodes", "edges"], rows });
-		console.log("\n（`default` 的行数用 `backlog graph describe default` 查看）");
+		console.log("\n(for the `default` row counts, run `backlog graph describe default`)");
 	});
 
 graphCommand
@@ -7225,9 +7229,9 @@ graphCommand
 		const cwd = await requireProjectRoot();
 		try {
 			const database = createDatabase(cwd, db, description);
-			console.log(`已创建数据库 "${database.name}"：${database.description}`);
-			console.log(`  快照: ${database.source.snapshotPath}`);
-			console.log(`  写入: backlog graph insert ${database.name} "<cypher>"`);
+			console.log(`Created database "${database.name}": ${database.description}`);
+			console.log(`  snapshot: ${database.source.snapshotPath}`);
+			console.log(`  write: backlog graph insert ${database.name} "<cypher>"`);
 		} catch (error) {
 			console.error(String(error instanceof Error ? error.message : error));
 			process.exitCode = 1;
@@ -7241,7 +7245,7 @@ graphCommand
 		const cwd = await requireProjectRoot();
 		try {
 			dropDatabase(cwd, db);
-			console.log(`已删除数据库 "${db}"。`);
+			console.log(`Dropped database "${db}".`);
 		} catch (error) {
 			console.error(String(error instanceof Error ? error.message : error));
 			process.exitCode = 1;
@@ -7254,7 +7258,10 @@ graphCommand
 		"Run write Cypher (CREATE / MERGE / SET / DELETE) against a user database and persist the result. " +
 			"Refused for `default`, which is a read-only derived cache of the markdown corpus.",
 	)
-	.option("--force", "写入前不校验快照指纹（会覆盖本次加载后被改动过的快照）")
+	.option(
+		"--force",
+		"skip the snapshot fingerprint check before writing (overwrites a snapshot changed since it was loaded)",
+	)
 	.action(async (db: string, cypher: string, options) => {
 		await withGraphDatabase(
 			db,
@@ -7282,7 +7289,7 @@ function parseColumnMap(values: string[]): Record<string, string> {
 			if (!entry) continue;
 			const separator = entry.indexOf("=");
 			if (separator <= 0) {
-				throw new Error(`--map 的每一组应为 "<CSV列名>=<属性名>"，收到 "${entry}"。`);
+				throw new Error(`Each --map entry must look like "<csv column>=<property>"; got "${entry}".`);
 			}
 			map[entry.slice(0, separator).trim()] = entry.slice(separator + 1).trim();
 		}
@@ -7297,28 +7304,42 @@ graphCommand
 			"table is created with inferred column types; rows go in with batched parameterised UNWIND, " +
 			"because ryu's COPY FROM imports zero rows under the WASM build. Refused for `default`.",
 	)
-	.option("--node <table>", "目标节点表名（默认取 CSV 文件名）")
+	.option("--node <table>", "target node table name (defaults to the CSV file name)")
 	.option(
 		"--map <mapping>",
-		'把 CSV 列名改写成属性名："First Name=firstName"（可重复，也可逗号分隔多组）',
+		'rename CSV columns to property names: "First Name=firstName" (repeatable, or several comma-separated groups)',
 		collectOptionValue,
 		[] as string[],
 	)
-	.option("--header", "第一行为列名（默认行为，显式写出亦可）")
-	.option("--no-header", "第一行也是数据行，列名自动生成为 column1、column2…")
-	.option("--rel <name>", "按关系导入：CSV 的两列作为一条边的两端，写入该关系表（与 --from / --to 同用）")
-	.option("--from <column>", "关系导入：源端点键所在的 CSV 列")
-	.option("--to <column>", "关系导入：目标端点键所在的 CSV 列")
-	.option("--from-node <table>", "关系导入：源端点节点表（关系表不存在时使用，缺省取 --node）")
-	.option("--to-node <table>", "关系导入：目标端点节点表（关系表不存在时使用，缺省取 --node）")
-	.option("--force", "写入前不校验快照指纹（会覆盖本次加载后被改动过的快照）")
+	.option("--header", "treat the first row as column names (the default; may be written explicitly)")
+	.option("--no-header", "the first row is data too; columns are generated as column1, column2, …")
+	.option(
+		"--rel <name>",
+		"import as relationships: the two CSV columns are the ends of each edge, written into that relation table (used with --from / --to)",
+	)
+	.option("--from <column>", "relationship import: the CSV column holding the source endpoint key")
+	.option("--to <column>", "relationship import: the CSV column holding the target endpoint key")
+	.option(
+		"--from-node <table>",
+		"relationship import: source endpoint node table (used when the relation table does not exist yet; defaults to --node)",
+	)
+	.option(
+		"--to-node <table>",
+		"relationship import: target endpoint node table (used when the relation table does not exist yet; defaults to --node)",
+	)
+	.option(
+		"--force",
+		"skip the snapshot fingerprint check before writing (overwrites a snapshot changed since it was loaded)",
+	)
 	.action(async (db: string, csvPath: string, options) => {
 		// Read and validate the whole file before a database is opened: a malformed file must leave
 		// the database untouched, and the cheapest way to guarantee that is to fail before the
 		// snapshot is even hydrated.
 		const asRelations = options.rel !== undefined;
 		if (asRelations && (!options.from || !options.to)) {
-			console.error("--rel 需要和 --from <列> 与 --to <列> 一起使用：两列给出每条边两端的键。");
+			console.error(
+				"--rel needs --from <column> and --to <column>: those two columns give the keys at each end of every edge.",
+			);
 			process.exitCode = 1;
 			return;
 		}
@@ -7346,24 +7367,28 @@ graphCommand
 						toNode: options.toNode ?? options.node,
 					});
 					console.log(
-						`已导入 ${db}.${result.rel}（${result.fromNode} -> ${result.toNode}）：` +
-							`新增 ${result.inserted} 条边 ｜ 跳过 ${result.skipped} 行` +
-							`（${result.created ? "新建关系表" : "写入已有关系表"}）`,
+						`Imported ${db}.${result.rel} (${result.fromNode} -> ${result.toNode}): ` +
+							`${result.inserted} edges added | ${result.skipped} rows skipped` +
+							` (${result.created ? "relation table created" : "written into existing relation table"})`,
 					);
 					if (result.skipped > 0) {
-						console.log("  跳过的行：端点键在库中不存在，或该边已存在（MERGE 不会重复建边）");
+						console.log(
+							"  skipped rows: the endpoint key does not exist in the database, or the edge already exists (MERGE does not duplicate edges)",
+						);
 					}
 					return;
 				}
 				const result = await importCsvTable(store, prepared);
 				const summary = [
-					`新增 ${result.inserted} 行`,
-					`覆盖 ${result.updated} 行（主键已存在）`,
-					`文件内重复 ${result.skipped} 行`,
-				].join(" ｜ ");
-				console.log(`已导入 ${db}.${result.table}：${summary}（${result.created ? "新建表" : "写入已有表"}）`);
+					`${result.inserted} rows added`,
+					`${result.updated} rows overwritten (primary key already present)`,
+					`${result.skipped} duplicate rows within the file`,
+				].join(" | ");
 				console.log(
-					`  列: ${result.columns.map((c) => `${c.name} ${c.type}${c.primaryKey ? " (主键)" : ""}`).join(", ")}`,
+					`Imported ${db}.${result.table}: ${summary} (${result.created ? "table created" : "written into existing table"})`,
+				);
+				console.log(
+					`  columns: ${result.columns.map((c) => `${c.name} ${c.type}${c.primaryKey ? " (primary key)" : ""}`).join(", ")}`,
 				);
 			},
 			{ write: true, requireUser: true, force: options.force === true },
@@ -7408,16 +7433,16 @@ function asLegendRecord(value: unknown): Record<string, unknown> {
 
 /** The stored line-style and arrowhead vocabularies, in the reader's words. */
 const LEGEND_LINE_STYLE_LABELS: Record<string, string> = {
-	solid: "实线",
-	dashed: "虚线",
-	dotted: "点线",
-	long: "长虚线",
+	solid: "solid",
+	dashed: "dashed",
+	dotted: "dotted",
+	long: "long dashes",
 };
 const LEGEND_ARROW_LABELS: Record<string, string> = {
-	none: "无",
-	end: "终点",
-	start: "起点",
-	both: "两端",
+	none: "none",
+	end: "end",
+	start: "start",
+	both: "both",
 };
 
 /**
@@ -7428,59 +7453,59 @@ const LEGEND_ARROW_LABELS: Record<string, string> = {
  */
 function formatLegendConfigText(database: string, config: unknown): string {
 	const root = asLegendRecord(config);
-	const lines: string[] = [`图例配置（数据库 ${database}）：`];
-	lines.push(`  节点标题：${root.captionsVisible === false ? "隐藏" : "显示"}`);
+	const lines: string[] = [`Legend config (database ${database}):`];
+	lines.push(`  node captions: ${root.captionsVisible === false ? "hidden" : "shown"}`);
 
 	const types = asLegendRecord(root.types);
 	const typeLabels = Object.keys(types).sort((left, right) => left.localeCompare(right));
-	lines.push(`  节点类型（${typeLabels.length}）：`);
+	lines.push(`  node types (${typeLabels.length}):`);
 	if (typeLabels.length === 0) {
-		lines.push("    （无 — 全部按标签自动取色）");
+		lines.push("    (none - every node is coloured by its label)");
 	}
 	for (const label of typeLabels) {
 		const type = asLegendRecord(types[label]);
 		lines.push(`    ${label}`);
-		lines.push(`      颜色：${typeof type.color === "string" ? type.color : "自动（按标签取色）"}`);
+		lines.push(`      colour: ${typeof type.color === "string" ? type.color : "auto (by label)"}`);
 		const caption = typeof type.caption === "string" ? type.caption.trim() : "";
-		lines.push(`      标题模板：${caption.length > 0 ? caption : "自动"}`);
+		lines.push(`      caption template: ${caption.length > 0 ? caption : "auto"}`);
 		const rules = Array.isArray(type.rules) ? type.rules : [];
 		if (rules.length === 0) {
-			lines.push("      颜色规则：无");
+			lines.push("      colour rules: none");
 		} else {
-			lines.push(`      颜色规则（${rules.length}，首个命中生效）：`);
+			lines.push(`      colour rules (${rules.length}, first match wins):`);
 			rules.forEach((entry, index) => {
 				const rule = asLegendRecord(entry);
 				const name =
-					typeof rule.name === "string" && rule.name.trim().length > 0 ? rule.name.trim() : `规则 ${index + 1}`;
+					typeof rule.name === "string" && rule.name.trim().length > 0 ? rule.name.trim() : `rule ${index + 1}`;
 				const expression = typeof rule.expression === "string" ? rule.expression : "";
-				const color = typeof rule.color === "string" ? `，色 ${rule.color}` : "";
-				lines.push(`        - ${name}：${expression.length > 0 ? expression : "（无条件）"}${color}`);
+				const color = typeof rule.color === "string" ? `, colour ${rule.color}` : "";
+				lines.push(`        - ${name}: ${expression.length > 0 ? expression : "(unconditional)"}${color}`);
 			});
 		}
 	}
 
 	const relations = asLegendRecord(root.relations);
 	const relationTypes = Object.keys(relations).sort((left, right) => left.localeCompare(right));
-	lines.push(`  关系类型（${relationTypes.length}）：`);
+	lines.push(`  relation types (${relationTypes.length}):`);
 	if (relationTypes.length === 0) {
-		lines.push("    （无 — 默认实线 + 终点箭头）");
+		lines.push("    (none - solid line with an end arrow by default)");
 	}
 	for (const type of relationTypes) {
 		const relation = asLegendRecord(relations[type]);
 		const dashKey = typeof relation.dash === "string" ? relation.dash : "";
 		const arrowKey = typeof relation.arrow === "string" ? relation.arrow : "";
-		const dash = LEGEND_LINE_STYLE_LABELS[dashKey] ?? "实线";
-		const arrow = LEGEND_ARROW_LABELS[arrowKey] ?? "终点";
+		const dash = LEGEND_LINE_STYLE_LABELS[dashKey] ?? "solid";
+		const arrow = LEGEND_ARROW_LABELS[arrowKey] ?? "end";
 		const name =
-			typeof relation.name === "string" && relation.name.trim().length > 0 ? `（${relation.name.trim()}）` : "";
-		const color = typeof relation.color === "string" ? `，色 ${relation.color}` : "";
-		lines.push(`    ${type}${name}：${dash}，箭头 ${arrow}${color}`);
+			typeof relation.name === "string" && relation.name.trim().length > 0 ? ` (${relation.name.trim()})` : "";
+		const color = typeof relation.color === "string" ? `, colour ${relation.color}` : "";
+		lines.push(`    ${type}${name}: ${dash}, arrow ${arrow}${color}`);
 	}
 
 	const hidden = Array.isArray(root.hidden)
 		? root.hidden.filter((entry): entry is string => typeof entry === "string")
 		: [];
-	lines.push(`  隐藏（${hidden.length}）：${hidden.length > 0 ? hidden.join("、") : "无"}`);
+	lines.push(`  hidden (${hidden.length}): ${hidden.length > 0 ? hidden.join(", ") : "none"}`);
 
 	return `${lines.join("\n")}\n`;
 }
@@ -7498,7 +7523,7 @@ graphLegendCommand
 			if (options.json) {
 				process.stdout.write("null\n");
 			} else {
-				console.log(`数据库 "${database}" 尚无图例配置。`);
+				console.log(`Database "${database}" has no legend config yet.`);
 			}
 			return;
 		}
@@ -7524,12 +7549,12 @@ graphLegendCommand
 			try {
 				raw = readFileSync(file, "utf8");
 			} catch (error) {
-				console.error(`无法读取文件 "${file}"：${error instanceof Error ? error.message : String(error)}`);
+				console.error(`Cannot read file "${file}": ${error instanceof Error ? error.message : String(error)}`);
 				process.exitCode = 1;
 				return;
 			}
 		} else {
-			console.error("需要 <file> 或 --stdin 之一来提供图例配置 YAML。");
+			console.error("Provide the legend config YAML as <file> or via --stdin.");
 			process.exitCode = 1;
 			return;
 		}
@@ -7538,19 +7563,19 @@ graphLegendCommand
 		try {
 			parsed = parseYAML(raw);
 		} catch {
-			console.error("图例配置不是合法的 YAML，已取消写入（存储文件未被改动）。");
+			console.error("The legend config is not valid YAML; nothing was written (the store is unchanged).");
 			process.exitCode = 1;
 			return;
 		}
 		if (!isPlainLegendObject(parsed)) {
-			console.error("图例配置必须是 YAML 映射（mapping），已取消写入（存储文件未被改动）。");
+			console.error("The legend config must be a YAML mapping; nothing was written (the store is unchanged).");
 			process.exitCode = 1;
 			return;
 		}
 
 		const cwd = await requireProjectRoot();
 		saveLegendConfig(cwd, database, parsed);
-		console.log(`已保存数据库 "${database}" 的图例配置。`);
+		console.log(`Saved the legend config of database "${database}".`);
 	});
 
 graphLegendCommand
@@ -7561,9 +7586,9 @@ graphLegendCommand
 		const existed = loadLegendConfig(cwd, database) !== null;
 		saveLegendConfig(cwd, database, null);
 		if (existed) {
-			console.log(`已移除数据库 "${database}" 的图例配置。`);
+			console.log(`Removed the legend config of database "${database}".`);
 		} else {
-			console.log(`数据库 "${database}" 没有图例配置，无需移除。`);
+			console.log(`Database "${database}" has no legend config; nothing to remove.`);
 		}
 	});
 
