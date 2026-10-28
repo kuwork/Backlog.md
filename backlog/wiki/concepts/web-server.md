@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-23 17:20
+updated_date: 2026-10-28 15:26
 ---
 
 # Web Server 与浏览器界面
@@ -127,6 +127,13 @@ Web UI 显示陈旧数据、只能重启恢复的根因：内存缓存只靠 `fs
 - `src/web/App.tsx`：主数据 WebSocket 加 `onclose`/`onerror` 驱动的自动重连（2s 退避），重连后对所有 scope 调 `refreshData()` 追赶。
 - 约束：周期扫描受 `enableWatchers` 门控；首次扫描静默存基线、不广播；指纹扫描与 watcher 事件去重，不覆盖进程内 upsert。
 
+### 重扫心跳钉住末行（BACK-815.01）
+
+BACK-815 的 `ContentStore periodic rescan completed at <ISO>` 心跳原先用裸 `\r\x1b[K` 覆写末行，默认自己独占终端底部；但服务器与 watcher 的 error/warn、请求日志共享同一个终端，任何一行插进来就把覆写顶到错误的行，表现为「不断追加」。
+
+- `src/utils/status-line.ts` 的 `StatusLine` 单例把「钉住末行」变成有契约的能力：TTY 下 `\r\x1b[K` 原地重写，非 TTY 退化为普通一行（无 ANSI）；`installStatusLineHooks()` 包裹 `console.log/error/warn`，其它日志先 `lift()` 把状态行推进 scrollback 再打印，因此状态行只在安静时占据底部。`start()` 装载 hooks、`stop()` 清理。
+- **激活策略保守**：`process.stdout.isTTY || BACKLOG_STATUS_LINE==1`。Git Bash / MSYS2 的 winpty 会让真实终端报 `isTTY === false`，但用 `MSYSTEM`/`TERM` 全局判定不安全（CI、`> file` 重定向里同样出现），因此自动开启只发生在 `backlog browser` 命令内（Windows + `MSYSTEM`/`MSYS` + stdout 未重定向 + 非 CI）；MCP 与直接 `server.start()` 保持安静。
+
 ## Related Concepts
 
 - [[concepts/kuzu-graph]] — 进程内 Graph Service、`/api/graph` 与 `graph-updated` 广播
@@ -143,5 +150,7 @@ Web UI 显示陈旧数据、只能重启恢复的根因：内存缓存只靠 `fs
 - [[sources/back-703-graph-incremental-sync]] — BACK-703 /api/graph 与 graph-updated 推送
 - [[sources/back-759-cross-branch-prefix-visibility]] — BACK-759 resolveCrossBranchVisibility 与 /api/search 过滤
 - [[sources/back-762-terminal-statuses-readonly]] — BACK-762 /api/config 与 /api/statuses 形状
+- [[sources/back-815-server-cache-self-heal]] — 指纹对账自愈与 WebSocket 重连
+- [[sources/back-815.01-pinned-rescan-status-line]] — 重扫心跳的状态行契约
 - [[sources/back-815-server-cache-self-heal]] — BACK-815 指纹对账自愈与 WS 重连
 - [[sources/back-818-checklist-batching-broadcast-debounce]] — BACK-818 广播防抖 75ms→300ms

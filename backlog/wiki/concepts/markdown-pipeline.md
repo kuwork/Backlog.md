@@ -2,7 +2,7 @@
 title: Markdown 解析与序列化流水线
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-10-18 22:00
+updated_date: 2026-10-28 15:24
 ---
 
 # Markdown 解析与序列化流水线
@@ -79,14 +79,17 @@ FileSystem.saveTask() — 写入磁盘
 - **决策**：`decision-{id} - {title}.md`
 - **里程碑**：`{id}.md`
 
-## 渲染安全：HTML 实体转义
+## 渲染安全：白名单 + sanitizer（BACK-821）
 
-`MermaidMarkdown.tsx` 中的 `sanitizeMarkdownSource` 在渲染前对 `<` 进行转义（`→ &lt;`），防止 HTML-like 标签被浏览器解析为实际 DOM 元素。
+`MermaidMarkdown.tsx` 交给 markdown 渲染器之前有一道源码预处理，历史上是**全量转义**：`sanitizeMarkdownSource` 把所有 `<` 换成 `&lt;`，防止 HTML-like 标签被浏览器当成真实 DOM。副作用是所有原始 HTML 都变成字面量文本——文档里的 `<table>` 只能看到标签原文。
 
-**保护机制（BACK-476）**：
-- 先扫描围栏代码块（`` ``` ``）和行内代码（`` ` ``）的偏移范围
-- `<` 替换时跳过受保护范围，避免代码内容被双重编码
-- 代码区外的 URI/邮箱自动链接（`<mailto:...>`）仍正常豁免
+BACK-821 把它拆成两层：
+
+- **源码层白名单**（`src/web/utils/wikiLinks.ts`）：只转义「类型字符串形状」的尖括号（`Array<string>` 这类 TypeScript 泛型），不再一刀切。BACK-377 的崩溃场景保留在保护范围内。围栏代码块与行内代码的偏移范围仍然先扫描后跳过，避免代码内容被双重编码；代码区外的 URI/邮箱自动链接（`<mailto:...>`）照旧豁免（[[sources/inline-code-html-escaping-fix|BACK-476]] 的围栏感知豁免）。
+- **渲染层 sanitize**：接 `rehype-raw` 让原始 HTML 真正成为 HTML，再过 `rehype-sanitize` 的 table-aware schema——`script`、`onerror` 与危险 `href` 被剥掉，表格与常规格式标签放行。schema 是允许列表：要新增标签必须显式加进去。
+
+配套的样式债：`.wmde-markdown p` 带 `margin-bottom: 10px`，原始 HTML 表格的单元格被包进 `<p>`（GFM 管道表格的不会），于是同一张表两种行高。`source.css` 里 `.wmde-markdown table p { margin: 0 }` 一条规则拉平，不动 DOM（见 [[concepts/file-preview]]）。
+
 
 ## 跨分支兼容性
 
@@ -135,3 +138,5 @@ Mermaid 渲染修复的一部分是围栏标记大小写处理——大写/混�
 - [[sources/back-643-fence-aware-blank-line-collapse]] — BACK-643 围栏感知空行折叠
 - [[sources/back-655-section-marker-safety]] — BACK-655 嵌套哨兵拒绝与 append 截断修复
 - [[sources/back-812-core-echarts-engine]] — 围栏图表路由统一，移除 post-render 替换
+- [[sources/back-821-raw-html-table-doc-preview]] — 全量转义改为白名单 + rehype-sanitize，原始 HTML 表格恢复渲染
+- [[sources/inline-code-html-escaping-fix]] — 围栏感知的 `<` 转义豁免（BACK-476）

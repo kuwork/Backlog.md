@@ -2,7 +2,7 @@
 title: Wiki Operations Log
 labels: [log]
 created_date: 2026-05-06 00:00
-updated_date: 2026-09-26 14:55
+updated_date: 2026-10-28 15:40
 ---
 
 # Wiki Operations Log
@@ -1166,3 +1166,21 @@ Chronological, append-only record of all wiki operations.
 ## [2026-10-23 17:25:30] usermanual-update | 用户手册覆盖 BACK-815~820 与 doc-32
 
 **手册更新（已有页面，无新增章节，SUMMARY 不变）**：`80-图谱与数据查询/06-图表块.md` 新增「图表引擎切换（Pele / Mermaid）」节并指向 doc-32；`40-Web界面/05-设置与主题.md` 新增「图表引擎（diagramEngine）」配置项并补清单批量保存说明；`40-Web界面/02-任务列表.md` 补 Web 弹窗清单合并保存与文件预览 frontmatter 元数据面板；`40-Web界面/04-文档与决策.md` 补按 ID 定位文档（含子目录）；`10-任务管理/00-任务生命周期.md` 补默认机器收尾门禁。全部 5 页 `updated_date` 刷新为 2026-10-23。
+
+## [2026-10-28 15:40] batch-ingest | 增量摄取 BACK-815.01/821~823（4 源），覆盖 WASM 图谱修复、状态机停注入与预览渲染
+
+**摄取范围**：git-aware 增量（基线 2026-10-23 17:25:30 的 batch-ingest 条目）检出 4 份新源——BACK-815.01（重扫心跳钉住末行）、BACK-821（原始 HTML 表格渲染）、BACK-822（状态机停止注入 agent 文件）、BACK-823（RyuGraph MEMFS 句柄路径 + 图谱文案英文化），全部 Done。git status 干净，改动均已提交。README 与 `src/guidelines/*` 的改动是这批任务的结果面，无独立知识增量，未单独建源页。
+
+**新建** 4 个 source 页：[[sources/back-815.01-pinned-rescan-status-line]]、[[sources/back-821-raw-html-table-doc-preview]]、[[sources/back-822-remove-state-machine-injection]]、[[sources/back-823-ryugraph-wasm-memfs-handle]]。三处事实被刻意记牢：① BACK-823 的失败是平台无关的（MEMFS 看不见宿主路径，六个发布目标同中招），且换 `ryugraph-wasm/nodejs/sync` 在 Bun 下 abort，不是可选退路；② BACK-822 的 `renderProjectStateMachine` 保留、只删「写文件」这条镜像路径，别把按需渲染一并当死代码清掉；③ BACK-815.01 的 winpty 判定只能收窄在 `browser` 命令内，全局自动开启会把 ANSI 喷进 CI 与重定向日志。
+
+**新建** decision 页 [[decisions/memfs-handle-over-nodejs-backend]]：三条出路（换 NODEFS 构建 / 换路径 / 换命名）的裁决与被否方案的代价，含「全路径哈希而非 basename，否则 `wipe()` 会互删」。
+
+**更新** 概念页：[[concepts/kuzu-graph]] 后端节新增 MEMFS 句柄路径段、服务节订正「缓存目录里只有 `.lock` 与 `.meta.json`」；[[concepts/state-machine]] 把「marker 幂等注入 AGENTS.md」改为「只剥不写 + 按需渲染」；[[concepts/cli-instructions]] 新增「指南列表对齐与状态机停止注入（BACK-822）」；[[concepts/markdown-pipeline]] 的「HTML 实体转义」整节改写为「白名单 + sanitizer（BACK-821）」；[[concepts/file-preview]] 新增原始 HTML 表格节；[[concepts/web-server]] 新增「重扫心跳钉住末行（BACK-815.01）」。**更新** 执行笔记 [[execution/ryugraph-wasm-gotchas]]：新增「MEMFS 也看不见宿主路径」陷阱、`extracted_from` 补 BACK-823、标准步骤第 4 条改为「开库路径必须是 MEMFS 可见路径」。
+
+**手册**（无新增页，SUMMARY 不变）：`40-Web界面/11-图谱视图` 缓存位置与后端两条订正（宿主只有锁与指纹边车、降级告警为英文）；`80-图谱与数据查询/00-图谱CLI命令` 后端条目补原因标签与「引擎故障才需上报」；`60-配置与运维/03-故障排查` 图谱节修掉过期表述（`BACKLOG_GRAPH_BACKEND=kuzu` 已非合法值）并新增 Cypher 不可用的首查步骤；`50-AI集成/02-代理指令文件` 明示指令文件不含状态机副本、旧区块会被移除。`tmp/merge-usermanual.py` 重新合并：9 章 48 页 6324 行。
+
+**overview**：新增「图谱发动机修复与指令面收敛（BACK-815.01 / 821~823）」小节，串起 MEMFS 句柄、状态机停注入、预览渲染与状态行四件事；统计按实际文件数校正（此前 Sources 停在 403）。
+
+**统计**：Sources 416→420、Concepts 48（无新增）、Decisions 82→83、Execution notes 28（更新）、Reasoning 6、User manual 48 页。
+
+**mini-lint**：420 个 source 页 `source_path` 全量校验（`tmp/wiki-lint-check.sh`），新增 4 页全部解析成功；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）与历史裁决一致，本次不改写。新增/改动页面的 wikilink 逐条校验（`tmp/wiki-link-check.sh`），除文档内语法示例（`[[wikilink]]`、`[[path/to/page]]`）外无断链。

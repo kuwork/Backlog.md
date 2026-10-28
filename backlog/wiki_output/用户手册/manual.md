@@ -4190,8 +4190,8 @@ http://localhost:6420/search?q=timezone&type=task
 - **扫描范围**：仅 `backlog/` 下的 `tasks`、`drafts`、`milestones`、`completed`（任务图谱）与 `wiki`、`docs`、`decisions`（知识图谱）；归档目录不进入图谱
 - **冷启动加速**：按文件指纹缓存校验，未变更的文件不重新解析；解析器或图结构版本升级会自动触发全量重建
 - **热更新**：CLI / TUI / Web / MCP 的任何写入都会通过钩子通知图谱服务做增量同步，另有目录监听与定期 reconciliation 兜底
-- **缓存位置**：图数据存放在操作系统缓存目录（而非项目树内），按项目路径哈希分槽存放，两个浏览器会话各自持有独立数据库互不争抢；可用环境变量 `BACKLOG_GRAPH_CACHE_DIR` 覆盖缓存目录
-- **后端**：默认使用 RyuGraph WASM 后端（Kuzu 的 MIT fork 的 WebAssembly 构建，在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需环境变量）；原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher 搜索）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃
+- **缓存位置**：图数据存放在操作系统缓存目录（而非项目树内），按项目路径哈希分槽存放，两个浏览器会话各自持有独立数据库互不争抢；可用环境变量 `BACKLOG_GRAPH_CACHE_DIR` 覆盖缓存目录。缓存目录里只有锁文件与指纹边车（`*.kuzu.lock`、`*.kuzu.meta.json`）落盘，数据库本体在 WASM 的内存文件系统里——这是设计而非残缺，图谱可由 Markdown 随时重建
+- **后端**：默认使用 RyuGraph WASM 后端（Kuzu 的 MIT fork 的 WebAssembly 构建，在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需环境变量）；原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher 搜索）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃。降级时终端打印一行英文告警（`[graph] RyuGraph (WASM) backend init failed for <path> ...`），Web 界面也原样显示服务端返回的英文错误信息
 - **锁冲突**：同一项目的图谱槽位同一时刻只允许一个进程持有；持有方进程已退出时自动回收锁，持有方仍存活时在交互终端中询问是否接管（卡 building 与接管的排查见[故障排查](#94-故障排查)）
 
 > 图谱只做可视化与查询，从不回写 Markdown 文件——所有数据仍以 `backlog/` 下的文件为唯一事实来源。
@@ -4604,6 +4604,8 @@ backlog agents --update-instructions
 | `.github/copilot-instructions.md` | GitHub Copilot | 项目仓库 |
 
 > **注意**：Cursor 不再生成单独的 `.cursorrules` 等 Backlog 拥有的规则文件，统一使用 `AGENTS.md`。重复执行生成命令会保留 `AGENTS.md` 中已有的用户内容，只更新 Backlog 管理的标记区块。
+>
+> 指令文件里**不含**项目状态机的副本（v1.53.9 起）：状态机以 `config.yml` 为唯一真源，由 `backlog instructions overview` 按当前配置现场渲染。旧版本写进 `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` 的 `state-machine` 区块会在下次 `backlog init` 或 `backlog agents --update-instructions` 时被移除。
 
 #### 6.3.3.1 CLAUDE.md
 
@@ -5183,7 +5185,7 @@ backlog instructions graph
 
 ### 8.1.1 后端与性能
 
-- **后端现状**：默认后端是 **RyuGraph WASM**（Kuzu 的 MIT fork 的 WebAssembly 构建），在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需任何环境变量。原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃。
+- **后端现状**：默认后端是 **RyuGraph WASM**（Kuzu 的 MIT fork 的 WebAssembly 构建），在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需任何环境变量。原生 Kuzu 依赖已移除，`BACKLOG_GRAPH_BACKEND=kuzu` 不再是合法取值。`BACKLOG_GRAPH_BACKEND=memory` 可强制纯 JS 内存降级模式（不支持 Cypher）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃，并打印一行英文告警说明失败路径与原因（`database path not visible to the WASM filesystem` 表示 MEMFS 看不到该路径，`engine error` 表示引擎自身故障——后者才需要上报）。数据库本体在 WASM 的内存文件系统里，缓存目录只存锁与指纹边车，这是正常现象。
 - **快照复用**：对 `default` 图谱的命令首次运行需要完整构建（本仓库约 6–11 秒）；CLI 会把构建结果作为 JSON 快照写入操作系统缓存目录，之后只要语料指纹、解析器版本与图结构版本都未变，就直接从快照恢复（约快一倍），语料一变则自动重建并刷新快照。快照只是缓存，删除它最多损失一次重建。
 - **每次调用独立**：CLI 每次运行都在内存中打开数据库、退出时关闭，与 Web 界面各自持有的图谱互不争抢（各自使用独立的槽位与锁）。
 
@@ -6254,7 +6256,8 @@ backlog overview --plain --completed
 - 持有方进程已退出时无需操作，锁自动回收、自动重建。
 - 持有方仍存活时，交互终端会询问是否**接管**锁——确认前请先确实旧进程已不再需要图谱。
 - 两个浏览器会话各持有独立数据库（按项目路径哈希分槽），互不争抢；排查时确认是否为同一项目起了多个服务进程。
-- 可用环境变量 `BACKLOG_GRAPH_CACHE_DIR` 覆盖缓存目录；`BACKLOG_GRAPH_BACKEND=kuzu` 仅在 Node 环境下可用，Bun 下无法加载原生绑定。
+- 可用环境变量 `BACKLOG_GRAPH_CACHE_DIR` 覆盖缓存目录；`BACKLOG_GRAPH_BACKEND=kuzu` 已不再是合法取值（原生依赖已移除），能覆盖的只有 `memory`。
+- **Cypher 检索不可用**（图谱页搜不到内容、`backlog graph query` 报错）时先看终端有没有 `[graph] RyuGraph (WASM) backend init failed for <path>, falling back to memory` 告警：有则后端已降级到内存（无 Cypher），按告警末尾的原因区分「路径对 WASM 不可见」（v1.53.9 已修复）与「引擎故障」（需上报）。
 
 ### 9.4.3 watch / 文件变更不刷新
 

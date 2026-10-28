@@ -2,7 +2,7 @@
 title: CLI 指令表面
 labels: [concept, cli, agent-guidance]
 created_date: 2026-07-14 11:20
-updated_date: 2026-10-09 23:30
+updated_date: 2026-10-28 15:22
 ---
 
 # CLI 指令表面
@@ -133,6 +133,11 @@ agent 指南规定：agent **首轮必须先加载项目实况再作答**，例�
 
 agent 指南新增 `path:LINE` 行号引用与行范围链接的说明，任务 references/documentation 可指向文件的具体行（如 `src/server/api.ts:42`），便于精确引用代码位置（[[sources/back-651-line-reference-docs|BACK-651]]）。
 
+## 指南列表对齐与状态机停止注入（BACK-822）
+
+- **列表对齐**：`AGENTS.md` 中的指南清单此前落后于源文件（缺 `decisions`、`graph`、`memos` 三项），与 `src/guidelines/cli-instructions/overview.md` 不一致——agent 因此看不到这三类工作流的入口。BACK-822 把 `cli-agent-nudge.md` 与 `AGENTS.md` 同步为 overview.md 的全量列表，本仓库已初始化的 AGENTS.md 也一并重同步。
+- **状态机不再写入**：`state-machine` marker 块从 agent 指令文件里彻底消失，`init` / `agents --update-instructions` 改为**剥离**旧块而非写入新块；机器继续由 `backlog instructions overview` 的 `{{STATE_MACHINE}}` 按需渲染（[[sources/back-822-remove-state-machine-injection]]）。原则是「配置文件是唯一真源，指令文件不存副本」。
+
 ## Related Concepts
 
 - [[concepts/mcp-workflow]] — MCP 工作流与 AI 集成
@@ -162,3 +167,4 @@ agent 指南新增 `path:LINE` 行号引用与行范围链接的说明，任务 
 - [[sources/back-651-line-reference-docs]] — BACK-651 path:LINE 行号引用文档
 - [[sources/back-656-agent-guidance-overview-cadence]] — BACK-656 overview 每会话一次节奏修正
 - [[sources/back-762-terminal-statuses-readonly]] — BACK-762 指南点名 terminalStatuses 派生行
+- [[sources/back-822-remove-state-machine-injection]] — BACK-822 指南列表对齐与状态机停止注入
