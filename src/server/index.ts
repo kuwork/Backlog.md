@@ -74,6 +74,7 @@ import { type GraphLegendWatcherHandle, watchGraphLegendStore } from "../utils/g
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { watchMilestones } from "../utils/milestone-watcher.ts";
 import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
+import { installStatusLineHooks, statusLine } from "../utils/status-line.ts";
 import {
 	DependencyCycleError,
 	IneligibleDependencyTargetError,
@@ -657,6 +658,9 @@ export class BacklogServer {
 	}
 
 	async start(port?: number, openBrowser = true, host = BROWSER_HOST): Promise<void> {
+		// Pin the heartbeat to the bottom line and make other server logs lift it first, so the
+		// "ContentStore periodic rescan completed" line stays put instead of stacking in a TTY.
+		installStatusLineHooks();
 		// Prevent duplicate starts (e.g., accidental re-entry)
 		if (this.server) {
 			console.log("Server already running");
@@ -1189,6 +1193,7 @@ export class BacklogServer {
 			const timeout = new Promise<void>((resolve) => setTimeout(resolve, 1500));
 			await Promise.race([stopPromise, timeout]);
 			this.server = null;
+			statusLine.clear();
 			console.log("Server stopped");
 		}
 

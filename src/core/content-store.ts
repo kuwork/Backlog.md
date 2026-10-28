@@ -8,6 +8,7 @@ import { watchConfigFile } from "../utils/config-watcher.ts";
 import { documentFilenameId, documentIdsEqual } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath } from "../utils/document-path.ts";
 import { normalizeStatusSet, statusMatchesSet } from "../utils/status-filter.ts";
+import { statusLine } from "../utils/status-line.ts";
 import { canonicalTaskId, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
 import {
@@ -1705,15 +1706,13 @@ export class ContentStore {
 		if (this.closed || !this.initialized || !this.isRootWatcherCurrent(epoch)) return;
 		await this.reconcileFromFingerprints(epoch);
 		await this.reconcileDirectories(epoch);
-		// Heartbeat so a quiet server console still shows the self-heal scan is alive. On a TTY it
-		// rewrites one line in place (\r + clear-line) instead of stacking a line per interval;
-		// piped logs keep one timestamped line per scan.
+		// Heartbeat so a quiet server console still shows the self-heal scan is alive. It pins to
+		// the bottom line via StatusLine; the server's console hooks lift it into the scrollback
+		// before any other log prints, so watcher error/warn lines and request logs no longer shove
+		// the in-place rewrite onto the wrong line (the "fixed bottom line stops refreshing" failure
+		// seen in Git Bash). On a non-TTY it falls back to a normal timestamped line.
 		const heartbeat = `ContentStore periodic rescan completed at ${new Date().toISOString()}`;
-		if (process.stdout.isTTY) {
-			process.stdout.write(`\r\x1b[K${heartbeat}`);
-		} else {
-			console.log(heartbeat);
-		}
+		statusLine.update(heartbeat);
 	}
 
 	/**

@@ -150,6 +150,7 @@ import { type ReadOutputMode, resolveReadOutputMode } from "./utils/read-output-
 import { getTaskReadiness, loadReadinessGraph, type ReadinessGraph, withReadiness } from "./utils/readiness.ts";
 import { resolveRuntimeCwd } from "./utils/runtime-cwd.ts";
 import { formatValidStatuses, getCanonicalStatus, getCanonicalStatuses, getValidStatuses } from "./utils/status.ts";
+import { shouldAutoEnableStatusLineForBrowser } from "./utils/status-line.ts";
 import {
 	normalizeDependencies,
 	parseClearableStringList,
@@ -7582,8 +7583,18 @@ program
 	.option("-p, --port <port>", "port to run server on")
 	.option("--host <host>", "host interface to bind (default 127.0.0.1; use 0.0.0.0 to allow LAN access)")
 	.option("--no-open", "don't automatically open browser")
+	.option("--status-line", "force the rescan heartbeat to pin to the bottom line (override auto-detection)")
+	.option("--no-status-line", "force the rescan heartbeat to a normal line (override auto-detection)")
 	.action(async (options) => {
 		try {
+			// Status line activation, in priority order:
+			// 1. explicit flag, 2. auto-detect winpty/Git Bash (interactive terminal where isTTY
+			//    lies), 3. otherwise fall back to isTTY in StatusLine. We keep piped/CI/file logs
+			//    clean, so this only turns on for a real interactive Git Bash terminal.
+			if (options.statusLine === true) process.env.BACKLOG_STATUS_LINE = "1";
+			else if (options.statusLine === false) process.env.BACKLOG_STATUS_LINE = "0";
+			else if (shouldAutoEnableStatusLineForBrowser()) process.env.BACKLOG_STATUS_LINE = "1";
+
 			const cwd = await requireProjectRoot();
 			const { BacklogServer } = await import("./server/index.ts");
 			const server = new BacklogServer(cwd, confirmGraphLockTakeover);
