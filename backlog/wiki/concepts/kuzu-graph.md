@@ -2,7 +2,7 @@
 title: 任务图谱引擎
 labels: [concept, graph, ryugraph]
 created_date: 2026-09-26 14:45
-updated_date: 2026-10-16 01:00
+updated_date: 2026-10-28 15:22
 ---
 
 # 任务图谱引擎
@@ -15,11 +15,13 @@ updated_date: 2026-10-16 01:00
 - **语义边**：`ParentOf` / `BelongsToMilestone` / `DependsOn`（任务层）；知识层（BACK-714，doc-15 阶段 3）新增机械派生边 `TaggedWith`（frontmatter labels → Tag 节点）、`SourcedFrom`（`source_path` 溯源）、`LinksTo`（正文 `[[wikilink]]` 解析，剥离 alias/heading，唯一命中才成边）
 - **Fail-closed 解析**：悬空/歧义引用进入 `missingDependencies` / `ambiguousIds` / `invalidRelations` 报告，绝不静默丢弃；节点始终入图（`ambiguousIds` 在 `src/graph/relations.ts` 由 `recordsById` 桶推导：同一 ID 被多条记录占据即入报告）
 - 节点类型仅由白名单目录决定（`wiki/`、`docs/`、`decisions/`），不从 frontmatter 推断；`wiki/index.md` 与 `wiki/log.md` 扫描时排除
-- **语料目录跟随配置**（BACK-758）：`scanWhitelistedDirs()` 与 service watcher 的目录拼接经 `resolveBacklogDirectory()` 解析（`.backlog`/自定义路径），未配置回退 `backlog`——此前硬编码字面量使自定义目录项目图谱为空。图数据库本体在全局缓存目录，不受影响（[[sources/back-758-graph-backlog-dir-resolution]]）
+- **语料目录跟随配置**（BACK-758）：`scanWhitelistedDirs()` 与 service watcher 的目录拼接经 `resolveBacklogDirectory()` 解析（`.backlog`/自定义路径），未配置回退 `backlog`——此前硬编码字面量使自定义目录项目图谱为空。图数据库的宿主句柄路径仍由全局缓存目录决定，不受影响（[[sources/back-758-graph-backlog-dir-resolution]]）
 
 ## 后端：RyuGraph WASM 默认（BACK-766 起）
 
-BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯 JS `MemoryGraphStore` 为默认、`BACKLOG_GRAPH_BACKEND=kuzu` 可选原生。BACK-766 用 RyuGraph 的 WebAssembly 构建（`ryugraph-wasm`，Kuzu 的 MIT fork）替换原生引擎——WASM 在 Bun 的 WebAssembly 运行时执行，绕开 NAPI 崩溃；自此 `RyuGraphStore` 为默认后端（无需设环境变量），仅识别 `BACKLOG_GRAPH_BACKEND=memory` 强制降级，init 失败自动回退 memory；kuzu npm 依赖与 `KuzuGraphStore` 整体移除，后端类型收敛为 `"ryu" | "memory"`。进程单例按项目根键控。ryu WASM 的三大坑（MEMFS 不持久、INT64 `ToBigInt` 崩溃、`COPY FROM` 静默零行）见 [[execution/ryugraph-wasm-gotchas]]。
+BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯 JS `MemoryGraphStore` 为默认、`BACKLOG_GRAPH_BACKEND=kuzu` 可选原生。BACK-766 用 RyuGraph 的 WebAssembly 构建（`ryugraph-wasm`，Kuzu 的 MIT fork）替换原生引擎——WASM 在 Bun 的 WebAssembly 运行时执行，绕开 NAPI 崩溃；自此 `RyuGraphStore` 为默认后端（无需设环境变量），仅识别 `BACKLOG_GRAPH_BACKEND=memory` 强制降级，init 失败自动回退 memory；kuzu npm 依赖与 `KuzuGraphStore` 整体移除，后端类型收敛为 `"ryu" | "memory"`。进程单例按项目根键控。ryu WASM 的陷阱（MEMFS 路径不可达、INT64 `ToBigInt` 崩溃、`COPY FROM` 静默零行）见 [[execution/ryugraph-wasm-gotchas]]。
+
+**MEMFS 句柄路径（BACK-823）**：`ryugraph-wasm/sync` 是浏览器 Emscripten 构建，文件系统只有 MEMFS（`/tmp`、`/home` 等预建目录），宿主绝对路径不可达。`RyuGraphStore.init()` 因此把 `memfsDatabasePath()` 的结果 `/tmp/ryu-<sha256(完整宿主路径)[0:32]>.kuzu` 交给 `new ryu.Database(...)`，而 `this.dbPath`（宿主路径）继续用作锁与指纹边车的键。**memfs 路径哈希的是完整路径**，所以项目、slot、用户自定义库各得其库，不会共用同一个内存库。宿主上永远只有一个 `.lock` 与 `.kuzu.meta.json`，`.kuzu` 本身不落盘——这不是缺陷，图谱是可丢弃的派生缓存。降级告警是英文，并区分「WASM 看不到该路径」与「引擎故障」两种原因。
 
 ## CLI、MCP 与数据库页（m-13 / m-14）
 
@@ -42,7 +44,7 @@ BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯
 
 ## 服务与 API
 
-- `startGraphService(core, {slot, ...})` 是唯一宿主入口；图谱产物存 OS 缓存目录，按 slot 键控（`backlog-graph-<sha256-16>.{kuzu,kuzu.meta.json,kuzu.lock}`），两个浏览器会话互不竞争
+- `startGraphService(core, {slot, ...})` 是唯一宿主入口；图谱产物按 slot 键控在 OS 缓存目录，`backlog-graph-<sha256-16>` 三个文件里只有 `.kuzu.lock` 与 `.kuzu.meta.json` 落宿主，`.kuzu` 本体在 WASM 的 MEMFS `/tmp`（BACK-823），两个浏览器会话互不竞争
 - 锁接管协议：`graph.kuzu.lock` O_EXCL 单持有者 + 死 pid 回收；TTY 下询问 y/N，管道从不阻塞；无 handler 时保持旧的静默 503 降级
 - `GET /api/graph` 返回 `{status, backend, nodes, edges, reports, nodeCount}`，首次导入期间 `building`，他人持锁时 503；`getPayload` 把路径翻译回任务 ID，前端零改动
 - 更新走既有 WebSocket 通道推送 `graph-updated`（非 SSE）；`graphVersion` 线程化到前端组件实现原地重取
@@ -85,6 +87,7 @@ BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯
 - [[sources/m-13-graph-cli]] — graph CLI 子命令里程碑
 - [[sources/m-14-graph-mcp]] — graph MCP 工具里程碑
 - [[sources/back-783-databases-real-row-counts]] — /databases 页真实行数
+- [[sources/back-823-ryugraph-wasm-memfs-handle]] — MEMFS 句柄路径与图谱文案英文化
 
 ## Related Reasoning
 
