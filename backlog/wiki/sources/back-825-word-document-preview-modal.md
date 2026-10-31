@@ -35,5 +35,5 @@ source_path: backlog/tasks/back-825 - Word-document-preview-and-inline-editing-m
 ## Related Sources
 
 - [[sources/back-826-non-previewable-office-notice]] — 不支持格式的提示分支
-- [[sources/back-827-project-wide-docx-pdf-preview]] — 解除 /assets/ 限制，项目任意路径预览
+- [[sources/back-827-project-wide-docx-pdf-preview]] — 引用字段 `backlog/...` 路径预览（正文仅 assets/）
 - [[sources/back-831-localize-preview-modals]] — 四个预览模态框本地化
