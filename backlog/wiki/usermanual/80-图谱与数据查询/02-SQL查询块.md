@@ -8,7 +8,7 @@ updated_date: 2026-10-18 22:00
 
 # SQL 查询块
 
-在文档（docs / Wiki 等 Markdown）里可以用 `sqlite-query` 或 `duckdb-query` 围栏代码块嵌入一条只读 SQL 查询；Web 界面的阅读视图会把块渲染成实时查询结果，而不是死代码。编辑模式下仍显示原始块文本。
+在文档（docs / Wiki 等 Markdown）里可以用 `sqlite-query`、`duckdb-query` 或 `mdb-query` 围栏代码块嵌入一条只读查询；Web 界面的阅读视图会把块渲染成实时查询结果，而不是死代码。编辑模式下仍显示原始块文本。`mdb-query` 以 Access 库为数据源，写法与字段同本页，详见 [MDB 查询块](07-MDB查询块.md)。
 
 ## 块语法
 
@@ -57,4 +57,8 @@ sql: |
 | Copy Markdown | 把当前结果以 GitHub 风格 Markdown 表格复制到剪贴板（`value` 视图复制标量；NULL 为空单元格） |
 | Export CSV | 把结果导出为 CSV 文件（UTF-8 BOM + CRLF，Excel 可直接打开中文）；SQLite 块写入数据库旁的 `<库名>-<时间戳>.csv`（绝不覆盖），DuckDB 块由浏览器保存文件；导出沿用预览行数上限 |
 
-四个动作对两种引擎的块完全一致。设置页的修改会通过广播即时生效，无需刷新页面。
+四个动作对四种引擎的块完全一致。设置页的修改会通过广播即时生效，无需刷新页面。
+
+## 在阅读视图内编辑
+
+展开查询面板后，其首行右端会出现编辑入口：进入编辑态后，SQL/Cypher 语句变为语法高亮编辑器，可点 Save 把新语句写回源 Markdown 并立即重跑，点 Test 先空跑验证而不写盘，点 Discard 恢复原语句。SQL 引擎另有一个 Format 按钮可原地重排缩进（不写文件）。本功能对 `sqlite-query` / `duckdb-query` / `mdb-query` / `cypher-query` 四种块通用；没有已知来源路径的块（如里程碑描述）保持只读。
