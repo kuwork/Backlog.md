@@ -318,6 +318,27 @@ export interface MdbCsvExport {
 }
 
 // ---------------------------------------------------------------------------
+// Query block inline editing (BACK-833). A live query block can rewrite its own statement; these
+// types name that wire contract, which is engine-agnostic - the server finds the `sql` / `query`
+// field itself.
+// ---------------------------------------------------------------------------
+
+export interface QueryBlockSaveRequest {
+	/** Project-relative path of the Markdown file that holds the block. */
+	filePath: string;
+	/** The fenced block body exactly as the renderer read it. */
+	block: string;
+	/** The edited statement. */
+	statement: string;
+}
+
+export interface QueryBlockSaveResult {
+	ok: true;
+	/** The rewritten block body, so a second save can still find the block in the file. */
+	block: string;
+}
+
+// ---------------------------------------------------------------------------
 // Cypher live query blocks (doc-27). The grid comes back in the SQL explorers' shape (cells are
 // already coerced to `SqliteCell` server-side, §5.4), so `SqliteQueryResult` is reused; these types
 // name the Cypher wire contract.
@@ -1448,6 +1469,22 @@ export class ApiClient {
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to export mdb query");
+		}
+		return response.json();
+	}
+
+	/**
+	 * Writes an edited statement back into the Markdown file that holds its block. The server
+	 * re-gates the path and the fence, then answers with the rewritten body.
+	 */
+	async saveQueryBlock(payload: QueryBlockSaveRequest): Promise<QueryBlockSaveResult> {
+		const response = await fetch(`${API_BASE}/query-block/save`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to save query block");
 		}
 		return response.json();
 	}

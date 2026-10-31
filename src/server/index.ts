@@ -1,7 +1,7 @@
-import { type FSWatcher, watch } from "node:fs";
-import { rm as removeFile, rename as renameFile } from "node:fs/promises";
+import { existsSync, type FSWatcher, watch } from "node:fs";
+import { rm as removeFile } from "node:fs/promises";
 import { networkInterfaces } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import getPort, { portNumbers } from "get-port";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
@@ -34,6 +34,7 @@ import { buildDuckdbCsv } from "../duckdb/export.ts";
 import { resolveDuckdbSource } from "../duckdb/paths.ts";
 import { DUCKDB_MAX_ROWS, runDuckdbQuery } from "../duckdb/query.ts";
 import { screenDuckdbSqlLiterals } from "../duckdb/sql-literals.ts";
+import { replaceFile } from "../file-system/atomic-write.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
 import { coerceCypherRows } from "../graph/coerce.ts";
@@ -50,10 +51,11 @@ import { listMdbFiles } from "../mdb/discover.ts";
 import { buildMdbCsv } from "../mdb/export.ts";
 import { resolveMdbSource } from "../mdb/paths.ts";
 import { MDB_MAX_ROWS, runMdbQuery } from "../mdb/query.ts";
+import { saveQueryBlockStatement } from "../query-block/save.ts";
 import { defaultExportName, renderCsvFile } from "../sqlite/csv.ts";
 import { listSqliteFiles } from "../sqlite/discover.ts";
 import { buildSqliteCsv } from "../sqlite/export.ts";
-import { resolveSqliteSource } from "../sqlite/paths.ts";
+import { resolveSqliteSource, segmentsInsideProject } from "../sqlite/paths.ts";
 import { runSqliteQuery, SQLITE_MAX_ROWS } from "../sqlite/query.ts";
 import { validateReadOnlySql } from "../sqlite/validation.ts";
 import {
@@ -99,31 +101,7 @@ const MEMO_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 /** A caller asking for more than this gets a capped page, not the whole corpus. */
 const MAX_MEMO_PAGE_SIZE = 100;
 
-const LOCK_ERROR_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
-
-/**
- * Replace `target` with `source` in one step, retrying briefly on Windows.
- *
- * A freshly written temp file can still be held for a few hundred milliseconds
- * by the virus scanner or the search indexer, which makes the rename fail with
- * EPERM even though nothing else has the workbook open. Retrying rides that out;
- * a real lock (Excel / WPS holding the file) still surfaces as an error.
- */
-async function replaceFile(source: string, target: string): Promise<void> {
-	let lastError: unknown;
-	for (let attempt = 0; attempt < 5; attempt++) {
-		try {
-			await renameFile(source, target);
-			return;
-		} catch (error) {
-			const code = (error as NodeJS.ErrnoException).code ?? "";
-			if (!LOCK_ERROR_CODES.has(code)) throw error;
-			lastError = error;
-			await new Promise((resolve) => setTimeout(resolve, 80 * (attempt + 1)));
-		}
-	}
-	throw lastError;
-}
+// Atomic writes live in ../file-system/atomic-write.ts, shared with the office save routes.
 
 /** Office packages the preview can write back; they are small enough to buffer. */
 const SAVEABLE_OFFICE_EXTS = new Set(["xlsx", "xlsm", "docx"]);
@@ -1055,6 +1033,9 @@ export class BacklogServer {
 					},
 					"/api/xlsx/save": {
 						POST: async (req: Request) => await this.handleSaveXlsx(req),
+					},
+					"/api/query-block/save": {
+						POST: async (req: Request) => await this.handleSaveQueryBlock(req),
 					},
 					"/sequences": {
 						GET: async () => await this.handleGetSequences(),
@@ -2975,6 +2956,76 @@ export class BacklogServer {
 		const result = buildMdbCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, maxRows });
 		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
 		return Response.json(result.csv);
+	}
+
+	/**
+	 * POST /api/query-block/save - write an edited statement back into its Markdown source.
+	 *
+	 * The client sends the block body it rendered, which is the only form still byte-identical to
+	 * what the file holds; the path is re-gated here (relative, inside the project, Markdown only)
+	 * before a byte is written. The rewritten body comes back so the client can keep editing - a
+	 * stale body would no longer be found on the next save - and it re-runs the query, so the grid
+	 * refreshes in place.
+	 */
+	private async handleSaveQueryBlock(req: Request): Promise<Response> {
+		let body: { filePath?: unknown; block?: unknown; statement?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
+		}
+		const filePath = typeof body?.filePath === "string" ? body.filePath : "";
+		const block = typeof body?.block === "string" ? body.block : "";
+		const statement = typeof body?.statement === "string" ? body.statement : "";
+
+		const resolved = this.resolveQueryBlockFile(filePath);
+		if (!resolved) return Response.json({ error: "The file could not be found in the project." }, { status: 400 });
+
+		const result = await saveQueryBlockStatement({
+			projectRoot: this.core.filesystem.rootDir,
+			filePath: resolved,
+			block,
+			statement,
+		});
+		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+		return Response.json({ ok: true, block: result.block });
+	}
+
+	/**
+	 * Resolves the path a surface handed over into a project-relative one.
+	 *
+	 * Surfaces hold different flavours of path: the file preview has a project-relative path, while
+	 * a document, decision, wiki page or memo knows only its path inside its own collection
+	 * directory. Rather than make every surface rebuild the prefix (and hard-code the configurable
+	 * backlog directory name), this tries the project root first and then each collection root, and
+	 * returns whichever candidate exists inside the project. Nothing outside the project can match.
+	 */
+	private resolveQueryBlockFile(filePath: string): string | null {
+		if (!filePath.trim()) return null;
+		const root = this.core.filesystem.rootDir;
+		// A task carries its own absolute path; everything else is relative to something.
+		if (isAbsolute(filePath)) {
+			if (!segmentsInsideProject(root, filePath) || !existsSync(filePath)) return null;
+			return relative(root, filePath).replace(/\\/g, "/");
+		}
+		const docsDir = this.core.filesystem.docsDir;
+		const backlogDir = dirname(docsDir);
+		const roots = [
+			root,
+			docsDir,
+			join(backlogDir, "decisions"),
+			join(backlogDir, "wiki"),
+			join(backlogDir, "memos"),
+			join(backlogDir, "tasks"),
+			join(backlogDir, "drafts"),
+		];
+		for (const base of roots) {
+			const candidate = join(base, filePath);
+			if (!segmentsInsideProject(root, candidate)) continue;
+			if (!existsSync(candidate)) continue;
+			return relative(root, candidate).replace(/\\/g, "/");
+		}
+		return null;
 	}
 
 	private async handleUpdateConfig(req: Request): Promise<Response> {

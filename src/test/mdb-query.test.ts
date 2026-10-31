@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseMdbQueryBlock } from "../mdb/block.ts";
 import { clearMdbDiscoveryCache, listMdbFiles } from "../mdb/discover.ts";
 import { buildMdbCsv } from "../mdb/export.ts";
 import { resolveMdbSource } from "../mdb/paths.ts";
-import { runMdbQuery } from "../mdb/query.ts";
+import { closeAllMdbHandles, getMdbDatabase, runMdbQuery } from "../mdb/query.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "..", "backlog", "assets", "广州管线探测模板.mdb");
 const LIZHENG = join(import.meta.dir, "..", "..", "backlog", "assets", "lizheng.mdb");
@@ -74,6 +76,43 @@ describe("runMdbQuery", () => {
 			sql: `SELECT TNMC FROM "g_TableName" WHERE TNMC = 'd_DZBuLiang'`,
 		});
 		expect(result.rows[0]?.[0]).toBe("d_DZBuLiang");
+	});
+});
+
+describe("mdb handle cache", () => {
+	afterEach(() => {
+		closeAllMdbHandles();
+	});
+
+	test("shares one loaded copy across queries instead of reparsing the file", () => {
+		// A document routinely renders ten blocks against the same database; reparsing per query
+		// is what made a save re-render take seconds.
+		const first = getMdbDatabase(LIZHENG);
+		const second = getMdbDatabase(LIZHENG);
+		expect(second).toBe(first);
+	});
+
+	test("drops the copy when it is closed explicitly", () => {
+		const first = getMdbDatabase(LIZHENG);
+		closeAllMdbHandles();
+		expect(getMdbDatabase(LIZHENG)).not.toBe(first);
+	});
+
+	test("reloads when the file behind a cached path changes", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "mdb-cache-"));
+		const target = join(dir, "copy.mdb");
+		try {
+			await copyFile(LIZHENG, target);
+			const before = getMdbDatabase(target);
+			// Same path, different bytes: the fingerprint has to notice and rebuild.
+			// Removed first because Windows refuses to overwrite the file in place.
+			await rm(target, { force: true });
+			await copyFile(FIXTURE, target);
+			const after = getMdbDatabase(target);
+			expect(after).not.toBe(before);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
 	});
 });
 

@@ -1862,6 +1862,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
 												<MermaidMarkdown
 													source={description}
+													filePath={task?.filePath}
 													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
@@ -2282,6 +2283,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
 												<MermaidMarkdown
 													source={plan}
+													filePath={task?.filePath}
 													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
@@ -2319,6 +2321,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
 												<MermaidMarkdown
 													source={notes}
+													filePath={task?.filePath}
 													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
@@ -2408,7 +2411,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
 															)}
 														</div>
 														<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-															<MermaidMarkdown source={comment.body} wikilinkBasePath="index.md" />
+															<MermaidMarkdown
+																source={comment.body}
+																filePath={task?.filePath}
+																wikilinkBasePath="index.md"
+															/>
 														</div>
 													</article>
 												))}
@@ -2466,6 +2473,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 											<div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
 												<MermaidMarkdown
 													source={finalSummary}
+													filePath={task?.filePath}
 													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { format as formatSql } from "sql-formatter";
 import { parseQueryBlock, type QueryBlock, type QueryBlockParse } from "../../sqlite/block.ts";
 import { cellToMarkdown, resultToMarkdownTable } from "../../sqlite/markdown.ts";
 import EchartsFromResult from "../charts/EchartsFromResult";
@@ -71,6 +72,23 @@ export interface QueryBlockDict {
 	prevPage: string;
 	/** aria-label / tooltip for the next-page button. */
 	nextPage: string;
+	/**
+	 * The inline statement editor (BACK-833). Only a block that knows which file it came from can
+	 * write an edit back, so these strings stay unused on the read-only paths.
+	 */
+	edit: string;
+	save: string;
+	saving: string;
+	saved: string;
+	saveFailed: string;
+	test: string;
+	testing: string;
+	testFailed: string;
+	discard: string;
+	/** Label for the format button (SQL engines only): reindents the edited statement. */
+	format: string;
+	/** Shown when the formatter rejects the edited statement (invalid SQL). */
+	formatFailed: string;
 	/**
 	 * Graph-view fallback notice (cypher only): the result's `{count}` nodes exceeded the `{limit}`
 	 * cap, so the block drew the table instead. Optional because only graph-capable engines set it.
@@ -163,6 +181,12 @@ interface Props {
 	/** The fenced block body, exactly as written in the document. */
 	block: string;
 	engine: QueryEngineConfig;
+	/**
+	 * Project-relative path of the Markdown file the block lives in (BACK-833). Saving writes the
+	 * statement back into that file, so a block rendered without one stays read-only and shows no
+	 * edit affordance at all.
+	 */
+	filePath?: string;
 }
 
 type State =
@@ -172,6 +196,89 @@ type State =
 
 function fill(template: string, values: Record<string, string | number>): string {
 	return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
+}
+
+/**
+ * Keeps the selected page within the result's range. The `page` state holds the reader's intent, but
+ * the navigable range is set by `totalPages`; when the query changes (a discard or save swaps in a
+ * shorter result, or live data shrinks) the previously chosen page can fall past the end. Without
+ * this the pager sticks on an empty out-of-range page instead of snapping back to the last valid one.
+ */
+function clampPageToTotalPages(setPage: (next: number) => void, page: number, totalPages: number | undefined): void {
+	if (totalPages !== undefined && page > totalPages) setPage(Math.max(1, totalPages));
+}
+
+/**
+ * The textarea and the highlight `<pre>` must agree on every box metric (font, size, line height,
+ * padding, border, box-sizing, tab size) or the caret drifts off the coloured text as you scroll.
+ * One explicit style object is applied to both layers so the browser's differing textarea defaults
+ * cannot pull them apart.
+ */
+const EDITOR_TEXT_STYLE: CSSProperties = {
+	margin: 0,
+	border: 0,
+	padding: "0.5rem",
+	fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+	fontSize: "0.75rem",
+	lineHeight: 1.625,
+	whiteSpace: "pre",
+	overflowWrap: "normal",
+	wordBreak: "normal",
+	tabSize: 2,
+	letterSpacing: "normal",
+	boxSizing: "border-box",
+};
+
+/**
+ * A textarea with a Prism-highlighted layer behind it. The typed text is transparent so the reader
+ * sees the same token colours the reading view paints, while the caret and selection stay live. The
+ * highlight layer is scroll-synced to the textarea. Box metrics are kept identical between the two
+ * layers via {@link EDITOR_TEXT_STYLE}, so the tokens line up with the characters under the caret.
+ * Used by the inline SQL editor so a draft reads as code while it is being written.
+ */
+function HighlightedSqlEditor(props: {
+	value: string;
+	onChange: (next: string) => void;
+	language: "sql" | "cypher";
+}): ReactNode {
+	const preRef = useRef<HTMLPreElement>(null);
+	// `highlightCode` returns the same token spans the reading view uses, so the editor inherits the
+	// theme (light/dark) and the editor colours match the rendered block.
+	const highlighted = useMemo(() => highlightCode(props.value, props.language), [props.value, props.language]);
+	const syncScroll = useCallback((event: React.UIEvent<HTMLTextAreaElement>) => {
+		const pre = preRef.current;
+		if (pre) {
+			pre.scrollTop = event.currentTarget.scrollTop;
+			pre.scrollLeft = event.currentTarget.scrollLeft;
+		}
+	}, []);
+	return (
+		<div className="relative grid rounded border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900">
+			<pre
+				ref={preRef}
+				aria-hidden="true"
+				className="overflow-hidden"
+				style={{
+					...EDITOR_TEXT_STYLE,
+					gridArea: "1 / 1",
+					background: "transparent",
+					pointerEvents: "none",
+				}}
+			>
+				{highlighted}
+			</pre>
+			<textarea
+				value={props.value}
+				onChange={(event) => props.onChange(event.target.value)}
+				onScroll={syncScroll}
+				spellCheck={false}
+				wrap="off"
+				rows={Math.min(Math.max(props.value.split("\n").length, 4), 16)}
+				className="relative z-10 w-full resize-y bg-transparent text-transparent caret-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:caret-gray-100"
+				style={{ ...EDITOR_TEXT_STYLE, gridArea: "1 / 1" }}
+			/>
+		</div>
+	);
 }
 
 /**
@@ -248,10 +355,22 @@ async function writeClipboard(text: string): Promise<void> {
  * typo costs one render and not one request. The engine-specific differences (labels, endpoints,
  * which actions are live) arrive through {@link QueryEngineConfig}.
  */
-export default function SqlQueryBlock({ block, engine }: Props) {
+export default function SqlQueryBlock({ block, engine, filePath }: Props) {
 	const dict = engine.dict;
 	const parseBlock = engine.parse ?? parseQueryBlock;
-	const parsed = useMemo(() => parseBlock(block), [block, parseBlock]);
+	// A successful save rewrites the block body, and the rewrite is what the file now holds - the
+	// prop stays stale until the page re-reads it. Keeping the rewritten body here means a second
+	// edit still finds its own block, and the grid below re-runs off the new statement.
+	const [blockOverride, setBlockOverride] = useState<string | null>(null);
+	const activeBlock = blockOverride ?? block;
+	useEffect(() => {
+		// `block` is the reset signal: a new prop means the page re-read the file, so the local
+		// rewrite is dropped in favour of whatever the file says now.
+		void block;
+		setBlockOverride(null);
+		setDisplayedSql(null);
+	}, [block]);
+	const parsed = useMemo(() => parseBlock(activeBlock), [activeBlock, parseBlock]);
 	// Approach A (BACK-814): a block with an `id` publishes its result so an `echarts` block in the
 	// same document can reference it via `fromQuery`. No Provider -> no-op, behaviour unchanged.
 	const registry = useQueryResultRegistry();
@@ -265,6 +384,15 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 	const [pagination, setPagination] = useState(false);
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(50);
+	/**
+	 * The SQL the grid currently reflects. `null` means the committed statement (`parsed.block.sql`);
+	 * a successful Test sets it to the drafted statement so pagination keeps browsing the draft
+	 * instead of re-running the (stale) block. It reverts to `null` on save, discard, or a file
+	 * re-read, at which point the grid is driven by the committed statement again.
+	 */
+	const [displayedSql, setDisplayedSql] = useState<string | null>(null);
+	/** The SQL the next run should execute: the tested draft if one is on screen, else the block. */
+	const effectiveSql = displayedSql ?? (parsed.ok ? parsed.block.sql : "");
 	const panelId = useId();
 	const paginationToggleId = useId();
 
@@ -278,8 +406,12 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		engine
 			.run({
 				source: parsed.block.source,
-				sql: parsed.block.sql,
-				copyTo: parsed.block.copyTo,
+				// Run the statement the grid currently reflects - a tested draft when one is showing,
+				// otherwise the committed block - so pagination and refresh stay on the same query.
+				sql: effectiveSql,
+				// A tested draft must never write its `copy_to` target (a test is read-only by design),
+				// so the write target applies only to the committed statement.
+				copyTo: displayedSql ? undefined : parsed.block.copyTo,
 				// Only a graph-capable engine reads `view`; for the SQL explorers it stays undefined,
 				// so JSON.stringify drops it and their request bodies are byte-for-byte unchanged.
 				view: engine.graph ? parsed.block.view : undefined,
@@ -289,6 +421,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 			.then((result) => {
 				if (cancelled) return;
 				setState({ status: "ready", result });
+				clampPageToTotalPages(setPage, page, result.totalPages);
 				if (parsed.ok && parsed.block.id) setQueryResult?.(parsed.block.id, result);
 			})
 			.catch((error: unknown) => {
@@ -298,7 +431,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		return () => {
 			cancelled = true;
 		};
-	}, [parsed, nonce, engine, pagination, page, pageSize, setQueryResult]);
+	}, [parsed, nonce, engine, pagination, page, pageSize, displayedSql, effectiveSql, setQueryResult]);
 
 	// Load the query config once (memoized) so `defaultPagination` can open the block in paginated
 	// mode and the page size matches what the user set in Settings.
@@ -364,14 +497,15 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		engine
 			.run({
 				source: parsed.block.source,
-				sql: parsed.block.sql,
-				copyTo: parsed.block.copyTo,
+				sql: effectiveSql,
+				copyTo: displayedSql ? undefined : parsed.block.copyTo,
 				view: engine.graph ? parsed.block.view : undefined,
 				page: pagination ? page : undefined,
 				pageSize: pagination ? pageSize : undefined,
 			})
 			.then((result) => {
 				if (parsed.ok && parsed.block.id) setQueryResult?.(parsed.block.id, result);
+				clampPageToTotalPages(setPage, page, result.totalPages);
 				setState((current) =>
 					current.status === "ready" && resultFingerprint(current.result) === resultFingerprint(result)
 						? current
@@ -382,7 +516,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				// A failed live re-run (graph service restarting, database dropped) leaves the current
 				// result untouched: the next change notice tries again.
 			});
-	}, [parsed, engine, pagination, page, pageSize, setQueryResult]);
+	}, [parsed, engine, pagination, page, pageSize, displayedSql, effectiveSql, setQueryResult]);
 
 	const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	useEffect(() => {
@@ -454,7 +588,7 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 		if (!parsed.ok) return;
 		setExportState({ status: "saving" });
 		try {
-			const payload = await engine.exportCsv({ source: parsed.block.source, sql: parsed.block.sql });
+			const payload = await engine.exportCsv({ source: parsed.block.source, sql: effectiveSql });
 			await saveTextFile(payload.filename, payload.csv);
 			setExportState({ status: "saved", name: payload.filename, truncated: payload.truncated });
 		} catch (error: unknown) {
@@ -465,7 +599,110 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 			}
 			setExportState({ status: "failed", message: error instanceof Error ? error.message : String(error) });
 		}
-	}, [parsed, engine]);
+	}, [parsed, engine, effectiveSql]);
+
+	// Inline editing (BACK-833). Only a block that knows its file can be edited: everything else
+	// keeps the read-only body it always had.
+	const canEdit = Boolean(filePath) && engine.actions.showHide;
+	// The format button is SQL-only: there is no shared Cypher formatter, and its grammar differs.
+	const canFormat = engine.highlightLanguage === "sql";
+	// `sql-formatter` has no DuckDB dialect, but its Postgres dialect covers DuckDB's SQL well enough;
+	// SQLite and MDB fall back to the standard SQL dialect.
+	const formatDialect = engine.id === "duckdb" ? "postgresql" : engine.id === "sqlite" ? "sqlite" : "sql";
+	const [editing, setEditing] = useState(false);
+	const [draft, setDraft] = useState("");
+	const [saveState, setSaveState] = useState<
+		{ status: "idle" } | { status: "saving" } | { status: "saved" } | { status: "failed"; message: string }
+	>({ status: "idle" });
+	const [testState, setTestState] = useState<
+		{ status: "idle" } | { status: "running" } | { status: "failed"; message: string }
+	>({ status: "idle" });
+	const [formatState, setFormatState] = useState<{ status: "idle" } | { status: "failed"; message: string }>({
+		status: "idle",
+	});
+
+	const startEditing = useCallback(() => {
+		if (!parsed.ok) return;
+		setDraft(parsed.block.sql);
+		setSaveState({ status: "idle" });
+		setTestState({ status: "idle" });
+		setEditing(true);
+	}, [parsed]);
+
+	const discardEdit = useCallback(() => {
+		setEditing(false);
+		setDraft("");
+		setTestState({ status: "idle" });
+		setDisplayedSql(null);
+		// A tested draft has already replaced the grid, so re-run the statement the file still holds.
+		setNonce((value) => value + 1);
+	}, []);
+
+	/**
+	 * Test runs the edited statement without touching the file. `copy_to` is deliberately not sent:
+	 * it is a write target, and a test must not write.
+	 */
+	const testDraft = useCallback(async () => {
+		if (!parsed.ok) return;
+		setTestState({ status: "running" });
+		try {
+			const result = await engine.run({
+				source: parsed.block.source,
+				sql: draft,
+				view: engine.graph ? parsed.block.view : undefined,
+				page: pagination ? page : undefined,
+				pageSize: pagination ? pageSize : undefined,
+			});
+			setTestState({ status: "idle" });
+			// The tested draft is now what the grid reflects: keep it so pagination / refresh stay on
+			// the draft instead of re-running the (stale) committed statement.
+			setDisplayedSql(draft);
+			setState({ status: "ready", result });
+			clampPageToTotalPages(setPage, page, result.totalPages);
+		} catch (error: unknown) {
+			setTestState({ status: "failed", message: error instanceof Error ? error.message : String(error) });
+		}
+	}, [parsed, draft, engine, pagination, page, pageSize]);
+
+	const saveDraft = useCallback(async () => {
+		if (!parsed.ok || !filePath) return;
+		setSaveState({ status: "saving" });
+		try {
+			const saved = await apiClient.saveQueryBlock({ filePath, block: activeBlock, statement: draft });
+			// The rewritten body is what the file holds now; adopting it re-parses and re-runs, so
+			// the grid refreshes from the statement that was just written.
+			setBlockOverride(saved.block);
+			// The draft is now the committed statement, so drop the tested-draft marker.
+			setDisplayedSql(null);
+			setEditing(false);
+			setDraft("");
+			setTestState({ status: "idle" });
+			setSaveState({ status: "saved" });
+		} catch (error: unknown) {
+			setSaveState({ status: "failed", message: error instanceof Error ? error.message : String(error) });
+		}
+	}, [parsed, filePath, activeBlock, draft]);
+
+	/**
+	 * Format reindents the edited statement in place using `sql-formatter`. It never writes the file -
+	 * like Test it is a preview aid - and a statement that does not parse is left untouched with a
+	 * transient error note.
+	 */
+	const formatDraft = useCallback(() => {
+		if (!parsed.ok || !canFormat) return;
+		try {
+			setDraft(formatSql(draft, { language: formatDialect, keywordCase: "upper" }));
+			setFormatState({ status: "idle" });
+		} catch (error: unknown) {
+			setFormatState({ status: "failed", message: error instanceof Error ? error.message : String(error) });
+		}
+	}, [parsed, draft, canFormat, formatDialect]);
+
+	useEffect(() => {
+		if (saveState.status !== "saved") return;
+		const timer = setTimeout(() => setSaveState({ status: "idle" }), CONFIRMATION_MS);
+		return () => clearTimeout(timer);
+	}, [saveState]);
 
 	// The grid as a table: the default body, and the graph view's fallback past its node cap.
 	const renderTable = (): ReactNode => {
@@ -692,12 +929,85 @@ export default function SqlQueryBlock({ block, engine }: Props) {
 				>
 					{parsed.ok ? (
 						<>
-							<div className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-								source: <span className="font-mono">{parsed.block.source}</span>
+							<div className="mb-1 flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+								<span className="truncate">
+									source: <span className="font-mono">{parsed.block.source}</span>
+								</span>
+								{canEdit && !editing ? (
+									<button
+										type="button"
+										onClick={startEditing}
+										className="shrink-0 px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+									>
+										{dict.edit}
+									</button>
+								) : null}
 							</div>
-							<pre className="font-mono text-xs overflow-x-auto" style={PRE_RESET}>
-								<code className={`language-${engine.highlightLanguage ?? "sql"}`}>{highlightedQuery}</code>
-							</pre>
+							{editing ? (
+								<>
+									<HighlightedSqlEditor
+										value={draft}
+										onChange={setDraft}
+										language={engine.highlightLanguage ?? "sql"}
+									/>
+									<div className="mt-2 flex items-center gap-2">
+										{canFormat ? (
+											<button
+												type="button"
+												onClick={formatDraft}
+												className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+											>
+												{dict.format}
+											</button>
+										) : null}
+										<button
+											type="button"
+											onClick={saveDraft}
+											disabled={saveState.status === "saving"}
+											className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+										>
+											{saveState.status === "saving" ? dict.saving : dict.save}
+										</button>
+										<button
+											type="button"
+											onClick={testDraft}
+											disabled={testState.status === "running"}
+											className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+										>
+											{testState.status === "running" ? dict.testing : dict.test}
+										</button>
+										<button
+											type="button"
+											onClick={discardEdit}
+											className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+										>
+											{dict.discard}
+										</button>
+									</div>
+									{saveState.status === "saved" ? (
+										<p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">{dict.saved}</p>
+									) : null}
+									{saveState.status === "failed" ? (
+										<p className="mt-1 text-xs text-red-600 dark:text-red-400">
+											{dict.saveFailed}：{saveState.message}
+										</p>
+									) : null}
+									{testState.status === "failed" ? (
+										<p className="mt-1 text-xs text-red-600 dark:text-red-400">
+											{dict.testFailed}：{testState.message}
+										</p>
+									) : null}
+									{formatState.status === "failed" ? (
+										<p className="mt-1 text-xs text-red-600 dark:text-red-400">
+											{dict.formatFailed}：{formatState.message}
+										</p>
+									) : null}
+								</>
+							) : (
+								<pre className="font-mono text-xs overflow-x-auto" style={PRE_RESET}>
+									<code className={`language-${engine.highlightLanguage ?? "sql"}`}>{highlightedQuery}</code>
+								</pre>
+							)}
 						</>
 					) : (
 						// A block that will not parse has no fields to show, and the raw body is what the

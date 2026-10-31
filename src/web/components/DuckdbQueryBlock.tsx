@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import SqlQueryBlock, { type QueryEngineConfig } from "./SqlQueryBlock.tsx";
@@ -11,14 +12,20 @@ import SqlQueryBlock, { type QueryEngineConfig } from "./SqlQueryBlock.tsx";
  * feature. Base rendering (table / list / value, loading / error / empty / summary / truncated,
  * refresh) is already live.
  */
-export default function DuckdbQueryBlock({ block }: { block: string }) {
+export default function DuckdbQueryBlock({ block, filePath }: { block: string; filePath?: string }) {
 	const { t } = useI18n();
-	const engine: QueryEngineConfig = {
-		id: "duckdb",
-		dict: t.duckdbQueryBlock,
-		run: (request) => apiClient.runDuckdbQuery(request),
-		exportCsv: (request) => apiClient.exportDuckdbCsv(request),
-		actions: { showHide: true, copy: true, export: true, pagination: true },
-	};
-	return <SqlQueryBlock block={block} engine={engine} />;
+	// Memoized for its identity: the shared core re-runs the query whenever this object changes, so
+	// building it inline would re-query the block on every parent render.
+	const engine = useMemo<QueryEngineConfig>(
+		() => ({
+			id: "duckdb",
+			dict: t.duckdbQueryBlock,
+			highlightLanguage: "sql",
+			run: (request) => apiClient.runDuckdbQuery(request),
+			exportCsv: (request) => apiClient.exportDuckdbCsv(request),
+			actions: { showHide: true, copy: true, export: true, pagination: true },
+		}),
+		[t],
+	);
+	return <SqlQueryBlock block={block} engine={engine} filePath={filePath} />;
 }

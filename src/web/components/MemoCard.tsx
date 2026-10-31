@@ -422,6 +422,7 @@ export function MemoCard({
 				<div className="memo-body w-full" data-color-mode={theme} ref={bodyRef}>
 					<MermaidMarkdown
 						source={memo.rawContent}
+						filePath={memo.path}
 						wikilinkBasePath="index.md"
 						inlineTagChips={true}
 						activeTags={activeTags}

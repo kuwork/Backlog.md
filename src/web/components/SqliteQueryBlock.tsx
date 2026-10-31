@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import SqlQueryBlock, { type QueryEngineConfig } from "./SqlQueryBlock.tsx";
@@ -9,14 +10,21 @@ import SqlQueryBlock, { type QueryEngineConfig } from "./SqlQueryBlock.tsx";
  * endpoints and keeps every action live. Behaviour is byte-for-byte what this component rendered
  * before the DuckDB explorer refactored it into a shared core.
  */
-export default function SqliteQueryBlock({ block }: { block: string }) {
+export default function SqliteQueryBlock({ block, filePath }: { block: string; filePath?: string }) {
 	const { t } = useI18n();
-	const engine: QueryEngineConfig = {
-		id: "sqlite",
-		dict: t.sqliteQueryBlock,
-		run: (request) => apiClient.runSqliteQuery(request),
-		exportCsv: (request) => apiClient.exportSqliteCsv(request),
-		actions: { showHide: true, copy: true, export: true, pagination: true },
-	};
-	return <SqlQueryBlock block={block} engine={engine} />;
+	// Identity has to survive re-renders: the shared core re-runs its query whenever this object
+	// changes, so building it inline would fire a request for every block on any parent render -
+	// a document refresh after a save would re-query all ten blocks at once.
+	const engine = useMemo<QueryEngineConfig>(
+		() => ({
+			id: "sqlite",
+			dict: t.sqliteQueryBlock,
+			highlightLanguage: "sql",
+			run: (request) => apiClient.runSqliteQuery(request),
+			exportCsv: (request) => apiClient.exportSqliteCsv(request),
+			actions: { showHide: true, copy: true, export: true, pagination: true },
+		}),
+		[t],
+	);
+	return <SqlQueryBlock block={block} engine={engine} filePath={filePath} />;
 }

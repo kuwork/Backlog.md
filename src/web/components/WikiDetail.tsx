@@ -174,6 +174,7 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 					>
 						<MermaidMarkdown
 							source={previewPage?.content || ""}
+							filePath={previewPage?.path}
 							wikilinkBasePath={path}
 							onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
 							onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
@@ -586,6 +587,7 @@ export default function WikiDetail() {
 							>
 								<MermaidMarkdown
 									source={page.content}
+									filePath={page.path}
 									wikilinkBasePath={wikiPath}
 									onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
 									onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}

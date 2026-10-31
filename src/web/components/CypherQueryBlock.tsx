@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { parseCypherQueryBlock } from "../../graph/block.ts";
 import { GRAPH_UPDATED_EVENT, type GraphUpdatedDetail } from "../../graph/updated.ts";
 import { useI18n } from "../hooks/useI18n";
@@ -21,48 +22,53 @@ import SqlQueryBlock, { type QueryEngineConfig } from "./SqlQueryBlock.tsx";
  * table with a notice. `refresh: auto` (BACK-804) re-runs the statement when the app shell's
  * graph-updated window event names this block's database.
  */
-export default function CypherQueryBlock({ block }: { block: string }) {
+export default function CypherQueryBlock({ block, filePath }: { block: string; filePath?: string }) {
 	const { t } = useI18n();
-	const engine: QueryEngineConfig = {
-		id: "cypher",
-		dict: t.cypherQueryBlock,
-		parse: parseCypherQueryBlock,
-		highlightLanguage: "cypher",
-		run: (request) =>
-			apiClient.runCypherQuery({
-				source: request.source,
-				query: request.sql,
-				view: request.view === "graph" ? "graph" : undefined,
-			}),
-		exportCsv: (request) => apiClient.exportCypherCsv({ source: request.source, query: request.sql }),
-		actions: { showHide: true, copy: true, export: true, pagination: false },
-		graph: {
-			fromResult: (result) =>
-				// `nodeKeys` is the corpus highlighter's channel; the extraction only reads the rows.
-				graphFromCypherResult({
-					columns: result.columns,
-					rows: result.graphRows ?? [],
-					nodeKeys: [],
-					truncated: result.truncated,
+	// Memoized for its identity: the shared core re-runs the query whenever this object changes, so
+	// building it inline would re-query the block on every parent render.
+	const engine = useMemo<QueryEngineConfig>(
+		() => ({
+			id: "cypher",
+			dict: t.cypherQueryBlock,
+			parse: parseCypherQueryBlock,
+			highlightLanguage: "cypher",
+			run: (request) =>
+				apiClient.runCypherQuery({
+					source: request.source,
+					query: request.sql,
+					view: request.view === "graph" ? "graph" : undefined,
 				}),
-			render: (graph, { source, cameraToken }) => (
-				<CypherResultGraph graph={graph} database={source} cameraToken={cameraToken} />
-			),
-			nodeLimit: GRAPH_NODE_LIMIT,
-		},
-		refresh: {
-			auto: {
-				// The app shell owns the one WebSocket and re-dispatches graph-updated as a window
-				// event; only a broadcast naming this block's own database re-runs it.
-				subscribe: (source, onChanged) => {
-					const handle = (event: Event) => {
-						if ((event as CustomEvent<GraphUpdatedDetail>).detail?.database === source) onChanged();
-					};
-					window.addEventListener(GRAPH_UPDATED_EVENT, handle);
-					return () => window.removeEventListener(GRAPH_UPDATED_EVENT, handle);
+			exportCsv: (request) => apiClient.exportCypherCsv({ source: request.source, query: request.sql }),
+			actions: { showHide: true, copy: true, export: true, pagination: false },
+			graph: {
+				fromResult: (result) =>
+					// `nodeKeys` is the corpus highlighter's channel; the extraction only reads the rows.
+					graphFromCypherResult({
+						columns: result.columns,
+						rows: result.graphRows ?? [],
+						nodeKeys: [],
+						truncated: result.truncated,
+					}),
+				render: (graph, { source, cameraToken }) => (
+					<CypherResultGraph graph={graph} database={source} cameraToken={cameraToken} />
+				),
+				nodeLimit: GRAPH_NODE_LIMIT,
+			},
+			refresh: {
+				auto: {
+					// The app shell owns the one WebSocket and re-dispatches graph-updated as a window
+					// event; only a broadcast naming this block's own database re-runs it.
+					subscribe: (source, onChanged) => {
+						const handle = (event: Event) => {
+							if ((event as CustomEvent<GraphUpdatedDetail>).detail?.database === source) onChanged();
+						};
+						window.addEventListener(GRAPH_UPDATED_EVENT, handle);
+						return () => window.removeEventListener(GRAPH_UPDATED_EVENT, handle);
+					},
 				},
 			},
-		},
-	};
-	return <SqlQueryBlock block={block} engine={engine} />;
+		}),
+		[t],
+	);
+	return <SqlQueryBlock block={block} engine={engine} filePath={filePath} />;
 }

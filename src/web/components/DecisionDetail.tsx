@@ -77,6 +77,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	onDecisionClick,
 	onWikiClick,
 	containerRef,
+	filePath,
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
@@ -88,6 +89,8 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	onDecisionClick?: (decisionId: string) => void;
 	onWikiClick?: (wikiPath: string) => void;
 	containerRef?: Ref<HTMLDivElement | null>;
+	/** Project-relative path of the file being rendered, so query blocks can save an edit (BACK-833). */
+	filePath?: string;
 }) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
@@ -101,6 +104,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 			>
 				<MermaidMarkdown
 					source={value}
+					filePath={filePath}
 					onTaskClick={onTaskClick}
 					onDraftClick={onDraftClick}
 					onDocClick={onDocClick}
@@ -618,6 +622,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 					<div className="flex-1 p-8 flex flex-col min-h-0">
 						<MarkdownEditor
 							value={content}
+							filePath={decision?.path}
 							onChange={(val) => setContent(val || "")}
 							isEditing={isEditing}
 							containerRef={contentRef}

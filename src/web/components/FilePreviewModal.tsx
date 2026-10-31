@@ -164,6 +164,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 							>
 								<MermaidMarkdown
 									source={frontmatter.body}
+									filePath={filePath}
 									onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
 									onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
 									onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
@@ -183,7 +184,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 								</div>
 							)}
 							<div className="code-file-preview" style={{ counterReset: `line ${startLineNumber}` }}>
-								<MermaidMarkdown source={wrapInCodeBlock(content, getLanguage(filePath))} />
+								<MermaidMarkdown source={wrapInCodeBlock(content, getLanguage(filePath))} filePath={filePath} />
 							</div>
 						</div>
 					)}

@@ -13,7 +13,7 @@
  */
 
 import { Database } from "bun:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import MDB from "mdb-reader";
 import { runSqliteQuery, type SqliteCell, type SqliteQueryResult } from "../sqlite/query.ts";
 
@@ -22,6 +22,39 @@ export const MDB_MAX_ROWS = 500;
 
 /** Hard ceiling when a caller asks for more; keeps a hand-written `maxRows` from being a foot-gun. */
 const MDB_ABS_MAX_ROWS = 5000;
+
+/**
+ * How long an unused in-memory copy is kept. Loading an `.mdb` costs a full parse and insert of
+ * every table (hundreds of milliseconds for a real database), and a document routinely renders ten
+ * blocks against the same file, so the copy is shared instead of rebuilt per query.
+ */
+const IDLE_CLOSE_MS = 60_000;
+
+interface MdbHandle {
+	db: Database;
+	/** size:mtime of the file this copy was built from; a rewritten file must not be served stale. */
+	fingerprint: string;
+	timer: ReturnType<typeof setTimeout>;
+}
+
+/** One loaded copy per real path, shared by every block pointing at that file. */
+const handles = new Map<string, MdbHandle>();
+
+function scheduleClose(path: string): ReturnType<typeof setTimeout> {
+	const timer = setTimeout(() => {
+		const handle = handles.get(path);
+		if (!handle) return;
+		handles.delete(path);
+		try {
+			handle.db.close();
+		} catch {
+			/* a handle that will not close is not worth failing a render over */
+		}
+	}, IDLE_CLOSE_MS);
+	// Never keep the process alive just to close a database later.
+	(timer as unknown as { unref?: () => void }).unref?.();
+	return timer;
+}
 
 export type MdbCell = SqliteCell;
 
@@ -130,6 +163,59 @@ export function createMdbDatabase(path: string): Database {
 	}
 }
 
+/** `size:mtime` of the file, so a rewritten database is reloaded instead of served from cache. */
+function fingerprintOf(path: string): string {
+	try {
+		const stat = statSync(path);
+		return `${stat.size}:${stat.mtimeMs}`;
+	} catch {
+		// An unreadable path has no fingerprint; the caller's own read will surface the real error.
+		return "";
+	}
+}
+
+/**
+ * Returns the in-memory copy of `path`, loading it only when nothing is cached or the file changed.
+ * The copy stays open: it is `query_only`, so sharing it across queries cannot mutate it, and it is
+ * dropped by {@link scheduleClose} once nothing has asked for it for {@link IDLE_CLOSE_MS}.
+ */
+export function getMdbDatabase(path: string): Database {
+	const fingerprint = fingerprintOf(path);
+	const existing = handles.get(path);
+	if (existing && fingerprint !== "" && existing.fingerprint === fingerprint) {
+		clearTimeout(existing.timer);
+		existing.timer = scheduleClose(path);
+		return existing.db;
+	}
+	if (existing) {
+		clearTimeout(existing.timer);
+		handles.delete(path);
+		try {
+			existing.db.close();
+		} catch {
+			/* ignore */
+		}
+	}
+	const db = createMdbDatabase(path);
+	if (fingerprint !== "") {
+		handles.set(path, { db, fingerprint, timer: scheduleClose(path) });
+	}
+	return db;
+}
+
+/** Tests only: drop every cached copy so a suite does not leak memory between cases. */
+export function closeAllMdbHandles(): void {
+	for (const [path, handle] of handles) {
+		clearTimeout(handle.timer);
+		handles.delete(path);
+		try {
+			handle.db.close();
+		} catch {
+			/* ignore */
+		}
+	}
+}
+
 export function runMdbQuery(options: {
 	dbPath: string;
 	sql: string;
@@ -139,19 +225,15 @@ export function runMdbQuery(options: {
 	/** Rows per page for the pagination browser (default 50). */
 	pageSize?: number;
 }): MdbQueryResult {
-	const mem = createMdbDatabase(options.dbPath);
-	try {
-		const requested = options.maxRows ?? MDB_MAX_ROWS;
-		const maxRows = Math.min(Math.max(Math.trunc(requested), 1), MDB_ABS_MAX_ROWS);
-		return runSqliteQuery({
-			dbPath: options.dbPath,
-			sql: options.sql,
-			maxRows,
-			page: options.page,
-			pageSize: options.pageSize,
-			database: mem,
-		});
-	} finally {
-		mem.close();
-	}
+	const mem = getMdbDatabase(options.dbPath);
+	const requested = options.maxRows ?? MDB_MAX_ROWS;
+	const maxRows = Math.min(Math.max(Math.trunc(requested), 1), MDB_ABS_MAX_ROWS);
+	return runSqliteQuery({
+		dbPath: options.dbPath,
+		sql: options.sql,
+		maxRows,
+		page: options.page,
+		pageSize: options.pageSize,
+		database: mem,
+	});
 }

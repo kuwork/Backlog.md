@@ -57,6 +57,12 @@ interface Props {
 	 * returns false to abort navigation. Defaults to allowing navigation.
 	 */
 	confirmNavigation?: () => boolean;
+	/**
+	 * Project-relative path of the Markdown file being rendered (BACK-833). Query blocks need it to
+	 * write an inline edit back; without it they stay read-only, which is the behaviour every
+	 * surface had before.
+	 */
+	filePath?: string;
 }
 
 const SAFE_HTML_SCHEMA: SanitizeOptions = {
@@ -483,31 +489,36 @@ function textOf(node: React.ReactNode): string {
 	return "";
 }
 
-function PreBlock(props: React.ComponentProps<"pre">) {
-	const child = React.Children.toArray(props.children)[0] as
+function PreBlock(props: React.ComponentProps<"pre"> & { filePath?: string }) {
+	const { filePath, ...preProps } = props;
+	const child = React.Children.toArray(preProps.children)[0] as
 		| React.ReactElement<{ className?: string; children?: React.ReactNode }>
 		| undefined;
 	const className = child?.props?.className ?? "";
 	if (!className.includes("language-")) {
-		return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
+		return (
+			<pre className={typeof preProps.className === "string" ? preProps.className : undefined}>{preProps.children}</pre>
+		);
 	}
 	const lang = className.match(/language-([\w-]+)/)?.[1]?.toLowerCase();
 	if (lang && getChartEngine(lang)) {
 		return <ChartBlock lang={lang} source={textOf(child?.props?.children)} />;
 	}
 	if (className.includes(`language-${SQLITE_BLOCK_LANG}`)) {
-		return <SqliteQueryBlock block={textOf(child?.props?.children)} />;
+		return <SqliteQueryBlock block={textOf(child?.props?.children)} filePath={filePath} />;
 	}
 	if (className.includes(`language-${DUCKDB_BLOCK_LANG}`)) {
-		return <DuckdbQueryBlock block={textOf(child?.props?.children)} />;
+		return <DuckdbQueryBlock block={textOf(child?.props?.children)} filePath={filePath} />;
 	}
 	if (className.includes(`language-${MDB_BLOCK_LANG}`)) {
-		return <MdbQueryBlock block={textOf(child?.props?.children)} />;
+		return <MdbQueryBlock block={textOf(child?.props?.children)} filePath={filePath} />;
 	}
 	if (className.includes(`language-${CYPHER_BLOCK_LANG}`)) {
-		return <CypherQueryBlock block={textOf(child?.props?.children)} />;
+		return <CypherQueryBlock block={textOf(child?.props?.children)} filePath={filePath} />;
 	}
-	return <pre className={typeof props.className === "string" ? props.className : undefined}>{props.children}</pre>;
+	return (
+		<pre className={typeof preProps.className === "string" ? preProps.className : undefined}>{preProps.children}</pre>
+	);
 }
 
 export default function MermaidMarkdown({
@@ -523,6 +534,7 @@ export default function MermaidMarkdown({
 	inlineTagChips,
 	activeTags,
 	confirmNavigation,
+	filePath,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
 	const processed = linkifyBareUrls(source);
@@ -582,6 +594,21 @@ export default function MermaidMarkdown({
 						}}
 					/>
 				);
+			},
+		[],
+	);
+
+	// The `components` map has to keep a stable identity: a fresh `pre` component on every render
+	// would remount every code block, re-running each live query with it. The path therefore travels
+	// through a ref, so the bound component reads the current value without being rebuilt (BACK-833).
+	const filePathRef = useRef(filePath);
+	useEffect(() => {
+		filePathRef.current = filePath;
+	}, [filePath]);
+	const BoundPreBlock = useMemo(
+		() =>
+			function BoundPreBlock(props: React.ComponentProps<"pre">) {
+				return <PreBlock {...props} filePath={filePathRef.current} />;
 			},
 		[],
 	);
@@ -850,7 +877,7 @@ export default function MermaidMarkdown({
 					source={safeSource}
 					components={{
 						a: LinkComponent,
-						pre: PreBlock,
+						pre: BoundPreBlock,
 						img: LightboxImage,
 						video: VideoPlayer,
 						audio: AudioPlayer,
