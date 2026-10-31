@@ -18,7 +18,7 @@ import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
-import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
+import { binaryOfficeFileProps, isBinaryOfficeFile, isNonPreviewableOffice, kindFromName } from "./binaryOfficeFile";
 import ChipInput from "./ChipInput";
 import DependencyInput from "./DependencyInput";
 import DocPdfPreviewModal from "./DocPdfPreviewModal";
@@ -30,6 +30,7 @@ import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
 import StoredDate from "./StoredDate";
+import { SuccessToast } from "./SuccessToast";
 import TabButton from "./TabButton";
 import TaskDependencyGraph, { type GraphViewports, relationshipNodeRoute } from "./TaskDependencyGraph";
 import TaskHierarchySection from "./TaskHierarchySection";
@@ -277,6 +278,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	const [saving, setSaving] = useState(false);
 	const [demoting, setDemoting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	// Metadata fields (documentation / references) are addressed by project-root-relative
+	// path and opened from a button, so the global anchor interceptor never sees them.
+	// Office types the preview cannot render (.doc, .ppt, .xls, ...) get the same notice
+	// here instead of falling through to the text preview.
+	const [officeNotice, setOfficeNotice] = useState(false);
+
+	useEffect(() => {
+		if (!officeNotice) return undefined;
+		const id = setTimeout(() => setOfficeNotice(false), 4500);
+		return () => clearTimeout(id);
+	}, [officeNotice]);
 
 	// Title field for create mode
 	const [title, setTitle] = useState(task?.title || "");
@@ -496,6 +508,17 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		  };
 	const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 	const milestoneSelectionValue = resolveMilestoneToId(milestone);
+
+	// Metadata fields (documentation / references) carry project-root-relative paths and
+	// are opened from a button, so the global anchor interceptor never sees them: office
+	// types the preview cannot render get the notice here instead of the text preview.
+	const openFieldFile = useCallback((path: string) => {
+		if (isNonPreviewableOffice(path)) {
+			setOfficeNotice(true);
+			return;
+		}
+		setPreviewTarget({ kind: "file", path });
+	}, []);
 
 	const handleTaskClick = useCallback(
 		(taskId: string, range?: { lineStart?: number; lineEnd?: number }, knownTask?: Task) => {
@@ -1921,7 +1944,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 																) : (
 																	<button
 																		type="button"
-																		onClick={() => setPreviewTarget({ kind: "file", path: ref })}
+																		onClick={() => openFieldFile(ref)}
 																		className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
 																		title={t.taskDetails.clickToPreview}
 																	>
@@ -2014,7 +2037,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 																) : (
 																	<button
 																		type="button"
-																		onClick={() => setPreviewTarget({ kind: "file", path: doc })}
+																		onClick={() => openFieldFile(doc)}
 																		className="text-sm font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded break-all hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-left"
 																		title={t.taskDetails.clickToPreview}
 																	>
@@ -2868,6 +2891,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
 					</>
 				)}
 			</Modal>
+			{officeNotice && (
+				<SuccessToast
+					message={t.filePreview.unsupportedType}
+					variant="warning"
+					onDismiss={() => setOfficeNotice(false)}
+				/>
+			)}
 			{previewTarget?.kind === "file" &&
 				(isBinaryOfficeFile(previewTarget.path) ? (
 					kindFromName(previewTarget.path) === "docx" ? (

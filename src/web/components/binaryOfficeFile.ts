@@ -12,6 +12,42 @@ export function isBinaryOfficeFile(path: string): boolean {
 	return kindFromName(path) !== "unsupported";
 }
 
+/**
+ * Office file types the in-app preview cannot render (legacy binary .doc, the
+ * PowerPoint/Excel families, macro-enabled variants, templates, ...). These are
+ * intercepted so the UI can show a notice instead of letting the browser load
+ * or download them. .docx and .pdf are intentionally excluded (they preview).
+ */
+const NON_PREVIEWABLE_OFFICE_EXTS = new Set([
+	"doc",
+	"docm",
+	"dot",
+	"dotm",
+	"dotx",
+	"ppt",
+	"pptx",
+	"pptm",
+	"pot",
+	"potx",
+	"potm",
+	"pps",
+	"ppsx",
+	"ppsm",
+	"xls",
+	"xlsx",
+	"xlsm",
+	"xlt",
+	"xltx",
+	"xltm",
+	"xlsb",
+]);
+
+/** True for office extensions the preview modal does not support (e.g. .doc). */
+export function isNonPreviewableOffice(path: string): boolean {
+	const ext = path.toLowerCase().split(".").pop() ?? "";
+	return NON_PREVIEWABLE_OFFICE_EXTS.has(ext);
+}
+
 export interface BinaryOfficePreviewProps {
 	isOpen?: boolean;
 	onClose: () => void;

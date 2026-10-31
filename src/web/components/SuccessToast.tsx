@@ -5,18 +5,33 @@ interface SuccessToastProps {
 	message: string;
 	onDismiss: () => void;
 	icon?: React.ReactNode;
+	variant?: "success" | "warning";
 }
 
-export function SuccessToast({ message, onDismiss, icon }: SuccessToastProps) {
+export function SuccessToast({ message, onDismiss, icon, variant = "success" }: SuccessToastProps) {
 	const { t } = useI18n();
+	const palette =
+		variant === "warning"
+			? {
+					box: "bg-amber-500 dark:bg-amber-600 border-amber-400 dark:border-amber-500",
+					btn: "text-amber-200 dark:text-amber-300 hover:text-white focus:ring-amber-300 dark:focus:ring-amber-400",
+				}
+			: {
+					box: "bg-green-500 dark:bg-green-600 border-green-400 dark:border-green-500",
+					btn: "text-green-200 dark:text-green-300 hover:text-white focus:ring-green-300 dark:focus:ring-green-400",
+				};
 	return (
-		<div className="fixed top-4 right-4 bg-green-500 dark:bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 animate-slide-in-right z-50 border border-green-400 dark:border-green-500 transition-colors duration-200">
+		<div
+			// Above the modal layer (z-50) so a notice raised from inside an open modal
+			// (e.g. the unsupported-office-type warning) is not hidden behind it.
+			className={`fixed top-4 right-4 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 animate-slide-in-right z-[60] border transition-colors duration-200 ${palette.box}`}
+		>
 			{icon || <div className="w-2 h-2 bg-white rounded-circle" />}
 			<span className="font-medium">{message}</span>
 			<button
 				type="button"
 				onClick={onDismiss}
-				className="ml-2 text-green-200 dark:text-green-300 hover:text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-300 dark:focus:ring-green-400 rounded p-1"
+				className={`ml-2 hover:text-white transition-colors duration-200 focus:outline-none focus:ring-2 rounded p-1 ${palette.btn}`}
 				aria-label={t.successToast.dismissAria}
 			>
 				<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

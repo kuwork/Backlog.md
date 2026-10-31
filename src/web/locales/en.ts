@@ -880,6 +880,7 @@ export const en = {
 		showingLines: "showing lines {start}-{end}",
 		linesOfTotal: "Lines {start}-{end} of {total}",
 		frontmatter: "Frontmatter",
+		unsupportedType: "This file type can't be previewed. Convert it to .docx or .pdf to open it in the app.",
 	},
 
 	pasteAwareMDEditor: {

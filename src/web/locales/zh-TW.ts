@@ -852,6 +852,7 @@ export const zhTW: TranslationDict = {
 		showingLines: "顯示第 {start}-{end} 行",
 		linesOfTotal: "第 {start}-{end} 行，共 {total} 行",
 		frontmatter: "Frontmatter（YAML 頭）",
+		unsupportedType: "此檔案類型無法預覽。請轉換為 .docx 或 .pdf 後在應用內開啟。",
 	},
 
 	pasteAwareMDEditor: {

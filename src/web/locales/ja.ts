@@ -873,6 +873,7 @@ export const ja: TranslationDict = {
 		showingLines: "{start}-{end} 行を表示",
 		linesOfTotal: "{start}-{end} 行 / 合計 {total} 行",
 		frontmatter: "Frontmatter（YAML ヘッダ）",
+		unsupportedType: "このファイル形式はプレビューできません。.docx または .pdf に変換してアプリで開いてください。",
 	},
 
 	pasteAwareMDEditor: {

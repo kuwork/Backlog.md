@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import type { Decision, DocsTreeNode, Document, Task, WikiTreeNode } from "../../types";
+import { useI18nContext } from "../contexts/I18nContext";
 import { TocProvider } from "../contexts/TocContext";
-import { kindFromName } from "./binaryOfficeFile";
+import { isNonPreviewableOffice, kindFromName } from "./binaryOfficeFile";
 import DocPdfPreviewModal from "./DocPdfPreviewModal";
 import DocPreviewModal from "./DocPreviewModal";
 import { HealthIndicator, HealthSuccessToast } from "./HealthIndicator";
 import Navigation from "./Navigation";
 import SideNavigation from "./SideNavigation";
+import { SuccessToast } from "./SuccessToast";
 
 interface LayoutProps {
 	projectName: string;
@@ -41,6 +43,8 @@ export default function Layout({
 	onRefreshData,
 }: LayoutProps) {
 	const [previewFile, setPreviewFile] = useState<{ url: string; name: string; filePath?: string } | null>(null);
+	const [officeNotice, setOfficeNotice] = useState(false);
+	const { t } = useI18nContext();
 
 	// Global capture-phase interceptor: any click on a /assets/*.docx or /assets/*.pdf
 	// link opens the binary preview modal instead of navigating/downloading. Capture
@@ -64,20 +68,33 @@ export default function Layout({
 			} catch {
 				return;
 			}
-			const path = url.pathname.toLowerCase();
-			if (!path.startsWith("/assets/")) return;
-			if (!path.endsWith(".docx") && !path.endsWith(".pdf")) return;
+		const path = url.pathname.toLowerCase();
+		if (!path.startsWith("/assets/")) return;
+		if (!path.endsWith(".docx") && !path.endsWith(".pdf")) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const rawName = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+		const name = rawName || anchor.textContent?.trim() || "文件";
+		// PDF uses the served URL; Word uses the project-relative path for server conversion.
+		const filePath = `backlog${url.pathname}`;
+		setPreviewFile({ url: url.href, name, filePath });
+		if (isNonPreviewableOffice(path)) {
 			event.preventDefault();
 			event.stopPropagation();
-			const rawName = decodeURIComponent(url.pathname.split("/").pop() ?? "");
-			const name = rawName || anchor.textContent?.trim() || "文件";
-			// PDF uses the served URL; Word uses the project-relative path for server conversion.
-			const filePath = `backlog${url.pathname}`;
-			setPreviewFile({ url: url.href, name, filePath });
+			setOfficeNotice(true);
+			return;
+		}
+		// Other /assets/* files (images, etc.) keep their default browser behavior.
 		};
 		document.addEventListener("click", handleAssetLinkClick, true);
 		return () => document.removeEventListener("click", handleAssetLinkClick, true);
 	}, []);
+
+	useEffect(() => {
+		if (!officeNotice) return;
+		const id = setTimeout(() => setOfficeNotice(false), 4500);
+		return () => clearTimeout(id);
+	}, [officeNotice]);
 
 	return (
 		<TocProvider>
@@ -101,6 +118,13 @@ export default function Layout({
 					</main>
 				</div>
 				{showSuccessToast && <HealthSuccessToast onDismiss={onDismissToast} />}
+				{officeNotice && (
+					<SuccessToast
+						message={t.filePreview.unsupportedType}
+						variant="warning"
+						onDismiss={() => setOfficeNotice(false)}
+					/>
+				)}
 			</div>
 			{previewFile &&
 				(kindFromName(previewFile.name) === "docx" ? (
