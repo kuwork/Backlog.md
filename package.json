@@ -110,6 +110,9 @@
     "@aiden0z/pptx-renderer": "^1.4.0",
     "@duckdb/node-api": "^1.5.6-r.1",
     "@eigenpal/docx-editor-react": "^1.9.0",
+    "@univerjs/core": "1.3.0",
+    "@univerjs/preset-sheets-core": "1.3.0",
+    "@univerjs/presets": "1.3.0",
     "d3": "^7.9.0",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
@@ -119,11 +122,13 @@
     "d3-zoom": "^3.0.0",
     "echarts": "^6.1.0",
     "get-port": "^7.2.0",
+    "jszip": "^3.10.1",
     "mermaid": "11.16.1",
     "pdfjs-dist": "^6.4.299",
     "pele": "^1.8.0",
     "rehype-sanitize": "^6.0.0",
     "ryugraph-wasm": "25.9.2",
+    "xlsx": "0.18.5",
     "yaml": "^2.9.1"
   }
 }

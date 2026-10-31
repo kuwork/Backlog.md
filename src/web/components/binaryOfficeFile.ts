@@ -1,10 +1,11 @@
-export type PreviewKind = "pdf" | "docx" | "pptx" | "unsupported";
+export type PreviewKind = "pdf" | "docx" | "pptx" | "xlsx" | "unsupported";
 
 export function kindFromName(name: string): PreviewKind {
 	const ext = name.toLowerCase().split(".").pop() ?? "";
 	if (ext === "pdf") return "pdf";
 	if (ext === "docx") return "docx";
 	if (ext === "pptx") return "pptx";
+	if (ext === "xlsx" || ext === "xlsm") return "xlsx";
 	return "unsupported";
 }
 
@@ -15,10 +16,10 @@ export function isBinaryOfficeFile(path: string): boolean {
 
 /**
  * Office file types the in-app preview cannot render (legacy binary .doc, the
- * legacy .ppt/.pot/.pps families, the Excel families, macro-enabled variants,
- * templates, ...). These are intercepted so the UI can show a notice instead of
- * letting the browser load or download them. .docx, .pdf and .pptx are
- * intentionally excluded (they preview).
+ * legacy .ppt/.pot/.pps families, the legacy .xls/.xlsb families, macro-enabled
+ * variants, templates, ...). These are intercepted so the UI can show a notice
+ * instead of letting the browser load or download them. .docx, .pdf, .pptx,
+ * .xlsx and .xlsm are intentionally excluded (they preview).
  */
 const NON_PREVIEWABLE_OFFICE_EXTS = new Set([
 	"doc",
@@ -35,8 +36,6 @@ const NON_PREVIEWABLE_OFFICE_EXTS = new Set([
 	"ppsx",
 	"ppsm",
 	"xls",
-	"xlsx",
-	"xlsm",
 	"xlt",
 	"xltx",
 	"xltm",
@@ -61,14 +60,15 @@ export interface BinaryOfficePreviewProps {
 
 /**
  * Derive the modal props for a project-relative path (e.g. `backlog/assets/x.pdf` or
- * `backlog/docs/x.docx`). Both PDF and Word are served as raw bytes from /api/raw-file,
- * which reads any project file by its project-relative path (not just /assets/*). Word
- * additionally keeps the project-relative path (used by the server-side save endpoint).
+ * `backlog/docs/x.docx`). PDF, Word, PowerPoint and Excel are served as raw bytes from
+ * /api/raw-file, which reads any project file by its project-relative path (not just
+ * /assets/*). Word additionally keeps the project-relative path (used by the
+ * server-side save endpoint).
  */
 export function binaryOfficeFileProps(path: string): Omit<BinaryOfficePreviewProps, "onClose"> {
 	const fileName = decodeURIComponent(path.split("/").pop() ?? path);
-	const lower = path.toLowerCase();
-	if (lower.endsWith(".pdf") || lower.endsWith(".docx") || lower.endsWith(".pptx")) {
+	const kind = kindFromName(path);
+	if (kind !== "unsupported") {
 		return { fileName, fileUrl: `/api/raw-file?path=${encodeURIComponent(path)}`, filePath: path };
 	}
 	return { fileName, filePath: path };

@@ -1267,6 +1267,31 @@ export class ApiClient {
 		return (await response.json()) as { ok: true; size: number };
 	}
 
+	/**
+	 * Persist an edited .xlsx/.xlsm back to its project-relative path. The client
+	 * patches the original package and sends the raw bytes; the server writes them
+	 * atomically (temp file + rename) so a failure cannot truncate the workbook.
+	 */
+	async saveXlsx(path: string, bytes: ArrayBuffer): Promise<{ ok: true; size: number }> {
+		const response = await fetch(`${API_BASE}/xlsx/save?path=${encodeURIComponent(path)}`, {
+			method: "POST",
+			headers: { "Content-Type": "application/octet-stream" },
+			body: bytes,
+		});
+		if (!response.ok) {
+			const text = await response.text().catch(() => "");
+			let message = text || response.statusText;
+			try {
+				const parsed = JSON.parse(text) as { error?: string };
+				if (parsed?.error) message = parsed.error;
+			} catch {
+				// Not JSON: keep the raw response body.
+			}
+			throw new Error(message);
+		}
+		return (await response.json()) as { ok: true; size: number };
+	}
+
 	async fetchDraft(id: string): Promise<Task> {
 		const response = await fetch(`${API_BASE}/drafts/${encodeURIComponent(id)}`);
 		if (!response.ok) {

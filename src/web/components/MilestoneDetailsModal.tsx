@@ -28,6 +28,7 @@ import PptxPreviewModal from "./PptxPreviewModal";
 import StoredDate from "./StoredDate";
 import TaskDependencyGraph, { type GraphViewports } from "./TaskDependencyGraph";
 import { HeaderBackButton } from "./TaskDetailsModal";
+import XlsxPreviewModal from "./XlsxPreviewModal";
 
 interface Props {
 	milestoneId: string | null;
@@ -1223,6 +1224,8 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 						<DocPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					) : kindFromName(previewPath) === "pptx" ? (
 						<PptxPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
+					) : kindFromName(previewPath) === "xlsx" ? (
+						<XlsxPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					) : (
 						<PdfPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					)

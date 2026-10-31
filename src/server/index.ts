@@ -1,4 +1,5 @@
 import { type FSWatcher, watch } from "node:fs";
+import { rm as removeFile, rename as renameFile } from "node:fs/promises";
 import { networkInterfaces } from "node:os";
 import { dirname, join, relative } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
@@ -93,6 +94,35 @@ const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MEMO_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 /** A caller asking for more than this gets a capped page, not the whole corpus. */
 const MAX_MEMO_PAGE_SIZE = 100;
+
+const LOCK_ERROR_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
+
+/**
+ * Replace `target` with `source` in one step, retrying briefly on Windows.
+ *
+ * A freshly written temp file can still be held for a few hundred milliseconds
+ * by the virus scanner or the search indexer, which makes the rename fail with
+ * EPERM even though nothing else has the workbook open. Retrying rides that out;
+ * a real lock (Excel / WPS holding the file) still surfaces as an error.
+ */
+async function replaceFile(source: string, target: string): Promise<void> {
+	let lastError: unknown;
+	for (let attempt = 0; attempt < 5; attempt++) {
+		try {
+			await renameFile(source, target);
+			return;
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code ?? "";
+			if (!LOCK_ERROR_CODES.has(code)) throw error;
+			lastError = error;
+			await new Promise((resolve) => setTimeout(resolve, 80 * (attempt + 1)));
+		}
+	}
+	throw lastError;
+}
+
+/** Office packages the preview can write back; they are small enough to buffer. */
+const SAVEABLE_OFFICE_EXTS = new Set(["xlsx", "xlsm", "docx"]);
 
 /**
  * Data scopes a client can be told to refetch. Tasks and milestones share a
@@ -1010,6 +1040,9 @@ export class BacklogServer {
 					"/api/docx/save": {
 						POST: async (req: Request) => await this.handleSaveDocx(req),
 					},
+					"/api/xlsx/save": {
+						POST: async (req: Request) => await this.handleSaveXlsx(req),
+					},
 					"/sequences": {
 						GET: async () => await this.handleGetSequences(),
 					},
@@ -1312,6 +1345,60 @@ export class BacklogServer {
 		} catch (error) {
 			console.error("Error saving docx:", error);
 			const message = error instanceof Error ? error.message : "Failed to save docx";
+			if (message === "Access denied" || message === "File not found") {
+				return Response.json({ error: message }, { status: 404 });
+			}
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	private async handleSaveXlsx(req: Request): Promise<Response> {
+		let tempPath: string | null = null;
+		try {
+			const url = new URL(req.url);
+			const rawPath = url.searchParams.get("path") || "";
+			if (!rawPath) {
+				return Response.json({ error: "path parameter is required" }, { status: 400 });
+			}
+			const lower = rawPath.toLowerCase();
+			if (!lower.endsWith(".xlsx") && !lower.endsWith(".xlsm")) {
+				return Response.json({ error: "Only .xlsx and .xlsm files are supported" }, { status: 400 });
+			}
+			const rootDir = this.core.filesystem.rootDir;
+			const absPath = join(rootDir, rawPath);
+			// Reject anything that escapes the project root (path traversal / leading slash).
+			const rel = relative(rootDir, absPath);
+			if (rel === "" || rel.startsWith("..") || rel.startsWith("/")) {
+				return Response.json({ error: "Access denied" }, { status: 403 });
+			}
+			const bytes = new Uint8Array(await req.arrayBuffer());
+			if (bytes.byteLength === 0) {
+				return Response.json({ error: "Empty request body" }, { status: 400 });
+			}
+			// xlsx/xlsm are zip packages; refuse anything else so a buggy client
+			// cannot overwrite a workbook with arbitrary bytes.
+			if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+				return Response.json({ error: "Not a zip-based workbook" }, { status: 400 });
+			}
+			// Write beside the target and rename over it: a crash or a failed write
+			// leaves the original workbook untouched instead of truncated.
+			tempPath = `${absPath}.save-${process.pid}-${Date.now()}.tmp`;
+			await Bun.write(tempPath, bytes);
+			await replaceFile(tempPath, absPath);
+			tempPath = null;
+			return Response.json({ ok: true, size: bytes.byteLength });
+		} catch (error) {
+			console.error("Error saving xlsx:", error);
+			if (tempPath) {
+				await removeFile(tempPath).catch(() => {});
+			}
+			const code = (error as NodeJS.ErrnoException).code;
+			const message =
+				code === "EPERM" || code === "EACCES" || code === "EBUSY"
+					? "文件被占用，无法写入（可能正在 Excel / WPS 中打开），请关闭后重试"
+					: error instanceof Error
+						? error.message
+						: "Failed to save xlsx";
 			if (message === "Access denied" || message === "File not found") {
 				return Response.json({ error: message }, { status: 404 });
 			}
@@ -3985,7 +4072,20 @@ export class BacklogServer {
 				webp: "image/webp",
 			};
 			const mime = mimeMap[ext] ?? "application/octet-stream";
-			return new Response(file, { headers: { "Content-Type": mime } });
+			// Never cacheable: these files are replaced in place by the preview's
+			// save, and a same-second edit would otherwise revalidate to a 304 and
+			// keep showing the pre-save content.
+			const headers = { "Content-Type": mime, "Cache-Control": "no-store, max-age=0" };
+			// Buffered for the types the preview can write back: streaming straight
+			// from disk keeps a read handle on the very file /api/xlsx/save has to
+			// replace, which on Windows makes the rename fail with EPERM.
+			if (SAVEABLE_OFFICE_EXTS.has(ext)) {
+				const bytes = await file.arrayBuffer();
+				return new Response(bytes, {
+					headers: { ...headers, "Content-Length": String(bytes.byteLength) },
+				});
+			}
+			return new Response(file, { headers });
 		} catch (error) {
 			console.error("Error serving raw file:", error);
 			return new Response("Internal Server Error", { status: 500 });

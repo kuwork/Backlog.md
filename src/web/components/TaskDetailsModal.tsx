@@ -35,6 +35,7 @@ import { SuccessToast } from "./SuccessToast";
 import TabButton from "./TabButton";
 import TaskDependencyGraph, { type GraphViewports, relationshipNodeRoute } from "./TaskDependencyGraph";
 import TaskHierarchySection from "./TaskHierarchySection";
+import XlsxPreviewModal from "./XlsxPreviewModal";
 
 interface Props {
 	task?: Task; // Optional for create mode
@@ -2905,6 +2906,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
 						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : kindFromName(previewTarget.path) === "pptx" ? (
 						<PptxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+					) : kindFromName(previewTarget.path) === "xlsx" ? (
+						<XlsxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : (
 						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					)

@@ -21,6 +21,7 @@ import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import PdfPreviewModal from "./PdfPreviewModal";
 import PptxPreviewModal from "./PptxPreviewModal";
 import { SuccessToast } from "./SuccessToast";
+import XlsxPreviewModal from "./XlsxPreviewModal";
 
 // Custom MDEditor wrapper for proper height handling
 const MarkdownEditor = memo(function MarkdownEditor({
@@ -811,6 +812,8 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : kindFromName(previewTarget.path) === "pptx" ? (
 						<PptxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+					) : kindFromName(previewTarget.path) === "xlsx" ? (
+						<XlsxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : (
 						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					)

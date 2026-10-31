@@ -11,6 +11,7 @@ import PdfPreviewModal from "./PdfPreviewModal";
 import PptxPreviewModal from "./PptxPreviewModal";
 import SideNavigation from "./SideNavigation";
 import { SuccessToast } from "./SuccessToast";
+import XlsxPreviewModal from "./XlsxPreviewModal";
 
 interface LayoutProps {
 	projectName: string;
@@ -83,7 +84,7 @@ export default function Layout({
 				// Malformed percent-escape: keep the href as written rather than failing.
 			}
 			const path = projectPath.toLowerCase();
-			const isPreviewable = path.endsWith(".docx") || path.endsWith(".pdf") || path.endsWith(".pptx");
+			const isPreviewable = kindFromName(path) !== "unsupported";
 			if (!isPreviewable && !isNonPreviewableOffice(path)) return;
 			// Two addressing conventions, told apart by where the link lives: a rendered
 			// markdown body (description / comment / notes) addresses assets as `assets/...`,
@@ -166,6 +167,14 @@ export default function Layout({
 						/>
 					) : kindFromName(previewFile.name) === "pptx" ? (
 						<PptxPreviewModal
+							isOpen={Boolean(previewFile)}
+							onClose={() => setPreviewFile(null)}
+							fileUrl={previewFile.url}
+							filePath={previewFile.filePath}
+							fileName={previewFile.name}
+						/>
+					) : kindFromName(previewFile.name) === "xlsx" ? (
+						<XlsxPreviewModal
 							isOpen={Boolean(previewFile)}
 							onClose={() => setPreviewFile(null)}
 							fileUrl={previewFile.url}
