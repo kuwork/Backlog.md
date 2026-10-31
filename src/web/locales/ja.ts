@@ -74,6 +74,8 @@ export const ja: TranslationDict = {
 		updated: "更新日",
 		branch: "ブランチ",
 		dueBy: "期限",
+		fullscreen: "全画面",
+		exitFullscreen: "全画面を終了",
 	},
 
 	nav: {
@@ -876,6 +878,56 @@ export const ja: TranslationDict = {
 		unsupportedType: "このファイル形式はプレビューできません。.docx または .pdf に変換してアプリで開いてください。",
 	},
 
+	// ドキュメントプレビューモーダル（docx / pptx / xlsx / pdf）。汎用の動詞と状態は
+	// common にあり、ここにはプレビュー固有の文言だけを置く。
+	preview: {
+		shared: {
+			readOnlyPreview: "読み取り専用プレビュー",
+			editMode: "編集モード",
+			saved: "保存しました ✓",
+			exitEdit: "編集を終了",
+			missingFileUrl: "プレビューできません: ファイルの場所がありません",
+			loadFailed: "読み込みに失敗しました: {message}",
+			renderFailed: "{format} の描画に失敗しました: {message}",
+			saveFailed: "保存に失敗しました: {message}",
+			saveConfirm: "変更を元のファイルに保存しますか？現在のファイルは上書きされます。",
+			unsavedExitConfirm: "保存されていない変更があります。編集を終了しますか？",
+			unsavedCloseConfirm: "保存されていない変更があります。閉じますか？",
+			rendering: "描画中…",
+		},
+		docx: {
+			exportFailed: "ドキュメントのバイト列を書き出せませんでした",
+		},
+		pptx: {
+			loading: "プレゼンテーションを読み込み中…",
+			outlineTitle: "スライド一覧",
+			showOutline: "一覧",
+			hideOutline: "一覧を隠す",
+			play: "再生",
+			pageOfPages: "{current} / {total} ページ",
+			slideIndex: "スライド {index}",
+			shortcutHint: "Space / → ↓ 次へ · ← ↑ 前へ · ホイールでページ送り · Home / End 先頭と末尾 · Esc 終了",
+			exitPlay: "終了",
+		},
+		xlsx: {
+			parsing: "スプレッドシートを解析中…",
+			openingEditor: "エディターを開いています…",
+			noSheets: "表示できるシートがありません",
+			noActiveWorkbook: "アクティブなブックがありません",
+			noChanges:
+				"変更が検出されませんでした。入力中の内容がまだ確定していない可能性があります。Enter で確定してから保存してください。",
+			enterEditTitle: "編集モードに切り替えると、セルを編集して元のファイルに保存できます",
+			saveTitle: "変更を元のファイルに書き戻します",
+			saveDisabledTitle: "ファイルパスがないため保存できません",
+		},
+		pdf: {
+			outline: "目次",
+			collapseAll: "すべて折りたたむ",
+			expandAll: "すべて展開",
+			closeOutline: "目次を閉じる",
+		},
+	},
+
 	pasteAwareMDEditor: {
 		uploadDocx: "Word 文書 (.docx) をアップロード",
 		convertFailed: "Word 文書の変換に失敗しました",
@@ -1150,8 +1202,6 @@ export const ja: TranslationDict = {
 		viewBoard: "ピンボード",
 		webglUnavailable:
 			"ピンボードビューには WebGL が必要です。このブラウザは未対応のため、リストビューに切り替えてください。",
-		fullscreen: "全画面",
-		exitFullscreen: "全画面を終了",
 		noteModalTitle: "メモの内容",
 	},
 	loadingPhases: {
@@ -1212,7 +1262,6 @@ export const ja: TranslationDict = {
 		viewTable: "テーブル",
 		viewGraph: "グラフ",
 		viewSplit: "両方",
-		fullscreen: "全画面表示",
 		exitFullscreen: "全画面表示を終了（Esc 長押し）",
 		graphTitle: "結果グラフ",
 		graphTooLarge: "結果に {1} 件のノードがあり、グラフの対話的なレイアウトの規模を超えています",

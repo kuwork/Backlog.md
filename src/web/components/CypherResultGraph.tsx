@@ -24,6 +24,7 @@ import {
 	saveLegendConfig,
 } from "../utils/graph-legend-config";
 import { neutralNodeColors } from "../utils/graph-palette";
+import { FullscreenIcon } from "./FullscreenToggleButton";
 import GraphCanvas, { type GraphCanvasNode, type GraphCanvasVisual } from "./GraphCanvas";
 import { LegendDot, LegendRelation } from "./GraphLegend";
 import GraphLegendSettings from "./GraphLegendSettings";
@@ -401,33 +402,11 @@ export default function CypherResultGraph({ graph, database, cameraToken }: Cyph
 					<button
 						type="button"
 						onClick={toggleFullscreen}
-						aria-label={isFullscreen ? t.databases.exitFullscreen : t.databases.fullscreen}
-						title={isFullscreen ? t.databases.exitFullscreen : t.databases.fullscreen}
+						aria-label={isFullscreen ? t.databases.exitFullscreen : t.common.fullscreen}
+						title={isFullscreen ? t.databases.exitFullscreen : t.common.fullscreen}
 						className="rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-200"
 					>
-						{isFullscreen ? (
-							<svg
-								aria-hidden="true"
-								className="h-3.5 w-3.5"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={2}
-								viewBox="0 0 24 24"
-							>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
-							</svg>
-						) : (
-							<svg
-								aria-hidden="true"
-								className="h-3.5 w-3.5"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={2}
-								viewBox="0 0 24 24"
-							>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-							</svg>
-						)}
+						<FullscreenIcon active={isFullscreen} className="h-3.5 w-3.5" />
 					</button>
 					<button
 						type="button"

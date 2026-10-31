@@ -1,13 +1,13 @@
 import type * as PdfJs from "pdfjs-dist";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useI18nContext } from "../contexts/I18nContext";
 import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
 
 const LIST_ICON_PATH = "M4 6h16M4 12h10M4 18h7";
 const CHEVRON_ICON_PATH = "M9 5l7 7-7 7";
-
-const actionBtn =
-	"rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700";
 
 /**
  * Preview popup for PDF documents, rendered with pdf.js.
@@ -20,18 +20,10 @@ const actionBtn =
  * rounded corner radius.
  */
 export default function PdfPreviewModal({ isOpen = true, onClose, fileName, fileUrl }: BinaryOfficePreviewProps) {
+	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
 
-	const headerActions = (
-		<button
-			type="button"
-			className={actionBtn}
-			onClick={() => setFullscreen((f) => !f)}
-			title={fullscreen ? "退出全屏" : "全屏"}
-		>
-			{fullscreen ? "退出全屏" : "全屏"}
-		</button>
-	);
+	const headerActions = <FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />;
 
 	return (
 		<Modal
@@ -50,7 +42,7 @@ export default function PdfPreviewModal({ isOpen = true, onClose, fileName, file
 					<PdfViewer fileUrl={fileUrl} />
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
-						无法预览：缺少文件地址
+						{t.preview.shared.missingFileUrl}
 					</div>
 				)}
 			</div>
@@ -72,6 +64,7 @@ interface PdfOutlineNode {
 }
 
 function PdfViewer({ fileUrl }: { fileUrl: string }) {
+	const { t } = useI18nContext();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const pageRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
 	const docRef = useRef<PdfJs.PDFDocumentProxy | null>(null);
@@ -239,7 +232,7 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 								<button
 									type="button"
 									aria-expanded={!folded}
-									aria-label={folded ? "展开" : "折叠"}
+									aria-label={folded ? t.common.expand : t.common.collapse}
 									onClick={() => toggleFold(key)}
 									className="flex w-5 shrink-0 items-center justify-center rounded text-gray-400 transition-colors duration-200 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:text-gray-500 dark:hover:text-gray-200"
 								>
@@ -281,29 +274,35 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 	);
 
 	if (error) {
-		return <div className="flex h-full items-center justify-center text-red-500">PDF 渲染失败：{error}</div>;
+		return (
+			<div className="flex h-full items-center justify-center text-red-500">
+				{t.preview.shared.renderFailed.replace("{format}", "PDF").replace("{message}", error)}
+			</div>
+		);
 	}
 	return (
 		<div className="flex h-full min-h-0">
 			{outline && outlineOpen && (
 				<aside className="flex w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-600 dark:bg-gray-800">
 					<div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-700">
-						<p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">目录</p>
+						<p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+							{t.preview.pdf.outline}
+						</p>
 						<div className="flex items-center gap-1">
 							{hasFoldable && (
 								<button
 									type="button"
 									onClick={toggleAllFolds}
-									title={collapsed.size === 0 ? "折叠全部" : "展开全部"}
+									title={collapsed.size === 0 ? t.preview.pdf.collapseAll : t.preview.pdf.expandAll}
 									className="shrink-0 rounded px-1.5 py-0.5 text-xs text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
 								>
-									{collapsed.size === 0 ? "折叠全部" : "展开全部"}
+									{collapsed.size === 0 ? t.preview.pdf.collapseAll : t.preview.pdf.expandAll}
 								</button>
 							)}
 							<button
 								type="button"
 								onClick={() => setOutlineOpen(false)}
-								aria-label="关闭目录"
+								aria-label={t.preview.pdf.closeOutline}
 								className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xl leading-none text-gray-400 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
 							>
 								×
@@ -317,15 +316,15 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 				{outline && !outlineOpen && (
 					<button
 						type="button"
-						aria-label="目录"
-						title="目录"
+						aria-label={t.preview.pdf.outline}
+						title={t.preview.pdf.outline}
 						onClick={() => setOutlineOpen(true)}
 						className="absolute left-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1.5 rounded-r-md border border-l-0 border-gray-200 bg-white px-1 py-2.5 text-gray-500 shadow-md transition-colors duration-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-100"
 					>
 						<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={LIST_ICON_PATH} />
 						</svg>
-						<span className="text-xs font-medium [writing-mode:vertical-rl]">目录</span>
+						<span className="text-xs font-medium [writing-mode:vertical-rl]">{t.preview.pdf.outline}</span>
 					</button>
 				)}
 				<div ref={containerRef} className="h-full overflow-auto px-2" />

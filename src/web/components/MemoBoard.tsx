@@ -13,6 +13,7 @@ import {
 	NOTE_INK,
 	NOTE_WIDTH,
 } from "../utils/memo-board";
+import { FullscreenIcon } from "./FullscreenToggleButton";
 import { ErrorBanner, MemoCard, type MemoCardProps } from "./MemoCard";
 import Modal from "./Modal";
 
@@ -678,33 +679,11 @@ export default function MemoBoard({ memos, activeTags, onUpdate, onDelete, onArc
 			<button
 				type="button"
 				onClick={toggleFullscreen}
-				aria-label={isFullscreen ? t.memos.exitFullscreen : t.memos.fullscreen}
-				title={isFullscreen ? t.memos.exitFullscreen : t.memos.fullscreen}
+				aria-label={isFullscreen ? t.common.exitFullscreen : t.common.fullscreen}
+				title={isFullscreen ? t.common.exitFullscreen : t.common.fullscreen}
 				className="absolute top-3 right-3 z-10 p-2 rounded-md bg-black/25 hover:bg-black/40 text-amber-50 transition-colors"
 			>
-				{isFullscreen ? (
-					<svg
-						aria-hidden="true"
-						className="w-4 h-4"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth={2}
-						viewBox="0 0 24 24"
-					>
-						<path strokeLinecap="round" strokeLinejoin="round" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
-					</svg>
-				) : (
-					<svg
-						aria-hidden="true"
-						className="w-4 h-4"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth={2}
-						viewBox="0 0 24 24"
-					>
-						<path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-					</svg>
-				)}
+				<FullscreenIcon active={isFullscreen} className="w-4 h-4" />
 			</button>
 			{memos.length === 0 && (
 				<p className="absolute inset-0 flex items-center justify-center text-sm text-amber-950/70 dark:text-amber-100/70">

@@ -74,6 +74,8 @@ export const zhCN: TranslationDict = {
 		updated: "更新于",
 		branch: "分支",
 		dueBy: "截止至",
+		fullscreen: "全屏",
+		exitFullscreen: "退出全屏",
 	},
 
 	nav: {
@@ -855,6 +857,55 @@ export const zhCN: TranslationDict = {
 		unsupportedType: "此文件类型无法预览。请转换为 .docx 或 .pdf 后在应用内打开。",
 	},
 
+	// 文档预览弹窗（docx / pptx / xlsx / pdf）。通用动词与状态在 common 里，
+	// 这里只放预览本身特有的文案。
+	preview: {
+		shared: {
+			readOnlyPreview: "只读预览",
+			editMode: "编辑模式",
+			saved: "已保存 ✓",
+			exitEdit: "退出编辑",
+			missingFileUrl: "无法预览：缺少文件地址",
+			loadFailed: "加载失败：{message}",
+			renderFailed: "{format} 渲染失败：{message}",
+			saveFailed: "保存失败：{message}",
+			saveConfirm: "确定将修改保存回原文件？此操作会覆盖当前文件。",
+			unsavedExitConfirm: "存在未保存的修改，确定退出编辑？",
+			unsavedCloseConfirm: "存在未保存的修改，确定关闭？",
+			rendering: "渲染中…",
+		},
+		docx: {
+			exportFailed: "无法从编辑器导出文档字节",
+		},
+		pptx: {
+			loading: "正在加载演示文稿…",
+			outlineTitle: "缩略图目录",
+			showOutline: "目录",
+			hideOutline: "隐藏目录",
+			play: "播放",
+			pageOfPages: "第 {current} / {total} 页",
+			slideIndex: "幻灯片 {index}",
+			shortcutHint: "空格 / → ↓ 下一页 · ← ↑ 上一页 · 滚轮 翻页 · Home / End 首末页 · Esc 退出",
+			exitPlay: "退出",
+		},
+		xlsx: {
+			parsing: "正在解析表格…",
+			openingEditor: "正在打开编辑器…",
+			noSheets: "工作簿中没有可显示的工作表",
+			noActiveWorkbook: "当前没有活动工作簿",
+			noChanges: "没有检测到任何修改：编辑可能还停留在输入状态，请按回车确认后再保存。",
+			enterEditTitle: "进入编辑模式，可修改单元格并可保存回原文件",
+			saveTitle: "将修改写回原文件",
+			saveDisabledTitle: "缺少文件路径，无法保存",
+		},
+		pdf: {
+			outline: "目录",
+			collapseAll: "折叠全部",
+			expandAll: "展开全部",
+			closeOutline: "关闭目录",
+		},
+	},
+
 	pasteAwareMDEditor: {
 		uploadDocx: "上传 Word 文档 (.docx)",
 		convertFailed: "Word 文档转换失败",
@@ -1127,8 +1178,6 @@ export const zhCN: TranslationDict = {
 		viewList: "列表",
 		viewBoard: "钉板",
 		webglUnavailable: "钉板视图需要 WebGL 支持，当前浏览器不支持 —— 请切换回列表视图。",
-		fullscreen: "全屏",
-		exitFullscreen: "退出全屏",
 		noteModalTitle: "便签内容",
 	},
 	loadingPhases: {
@@ -1189,7 +1238,6 @@ export const zhCN: TranslationDict = {
 		viewTable: "表格",
 		viewGraph: "图谱",
 		viewSplit: "并列",
-		fullscreen: "全屏",
 		exitFullscreen: "退出全屏（长按 ESC）",
 		graphTitle: "结果图谱",
 		graphTooLarge: "结果有 {1} 个节点，超出图谱可交互布局的规模",

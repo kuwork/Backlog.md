@@ -1,14 +1,33 @@
 import { UniverSheetsCorePreset } from "@univerjs/preset-sheets-core";
 import "@univerjs/preset-sheets-core/lib/index.css";
+import UniverSheetsCoreEnUSLocale from "@univerjs/preset-sheets-core/locales/en-US";
+import UniverSheetsCoreJaJPLocale from "@univerjs/preset-sheets-core/locales/ja-JP";
 import UniverSheetsCoreZhCNLocale from "@univerjs/preset-sheets-core/locales/zh-CN";
+import UniverSheetsCoreZhTWLocale from "@univerjs/preset-sheets-core/locales/zh-TW";
 import type { Univer } from "@univerjs/presets";
 import { createUniver, LocaleType } from "@univerjs/presets";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { useI18nContext } from "../contexts/I18nContext";
 import { apiClient } from "../lib/api";
+import type { Locale } from "../locales";
 import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
 import { applySnapshotToXlsxWithStats } from "./xlsxSnapshotWriter";
 import { xlsxToUniverModel } from "./xlsxToUniverModel";
+
+/**
+ * The Univer workbench localizes itself, so it needs its own locale pack next to
+ * the app dictionary. Univer ships all four of our languages, so the workbench
+ * follows the app language the same way the dictionary does — without this it
+ * stayed Chinese in every locale.
+ */
+const UNIVER_LOCALE: Record<Locale, { type: LocaleType; pack: typeof UniverSheetsCoreEnUSLocale }> = {
+	en: { type: LocaleType.EN_US, pack: UniverSheetsCoreEnUSLocale },
+	ja: { type: LocaleType.JA_JP, pack: UniverSheetsCoreJaJPLocale },
+	"zh-CN": { type: LocaleType.ZH_CN, pack: UniverSheetsCoreZhCNLocale },
+	"zh-TW": { type: LocaleType.ZH_TW, pack: UniverSheetsCoreZhTWLocale },
+};
 
 const actionBtn =
 	"rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700";
@@ -43,6 +62,7 @@ export default function XlsxPreviewModal({
 	fileUrl,
 	filePath,
 }: BinaryOfficePreviewProps) {
+	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
 	const [mode, setMode] = useState<XlsxMode>("viewing");
 	const [saving, setSaving] = useState(false);
@@ -68,26 +88,26 @@ export default function XlsxPreviewModal({
 	}, []);
 
 	const exitEdit = useCallback(() => {
-		if (dirty && !window.confirm("存在未保存的修改，确定退出编辑？")) return;
+		if (dirty && !window.confirm(t.preview.shared.unsavedExitConfirm)) return;
 		resetMode();
-	}, [dirty, resetMode]);
+	}, [dirty, resetMode, t]);
 
 	const handleClose = useCallback(() => {
-		if (editing && dirty && !window.confirm("存在未保存的修改，确定关闭？")) return;
+		if (editing && dirty && !window.confirm(t.preview.shared.unsavedCloseConfirm)) return;
 		resetMode();
 		onClose();
-	}, [dirty, editing, onClose, resetMode]);
+	}, [dirty, editing, onClose, resetMode, t]);
 
 	const saveWorkbook = useCallback(async () => {
 		if (!filePath || !viewerRef.current) return;
-		if (!window.confirm("确定将修改保存回原文件？此操作会覆盖当前文件。")) return;
+		if (!window.confirm(t.preview.shared.saveConfirm)) return;
 		setSaving(true);
 		try {
 			const { bytes, changedCells } = await viewerRef.current.save();
 			// A typed value that is still sitting in the in-cell editor never reaches
 			// the snapshot. Say so instead of reporting a save that changed nothing.
 			if (changedCells === 0) {
-				window.alert("没有检测到任何修改：编辑可能还停留在输入状态，请按回车确认后再保存。");
+				window.alert(t.preview.xlsx.noChanges);
 				return;
 			}
 			await apiClient.saveXlsx(filePath, bytes);
@@ -95,57 +115,53 @@ export default function XlsxPreviewModal({
 			setDirty(false);
 		} catch (error) {
 			console.error("Failed to save xlsx:", error);
-			window.alert(`保存失败：${error instanceof Error ? error.message : String(error)}`);
+			const message = error instanceof Error ? error.message : String(error);
+			window.alert(t.preview.shared.saveFailed.replace("{message}", message));
 		} finally {
 			setSaving(false);
 		}
-	}, [filePath]);
+	}, [filePath, t]);
 
 	const headerActions = (
 		<div className="flex items-center gap-2">
 			{editing ? (
 				<>
 					<span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
-						编辑模式
+						{t.preview.shared.editMode}
 					</span>
 					<button
 						type="button"
 						className={primaryBtn}
 						onClick={saveWorkbook}
 						disabled={saving || !filePath}
-						title={filePath ? "将修改写回原文件" : "缺少文件路径，无法保存"}
+						title={filePath ? t.preview.xlsx.saveTitle : t.preview.xlsx.saveDisabledTitle}
 					>
-						{saving ? "保存中…" : "保存"}
+						{saving ? t.common.saving : t.common.save}
 					</button>
-					{savedAt ? <span className="text-xs text-green-600 dark:text-green-400">已保存 ✓</span> : null}
+					{savedAt ? (
+						<span className="text-xs text-green-600 dark:text-green-400">{t.preview.shared.saved}</span>
+					) : null}
 					<button type="button" className={actionBtn} onClick={exitEdit}>
-						退出编辑
+						{t.preview.shared.exitEdit}
 					</button>
 				</>
 			) : (
 				<>
 					<span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-						只读预览
+						{t.preview.shared.readOnlyPreview}
 					</span>
 					<button
 						type="button"
 						className={actionBtn}
 						onClick={enterEdit}
 						disabled={!fileUrl}
-						title="进入编辑模式，可修改单元格并可保存回原文件"
+						title={t.preview.xlsx.enterEditTitle}
 					>
-						编辑
+						{t.common.edit}
 					</button>
 				</>
 			)}
-			<button
-				type="button"
-				className={actionBtn}
-				onClick={() => setFullscreen((f) => !f)}
-				title={fullscreen ? "退出全屏" : "全屏"}
-			>
-				{fullscreen ? "退出全屏" : "全屏"}
-			</button>
+			<FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />
 		</div>
 	);
 
@@ -179,7 +195,7 @@ export default function XlsxPreviewModal({
 					/>
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
-						无法预览：缺少文件地址
+						{t.preview.shared.missingFileUrl}
 					</div>
 				)}
 			</div>
@@ -205,6 +221,7 @@ function XlsxViewer({
 	viewerRef: RefObject<XlsxViewerHandle | null>;
 	onDirty: () => void;
 }) {
+	const { t, locale } = useI18nContext();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const onDirtyRef = useRef(onDirty);
 	onDirtyRef.current = onDirty;
@@ -258,11 +275,12 @@ function XlsxViewer({
 				if (cancelled) return;
 
 				const model = await xlsxToUniverModel(buffer, "workbook");
-				if (model.sheetOrder.length === 0) throw new Error("工作簿中没有可显示的工作表");
+				if (model.sheetOrder.length === 0) throw new Error(t.preview.xlsx.noSheets);
 
+				const univerLocale = UNIVER_LOCALE[locale];
 				const created = createUniver({
-					locale: LocaleType.ZH_CN,
-					locales: { [LocaleType.ZH_CN]: UniverSheetsCoreZhCNLocale },
+					locale: univerLocale.type,
+					locales: { [univerLocale.type]: univerLocale.pack },
 					darkMode: document.documentElement.classList.contains("dark"),
 					presets: [
 						UniverSheetsCorePreset({
@@ -315,7 +333,7 @@ function XlsxViewer({
 				viewerRef.current = {
 					save: async () => {
 						const workbook = created.univerAPI.getActiveWorkbook();
-						if (!workbook) throw new Error("当前没有活动工作簿");
+						if (!workbook) throw new Error(t.preview.xlsx.noActiveWorkbook);
 						// Commit a value still sitting in the in-cell editor. Clicking a
 						// button outside the canvas does not always end the edit, and the
 						// snapshot would then be taken before the change lands — which is
@@ -352,7 +370,7 @@ function XlsxViewer({
 			// re-open never renders two workbooks into the same node.
 			container.replaceChildren();
 		};
-	}, [fileUrl, cacheKey, editing, viewerRef]);
+	}, [fileUrl, cacheKey, editing, viewerRef, locale, t]);
 
 	return (
 		<div className="relative h-full w-full bg-white dark:bg-gray-900">
@@ -361,12 +379,12 @@ function XlsxViewer({
 			<div ref={containerRef} className="h-full w-full overflow-hidden" />
 			{loading && !error && (
 				<div className="absolute inset-0 flex items-center justify-center bg-white/80 text-gray-500 dark:bg-gray-900/80 dark:text-gray-400">
-					{editing ? "正在打开编辑器…" : "正在解析表格…"}
+					{editing ? t.preview.xlsx.openingEditor : t.preview.xlsx.parsing}
 				</div>
 			)}
 			{error && (
 				<div className="absolute inset-0 flex items-center justify-center bg-white/90 px-6 text-center text-red-500 dark:bg-gray-900/90">
-					XLSX 渲染失败：{error}
+					{t.preview.shared.renderFailed.replace("{format}", "XLSX").replace("{message}", error)}
 				</div>
 			)}
 		</div>

@@ -3,7 +3,9 @@ import { PptxViewer, RECOMMENDED_ZIP_LIMITS } from "@aiden0z/pptx-renderer";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useI18nContext } from "../contexts/I18nContext";
 import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
 
 const actionBtn =
@@ -55,18 +57,10 @@ const PREVIEW_ZIP_LIMITS: ZipParseLimits = {
  * prev/next + keyboard navigation). Both reuse the same loaded viewer instance.
  */
 export default function PptxPreviewModal({ isOpen = true, onClose, fileName, fileUrl }: BinaryOfficePreviewProps) {
+	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
 
-	const headerActions = (
-		<button
-			type="button"
-			className={actionBtn}
-			onClick={() => setFullscreen((f) => !f)}
-			title={fullscreen ? "退出全屏" : "全屏"}
-		>
-			{fullscreen ? "退出全屏" : "全屏"}
-		</button>
-	);
+	const headerActions = <FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />;
 
 	return (
 		<Modal
@@ -85,7 +79,7 @@ export default function PptxPreviewModal({ isOpen = true, onClose, fileName, fil
 					<PptxViewerInner fileUrl={fileUrl} />
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
-						无法预览：缺少文件地址
+						{t.preview.shared.missingFileUrl}
 					</div>
 				)}
 			</div>
@@ -131,7 +125,7 @@ function hideEmptyPictures(root: HTMLElement) {
 //   next  -> → ↓ Space PageDown Enter / wheel down / left click
 //   prev  -> ← ↑ PageUp Backspace / wheel up
 //   first/last -> Home / End
-//   exit  -> Esc (or the floating 退出 button)
+//   exit  -> Esc (or the floating exit button)
 // A floating hint sits bottom-left and auto-dims after 4s of mouse idle.
 // ---------------------------------------------------------------------------
 function PlayOverlay({
@@ -145,6 +139,7 @@ function PlayOverlay({
 	startIndex: number;
 	onClose: () => void;
 }) {
+	const { t } = useI18nContext();
 	const [index, setIndex] = useState(startIndex);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const handleRef = useRef<SlideHandle | null>(null);
@@ -287,11 +282,9 @@ function PlayOverlay({
 				}`}
 			>
 				<div className="text-sm font-medium tabular-nums">
-					第 {index + 1} / {slideCount} 页
+					{t.preview.pptx.pageOfPages.replace("{current}", String(index + 1)).replace("{total}", String(slideCount))}
 				</div>
-				<div className="mt-0.5 text-[11px] leading-relaxed text-white/70">
-					空格 / → ↓ 下一页 · ← ↑ 上一页 · 滚轮 翻页 · Home / End 首末页 · Esc 退出
-				</div>
+				<div className="mt-0.5 text-[11px] leading-relaxed text-white/70">{t.preview.pptx.shortcutHint}</div>
 			</div>
 
 			{/* Exit affordance for mouse-only users. */}
@@ -305,7 +298,7 @@ function PlayOverlay({
 					hintOn ? "opacity-100" : "opacity-0"
 				}`}
 			>
-				退出
+				{t.preview.pptx.exitPlay}
 			</button>
 		</div>,
 		document.body,
@@ -314,6 +307,7 @@ function PlayOverlay({
 
 // ---------------------------------------------------------------------------
 function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
+	const { t } = useI18nContext();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewerRef = useRef<PptxViewer | null>(null);
 	const thumbRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -416,20 +410,27 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 		<div className="relative flex h-full min-h-0 flex-col">
 			{ready && (
 				<div className="flex shrink-0 items-center gap-2 border-b border-gray-200 px-2 py-1.5 dark:border-gray-700">
-					<button type="button" className={actionBtn} onClick={() => setTocOpen((o) => !o)} title="缩略图目录">
-						{tocOpen ? "隐藏目录" : "目录"}
+					<button
+						type="button"
+						className={actionBtn}
+						onClick={() => setTocOpen((o) => !o)}
+						title={t.preview.pptx.outlineTitle}
+					>
+						{tocOpen ? t.preview.pptx.hideOutline : t.preview.pptx.showOutline}
 					</button>
 					<button
 						type="button"
 						className={`${actionBtn} inline-flex items-center gap-1`}
 						onClick={() => setPlaying(true)}
-						title="播放"
+						title={t.preview.pptx.play}
 					>
 						<PlayIcon className="h-3.5 w-3.5" />
-						播放
+						{t.preview.pptx.play}
 					</button>
 					<span className="ml-auto text-xs tabular-nums text-gray-500 dark:text-gray-400">
-						第 {currentIndex + 1} / {slideCount} 页
+						{t.preview.pptx.pageOfPages
+							.replace("{current}", String(currentIndex + 1))
+							.replace("{total}", String(slideCount))}
 					</span>
 				</div>
 			)}
@@ -454,7 +455,9 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 									className="mb-1 w-full overflow-hidden rounded bg-white shadow-sm dark:bg-gray-900"
 									style={{ aspectRatio: `${1 / slideAspect}` }}
 								/>
-								<span className="block truncate text-xs text-gray-600 dark:text-gray-300">幻灯片 {slideIndex + 1}</span>
+								<span className="block truncate text-xs text-gray-600 dark:text-gray-300">
+									{t.preview.pptx.slideIndex.replace("{index}", String(slideIndex + 1))}
+								</span>
 							</button>
 						))}
 					</aside>
@@ -463,11 +466,13 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 					<div ref={containerRef} className="h-full overflow-auto bg-white px-2 py-2 dark:bg-gray-900" />
 					{!ready && !error && (
 						<div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
-							正在加载演示文稿…
+							{t.preview.pptx.loading}
 						</div>
 					)}
 					{error && (
-						<div className="absolute inset-0 flex items-center justify-center text-red-500">PPTX 渲染失败：{error}</div>
+						<div className="absolute inset-0 flex items-center justify-center text-red-500">
+							{t.preview.shared.renderFailed.replace("{format}", "PPTX").replace("{message}", error)}
+						</div>
 					)}
 				</div>
 			</div>

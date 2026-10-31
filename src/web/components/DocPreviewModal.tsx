@@ -7,6 +7,7 @@ import type { Locale } from "../locales";
 import ja from "../locales/docx/ja";
 import zhTW from "../locales/docx/zh-TW";
 import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
 import "@eigenpal/docx-editor-react/styles.css";
 
@@ -56,6 +57,7 @@ export default function DocPreviewModal({
 	fileUrl,
 	filePath,
 }: BinaryOfficePreviewProps) {
+	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
 	const [docxMode, setDocxMode] = useState<DocxMode>("viewing");
 	const [docxSaving, setDocxSaving] = useState(false);
@@ -71,16 +73,17 @@ export default function DocPreviewModal({
 
 	const saveDocxFile = async () => {
 		if (!filePath) return;
-		if (!window.confirm("确定将修改保存回原文件？此操作会覆盖当前文件。")) return;
+		if (!window.confirm(t.preview.shared.saveConfirm)) return;
 		setDocxSaving(true);
 		try {
 			const buf = await editorRef.current?.save();
-			if (!buf) throw new Error("无法从编辑器导出文档字节");
+			if (!buf) throw new Error(t.preview.docx.exportFailed);
 			await apiClient.saveDocx(filePath, buf);
 			setDocxSavedAt(Date.now());
 		} catch (e) {
 			console.error("Failed to save docx:", e);
-			window.alert(`保存失败：${e instanceof Error ? e.message : String(e)}`);
+			const message = e instanceof Error ? e.message : String(e);
+			window.alert(t.preview.shared.saveFailed.replace("{message}", message));
 		} finally {
 			setDocxSaving(false);
 		}
@@ -91,34 +94,29 @@ export default function DocPreviewModal({
 			{docxMode === "viewing" ? (
 				<>
 					<span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-						只读预览
+						{t.preview.shared.readOnlyPreview}
 					</span>
 					<button type="button" className={actionBtn} onClick={enterEdit}>
-						编辑
+						{t.common.edit}
 					</button>
 				</>
 			) : (
 				<>
 					<span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
-						编辑模式
+						{t.preview.shared.editMode}
 					</span>
 					<button type="button" className={primaryBtn} onClick={saveDocxFile} disabled={docxSaving}>
-						{docxSaving ? "保存中…" : "保存"}
+						{docxSaving ? t.common.saving : t.common.save}
 					</button>
-					{docxSavedAt ? <span className="text-xs text-green-600 dark:text-green-400">已保存 ✓</span> : null}
+					{docxSavedAt ? (
+						<span className="text-xs text-green-600 dark:text-green-400">{t.preview.shared.saved}</span>
+					) : null}
 					<button type="button" className={actionBtn} onClick={exitEdit}>
-						退出编辑
+						{t.preview.shared.exitEdit}
 					</button>
 				</>
 			)}
-			<button
-				type="button"
-				className={actionBtn}
-				onClick={() => setFullscreen((f) => !f)}
-				title={fullscreen ? "退出全屏" : "全屏"}
-			>
-				{fullscreen ? "退出全屏" : "全屏"}
-			</button>
+			<FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />
 		</div>
 	);
 
@@ -139,7 +137,7 @@ export default function DocPreviewModal({
 					<DocxViewer fileUrl={fileUrl} mode={docxMode} editorRef={editorRef} />
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
-						无法预览：缺少文件地址
+						{t.preview.shared.missingFileUrl}
 					</div>
 				)}
 			</div>
@@ -160,7 +158,7 @@ function DocxViewer({
 	mode: DocxMode;
 	editorRef: RefObject<DocxEditorRef | null>;
 }) {
-	const { locale } = useI18nContext();
+	const { locale, t } = useI18nContext();
 	const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -183,14 +181,22 @@ function DocxViewer({
 	}, [fileUrl]);
 
 	if (error) {
-		return <div className="flex h-full items-center justify-center text-red-500">文档加载失败：{error}</div>;
+		return (
+			<div className="flex h-full items-center justify-center text-red-500">
+				{t.preview.shared.loadFailed.replace("{message}", error)}
+			</div>
+		);
 	}
 	if (!buffer) {
-		return <div className="flex h-full items-center justify-center text-gray-400">加载中…</div>;
+		return <div className="flex h-full items-center justify-center text-gray-400">{t.common.loading}</div>;
 	}
 	const editing = mode === "editing";
 	return (
-		<Suspense fallback={<div className="flex h-full items-center justify-center text-gray-400">渲染中…</div>}>
+		<Suspense
+			fallback={
+				<div className="flex h-full items-center justify-center text-gray-400">{t.preview.shared.rendering}</div>
+			}
+		>
 			<div className="h-full w-full overflow-auto">
 				<DocxEditor
 					key={locale}

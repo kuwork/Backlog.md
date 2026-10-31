@@ -72,6 +72,8 @@ export const en = {
 		updated: "Updated",
 		branch: "Branch",
 		dueBy: "Due by",
+		fullscreen: "Fullscreen",
+		exitFullscreen: "Exit fullscreen",
 	},
 
 	nav: {
@@ -883,6 +885,56 @@ export const en = {
 		unsupportedType: "This file type can't be previewed. Convert it to .docx or .pdf to open it in the app.",
 	},
 
+	// Document preview modals (docx / pptx / xlsx / pdf). Generic verbs and states
+	// live in `common`; only wording these previews need is defined here.
+	preview: {
+		shared: {
+			readOnlyPreview: "Read-only preview",
+			editMode: "Edit mode",
+			saved: "Saved ✓",
+			exitEdit: "Exit edit",
+			missingFileUrl: "Can't preview: no file address",
+			loadFailed: "Couldn't load: {message}",
+			renderFailed: "{format} failed to render: {message}",
+			saveFailed: "Save failed: {message}",
+			saveConfirm: "Save the changes back to the original file? This overwrites the current file.",
+			unsavedExitConfirm: "There are unsaved changes. Exit editing anyway?",
+			unsavedCloseConfirm: "There are unsaved changes. Close anyway?",
+			rendering: "Rendering…",
+		},
+		docx: {
+			exportFailed: "Couldn't export the document bytes",
+		},
+		pptx: {
+			loading: "Loading presentation…",
+			outlineTitle: "Slide outline",
+			showOutline: "Outline",
+			hideOutline: "Hide outline",
+			play: "Play",
+			pageOfPages: "Slide {current} / {total}",
+			slideIndex: "Slide {index}",
+			shortcutHint: "Space / → ↓ next · ← ↑ previous · wheel pages · Home / End first and last · Esc to exit",
+			exitPlay: "Exit",
+		},
+		xlsx: {
+			parsing: "Parsing spreadsheet…",
+			openingEditor: "Opening editor…",
+			noSheets: "The workbook has no sheets to display",
+			noActiveWorkbook: "No active workbook",
+			noChanges:
+				"No changes detected: the edit may still be sitting in the cell editor. Press Enter to confirm it, then save again.",
+			enterEditTitle: "Switch to edit mode to change cells and save back to the original file",
+			saveTitle: "Write the changes back to the original file",
+			saveDisabledTitle: "No file path, so this can't be saved",
+		},
+		pdf: {
+			outline: "Contents",
+			collapseAll: "Collapse all",
+			expandAll: "Expand all",
+			closeOutline: "Close contents",
+		},
+	},
+
 	pasteAwareMDEditor: {
 		uploadDocx: "Upload Word document (.docx)",
 		convertFailed: "Failed to convert Word document",
@@ -1155,8 +1207,6 @@ export const en = {
 		viewList: "List",
 		viewBoard: "Pinboard",
 		webglUnavailable: "The pinboard needs WebGL, which this browser does not support — switch back to the list view.",
-		fullscreen: "Fullscreen",
-		exitFullscreen: "Exit fullscreen",
 		noteModalTitle: "Note",
 	},
 	loadingPhases: {
@@ -1217,7 +1267,6 @@ export const en = {
 		viewTable: "Table",
 		viewGraph: "Graph",
 		viewSplit: "Both",
-		fullscreen: "Fullscreen",
 		exitFullscreen: "Exit fullscreen (hold Esc)",
 		graphTitle: "Result graph",
 		graphTooLarge: "{1} nodes is past what this pane can lay out interactively",

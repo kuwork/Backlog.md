@@ -74,6 +74,8 @@ export const zhTW: TranslationDict = {
 		updated: "更新於",
 		branch: "分支",
 		dueBy: "截止至",
+		fullscreen: "全螢幕",
+		exitFullscreen: "退出全螢幕",
 	},
 
 	nav: {
@@ -855,6 +857,55 @@ export const zhTW: TranslationDict = {
 		unsupportedType: "此檔案類型無法預覽。請轉換為 .docx 或 .pdf 後在應用內開啟。",
 	},
 
+	// 文件預覽彈窗（docx / pptx / xlsx / pdf）。通用動詞與狀態在 common 裡，
+	// 這裡只放預覽本身特有的文案。
+	preview: {
+		shared: {
+			readOnlyPreview: "只讀預覽",
+			editMode: "編輯模式",
+			saved: "已保存 ✓",
+			exitEdit: "退出編輯",
+			missingFileUrl: "無法預覽：缺少檔案位址",
+			loadFailed: "載入失敗：{message}",
+			renderFailed: "{format} 渲染失敗：{message}",
+			saveFailed: "保存失敗：{message}",
+			saveConfirm: "確定將修改保存回原始檔案？此操作會覆寫目前的檔案。",
+			unsavedExitConfirm: "有未保存的修改，確定退出編輯？",
+			unsavedCloseConfirm: "有未保存的修改，確定關閉？",
+			rendering: "渲染中…",
+		},
+		docx: {
+			exportFailed: "無法從編輯器匯出文件位元組",
+		},
+		pptx: {
+			loading: "正在載入簡報…",
+			outlineTitle: "縮圖目錄",
+			showOutline: "目錄",
+			hideOutline: "隱藏目錄",
+			play: "播放",
+			pageOfPages: "第 {current} / {total} 頁",
+			slideIndex: "投影片 {index}",
+			shortcutHint: "空白鍵 / → ↓ 下一頁 · ← ↑ 上一頁 · 滾輪 翻頁 · Home / End 首末頁 · Esc 退出",
+			exitPlay: "退出",
+		},
+		xlsx: {
+			parsing: "正在解析表格…",
+			openingEditor: "正在開啟編輯器…",
+			noSheets: "活頁簿中沒有可顯示的工作表",
+			noActiveWorkbook: "目前沒有作用中的活頁簿",
+			noChanges: "沒有偵測到任何修改：編輯可能還停留在輸入狀態，請按 Enter 確認後再保存。",
+			enterEditTitle: "進入編輯模式，可修改儲存格並可保存回原始檔案",
+			saveTitle: "將修改寫回原始檔案",
+			saveDisabledTitle: "缺少檔案路徑，無法保存",
+		},
+		pdf: {
+			outline: "目錄",
+			collapseAll: "全部摺疊",
+			expandAll: "全部展開",
+			closeOutline: "關閉目錄",
+		},
+	},
+
 	pasteAwareMDEditor: {
 		uploadDocx: "上傳 Word 文檔 (.docx)",
 		convertFailed: "Word 文檔轉換失敗",
@@ -1127,8 +1178,6 @@ export const zhTW: TranslationDict = {
 		viewList: "列表",
 		viewBoard: "釘板",
 		webglUnavailable: "釘板視圖需要 WebGL 支援，目前瀏覽器不支援 —— 請切換回列表視圖。",
-		fullscreen: "全螢幕",
-		exitFullscreen: "離開全螢幕",
 		noteModalTitle: "便箋內容",
 	},
 	loadingPhases: {
@@ -1189,7 +1238,6 @@ export const zhTW: TranslationDict = {
 		viewTable: "表格",
 		viewGraph: "圖譜",
 		viewSplit: "並列",
-		fullscreen: "全螢幕",
 		exitFullscreen: "結束全螢幕（長按 ESC）",
 		graphTitle: "結果圖譜",
 		graphTooLarge: "結果有 {1} 個節點，超出圖譜可互動配置的規模",
