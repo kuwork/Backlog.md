@@ -438,7 +438,7 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-824-fix-bare-url-autolink-gobble]] |  BACK-824 - 修复裸 URL 紧贴中文被 autolink 吞掉 | source, web, markdown |
 | [[sources/back-825-word-document-preview-modal]] |  BACK-825 - Word 文档预览与内联编辑模态框 | source, web, docs |
 | [[sources/back-826-non-previewable-office-notice]] |  BACK-826 - 非可预览 Office 链接改为提示而非加载 | source, web |
-| [[sources/back-827-project-wide-docx-pdf-preview]] |  BACK-827 - 项目任意路径的 docx 与 pdf 预览 | source, web, docs |
+| [[sources/back-827-project-wide-docx-pdf-preview]] |  BACK-827 - 引用字段任意路径 docx/pdf 预览（正文仅 assets/） | source, web, docs |
 | [[sources/back-828-pdf-preview-modal]] |  BACK-828 - PDF 文档预览模态框 | source, web, docs |
 | [[sources/back-829-pptx-preview-modal]] |  BACK-829 - PPTX 文档预览模态框 | source, web, docs |
 | [[sources/back-830-xlsx-preview-modal]] |  BACK-830 - XLSX 电子表格高保真布局预览 | source, web, docs, high-priority |

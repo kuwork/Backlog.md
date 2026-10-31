@@ -62,9 +62,9 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 
 ## Office 文档预览模态框（BACK-825~831）
 
-文档预览从「文本/Markdown/代码」扩展到**原生 Office 文档**：点击项目内任意同源 `.docx`/`.pdf`/`.pptx`/`.xlsx`/`.xlsm` 链接，在专用模态框中预览，而非下载。
+文档预览从「文本/Markdown/代码」扩展到**原生 Office 文档**：点链接在专用模态框中预览，而非下载。需注意路径解析按链接上下文区分——**引用字段**（元数据里的 `backlog/...` 路径）可预览项目任意路径；**正文**（`.wmde-markdown` 描述/评论/笔记）里的链接只支持 `assets/...` 约定（映射到 `backlog/assets/`），写 `backlog/...` 前缀的正文链接不会被拦截、会落到浏览器 404。
 
-- **任意路径 + 原始字节端点**：BACK-827 移除全局拦截器的 `/assets/*` 限制、加同源守卫，新增 `GET /api/raw-file`（项目相对路径取字节 + content-type，穿越守卫限 `backlog/` 内，`Cache-Control: no-store`）。
+- **引用字段任意路径 + 原始字节端点**：BACK-827 加同源守卫与 `GET /api/raw-file`（项目相对路径取字节 + content-type，穿越守卫限 `backlog/` 内，`Cache-Control: no-store`）；该端点服务于引用字段携带的 `backlog/...` 路径，正文 `assets/` 链接仍走既有静态 `/assets/*` 路由。
 - **Word（`.docx`）**：`DocPreviewModal`（BACK-825）基于 docx-editor，真实分页 A4；默认只读、Edit 进编辑态（工具栏/标尺/页边距参考线）、Save 经 `POST /api/docx/save` 写回；头部显式模式徽章（只读灰 / 编辑蓝）；四语言自构建 zh-TW/ja 覆盖包；docx-editor 代码分割。
 - **PDF**：`PdfPreviewModal`（BACK-828）基于自托管 pdf.js（运行时加载、不打包），逐页 canvas；有大纲时左侧可点击目录栏（复用任务模态框 `TocRows` 视觉）；fit-to-width + 全屏圆角裁切。
 - **PPTX**：`PptxPreviewModal`（BACK-829）基于 `@aiden0z/pptx-renderer`（Apache-2.0，OOXML→HTML/SVG 高保真，窗口化挂载）；缩略图目录跳转 + WPS 式边缘全屏放映；仅只读（无编辑 API）。
@@ -84,7 +84,7 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 - [[sources/back-821-raw-html-table-doc-preview]] — 原始 HTML 表格恢复渲染与行高统一
 - [[sources/back-825-word-document-preview-modal]] — Word 预览与内联编辑模态框
 - [[sources/back-826-non-previewable-office-notice]] — 不可预览 Office 链接提示
-- [[sources/back-827-project-wide-docx-pdf-preview]] — 项目任意路径预览与 `/api/raw-file`
+- [[sources/back-827-project-wide-docx-pdf-preview]] — 引用字段任意路径预览（正文仅 `assets/`）与 `/api/raw-file`
 - [[sources/back-828-pdf-preview-modal]] — PDF 预览模态框
 - [[sources/back-829-pptx-preview-modal]] — PPTX 预览模态框
 - [[sources/back-830-xlsx-preview-modal]] — XLSX 高保真布局预览与写回

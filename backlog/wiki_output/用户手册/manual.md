@@ -4201,13 +4201,16 @@ http://localhost:6420/search?q=timezone&type=task
 
 ## 120.12 文档预览
 
-Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档：点击项目里任意 `.docx`、`.pdf`、`.pptx`、`.xlsx` / `.xlsm` 链接，都会在专用模态框中打开预览，而不是下载到本地。Word 与 Excel 还支持编辑并写回源文件。
+Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档：点击文档链接，都会在专用模态框中打开预览，而不是下载到本地。Word 与 Excel 还支持编辑并写回源文件。
 
-### 120.12.1 任意路径预览
+预览支持哪些路径，取决于链接所处的位置：
 
-预览不再局限于 `backlog/assets/` 下的文件。任意同源文档链接（如 `backlog/docs/report.pdf`）都会走项目相对路径，经原始字节端点 `GET /api/raw-file` 获取内容（带 content-type，并限制在项目数据目录内）。跨源文档、修饰键或 `target=_blank` / `download` 链接仍按浏览器默认行为打开。
+- **引用字段**（任务 / 里程碑 / 文档等元数据里写的 `backlog/...` 项目相对路径，如 `backlog/docs/report.pdf`）：走原始字节端点 `GET /api/raw-file` 获取内容（带 content-type，并限制在项目数据目录内），覆盖项目任意路径。
+- **正文**（描述 / 评论 / 笔记 / 文档 Markdown 里的链接）：只支持 `assets/...` 约定（即 `backlog/assets/` 目录）下的文档；若正文里直接写 `backlog/...` 前缀，链接不会被拦截、会落到浏览器 404。
 
-### 120.12.2 Word 文档
+跨源文档、修饰键或 `target=_blank` / `download` 链接仍按浏览器默认行为打开。
+
+### 120.12.1 Word 文档
 
 基于 docx-editor 渲染，呈现真实分页的 A4 页面。
 
@@ -4216,7 +4219,7 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 模态框头部显式展示状态徽章：只读态为灰色 `read-only preview`，编辑态为蓝色 `edit mode`，状态不靠外观推断。
 - 支持 CSS 全屏填充视口，内容裁切到圆角。
 
-### 120.12.3 PDF 文档
+### 120.12.2 PDF 文档
 
 基于自托管的 pdf.js（运行时加载，不进初始包），页面逐页绘制到 canvas。
 
@@ -4224,7 +4227,7 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 含大纲（目录）的 PDF 显示可点击的左侧目录栏，点击滚动到目标页。
 - 支持 CSS 全屏，页面区裁切到圆角。
 
-### 120.12.4 PPTX 演示文稿
+### 120.12.3 PPTX 演示文稿
 
 基于 `@aiden0z/pptx-renderer`（Apache-2.0），把 OOXML 高保真还原为 HTML/SVG，大文档窗口化挂载。
 
@@ -4232,7 +4235,7 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 播放模式为边缘全屏放映，支持 WPS 式键盘导航（→↓Space PageDown Enter 下一页；←↑PageUp Backspace 上一页；Home/End 首/末页；Esc 退出）。
 - 仅只读预览。
 
-### 120.12.5 Excel 电子表格
+### 120.12.4 Excel 电子表格
 
 基于 Univer 开源 sheets 预设，保留让表格可读的布局：单元格文字与值、字体、填充、边框、对齐、合并区域、列宽、行高、数字格式。
 
@@ -4241,11 +4244,11 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 保存为原地 OOXML 补丁：只重写被编辑工作表的单元格与合并区域，其余内容（图表、图片、条件格式等）原样保留；无实际改动的保存会如实提示而非报成功。
 - 仅 `.xlsx` / `.xlsm`；编辑器内新增的工作表不写回，单元格格式改动不写回。
 
-### 120.12.6 不支持的格式
+### 120.12.5 不支持的格式
 
 对应用无法渲染的 Office 格式（传统 `.doc`、PowerPoint 与 Excel 家族、宏与模板变体），点击不会直接下载或打开，而是弹出提示，建议先转换为 `.docx` 或 `.pdf`。修饰键或 `target=_blank` / `download` 仍开新标签。
 
-### 120.12.7 本地化
+### 120.12.6 本地化
 
 四个预览模态框的所有用户可见文案都跟随应用语言（en / zh-CN / zh-TW / ja），包括状态徽章、按钮、对话框与播放器提示。
 

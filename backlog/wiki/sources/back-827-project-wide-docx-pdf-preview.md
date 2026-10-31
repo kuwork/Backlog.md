@@ -8,13 +8,14 @@ source_path: backlog/tasks/back-827 - Project-wide-docx-and-pdf-preview-for-any-
 
 # BACK-827 - 项目任意路径的 docx 与 pdf 预览
 
-应用内 Word（`.docx`）与 PDF 预览此前只在 `/assets/*` 下的链接打开模态框（那是唯一提供二进制字节的静态路由）。Markdown/代码文件早已经 `MermaidMarkdown.onFileClick` + `/api/file-content` 按项目相对路径全局预览。本任务让 docx/pdf 也走同一条默认路径：点击项目内任何同源 `.docx`/`.pdf` 链接都打开预览模态框，而非仅限于 `backlog/assets`。
+应用内 Word（`.docx`）与 PDF 预览此前只在 `/assets/*` 下的链接打开模态框（那是唯一提供二进制字节的静态路由）。Markdown/代码文件早已经 `MermaidMarkdown.onFileClick` + `/api/file-content` 按项目相对路径预览。本任务新增原始字节端点 `GET /api/raw-file`，让 **元数据/引用字段**里写的 `backlog/...` 项目相对路径（如 `backlog/docs/report.pdf`）也能打开 docx/pdf 预览模态框。注意路径解析按链接上下文区分：`Layout.tsx` 的全局拦截器对**正文（`.wmde-markdown`，如描述/评论/笔记）**只认 `assets/...`（映射到 `backlog/assets/`），写 `backlog/...` 前缀的正文链接不会被拦截、会落到浏览器 404；对**引用字段**（任务/里程碑/文档元数据里的 `backlog/...` 链接）才走 `/api/raw-file` 预览任意路径。
 
 ## 要点
 
 - 字节按文件的项目相对路径（如 `backlog/docs/report.pdf`）经新增原始字节端点 `GET /api/raw-file` 获取，镜像 `/api/file-content` 但返回字节 + content-type。
 - Word 写回继续用项目相对路径，因此非 `/assets/` 文件也能编辑。
-- 外部（跨源）docx/pdf 链接留给浏览器；修饰键/`target=_blank`/download 仍开新标签；不可预览 Office 类型仍弹提示。
+- 外部（跨源）docx/pdf 链接留给浏览器；修饰键/`target=_blank`/download 仍开新标签；不可预览 Office 类型仍弹提示（仅当链接落在 `assets/` 正文或 `backlog/` 引用字段时才拦截）。
+- 路径解析按链接上下文分两种：正文（`.wmde-markdown`）只认 `assets/...`；引用字段（元数据里的 `backlog/...`）才走任意路径。`backlog/...` 写在正文里不会被拦截。
 
 ## 安全
 
