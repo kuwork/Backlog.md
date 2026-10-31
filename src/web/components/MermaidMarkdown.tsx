@@ -224,6 +224,12 @@ function encodeLocalFileLinkDestinations(source: string): string {
 		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
 	}
 
+	// Absolute/external URIs are left untouched: micromark preserves them and
+	// rehype-sanitize neutralizes dangerous ones. Bare `scheme:` tokens that are
+	// not real URIs are handled below.
+	const isExternalUri = (url: string): boolean =>
+		/^[a-z][a-z0-9+.-]*:\/\//i.test(url) || /^(mailto|tel|data):/i.test(url);
+
 	return source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, ...args) => {
 		const offset = args[args.length - 2] as number;
 		for (const range of protectedRanges) {
@@ -232,10 +238,61 @@ function encodeLocalFileLinkDestinations(source: string): string {
 		const text = args[0] as string;
 		const url = args[1] as string;
 		if (!url) return match;
-		if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("#")) return match;
-		const encodedUrl = url.replace(/ /g, "%20");
+		if (url.startsWith("#")) return match;
+		if (isExternalUri(url)) return match;
+
+		// A bare destination whose first colon precedes any slash reads as a URI
+		// scheme to CommonMark/micromark (e.g. `file.md:441-477`, `doc-1.md:5`,
+		// `中文.md:1`). The unknown scheme is rejected and the href is emptied,
+		// collapsing the link to literal text. Prefixing with "./" keeps it a
+		// path-style destination that the parser preserves. Destinations that
+		// already contain a slash before the colon (`src/a.ts:1`, `/abs:range`)
+		// or already start with "./" / "../" are paths and need no change.
+		let normalizedUrl = url;
+		// Only bare (non-enclosed) destinations can be misread as a scheme. An
+		// enclosed `<...>` destination is already explicit and must not be prefixed.
+		if (!url.startsWith("<")) {
+			const firstColon = url.indexOf(":");
+			if (firstColon !== -1) {
+				const beforeColon = url.slice(0, firstColon);
+				if (!beforeColon.includes("/") && !url.startsWith("./") && !url.startsWith("../")) {
+					normalizedUrl = `./${url}`;
+				}
+			}
+		}
+
+		const encodedUrl = normalizedUrl.replace(/ /g, "%20");
 		if (encodedUrl === url) return match;
 		return `[${text}](${encodedUrl})`;
+	});
+}
+
+/**
+ * Wrap bare `http(s)://` / `www.` URLs in explicit `[url](url)` markdown links.
+ *
+ * GFM autolink-literal linkifies a bare URL greedily: when the URL sits flush
+ * against CJK text or full-width punctuation (e.g. `网站https://x.cn）与...`),
+ * it swallows the trailing prose into one giant hyperlink and, by consuming the
+ * next `[`, also breaks any following `[text](dest)` link. Turning the bare URL
+ * into an explicit link gives it a hard boundary (ends at `)`), so the URL is
+ * clickable on its own and the rest of the line renders normally.
+ *
+ * URLs already inside a link destination (`](https://…)`) or inside code spans /
+ * code blocks are left untouched.
+ */
+function linkifyBareUrls(source: string): string {
+	const protectedRanges = getMarkdownCodeRanges(source);
+	// URL body stops at whitespace, `<` `>` `]`, quotes/backtick, CJK ideographs,
+	// and full-width / CJK punctuation so prose can never be swallowed.
+	const BARE_URL_RE =
+		/(?<![(\s])((?:https?:\/\/|www\.)[^\s<>\]"'`\u0060\u4e00-\u9fff\u3000-\u303f\uff01-\uff5e]+)/gi;
+	return source.replace(BARE_URL_RE, (match, ...args) => {
+		const offset = args[args.length - 2] as number;
+		for (const range of protectedRanges) {
+			if (offset >= range.start && offset < range.end) return match;
+		}
+		const href = /^https?:\/\//i.test(match) ? match : `http://${match}`;
+		return `[${match}](${href})`;
 	});
 }
 
@@ -464,9 +521,10 @@ export default function MermaidMarkdown({
 	confirmNavigation,
 }: Props) {
 	const ref = useRef<HTMLDivElement | null>(null);
-	const encoded = encodeLocalFileLinkDestinations(source);
+	const processed = linkifyBareUrls(source);
+	const encoded = encodeLocalFileLinkDestinations(processed);
 	const safeSource = wikilinkBasePath
-		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(source, wikilinkBasePath))
+		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(processed, wikilinkBasePath))
 		: sanitizeRawHtmlAngleBrackets(encoded, getMarkdownCodeRanges(encoded));
 	const { t } = useI18n();
 	const entityIndex = useTaskIdIndex();

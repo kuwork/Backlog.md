@@ -92,6 +92,23 @@ describe("MermaidMarkdown", () => {
 		expect(html).toContain('href="mailto:foo@example.com"');
 	});
 
+	it("linkifies a bare URL flush against CJK text without swallowing the following prose", () => {
+		// Regression: a bare URL written flush against CJK / full-width punctuation
+		// (e.g. `网站https://x.cn）与...`) used to be swallowed by GFM autolink-literal
+		// into one giant link, which also broke the following `[框架](file.md:range)` link.
+		const source =
+			"数据共享（网站https://hnfdsta.sustech.edu.cn）与学术交流培训。修改位置：[框架](三年工作总结框架_2113167334838272000.md:441-477)";
+		const html = render(source);
+
+		// The URL becomes its own clean, clickable link pointing exactly at the site.
+		expect(html).toContain('href="https://hnfdsta.sustech.edu.cn"');
+		// The trailing full-width punctuation and the rest of the prose stay outside the link.
+		expect(html).not.toContain("hnfdsta.sustech.edu.cn%");
+		expect(html).toContain("）与学术交流培训");
+		// The file link that follows is rendered as a link, not broken literal text.
+		expect(html).toContain(">框架</a>");
+	});
+
 	it("keeps hash-only markdown links on the current route when a base href is present", () => {
 		const dom = new JSDOM("<!doctype html><html><head><base href='/'></head><body></body></html>", {
 			url: "http://localhost/tasks/BACK-536?view=detail",
