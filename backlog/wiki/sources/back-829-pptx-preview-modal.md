@@ -13,7 +13,7 @@ source_path: backlog/tasks/back-829 - PPTX-document-preview-modal.md
 ## 要点
 
 - 三件套：查看器、缩略图目录（跳转）、边缘全屏放映模式（WPS 式导航）。
-- 复用 BACK-827 的项目任意路径链接拦截器打开模态框；从 `.pptx` 不可预览集合中移除。
+- 复用 BACK-827 的链接拦截器（引用字段 `backlog/...`、正文 `assets/`）打开模态框；从 `.pptx` 不可预览集合中移除。
 - 缩略图目录列出每张幻灯片（缩放预览 +「幻灯片 N」标签），点击跳转主视图；`onSlideChange` 驱动激活高亮与页码计数。
 - 放映模式用 `createPortal(document.body)` 的 `fixed inset-0` 覆盖层、无工具栏：单页 `renderSlideToContainer` + fit-to-contain，重测于 resize。导航镜像 WPS：→↓Space PageDown Enter/滚轮下/左键=下一页；←↑PageUp Backspace/滚轮上=上一页；Home/End=首/末；Esc 或浮动「退出」按钮退出；左下角提示自动变暗。
 

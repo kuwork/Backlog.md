@@ -29,4 +29,4 @@ source_path: backlog/tasks/back-826 - Notice-for-non-previewable-office-file-lin
 ## Related Sources
 
 - [[sources/back-825-word-document-preview-modal]] — Word 预览/编辑模态框
-- [[sources/back-827-project-wide-docx-pdf-preview]] — 项目任意路径预览
+- [[sources/back-827-project-wide-docx-pdf-preview]] — 引用字段任意路径预览（正文仅 assets/）
