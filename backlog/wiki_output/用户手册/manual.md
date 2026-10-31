@@ -199,19 +199,19 @@ backlog init --no-git
 
 适用于非代码项目的任务管理。
 
-#### 1.2.2.2 在其他目录初始化（`--cwd` / `BACKLOG_CWD`）
+#### 1.2.2.2 在其他目录初始化（`BACKLOG_CWD`）
 
-`backlog init` 遵循与其它命令一致的目录解析规则：`--cwd <path>` 优先，其次是 `BACKLOG_CWD` 环境变量，最后回退到当前工作目录。
+`backlog init` 不识别 `--cwd` 这个命令行 flag（只有 `mcp start` 接受 `--cwd`）；它只支持两种目标目录指定方式：一是切换 shell 当前目录后运行，二是由 `BACKLOG_CWD` 环境变量钉死目录（优先级高于 `process.cwd()`，最后回退到当前工作目录）。
 
 ```bash
-# 2 不切换 shell 目录即初始化指定仓库
-backlog init my-project --cwd /path/to/repo
+# 2 方式一：切到目标仓库目录后初始化（最直白）
+cd /path/to/repo && backlog init my-project
 
-# 3 在 CI 或脚本中用环境变量固定工作目录
+# 3 方式二：在 CI 或脚本中用环境变量固定工作目录（目录必须已存在）
 BACKLOG_CWD=/path/to/repo backlog init my-project
 ```
 
-TUI 与 Web 服务器通过统一的运行时工厂（`createRuntimeCore`）解析工作目录，因此 `BACKLOG_CWD` 对这些入口同样生效——`init` 不再只认进程的当前目录，而是与后续所有命令看到同一个目标目录。
+`BACKLOG_CWD` 要求指向的目录**必须已存在**，否则会 fail-closed 报错（`Invalid directory from BACKLOG_CWD`）并退出。`init` 经由统一的运行时 cwd 解析（`requireRuntimeCwd`），因此 `BACKLOG_CWD` 与后续所有命令看到同一个目标目录——`init` 不再只认进程的当前目录。TUI 与 Web 服务器同样遵循此解析规则。
 
 #### 3.0.0.1 非交互初始化（CI / 脚本）
 
