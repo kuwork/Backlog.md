@@ -258,7 +258,7 @@ describe("CypherQueryBlock Show/Hide Query (BACK-802)", () => {
 		mount(BLOCK);
 		await settle();
 
-		expect(toggle().textContent).toBe("Show query");
+		expect(toggle().textContent).toBe("Show Query");
 		expect(container?.querySelector("pre")).toBeNull();
 
 		await act(async () => {
@@ -267,7 +267,7 @@ describe("CypherQueryBlock Show/Hide Query (BACK-802)", () => {
 
 		expect(container?.querySelector("pre")?.textContent).toBe("MATCH (t:Task)\nRETURN t.id AS id");
 		expect(container?.textContent).toContain("tasks");
-		expect(toggle().textContent).toBe("Hide query");
+		expect(toggle().textContent).toBe("Hide Query");
 		expect(queryCalls).toBe(1);
 	});
 });

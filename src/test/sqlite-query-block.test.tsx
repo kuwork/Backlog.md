@@ -148,7 +148,7 @@ describe("SqliteQueryBlock Show/Hide Query", () => {
 
 		expect(queryCalls).toBe(1);
 		expect(container?.textContent).toContain("Alice");
-		expect(toggle().textContent).toBe("Show query");
+		expect(toggle().textContent).toBe("Show Query");
 		expect(container?.querySelector("pre")).toBeNull();
 		expect(toggle().getAttribute("aria-expanded")).toBe("false");
 	});
@@ -164,7 +164,7 @@ describe("SqliteQueryBlock Show/Hide Query", () => {
 		const panel = container?.querySelector("pre");
 		expect(panel?.textContent).toBe("SELECT name\nFROM people");
 		expect(container?.textContent).toContain("backlog/databases/shop.sqlite");
-		expect(toggle().textContent).toBe("Hide query");
+		expect(toggle().textContent).toBe("Hide Query");
 		expect(toggle().getAttribute("aria-expanded")).toBe("true");
 	});
 
@@ -188,7 +188,7 @@ describe("SqliteQueryBlock Show/Hide Query", () => {
 		// Two calls total (initial + refresh), and the panel survived the reload.
 		expect(queryCalls).toBe(2);
 		expect(container?.querySelector("pre")?.textContent).toBe("SELECT name\nFROM people");
-		expect(toggle().textContent).toBe("Hide query");
+		expect(toggle().textContent).toBe("Hide Query");
 	});
 
 	it("reveals the raw block body when the block cannot be parsed", async () => {

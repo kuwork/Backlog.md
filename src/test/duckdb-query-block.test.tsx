@@ -57,7 +57,7 @@ function button(label: string): HTMLButtonElement | undefined {
 		| undefined;
 }
 
-/** The Show/Hide toggle: its label flips between "Show query" and "Hide query", so match on /query/. */
+/** The Show/Hide toggle: its label flips between "Show Query" and "Hide Query", so match on /query/. */
 function toggle(): HTMLButtonElement {
 	const buttons = Array.from(container?.querySelectorAll("button") ?? []);
 	return buttons.find((candidate) => /query/i.test(candidate.textContent ?? "")) as HTMLButtonElement;
@@ -179,7 +179,7 @@ describe("DuckdbQueryBlock Show/Hide Query (BACK-779)", () => {
 
 		expect(queryCalls).toBe(1);
 		expect(container?.textContent).toContain("Alice");
-		expect(toggle().textContent).toBe("Show query");
+		expect(toggle().textContent).toBe("Show Query");
 		expect(container?.querySelector("pre")).toBeNull();
 		expect(toggle().getAttribute("aria-expanded")).toBe("false");
 	});
@@ -195,7 +195,7 @@ describe("DuckdbQueryBlock Show/Hide Query (BACK-779)", () => {
 		const panel = container?.querySelector("pre");
 		expect(panel?.textContent).toBe("SELECT name\nFROM people");
 		expect(container?.textContent).toContain("backlog/databases/shop.duckdb");
-		expect(toggle().textContent).toBe("Hide query");
+		expect(toggle().textContent).toBe("Hide Query");
 		expect(toggle().getAttribute("aria-expanded")).toBe("true");
 	});
 
@@ -219,7 +219,7 @@ describe("DuckdbQueryBlock Show/Hide Query (BACK-779)", () => {
 		// Two calls total (initial + refresh), and the panel survived the reload.
 		expect(queryCalls).toBe(2);
 		expect(container?.querySelector("pre")?.textContent).toBe("SELECT name\nFROM people");
-		expect(toggle().textContent).toBe("Hide query");
+		expect(toggle().textContent).toBe("Hide Query");
 	});
 
 	it("reveals the raw block body when the block cannot be parsed", async () => {
