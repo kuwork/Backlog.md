@@ -176,6 +176,15 @@ v1.53.9 一波四件事，其中一件是把「能起但检索全死」的图谱
 - **文档预览恢复原始 HTML 表格**（BACK-821）：BACK-377 为挡 TypeScript 泛型字符串把所有 `<` 一律转义，代价是手写 `<table>` 只剩标签原文。现改为白名单式源码转义 + `rehype-raw`/`rehype-sanitize` 双保险（剥 `script`/`onerror`/危险 href），并用一条 CSS 消掉原始 HTML 单元格内 `<p>` 的 `margin-bottom`，让行高与 GFM 管道表格一致。概念页 [[concepts/markdown-pipeline]]、[[concepts/file-preview]] 已更新。
 - **重扫心跳钉住终端末行**（BACK-815.01）：BACK-815 的心跳用裸 `\r\x1b[K` 覆写末行，遇到 watcher/请求日志插入就顶到错误行、表现为不断追加。新增 `StatusLine` 单例 + console hooks：TTY 下原地重写、非 TTY 退化为普通行，其它日志先 `lift()` 把状态行推进 scrollback；winpty/Git Bash 下 `isTTY` 假，自动开启只收窄在 `backlog browser` 命令内。概念页 [[concepts/web-server]] 已更新。
 
+### 应用内 Office 文档预览与 MDB 实况查询（BACK-824~834 / m-18，2026-10-28~31）
+
+v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代码延伸到原生 Office 文档，并接入 Access 实况查询第四块。
+
+- **裸 URL 紧贴中文被 autolink 吞掉修复**（BACK-824）：GFM `autolink-literal` 对裸 `http(s)://` 贪婪链接，紧贴 CJK 文字时把后续文字一路吞到下一个 `[`，既错链又吃掉紧跟的 `[text](dest)`。新增 `linkifyBareUrls` 在渲染前把裸 URL 包成显式 `[url](url)`，边界在空白/CJK/全角标点处硬截断，位于链接目标或代码内的 URL 跳过。概念页 [[concepts/markdown-pipeline]]、[[concepts/file-preview]] 已更新。
+- **应用内 Office 文档预览**（BACK-825~831）：项目内任意同源 `.docx`/`.pdf`/`.pptx`/`.xlsx` 链接在专用模态框中预览，而非下载。BACK-827 移除 `/assets/*` 限制、加 `GET /api/raw-file` 原始字节端点与同源守卫；BACK-825 Word 预览基于 docx-editor（真实分页、只读/编辑双模式、`POST /api/docx/save` 写回）；BACK-828 PDF 预览基于自托管 pdf.js（大纲目录、fit-to-width）；BACK-829 PPTX 预览基于 `@aiden0z/pptx-renderer`（缩略图目录 + WPS 式放映）；BACK-830 XLSX 预览基于 Univer（高保真布局、唯一带编辑/写回的双模式，原地 OOXML 补丁只重写 `<sheetData>`/`<mergeCells>`）；BACK-826 对不可预览的 Office 格式弹转格式提示而非下载；BACK-831 把四模态框约 60 行 CJK 字面量移入字典（通用动词从 `common` 读、`fullscreen` 提升、预览专用文案进 `preview`，Univer 工作台映射到应用语言包）。概念页 [[concepts/file-preview]] 已更新，用户手册新增「文档预览」页。
+- **Markdown 渲染管线提示**：BACK-824 的预处理（`linkifyBareUrls`、`encodeLocalFileLinkDestinations`、`prepareWikiMarkdown`、`sanitizeRawHtmlAngleBrackets`）均代码区间感知，围栏内容不动——这是查询块写回定位能逐字节匹配的前提。
+- **MDB (Access) 实况查询第四块**（m-18，BACK-832~834）：`mdb-query` 围栏块接入与 sqlite/duckdb/cypher 同一共享内核，`src/mdb/*` 用 `mdb-reader` 把 Access 表载入内存 SQLite（`PRAGMA query_only=ON`）再执行，支持跨表 JOIN 与完整 SQL 面；`decodeMdbText` 做 GBK/CP936 字节级恢复修复乱码；不支持 `copy_to`（服务端拒）、CLI/MCP 入口与 sqlite/duckdb 一致保持无，验收样本 doc-33 用真实 `lizheng.mdb`（87 表）。BACK-833 给四个查询块加阅读视图内就地编辑流（Save/Test/Discard/Format，块定位改发整段围栏体、服务端 `POST /api/query-block/save` 原子写），BACK-834 把四方言 i18n 字典合并为共享 `queryBlock` 基（净减约 355 行重复）。概念页 [[concepts/mdb-live-query]]、[[concepts/sql-query-blocks]] 已更新，用户手册新增「MDB 查询块」页。
+
 
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播

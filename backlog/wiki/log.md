@@ -1184,3 +1184,21 @@ Chronological, append-only record of all wiki operations.
 **统计**：Sources 416→420、Concepts 48（无新增）、Decisions 82→83、Execution notes 28（更新）、Reasoning 6、User manual 48 页。
 
 **mini-lint**：420 个 source 页 `source_path` 全量校验（`tmp/wiki-lint-check.sh`），新增 4 页全部解析成功；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）与历史裁决一致，本次不改写。新增/改动页面的 wikilink 逐条校验（`tmp/wiki-link-check.sh`），除文档内语法示例（`[[wikilink]]`、`[[path/to/page]]`）外无断链。
+
+## [2026-10-31 23:54] batch-ingest+usermanual | 增量摄取 BACK-824~834/m-18/doc-33（13 源），手册新增文档预览与 MDB 查询块
+
+**摄取范围**：git-aware 增量（基线 2026-10-28 15:40 的 batch-ingest 条目）检出 13 份新源——BACK-824（裸 URL 紧贴中文被 autolink 吞掉修复）、BACK-825~831（应用内 Office 文档预览：Word/PDF/PPTX/XLSX 模态框 + 任意路径 + 不可预览提示 + 四模态框本地化）、BACK-832（MDB 实况查询实现与覆盖审计）、BACK-833（查询块内联 SQL 编辑器）、BACK-834（查询块 i18n 字典合并）、doc-33（MDB 验收样本）、m-18（MDB Live Query 里程碑），全部 Done / 已提交。git status 仅 `.agents/`（本次安装的 wiki skill）。
+
+**新建** 13 个 source 页：[[sources/back-824-fix-bare-url-autolink-gobble]]、[[sources/back-825-word-document-preview-modal]]、[[sources/back-826-non-previewable-office-notice]]、[[sources/back-827-project-wide-docx-pdf-preview]]、[[sources/back-828-pdf-preview-modal]]、[[sources/back-829-pptx-preview-modal]]、[[sources/back-830-xlsx-preview-modal]]、[[sources/back-831-localize-preview-modals]]、[[sources/back-832-mdb-live-query]]、[[sources/back-833-live-query-inline-sql-editor]]、[[sources/back-834-consolidate-query-block-i18n]]、[[sources/doc-33-mdb-live-query-demo]]、[[sources/m-18-mdb-live-query]]。
+
+**新建** 1 个 concept 页：[[concepts/mdb-live-query]]（mdb-query 第四块的引擎结构、GBK 解码、与 sqlite 同构的安全模型、内联编辑）。
+
+**更新** 概念页：[[concepts/file-preview]] 新增「Office 文档预览模态框（BACK-825~831）」整节（任意路径 + 四模态框 + 不可预览提示 + 本地化），Related Sources 补 8 条；[[concepts/sql-query-blocks]] 新增「MDB 引擎：第四块（m-18）」「内联 SQL 编辑器（BACK-833）」「查询块 i18n 合并（BACK-834）」三节，描述同步为「sqlite/duckdb/cypher/mdb 四块」，Related Sources 补 5 条。
+
+**手册新增 2 页**（SUMMARY 同步 +2）：`40-Web界面/12-文档预览.md`（Word/PDF/PPTX/XLSX 应用内预览、只读编辑、不可预览提示、本地化）、`80-图谱与数据查询/07-MDB查询块.md`（mdb-query 第四块、GBK 解码、与 sqlite 同构、联动 ECharts、内联编辑）。**手册更新**：`80-图谱与数据查询/02-SQL查询块.md` 引言扩为三引擎并新增「在阅读视图内编辑」节；`usermanual/README.md` 核心特性新增「Office 文档预览」条、将「实况 SQL 查询块」扩为 sqlite/duckdb/mdb 三引擎并标注就地编辑。`tmp/merge-usermanual.py` 重新合并：9 章 50 页。
+
+**overview**：新增「应用内 Office 文档预览与 MDB 实况查询（BACK-824~834 / m-18）」小节，串起 autolink 修复、Office 预览四模态框、MDB 第四块与内联编辑器。
+
+**统计**：Sources 420→433、Concepts 48→49、User manual 48→50 页、Decisions 83（无新增）。
+
+**mini-lint**：13 个新增 source 页 `source_path` 全数解析成功（`tmp/wiki-lint-check.sh` 等价校验）；index.md 全子目录章节完整（Sources/Concepts/User Manual 等均已含本次新增条目）；新增/改动页面的 wikilink 逐条校验，除文档内语法示例外无断链。
