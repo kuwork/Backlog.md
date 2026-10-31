@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type { BunPlugin } from "bun";
 import tailwind from "bun-plugin-tailwind";
 
@@ -70,6 +70,21 @@ const duckdbSiblingPlugin: BunPlugin = {
 	},
 };
 
+// jszip's main entry requires `readable-stream`, which requires the Node `stream` builtin.
+// A standalone browser target honours jszip's `browser` field and resolves the main entry to
+// its self-contained `dist/jszip.min.js`, but the HTML bundle built into the server binary does
+// not, so it lands on `readable-stream` and fails the build. Point jszip straight at its own
+// browser build. Nothing under src/ imports jszip directly, so this only affects the
+// docx-editor chain pulled in by the web UI.
+const jszipBrowserPlugin: BunPlugin = {
+	name: "jszip-browser-dist",
+	setup(build) {
+		build.onResolve({ filter: /^jszip$/ }, () => ({
+			path: join(process.cwd(), "node_modules", "jszip", "dist", "jszip.min.js"),
+		}));
+	},
+};
+
 if (outputDirectory !== ".") {
 	await mkdir(outputDirectory, { recursive: true });
 }
@@ -83,7 +98,7 @@ const result = await Bun.build({
 		"process.env.NODE_ENV": JSON.stringify("production"),
 	},
 	external,
-	plugins: [tailwind, duckdbSiblingPlugin],
+	plugins: [tailwind, duckdbSiblingPlugin, jszipBrowserPlugin],
 	compile: {
 		outfile,
 		...(target ? { target: target as Bun.Build.CompileTarget } : {}),

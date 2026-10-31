@@ -13,6 +13,8 @@ interface ModalProps {
 	actions?: React.ReactNode; // optional actions rendered in header before close
 	leftActions?: React.ReactNode; // optional actions rendered in header before title
 	toc?: boolean; // when true, a bookmark tab on the left edge opens a floating outline of the content headings
+	fullscreen?: boolean; // when true, the panel fills the viewport (CSS fullscreen)
+	noPadding?: boolean; // when true, the body has no padding so a child can clip to the panel's rounded corners
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -25,6 +27,8 @@ const Modal: React.FC<ModalProps> = ({
 	actions,
 	leftActions,
 	toc,
+	fullscreen = false,
+	noPadding = false,
 }) => {
 	const { t } = useI18n();
 	const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -73,11 +77,17 @@ const Modal: React.FC<ModalProps> = ({
 	return (
 		<div
 			ref={overlayRef}
-			className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4"
+			className={`fixed inset-0 z-50 flex items-center justify-center ${
+				fullscreen ? "bg-black/60 p-0" : "bg-black/40 p-4 dark:bg-black/60"
+			}`}
 			role="presentation"
 		>
 			<div
-				className={`relative flex max-h-[94vh] w-full flex-col rounded-lg border border-gray-200 bg-white shadow-2xl transition-colors duration-200 dark:border-gray-600 dark:bg-gray-800 ${maxWidthClass}`}
+				className={`relative flex w-full flex-col border border-gray-200 bg-white shadow-2xl transition-colors duration-200 dark:border-gray-600 dark:bg-gray-800 ${
+					fullscreen
+						? "h-screen max-h-none w-screen max-w-none rounded-none"
+						: `max-h-[94vh] rounded-lg ${maxWidthClass}`
+				}`}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="modal-title"
@@ -105,7 +115,10 @@ const Modal: React.FC<ModalProps> = ({
 						</button>
 					</div>
 				</div>
-				<div ref={contentRef} className="min-h-0 overflow-y-auto px-6 pt-4 pb-6">
+				<div
+					ref={contentRef}
+					className={`min-h-0 ${noPadding ? "overflow-hidden p-0" : "overflow-y-auto px-6 pt-4 pb-6"}`}
+				>
 					{children}
 				</div>
 			</div>

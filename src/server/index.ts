@@ -998,6 +998,12 @@ export class BacklogServer {
 					"/api/docx/convert": {
 						POST: async (req: Request) => await this.handleConvertDocx(req),
 					},
+					"/api/preview/docx": {
+						GET: async (req: Request) => await this.handlePreviewDocx(req),
+					},
+					"/api/docx/save": {
+						POST: async (req: Request) => await this.handleSaveDocx(req),
+					},
 					"/sequences": {
 						GET: async () => await this.handleGetSequences(),
 					},
@@ -1009,6 +1015,12 @@ export class BacklogServer {
 					},
 					"/api/sequences/move": {
 						POST: async (req: Request) => await this.handleMoveSequence(req),
+					},
+					// Serve vendored web libraries (e.g. pdf.js) from the project source so they
+					// never pollute the user's backlog/assets data directory. Embedded into the
+					// compiled binary via static new URL(import.meta.url).
+					"/vendor/*": {
+						GET: async (req: Request) => await this.handleVendorRequest(req),
 					},
 					// Serve files placed under backlog/assets at /assets/<relative-path>
 					"/assets/*": {
@@ -1207,6 +1219,100 @@ export class BacklogServer {
 		}
 	}
 
+	// Vendored web libraries embedded at build time. Only the files referenced here are
+	// embedded, so this stays small. pdf.js is self-hosted (not bundled) so the browser
+	// bundle stays Node-builtin-free.
+	private static readonly VENDOR_FILES: Record<string, URL> = {
+		"pdf.mjs": new URL("../web/vendor/pdf.mjs", import.meta.url),
+		"pdf.worker.min.mjs": new URL("../web/vendor/pdf.worker.min.mjs", import.meta.url),
+	};
+
+	private async handleVendorRequest(req: Request): Promise<Response> {
+		try {
+			const url = new URL(req.url);
+			const name = decodeURIComponent(url.pathname.replace(/^\/vendor\//, ""));
+			// restrict to known vendored files (no path traversal / arbitrary reads)
+			if (!Object.hasOwn(BacklogServer.VENDOR_FILES, name)) {
+				return new Response("Not Found", { status: 404 });
+			}
+			const vendorUrl = BacklogServer.VENDOR_FILES[name];
+			if (!vendorUrl) return new Response("Not Found", { status: 404 });
+			const file = Bun.file(vendorUrl);
+			if (!(await file.exists())) return new Response("Not Found", { status: 404 });
+			const ext = name.toLowerCase().split(".").pop() ?? "";
+			const mime = ext === "mjs" || ext === "js" ? "application/javascript" : "application/octet-stream";
+			return new Response(file, { headers: { "Content-Type": mime } });
+		} catch (error) {
+			console.error("Error serving vendor file:", error);
+			return new Response("Internal Server Error", { status: 500 });
+		}
+	}
+
+	private async handlePreviewDocx(req: Request): Promise<Response> {
+		try {
+			const url = new URL(req.url);
+			const rawPath = url.searchParams.get("path") || "";
+			if (!rawPath) {
+				return Response.json({ error: "path parameter is required" }, { status: 400 });
+			}
+			if (!rawPath.toLowerCase().endsWith(".docx")) {
+				return Response.json({ error: "Only .docx files are supported" }, { status: 400 });
+			}
+			const absPath = join(this.core.filesystem.rootDir, rawPath);
+			const file = Bun.file(absPath);
+			if (!(await file.exists())) {
+				return Response.json({ error: "File not found" }, { status: 404 });
+			}
+			const buffer = Buffer.from(await file.arrayBuffer());
+			const result = await convertDocxToMarkdown(buffer, this.core.assets);
+			return Response.json({ html: result.html, images: result.images, messages: result.messages });
+		} catch (error) {
+			console.error("Error previewing docx:", error);
+			const message = error instanceof Error ? error.message : "Failed to preview docx";
+			if (message === "Access denied" || message === "File not found") {
+				return Response.json({ error: message }, { status: 404 });
+			}
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	/**
+	 * Persist an edited .docx back to its project-relative path, overwriting the file.
+	 * The raw bytes come in the request body (application/octet-stream).
+	 */
+	private async handleSaveDocx(req: Request): Promise<Response> {
+		try {
+			const url = new URL(req.url);
+			const rawPath = url.searchParams.get("path") || "";
+			if (!rawPath) {
+				return Response.json({ error: "path parameter is required" }, { status: 400 });
+			}
+			if (!rawPath.toLowerCase().endsWith(".docx")) {
+				return Response.json({ error: "Only .docx files are supported" }, { status: 400 });
+			}
+			const rootDir = this.core.filesystem.rootDir;
+			const absPath = join(rootDir, rawPath);
+			// Reject anything that escapes the project root (path traversal / leading slash).
+			const rel = relative(rootDir, absPath);
+			if (rel === "" || rel.startsWith("..") || rel.startsWith("/")) {
+				return Response.json({ error: "Access denied" }, { status: 403 });
+			}
+			const bytes = new Uint8Array(await req.arrayBuffer());
+			if (bytes.byteLength === 0) {
+				return Response.json({ error: "Empty request body" }, { status: 400 });
+			}
+			await Bun.write(absPath, bytes);
+			return Response.json({ ok: true, size: bytes.byteLength });
+		} catch (error) {
+			console.error("Error saving docx:", error);
+			const message = error instanceof Error ? error.message : "Failed to save docx";
+			if (message === "Access denied" || message === "File not found") {
+				return Response.json({ error: message }, { status: 404 });
+			}
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
 	private async handleAssetRequest(req: Request): Promise<Response> {
 		try {
 			const url = new URL(req.url);
@@ -1244,6 +1350,7 @@ export class BacklogServer {
 				txt: "text/plain",
 				css: "text/css",
 				js: "application/javascript",
+				mjs: "application/javascript",
 				// Video
 				mp4: "video/mp4",
 				webm: "video/webm",

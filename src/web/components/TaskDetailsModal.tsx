@@ -18,8 +18,11 @@ import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
+import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
 import ChipInput from "./ChipInput";
 import DependencyInput from "./DependencyInput";
+import DocPdfPreviewModal from "./DocPdfPreviewModal";
+import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import type { NodeStyle } from "./GraphLegend";
 import MermaidMarkdown from "./MermaidMarkdown";
@@ -2865,9 +2868,16 @@ export const TaskDetailsModal: React.FC<Props> = ({
 					</>
 				)}
 			</Modal>
-			{previewTarget?.kind === "file" && (
-				<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />
-			)}
+			{previewTarget?.kind === "file" &&
+				(isBinaryOfficeFile(previewTarget.path) ? (
+					kindFromName(previewTarget.path) === "docx" ? (
+						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+					) : (
+						<DocPdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+					)
+				) : (
+					<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />
+				))}
 			{previewTarget?.kind === "entity" && (
 				<FilePreviewModal
 					path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}

@@ -1242,6 +1242,31 @@ export class ApiClient {
 		}>(`${API_BASE}/file-content?path=${encodeURIComponent(path)}`);
 	}
 
+	async previewDocx(
+		path: string,
+	): Promise<{ html: string; images: { tempUrl: string; alt: string }[]; messages: string[] }> {
+		return this.fetchJson<{ html: string; images: { tempUrl: string; alt: string }[]; messages: string[] }>(
+			`${API_BASE}/preview/docx?path=${encodeURIComponent(path)}`,
+		);
+	}
+
+	/**
+	 * Persist an edited .docx back to its project-relative path. Sends the raw bytes
+	 * (not JSON) so the server can write them verbatim; overwrites the existing file.
+	 */
+	async saveDocx(path: string, bytes: ArrayBuffer): Promise<{ ok: true; size: number }> {
+		const response = await fetch(`${API_BASE}/docx/save?path=${encodeURIComponent(path)}`, {
+			method: "POST",
+			headers: { "Content-Type": "application/octet-stream" },
+			body: bytes,
+		});
+		if (!response.ok) {
+			const text = await response.text().catch(() => "");
+			throw new Error(`${response.status} ${text || response.statusText}`);
+		}
+		return (await response.json()) as { ok: true; size: number };
+	}
+
 	async fetchDraft(id: string): Promise<Task> {
 		const response = await fetch(`${API_BASE}/drafts/${encodeURIComponent(id)}`);
 		if (!response.ok) {

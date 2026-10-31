@@ -14,6 +14,9 @@ import { isTypingTarget } from "../utils/keyboard";
 import { formatMilestoneId, isDoneStatus, milestoneKey } from "../utils/milestones";
 import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
+import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
+import DocPdfPreviewModal from "./DocPdfPreviewModal";
+import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import type { NodeStyle } from "./GraphLegend";
 import MermaidMarkdown from "./MermaidMarkdown";
@@ -1212,7 +1215,17 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 			</Modal>
 
 			{/* In-app preview for a documentation entry (parity with the task popup) */}
-			{isOpen && previewPath && <FilePreviewModal path={previewPath} onClose={() => setPreviewPath(null)} />}
+			{isOpen &&
+				previewPath &&
+				(isBinaryOfficeFile(previewPath) ? (
+					kindFromName(previewPath) === "docx" ? (
+						<DocPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
+					) : (
+						<DocPdfPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
+					)
+				) : (
+					<FilePreviewModal path={previewPath} onClose={() => setPreviewPath(null)} />
+				))}
 		</>
 	);
 };
