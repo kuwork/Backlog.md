@@ -4,10 +4,10 @@ import type { Decision, DocsTreeNode, Document, Task, WikiTreeNode } from "../..
 import { useI18nContext } from "../contexts/I18nContext";
 import { TocProvider } from "../contexts/TocContext";
 import { isNonPreviewableOffice, kindFromName } from "./binaryOfficeFile";
-import DocPdfPreviewModal from "./DocPdfPreviewModal";
 import DocPreviewModal from "./DocPreviewModal";
 import { HealthIndicator, HealthSuccessToast } from "./HealthIndicator";
 import Navigation from "./Navigation";
+import PdfPreviewModal from "./PdfPreviewModal";
 import SideNavigation from "./SideNavigation";
 import { SuccessToast } from "./SuccessToast";
 
@@ -164,7 +164,7 @@ export default function Layout({
 							fileName={previewFile.name}
 						/>
 					) : (
-						<DocPdfPreviewModal
+						<PdfPreviewModal
 							isOpen={Boolean(previewFile)}
 							onClose={() => setPreviewFile(null)}
 							fileUrl={previewFile.url}

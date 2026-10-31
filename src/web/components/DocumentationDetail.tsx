@@ -14,11 +14,11 @@ import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
 import { AmbiguousIdNotice } from "./AmbiguousIdNotice";
 import { BacklinkList } from "./BacklinkList";
 import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
-import DocPdfPreviewModal from "./DocPdfPreviewModal";
 import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
+import PdfPreviewModal from "./PdfPreviewModal";
 import { SuccessToast } from "./SuccessToast";
 
 // Custom MDEditor wrapper for proper height handling
@@ -809,7 +809,7 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 					kindFromName(previewTarget.path) === "docx" ? (
 						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : (
-						<DocPdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					)
 				) : (
 					<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />

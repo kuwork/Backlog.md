@@ -15,7 +15,6 @@ import { formatMilestoneId, isDoneStatus, milestoneKey } from "../utils/mileston
 import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
-import DocPdfPreviewModal from "./DocPdfPreviewModal";
 import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import type { NodeStyle } from "./GraphLegend";
@@ -24,6 +23,7 @@ import MilestoneTaskRow from "./MilestoneTaskRow";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
+import PdfPreviewModal from "./PdfPreviewModal";
 import StoredDate from "./StoredDate";
 import TaskDependencyGraph, { type GraphViewports } from "./TaskDependencyGraph";
 import { HeaderBackButton } from "./TaskDetailsModal";
@@ -1221,7 +1221,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 					kindFromName(previewPath) === "docx" ? (
 						<DocPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					) : (
-						<DocPdfPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
+						<PdfPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					)
 				) : (
 					<FilePreviewModal path={previewPath} onClose={() => setPreviewPath(null)} />

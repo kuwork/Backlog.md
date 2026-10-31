@@ -21,7 +21,6 @@ import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
 import { binaryOfficeFileProps, isBinaryOfficeFile, isNonPreviewableOffice, kindFromName } from "./binaryOfficeFile";
 import ChipInput from "./ChipInput";
 import DependencyInput from "./DependencyInput";
-import DocPdfPreviewModal from "./DocPdfPreviewModal";
 import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import type { NodeStyle } from "./GraphLegend";
@@ -29,6 +28,7 @@ import MermaidMarkdown from "./MermaidMarkdown";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
+import PdfPreviewModal from "./PdfPreviewModal";
 import StoredDate from "./StoredDate";
 import { SuccessToast } from "./SuccessToast";
 import TabButton from "./TabButton";
@@ -2903,7 +2903,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 					kindFromName(previewTarget.path) === "docx" ? (
 						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : (
-						<DocPdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					)
 				) : (
 					<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />
