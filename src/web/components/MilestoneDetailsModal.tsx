@@ -24,6 +24,7 @@ import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
 import PdfPreviewModal from "./PdfPreviewModal";
+import PptxPreviewModal from "./PptxPreviewModal";
 import StoredDate from "./StoredDate";
 import TaskDependencyGraph, { type GraphViewports } from "./TaskDependencyGraph";
 import { HeaderBackButton } from "./TaskDetailsModal";
@@ -1220,6 +1221,8 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				(isBinaryOfficeFile(previewPath) ? (
 					kindFromName(previewPath) === "docx" ? (
 						<DocPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
+					) : kindFromName(previewPath) === "pptx" ? (
+						<PptxPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					) : (
 						<PdfPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
 					)

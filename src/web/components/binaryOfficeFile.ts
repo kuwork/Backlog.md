@@ -1,9 +1,10 @@
-export type PreviewKind = "pdf" | "docx" | "unsupported";
+export type PreviewKind = "pdf" | "docx" | "pptx" | "unsupported";
 
 export function kindFromName(name: string): PreviewKind {
 	const ext = name.toLowerCase().split(".").pop() ?? "";
 	if (ext === "pdf") return "pdf";
 	if (ext === "docx") return "docx";
+	if (ext === "pptx") return "pptx";
 	return "unsupported";
 }
 
@@ -14,9 +15,10 @@ export function isBinaryOfficeFile(path: string): boolean {
 
 /**
  * Office file types the in-app preview cannot render (legacy binary .doc, the
- * PowerPoint/Excel families, macro-enabled variants, templates, ...). These are
- * intercepted so the UI can show a notice instead of letting the browser load
- * or download them. .docx and .pdf are intentionally excluded (they preview).
+ * legacy .ppt/.pot/.pps families, the Excel families, macro-enabled variants,
+ * templates, ...). These are intercepted so the UI can show a notice instead of
+ * letting the browser load or download them. .docx, .pdf and .pptx are
+ * intentionally excluded (they preview).
  */
 const NON_PREVIEWABLE_OFFICE_EXTS = new Set([
 	"doc",
@@ -25,7 +27,6 @@ const NON_PREVIEWABLE_OFFICE_EXTS = new Set([
 	"dotm",
 	"dotx",
 	"ppt",
-	"pptx",
 	"pptm",
 	"pot",
 	"potx",
@@ -67,7 +68,7 @@ export interface BinaryOfficePreviewProps {
 export function binaryOfficeFileProps(path: string): Omit<BinaryOfficePreviewProps, "onClose"> {
 	const fileName = decodeURIComponent(path.split("/").pop() ?? path);
 	const lower = path.toLowerCase();
-	if (lower.endsWith(".pdf") || lower.endsWith(".docx")) {
+	if (lower.endsWith(".pdf") || lower.endsWith(".docx") || lower.endsWith(".pptx")) {
 		return { fileName, fileUrl: `/api/raw-file?path=${encodeURIComponent(path)}`, filePath: path };
 	}
 	return { fileName, filePath: path };

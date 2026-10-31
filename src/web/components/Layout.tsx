@@ -8,6 +8,7 @@ import DocPreviewModal from "./DocPreviewModal";
 import { HealthIndicator, HealthSuccessToast } from "./HealthIndicator";
 import Navigation from "./Navigation";
 import PdfPreviewModal from "./PdfPreviewModal";
+import PptxPreviewModal from "./PptxPreviewModal";
 import SideNavigation from "./SideNavigation";
 import { SuccessToast } from "./SuccessToast";
 
@@ -46,7 +47,7 @@ export default function Layout({
 	const [officeNotice, setOfficeNotice] = useState(false);
 	const { t } = useI18nContext();
 
-	// Global capture-phase interceptor: any click on a same-origin project .docx or .pdf
+	// Global capture-phase interceptor: any click on a same-origin project .docx, .pdf or .pptx
 	// link opens the binary preview modal instead of navigating/downloading. Capture
 	// phase runs before MermaidMarkdown's anchor onClick (which would otherwise try the
 	// text-file preview path and fall back to window.open for binaries). Unlike the
@@ -82,7 +83,7 @@ export default function Layout({
 				// Malformed percent-escape: keep the href as written rather than failing.
 			}
 			const path = projectPath.toLowerCase();
-			const isPreviewable = path.endsWith(".docx") || path.endsWith(".pdf");
+			const isPreviewable = path.endsWith(".docx") || path.endsWith(".pdf") || path.endsWith(".pptx");
 			if (!isPreviewable && !isNonPreviewableOffice(path)) return;
 			// Two addressing conventions, told apart by where the link lives: a rendered
 			// markdown body (description / comment / notes) addresses assets as `assets/...`,
@@ -157,6 +158,14 @@ export default function Layout({
 				<div className="relative z-[60]">
 					{kindFromName(previewFile.name) === "docx" ? (
 						<DocPreviewModal
+							isOpen={Boolean(previewFile)}
+							onClose={() => setPreviewFile(null)}
+							fileUrl={previewFile.url}
+							filePath={previewFile.filePath}
+							fileName={previewFile.name}
+						/>
+					) : kindFromName(previewFile.name) === "pptx" ? (
+						<PptxPreviewModal
 							isOpen={Boolean(previewFile)}
 							onClose={() => setPreviewFile(null)}
 							fileUrl={previewFile.url}

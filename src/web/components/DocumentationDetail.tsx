@@ -19,6 +19,7 @@ import FilePreviewModal from "./FilePreviewModal";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import PdfPreviewModal from "./PdfPreviewModal";
+import PptxPreviewModal from "./PptxPreviewModal";
 import { SuccessToast } from "./SuccessToast";
 
 // Custom MDEditor wrapper for proper height handling
@@ -808,6 +809,8 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 				(isBinaryOfficeFile(previewTarget.path) ? (
 					kindFromName(previewTarget.path) === "docx" ? (
 						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+					) : kindFromName(previewTarget.path) === "pptx" ? (
+						<PptxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : (
 						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					)

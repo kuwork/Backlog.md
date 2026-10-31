@@ -29,6 +29,7 @@ import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { PathAutocomplete } from "./PathAutocomplete";
 import PdfPreviewModal from "./PdfPreviewModal";
+import PptxPreviewModal from "./PptxPreviewModal";
 import StoredDate from "./StoredDate";
 import { SuccessToast } from "./SuccessToast";
 import TabButton from "./TabButton";
@@ -2902,6 +2903,8 @@ export const TaskDetailsModal: React.FC<Props> = ({
 				(isBinaryOfficeFile(previewTarget.path) ? (
 					kindFromName(previewTarget.path) === "docx" ? (
 						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+					) : kindFromName(previewTarget.path) === "pptx" ? (
+						<PptxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					) : (
 						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
 					)
