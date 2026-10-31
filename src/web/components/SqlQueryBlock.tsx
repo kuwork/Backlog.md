@@ -94,7 +94,7 @@ export interface QueryBlockResult extends SqliteQueryResult {
 /** Everything that differs between the engines, so the render logic is written exactly once. */
 export interface QueryEngineConfig {
 	/** Engine id, surfaced nowhere but handy for debugging and future branching. */
-	id: "sqlite" | "duckdb" | "cypher";
+	id: "sqlite" | "duckdb" | "cypher" | "mdb";
 	/** The i18n strings for this engine's block. */
 	dict: QueryBlockDict;
 	/**

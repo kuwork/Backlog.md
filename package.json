@@ -123,6 +123,7 @@
     "echarts": "^6.1.0",
     "get-port": "^7.2.0",
     "jszip": "^3.10.1",
+    "mdb-reader": "^3.2.0",
     "mermaid": "11.16.1",
     "pdfjs-dist": "^6.4.299",
     "pele": "^1.8.0",

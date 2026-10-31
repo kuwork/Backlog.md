@@ -46,6 +46,10 @@ import { type CypherQueryResult, DEFAULT_CYPHER_ROW_CAP } from "../graph/store.t
 import { encodeGraphUpdatedMessage } from "../graph/updated.ts";
 import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
+import { listMdbFiles } from "../mdb/discover.ts";
+import { buildMdbCsv } from "../mdb/export.ts";
+import { resolveMdbSource } from "../mdb/paths.ts";
+import { MDB_MAX_ROWS, runMdbQuery } from "../mdb/query.ts";
 import { defaultExportName, renderCsvFile } from "../sqlite/csv.ts";
 import { listSqliteFiles } from "../sqlite/discover.ts";
 import { buildSqliteCsv } from "../sqlite/export.ts";
@@ -828,6 +832,15 @@ export class BacklogServer {
 					},
 					"/api/duckdb/export-csv": {
 						POST: async (req: Request) => await this.handleDuckdbExportCsv(req),
+					},
+					"/api/mdb/files": {
+						GET: async () => await this.handleListMdbFiles(),
+					},
+					"/api/mdb/query": {
+						POST: async (req: Request) => await this.handleMdbQuery(req),
+					},
+					"/api/mdb/export-csv": {
+						POST: async (req: Request) => await this.handleMdbExportCsv(req),
 					},
 					"/api/statuses": {
 						GET: async () => await this.handleGetStatuses(),
@@ -2868,6 +2881,98 @@ export class BacklogServer {
 		const cfg = await this.core.filesystem.loadConfig();
 		const maxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? DUCKDB_MAX_ROWS)), 1), 5000);
 		const result = await buildDuckdbCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, maxRows });
+		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
+		return Response.json(result.csv);
+	}
+
+	/**
+	 * GET /api/mdb/files - every MDB (Access) database in the project.
+	 *
+	 * Discovery, not a browsing surface: it answers "what can I point a block at?" now that any
+	 * project file is a legal source.
+	 */
+	private async handleListMdbFiles(): Promise<Response> {
+		try {
+			return Response.json({ files: await listMdbFiles(this.core.filesystem.rootDir) });
+		} catch (error) {
+			console.error("Error listing mdb files:", error);
+			return Response.json({ error: "Failed to list mdb files" }, { status: 500 });
+		}
+	}
+
+	/**
+	 * POST /api/mdb/query - one read-only statement against an Access file.
+	 *
+	 * The file is read with `mdb-reader` and loaded into an in-memory SQLite database; the statement
+	 * is run there through the shared engine. Every failure is a 400 with the reason written for a
+	 * human, because these messages render inside the block that asked for them.
+	 */
+	private async handleMdbQuery(req: Request): Promise<Response> {
+		let body: { source?: unknown; sql?: unknown; maxRows?: unknown; page?: unknown; pageSize?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source : "";
+		const sql = typeof body?.sql === "string" ? body.sql : "";
+
+		// `copy_to` is a DuckDB-only feature; an MDB block that sets it is a misconfiguration.
+		if (
+			typeof (body as { copyTo?: unknown }).copyTo === "string" &&
+			(body as { copyTo?: string }).copyTo?.trim().length
+		) {
+			return Response.json({ error: "copy_to 仅支持 duckdb-query 块；mdb-query 块没有写入路径。" }, { status: 400 });
+		}
+
+		const validated = validateReadOnlySql(sql);
+		if (!validated.ok) return Response.json({ error: validated.error }, { status: 400 });
+
+		// `source` is project-relative; the four containment gates in resolveMdbSource keep a
+		// client-supplied path inside the project (security-gotchas.md §1).
+		const resolved = resolveMdbSource({ projectRoot: this.core.filesystem.rootDir, source });
+		if (!resolved.ok) return Response.json({ error: resolved.error }, { status: 400 });
+
+		// Config tunes the preview cap; the 5000 hard ceiling stays a constant in the engine.
+		const cfg = await this.core.filesystem.loadConfig();
+		const queryMaxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? MDB_MAX_ROWS)), 1), 5000);
+		const page =
+			typeof body?.page === "number" && Number.isFinite(body.page) && body.page >= 1
+				? Math.trunc(body.page)
+				: undefined;
+		const pageSize =
+			typeof body?.pageSize === "number" && Number.isFinite(body.pageSize) && body.pageSize >= 1
+				? Math.trunc(body.pageSize)
+				: undefined;
+		const maxRows = typeof body?.maxRows === "number" && Number.isFinite(body.maxRows) ? body.maxRows : queryMaxRows;
+		try {
+			return Response.json(runMdbQuery({ dbPath: resolved.path, sql: validated.sql, maxRows, page, pageSize }));
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return Response.json({ error: `Query failed: ${detail}` }, { status: 400 });
+		}
+	}
+
+	/**
+	 * POST /api/mdb/export-csv - build the CSV of one read-only statement for the browser to save.
+	 *
+	 * The server never decides where the file goes: it re-gates `source` and `sql`, re-runs the
+	 * statement through the read-only path, serialises the result (BOM + rows) and hands the text
+	 * back with a suggested filename.
+	 */
+	private async handleMdbExportCsv(req: Request): Promise<Response> {
+		let body: { source?: unknown; sql?: unknown };
+		try {
+			body = (await req.json()) as typeof body;
+		} catch {
+			return Response.json({ error: "Request body is not valid JSON." }, { status: 400 });
+		}
+		const source = typeof body?.source === "string" ? body.source : "";
+		const sql = typeof body?.sql === "string" ? body.sql : "";
+
+		const cfg = await this.core.filesystem.loadConfig();
+		const maxRows = Math.min(Math.max(Math.trunc(Number(cfg?.queryMaxRows ?? MDB_MAX_ROWS)), 1), 5000);
+		const result = buildMdbCsv({ projectRoot: this.core.filesystem.rootDir, source, sql, maxRows });
 		if (!result.ok) return Response.json({ error: result.error }, { status: 400 });
 		return Response.json(result.csv);
 	}

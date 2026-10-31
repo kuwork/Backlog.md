@@ -163,10 +163,11 @@ After the code is done:
 * 🎛️ **State-machine visual editor** -- Edit project state transitions in Settings with a live preview tree
 
 * 📄 **Rich-text paste & document upload** -- Paste from Word or web pages as Markdown, with .docx upload and auto image extraction
+* 📎 **File preview** -- The web UI previews DOCX / XLSX / PPTX / PDF in high fidelity, with outline, full-screen playback, and XLSX edit write-back
 
 * 📅 **Tracking Gantt chart** -- Visual timeline based on `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` date fields, with planned vs. actual dual-layer comparison
 
-* 🗄️ **Live SQL query blocks** -- Embed read-only SQL queries in any Markdown body, rendered live from project-local SQLite / DuckDB / CSV / Excel data as table / list / value views, with export; a `cypher-query` fenced block runs read-only Cypher against the graph databases, with a force-directed graph view and `refresh: auto` hot updates
+* 🗄️ **Live SQL query blocks** -- Embed read-only SQL queries in any Markdown body, rendered live from project-local SQLite / DuckDB / **MDB (Access)** / CSV / Excel data as table / list / value views, with export; an `mdb-query` block reads `.mdb` / `.accdb` (the Access file is loaded into an in-memory SQLite instance that reuses the same engine, with GBK decoding handled automatically), while a `cypher-query` fenced block runs read-only Cypher against the graph databases, with a force-directed graph view and `refresh: auto` hot updates
 
 * 📈 **Chart Blocks** -- Draw flowcharts and data charts from `mermaid` / `echarts` fenced blocks in any Markdown body, covering every built-in ECharts series and following the app's light/dark mode; a query block can render its result as a chart, and a chart can bind a named query block in the same document via `fromQuery`
 
@@ -446,7 +447,7 @@ Task, wiki, and file modals include a bookmark-style outline: a narrow tab peeks
 
 ### Live SQL Query Blocks
 
-Any Markdown body (tasks, documents, decisions, memos, wiki pages) can embed read-only query fenced blocks; the web UI's reading view **executes the query live** against the project's data sources and renders the result, while the editor keeps showing the raw source. SQL data uses `sqlite-query` / `duckdb-query`:
+Any Markdown body (tasks, documents, decisions, memos, wiki pages) can embed read-only query fenced blocks; the web UI's reading view **executes the query live** against the project's data sources and renders the result, while the editor keeps showing the raw source. SQL data uses `sqlite-query` / `duckdb-query` / `mdb-query`:
 
 ````markdown
 ```sqlite-query
@@ -459,7 +460,7 @@ sql: |
 ```
 ````
 
-- `source` is a project-relative path: `.sqlite` / `.sqlite3` / `.db` for `sqlite-query`; `.duckdb` plus `.csv` / `.xlsx` for `duckdb-query` (CSV/Excel open an in-memory instance and read the file directly; the Excel extension autoloads)
+- `source` is a project-relative path: `.sqlite` / `.sqlite3` / `.db` for `sqlite-query`; `.duckdb` plus `.csv` / `.xlsx` for `duckdb-query` (CSV/Excel open an in-memory instance and read the file directly; the Excel extension autoloads); `.mdb` / `.accdb` for `mdb-query` (the Access file is loaded into an in-memory SQLite instance that reuses the same query engine, and GBK/CP936 text is decoded into correct Chinese automatically)
 - Read-only is enforced in three layers: statement-shape allowlist, keyword blocklist, and a physically read-only engine handle; results cap at 500 rows
 - `view` supports `table` (default) / `list` / `value`; `duckdb-query` additionally accepts `copy_to: <path>` to export the result as a CSV / Excel file inside the project
 
@@ -488,6 +489,17 @@ query: |
 To keep the Web UI running as an auto-starting local service, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
 
 ---
+
+## 📎 File Preview (Office / PDF)
+
+The Backlog.md web UI ships high-fidelity file preview, so common office documents can be reviewed without leaving the app:
+
+- 📄 **DOCX preview** -- parses the OOXML in the browser via `@eigenpal/docx-editor-react` (ProseMirror), restoring true pagination while preserving paragraphs, headings, tables, images, and styling
+- 📊 **XLSX preview** -- renders spreadsheets via `Univer 1.3.0` + `SheetJS`, with a hand-written OOXML style reader (fonts / fills / borders / number formats); supports both read-only and edit modes, and writes edits back incrementally (only sheetData and mergeCells are regenerated, so style indexes stay intact)
+- 📑 **PPTX preview** -- renders slides via `@aiden0z/pptx-renderer`, with thumbnails, full-screen playback, and WPS-style shortcuts
+- 📕 **PDF preview** -- renders PDF via `pdf.js`, with page navigation, zoom, and outline
+
+All four previews carry a bookmark-style outline: a slim tab peeks from the dialog's left edge; clicking expands a panel as tall as the dialog, with scrollspy highlighting on scroll and smooth scrolling on click; when the panel's left edge is within 300px of the viewport it switches to floating mode so the outline stays usable in narrow windows.
 
 ## 🔧 MCP Integration (Model Context Protocol)
 

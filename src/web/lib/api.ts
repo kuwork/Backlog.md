@@ -283,6 +283,41 @@ export interface DuckdbCsvExport {
 }
 
 // ---------------------------------------------------------------------------
+// MDB (Access) live query explorer. The grid shape is identical to the SQL explorers' (an MDB file is
+// loaded into an in-memory SQLite database and queried through the same engine), so `SqliteQueryResult`
+// is reused; these types name the MDB wire contract.
+// ---------------------------------------------------------------------------
+
+export type MdbCell = SqliteCell;
+
+export interface MdbQueryResult extends SqliteQueryResult {}
+
+export interface MdbQueryRequest {
+	/** Project-relative path of the database; a leading slash is refused server-side. */
+	source: string;
+	sql: string;
+	maxRows?: number;
+	/** 1-based page for the pagination browser; when set, the server returns a single page. */
+	page?: number;
+	/** Rows per page for the pagination browser. */
+	pageSize?: number;
+}
+
+export interface MdbFileEntry {
+	path: string;
+	size: number;
+	mtime: string;
+}
+
+/** A CSV export to be saved by the browser: the file body and a suggested name, never a path. */
+export interface MdbCsvExport {
+	filename: string;
+	csv: string;
+	rows: number;
+	truncated: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Cypher live query blocks (doc-27). The grid comes back in the SQL explorers' shape (cells are
 // already coerced to `SqliteCell` server-side, §5.4), so `SqliteQueryResult` is reused; these types
 // name the Cypher wire contract.
@@ -1374,6 +1409,45 @@ export class ApiClient {
 		});
 		if (!response.ok) {
 			return throwResponseError(response, "Failed to export duckdb query");
+		}
+		return response.json();
+	}
+
+	/** Every MDB (Access) database the project contains, for `mdb-query` blocks and future pickers. */
+	async fetchMdbFiles(): Promise<MdbFileEntry[]> {
+		const response = await fetch(`${API_BASE}/mdb/files`);
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to list mdb files");
+		}
+		const data = (await response.json()) as { files: MdbFileEntry[] };
+		return data.files;
+	}
+
+	/** Runs one read-only statement; the server answers 400 with a human-readable Chinese reason. */
+	async runMdbQuery(payload: MdbQueryRequest): Promise<MdbQueryResult> {
+		const response = await fetch(`${API_BASE}/mdb/query`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to run mdb query");
+		}
+		return response.json();
+	}
+
+	/**
+	 * Asks the server to build the CSV (it re-gates `source` and `sql` and re-runs the read-only
+	 * statement). The browser then saves the returned text where the user chooses.
+	 */
+	async exportMdbCsv(payload: MdbQueryRequest): Promise<MdbCsvExport> {
+		const response = await fetch(`${API_BASE}/mdb/export-csv`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to export mdb query");
 		}
 		return response.json();
 	}

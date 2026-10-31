@@ -186,9 +186,9 @@ An item link opens the item modal; a code file link opens the file preview. Add 
 
 `backlog doc search <query>` lists matches across the document tree with id, title, path, type, tags, score, and a follow-up `backlog doc view` command for each hit. Add `--plain` for one line per hit, or `--json` for a versioned envelope. Paging works as it does on `doc list`: `--limit <n>` caps the list silently, and `--max-count <n>`, `--skip <n>` and `--count` page it. A cut list ends with `Showing <first>-<last> of <total> items. Next: backlog doc search <query> --max-count <n> --skip <m>`; run that command for the following hits and stop when the footer has no `Next:` part. `--count` prints only how many documents match and cannot be combined with `--json`.
 
-### Live SQL Query Blocks: `sqlite-query` / `duckdb-query`
+### Live SQL Query Blocks: `sqlite-query` / `duckdb-query` / `mdb-query`
 
-Any markdown body rendered by the Web UI (documents, tasks, decisions, memos, wiki pages) can embed a **live** SQL query with a `sqlite-query` or `duckdb-query` fenced code block. In the reading view the block executes against the data source and renders the result; in the editor it stays raw source and never executes. A `cypher-query` block does the same for the project's graph databases — see [Live Cypher Query Blocks](#live-cypher-query-blocks-cypher-query) below.
+Any markdown body rendered by the Web UI (documents, tasks, decisions, memos, wiki pages) can embed a **live** SQL query with a `sqlite-query`, `duckdb-query` or `mdb-query` fenced code block. In the reading view the block executes against the data source and renders the result; in the editor it stays raw source and never executes. An `mdb-query` block queries a Microsoft Access (`.mdb` / `.accdb`) file — see [Live MDB Query Blocks](#live-mdb-query-blocks-mdb-query) below. A `cypher-query` block does the same for the project's graph databases — see [Live Cypher Query Blocks](#live-cypher-query-blocks-cypher-query) below.
 
 ````markdown
 ```sqlite-query
@@ -217,6 +217,7 @@ Data sources:
 
 - `sqlite-query`: `.sqlite` / `.sqlite3` / `.db` files anywhere inside the project directory.
 - `duckdb-query`: `.duckdb` files, plus CSV / Excel data sources (`.csv` / `.xlsx`). For CSV/XLSX the block opens an in-memory instance and the SQL reads the file directly:
+- `mdb-query`: `.mdb` / `.accdb` (Microsoft Access) files anywhere inside the project directory.
 
   ````markdown
   ```duckdb-query
@@ -261,6 +262,32 @@ sql: |
 ````
 
 The server wraps the `SELECT` in `COPY (<sql>) TO '<target>'` (`.csv` → `HEADER TRUE`; `.xlsx` → `FORMAT XLSX, HEADER TRUE`), overwrites the target idempotently, and the block shows "written to: <path>". The written file stays inside the project, so it can itself become the `source` of another query block.
+
+#### Live MDB Query Blocks: `mdb-query`
+
+A Microsoft Access file (`.mdb` / `.accdb`) can be queried with a **live** `mdb-query` fenced block. The file is read with `mdb-reader` and loaded into an in-memory SQLite database, so the same SQL surface as `sqlite-query` applies — and joins across tables work. In the reading view the block executes and renders the result; in the editor it stays raw source and never executes.
+
+````markdown
+```mdb-query
+source: backlog/assets/sample.mdb
+view: table
+sql: |
+  SELECT "检查大类", COUNT(*) AS c
+  FROM "*数据质量评估统计表"
+  GROUP BY "检查大类"
+```
+````
+
+Data sources:
+
+- `mdb-query`: `.mdb` / `.accdb` (Microsoft Access) files anywhere inside the project directory.
+
+Rules (in addition to the shared ones above):
+
+- Table and column names coming from Access often contain spaces, Chinese characters or a leading `*`, so quote them with double quotes in SQL (e.g. `"表名"`); the engine is SQLite.
+- `copy_to` is **not** supported — an `mdb-query` block carrying it is rejected. The original file is always read-only, and the in-memory copy is `query_only`-guarded, so a block can never write it.
+- Results are preview-capped at 500 rows and flagged truncated beyond that; pagination is available, so a large table can be browsed without raising the preview cap. Value coercion is identical to `sqlite-query`.
+
 
 #### Live Cypher Query Blocks: `cypher-query`
 
@@ -380,7 +407,7 @@ forms.
 A query block can draw its own chart instead of a table: add `view: echarts` and a `chart` field
 holding JSON. It is the query-block's version of the `value` view — the result *is* the chart, so no
 separate ` ```echarts ` block or visible data-source block is needed. It works for `sqlite-query`,
-`duckdb-query`, and `cypher-query` alike.
+`duckdb-query`, `mdb-query`, and `cypher-query` alike.
 
 **Simple mapping form** — name the category and value columns:
 

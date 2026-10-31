@@ -105,8 +105,14 @@ export function runSqliteQuery(options: {
 	page?: number;
 	/** Rows per page for the pagination browser (default 50). */
 	pageSize?: number;
+	/**
+	 * A pre-opened database to run against instead of `dbPath`. Used by the MDB explorer, which loads
+	 * an Access file into an in-memory database and reuses this engine's execution, pagination and
+	 * cell coercion verbatim. When set, `dbPath` is used only as the result's `dbPath` label.
+	 */
+	database?: Database;
 }): SqliteQueryResult {
-	const db = openHandle(options.dbPath);
+	const db = options.database ?? openHandle(options.dbPath);
 	const started = performance.now();
 
 	// Pagination mode: push LIMIT / OFFSET down to the engine via a subquery wrap and count the

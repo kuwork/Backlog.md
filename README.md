@@ -160,8 +160,9 @@ AI 研究代码库之后，把实施计划写进任务。
 - 🕸️ **图谱查询** —— 对任务、文档、依赖与链接组成的项目图谱执行只读 Cypher 查询，与 Web UI 图谱搜索同源
 - 🎛️ **状态机可视化编辑器** —— 设置页中编辑项目状态流转，实时预览状态树
 - 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
+- 📎 **文件预览** —— Web UI 内置 DOCX / XLSX / PPTX / PDF 高保真预览，支持大纲、全屏播放与 XLSX 编辑回写
 - 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
-- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出；`cypher-query` 围栏块对图谱数据库执行只读 Cypher，支持表格 / 力导向图视图与图热更新自动重跑
+- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / **MDB (Access)** / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出；`mdb-query` 块读取 `.mdb` / `.accdb`（Access 库经内存 SQLite 复用同一引擎，自动处理 GBK 编码），`cypher-query` 围栏块对图谱数据库执行只读 Cypher，支持表格 / 力导向图视图与图热更新自动重跑
 - 📈 **图表块** —— 在任意 Markdown 正文用 `mermaid` / `echarts` 围栏块绘制流程图与数据图表，覆盖 ECharts 全部内置系列并跟随明暗主题；查询块可直接以图表呈现结果，图表也可通过 `fromQuery` 引用同文档内的命名查询块
 - 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
 - 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
@@ -438,7 +439,7 @@ backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --cl
 
 ### 实时 SQL 查询块
 
-任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入只读查询围栏代码块；Web UI 的阅读视图会对项目内的数据源**实时执行查询**并渲染结果，编辑态只显示源码。SQL 数据用 `sqlite-query` / `duckdb-query`：
+任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入只读查询围栏代码块；Web UI 的阅读视图会对项目内的数据源**实时执行查询**并渲染结果，编辑态只显示源码。SQL 数据用 `sqlite-query` / `duckdb-query` / `mdb-query`：
 
 ````markdown
 ```sqlite-query
@@ -451,7 +452,7 @@ sql: |
 ```
 ````
 
-- `source` 为项目相对路径：`sqlite-query` 支持 `.sqlite` / `.sqlite3` / `.db`；`duckdb-query` 支持 `.duckdb`，以及 `.csv` / `.xlsx`（开内存实例直接读文件，Excel 扩展自动装载）
+- `source` 为项目相对路径：`sqlite-query` 支持 `.sqlite` / `.sqlite3` / `.db`；`duckdb-query` 支持 `.duckdb`，以及 `.csv` / `.xlsx`（开内存实例直接读文件，Excel 扩展自动装载）；`mdb-query` 支持 `.mdb` / `.accdb`（Access 库经 mdb-reader 载入内存 SQLite 后复用同一查询引擎，GBK/CP936 文本自动解码为正确中文）
 - 只读三层保证：语句形状白名单 → 关键字黑名单 → 引擎物理只读；结果上限 500 行
 - `view` 支持 `table`（默认）/ `list` / `value`；`duckdb-query` 还可用 `copy_to: <路径>` 把查询结果导出为项目内的 CSV / Excel 文件
 
@@ -480,6 +481,17 @@ query: |
 要使 Web UI 作为自动启动的本地服务持续运行，请参阅 [将 Backlog.md 作为服务运行](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md)。
 
 ---
+
+## 📎 文件预览（Office / PDF）
+
+Backlog.md 的 Web UI 内置高保真文件预览，无需离开应用即可审阅常见办公文档：
+
+- 📄 **DOCX 预览** —— 基于 `@eigenpal/docx-editor-react`（ProseMirror）在浏览器解析 OOXML，还原真实分页，保留段落 / 标题 / 表格 / 图片与样式
+- 📊 **XLSX 预览** —— 基于 `Univer 1.3.0` + `SheetJS` 渲染电子表格，并自解析 OOXML 样式（字体 / 填充 / 边框 / 数字格式）；支持只读与编辑双模式，编辑结果增量回写原文件（仅重写 sheetData 与 mergeCells，样式索引无损）
+- 📑 **PPTX 预览** —— 基于 `@aiden0z/pptx-renderer` 渲染幻灯片，支持缩略图、全屏播放与 WPS 风格快捷键
+- 📕 **PDF 预览** —— 基于 `pdf.js` 渲染 PDF，支持页面导航、缩放与大纲
+
+四类预览均内置书签式大纲：窄标签从弹窗左缘探出，点击展开与弹窗等高的浮动面板，scrollspy 随滚动高亮、点击平滑滚动；面板左缘距视口不足 300px 时自动切换为悬浮模式，窄窗口下大纲始终可用。
 
 ## 🔧 MCP 集成（Model Context Protocol）
 

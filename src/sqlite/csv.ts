@@ -16,7 +16,7 @@ export const CSV_EXTENSION = ".csv";
 export const UTF8_BOM = "﻿";
 
 /** Extensions stripped from a database filename when suggesting a CSV export name. Shared by the SQLite and DuckDB explorers. */
-const DB_NAME_EXTENSIONS = [".sqlite", ".sqlite3", ".db", ".duckdb"] as const;
+const DB_NAME_EXTENSIONS = [".sqlite", ".sqlite3", ".db", ".duckdb", ".mdb", ".accdb"] as const;
 
 function cellToCsv(cell: SqliteCell): string {
 	if (cell === null) return "";

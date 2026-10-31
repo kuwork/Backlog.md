@@ -7,6 +7,7 @@ import type { PluggableList } from "unified";
 import { visit } from "unist-util-visit";
 import { DUCKDB_BLOCK_LANG } from "../../duckdb/block.ts";
 import { CYPHER_BLOCK_LANG } from "../../graph/block.ts";
+import { MDB_BLOCK_LANG } from "../../mdb/block.ts";
 import { SQLITE_BLOCK_LANG } from "../../sqlite/block.ts";
 import { QueryResultProvider } from "../charts/query-result-registry";
 import { getChartEngine } from "../charts/registry";
@@ -21,6 +22,7 @@ import ChartBlock from "./ChartBlock";
 import CypherQueryBlock from "./CypherQueryBlock";
 import DuckdbQueryBlock from "./DuckdbQueryBlock";
 import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
+import MdbQueryBlock from "./MdbQueryBlock";
 import SqliteQueryBlock from "./SqliteQueryBlock";
 
 interface Props {
@@ -284,8 +286,7 @@ function linkifyBareUrls(source: string): string {
 	const protectedRanges = getMarkdownCodeRanges(source);
 	// URL body stops at whitespace, `<` `>` `]`, quotes/backtick, CJK ideographs,
 	// and full-width / CJK punctuation so prose can never be swallowed.
-	const BARE_URL_RE =
-		/(?<![(\s])((?:https?:\/\/|www\.)[^\s<>\]"'`\u0060\u4e00-\u9fff\u3000-\u303f\uff01-\uff5e]+)/gi;
+	const BARE_URL_RE = /(?<![(\s])((?:https?:\/\/|www\.)[^\s<>\]"'`\u0060\u4e00-\u9fff\u3000-\u303f\uff01-\uff5e]+)/gi;
 	return source.replace(BARE_URL_RE, (match, ...args) => {
 		const offset = args[args.length - 2] as number;
 		for (const range of protectedRanges) {
@@ -499,6 +500,9 @@ function PreBlock(props: React.ComponentProps<"pre">) {
 	}
 	if (className.includes(`language-${DUCKDB_BLOCK_LANG}`)) {
 		return <DuckdbQueryBlock block={textOf(child?.props?.children)} />;
+	}
+	if (className.includes(`language-${MDB_BLOCK_LANG}`)) {
+		return <MdbQueryBlock block={textOf(child?.props?.children)} />;
 	}
 	if (className.includes(`language-${CYPHER_BLOCK_LANG}`)) {
 		return <CypherQueryBlock block={textOf(child?.props?.children)} />;
