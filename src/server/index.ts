@@ -983,6 +983,12 @@ export class BacklogServer {
 					"/api/file-content": {
 						GET: async (req: Request) => await this.handleGetFileContent(req),
 					},
+					// Stream raw bytes for a binary project file (docx/pdf/...) by its
+					// project-relative path. Mirrors /api/file-content (text) but returns
+					// the bytes with a content-type so the browser previews them in-place.
+					"/api/raw-file": {
+						GET: async (req: Request) => await this.handleRawFile(req),
+					},
 					"/api/list-files": {
 						GET: async (req: Request) => await this.handleListFiles(req),
 					},
@@ -3934,6 +3940,55 @@ export class BacklogServer {
 				return Response.json({ error: message }, { status: 400 });
 			}
 			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	/**
+	 * Stream raw bytes for a binary project file (docx/pdf/...) addressed by its
+	 * project-relative path. This is the binary counterpart of /api/file-content
+	 * (text): it reads by path so the in-app preview works for any project file,
+	 * not just those under backlog/assets. Guarded against path traversal and
+	 * restricted to the project data directory (backlog/).
+	 */
+	private async handleRawFile(req: Request): Promise<Response> {
+		try {
+			const url = new URL(req.url);
+			const rawPath = url.searchParams.get("path") || "";
+			if (!rawPath) {
+				return new Response("path parameter is required", { status: 400 });
+			}
+			const rootDir = this.core.filesystem.rootDir;
+			const absPath = join(rootDir, rawPath);
+			const rel = relative(rootDir, absPath);
+			// Reject anything that escapes the project root (traversal / leading slash).
+			if (rel === "" || rel.startsWith("..") || rel.startsWith("/")) {
+				return new Response("Access denied", { status: 403 });
+			}
+			// Restrict to the project data directory (backlog/) so repo files stay private.
+			const backlogRoot = join(rootDir, "backlog");
+			if (!absPath.startsWith(backlogRoot)) {
+				return new Response("Access denied", { status: 403 });
+			}
+			const file = Bun.file(absPath);
+			if (!(await file.exists())) {
+				return new Response("Not Found", { status: 404 });
+			}
+			const ext = (absPath.match(/\.([^./]+)$/) || [])[1]?.toLowerCase() ?? "";
+			const mimeMap: Record<string, string> = {
+				docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+				pdf: "application/pdf",
+				png: "image/png",
+				jpg: "image/jpeg",
+				jpeg: "image/jpeg",
+				gif: "image/gif",
+				svg: "image/svg+xml",
+				webp: "image/webp",
+			};
+			const mime = mimeMap[ext] ?? "application/octet-stream";
+			return new Response(file, { headers: { "Content-Type": mime } });
+		} catch (error) {
+			console.error("Error serving raw file:", error);
+			return new Response("Internal Server Error", { status: 500 });
 		}
 	}
 

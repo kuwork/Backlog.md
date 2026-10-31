@@ -52,25 +52,23 @@ export interface BinaryOfficePreviewProps {
 	isOpen?: boolean;
 	onClose: () => void;
 	fileName: string;
-	/** Served URL for the raw bytes, e.g. /assets/report.pdf or /assets/report.docx */
+	/** Raw-bytes URL the modal fetches, e.g. /api/raw-file?path=backlog/docs/report.pdf */
 	fileUrl?: string;
-	/** Project-relative path, e.g. backlog/assets/report.docx */
+	/** Project-relative path, e.g. backlog/assets/report.docx or backlog/docs/report.pdf */
 	filePath?: string;
 }
 
 /**
- * Derive the modal props for a project-relative path (e.g. `backlog/assets/x.pdf`).
- * Both PDF and Word are served as raw bytes from /assets/*; Word additionally keeps the
- * project-relative path (used by the server-side save endpoint).
+ * Derive the modal props for a project-relative path (e.g. `backlog/assets/x.pdf` or
+ * `backlog/docs/x.docx`). Both PDF and Word are served as raw bytes from /api/raw-file,
+ * which reads any project file by its project-relative path (not just /assets/*). Word
+ * additionally keeps the project-relative path (used by the server-side save endpoint).
  */
 export function binaryOfficeFileProps(path: string): Omit<BinaryOfficePreviewProps, "onClose"> {
 	const fileName = decodeURIComponent(path.split("/").pop() ?? path);
 	const lower = path.toLowerCase();
 	if (lower.endsWith(".pdf") || lower.endsWith(".docx")) {
-		const rel = path.startsWith("backlog/assets/")
-			? path.slice("backlog/assets/".length)
-			: path.replace(/^.*\/assets\//, "");
-		return { fileName, fileUrl: `/assets/${encodeURIComponent(rel)}`, filePath: path };
+		return { fileName, fileUrl: `/api/raw-file?path=${encodeURIComponent(path)}`, filePath: path };
 	}
 	return { fileName, filePath: path };
 }

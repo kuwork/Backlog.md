@@ -798,10 +798,15 @@ export default function MermaidMarkdown({
 				// Markdown-it requires percent-encoded spaces in link destinations;
 				// decode back to the real project path before checking/previewing the file.
 				const decodedHref = decodeURIComponent(href);
+				// A link written with a leading slash (e.g. /backlog/wiki/x.md) is a project
+				// path expressed as absolute; reduce it to project-relative so the server
+				// resolves it inside the project root instead of rejecting it as an absolute path.
+				const normalizedHref =
+					decodedHref.startsWith("/") && !decodedHref.startsWith("//") ? decodedHref.slice(1) : decodedHref;
 				try {
 					// Verify file exists before opening preview
-					await apiClient.fetchFileContent(decodedHref);
-					onFileClick(decodedHref);
+					await apiClient.fetchFileContent(normalizedHref);
+					onFileClick(normalizedHref);
 				} catch {
 					// File not found or inaccessible: fall back to normal link behavior
 					window.open(href, "_blank");
