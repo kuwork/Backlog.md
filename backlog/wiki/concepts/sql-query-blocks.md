@@ -31,11 +31,23 @@ Cypher 侧刻意与 SQL 不同的三点：`source` 是数据库**注册名**而�
 
 BACK-805 曾给三块回灌 `style` 字段（compact/striped/borderless），BACK-811 因级联不可用而 **fail-closed 移除**：带该字段的块直接报未知字段错误并列出剩余字段。同期为「显示查询」面板接上阅读视图自己的代码高亮（refractor `all` 实例 + `markdown.css` 的 `.token.*`，Cypher 走 `cypher` 语法、SQL 走 `sql`，未知语法回退纯文本）。
 
+## MDB 引擎：第四块（m-18）
+
+BACK-832 把 `SqlQueryBlock` 内核再接一个 Access 薄壳 `mdb-query`，复用 sqlite-query 网格/分页/`toCell`。`src/mdb/*` 用 `mdb-reader` 把 Access 表载入内存 SQLite（`PRAGMA query_only=ON`）再 `runSqliteQuery` 执行，支持跨表 JOIN 与完整 SQL 面。差异点：扩展名白名单仅 `.mdb`/`.accdb`；`decodeMdbText` 做 GBK/CP936 字节级恢复（修复 latin1 乱码）；不支持 `copy_to`（服务端拒，Access 不能就地写）；Web 端 CSV 导出经浏览器下载。CLI/MCP 入口与 sqlite/duckdb 一致保持无。验收样本 doc-33 用真实 `lizheng.mdb`（87 表）生成。详见 [[concepts/mdb-live-query]]。
+
 ## 第四视图：echarts（m-17）
 
 BACK-813 把 `view` 枚举扩到 `echarts`，块可以**不画表格直接出图**：新增 `chart` 字段放图表 JSON（简单映射 `type`/`categoryField`/`valueField`，或高级 `option` + `@result` / `@result:<列名>` 占位符）。它是 `value` 视图的图表版——结果就是图表本身。
 
 BACK-814 又加了可选 `id`：命名后的块把自己的结果发布到每文档一个的 `QueryResultProvider`，独立 `echarts` fence 用 `fromQuery` 引用它，表格与图并存。两者都不改只读与行数上限，都不引入函数执行面。详见 [[concepts/query-chart-binding]]。
+
+## 内联 SQL 编辑器（BACK-833）
+
+四个查询块（sqlite/duckdb/mdb/cypher）新增就地编辑流：查询面板展开后首行右端出现编辑入口，进入编辑态用语法高亮编辑器（Prism token 衬透明 textarea，主题感知）带 Save / Test / Discard / Format（Format 仅 SQL 引擎，用 `sql-formatter` 原地缩进、不写文件）。Test 跑改动后的语句但**不写盘**（省略 `copy_to`），坏编辑在碰文件前可见；Save 写回源 `.md` 并立即重跑，网格刷新；Discard 恢复。块定位改发**整段围栏体**——唯一与文件逐字节一致的形式（`MermaidMarkdown` 预处理均代码区间感知），服务端 `POST /api/query-block/save` 定位唯一围栏、只重写 `sql`/`query` 字段并原子写（临时文件 + rename），返回重写体供二次编辑。测过的草稿跨分页/刷新/CSV 导出持续（`displayedSql` → `effectiveSql`），结果集缩小时 `clampPageToTotalPages` 自动回弹。Milestone 类型无 path，保持只读。
+
+## 查询块 i18n 合并（BACK-834）
+
+四个近同的方言字典（sqlite/duckdb/cypher/mdb）合并为模块级共享 `queryBlock` 基，各方言展开后只覆盖 title（cypher 另加 `graphTooLarge`/`live`/`pauseAuto`/`resumeAuto`），净减约 355 行重复文案；字符串值逐字节不变，无组件或类型改动。
 
 ## Related Concepts
 
@@ -60,3 +72,8 @@ BACK-814 又加了可选 `id`：命名后的块把自己的结果发布到每文
 - [[sources/back-811-remove-style-field-add-highlight]] — style 移除与查询源码语法高亮
 - [[sources/back-813-query-block-view-echarts]] — `view: echarts` 与 `chart` 字段
 - [[sources/back-814-echarts-from-query]] — `id` 字段与 `fromQuery` 引用
+- [[sources/back-832-mdb-live-query]] — MDB 引擎实现与覆盖审计
+- [[sources/doc-33-mdb-live-query-demo]] — 验收样本文档
+- [[sources/m-18-mdb-live-query]] — MDB Live Query 里程碑
+- [[sources/back-833-live-query-inline-sql-editor]] — 四块内联编辑流
+- [[sources/back-834-consolidate-query-block-i18n]] — 查询块 i18n 合并

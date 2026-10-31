@@ -60,6 +60,18 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 
 行高差异另有一条 CSS 修复：`.wmde-markdown p` 的 `margin-bottom` 作用在原始 HTML 单元格内的 `<p>` 包装上，`source.css` 用 `.wmde-markdown table p { margin: 0 }` 拉平，GFM 表格不受影响。
 
+## Office 文档预览模态框（BACK-825~831）
+
+文档预览从「文本/Markdown/代码」扩展到**原生 Office 文档**：点击项目内任意同源 `.docx`/`.pdf`/`.pptx`/`.xlsx`/`.xlsm` 链接，在专用模态框中预览，而非下载。
+
+- **任意路径 + 原始字节端点**：BACK-827 移除全局拦截器的 `/assets/*` 限制、加同源守卫，新增 `GET /api/raw-file`（项目相对路径取字节 + content-type，穿越守卫限 `backlog/` 内，`Cache-Control: no-store`）。
+- **Word（`.docx`）**：`DocPreviewModal`（BACK-825）基于 docx-editor，真实分页 A4；默认只读、Edit 进编辑态（工具栏/标尺/页边距参考线）、Save 经 `POST /api/docx/save` 写回；头部显式模式徽章（只读灰 / 编辑蓝）；四语言自构建 zh-TW/ja 覆盖包；docx-editor 代码分割。
+- **PDF**：`PdfPreviewModal`（BACK-828）基于自托管 pdf.js（运行时加载、不打包），逐页 canvas；有大纲时左侧可点击目录栏（复用任务模态框 `TocRows` 视觉）；fit-to-width + 全屏圆角裁切。
+- **PPTX**：`PptxPreviewModal`（BACK-829）基于 `@aiden0z/pptx-renderer`（Apache-2.0，OOXML→HTML/SVG 高保真，窗口化挂载）；缩略图目录跳转 + WPS 式边缘全屏放映；仅只读（无编辑 API）。
+- **XLSX/XLSM**：`XlsxPreviewModal`（BACK-830）基于 Univer 开源 sheets 预设，唯一带编辑/写回的双模式：查看态只读网格（公式显缓存值），编辑态显功能区/公式栏；保存为**原地 OOXML 补丁**（只重写 `<sheetData>`/`<mergeCells>`，其余条目逐字节拷贝），`POST /api/xlsx/save` 原子写；值与新公式往返，编辑器内格式改动不写回。
+- **不可预览格式提示**（BACK-826）：`.doc`/`.ppt`/`.xls` 家族等非可预览 Office 链接被拦截并弹非阻塞 toast 建议转 `.docx`/`.pdf`，而非让浏览器下载；修饰键/`target=_blank` 仍开新标签。
+- **本地化**（BACK-831）：四个预览模态框约 60 行 CJK 字面量移入字典——通用动词从 `common` 读、`fullscreen`/`exitFullscreen` 提升（promote）到 `common`、预览专用文案进 `preview` 命名空间；XLSX 额外把 Univer 工作台映射到应用语言包。
+
 ## Related Concepts
 
 - [[concepts/web-ui-features]] — Web UI 功能集，含任务详情弹窗集成点
@@ -70,3 +82,10 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 
 - [[sources/back-820-file-preview-frontmatter]] — frontmatter 元数据面板
 - [[sources/back-821-raw-html-table-doc-preview]] — 原始 HTML 表格恢复渲染与行高统一
+- [[sources/back-825-word-document-preview-modal]] — Word 预览与内联编辑模态框
+- [[sources/back-826-non-previewable-office-notice]] — 不可预览 Office 链接提示
+- [[sources/back-827-project-wide-docx-pdf-preview]] — 项目任意路径预览与 `/api/raw-file`
+- [[sources/back-828-pdf-preview-modal]] — PDF 预览模态框
+- [[sources/back-829-pptx-preview-modal]] — PPTX 预览模态框
+- [[sources/back-830-xlsx-preview-modal]] — XLSX 高保真布局预览与写回
+- [[sources/back-831-localize-preview-modals]] — 四模态框本地化

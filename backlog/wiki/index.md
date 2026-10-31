@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-10-28 15:28
+updated_date: 2026-10-31 23:53
 ---
 
 
@@ -435,6 +435,19 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-821-raw-html-table-doc-preview]] |  BACK-821 - 文档预览恢复原始 HTML 表格并统一行高 | source, web-ui, markdown |
 | [[sources/back-822-remove-state-machine-injection]] |  BACK-822 - 状态机不再注入 agent 指令文件 | source, cli, agent-guidance |
 | [[sources/back-823-ryugraph-wasm-memfs-handle]] |  BACK-823 - RyuGraph WASM 改用 MEMFS 句柄路径与图谱文案英文化 | source, graph, wasm, i18n |
+| [[sources/back-824-fix-bare-url-autolink-gobble]] |  BACK-824 - 修复裸 URL 紧贴中文被 autolink 吞掉 | source, web, markdown |
+| [[sources/back-825-word-document-preview-modal]] |  BACK-825 - Word 文档预览与内联编辑模态框 | source, web, docs |
+| [[sources/back-826-non-previewable-office-notice]] |  BACK-826 - 非可预览 Office 链接改为提示而非加载 | source, web |
+| [[sources/back-827-project-wide-docx-pdf-preview]] |  BACK-827 - 项目任意路径的 docx 与 pdf 预览 | source, web, docs |
+| [[sources/back-828-pdf-preview-modal]] |  BACK-828 - PDF 文档预览模态框 | source, web, docs |
+| [[sources/back-829-pptx-preview-modal]] |  BACK-829 - PPTX 文档预览模态框 | source, web, docs |
+| [[sources/back-830-xlsx-preview-modal]] |  BACK-830 - XLSX 电子表格高保真布局预览 | source, web, docs, high-priority |
+| [[sources/back-831-localize-preview-modals]] |  BACK-831 - 本地化四个文档预览模态框 | source, web-ui, i18n |
+| [[sources/back-832-mdb-live-query]] |  BACK-832 - MDB (Access) 实况查询实现与覆盖审计 | source, mdb, web-ui |
+| [[sources/back-833-live-query-inline-sql-editor]] |  BACK-833 - 实况查询内联 SQL 编辑器 | source, web-ui |
+| [[sources/back-834-consolidate-query-block-i18n]] |  BACK-834 - 合并四个查询块 i18n 字典为共享基 | source, web-ui, i18n |
+| [[sources/doc-33-mdb-live-query-demo]] |  doc-33 - MDB (Access) 实况查询演示 | source, guide, mdb |
+| [[sources/m-18-mdb-live-query]] |  m-18 - MDB Live Query 里程碑 | source, milestone, mdb |
 
 ## Execution Notes
 
@@ -596,8 +609,9 @@ Read this file FIRST on any wiki operation.
 | [[concepts/spotlight-search]] |  全局搜索对话框 | /search modal-over-route、虚拟列表、分组折叠、visibleStartIndex 滚动记忆 |
 | [[concepts/kuzu-graph]] |  任务图谱引擎 | FileNode 图模型、RyuGraph WASM 默认后端（BACK-766 起）、冷启动指纹校验、/graph 与 /knowledge 与 /databases 视图、graph CLI/MCP 面 |
 | [[concepts/graph-cli]] |  图谱 CLI 子命令体系 | query/schema/list/describe/create/drop/import、named databases、CSV 导入、derived 快照复用 |
-| [[concepts/sql-query-blocks]] |  文档内实况 SQL 查询块 | sqlite-query/duckdb-query 围栏块、只读安全模型、四个块动作、双引擎复用结构 |
+| [[concepts/sql-query-blocks]] |  文档内实况 SQL 查询块 | sqlite/duckdb/cypher/mdb 四块、只读安全模型、四个块动作、共享内核复用、内联编辑器 |
 | [[concepts/memos]] |  快速笔记子系统 | `backlog/memos/` 下第五种文件实体，极简捕获 + 日历，刻意与 ContentStore 重量级体系保持边界 |
+| [[concepts/mdb-live-query]] |  MDB (Access) 实况查询引擎 | mdb-query 第四块、mdb-reader 载入内存 SQLite、GBK 解码、与 sqlite 同构的安全模型 |
 | [[concepts/memo-board]] |  Memo 钉板视图 | 离屏 canvas 烘焙 + 裸 WebGL 单 quad，FNV-1a 三层确定性布局，固定黑板无平移缩放 |
 | [[concepts/state-machine]] |  状态机语义 | `statuses` 配置从显示层列定义升级为带语义的状态机：状态类别、转换条件、AI 可读指引 |
 | [[concepts/list-paging]] |  列表分页双模型 | CLI 窗口模型面向人类/代理翻页阅读，MCP/REST 偏移信封模型面向程序化遍历，故意不统一 |
@@ -683,6 +697,7 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、跟踪甘特图、五级粒度、依赖箭头、任务排序 |
 | [[usermanual/40-Web界面/10-全局搜索]] | 全局搜索 | Spotlight 搜索对话框、分组结果、键盘导航 |
 | [[usermanual/40-Web界面/11-图谱视图]] | 图谱视图 | /graph 任务图谱与 /knowledge 知识图谱、Cypher 搜索、RyuGraph WASM 默认后端 |
+| [[usermanual/40-Web界面/12-文档预览]] | 文档预览 | .docx/.pdf/.pptx/.xlsx 应用内预览模态框、只读/编辑、不可预览格式提示 |
 | [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
@@ -695,8 +710,9 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/70-快速笔记/04-钉板视图与归档]] | 钉板视图与归档 | WebGL 便利贴钉板、memo 归档语义 |
 | [[usermanual/80-图谱与数据查询/00-图谱CLI命令]] | 图谱 CLI 命令 | backlog graph 子命令、named databases、CSV 导入、快照复用 |
 | [[usermanual/80-图谱与数据查询/01-图谱MCP工具]] | 图谱 MCP 工具 | 六个 graph_* 工具、一次性开关模型 |
-| [[usermanual/80-图谱与数据查询/02-SQL查询块]] | SQL 查询块 | sqlite-query/duckdb-query 围栏块、只读安全模型、四个块动作 |
+| [[usermanual/80-图谱与数据查询/02-SQL查询块]] | SQL 查询块 | sqlite/duckdb/cypher/mdb 四块、只读安全模型、四个块动作、内联编辑器 |
 | [[usermanual/80-图谱与数据查询/04-Cypher查询块]] | Cypher 查询块 | cypher-query 围栏块、注册名数据源、四视图、refresh:auto、只读门禁 |
+| [[usermanual/80-图谱与数据查询/07-MDB查询块]] | MDB 查询块 | mdb-query 第四块、Access 库载入内存 SQLite、GBK 解码、与 sqlite 同构安全模型 |
 | [[usermanual/80-图谱与数据查询/03-数据库页面]] | 数据库页面 | Databases 页真实行数、Cypher 结果图谱视图、可配置图例 |
 | [[usermanual/80-图谱与数据查询/05-图例配置持久化]] | 图例配置持久化 | graph-legends.yaml 项目级存储、四个写入面、启动恢复与热更新 |
 | [[usermanual/80-图谱与数据查询/06-图表块]] | 图表块 | mermaid / echarts 围栏块、支持系列、view: echarts、fromQuery 引用、使用约定 |
