@@ -1,0 +1,1450 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Backlog.md — 让 AI Agent 在你的代码仓库里持续工作</title>
+		<meta
+			name="description"
+			content="Backlog.md 把任务、验收标准、实施计划和执行记录存成仓库里的 Markdown 文件。AI 负责拆解与执行，你在三个关键节点审查批准，知识自动沉淀进 LLM Wiki。MIT 开源，本地离线，无需账号。"
+		/>
+		<link rel="canonical" href="https://kuwork.github.io/Backlog.md/" />
+		<meta name="theme-color" content="#000000" />
+		<meta name="color-scheme" content="dark" />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Backlog.md" />
+		<meta property="og:locale" content="zh_CN" />
+		<meta property="og:locale:alternate" content="en_US" />
+		<meta property="og:title" content="Backlog.md — 让 AI Agent 在你的代码仓库里持续工作" />
+		<meta
+			property="og:description"
+			content="任务、验收标准、实施计划与执行记录都是仓库里的 Markdown 文件。AI 拆解执行，人类审查批准，知识沉淀进 LLM Wiki。"
+		/>
+		<meta property="og:url" content="https://kuwork.github.io/Backlog.md/" />
+		<meta property="og:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="Backlog.md 的看板界面，按状态分组展示任务卡片" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Backlog.md — 让 AI Agent 在你的代码仓库里持续工作" />
+		<meta
+			name="twitter:description"
+			content="把 AI 的工作变成可以阅读、可以审查、可以追踪的任务。MIT 开源，数据留在你自己的仓库里。"
+		/>
+		<meta name="twitter:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
+		<link rel="alternate" hreflang="en" href="https://kuwork.github.io/Backlog.md/en/" />
+		<link rel="alternate" hreflang="zh-Hans" href="https://kuwork.github.io/Backlog.md/" />
+
+		<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="favicon.ico" sizes="any" />
+		<link rel="icon" href="assets/img/icon-32.png" sizes="32x32" />
+		<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+		<link rel="manifest" href="site.webmanifest" />
+		<link rel="preload" as="image" href="assets/img/v2/board.jpg" />
+		<link rel="stylesheet" href="assets/css/v2.css" />
+	</head>
+
+	<body>
+		<a class="skip-link button-sm" href="#main">跳到主要内容</a>
+
+		<!-- boot sequence -->
+		<div class="boot" data-boot>
+			<div class="boot-line body-5 mono">
+				<span class="cmd-prompt">$</span>
+				<span data-boot-text="backlog init &quot;My Awesome Project&quot;"></span>
+				<span class="boot-caret" aria-hidden="true"></span>
+			</div>
+			<button class="boot-skip caption-4" type="button" data-boot-skip>跳过</button>
+		</div>
+
+		<div class="progress" aria-hidden="true"><div class="progress-bar" data-progress-bar></div></div>
+		<div class="glow" data-glow aria-hidden="true"></div>
+
+		<header>
+			<nav class="nav" data-nav aria-label="主导航">
+				<a class="nav-brand" href="./" aria-label="Backlog.md 首页">
+					<img src="assets/img/apple-touch-icon.png" alt="" width="24" height="24" />
+					<span class="title-3">Backlog.md</span>
+				</a>
+
+				<button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="mobile-menu">
+					<span class="nav-toggle-bar"></span>
+					<span class="sr-only">打开菜单</span>
+				</button>
+
+				<ul class="nav-links">
+					<li><a class="nav-link title-4" href="#benefits">为什么用</a></li>
+					<li><a class="nav-link title-4" href="#insights">数据视图</a></li>
+					<li><a class="nav-link title-4" href="#how">工作方式</a></li>
+					<li><a class="nav-link title-4" href="#product">界面</a></li>
+					<li><a class="nav-link title-4" href="#features">功能特性</a></li>
+					<li><a class="nav-link title-4" href="#integrations">接入工具</a></li>
+					<li><a class="nav-link title-4" href="#docs">文档</a></li>
+					<li><a class="nav-link title-4" href="#faq">常见问题</a></li>
+				</ul>
+
+				<div class="nav-actions">
+					<a class="lang-switch button-sm" href="en/" hreflang="en" lang="en">EN</a>
+					<a
+						class="btn btn-secondary btn-slim button-sm"
+						href="https://github.com/kuwork/Backlog.md"
+						rel="noopener"
+						>GitHub</a
+					>
+					<a class="btn btn-primary btn-slim button-sm" href="#install">安装</a>
+				</div>
+			</nav>
+
+			<div class="mobile-menu" id="mobile-menu" data-mobile-menu>
+				<a class="title-1" href="#benefits">为什么用</a>
+				<a class="title-1" href="#insights">数据视图</a>
+				<a class="title-1" href="#how">工作方式</a>
+				<a class="title-1" href="#product">界面</a>
+				<a class="title-1" href="#workflow">状态机</a>
+				<a class="title-1" href="#memos">Memos 随手记</a>
+				<a class="title-1" href="#features">功能特性</a>
+				<a class="title-1" href="#integrations">接入工具</a>
+				<a class="title-1" href="#docs">文档</a>
+				<a class="title-1" href="#faq">常见问题</a>
+				<a class="title-1" href="#install">安装</a>
+				<a class="title-1" href="https://github.com/kuwork/Backlog.md" rel="noopener">GitHub 仓库</a>
+				<a class="title-1" href="en/" hreflang="en" lang="en">English</a>
+			</div>
+		</header>
+
+		<main id="main">
+			<!-- Hero -->
+			<section class="hero">
+				<canvas class="hero-canvas" data-canvas aria-hidden="true"></canvas>
+
+				<div class="container hero-inner" data-hero-inner>
+					<div class="hero-copy">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							MIT 开源 · 数据留在你的仓库
+						</span>
+
+						<h1 class="heading-1 hero-heading" data-split style="margin: var(--sp-300) 0 0">
+							<span class="line">让 AI Agent 在你的仓库里</span>
+							<span class="line">持续工作，每一步都可审查</span>
+						</h1>
+
+						<p class="body-2 hero-sub">
+							Backlog.md 把任务、验收标准、实施计划和执行记录写成仓库里的 Markdown 文件。没有数据库，没有黑盒。AI
+							负责拆解与执行，你在三个关键节点审查批准。
+						</p>
+
+						<div class="hero-staged">
+							<div class="hero-actions" id="install">
+								<button
+									class="btn btn-primary button-md"
+									type="button"
+									data-magnetic
+									data-copy="#install-cmd"
+									data-copied-label="已复制安装命令"
+									data-failed-label="复制失败，请手动选择命令"
+								>
+									<span class="swap"
+										><span>复制安装命令</span><span>五分钟装上</span></span
+									>
+								</button>
+								<a
+									class="btn btn-secondary button-md"
+									href="https://github.com/kuwork/Backlog.md"
+									rel="noopener"
+								>
+									在 GitHub 上查看源码
+								</a>
+							</div>
+						</div>
+
+						<div
+							class="hero-staged stack-200"
+							style="margin-top: var(--sp-300); transition-delay: 90ms"
+						>
+							<div class="cmd" id="install-cmd" data-copy-value="npm i -g @kuwork/backlog.md">
+								<code class="body-5 mono"
+									><span class="cmd-prompt">$</span>
+									<span data-typed="npm i -g @kuwork/backlog.md">npm i -g @kuwork/backlog.md</span
+									><span class="type-caret" aria-hidden="true"></span
+								></code>
+								<button
+									class="btn btn-secondary btn-slim button-sm"
+									type="button"
+									data-copy="#install-cmd"
+									data-copied-label="已复制"
+									data-failed-label="复制失败，请手动选择命令"
+								>
+									复制
+								</button>
+							</div>
+							<span class="copy-state caption-4" data-copy-state role="status" aria-live="polite"></span>
+						</div>
+
+						<p class="body-6 proof-row" style="margin-top: var(--sp-300)">
+							<span>无需注册账号</span>
+							<span aria-hidden="true">·</span>
+							<span>离线可用</span>
+							<span aria-hidden="true">·</span>
+							<span>macOS、Linux、Windows</span>
+						</p>
+					</div>
+
+					<div class="stage" data-stage>
+						<div class="shot-3d" data-tilt>
+							<div class="shot-bar">
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="caption-4 dim" style="margin-left: var(--sp-100)">backlog browser</span>
+							</div>
+							<img
+								src="assets/img/v2/board.jpg"
+								alt="Backlog.md 的看板界面，任务卡片按 To Do、In Progress、Done 三列分组"
+								width="1400"
+								height="875"
+								loading="eager"
+							/>
+						</div>
+						<figure class="tui-pip" aria-label="终端界面演示：在终端里用 backlog board 操作同一批任务">
+							<div class="tui-pip-bar">
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="caption-4 dim" style="margin-left: var(--sp-100)">backlog board · TUI</span>
+							</div>
+							<img
+								src="assets/img/v2/tui.jpg"
+								alt="终端 TUI 看板：To Do、In Progress、Done 三列任务，顶部筛选栏与底部快捷键提示"
+								width="1134"
+								height="712"
+								loading="lazy"
+							/>
+						</figure>
+					</div>
+				</div>
+			</section>
+
+			<!-- task stream marquee -->
+			<section class="section-tight" aria-label="真实任务流">
+				<div class="marquee">
+					<div class="marquee-track">
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-208</span> Add paste as markdown support in Web UI</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-267</span> Add agent instruction version metadata</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-346</span> Add milestone completion archival workflow</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-347</span> Add milestone editing in Web UI</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-348</span> Redesign All Tasks page with table layout</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-353</span> Add documentation field to task object</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-361</span> Add label based filtering to task list views</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-367</span> Add Final Summary field to tasks</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-239</span> Auto link tasks to documents and decisions</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-354</span> Project Definition of Done defaults</span
+						>
+					</div>
+				</div>
+				<div class="marquee reverse" aria-hidden="true">
+					<div class="marquee-track">
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-217</span> Create web UI for sequences with drag and drop</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-356</span> Add references field to task domain object</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-218</span> Update documentation and tests for sequences</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-270</span> Prevent command substitution in task inputs</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-352</span> Include subtask list in plain task output</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-268</span> Show agent instruction version status</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-351</span> Strengthen MCP task creation guidance</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-358</span> Rename Task Completion Guide to Finalization</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-359</span> Pass configured task prefix to cross branch loading</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-365</span> Fix acceptance criteria insertion blank lines</span
+						>
+					</div>
+				</div>
+			</section>
+
+			<!-- tagline -->
+			<section class="section-tight">
+				<div class="container">
+					<p class="heading-3 tagline">
+						<span class="tagline-word" data-word="0">每一次</span>
+						<span class="tagline-word" data-word="1">AI</span>
+						<span class="tagline-word" data-word="2">执行</span>
+						<span class="tagline-word" data-word="3">都留在</span>
+						<span class="tagline-word" data-word="4">你能审查的</span>
+						<span class="tagline-word" data-word="5">文件里。</span>
+						<br />
+						<span class="tagline-word" data-word="6">任务</span>
+						<span class="tagline-word" data-word="7">是可读的</span>
+						<span class="tagline-word" data-word="8">Markdown，</span>
+						<span class="tagline-word" data-word="9">进度</span>
+						<span class="tagline-word" data-word="10">是可审的</span>
+						<span class="tagline-word" data-word="11">Git</span>
+						<span class="tagline-word" data-word="12">diff，</span>
+						<span class="tagline-word" data-word="13">知识</span>
+						<span class="tagline-word" data-word="14">沉淀成</span>
+						<span class="tagline-word" data-word="15">可查的</span>
+						<span class="tagline-word" data-word="16">Wiki。</span>
+					</p>
+				</div>
+			</section>
+
+			<!-- problem / solution -->
+			<section class="section">
+				<div class="container">
+					<div class="grid grid-2" style="align-items: start; gap: var(--sp-600)">
+						<div data-reveal>
+							<h2 class="heading-2">AI 会写代码，<br />但谁告诉它下一步该做什么</h2>
+							<p class="body-3 muted" style="margin-top: var(--sp-300)">
+								把需求丢给 Agent，它能写出能跑的函数。但它不知道接下来该做什么，不知道边界在哪里，也不会主动告诉你它替你做了哪些判断。上下文一长，方向就散了，最后你得花一个下午去读它改了什么。
+							</p>
+						</div>
+						<div class="card reveal-3d" data-reveal>
+							<span class="caption-3" style="color: var(--accent)">解法</span>
+							<h3 class="heading-5" style="margin: var(--sp-100) 0 0">把 AI 的工作变成可审查的任务</h3>
+							<p class="body-3">
+								每个任务是一份 Markdown 文件，包含描述、验收标准和实施计划。AI 在动手之前先写清楚要做什么，你批准之后它才写代码。任务随代码一起进版本控制，可以被 diff、review、搜索和归档。
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- benefits -->
+			<section class="section" id="benefits" style="padding-top: var(--sp-0)">
+				<div class="container">
+					<div class="section-head" data-reveal>
+						<h2 class="heading-2">为什么用 Backlog.md</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							四个直接的结果：方向不跑偏、审查有抓手、数据不出机器、知识能累积。
+						</p>
+					</div>
+
+					<div class="grid grid-4" style="margin-top: var(--sp-500)">
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<path d="M9 6h9M9 12h9M9 18h9" />
+									<path d="M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17" />
+								</svg>
+							</span>
+							<h3 class="heading-6">AI 不再凭空发挥</h3>
+							<p class="body-3">
+								每个任务自带描述、验收标准和实施计划。Agent 在写代码之前先说清楚要做什么，你读完再放行。
+							</p>
+						</article>
+
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z" />
+									<path d="M9 12l2 2 4-4" />
+								</svg>
+							</span>
+							<h3 class="heading-6">三道审查闸门</h3>
+							<p class="body-3">
+								规格、计划、结果分别可以批准。方向错了在写第一行代码之前就能拦住，而不是等到 review 几千行 diff。
+							</p>
+						</article>
+
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<rect x="4" y="10" width="16" height="10" rx="2" />
+									<path d="M8 10V7a4 4 0 0 1 8 0v3" />
+								</svg>
+							</span>
+							<h3 class="heading-6">数据不出你的机器</h3>
+							<p class="body-3">
+								全部存在项目本地的 Markdown 文件里。没有云端账号，没有订阅，离线可用，Git 也是可选的。
+							</p>
+						</article>
+
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<path d="M9 4a4 4 0 0 0-4 4 3 3 0 0 0 .4 6 4 4 0 0 0 3.6 2h5a4 4 0 0 0 1-7.9A3.5 3.5 0 0 0 12 4z" />
+									<path d="M12 9v4M12 15.5v.5" />
+								</svg>
+							</span>
+							<h3 class="heading-6">一次结对，知识留下</h3>
+							<p class="body-3">
+								LLM Wiki 把任务、文档和决策沉淀成可查询的项目记忆。换会话、换人，上下文不用从零重建。
+							</p>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<!-- dogfooding stats -->
+			<section class="section" id="stats" style="padding-top: var(--sp-0)">
+				<div class="container">
+					<div class="grid grid-2" style="align-items: center; gap: var(--sp-600)">
+						<div>
+							<h2 class="heading-3" data-reveal>Backlog.md 自己的开发，就跑在这套流程上</h2>
+							<p class="body-3 muted" style="margin-top: var(--sp-200); max-width: 520px">
+								这个项目从需求到发布的每一步都记在自己的 backlog 目录里。下面的数字来自仓库当前的真实状态，不是示例数据：任务文件统计 <code>tasks</code>、<code>completed</code>、<code>archive/tasks</code> 三个目录，Wiki 页面统计 <code>wiki</code> 目录下除 <code>sources</code> 源材料镜像外的页面。
+								</p>
+								<div class="grid grid-2" style="margin-top: var(--sp-400); gap: var(--sp-200)">
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="885">885</span></div>
+										<div class="stat-label body-6">仓库里的任务文件</div>
+									</div>
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="805">805</span></div>
+										<div class="stat-label body-6">已完成的任务</div>
+									</div>
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="883">883</span></div>
+										<div class="stat-label body-6">任务图谱中的节点</div>
+									</div>
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="238">238</span></div>
+										<div class="stat-label body-6">Wiki 沉淀页面</div>
+									</div>
+							</div>
+						</div>
+						<figure class="shot-3d reveal-3d" data-reveal style="margin: 0">
+							<img
+								src="assets/img/v2/graph.jpg"
+								alt="任务图谱视图：由彩色节点与连线构成的项目图谱，按任务状态着色"
+								width="1400"
+								height="924"
+								loading="lazy"
+							/>
+							<figcaption class="caption-4 dim" style="padding: var(--sp-100) var(--sp-200)">
+								任务、文档与依赖自动生成的项目图谱
+							</figcaption>
+						</figure>
+					</div>
+				</div>
+			</section>
+
+			<!-- insights: activity analytics and relationship graph -->
+			<section class="section" id="insights">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 720px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							看得见的进展
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">进度看得见，关系也看得见</h2>
+							<p class="body-2 muted" style="margin-top: var(--sp-200)">
+								统计页把一年的完成情况摊成热力图和分布图；打开任意一个任务，它的依赖、子任务和所属里程碑会当场展开成一张关系图。两张图读的是同一批
+								Markdown 文件，不需要额外的报表系统。
+							</p>
+					</div>
+
+					<div class="insights">
+						<div class="insight-row">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="assets/img/v2/stats.jpg"
+									alt="统计页面：过去一年任务完成热力图、总任务数与完成率卡片、整体进度条，以及状态分布与优先级分布面板"
+									width="1400"
+									height="1040"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">活跃分析：一年做了什么，一眼看全</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>完成热力图</b> —— 按天铺开过去一年的完成量，节奏和空窗期直接可见</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>状态与优先级分布</b> —— 待办、进行中、已完成的占比，和高、中、低优先级的构成并排呈现</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>周期与耗时</b> —— 平均周期、平均耗时、逾期数量，都从任务文件里的日期字段算出来</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<div class="insight-row is-reverse">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="assets/img/v2/relationship.jpg"
+									alt="BACK-521 的关联关系图：中心是 BACK-521，向外展开 14 个子任务、上游依赖链与所属里程碑，连线区分依赖于、父任务、属于里程碑"
+									width="1400"
+									height="1155"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">任务关系图：单个任务的邻居，一眼看全</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>中心就是当前任务</b> —— 以 BACK-521 为例，14 个子任务、上游依赖链和它所属的里程碑一起展开</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>三种关系各有线型</b> —— 依赖于走实线、父任务走虚线、属于里程碑走点线，图例就在图上方</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>点开继续钻取</b> —— 单击聚焦邻居、双击打开对应任务，默认向外走 4 层、最多 80 个节点</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- how it works -->
+			<section class="section" id="how">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 680px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							工作方式
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">三步跑起来，每一步都能叫停</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							每一步的产物都是仓库里的文件，所以在任何一步停下来、改主意、换个 Agent 接着做，状态都不会丢。
+						</p>
+					</div>
+
+					<div class="grid grid-3" style="margin-top: var(--sp-500)">
+						<article class="how-card" data-reveal>
+							<span class="how-index title-4 mono">01</span>
+							<h3 class="heading-5">初始化 backlog</h3>
+							<p class="body-3 muted" style="margin-top: var(--sp-200)">
+								在任意 Git 仓库里运行一次命令，选择用 CLI 指令还是 MCP 接入你的 AI
+								工具。也可以跳过 AI，只当任务管理器用。
+							</p>
+							<div class="step-note caption-4 mono" style="margin-top: var(--sp-300)">
+								backlog init "My Awesome Project"
+							</div>
+						</article>
+
+						<article class="how-card" data-reveal>
+							<span class="how-index title-4 mono">02</span>
+							<h3 class="heading-5">让 AI 拆解并规划</h3>
+							<p class="body-3 muted" style="margin-top: var(--sp-200)">
+								把想法告诉 Agent，它建任务、写验收标准，再研究代码库写出实施计划，然后停下来等你批准。
+							</p>
+							<div class="step-note caption-4" style="margin-top: var(--sp-300)">
+								审查点：先读任务描述与验收标准，再批准实施计划
+							</div>
+						</article>
+
+						<article class="how-card" data-reveal>
+							<span class="how-index title-4 mono">03</span>
+							<h3 class="heading-5">审查结果并沉淀</h3>
+							<p class="body-3 muted" style="margin-top: var(--sp-200)">
+								看 diff、跑测试、核对验收标准。通过后写下最终总结，知识自动进入 Wiki，成为下一步的输入。
+							</p>
+							<div class="step-note caption-4" style="margin-top: var(--sp-300)">
+								一个任务一个会话，一个任务一个提交
+							</div>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<!-- product views -->
+			<section class="section" id="product">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 680px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							界面
+						</span>
+					<h2 class="heading-2" style="margin-top: var(--sp-200)">每个界面，数据都不离开仓库</h2>
+					<p class="body-2 muted" style="margin-top: var(--sp-200)">
+						看板、甘特、任务表直接读写 Markdown 文件；图谱查询跑在由这些文件派生的图谱上；文档里的
+						SQL 查的是项目内登记的 DuckDB 库。它们都直接读写仓库里的数据，不需要把内容导出到别处。
+					</p>
+					</div>
+
+					<div class="view-grid" style="margin-top: var(--sp-500)">
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="assets/img/v2/board.jpg" alt="看板界面：任务卡片按状态分列，可拖放" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									01 看板
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">拖放看板，状态一眼看全</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">backlog browser 按状态分列展示任务卡片，拖动即改状态，改动直接写回 Markdown 文件。</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="assets/img/v2/gantt.jpg" alt="甘特图界面：计划边框与实际进度条叠加在同一行" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									02 甘特图
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">排期对不对，看一眼就知道</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">计划时间画成边框，实际时间填成实心条，五种时间粒度可切换，延期和提前一眼看出来。</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="assets/img/v2/tasks.jpg" alt="所有任务页面：表格视图列出任务的 ID、标题、状态与标签" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									03 任务视图
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">任务攒到几百个，照样一秒找到</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">表格、看板、树形结构随时切换，按状态、标签、负责人、里程碑筛选，模糊搜索跨任务文档和决策。</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="assets/img/v2/query.jpg" alt="图谱查询页面：Cypher 查询结果的图谱视图，节点与关系连线" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									04 图谱查询
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">谁挡着谁，问一句就出来</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">对项目内的知识图谱执行只读 Cypher，配好数据源就能查，结果以表格或图形呈现。</p>
+							</div>
+						</article>
+
+						<article class="view-card is-wide" data-reveal>
+							<img class="view-shot" src="assets/img/v2/sqlquery.jpg" alt="文档里的 SQL 查询块：展开后的 SELECT 语句与下方实时渲染的结果表格" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									05 数据查询
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">文档里的数字，永远是最新的</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">在 Markdown 正文里写一条 SELECT，阅读视图会实时跑出结果表，可复制为 Markdown、导出 CSV，也能分页浏览。</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot is-16x9" src="assets/img/v2/charts.jpg" alt="图表块：左侧 Mermaid 流程图，右侧 ECharts 交互式折线图" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									06 图表
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">用图表把关系和数据讲清楚</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">数据查询的结果能直接出图：把查出的数据接上 Mermaid 或 ECharts，阅读视图原地渲染成流程图、时序图或交互式图表；同一份数据，文档、看板、Wiki 共用。</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot is-16x9" src="assets/img/v2/preview.jpg" alt="文件预览：Word、Excel、PPT、PDF 四种文档图标并排展示" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									07 文件预览
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Office 和 PDF，原地就能看</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">仓库里的 Word、Excel、PPT、PDF 不用导出就能预览，排版、表格、幻灯片逐页呈现，不跳转、不另存。</p>
+							</div>
+						</article>
+
+					</div>
+				</div>
+			</section>
+
+			<!-- workflow: state machine -->
+			<section class="section" id="workflow">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 720px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							状态机
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">流转规则你来定</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							状态怎么走不该由工具说了算。哪些状态可以互转、哪些算收尾，都在设置页里自己画 ——
+							开发流程能用，资讯分析、论文编写这类非编码工作一样能定制。
+						</p>
+					</div>
+
+					<div class="insights">
+						<div class="insight-row">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="assets/img/v2/statemachine.jpg"
+									alt="设置页的状态机编辑器：任务状态转换树，标出每个状态可流向的下一状态与终态门禁"
+									width="1400"
+									height="875"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">状态机编辑器：流转规则自己画</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>转换树实时预览</b> —— 在设置页增删状态与连线，旁边立刻画出这棵状态树</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>终态单独标记</b> —— 哪些状态算收尾、哪些还能继续走，写清楚就不会有人卡在半路</span>
+									</li>
+								<li>
+									<span class="insight-tick" aria-hidden="true"></span>
+									<span><b>状态变更能挂钩子</b> —— <code>onStatusChange</code> 可以接一条 shell 命令，校验、通知、同步都随你接</span>
+								</li>
+								<li>
+									<span class="insight-tick" aria-hidden="true"></span>
+									<span
+										><b>不只服务写代码</b> —— 资讯分析可以走「待读 → 摘录 → 成稿 → 复核」，论文编写可以走「选题 → 大纲 →
+										初稿 → 送审」，非开发流程同样自己说了算</span
+									>
+								</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- memos -->
+			<section class="section" id="memos">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 720px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							Memos 随手记
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">灵感一闪，钉住再说</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							灵感总是来得突然、走得更快。一闪而过的念头，先钉进 Memos，不打断手上的活；笔记和任务、文档一样落在仓库里，能被搜索、反查和归档。
+						</p>
+					</div>
+
+					<div class="insights">
+						<div class="insight-row is-reverse">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="assets/img/v2/memos.jpg"
+									alt="Memos 钉板视图：彩色便签铺满画布，每张便签是一条快速笔记"
+									width="1400"
+									height="991"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">Memos 随手记：想到就记，不打断手上的活</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>三种视图，同一批笔记</b> —— 信息流按时间排，日历按月定位，钉板铺成一面便签墙</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>#标签 与 @任务 内联解析</b> —— 写完就自动连进知识网，还能反查谁引用了它</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>归档不删除</b> —— 悬停即可归档到 <code>archive/memos</code>，历史随时翻回来</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- features -->
+			<section class="section" id="features">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 680px">
+						<h2 class="heading-2">功能特性</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							终端、Web 界面、MCP 与 CLI 读写同一批 Markdown 文件，随时切换。
+						</p>
+					</div>
+
+					<ul class="feature-list body-3" style="margin-top: var(--sp-500)">
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>本地 Markdown 任务</strong> —— 每个事项都是一份纯 .md 文件，可以 diff、review 和搜索</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>为 AI 而生</strong> —— 兼容 Claude Code、Gemini CLI、Codex、Kiro 及任何支持 MCP 或 CLI 的助手</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>终端看板</strong> —— backlog board 在终端里实时呈现任务分布</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>LLM Wiki 知识库</strong> —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Memos 快速笔记</strong> —— 信息流、日历、钉板三种视图，支持标签与任务内联解析</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>图谱查询</strong> —— 对任务、文档、依赖与链接执行只读 Cypher 查询</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>实时查询块</strong> —— 在 Markdown 正文嵌入只读 SQL 或 Cypher，结果实时渲染</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>图表块</strong> —— mermaid 与 echarts 围栏块绘制流程图和数据图表，跟随明暗主题</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>文件预览</strong> —— Web 界面内置 DOCX、XLSX、PPTX、PDF 高保真预览</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>完成定义默认值</strong> —— 项目级检查清单自动附加到每个新任务</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>看板导出</strong> —— backlog board export 生成可共享的 Markdown 报告</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>MIT 许可</strong> —— 个人或商业用途均免费，跨平台支持 macOS、Linux 与 Windows</span>
+						</li>
+					</ul>
+
+				</div>
+			</section>
+
+			<!-- integrations -->
+			<section class="section-tight" id="integrations">
+				<div class="container">
+					<h2 class="heading-4" data-reveal>接入你已经在用的 AI 工具</h2>
+					<p class="body-3 muted" style="margin: var(--sp-200) 0 var(--sp-300); max-width: 680px">
+						CLI 指令是默认的接入方式，任何能执行命令的 Agent 都能直接开始工作。偏好 MCP 时，<code>backlog init</code>
+						也可以自动完成配置。
+					</p>
+					<div class="pill-row caption-1" data-reveal>
+						<span class="pill">Claude Code</span>
+						<span class="pill">Codex</span>
+						<span class="pill">Gemini CLI</span>
+						<span class="pill">Kiro</span>
+						<span class="pill">Cursor</span>
+						<span class="pill">Kimi Code</span>
+						<span class="pill">MCP 连接器</span>
+						<span class="pill">终端</span>
+						<span class="pill">Web 界面</span>
+					</div>
+				</div>
+			</section>
+
+			<!-- docs and resources -->
+			<section class="section" id="docs">
+				<div class="container">
+					<div class="section-head" data-reveal>
+						<h2 class="heading-2">文档与资源</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							从快速开始到图谱查询，文档和项目放在同一个仓库里维护。
+						</p>
+					</div>
+
+					<div class="grid grid-2" style="margin-top: var(--sp-500); gap: var(--sp-200)">
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">用户手册</h3>
+							<p class="body-3">
+								52 页结构化手册：安装初始化、任务管理、看板、Web 界面、AI 集成、图谱与数据查询。
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/tree/main/backlog/wiki/usermanual"
+								rel="noopener"
+								>在 GitHub 上阅读<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">Wiki 知识库</h3>
+							<p class="body-3">
+								项目自身的 LLM Wiki：概念、决策、模式与执行记录，知识沉淀工作流的真实范例。
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/tree/main/backlog/wiki"
+								rel="noopener"
+								>在 GitHub 上阅读<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">CLI 参考</h3>
+							<p class="body-3">
+								完整命令参考：任务、搜索、看板、文档、决策、里程碑、备忘录与图谱命令。
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/blob/main/CLI-INSTRUCTIONS.md"
+								rel="noopener"
+								>在 GitHub 上阅读<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">高级配置</h3>
+							<p class="body-3">
+								配置项全览：跨分支检查、自动提交、ID 格式化、编辑器集成与完成定义默认值。
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/blob/main/ADVANCED-CONFIG.md"
+								rel="noopener"
+								>在 GitHub 上阅读<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<!-- FAQ -->
+			<section class="section" id="faq">
+				<div class="container">
+					<h2 class="heading-2" data-reveal>常见问题</h2>
+
+					<div class="faq" style="margin-top: var(--sp-500)">
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-1">
+									<span>需要联网或者注册账号吗？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-1">
+								<p>
+									不需要。Backlog.md 的数据全部存放在项目本地的 backlog 文件夹里，没有云端账号，也没有订阅要求，离线也能正常使用。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-2">
+									<span>它和 Jira、Linear 这类看板工具有什么区别？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-2">
+								<p>
+									任务就是仓库里的 Markdown 文件，和代码一起进版本控制，可以被 diff、review、搜索和归档。同时它面向 AI
+									Agent 设计：内置 CLI 指令与 MCP 接口，Agent 能直接按任务工作，人类在关键节点审查。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-3">
+									<span>支持哪些 AI 工具？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-3">
+								<p>
+									任何能执行命令行或支持 MCP 的工具都可以，包括 Claude Code、Codex、Gemini CLI、Kiro 和
+									Cursor。推荐用 CLI 指令接入，Agent 运行 backlog instructions overview 就能拿到当前工作流说明。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-4">
+									<span>任务数据存在哪里？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-4">
+								<p>
+									项目内的 backlog 目录，默认是 backlog/ 或 .backlog/，也可以在 backlog.config.yml
+									里配置成其他项目相对路径。任务本身是可直接阅读的 Markdown 文件。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-5">
+									<span>不打算用 AI，能只当任务管理器用吗？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-5">
+								<p>
+									可以。终端命令和 Web 界面都能独立使用，所有改动与 Markdown 文件保持同步。你随时可以在手动工作流和 AI
+									辅助之间切换，两者基于同一批文件。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-6">
+									<span>已经有 Git 仓库了怎么用？没有 Git 呢？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-6">
+								<p>
+									在已有仓库里直接运行 backlog init 即可。没有 Git 用 backlog init --no-git
+									创建纯文件系统项目，此时跨分支检查、远程操作和自动提交会被禁用。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-7">
+									<span>CLI 指令和 MCP，应该选哪个？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-7">
+								<p>
+									CLI 指令是默认推荐方式，先运行 backlog instructions overview
+									就能拿到当前版本的工作流说明，不会与实现细节脱节。如果你更偏好 MCP，backlog init 可以自动配置
+									Claude Code、Codex、Gemini CLI、Kiro 或 Cursor。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-8">
+									<span>Web 界面会暴露到公网吗？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-8">
+								<p>
+									默认只绑定 127.0.0.1，仅本机可访问。需要局域网访问时才用 backlog browser --host
+									0.0.0.0，但 API 未做认证，不建议在不可信的网络里开放。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-9">
+									<span>团队多人协作能用吗？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-9">
+								<p>
+									可以。任务随代码进版本控制，用正常的代码评审流程推进即可。自动提交默认关闭，适合需要精细控制提交历史的多人场景；单人自动化工作流可以打开它，获得一操作一提交的干净历史。
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-10">
+									<span>许可证是什么，可以商用吗？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-10">
+								<p>MIT 许可证，个人和商业用途都免费，只需保留出处署名。</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-11">
+									<span>支持哪些操作系统？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+						<div class="faq-a body-3" id="faq-11">
+							<p>macOS、Linux 和 Windows 都支持。可以用 npm、bun、Homebrew 或 Nix 安装。</p>
+						</div>
+					</div>
+
+					<div class="faq-item">
+						<h3>
+							<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-12">
+								<span>升级 Backlog.md 之后，怎么把 AGENTS.md 等指令文件更新到新版本？</span>
+								<span class="faq-sign" aria-hidden="true"></span>
+							</button>
+						</h3>
+						<div class="faq-a body-3" id="faq-12">
+							<p>
+								在项目里运行 backlog agents --update-instructions，在弹出的列表里勾选要更新的文件（AGENTS.md、CLAUDE.md、GEMINI.md、.github/copilot-instructions.md），命令会把当前版本内置的 Backlog.md 指令块写进这些文件，同时保留你在管理块之外自己添加的内容。重新执行 backlog init 也会一并更新这些文件；如果某个文件里还没有 Backlog.md 指令块，命令会自动补上。
+							</p>
+						</div>
+					</div>
+
+					<div class="faq-item">
+						<h3>
+							<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-13">
+								<span>Backlog.md 内置了哪些技能，怎么安装？</span>
+								<span class="faq-sign" aria-hidden="true"></span>
+							</button>
+						</h3>
+						<div class="faq-a body-3" id="faq-13">
+							<p>
+								内置两个 Agent 技能：llm-wiki-for-backlog 把 backlog 源增量编译成可查询的项目知识库（wiki）；task-migration-architect 在 fork 项目里分析上游变更、按任务驱动完成分支合并。安装命令分别是 backlog wiki install &lt;agent&gt; 和 backlog migrate install &lt;agent&gt;，&lt;agent&gt; 填 claude、codex 或 agents。已存在同名技能时用 --force 覆盖，加 --dry-run 可只预览不写入。
+							</p>
+						</div>
+					</div>
+
+					<div class="faq-item">
+						<h3>
+							<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-14">
+								<span>安装技能支持哪些 AI 工具？升级之后怎么更新？</span>
+								<span class="faq-sign" aria-hidden="true"></span>
+							</button>
+						</h3>
+						<div class="faq-a body-3" id="faq-14">
+							<p>
+								支持 Claude Code / Desktop（.claude/skills/）、OpenAI Codex CLI（.codex/skills/）和通用 Agents 目录（.agents/skills/），三个目录通过符号链接共享同一份技能文件，Windows 上会回退为直接复制。Backlog.md 升级后，重新执行对应的安装命令并加 --force 即可把技能刷新到新版本，无需手动改动。
+							</p>
+						</div>
+					</div>
+				</div>
+				</div>
+			</section>
+
+			<!-- final cta -->
+			<section class="section" style="padding-top: var(--sp-0)">
+				<div class="container-narrow">
+					<div class="cta-panel" data-reveal>
+						<h2 class="heading-3">五分钟装上，不合适随时删掉</h2>
+						<p class="body-2 muted" style="margin: var(--sp-200) auto var(--sp-400); max-width: 560px">
+							MIT 开源，数据在你自己的仓库里，不需要账号，也没有云端依赖。装完跑一次 backlog init 就能看到效果。
+						</p>
+						<div class="hero-actions">
+							<button
+								class="btn btn-primary button-md"
+								type="button"
+								data-magnetic
+								data-copy="#install-cmd"
+								data-copied-label="已复制安装命令"
+								data-failed-label="复制失败，请手动选择命令"
+							>
+								<span class="swap"><span>复制安装命令</span><span>五分钟装上</span></span>
+							</button>
+							<a class="btn btn-secondary button-md" href="https://github.com/kuwork/Backlog.md" rel="noopener">
+								在 GitHub 上查看源码
+							</a>
+						</div>
+						<p class="caption-4 dim" style="margin-top: var(--sp-300)">
+							同一个包也可以用 bun 安装：bun add -g @kuwork/backlog.md
+						</p>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer class="footer">
+			<div class="footer-marquee" aria-hidden="true">
+				<div class="footer-marquee-track">
+					<span class="footer-word">BACKLOG.MD</span>
+					<span class="footer-word">MARKDOWN</span>
+					<span class="footer-word">GIT NATIVE</span>
+					<span class="footer-word">HUMAN REVIEW</span>
+					<span class="footer-word">AI MEMORY</span>
+					<span class="footer-word">BACKLOG.MD</span>
+					<span class="footer-word">MARKDOWN</span>
+					<span class="footer-word">GIT NATIVE</span>
+					<span class="footer-word">HUMAN REVIEW</span>
+					<span class="footer-word">AI MEMORY</span>
+				</div>
+			</div>
+
+			<div class="container">
+				<div class="footer-grid">
+					<div>
+						<a class="nav-brand" href="./" style="padding: 0">
+							<img src="assets/img/apple-touch-icon.png" alt="" width="24" height="24" />
+							<span class="title-3">Backlog.md</span>
+						</a>
+						<p class="body-6 muted" style="margin: var(--sp-200) 0 0; max-width: 320px">
+							把 AI 的工作变成可以阅读、可以审查、可以追踪的任务。Markdown 任务，Git 原生，人类审查，AI 记忆。
+						</p>
+					</div>
+
+					<div>
+						<h3 class="caption-3">产品</h3>
+						<ul class="body-6">
+							<li><a href="#benefits">为什么用</a></li>
+							<li><a href="#insights">数据视图</a></li>
+							<li><a href="#how">工作方式</a></li>
+							<li><a href="#product">界面</a></li>
+							<li><a href="#workflow">状态机</a></li>
+							<li><a href="#memos">Memos 随手记</a></li>
+							<li><a href="#features">功能特性</a></li>
+							<li><a href="#integrations">接入工具</a></li>
+							<li><a href="#docs">文档</a></li>
+							<li><a href="#faq">常见问题</a></li>
+						</ul>
+					</div>
+
+					<div>
+						<h3 class="caption-3">项目</h3>
+						<ul class="body-6">
+							<li><a href="https://github.com/kuwork/Backlog.md" rel="noopener">GitHub 仓库</a></li>
+							<li>
+								<a href="https://github.com/kuwork/Backlog.md/blob/main/CLI-INSTRUCTIONS.md" rel="noopener"
+									>CLI 参考</a
+								>
+							</li>
+							<li>
+								<a href="https://github.com/kuwork/Backlog.md/blob/main/ADVANCED-CONFIG.md" rel="noopener"
+									>高级配置</a
+								>
+							</li>
+							<li><a href="https://github.com/kuwork/Backlog.md/releases" rel="noopener">更新日志</a></li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="footer-bottom caption-5">
+					<span>© <span data-year>2026</span> Backlog.md · MIT 许可证 · 本站不使用追踪 Cookie</span>
+					<span style="display: flex; gap: var(--sp-200)">
+						<a href="privacy.html">隐私说明</a>
+						<a href="terms.html">使用条款</a>
+						<a href="v1/">旧版设计</a>
+						<a href="https://github.com/kuwork/Backlog.md/blob/main/LICENSE" rel="noopener">许可证</a>
+					</span>
+				</div>
+			</div>
+		</footer>
+
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@graph": [
+					{
+						"@type": "SoftwareApplication",
+						"name": "Backlog.md",
+						"applicationCategory": "DeveloperApplication",
+						"operatingSystem": "macOS, Linux, Windows",
+						"url": "https://kuwork.github.io/Backlog.md/",
+						"description": "把任务、验收标准、实施计划和执行记录保存为仓库里的 Markdown 文件，让 AI Agent 可审查地持续工作。",
+						"license": "https://opensource.org/licenses/MIT",
+						"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+					},
+					{
+						"@type": "FAQPage",
+						"mainEntity": [
+							{
+								"@type": "Question",
+								"name": "Backlog.md 需要联网或者注册账号吗？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "不需要。数据全部存放在项目本地的 backlog 文件夹里，没有云端账号，也没有订阅要求，离线也能正常使用。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "它和 Jira、Linear 这类看板工具有什么区别？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "任务就是仓库里的 Markdown 文件，和代码一起进版本控制，可以被 diff、review、搜索和归档。同时它面向 AI Agent 设计，内置 CLI 指令与 MCP 接口。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "支持哪些 AI 工具？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "任何能执行命令行或支持 MCP 的工具都可以，包括 Claude Code、Codex、Gemini CLI、Kiro 和 Cursor。推荐用 CLI 指令接入。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "任务数据存在哪里？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "项目内的 backlog 目录，默认是 backlog/ 或 .backlog/，也可以在 backlog.config.yml 里配置成其他项目相对路径。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "不打算用 AI，能只当任务管理器用吗？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "可以。终端命令和 Web 界面都能独立使用，所有改动与 Markdown 文件保持同步。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "已经有 Git 仓库了怎么用？没有 Git 呢？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "在已有仓库里直接运行 backlog init 即可。没有 Git 用 backlog init --no-git 创建纯文件系统项目，此时跨分支检查、远程操作和自动提交会被禁用。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "CLI 指令和 MCP，应该选哪个？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "CLI 指令是默认推荐方式，先运行 backlog instructions overview 就能拿到当前版本的工作流说明。偏好 MCP 时，backlog init 可以自动配置。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "Web 界面会暴露到公网吗？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "默认只绑定 127.0.0.1，仅本机可访问。需要局域网访问时才用 backlog browser --host 0.0.0.0，但 API 未做认证。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "团队多人协作能用吗？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "可以。任务随代码进版本控制，用正常的代码评审流程推进即可。自动提交默认关闭，适合需要精细控制提交历史的多人场景。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "许可证是什么，可以商用吗？",
+								"acceptedAnswer": { "@type": "Answer", "text": "MIT 许可证，个人和商业用途都免费，只需保留出处署名。" }
+							},
+							{
+								"@type": "Question",
+								"name": "支持哪些操作系统？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+							"text": "macOS、Linux 和 Windows 都支持。可以用 npm、bun、Homebrew 或 Nix 安装。"
+							}
+						},
+						{
+							"@type": "Question",
+							"name": "升级 Backlog.md 之后，怎么把 AGENTS.md 等指令文件更新到新版本？",
+							"acceptedAnswer": {
+								"@type": "Answer",
+								"text": "在项目里运行 backlog agents --update-instructions，在弹出的列表里勾选要更新的文件（AGENTS.md、CLAUDE.md、GEMINI.md、.github/copilot-instructions.md），命令会把当前版本内置的 Backlog.md 指令块写进这些文件，同时保留你在管理块之外自己添加的内容。重新执行 backlog init 也会一并更新这些文件。"
+							}
+						},
+						{
+							"@type": "Question",
+							"name": "Backlog.md 内置了哪些技能，怎么安装？",
+							"acceptedAnswer": {
+								"@type": "Answer",
+								"text": "内置两个 Agent 技能：llm-wiki-for-backlog 把 backlog 源增量编译成可查询的项目知识库（wiki）；task-migration-architect 在 fork 项目里分析上游变更、按任务驱动完成分支合并。安装命令分别是 backlog wiki install <agent> 和 backlog migrate install <agent>，<agent> 填 claude、codex 或 agents。已存在同名技能时用 --force 覆盖，加 --dry-run 可只预览不写入。"
+							}
+						},
+						{
+							"@type": "Question",
+							"name": "安装技能支持哪些 AI 工具？升级之后怎么更新？",
+							"acceptedAnswer": {
+								"@type": "Answer",
+								"text": "支持 Claude Code / Desktop（.claude/skills/）、OpenAI Codex CLI（.codex/skills/）和通用 Agents 目录（.agents/skills/），三个目录通过符号链接共享同一份技能文件，Windows 上会回退为直接复制。Backlog.md 升级后，重新执行对应的安装命令并加 --force 即可把技能刷新到新版本，无需手动改动。"
+							}
+						}
+					]
+					}
+				]
+			}
+		</script>
+
+		<script src="assets/js/v2.js" defer></script>
+	</body>
+</html>

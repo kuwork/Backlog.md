@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kuwork.github.io/Backlog.md/sitemap.xml

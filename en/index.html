@@ -1,0 +1,1331 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Backlog.md — Keep AI agents working in your repo, with every step reviewable</title>
+		<meta
+			name="description"
+			content="Backlog.md stores tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repository. Agents break down and execute the work, you approve at three checkpoints, and knowledge compounds into an LLM managed wiki. MIT licensed, local first."
+		/>
+		<link rel="canonical" href="https://kuwork.github.io/Backlog.md/en/" />
+		<meta name="theme-color" content="#000000" />
+		<meta name="color-scheme" content="dark" />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Backlog.md" />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:locale:alternate" content="zh_CN" />
+		<meta property="og:title" content="Backlog.md — Keep AI agents working in your repo, with every step reviewable" />
+		<meta
+			property="og:description"
+			content="Tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repo. Agents do the work, you approve at three checkpoints."
+		/>
+		<meta property="og:url" content="https://kuwork.github.io/Backlog.md/en/" />
+		<meta property="og:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="The Backlog.md board view grouping task cards by status" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Backlog.md — Keep AI agents working in your repo, with every step reviewable" />
+		<meta
+			name="twitter:description"
+			content="Turn agent work into tasks you can read, review, and trace. MIT licensed, and the data stays in your own repository."
+		/>
+		<meta name="twitter:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
+		<link rel="alternate" hreflang="en" href="https://kuwork.github.io/Backlog.md/en/" />
+		<link rel="alternate" hreflang="zh-Hans" href="https://kuwork.github.io/Backlog.md/" />
+
+		<link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="../favicon.ico" sizes="any" />
+		<link rel="icon" href="../assets/img/icon-32.png" sizes="32x32" />
+		<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png" />
+		<link rel="manifest" href="../site.webmanifest" />
+		<link rel="preload" as="image" href="../assets/img/v2/board.jpg" />
+		<link rel="stylesheet" href="../assets/css/v2.css" />
+	</head>
+
+	<body>
+		<a class="skip-link button-sm" href="#main">Skip to main content</a>
+
+		<div class="boot" data-boot>
+			<div class="boot-line body-5 mono">
+				<span class="cmd-prompt">$</span>
+				<span data-boot-text="backlog init &quot;My Awesome Project&quot;"></span>
+				<span class="boot-caret" aria-hidden="true"></span>
+			</div>
+			<button class="boot-skip caption-4" type="button" data-boot-skip>Skip</button>
+		</div>
+
+		<div class="progress" aria-hidden="true"><div class="progress-bar" data-progress-bar></div></div>
+		<div class="glow" data-glow aria-hidden="true"></div>
+
+		<header>
+			<nav class="nav" data-nav aria-label="Main navigation">
+				<a class="nav-brand" href="../" aria-label="Backlog.md home">
+					<img src="../assets/img/apple-touch-icon.png" alt="" width="24" height="24" />
+					<span class="title-3">Backlog.md</span>
+				</a>
+
+				<button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="mobile-menu">
+					<span class="nav-toggle-bar"></span>
+					<span class="sr-only">Open menu</span>
+				</button>
+
+				<ul class="nav-links">
+					<li><a class="nav-link title-4" href="#benefits">Why</a></li>
+					<li><a class="nav-link title-4" href="#insights">Data views</a></li>
+					<li><a class="nav-link title-4" href="#how">How it works</a></li>
+					<li><a class="nav-link title-4" href="#product">Interface</a></li>
+					<li><a class="nav-link title-4" href="#features">Features</a></li>
+					<li><a class="nav-link title-4" href="#integrations">Integrations</a></li>
+					<li><a class="nav-link title-4" href="#docs">Docs</a></li>
+					<li><a class="nav-link title-4" href="#faq">FAQ</a></li>
+				</ul>
+
+				<div class="nav-actions">
+					<a class="lang-switch button-sm" href="../" hreflang="zh-Hans" lang="zh-CN">中文</a>
+					<a class="btn btn-secondary btn-slim button-sm" href="https://github.com/kuwork/Backlog.md" rel="noopener">GitHub</a>
+					<a class="btn btn-primary btn-slim button-sm" href="#install">Install</a>
+				</div>
+			</nav>
+
+			<div class="mobile-menu" id="mobile-menu" data-mobile-menu>
+				<a class="title-1" href="#benefits">Why</a>
+				<a class="title-1" href="#insights">Data views</a>
+				<a class="title-1" href="#how">How it works</a>
+				<a class="title-1" href="#product">Interface</a>
+				<a class="title-1" href="#workflow">State machine</a>
+				<a class="title-1" href="#memos">Memos</a>
+				<a class="title-1" href="#features">Features</a>
+				<a class="title-1" href="#integrations">Integrations</a>
+				<a class="title-1" href="#docs">Docs</a>
+				<a class="title-1" href="#faq">FAQ</a>
+				<a class="title-1" href="#install">Install</a>
+				<a class="title-1" href="https://github.com/kuwork/Backlog.md" rel="noopener">GitHub repository</a>
+				<a class="title-1" href="../" hreflang="zh-Hans" lang="zh-CN">中文</a>
+			</div>
+		</header>
+
+		<main id="main">
+			<section class="hero">
+				<canvas class="hero-canvas" data-canvas aria-hidden="true"></canvas>
+
+				<div class="container hero-inner" data-hero-inner>
+					<div class="hero-copy">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							MIT licensed · data stays in your repo
+						</span>
+
+						<h1 class="heading-1 hero-heading" data-split style="margin: var(--sp-300) 0 0">
+							<span class="line">Keep AI agents working in your repo,</span>
+							<span class="line">with every step reviewable</span>
+						</h1>
+
+						<p class="body-2 hero-sub">
+							Backlog.md stores tasks, acceptance criteria, implementation plans, and execution notes as Markdown files
+							in your repository. No database, no black box. Agents break down and execute the work, you approve at
+							three checkpoints.
+						</p>
+
+						<div class="hero-staged">
+							<div class="hero-actions" id="install">
+								<button
+									class="btn btn-primary button-md"
+									type="button"
+									data-magnetic
+									data-copy="#install-cmd"
+									data-copied-label="Install command copied"
+									data-failed-label="Copy failed, select the command manually"
+								>
+									<span class="swap"><span>Copy install command</span><span>Install in five minutes</span></span>
+								</button>
+								<a class="btn btn-secondary button-md" href="https://github.com/kuwork/Backlog.md" rel="noopener">
+									View source on GitHub
+								</a>
+							</div>
+						</div>
+
+						<div class="hero-staged stack-200" style="margin-top: var(--sp-300); transition-delay: 90ms">
+							<div class="cmd" id="install-cmd" data-copy-value="npm i -g @kuwork/backlog.md">
+								<code class="body-5 mono"
+									><span class="cmd-prompt">$</span>
+									<span data-typed="npm i -g @kuwork/backlog.md">npm i -g @kuwork/backlog.md</span
+									><span class="type-caret" aria-hidden="true"></span
+								></code>
+								<button
+									class="btn btn-secondary btn-slim button-sm"
+									type="button"
+									data-copy="#install-cmd"
+									data-copied-label="Copied"
+									data-failed-label="Copy failed, select the command manually"
+								>
+									Copy
+								</button>
+							</div>
+							<span class="copy-state caption-4" data-copy-state role="status" aria-live="polite"></span>
+						</div>
+
+						<p class="body-6 proof-row" style="margin-top: var(--sp-300)">
+							<span>No account needed</span>
+							<span aria-hidden="true">·</span>
+							<span>Works offline</span>
+							<span aria-hidden="true">·</span>
+							<span>macOS, Linux, Windows</span>
+						</p>
+					</div>
+
+					<div class="stage" data-stage>
+						<div class="shot-3d" data-tilt>
+							<div class="shot-bar">
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="caption-4 dim" style="margin-left: var(--sp-100)">backlog browser</span>
+							</div>
+							<img
+								src="../assets/img/v2/board.jpg"
+								alt="The Backlog.md board view with task cards grouped into To Do, In Progress, and Done columns"
+								width="1400"
+								height="875"
+								loading="eager"
+							/>
+						</div>
+						<figure class="tui-pip" aria-label="Terminal demo: driving the same tasks with backlog board in a TUI">
+							<div class="tui-pip-bar">
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="shot-dot" aria-hidden="true"></span>
+								<span class="caption-4 dim" style="margin-left: var(--sp-100)">backlog board · TUI</span>
+							</div>
+							<img
+								src="../assets/img/v2/tui.jpg"
+								alt="Terminal TUI board: To Do, In Progress, and Done columns with a filter bar on top and shortcuts at the bottom"
+								width="1134"
+								height="712"
+								loading="lazy"
+							/>
+						</figure>
+					</div>
+				</div>
+			</section>
+
+			<section class="section-tight" aria-label="Real task stream">
+				<div class="marquee">
+					<div class="marquee-track">
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-208</span> Add paste as markdown support in Web UI</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-267</span> Add agent instruction version metadata</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-346</span> Add milestone completion archival workflow</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-347</span> Add milestone editing in Web UI</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-348</span> Redesign All Tasks page with table layout</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-353</span> Add documentation field to task object</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-361</span> Add label based filtering to task list views</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-367</span> Add Final Summary field to tasks</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-239</span> Auto link tasks to documents and decisions</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-354</span> Project Definition of Done defaults</span
+						>
+					</div>
+				</div>
+				<div class="marquee reverse" aria-hidden="true">
+					<div class="marquee-track">
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-217</span> Create web UI for sequences with drag and drop</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-356</span> Add references field to task domain object</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-218</span> Update documentation and tests for sequences</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-270</span> Prevent command substitution in task inputs</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-352</span> Include subtask list in plain task output</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-268</span> Show agent instruction version status</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-351</span> Strengthen MCP task creation guidance</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--surface-4)"></span
+							><span class="chip-id mono">back-358</span> Rename Task Completion Guide to Finalization</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--accent)"></span
+							><span class="chip-id mono">back-359</span> Pass configured task prefix to cross branch loading</span
+						>
+						<span class="chip caption-4"
+							><span class="chip-state" style="background: var(--text-2)"></span
+							><span class="chip-id mono">back-365</span> Fix acceptance criteria insertion blank lines</span
+						>
+					</div>
+				</div>
+			</section>
+
+			<section class="section-tight">
+				<div class="container">
+					<p class="heading-3 tagline">
+						<span class="tagline-word" data-word="0">Every</span>
+						<span class="tagline-word" data-word="1">agent</span>
+						<span class="tagline-word" data-word="2">run</span>
+						<span class="tagline-word" data-word="3">leaves</span>
+						<span class="tagline-word" data-word="4">something</span>
+						<span class="tagline-word" data-word="5">you</span>
+						<span class="tagline-word" data-word="6">can</span>
+						<span class="tagline-word" data-word="7">review.</span>
+						<br />
+						<span class="tagline-word" data-word="8">Tasks</span>
+						<span class="tagline-word" data-word="9">are</span>
+						<span class="tagline-word" data-word="10">readable</span>
+						<span class="tagline-word" data-word="11">Markdown,</span>
+						<span class="tagline-word" data-word="12">progress</span>
+						<span class="tagline-word" data-word="13">is</span>
+						<span class="tagline-word" data-word="14">a</span>
+						<span class="tagline-word" data-word="15">reviewable</span>
+						<span class="tagline-word" data-word="16">Git</span>
+						<span class="tagline-word" data-word="17">diff,</span>
+						<span class="tagline-word" data-word="18">knowledge</span>
+						<span class="tagline-word" data-word="19">compounds</span>
+						<span class="tagline-word" data-word="20">into</span>
+						<span class="tagline-word" data-word="21">a</span>
+						<span class="tagline-word" data-word="22">searchable</span>
+						<span class="tagline-word" data-word="23">Wiki.</span>
+					</p>
+				</div>
+			</section>
+
+			<section class="section">
+				<div class="container">
+					<div class="grid grid-2" style="align-items: start; gap: var(--sp-600)">
+						<div data-reveal>
+							<h2 class="heading-2">Agents can write code.<br />Who tells them what to do next</h2>
+							<p class="body-3 muted" style="margin-top: var(--sp-300)">
+								Hand a requirement to an agent and it will produce a function that runs. But it does not know what
+								comes next, does not know where the boundary is, and will not tell you which calls it made on your
+								behalf. Once the context grows, the direction drifts, and you spend an afternoon reading what it
+								changed.
+							</p>
+						</div>
+						<div class="card reveal-3d" data-reveal>
+							<span class="caption-3" style="color: var(--accent)">The fix</span>
+							<h3 class="heading-5" style="margin: var(--sp-100) 0 0">Turn agent work into reviewable tasks</h3>
+							<p class="body-3">
+								Every task is a Markdown file with a description, acceptance criteria, and an implementation plan. The
+								agent writes down what it will do before it writes code, and waits for your approval. Tasks move into
+								version control with the code, so they can be diffed, reviewed, searched, and archived.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- benefits -->
+			<section class="section" id="benefits" style="padding-top: var(--sp-0)">
+				<div class="container">
+					<div class="section-head" data-reveal>
+						<h2 class="heading-2">Why Backlog.md</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							Four concrete outcomes: direction holds, review has handles, data stays local, knowledge accumulates.
+						</p>
+					</div>
+
+					<div class="grid grid-4" style="margin-top: var(--sp-500)">
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<path d="M9 6h9M9 12h9M9 18h9" />
+									<path d="M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17" />
+								</svg>
+							</span>
+							<h3 class="heading-6">Agents stop improvising</h3>
+							<p class="body-3">
+								Each task carries a description, acceptance criteria, and an implementation plan. The agent states
+								what it will do before it writes a line of code, and you read it before it runs.
+							</p>
+						</article>
+
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z" />
+									<path d="M9 12l2 2 4-4" />
+								</svg>
+							</span>
+							<h3 class="heading-6">Three review gates</h3>
+							<p class="body-3">
+								Spec, plan, and result are approved separately. A wrong direction stops before the first line of code,
+								not after a thousand line diff.
+							</p>
+						</article>
+
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<rect x="4" y="10" width="16" height="10" rx="2" />
+									<path d="M8 10V7a4 4 0 0 1 8 0v3" />
+								</svg>
+							</span>
+							<h3 class="heading-6">Your data never leaves the machine</h3>
+							<p class="body-3">
+								Everything is stored in local Markdown files inside the project. No cloud account, no subscription,
+								works offline, and Git is optional.
+							</p>
+						</article>
+
+						<article class="card reveal-3d" data-reveal>
+							<span class="card-icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+									<path d="M9 4a4 4 0 0 0-4 4 3 3 0 0 0 .4 6 4 4 0 0 0 3.6 2h5a4 4 0 0 0 1-7.9A3.5 3.5 0 0 0 12 4z" />
+									<path d="M12 9v4M12 15.5v.5" />
+								</svg>
+							</span>
+							<h3 class="heading-6">Every session compounds</h3>
+							<p class="body-3">
+								The LLM wiki turns tasks, docs, and decisions into a queryable project memory. Switch session or
+								switch people, and the context does not have to be rebuilt from zero.
+							</p>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<section class="section" style="padding-top: var(--sp-0)">
+				<div class="container">
+					<div class="grid grid-2" style="align-items: center; gap: var(--sp-600)">
+						<div>
+							<h2 class="heading-3" data-reveal>Backlog.md builds itself with Backlog.md</h2>
+							<p class="body-3 muted" style="margin-top: var(--sp-200); max-width: 520px">
+									Every step of this project, from idea to release, is recorded in its own backlog directory. The numbers
+									below come from the current state of the repository, not from sample data: task files count the
+									<code>tasks</code>, <code>completed</code> and <code>archive/tasks</code> directories, and wiki pages
+									count everything under <code>wiki</code> except the mirrored source material in <code>sources</code>.
+								</p>
+								<div class="grid grid-2" style="margin-top: var(--sp-400); gap: var(--sp-200)">
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="885">885</span></div>
+										<div class="stat-label body-6">Task files in the repo</div>
+									</div>
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="805">805</span></div>
+										<div class="stat-label body-6">Tasks marked done</div>
+									</div>
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="883">883</span></div>
+										<div class="stat-label body-6">Nodes in the task graph</div>
+									</div>
+									<div class="stat reveal-3d" data-reveal>
+										<div class="stat-value"><span data-count="238">238</span></div>
+										<div class="stat-label body-6">Wiki pages distilled</div>
+									</div>
+							</div>
+						</div>
+						<figure class="shot-3d reveal-3d" data-reveal style="margin: 0">
+							<img
+								src="../assets/img/v2/graph.jpg"
+								alt="The graph view: a project graph of colored nodes and edges shaded by task status"
+								width="1400"
+								height="924"
+								loading="lazy"
+							/>
+							<figcaption class="caption-4 dim" style="padding: var(--sp-100) var(--sp-200)">
+								A project graph generated from tasks, docs, and dependencies
+							</figcaption>
+						</figure>
+					</div>
+				</div>
+			</section>
+
+			<!-- insights: activity analytics and relationship graph -->
+			<section class="section" id="insights">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 720px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							Progress you can see
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">See the progress, and see the connections</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							The statistics page spreads a year of delivery into a heatmap and distribution charts. Open any task
+							and its dependencies, subtasks and milestone unfold into a relationship graph on the spot. Both read
+							the same Markdown files — no separate reporting system.
+						</p>
+					</div>
+
+					<div class="insights">
+						<div class="insight-row">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="../assets/img/v2/stats.jpg"
+									alt="Statistics page: a completion heatmap for the past year, cards for total tasks and completion rate, an overall progress bar, plus status and priority distribution panels"
+									width="1400"
+									height="1040"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">Activity analytics: a year of work at a glance</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Completion heatmap</b> — every day of the past year laid out, so cadence and gaps show up at once</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Status and priority distribution</b> — the to-do / in-progress / done split next to the high, medium and low priority mix</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Cycle time and effort</b> — average cycle time, average effort and overdue counts, all derived from the date fields in the task files</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<div class="insight-row is-reverse">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="../assets/img/v2/relationship.jpg"
+									alt="Relationship graph for BACK-521: BACK-521 at the centre, fanning out to 14 subtasks, an upstream dependency chain and its milestone, with edges distinguishing depends-on, parent task and milestone membership"
+									width="1400"
+									height="1155"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">Relationship graph: one task's whole neighbourhood</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>The open task sits at the centre</b> — BACK-521 fans out to its 14 subtasks, its upstream dependency chain and the milestone it belongs to</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>One line style per relation</b> — solid for depends-on, dashed for parent task, dotted for milestone membership, with the legend above the graph</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Keep drilling</b> — click to focus a neighbour, double click to open that task, walking out up to 4 hops and 80 nodes by default</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- how it works -->
+			<section class="section" id="how">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 680px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							How it works
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">Three steps, and you can stop at any one</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							Every step leaves a file in the repository, so pausing, changing your mind, or handing the work to
+							another agent never loses state.
+						</p>
+					</div>
+
+					<div class="grid grid-3" style="margin-top: var(--sp-500)">
+						<article class="how-card" data-reveal>
+							<span class="how-index title-4 mono">01</span>
+							<h3 class="heading-5">Initialize a backlog</h3>
+							<p class="body-3 muted" style="margin-top: var(--sp-200)">
+								Run one command inside any Git repository and pick CLI instructions or MCP for your agent. You can
+								also skip AI and use it as a plain task manager.
+							</p>
+							<div class="step-note caption-4 mono" style="margin-top: var(--sp-300)">
+								backlog init "My Awesome Project"
+							</div>
+						</article>
+
+						<article class="how-card" data-reveal>
+							<span class="how-index title-4 mono">02</span>
+							<h3 class="heading-5">Let the agent decompose and plan</h3>
+							<p class="body-3 muted" style="margin-top: var(--sp-200)">
+								Describe the idea. The agent creates tasks with acceptance criteria, researches the codebase, writes
+								the implementation plan, then stops for your approval.
+							</p>
+							<div class="step-note caption-4" style="margin-top: var(--sp-300)">
+								Review point: read the description and acceptance criteria first, then approve the plan
+							</div>
+						</article>
+
+						<article class="how-card" data-reveal>
+							<span class="how-index title-4 mono">03</span>
+							<h3 class="heading-5">Review the result and capture it</h3>
+							<p class="body-3 muted" style="margin-top: var(--sp-200)">
+								Read the diff, run the tests, check the acceptance criteria. Once it passes, write the summary and
+								the knowledge lands in the Wiki as input for the next step.
+							</p>
+							<div class="step-note caption-4" style="margin-top: var(--sp-300)">
+								One task per session, one task per commit
+							</div>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<!-- product views -->
+			<section class="section" id="product">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 680px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							Interface
+						</span>
+					<h2 class="heading-2" style="margin-top: var(--sp-200)">Every view, nothing leaves your repository</h2>
+					<p class="body-2 muted" style="margin-top: var(--sp-200)">
+						The board, the Gantt chart and the task table read and write the Markdown files directly; graph queries
+						run against the graph derived from those files; a SQL block queries a DuckDB database registered inside
+						the project. They all read and write the repository directly — nothing is exported elsewhere.
+					</p>
+					</div>
+
+					<div class="view-grid" style="margin-top: var(--sp-500)">
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="../assets/img/v2/board.jpg" alt="Board view with task cards grouped by status and ready for drag and drop" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									01 Board
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Drag and drop board, status at a glance</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">backlog browser groups task cards by status. Drag a card to move it, and the change is written straight back to the Markdown file.</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="../assets/img/v2/gantt.jpg" alt="Gantt view with planned outlines and actual progress bars stacked on the same row" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									02 Gantt
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">See slippage the moment you open it</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">Planned dates draw the outline, actual dates fill the bar, across five time grains, so slippage shows up immediately.</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="../assets/img/v2/tasks.jpg" alt="All tasks page listing task id, title, status, and labels in a table" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									03 Task views
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Hundreds of tasks, still one search away</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">Switch between table, board, and tree views, filter by status, label, assignee, or milestone, and run fuzzy search across tasks, docs, and decisions.</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot" src="../assets/img/v2/query.jpg" alt="Graph query page with a read only Cypher editor and database list" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									04 Graph queries
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Ask who blocks whom, get the answer</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">Run read only Cypher against the project knowledge graph once a data source is configured, with results shown as a table or a graph.</p>
+							</div>
+						</article>
+
+						<article class="view-card is-wide" data-reveal>
+							<img class="view-shot" src="../assets/img/v2/sqlquery.jpg" alt="A SQL query block inside a document: the expanded SELECT statement above a live rendered result table" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									05 Data queries
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Numbers in your docs never go stale</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">Write a SELECT inside a Markdown body and the reading view executes it live, rendering a result table you can copy as Markdown, export as CSV or page through.</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot is-16x9" src="../assets/img/v2/charts.jpg" alt="Chart block: a Mermaid flowchart on the left, an interactive ECharts line chart on the right" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									06 Charts
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Turn relations and data into diagrams</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">The data query (05) output can be charted directly: feed its results into a Mermaid or ECharts block and the reading view renders it in place — flowcharts, sequence diagrams, or interactive charts — from the same data your docs, board, and Wiki already use.</p>
+							</div>
+						</article>
+
+						<article class="view-card" data-reveal>
+							<img class="view-shot is-16x9" src="../assets/img/v2/preview.jpg" alt="File preview: Word, Excel, PPT, and PDF document icons shown side by side" loading="lazy" />
+							<div class="view-body">
+								<span class="eyebrow caption-4">
+									<span class="eyebrow-dot" aria-hidden="true"></span>
+									07 File preview
+								</span>
+								<h3 class="heading-5" style="margin-top: var(--sp-200)">Office and PDF, right where they live</h3>
+								<p class="body-3 muted" style="margin-top: var(--sp-200)">Preview Word, Excel, PPT, and PDF files inside the repository without exporting — layout, tables, and slides render in place, no download, no third party tab.</p>
+							</div>
+						</article>
+
+					</div>
+				</div>
+			</section>
+
+			<!-- workflow: state machine -->
+			<section class="section" id="workflow">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 720px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							State machine
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">You define the flow</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							The tool does not dictate how a task moves. Which statuses connect and which ones close the loop is
+							drawn by you, in settings — for engineering work, and just as well for news analysis, paper writing or
+							any non-coding process.
+						</p>
+					</div>
+
+					<div class="insights">
+						<div class="insight-row">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="../assets/img/v2/statemachine.jpg"
+									alt="The state machine editor in settings: a transition tree of task statuses showing where each status can move next and which ones are terminal"
+									width="1400"
+									height="875"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">State machine editor: draw your own transitions</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Live transition tree</b> — add or remove statuses and edges in settings and the tree redraws beside you</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Terminal states marked</b> — which statuses close the loop and which can still move, so nothing stalls halfway</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Hook into changes</b> — <code>onStatusChange</code> runs a shell command on transition, for checks, notifications or sync</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Not just for code</b> — news analysis can move unread → excerpted → drafted → reviewed, a paper can move topic → outline → draft → submitted; non-engineering work gets the same control</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- memos -->
+			<section class="section" id="memos">
+				<div class="container">
+					<div class="section-head" data-reveal style="max-width: 720px">
+						<span class="eyebrow caption-4">
+							<span class="eyebrow-dot" aria-hidden="true"></span>
+							Memos
+						</span>
+						<h2 class="heading-2" style="margin-top: var(--sp-200)">What you think of, you keep</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							Write it down without breaking focus. Notes live in the repository next to tasks and docs, searchable,
+							backlinked and archivable.
+						</p>
+					</div>
+
+					<div class="insights">
+						<div class="insight-row is-reverse">
+							<figure class="insight-figure shot-3d reveal-3d" data-reveal>
+								<img
+									src="../assets/img/v2/memos.jpg"
+									alt="The memos pinboard: a wall of coloured sticky notes, each one a quick note"
+									width="1400"
+									height="991"
+									loading="lazy"
+								/>
+							</figure>
+							<div data-reveal>
+								<h3 class="heading-5">Memos: write it down without breaking focus</h3>
+								<ul class="insight-points body-3">
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Three views, same notes</b> — a feed by time, a calendar by month, and a pinboard wall of cards</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>#tags and @tasks resolved inline</b> — notes link themselves into the knowledge graph, with backlinks</span>
+									</li>
+									<li>
+										<span class="insight-tick" aria-hidden="true"></span>
+										<span><b>Archive, never delete</b> — hover to move a note into <code>archive/memos</code> and keep the history</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="section" id="features">
+				<div class="container">
+					<div class="section-head" data-reveal>
+						<h2 class="heading-2">Features</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							Terminal, web interface, MCP, and CLI all read and write the same Markdown files, so you can switch at any
+							time.
+						</p>
+					</div>
+
+					<ul class="feature-list body-3" style="margin-top: var(--sp-500)">
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Local Markdown tasks</strong> — every item is a plain .md file you can diff, review, and search</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Built for agents</strong> — works with Claude Code, Gemini CLI, Codex, Kiro, and any assistant that can call a CLI or MCP server</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Terminal board</strong> — backlog board renders the current board right in the shell</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>LLM wiki knowledge base</strong> — an AI maintained pairing notebook with ingestion, query, and health checks</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Memos quick notes</strong> — feed, calendar, and pinboard views with inline tags and task links</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Graph queries</strong> — read only Cypher over the graph of tasks, docs, dependencies, and links</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Live query blocks</strong> — embed read only SQL or Cypher in any Markdown body and render results in place</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Chart blocks</strong> — mermaid and echarts fenced blocks for flowcharts and data charts, theme aware</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>File preview</strong> — high fidelity DOCX, XLSX, PPTX, and PDF preview inside the web interface</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Definition of done defaults</strong> — a project wide checklist attached to every new task</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>Board export</strong> — backlog board export writes a shareable Markdown report</span>
+						</li>
+						<li data-reveal>
+							<span class="check" aria-hidden="true"
+								><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M5 13l4 4L19 7" /></svg
+							></span>
+							<span><strong>MIT licensed</strong> — free for personal and commercial use, on macOS, Linux, and Windows</span>
+						</li>
+					</ul>
+
+				</div>
+			</section>
+
+			<!-- integrations -->
+			<section class="section-tight" id="integrations">
+				<div class="container">
+					<h2 class="heading-4" data-reveal>Plug into the agents you already use</h2>
+					<p class="body-3 muted" style="margin: var(--sp-200) 0 var(--sp-300); max-width: 680px">
+						The CLI is the default way in, so any agent that can run a command can start working. If you prefer MCP,
+						<code>backlog init</code> configures it for you.
+					</p>
+					<div class="pill-row caption-1" data-reveal>
+						<span class="pill">Claude Code</span>
+						<span class="pill">Codex</span>
+						<span class="pill">Gemini CLI</span>
+						<span class="pill">Kiro</span>
+						<span class="pill">Cursor</span>
+						<span class="pill">Kimi Code</span>
+						<span class="pill">MCP connector</span>
+						<span class="pill">Terminal</span>
+						<span class="pill">Web interface</span>
+					</div>
+				</div>
+			</section>
+
+			<!-- docs and resources -->
+			<section class="section" id="docs">
+				<div class="container">
+					<div class="section-head" data-reveal>
+						<h2 class="heading-2">Docs and resources</h2>
+						<p class="body-2 muted" style="margin-top: var(--sp-200)">
+							From the quick start to graph queries, the docs live in the same repository as the project.
+						</p>
+					</div>
+
+					<div class="grid grid-2" style="margin-top: var(--sp-500); gap: var(--sp-200)">
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">User manual</h3>
+							<p class="body-3">
+								A 52-page structured manual: install and init, task management, board, web interface, AI
+								integration, graph and data queries.
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/tree/main/backlog/wiki/usermanual"
+								rel="noopener"
+								>Read on GitHub<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">Wiki knowledge base</h3>
+							<p class="body-3">
+								The project's own LLM wiki: concepts, decisions, patterns, and execution records — a working
+								example of the knowledge capture workflow.
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/tree/main/backlog/wiki"
+								rel="noopener"
+								>Read on GitHub<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">CLI reference</h3>
+							<p class="body-3">
+								Complete command reference: tasks, search, board, docs, decisions, milestones, memos and
+								graph commands.
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/blob/main/CLI-INSTRUCTIONS.md"
+								rel="noopener"
+								>Read on GitHub<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+
+						<article class="card doc-card reveal-3d" data-reveal>
+							<h3 class="heading-6">Advanced configuration</h3>
+							<p class="body-3">
+								Every configuration key: cross-branch checks, auto-commit, ID formatting, editor integration,
+								and default definition of done.
+							</p>
+							<a
+								class="text-link body-3"
+								href="https://github.com/kuwork/Backlog.md/blob/main/ADVANCED-CONFIG.md"
+								rel="noopener"
+								>Read on GitHub<span class="arrow" aria-hidden="true">→</span></a
+							>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<section class="section" id="faq">
+				<div class="container">
+					<h2 class="heading-2" data-reveal>Frequently asked questions</h2>
+
+					<div class="faq" style="margin-top: var(--sp-500)">
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-1">
+									<span>Do I need an internet connection or an account?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-1">
+								<p>
+									No. Everything lives in the local backlog folder inside your project. There is no cloud account, no
+									subscription, and it works offline.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-2">
+									<span>How is this different from Jira or Linear?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-2">
+								<p>
+									Tasks are Markdown files in your repository. They enter version control with the code, so they can be
+									diffed, reviewed, searched, and archived. It is also built for agents, with CLI instructions and an
+									MCP interface so an agent can work the tasks directly while a human reviews the checkpoints.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-3">
+									<span>Which AI tools are supported?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-3">
+								<p>
+									Anything that can run a command or speak MCP, including Claude Code, Codex, Gemini CLI, Kiro, and
+									Cursor. CLI instructions are the recommended path: the agent runs backlog instructions overview and
+									gets the current workflow guide.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-4">
+									<span>Where is the task data stored?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-4">
+								<p>
+									Inside the project backlog directory, backlog/ or .backlog/ by default, configurable to another
+									project relative path in backlog.config.yml. Tasks themselves are plain Markdown files you can read.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-5">
+									<span>Can I use it without an AI agent?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-5">
+								<p>
+									Yes. The terminal commands and the web interface both work on their own, and every change stays in
+									sync with the Markdown files. You can move between manual and AI assisted work at any time.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-6">
+									<span>What if I already have a Git repo, or no Git at all?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-6">
+								<p>
+									Run backlog init inside an existing repository. With no Git, use backlog init --no-git to create a
+									file system only project, which turns off cross branch checks, remote operations, and auto commit.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-7">
+									<span>CLI instructions or MCP, which should I pick?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-7">
+								<p>
+									CLI instructions are the default recommendation, since backlog instructions overview returns the
+									workflow guide for the installed version instead of a stale copy. If you prefer MCP, backlog init can
+									configure Claude Code, Codex, Gemini CLI, Kiro, or Cursor for you.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-8">
+									<span>Is the web interface exposed to the public internet?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-8">
+								<p>
+									No. It binds to 127.0.0.1 by default, so only the local machine can reach it. Use backlog browser
+									--host 0.0.0.0 only when you need LAN access, and note that the API is unauthenticated.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-9">
+									<span>Does it work for a team?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-9">
+								<p>
+									Yes. Tasks enter version control with the code, so your normal review flow applies. Auto commit is
+									off by default, which suits teams that want control over history. Solo or automated workflows can turn
+									it on for one commit per action.
+								</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-10">
+									<span>What is the license, and can I use it commercially?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-10">
+								<p>MIT licensed. Free for personal and commercial use, as long as you keep the attribution.</p>
+							</div>
+						</div>
+
+						<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-11">
+									<span>Which operating systems are supported?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+						<div class="faq-a body-3" id="faq-11">
+							<p>macOS, Linux, and Windows. Install with npm, bun, Homebrew, or Nix.</p>
+						</div>
+					</div>
+
+					<div class="faq-item">
+						<h3>
+							<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-12">
+								<span>After upgrading Backlog.md, how do I refresh AGENTS.md and the other agent instruction files?</span>
+								<span class="faq-sign" aria-hidden="true"></span>
+							</button>
+						</h3>
+						<div class="faq-a body-3" id="faq-12">
+							<p>
+								Run backlog agents --update-instructions in your project, then pick the files to update (AGENTS.md, CLAUDE.md, GEMINI.md, .github/copilot-instructions.md). It writes the current version's Backlog.md instruction block into each selected file while preserving anything you added outside that managed block. Re-running backlog init updates these files too; if a file has no Backlog.md block yet, the command adds one.
+							</p>
+						</div>
+					</div>
+
+					<div class="faq-item">
+						<h3>
+							<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-13">
+								<span>What built-in skills does Backlog.md ship with, and how do I install them?</span>
+								<span class="faq-sign" aria-hidden="true"></span>
+							</button>
+						</h3>
+						<div class="faq-a body-3" id="faq-13">
+							<p>
+								Two bundled Agent Skills: llm-wiki-for-backlog turns your backlog sources into a queryable project knowledge base (wiki); task-migration-architect analyzes upstream changes and drives task-based branch merges in fork projects. Install them with backlog wiki install &lt;agent&gt; and backlog migrate install &lt;agent&gt;, where &lt;agent&gt; is claude, codex, or agents. Use --force to overwrite an existing skill, or --dry-run to preview without writing.
+							</p>
+						</div>
+					</div>
+
+					<div class="faq-item">
+						<h3>
+							<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-14">
+								<span>Which AI tools are supported, and how do I update a skill after upgrading?</span>
+								<span class="faq-sign" aria-hidden="true"></span>
+							</button>
+						</h3>
+						<div class="faq-a body-3" id="faq-14">
+							<p>
+								Claude Code / Desktop (.claude/skills/), OpenAI Codex CLI (.codex/skills/), and the generic Agents directory (.agents/skills/) — all three link to one shared copy, falling back to a direct copy on Windows. After a Backlog.md upgrade, re-run the install command with --force to refresh the skill to the new version; no manual edits needed.
+							</p>
+						</div>
+					</div>
+				</div>
+				</div>
+			</section>
+
+			<section class="section" style="padding-top: var(--sp-0)">
+				<div class="container-narrow">
+					<div class="cta-panel" data-reveal>
+						<h2 class="heading-3">Install in five minutes, delete it whenever you want</h2>
+						<p class="body-2 muted" style="margin: var(--sp-200) auto var(--sp-400); max-width: 560px">
+							MIT licensed, data in your own repository, no account, no cloud dependency. Install it and run backlog
+							init once to see what it does.
+						</p>
+						<div class="hero-actions">
+							<button
+								class="btn btn-primary button-md"
+								type="button"
+								data-magnetic
+								data-copy="#install-cmd"
+								data-copied-label="Install command copied"
+								data-failed-label="Copy failed, select the command manually"
+							>
+								<span class="swap"><span>Copy install command</span><span>Install in five minutes</span></span>
+							</button>
+							<a class="btn btn-secondary button-md" href="https://github.com/kuwork/Backlog.md" rel="noopener">
+								View source on GitHub
+							</a>
+						</div>
+						<p class="caption-4 dim" style="margin-top: var(--sp-300)">
+							The same package installs with bun: bun add -g @kuwork/backlog.md
+						</p>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer class="footer">
+			<div class="footer-marquee" aria-hidden="true">
+				<div class="footer-marquee-track">
+					<span class="footer-word">BACKLOG.MD</span>
+					<span class="footer-word">MARKDOWN</span>
+					<span class="footer-word">GIT NATIVE</span>
+					<span class="footer-word">HUMAN REVIEW</span>
+					<span class="footer-word">AI MEMORY</span>
+					<span class="footer-word">BACKLOG.MD</span>
+					<span class="footer-word">MARKDOWN</span>
+					<span class="footer-word">GIT NATIVE</span>
+					<span class="footer-word">HUMAN REVIEW</span>
+					<span class="footer-word">AI MEMORY</span>
+				</div>
+			</div>
+
+			<div class="container">
+				<div class="footer-grid">
+					<div>
+						<a class="nav-brand" href="../" style="padding: 0">
+							<img src="../assets/img/apple-touch-icon.png" alt="" width="24" height="24" />
+							<span class="title-3">Backlog.md</span>
+						</a>
+						<p class="body-6 muted" style="margin: var(--sp-200) 0 0; max-width: 320px">
+							Turn agent work into tasks you can read, review, and trace. Markdown tasks, Git native, human review, AI
+							memory.
+						</p>
+					</div>
+
+					<div>
+						<h3 class="caption-3">Product</h3>
+						<ul class="body-6">
+							<li><a href="#benefits">Why</a></li>
+							<li><a href="#insights">Data views</a></li>
+							<li><a href="#how">How it works</a></li>
+							<li><a href="#product">Interface</a></li>
+							<li><a href="#workflow">State machine</a></li>
+							<li><a href="#memos">Memos</a></li>
+							<li><a href="#features">Features</a></li>
+							<li><a href="#integrations">Integrations</a></li>
+							<li><a href="#docs">Docs</a></li>
+							<li><a href="#faq">FAQ</a></li>
+						</ul>
+					</div>
+
+					<div>
+						<h3 class="caption-3">Project</h3>
+						<ul class="body-6">
+							<li><a href="https://github.com/kuwork/Backlog.md" rel="noopener">GitHub repository</a></li>
+							<li>
+								<a href="https://github.com/kuwork/Backlog.md/blob/main/CLI-INSTRUCTIONS.md" rel="noopener"
+									>CLI reference</a
+								>
+							</li>
+							<li>
+								<a href="https://github.com/kuwork/Backlog.md/blob/main/ADVANCED-CONFIG.md" rel="noopener"
+									>Advanced config</a
+								>
+							</li>
+							<li><a href="https://github.com/kuwork/Backlog.md/releases" rel="noopener">Changelog</a></li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="footer-bottom caption-5">
+					<span>© <span data-year>2026</span> Backlog.md · MIT license · this site sets no tracking cookies</span>
+					<span style="display: flex; gap: var(--sp-200)">
+						<a href="../privacy.html">Privacy</a>
+						<a href="../terms.html">Terms</a>
+						<a href="../v1/en/">Older design</a>
+						<a href="https://github.com/kuwork/Backlog.md/blob/main/LICENSE" rel="noopener">License</a>
+					</span>
+				</div>
+			</div>
+		</footer>
+
+		<script src="../assets/js/v2.js" defer></script>
+	</body>
+</html>
