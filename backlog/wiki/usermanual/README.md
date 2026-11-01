@@ -2,7 +2,7 @@
 title: Backlog.md 用户手册
 labels: [usermanual]
 created_date: 2026-05-07 00:00
-updated_date: 2026-10-18 22:00
+updated_date: 2026-11-02 00:18
 ---
 
 
@@ -38,13 +38,13 @@ Backlog.md 将任意 Git 仓库目录转变为自包含的项目看板。每个�
 ## 安装
 
 ```bash
-npm i -g backlog.md
+npm i -g @kuwork/backlog.md
 ```
 
 其他安装方式：
-- `bun add -g backlog.md`
-- `brew install backlog-md`
-- `nix run github:MrLesk/Backlog.md`
+- `bun add -g @kuwork/backlog.md`
+- `brew install backlog-md`（上游 formula）
+- `nix run github:MrLesk/Backlog.md`（上游 flake）
 
 ## 快速开始
 
@@ -65,3 +65,9 @@ backlog browser
 ---
 
 本手册涵盖从基础安装到高级 AI 集成的完整使用指南。
+
+## Related Concepts
+
+- [产品概述](00-快速开始/00-产品概述.md) — Backlog.md 核心定位与功能概览
+- [安装与初始化](00-快速开始/01-安装与初始化.md) — 安装方式与项目初始化步骤
+- [AI 集成设置](00-快速开始/02-AI集成设置.md) — AI 集成配置与工作流
