@@ -1,0 +1,1181 @@
+
+<!DOCTYPE HTML>
+<html lang="zh" >
+    <head>
+        <meta charset="UTF-8">
+        <title>里程碑管理 · Backlog.md 用户手册</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="../40-Web界面/00-启动与访问.html" />
+    
+    
+    <link rel="prev" href="01-决策记录.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="輸入並搜尋" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">快速开始</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    产品概述
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    安装与初始化
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI 集成设置
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">任务管理</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    任务生命周期
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    创建与编辑任务
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    草稿管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    子任务与依赖
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    搜索与序列
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    归档与清理
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">看板与可视化</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI 看板
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web 看板
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    看板导出
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">文档与决策</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="00-文档管理.html">
+            
+                <a href="00-文档管理.html">
+            
+                    
+                    文档管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="01-决策记录.html">
+            
+                <a href="01-决策记录.html">
+            
+                    
+                    决策记录
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="4.3" data-path="02-里程碑管理.html">
+            
+                <a href="02-里程碑管理.html">
+            
+                    
+                    里程碑管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web 界面</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    启动与访问
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    看板视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    任务列表
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    里程碑管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    文档与决策
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    设置与主题
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    富文本粘贴与文档上传
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki 浏览与编辑
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    统计页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    甘特图视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    全局搜索
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    图谱视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    文档预览
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI 集成</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP 工作流
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    支持的 AI 工具
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    代理指令文件
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill 安装
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill 安装
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">快速笔记</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos 简介
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI 备忘命令
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web 备忘页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    搜索与知识互联
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    钉板视图与归档
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">图谱与数据查询</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    图谱 CLI 命令
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    图谱 MCP 工具
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    数据库页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    图例配置持久化
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    图表块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">配置与运维</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="../60-配置与运维/00-配置管理.html">
+            
+                <a href="../60-配置与运维/00-配置管理.html">
+            
+                    
+                    配置管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="../60-配置与运维/01-Shell补全.html">
+            
+                <a href="../60-配置与运维/01-Shell补全.html">
+            
+                    
+                    Shell 补全
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="../60-配置与运维/02-项目概览.html">
+            
+                <a href="../60-配置与运维/02-项目概览.html">
+            
+                    
+                    项目概览
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="../60-配置与运维/03-故障排查.html">
+            
+                <a href="../60-配置与运维/03-故障排查.html">
+            
+                    
+                    故障排查
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            本書使用 HonKit 釋出
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >里程碑管理</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="里程碑管理">里程碑管理</h1>
+<p>里程碑用于将任务按迭代、版本或发布周期分组，是追踪阶段进度和规划路线图的核心工具。Backlog.md 的里程碑数据以 Markdown 文件形式存储在 <code>backlog/milestones/</code> 目录中，与任务文件共同纳入版本控制。</p>
+<h2 id="创建里程碑">创建里程碑</h2>
+<p>里程碑可通过 CLI、Web 界面或 MCP 创建。</p>
+<h3 id="cli-创建">CLI 创建</h3>
+<pre><code class="lang-bash">backlog milestone add <span class="hljs-string">"M3 - Web UI"</span>
+
+<span class="hljs-comment"># 一次性设置描述、日期与关联文档</span>
+backlog milestone add <span class="hljs-string">"M3 - Web UI"</span> \
+  --description <span class="hljs-string">"本阶段的界面与交互目标"</span> \
+  --due-date 2026-07-31 --planned-start 2026-07-01 --planned-end 2026-07-25 \
+  --doc doc-5 --doc doc-8
+</code></pre>
+<p><code>--doc</code> 可重复使用以关联多个文档，空值会被拒绝；创建时会自动写入 <code>created_date</code>。</p>
+<h3 id="web-界面创建">Web 界面创建</h3>
+<ol>
+<li>运行 <code>backlog browser</code> 启动 Web 界面。</li>
+<li>点击导航栏的「里程碑」进入里程碑管理页。</li>
+<li>点击「添加里程碑」按钮，输入里程碑名称（例如 <code>M3 - Web UI</code>）。</li>
+<li>描述字段支持 Markdown 编辑、Mermaid 预览与粘贴上传图片（保存前自动 promote 到 <code>paste/</code>）。</li>
+<li>点击保存，系统会在 <code>backlog/milestones/</code> 下生成对应的里程碑文件。</li>
+</ol>
+<blockquote>
+<p><strong>提示</strong>：AI 代理用户可通过 MCP 工具的 <code>milestone_add</code> 直接创建里程碑，无需打开浏览器。</p>
+</blockquote>
+<h2 id="编辑里程碑">编辑里程碑</h2>
+<p>通过 CLI 编辑里程碑的标题、描述和日期字段：</p>
+<pre><code class="lang-bash">backlog milestone edit M1 --title <span class="hljs-string">"M1 - 核心 CLI"</span> --description <span class="hljs-string">"第一阶段目标"</span> \
+  --due-date 2026-06-30 --planned-start 2026-05-01 --planned-end 2026-06-15 \
+  --actual-start <span class="hljs-string">"2026-05-01 09:00"</span> --actual-end <span class="hljs-string">"2026-06-10 18:00"</span>
+
+<span class="hljs-comment"># 清空日期字段</span>
+backlog milestone edit M1 --clear-due-date --clear-planned-end --clear-actual-start
+</code></pre>
+<ul>
+<li>支持通过标题或 ID 定位里程碑（模糊匹配）。</li>
+<li>计划字段（<code>dueDate</code> / <code>plannedStart</code> / <code>plannedEnd</code>）格式为 <code>YYYY-MM-DD</code>。</li>
+<li>实际字段（<code>actualStart</code> / <code>actualEnd</code>）格式为 <code>YYYY-MM-DD HH:MM</code>（UTC）。</li>
+<li>传空字符串可清空对应字段。</li>
+</ul>
+<p>里程碑也支持与任务一致的关联文档字段：</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># 覆盖式设置关联文档</span>
+backlog milestone edit M1 --doc doc-5
+
+<span class="hljs-comment"># 追加 / 按值移除 / 清空</span>
+backlog milestone edit M1 --add-doc doc-8
+backlog milestone edit M1 --remove-doc doc-5
+backlog milestone edit M1 --clear-docs
+</code></pre>
+<p><code>--doc</code>（设置）与 <code>--add-doc</code>（追加）在同一命令中互斥，<code>--clear-docs</code> 不可与同类其它标志混用；规则与任务的列表型字段完全一致。文档链接的增删属于实质性变更，会刷新 <code>updated_date</code>。</p>
+<h3 id="web-ui-中的里程碑日期编辑">Web UI 中的里程碑日期编辑</h3>
+<p>在里程碑管理页点击里程碑卡片，可打开编辑弹窗：</p>
+<ul>
+<li><strong>Due Date</strong> / <strong>Planned Start</strong> / <strong>Planned End</strong> — <code>date</code> 输入框</li>
+<li><strong>Actual Start</strong> / <strong>Actual End</strong> — <code>datetime-local</code> 输入框</li>
+<li><strong>Documentation</strong> — 关联文档条目可直接在弹窗内预览渲染：本地（非 URL）条目是点击预览控件，打开与任务弹窗共享的应用内文件预览；<code>http(s)</code> 条目仍为外链在新标签页打开。预览在切换里程碑时自动复位，不会残留到弹窗关闭之后</li>
+</ul>
+<p>里程碑的 <code>actualStart</code> / <code>actualEnd</code> 由下属任务的状态变化自动驱动：</p>
+<ul>
+<li>当里程碑下任一任务变更为 In Progress 时，若 <code>actualStart</code> 为空，自动设为当前日期时间</li>
+<li>当里程碑下最后一个非终态任务变更为 Done 时，若 <code>actualEnd</code> 为空，自动设为当前日期时间</li>
+<li>你可以随时手动覆盖这些自动填充值</li>
+</ul>
+<h2 id="里程碑列表与详情">里程碑列表与详情</h2>
+<p>在终端中查看所有里程碑及其完成状态：</p>
+<pre><code class="lang-bash">backlog milestone list
+</code></pre>
+<p>输出示例：</p>
+<pre><code>Active milestones (2):
+  m-1: M1 - CLI (8/12 done)
+  m-2: M2 - MCP 支持 (3/5 done)
+
+Completed milestones (1):
+  (collapsed, use --show-completed to list)
+</code></pre><p>每个里程碑显示已完成任务数与总任务数的比值，一目了然地展示进度。</p>
+<blockquote>
+<p><strong>里程碑 ID 显示样式</strong>：里程碑 ID 在各界面统一以大写 <code>M-N</code> 形式显示，与任务 ID 的 <code>TASK-9</code> 风格对齐——Web 列表与详情弹窗用 em dash（<code>M-9 — Title</code>），TUI 里程碑行与 CLI <code>milestone list --plain</code> 的分节标题用连字符（<code>M-9 - Title</code>、<code>## M-9 - Title (n tasks)</code>）。这是纯显示层变更，存储格式与别名解析（<code>m-2</code>、<code>2</code>、<code>M2</code> 等输入形式）均不受影响。</p>
+</blockquote>
+<h3 id="查看已完成的里程碑">查看已完成的里程碑</h3>
+<p>默认情况下，已完成的里程碑会被折叠，减少信息噪音。如需展开：</p>
+<pre><code class="lang-bash">backlog milestone list --show-completed
+</code></pre>
+<p>纯文本输出（适合脚本解析）：</p>
+<pre><code class="lang-bash">backlog milestone list --plain
+
+<span class="hljs-comment"># 分页窗口：窗口单位是里程碑</span>
+backlog milestone list --max-count 10
+backlog milestone list --max-count 10 --skip 10
+backlog milestone list --count
+</code></pre>
+<p><code>--plain</code> 输出与 <code>backlog board -m</code> 完全一致的 Markdown 分组看板：先是「No Milestone」节，再按里程碑文件顺序分节，节内任务按 <code>### &lt;状态&gt; (数量)</code> 小标题分组列出；默认排除 completed 目录中的任务，<code>--show-completed</code> 可将其纳入；空状态列自动收窄。</p>
+<h3 id="tui-里程碑看板">TUI 里程碑看板</h3>
+<p>在 TTY 中运行 <code>backlog milestones</code> 进入交互式里程碑看板：左侧为里程碑列表（<code>Space</code> 限定范围、<code>Enter</code> 查看元数据、<code>N</code> 新建），右侧为嵌入式任务看板，里程碑详情弹窗支持按 <code>E</code> 编辑日期与描述。详见 <a href="../20-看板与可视化/00-TUI看板.html">TUI 看板</a>。</p>
+<h2 id="任务分配到里程碑">任务分配到里程碑</h2>
+<p>将任务归属到某个里程碑有三种方式：</p>
+<h3 id="1-创建任务时指定">1. 创建任务时指定</h3>
+<pre><code class="lang-bash">backlog task create <span class="hljs-string">"实现看板拖拽"</span> -m <span class="hljs-string">"M2 - MCP 支持"</span>
+</code></pre>
+<p><code>-m</code> 选项支持模糊匹配，系统会自动找到最接近的里程碑。也可以使用里程碑 ID（如 <code>m-2</code>）或纯数字（如 <code>2</code>）。</p>
+<h3 id="2-编辑现有任务">2. 编辑现有任务</h3>
+<pre><code class="lang-bash">backlog task edit 7 --milestone <span class="hljs-string">"M2 - MCP 支持"</span>
+</code></pre>
+<h3 id="3-按里程碑-id-过滤任务列表">3. 按里程碑 ID 过滤任务列表</h3>
+<p>在 <code>backlog task list</code> 的里程碑过滤中，可以使用多种形式定位里程碑：</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># 数字别名</span>
+backlog task list -m 2
+
+<span class="hljs-comment"># 规范 ID</span>
+backlog task list -m m-2
+
+<span class="hljs-comment"># 大小写变体</span>
+backlog task list -m <span class="hljs-string">"M2"</span>
+
+<span class="hljs-comment"># 标题精确/部分匹配</span>
+backlog task list -m <span class="hljs-string">"MCP 支持"</span>
+</code></pre>
+<p>过滤解析支持数字别名、规范 ID（<code>m-N</code>）、大小写变体以及带标点符号的标题，行为在 CLI、交互式任务列表和 MCP <code>task_list</code> 的 active/draft 路径中保持一致。如果查询没有匹配到任何里程碑，则返回空列表。</p>
+<h3 id="4-清除里程碑归属">4. 清除里程碑归属</h3>
+<pre><code class="lang-bash">backlog task edit 7 --clear-milestone
+</code></pre>
+<h3 id="5-web-界面拖放分配">5. Web 界面拖放分配</h3>
+<p>在 Web 界面的里程碑管理页中，「未分配任务池」展示了所有没有里程碑归属的任务。将任务卡片拖拽到目标里程碑卡片中即可完成分配，反向拖拽则可移除。</p>
+<h2 id="里程碑完成检测与归档">里程碑完成检测与归档</h2>
+<h3 id="自动完成检测">自动完成检测</h3>
+<p>当一个里程碑下的所有任务都进入 <code>Done</code> 状态时，系统会自动将该里程碑标记为已完成。在 <code>backlog milestone list</code> 中，它会从「Active milestones」区域移动到「Completed milestones」区域。</p>
+<h3 id="归档里程碑">归档里程碑</h3>
+<p>已完成的里程碑如果长期保留在活跃列表中会累积噪音。可将其归档：</p>
+<pre><code class="lang-bash">backlog milestone archive <span class="hljs-string">"M1 - CLI"</span>
+</code></pre>
+<p>归档后的里程碑：</p>
+<ul>
+<li>从活跃里程碑列表中移除</li>
+<li>其下任务自动变为「未分配」状态（任务本身不会被删除，仅解除里程碑绑定）</li>
+<li>文件移入归档区，ID 不再参与模糊匹配</li>
+</ul>
+<p>归档操作支持通过标题或 ID 定位里程碑：</p>
+<pre><code class="lang-bash">backlog milestone archive m-1
+backlog milestone archive 1
+</code></pre>
+<p>归档<strong>不会</strong>修改任何任务文件——任务保留对该里程碑的引用。如果希望同时清空或改挂任务上的里程碑字段，请使用 <code>remove</code>（见下一节）。</p>
+<h2 id="createddate-与-updateddate">created_date 与 updated_date</h2>
+<p>里程碑与任务一样自动维护两个时间戳：</p>
+<ul>
+<li><code>created_date</code>：创建时写入（UTC，<code>YYYY-MM-DD HH:MM</code>）</li>
+<li><code>updated_date</code>：仅在<strong>实质性变更</strong>时刷新——仅顺序调整不会刷新，文档链接的增删会刷新</li>
+</ul>
+<p><code>backlog milestone list</code> 会在条目后追加 <code>(updated ...)</code>（无更新记录时回退为 <code>(created ...)</code>）；MCP <code>milestone_list</code> 显示 <code>Created:</code> / <code>Updated:</code> 标签。历史文件缺少这两个字段时不会报错，显示时回退到 <code>created_date</code>。Web 界面在里程碑卡片上显示「最近更新」，详情页顶部信息框显示「创建于 / 更新于」。</p>
+<h2 id="移除里程碑（remove）">移除里程碑（remove）</h2>
+<p>除 <code>archive</code> 之外还有 <code>remove</code>。两者都会把里程碑文件移入归档目录，区别在于是否处理任务文件上的里程碑字段：</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># 默认：清空匹配任务的里程碑字段</span>
+backlog milestone remove <span class="hljs-string">"Release 1.0"</span>
+
+<span class="hljs-comment"># 保留任务上的里程碑引用</span>
+backlog milestone remove <span class="hljs-string">"Release 1.0"</span> --task-handling keep
+
+<span class="hljs-comment"># 改挂到另一个活跃里程碑</span>
+backlog milestone remove <span class="hljs-string">"Release 1.0"</span> --task-handling reassign --reassign-to <span class="hljs-string">"Release 2.0"</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>里程碑文件</th>
+<th>任务文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>archive</code></td>
+<td>移入归档目录</td>
+<td><strong>不修改</strong>，任务保留对该里程碑的引用</td>
+</tr>
+<tr>
+<td><code>remove --task-handling keep</code></td>
+<td>移入归档目录</td>
+<td>不修改</td>
+</tr>
+<tr>
+<td><code>remove --task-handling clear</code>（默认）</td>
+<td>移入归档目录</td>
+<td>清空匹配任务的里程碑字段</td>
+</tr>
+<tr>
+<td><code>remove --task-handling reassign</code></td>
+<td>移入归档目录</td>
+<td>改挂到 <code>--reassign-to</code> 指定的活跃里程碑</td>
+</tr>
+</tbody>
+</table>
+<h2 id="未分配任务池">未分配任务池</h2>
+<p>未归属任何活跃里程碑的任务构成了「未分配任务池」。在 Web 界面的里程碑页中，这些任务集中展示在页面顶部，方便你：</p>
+<ul>
+<li>快速审视尚未纳入迭代规划的工作项</li>
+<li>批量拖拽分配到合适的里程碑</li>
+<li>识别遗漏或需要重新排期的任务</li>
+</ul>
+<p>在终端中，未分配任务不会在 <code>backlog milestone list</code> 中显示，但可以通过筛选查看：</p>
+<pre><code class="lang-bash">backlog task list --milestone <span class="hljs-string">""</span>
+</code></pre>
+<h2 id="在看板中按里程碑分组">在看板中按里程碑分组</h2>
+<p>TUI 看板和 Web 看板都支持里程碑分组模式：</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># TUI 看板按里程碑泳道展示</span>
+backlog board --milestones
+</code></pre>
+<p>在此模式下，看板不再单纯按状态分列，而是在每列内按里程碑形成横向泳道，帮助你直观对比各迭代的剩余工作量。</p>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="01-决策记录.html" class="navigation navigation-prev " aria-label="Previous page: 决策记录">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="../40-Web界面/00-启动与访问.html" class="navigation navigation-next " aria-label="Next page: 启动与访问">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"里程碑管理","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-16 01:00","level":"4.3","depth":1,"next":{"title":"启动与访问","level":"5.1","depth":1,"path":"40-Web界面/00-启动与访问.md","ref":"40-Web界面/00-启动与访问.md","articles":[]},"previous":{"title":"决策记录","level":"4.2","depth":1,"path":"30-文档与决策/01-决策记录.md","ref":"30-文档与决策/01-决策记录.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh","gitbook":"*"},"file":{"path":"30-文档与决策/02-里程碑管理.md","mtime":"2026-11-01T16:24:40.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-01T16:38:00.452Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

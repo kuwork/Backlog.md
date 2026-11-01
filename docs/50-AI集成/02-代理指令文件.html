@@ -1,0 +1,1207 @@
+
+<!DOCTYPE HTML>
+<html lang="zh" >
+    <head>
+        <meta charset="UTF-8">
+        <title>代理指令文件 · Backlog.md 用户手册</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="03-Wiki Skill 安装.html" />
+    
+    
+    <link rel="prev" href="01-支持的AI工具.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="輸入並搜尋" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">快速开始</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    产品概述
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    安装与初始化
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI 集成设置
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">任务管理</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    任务生命周期
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    创建与编辑任务
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    草稿管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    子任务与依赖
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    搜索与序列
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    归档与清理
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">看板与可视化</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI 看板
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web 看板
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    看板导出
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">文档与决策</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    文档管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    决策记录
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    里程碑管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web 界面</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    启动与访问
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    看板视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    任务列表
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    里程碑管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    文档与决策
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    设置与主题
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    富文本粘贴与文档上传
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki 浏览与编辑
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    统计页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    甘特图视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    全局搜索
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    图谱视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    文档预览
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI 集成</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="00-MCP工作流.html">
+            
+                <a href="00-MCP工作流.html">
+            
+                    
+                    MCP 工作流
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="01-支持的AI工具.html">
+            
+                <a href="01-支持的AI工具.html">
+            
+                    
+                    支持的 AI 工具
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="6.3" data-path="02-代理指令文件.html">
+            
+                <a href="02-代理指令文件.html">
+            
+                    
+                    代理指令文件
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="03-Wiki Skill 安装.html">
+            
+                <a href="03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill 安装
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="04-Migration Skill 安装.html">
+            
+                <a href="04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill 安装
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">快速笔记</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos 简介
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI 备忘命令
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web 备忘页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    搜索与知识互联
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    钉板视图与归档
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">图谱与数据查询</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    图谱 CLI 命令
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    图谱 MCP 工具
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    数据库页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    图例配置持久化
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    图表块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">配置与运维</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="../60-配置与运维/00-配置管理.html">
+            
+                <a href="../60-配置与运维/00-配置管理.html">
+            
+                    
+                    配置管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="../60-配置与运维/01-Shell补全.html">
+            
+                <a href="../60-配置与运维/01-Shell补全.html">
+            
+                    
+                    Shell 补全
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="../60-配置与运维/02-项目概览.html">
+            
+                <a href="../60-配置与运维/02-项目概览.html">
+            
+                    
+                    项目概览
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="../60-配置与运维/03-故障排查.html">
+            
+                <a href="../60-配置与运维/03-故障排查.html">
+            
+                    
+                    故障排查
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            本書使用 HonKit 釋出
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >代理指令文件</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="代理指令文件">代理指令文件</h1>
+<p>代理指令文件是 Backlog.md 为 AI 编码助手准备的标准化指南文档。这些文件告诉 AI 如何与 Backlog.md 协作，包括工作流规范、命令用法和任务管理标准。通过统一的指令文件，不同 AI 工具对项目的理解保持一致，避免因工具切换导致的工作流偏差。</p>
+<h2 id="什么是指令文件">什么是指令文件</h2>
+<p>AI 编码助手在启动时会读取项目中的特定 Markdown 文件作为上下文。Backlog.md 利用这一机制，生成包含项目管理规范的指令文件。这些文件涵盖：</p>
+<ul>
+<li>Backlog.md 的核心能力介绍</li>
+<li>任务文件结构说明</li>
+<li>CLI 命令完整参考</li>
+<li>验收标准与定义完成（DoD）规范</li>
+<li>典型工作流程示例</li>
+<li>常见错误与正确做法对比</li>
+</ul>
+<p>AI 阅读这些文件后，能够在对话中准确使用 Backlog.md 的功能，无需用户反复解释项目规范。</p>
+<h2 id="生成指令文件">生成指令文件</h2>
+<p>Backlog.md 提供两种方式生成或更新代理指令文件。</p>
+<h3 id="初始化项目时自动生成">初始化项目时自动生成</h3>
+<p>运行 <code>backlog init</code> 初始化新项目时，向导会询问是否需要安装 AI 代理指令：</p>
+<pre><code class="lang-bash">backlog init my-project
+<span class="hljs-comment"># 交互式向导中出现选项：</span>
+<span class="hljs-comment"># "Install AI agent instructions?"</span>
+</code></pre>
+<p>选择安装后，Backlog.md 会根据你的选择生成对应的指令文件。</p>
+<h3 id="手动更新已有项目的指令">手动更新已有项目的指令</h3>
+<p>对于已存在的项目，随时可以通过以下命令更新或重新生成指令文件：</p>
+<pre><code class="lang-bash">backlog agents --update-instructions
+</code></pre>
+<p>该命令会扫描当前项目，根据现有配置重新生成所有指令文件，确保内容与项目当前状态同步。当你修改了任务状态流程、标签体系或其他项目规范后，建议运行此命令更新 AI 指令。</p>
+<h2 id="生成的文件清单">生成的文件清单</h2>
+<p>根据你使用的 AI 工具，Backlog.md 会生成以下一个或多个文件：</p>
+<table>
+<thead>
+<tr>
+<th>文件路径</th>
+<th>适用工具</th>
+<th>作用范围</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLAUDE.md</code></td>
+<td>Claude Code / Claude Desktop</td>
+<td>项目根目录</td>
+</tr>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>通用代理指令、Cursor</td>
+<td>项目根目录</td>
+</tr>
+<tr>
+<td><code>GEMINI.md</code></td>
+<td>Gemini CLI</td>
+<td>项目根目录</td>
+</tr>
+<tr>
+<td><code>.github/copilot-instructions.md</code></td>
+<td>GitHub Copilot</td>
+<td>项目仓库</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>注意</strong>：Cursor 不再生成单独的 <code>.cursorrules</code> 等 Backlog 拥有的规则文件，统一使用 <code>AGENTS.md</code>。重复执行生成命令会保留 <code>AGENTS.md</code> 中已有的用户内容，只更新 Backlog 管理的标记区块。</p>
+<p>指令文件里<strong>不含</strong>项目状态机的副本（v1.53.9 起）：状态机以 <code>config.yml</code> 为唯一真源，由 <code>backlog instructions overview</code> 按当前配置现场渲染。旧版本写进 <code>AGENTS.md</code> / <code>CLAUDE.md</code> / <code>GEMINI.md</code> 的 <code>state-machine</code> 区块会在下次 <code>backlog init</code> 或 <code>backlog agents --update-instructions</code> 时被移除。</p>
+</blockquote>
+<h3 id="claudemd">CLAUDE.md</h3>
+<p>专为 Claude Code 和 Claude Desktop 设计。Claude 系列工具会自动读取项目根目录下的 <code>CLAUDE.md</code> 作为系统提示的一部分。该文件包含完整的 Backlog.md 操作指南，是功能最全面的指令文件。</p>
+<h3 id="agentsmd">AGENTS.md</h3>
+<p>通用代理指令文件，适用于 Cursor 以及不识别特定品牌文件的 AI 工具。文件内容与 <code>CLAUDE.md</code> 基本一致，但采用更通用的表述方式。Cursor 会读取项目根目录的 <code>AGENTS.md</code> 作为通用代理指令；部分 IDE 插件或自定义 AI 客户端也会优先读取 <code>AGENTS.md</code>。</p>
+<h3 id="geminimd">GEMINI.md</h3>
+<p>针对 Google Gemini CLI 优化的指令文件。Gemini CLI 会识别项目根目录下的 <code>GEMINI.md</code> 并纳入上下文。</p>
+<h3 id="githubcopilot-instructionsmd">.github/copilot-instructions.md</h3>
+<p>专为 GitHub Copilot 设计。由于 Copilot 不支持 MCP 协议，该文件内容更侧重 CLI 命令参考，帮助 Copilot 理解如何在代码生成过程中配合 Backlog.md 的 shell 命令。文件位于 <code>.github/</code> 目录下，因此仅在 GitHub 仓库中生效。</p>
+<h2 id="指令文件包含的内容">指令文件包含的内容</h2>
+<p>所有生成的指令文件都遵循统一的内容框架，主要包括以下模块。</p>
+<h3 id="工作流指南">工作流指南</h3>
+<p>说明 AI 与 Backlog.md 协作的推荐流程：</p>
+<ul>
+<li><strong>首轮先加载项目实况</strong>：新会话在给出任何答案或计划之前，先运行 <code>backlog config list</code>、<code>backlog search &lt;关键词&gt;</code>、<code>backlog task list</code>、<code>backlog task view &lt;id&gt;</code>、<code>backlog overview</code> 等命令，读取真实的 <code>statuses</code>、<code>defaultStatus</code>、<code>defaultAssignee</code> 与活跃任务</li>
+<li>不得假设默认状态集合 <code>[To Do, In Progress, Done]</code>；设置或校验任务状态时必须落在配置的 <code>statuses</code> 之内</li>
+<li><code>defaultStatus</code> 必须是 <code>statuses</code> 的成员，若不是应提示用户修正或另选默认值</li>
+<li>如何通过 CLI 或 MCP 读取任务</li>
+<li>如何在实施前撰写实现计划</li>
+<li>如何按验收标准逐步完成任务</li>
+<li>如何添加最终总结并标记任务完成</li>
+</ul>
+<blockquote>
+<p>这条"先加载实况"的规则写在随 CLI 分发的 <code>overview</code> 指南中（而非项目自己的 <code>AGENTS.md</code>），因此对任何使用 Backlog.md 的项目都生效。</p>
+</blockquote>
+<p><code>backlog instructions overview</code> 的加载节奏约定为<strong>每个会话一次</strong>：指令要求代理在会话开始、给出任何回答或采取行动之前运行一次该命令；同一会话内已读过的无需重复执行。</p>
+<h3 id="引用与行号定位">引用与行号定位</h3>
+<p>指南约定任务的 References 支持<strong>行号引用</strong>，每条引用是三种形态之一：外部 URL、项目相对文件路径、或带行区间的路径（<code>path:LINE</code> 单行、<code>path:START-END</code> 连续区间）。创建/编辑任务与 MCP 的 <code>references</code> / <code>addReferences</code> / <code>removeReferences</code> 参数均遵循同一约定，<code>removeReferences</code> 按完整存储字符串（含行号后缀）匹配。文档链接同样区分三类目标：外部 URL、Backlog 短链接（<code>/task/:id</code>、<code>/doc/:id</code> 等，可带行号后缀）与项目相对路径。</p>
+<h3 id="日期与多行输入约定">日期与多行输入约定</h3>
+<p>指南还明确了两类高频输入错误：</p>
+<ul>
+<li><strong>日期与时间字段</strong>：CLI 与 MCP 接受<strong>本地时间</strong>输入，存储为 UTC，展示时再转回本地时间。不要读取任务文件里可见的 UTC 值再作为输入传回去，否则会产生时区偏移</li>
+<li><strong>多行文本字段</strong>：在引号内使用字面量 <code>\n</code> 表示换行；不要在引号内按真实回车——shell 会把它拆成多行，实际只保存第一行</li>
+</ul>
+<h3 id="任务创建规范">任务创建规范</h3>
+<p>明确高质量任务的标准：</p>
+<ul>
+<li>标题应简洁概括任务目的</li>
+<li>描述聚焦 "为什么" 而非 "怎么做"</li>
+<li>验收标准必须结果导向、可验证</li>
+<li>每个任务对应一个独立的 Pull Request</li>
+</ul>
+<h3 id="验收标准格式">验收标准格式</h3>
+<p>详细说明验收标准的格式要求：</p>
+<ul>
+<li>使用编号复选框形式 <code>- [ ] #1 标准内容</code></li>
+<li>通过 CLI 的 <code>--ac</code> 参数添加</li>
+<li>通过 <code>--check-ac</code> 和 <code>--uncheck-ac</code> 管理完成状态</li>
+<li>支持单次命令操作多个标准项</li>
+</ul>
+<h3 id="命令参考">命令参考</h3>
+<p>提供完整的 CLI 命令速查表，覆盖：</p>
+<ul>
+<li>任务创建、编辑、查看、归档</li>
+<li>验收标准与 DoD 管理</li>
+<li>搜索与过滤</li>
+<li>文档和决策管理</li>
+<li>看板与概览</li>
+</ul>
+<h2 id="backlog-instructions-分册"><code>backlog instructions</code> 分册</h2>
+<p>除了写入项目的指令文件，CLI 还内置一套可即时打印的工作流分册，与 MCP 资源一一对应：</p>
+<pre><code class="lang-bash">backlog instructions            <span class="hljs-comment"># 打印分册索引</span>
+backlog instructions --list     <span class="hljs-comment"># 列出可用分册</span>
+backlog instructions overview   <span class="hljs-comment"># 打印指定分册</span>
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>分册</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>overview</code></td>
+<td>工作流总览，回答任何用户请求前的必读；末尾按当前项目配置渲染完整状态机</td>
+</tr>
+<tr>
+<td><code>task-creation</code></td>
+<td>如何搜索、界定范围并创建任务</td>
+</tr>
+<tr>
+<td><code>task-execution</code></td>
+<td>如何计划、更新并推进任务</td>
+</tr>
+<tr>
+<td><code>task-finalization</code></td>
+<td>如何验证、总结并完结工作</td>
+</tr>
+<tr>
+<td><code>milestones</code></td>
+<td>如何创建、编辑、移除与归档里程碑</td>
+</tr>
+<tr>
+<td><code>documents</code></td>
+<td>如何创建、更新、列出与查看项目文档</td>
+</tr>
+<tr>
+<td><code>decisions</code></td>
+<td>如何创建与列出决策，含输出模式与状态处理</td>
+</tr>
+<tr>
+<td><code>drafts</code></td>
+<td>如何创建、晋级、降级与归档草稿</td>
+</tr>
+<tr>
+<td><code>memos</code></td>
+<td>如何创建、列出、查看、更新与删除快速备忘</td>
+</tr>
+<tr>
+<td><code>init-required</code></td>
+<td>如何在当前目录初始化 Backlog.md（未初始化项目的回退指引）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>overview</code> 分册携带项目状态机，打印时按当前 <code>config.yml</code> 现场组装，不是静态文本（doc-19 FR-8）。</p>
+</blockquote>
+<h2 id="mcp-与-cli-指令方式对比">MCP 与 CLI 指令方式对比</h2>
+<p>Backlog.md 支持两种 AI 集成方式，各有适用场景：</p>
+<table>
+<thead>
+<tr>
+<th>对比维度</th>
+<th>MCP 方式</th>
+<th>CLI 指令方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工作原理</td>
+<td>AI 直接调用 Backlog.md 的工具函数</td>
+<td>AI 阅读指令文件后自行执行 shell 命令</td>
+</tr>
+<tr>
+<td>可靠性</td>
+<td>高，参数和返回值均为结构化数据</td>
+<td>中等，依赖 AI 解析 shell 输出</td>
+</tr>
+<tr>
+<td>支持工具</td>
+<td>Claude Code、Codex、Gemini CLI、Kiro、Cursor</td>
+<td>GitHub Copilot、Cursor</td>
+</tr>
+<tr>
+<td>配置复杂度</td>
+<td>低，一条命令完成注册</td>
+<td>低，自动生成指令文件</td>
+</tr>
+<tr>
+<td>实时反馈</td>
+<td>即时，工具调用后立即返回结果</td>
+<td>有延迟，需等待 shell 命令执行</td>
+</tr>
+<tr>
+<td>错误处理</td>
+<td>AI 可精确获取错误类型和原因</td>
+<td>AI 需从 stderr 中推断错误</td>
+</tr>
+</tbody>
+</table>
+<p><strong>推荐策略</strong>：</p>
+<ul>
+<li>如果使用的 AI 工具支持 MCP，优先选择 MCP 方式</li>
+<li>对于 GitHub Copilot 等不支持 MCP 的工具，使用 CLI 指令方式作为补充</li>
+<li>Cursor 同时支持 MCP 与 <code>AGENTS.md</code> 指令文件，可任选其一或两者并存</li>
+<li>两种方式可以并存：MCP 负责日常任务管理，CLI 指令文件确保 Copilot、Cursor 等也能理解项目规范</li>
+</ul>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="01-支持的AI工具.html" class="navigation navigation-prev " aria-label="Previous page: 支持的 AI 工具">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="03-Wiki Skill 安装.html" class="navigation navigation-next " aria-label="Next page: Wiki Skill 安装">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"代理指令文件","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-28 15:35","level":"6.3","depth":1,"next":{"title":"Wiki Skill 安装","level":"6.4","depth":1,"path":"50-AI集成/03-Wiki Skill 安装.md","ref":"50-AI集成/03-Wiki Skill 安装.md","articles":[]},"previous":{"title":"支持的 AI 工具","level":"6.2","depth":1,"path":"50-AI集成/01-支持的AI工具.md","ref":"50-AI集成/01-支持的AI工具.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh","gitbook":"*"},"file":{"path":"50-AI集成/02-代理指令文件.md","mtime":"2026-11-01T16:24:40.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-01T16:38:00.452Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

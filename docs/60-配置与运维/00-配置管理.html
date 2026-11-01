@@ -1,0 +1,1401 @@
+
+<!DOCTYPE HTML>
+<html lang="zh" >
+    <head>
+        <meta charset="UTF-8">
+        <title>配置管理 · Backlog.md 用户手册</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="01-Shell补全.html" />
+    
+    
+    <link rel="prev" href="../80-图谱与数据查询/07-MDB查询块.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="輸入並搜尋" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">快速开始</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    产品概述
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    安装与初始化
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI 集成设置
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">任务管理</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    任务生命周期
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    创建与编辑任务
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    草稿管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    子任务与依赖
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    搜索与序列
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    归档与清理
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">看板与可视化</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI 看板
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web 看板
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    看板导出
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">文档与决策</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    文档管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    决策记录
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    里程碑管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web 界面</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    启动与访问
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    看板视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    任务列表
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    里程碑管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    文档与决策
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    设置与主题
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    富文本粘贴与文档上传
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki 浏览与编辑
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    统计页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    甘特图视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    全局搜索
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    图谱视图
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    文档预览
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI 集成</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP 工作流
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    支持的 AI 工具
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    代理指令文件
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill 安装
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill 安装
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">快速笔记</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos 简介
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI 备忘命令
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web 备忘页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    搜索与知识互联
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    钉板视图与归档
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">图谱与数据查询</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    图谱 CLI 命令
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    图谱 MCP 工具
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    数据库页面
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    图例配置持久化
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    图表块
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB 查询块
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">配置与运维</li>
+        
+        
+    
+        <li class="chapter active" data-level="9.1" data-path="00-配置管理.html">
+            
+                <a href="00-配置管理.html">
+            
+                    
+                    配置管理
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="01-Shell补全.html">
+            
+                <a href="01-Shell补全.html">
+            
+                    
+                    Shell 补全
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="02-项目概览.html">
+            
+                <a href="02-项目概览.html">
+            
+                    
+                    项目概览
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="03-故障排查.html">
+            
+                <a href="03-故障排查.html">
+            
+                    
+                    故障排查
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            本書使用 HonKit 釋出
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >配置管理</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="配置管理">配置管理</h1>
+<p>Backlog.md 提供灵活的配置系统，支持通过交互式向导或命令行直接管理项目设置。配置存储在 YAML 文件中，与项目代码一起纳入版本控制，确保团队成员使用一致的工作流规范。</p>
+<h2 id="交互式配置向导">交互式配置向导</h2>
+<p><code>backlog config</code> 命令启动高级配置向导，以交互式问答形式引导你完成所有关键设置：</p>
+<pre><code class="lang-bash">backlog config
+</code></pre>
+<p>向导涵盖以下配置环节：</p>
+<ul>
+<li>Shell 补全安装</li>
+<li>跨分支任务状态检查</li>
+<li>Git 钩子绕过设置</li>
+<li>自动提交启用</li>
+<li>ID 零填充格式化</li>
+<li>默认编辑器选择</li>
+<li>定义完成（DoD）默认项管理</li>
+<li>Web UI 端口与浏览器自动打开</li>
+</ul>
+<p>按提示逐步回答即可，每个选项都有默认值和说明提示。配置完成后，Backlog.md 会自动将设置写入项目配置文件。</p>
+<h2 id="命令行直接操作">命令行直接操作</h2>
+<p>对于需要快速修改单个配置项的场景，使用 <code>backlog config get</code> 和 <code>backlog config set</code> 命令。</p>
+<h3 id="查看当前配置">查看当前配置</h3>
+<p>列出所有已配置项及其当前值：</p>
+<pre><code class="lang-bash">backlog config list
+
+<span class="hljs-comment"># 纯文本输出（AI 可读输出的统一约定；输出与不带该标志时逐字节一致）</span>
+backlog config list --plain
+</code></pre>
+<p><code>--plain</code> 被 overview 指引列为读取实时配置的标准方式：输出本就是纯文本，该标志被接受是为了让按统一习惯附加 <code>--plain</code> 的代理调用不会因 "unknown option" 而失败。</p>
+<p><code>config list</code> 在 <code>statuses</code> 行之后还会打印一行派生的终态集合，例如 <code>terminalStatuses: [Done, Dropped] (derived from statuses)</code>。终态由状态机中各列的 <code>category</code>（<code>done</code> / <code>dropped</code>）派生，只是只读呈现，不是可设置的配置键——要调整终态请在状态机编辑器中修改对应状态的 <code>category</code>。</p>
+<p>查看单个配置项：</p>
+<pre><code class="lang-bash">backlog config get projectName
+backlog config get statuses
+backlog config get defaultPort
+</code></pre>
+<h3 id="修改配置项">修改配置项</h3>
+<p>设置单个配置项的值：</p>
+<pre><code class="lang-bash">backlog config <span class="hljs-built_in">set</span> projectName <span class="hljs-string">"我的项目"</span>
+backlog config <span class="hljs-built_in">set</span> defaultPort 8080
+backlog config <span class="hljs-built_in">set</span> autoCommit <span class="hljs-literal">true</span>
+</code></pre>
+<p>设置列表类型的配置项：</p>
+<pre><code class="lang-bash">backlog config <span class="hljs-built_in">set</span> statuses <span class="hljs-string">"To Do,In Progress,Done"</span>
+backlog config <span class="hljs-built_in">set</span> labels <span class="hljs-string">"bug,feature,docs"</span>
+</code></pre>
+<blockquote>
+<p><code>config get/set/list</code> 通过共享的可用键列表展示一致的配置项。对于列表型配置（<code>statuses</code>、<code>labels</code>），推荐使用 <code>backlog config get &lt;key&gt;</code> 查看当前值后直接编辑 <code>config.yml</code> 的对应字段（支持块状 YAML 序列），而非通过 <code>config set</code> 覆盖。</p>
+</blockquote>
+<h2 id="关键配置项说明">关键配置项说明</h2>
+<h3 id="项目基础信息">项目基础信息</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projectName</code></td>
+<td>字符串</td>
+<td>—</td>
+<td>项目名称，显示在看板和概览中</td>
+</tr>
+<tr>
+<td><code>statuses</code></td>
+<td>状态机对象列表</td>
+<td>内置七列默认状态机</td>
+<td>任务状态流程，按顺序排列（见下文「状态机配置」）</td>
+</tr>
+<tr>
+<td><code>labels</code></td>
+<td>字符串列表</td>
+<td>—</td>
+<td>项目预定义标签列表</td>
+</tr>
+<tr>
+<td><code>dateFormat</code></td>
+<td>字符串</td>
+<td>—</td>
+<td>日期显示格式</td>
+</tr>
+<tr>
+<td><code>locale</code></td>
+<td>字符串</td>
+<td><code>en</code></td>
+<td>Web UI 界面语言：<code>en</code>、<code>ja</code>、<code>zh-CN</code>、<code>zh-TW</code></td>
+</tr>
+<tr>
+<td><code>maxColumnWidth</code></td>
+<td>整数</td>
+<td><code>20</code>（<code>backlog init</code> 写入值）</td>
+<td>CLI 输出中文本列的最大宽度；<code>config set</code> 只接受正整数</td>
+</tr>
+<tr>
+<td><code>milestones</code></td>
+<td>字符串列表</td>
+<td>—</td>
+<td>已弃用：里程碑现来自 <code>backlog/milestones/</code> 下的里程碑文件，不再存于配置；<code>config get milestones</code> 仅列出当前里程碑 ID，不可 <code>set</code>（用 <code>backlog milestone</code> 命令管理）</td>
+</tr>
+</tbody>
+</table>
+<p>状态列表的顺序决定了看板中的列排列顺序。第一个状态视为任务的初始状态；终态由状态的 <code>category</code> 决定（<code>done</code> / <code>dropped</code>），不再简单等同于列表末位。</p>
+<h3 id="状态机配置">状态机配置</h3>
+<p><code>statuses</code> 采用对象形式描述状态机，每个状态是一个对象：</p>
+<pre><code class="lang-yaml"><span class="hljs-attr">statuses:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">To</span> <span class="hljs-string">Do</span>
+    <span class="hljs-attr">category:</span> <span class="hljs-string">active</span>
+    <span class="hljs-attr">next:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">Planning</span>
+        <span class="hljs-attr">when:</span> <span class="hljs-string">描述与验收标准完整，可以开工</span>
+        <span class="hljs-attr">ai:</span> <span class="hljs-string">allowed</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Done</span>
+    <span class="hljs-attr">category:</span> <span class="hljs-string">done</span>
+    <span class="hljs-attr">exit:</span> <span class="hljs-string">complete</span>
+    <span class="hljs-attr">next:</span> []
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Dropped</span>
+    <span class="hljs-attr">category:</span> <span class="hljs-string">dropped</span>
+    <span class="hljs-attr">exit:</span> <span class="hljs-string">archive</span>
+    <span class="hljs-attr">display:</span> <span class="hljs-literal">false</span>
+    <span class="hljs-attr">next:</span> []
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>状态名（必填）</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>类别：<code>active</code> / <code>wip</code> / <code>blocked</code> / <code>done</code> / <code>dropped</code>，决定终态与完成语义</td>
+</tr>
+<tr>
+<td><code>exit</code></td>
+<td>退出动作：<code>complete</code>（归档进 completed）或 <code>archive</code></td>
+</tr>
+<tr>
+<td><code>next</code></td>
+<td>允许的迁移边数组，可附加 <code>when</code> / <code>ai</code> / <code>if</code> / <code>requires</code> / <code>evidence</code> 声明</td>
+</tr>
+<tr>
+<td><code>display</code></td>
+<td><code>false</code> 时看板隐藏该列及列内任务（默认 <code>true</code>）</td>
+</tr>
+</tbody>
+</table>
+<p>旧式字符串数组写法仍然兼容（末位为终态）。没有 CLI 命令设置 <code>statuses</code>：推荐在 Web 设置页的<a href="../40-Web界面/05-设置与主题.html">状态机编辑器</a>中可视化维护，或直接编辑本文件——整体写回、不丢字段。<code>backlog instructions overview</code>（及 MCP 同名 overview 资源）会自动渲染当前状态机的完整可读描述。首次 <code>backlog init</code> 直接写入内置的七列默认状态机（To Do / Planning / Plan Review / In Progress / In Review / Done / Dropped，随界面语言本地化）。语义细节见<a href="../10-任务管理/00-任务生命周期.html">任务生命周期</a>。</p>
+<h3 id="任务默认值">任务默认值</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>defaultAssignee</code></td>
+<td>字符串列表</td>
+<td>—</td>
+<td>创建任务/草稿未显式指定负责人时自动应用</td>
+</tr>
+<tr>
+<td><code>defaultEditor</code></td>
+<td>字符串</td>
+<td><code>code --wait</code></td>
+<td>按 <code>E</code> 打开任务时使用的编辑器命令</td>
+</tr>
+<tr>
+<td><code>defaultStatus</code></td>
+<td>字符串</td>
+<td><code>To Do</code></td>
+<td>新建任务未显式指定状态时使用的默认状态；应取 <code>statuses</code> 中的状态名</td>
+</tr>
+<tr>
+<td><code>definitionOfDone</code></td>
+<td>字符串列表</td>
+<td>—</td>
+<td>项目级 Definition of Done 默认清单，新任务自动继承（<code>config.yml</code> 键名 <code>definition_of_done</code>）；不能经 <code>config set</code> 修改，请用交互式向导、Web 设置页或直接编辑 <code>config.yml</code></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-bash"><span class="hljs-comment"># 设置默认负责人（列表，逗号分隔）</span>
+backlog config <span class="hljs-built_in">set</span> defaultAssignee <span class="hljs-string">"@alice,@bob"</span>
+
+<span class="hljs-comment"># 取消默认负责人（空值会移除该键）</span>
+backlog config <span class="hljs-built_in">set</span> defaultAssignee <span class="hljs-string">""</span>
+
+<span class="hljs-comment"># 清除默认编辑器——服务默认的 "code --wait" 会挂住无人值守的代理进程</span>
+backlog config <span class="hljs-built_in">set</span> defaultEditor <span class="hljs-string">""</span>
+backlog init --default-editor <span class="hljs-string">""</span>
+</code></pre>
+<p><code>defaultAssignee</code> 的生效规则是一条三态语义：</p>
+<ul>
+<li><strong>不传</strong> <code>-a</code>（字段缺省）→ 应用配置中的默认负责人</li>
+<li><strong>显式传</strong> <code>-a</code>（哪怕只有一个）→ 完全替换默认值，不与默认值合并</li>
+<li><strong>显式取消</strong> <code>--unassign</code>（或 Web UI 中清空负责人 chips）→ 保存为空列表，不回落默认值</li>
+</ul>
+<p>默认值在 core 的创建漏斗层应用，因此 CLI <code>task create</code>、<code>draft create</code>、创建向导、TUI <code>N</code> 键创建器、Web 端 <code>POST /api/tasks</code> 与 MCP <code>task_create</code> 行为一致。</p>
+<p><code>defaultEditor</code> 设为空字符串即表示"不使用默认编辑器"：<code>config set defaultEditor ""</code> 跳过可执行文件校验并移除该键，<code>init --default-editor ""</code> 同样清除既有配置。非空值仍会校验可执行文件是否存在。</p>
+<h4 id="编辑器解析优先级与-vim--neovim-配置">编辑器解析优先级与 Vim / Neovim 配置</h4>
+<p>按 <code>E</code> 打开编辑器时，解析优先级为（doc-002）：<strong><code>EDITOR</code> 环境变量</strong> &gt; <code>config.yml</code> 的 <code>defaultEditor</code> &gt; 平台默认（macOS/Linux 为 nano，Windows 为 notepad）。使用 Vim / Neovim 推荐直接设环境变量：</p>
+<pre><code class="lang-bash"><span class="hljs-built_in">export</span> EDITOR=nvim          <span class="hljs-comment"># 或 vim</span>
+<span class="hljs-comment"># 也可以写入项目配置</span>
+backlog config <span class="hljs-built_in">set</span> defaultEditor nvim
+</code></pre>
+<ul>
+<li>在 TUI（<code>backlog board</code> / <code>backlog task &lt;id&gt;</code>）中按 <code>E</code> 时，界面会挂起字符屏幕、退出备用缓冲区，编辑器退出后自动恢复终端状态</li>
+<li>排查：颜色异常时设 <code>TERM=xterm-256color</code>；编辑器无响应或立即退出多见于编辑器路径含参数——请写完整可执行路径或用包装脚本</li>
+<li>可针对单条命令覆盖：<code>EDITOR=nvim backlog board</code></li>
+</ul>
+<h3 id="分支与-git-集成">分支与 Git 集成</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>checkActiveBranches</code></td>
+<td>布尔值</td>
+<td><code>true</code></td>
+<td>是否扫描其他本地活跃分支</td>
+</tr>
+<tr>
+<td><code>includeCrossBranch</code></td>
+<td>布尔值</td>
+<td>未设置（本地优先）</td>
+<td>扫描结果是否进入看板、任务列表与搜索</td>
+</tr>
+<tr>
+<td><code>remoteOperations</code></td>
+<td>布尔值</td>
+<td><code>true</code></td>
+<td>是否检查远程分支中的任务</td>
+</tr>
+<tr>
+<td><code>activeBranchDays</code></td>
+<td>整数</td>
+<td><code>30</code></td>
+<td>分支被视为活跃的天数上限</td>
+</tr>
+<tr>
+<td><code>taskResolutionStrategy</code></td>
+<td>字符串</td>
+<td><code>most_recent</code>（init 写入值）</td>
+<td>同名任务存在于多个分支时的解析策略：<code>most_recent</code> 取最近修改的版本，<code>most_progressed</code> 取状态推进最远（同进度再比修改时间）的版本；配置缺失时运行期回退 <code>most_progressed</code>。不在 <code>config get/set</code> 可用键中，经 Web 设置页或 <code>config.yml</code> 配置</td>
+</tr>
+</tbody>
+</table>
+<p>启用 <code>checkActiveBranches</code> 后，Backlog.md 会在加载任务时检查其他本地和远程分支，确保跨分支的任务状态准确。这在大型仓库中可能影响性能，可通过减小 <code>activeBranchDays</code> 来加速。</p>
+<p><code>includeCrossBranch</code>（对应 <code>config.yml</code> 的 <code>include_cross_branch</code>）控制<strong>展示</strong>：开启后看板、任务列表与搜索会纳入只存在于其他分支的任务；未设置时保持本地优先（历史 CLI 行为）。它与 <code>checkActiveBranches</code> 是两个独立轴——后者管"是否扫描"（并决定任务 ID 分配的候选分支集），前者管"扫描结果是否展示"。关闭扫描会同时收窄 ID 分配候选集，请配合 <code>activeBranchDays</code> 理解代价。两个开关都可以在 Web 设置页的 Advanced Settings 卡片中找到，保存后立即生效无需重启。</p>
+<p><code>remoteOperations</code> 依赖于 <code>checkActiveBranches</code>，当后者关闭时，前者自动失效。</p>
+<h3 id="自动化行为">自动化行为</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>autoCommit</code></td>
+<td>布尔值</td>
+<td><code>false</code></td>
+<td>是否在 CLI 变更后自动创建 Git 提交</td>
+</tr>
+<tr>
+<td><code>bypassGitHooks</code></td>
+<td>布尔值</td>
+<td><code>false</code></td>
+<td>提交时是否绕过 Git 钩子（使用 <code>--no-verify</code>）</td>
+</tr>
+<tr>
+<td><code>filesystemOnly</code></td>
+<td>布尔值</td>
+<td><code>false</code></td>
+<td>是否禁用所有 Git 集成，仅使用文件系统</td>
+</tr>
+<tr>
+<td><code>onStatusChange</code></td>
+<td>字符串</td>
+<td>—</td>
+<td>任务状态变更时执行的回调命令</td>
+</tr>
+</tbody>
+</table>
+<p><code>onStatusChange</code> 命令经 <code>sh -c</code> 在项目根目录执行，任务信息通过环境变量注入：<code>$TASK_ID</code>（任务 ID）、<code>$OLD_STATUS</code>（旧状态）、<code>$NEW_STATUS</code>（新状态）、<code>$TASK_TITLE</code>（标题），在命令字符串中以 <code>$TASK_ID</code> 等形式引用。回调失败只打印错误日志，不会阻塞状态变更。单个任务 frontmatter 中的 <code>onStatusChange</code> 字段优先于全局配置。此键不在 <code>config get/set</code> 的可用键列表中，请直接编辑 <code>config.yml</code> 设置。</p>
+<p>启用 <code>autoCommit</code> 后，每次通过 CLI 创建或修改任务，Backlog.md 会自动执行 <code>git commit</code>，省去手动提交的步骤。配合 <code>bypassGitHooks</code> 可在 pre-commit 钩子耗时较长时提升效率。</p>
+<p><code>autoCommit</code> 只提交每次写入实际触碰的文件（新建文件、被替换的旧路径、移动/归档的源路径与目标路径），不会对整个 <code>backlog/</code> 目录执行 <code>git add</code>，也不会清空你已有的 staged/unstaged 改动。这保证了自动提交与用户当前工作区的其他变更互不干扰。</p>
+<p><code>filesystemOnly</code> 适用于纯文件系统项目或无 Git 的环境，开启后所有 Git 相关功能均被禁用。</p>
+<h3 id="id-与前缀">ID 与前缀</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prefixes.task</code></td>
+<td>字符串</td>
+<td><code>task</code></td>
+<td>任务 ID 前缀</td>
+</tr>
+<tr>
+<td><code>prefixes.draft</code></td>
+<td>字符串</td>
+<td><code>draft</code></td>
+<td>草稿 ID 前缀</td>
+</tr>
+<tr>
+<td><code>zeroPaddedIds</code></td>
+<td>整数</td>
+<td>—</td>
+<td>ID 零填充位数，如 <code>3</code> 生成 <code>task-001</code></td>
+</tr>
+</tbody>
+</table>
+<p>前缀配置允许自定义任务和草稿的 ID 格式。例如，将 <code>prefixes.task</code> 设为 <code>back</code> 后，新任务的 ID 将变为 <code>back-1</code>、<code>back-2</code> 等。</p>
+<p><strong>保留前缀</strong>：任务前缀只允许字母，且不能使用保留名称 <code>doc</code> 与 <code>decision</code>（它们分别被文档与决策占用）。该规则在所有入口一致生效——<code>init</code> 的 <code>--task-prefix</code> 标志、交互向导、浏览器初始化页都会拒绝；<code>backlog doctor</code> 会报告存量项目的前缀冲突，且冲突未解除时拒绝执行 <code>--fix</code>（避免修复重复 ID 时把新编号分配进冲突的存储）。已使用保留前缀的存量项目仍可正常工作，重新初始化不会主动改写它。</p>
+<p><code>zeroPaddedIds</code> 控制 ID 的格式化宽度。设为 <code>3</code> 时，ID 显示为 <code>task-001</code>；设为 <code>4</code> 时，显示为 <code>task-0001</code>。这有助于保持文件名的字典序一致性。</p>
+<h3 id="web-ui">Web UI</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>defaultPort</code></td>
+<td>整数</td>
+<td><code>6420</code></td>
+<td>Web UI 默认监听端口</td>
+</tr>
+<tr>
+<td><code>autoPort</code></td>
+<td>布尔值</td>
+<td><code>true</code></td>
+<td>默认端口被占用时自动扫描后续 100 个用户端口</td>
+</tr>
+<tr>
+<td><code>autoOpenBrowser</code></td>
+<td>布尔值</td>
+<td><code>true</code></td>
+<td>启动 Web UI 时是否自动打开浏览器</td>
+</tr>
+<tr>
+<td><code>hideEmptyColumns</code></td>
+<td>布尔值</td>
+<td><code>false</code></td>
+<td>看板是否隐藏无任务的状态列</td>
+</tr>
+</tbody>
+</table>
+<p>修改 <code>defaultPort</code> 可避免与其他本地服务端口冲突。开启 <code>autoPort</code>（默认）时，若默认端口已被占用，服务器会自动改用后续可用端口并在终端打印实际地址；系统只接受用户端口范围（1024–65535）内由自己扫描出的端口，拒绝操作系统分配的随机高位端口。关闭 <code>autoPort</code> 后，端口占用会恢复为直接报 <code>EADDRINUSE</code> 错误。也可在 Web 界面「设置」面板中切换该开关。关闭 <code>autoOpenBrowser</code> 后，运行 <code>backlog browser</code> 只会启动服务器，不会弹出浏览器窗口，适合远程开发或服务器环境。</p>
+<p><code>hideEmptyColumns</code>（对应 <code>config.yml</code> 的 <code>hide_empty_columns</code>）开启后，看板会隐藏当前没有任何任务的状态列，减少视觉杂乱；拖拽期间所有状态列保持可见以便放置。也可在 Web 界面「设置」面板的 Auto Open Browser 开关旁切换。</p>
+<h3 id="mcp-http-传输">MCP HTTP 传输</h3>
+<p><code>mcp.http.*</code> 系列键（<code>mcp.http.host</code> / <code>mcp.http.port</code> / <code>mcp.http.auth.*</code>）目前只是<strong>预留配置</strong>：当前版本 MCP 仅实现 stdio 传输（<code>backlog mcp start</code>），不监听任何网络端口，也没有 HTTP 传输的消费逻辑。配置这些键不会产生任何效果，请保持 stdio 方式接入，详见<a href="../50-AI集成/00-MCP工作流.html">MCP 工作流</a>。</p>
+<h2 id="配置存储位置">配置存储位置</h2>
+<p>Backlog.md 按以下优先级查找配置文件：</p>
+<ol>
+<li><code>backlog/config.yml</code></li>
+<li><code>backlog.config.yml</code>（项目根目录）</li>
+</ol>
+<p>推荐使用 <code>backlog/config.yml</code>，这样配置与任务、文档等项目数据集中存放，便于备份和迁移。当使用 <code>backlog.config.yml</code> 时，可通过 <code>backlogDirectory</code> 项指定 backlog 文件夹的相对路径（如 <code>.backlog</code>）。</p>
+<blockquote>
+<p><strong>自定义 backlog 目录全面生效</strong>：memo 存储与图谱扫描/监听此前把目录名硬编码为 <code>backlog</code>，在 <code>.backlog</code> 等自定义目录项目下会读写/监听错误路径、图谱为空；现已统一解析配置目录。若你此前在自定义目录项目中使用过 memo，旧数据仍在你的 <code>backlog-dir/memos</code> 下、现在能被正确识别；若根下误建了空的 <code>backlog/memos</code> 可手动删除。重跑 <code>backlog init</code> 也会补建缺失的 <code>memos/</code>、<code>docs/</code> 等目录。</p>
+</blockquote>
+<p>配置文件的 YAML 格式示例：</p>
+<pre><code class="lang-yaml"><span class="hljs-attr">projectName:</span> <span class="hljs-string">"我的项目"</span>
+<span class="hljs-attr">statuses:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Backlog</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">To</span> <span class="hljs-string">Do</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">In</span> <span class="hljs-string">Progress</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Done</span>
+<span class="hljs-attr">labels:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">bug</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">feature</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">docs</span>
+<span class="hljs-attr">dateFormat:</span> <span class="hljs-string">"YYYY-MM-DD"</span>
+<span class="hljs-attr">checkActiveBranches:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">include_cross_branch:</span> <span class="hljs-literal">false</span>
+<span class="hljs-attr">remoteOperations:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">activeBranchDays:</span> <span class="hljs-number">30</span>
+<span class="hljs-attr">autoCommit:</span> <span class="hljs-literal">false</span>
+<span class="hljs-attr">bypassGitHooks:</span> <span class="hljs-literal">false</span>
+<span class="hljs-attr">prefixes:</span>
+  <span class="hljs-attr">task:</span> <span class="hljs-string">"back"</span>
+  <span class="hljs-attr">draft:</span> <span class="hljs-string">"draft"</span>
+<span class="hljs-attr">defaultAssignee:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">"@alice"</span>
+<span class="hljs-attr">defaultEditor:</span> <span class="hljs-string">"vim"</span>
+<span class="hljs-attr">defaultPort:</span> <span class="hljs-number">6420</span>
+<span class="hljs-attr">autoPort:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">autoOpenBrowser:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">hide_empty_columns:</span> <span class="hljs-literal">false</span>
+</code></pre>
+<blockquote>
+<p><strong>块状 YAML 列表</strong>：列表型配置（<code>statuses</code>、<code>labels</code>）既支持上面的块状序列写法，也支持内联写法（<code>statuses: ["To Do", "In Progress", "Done"]</code>）。系统会优先按标准 YAML 语义解析块状列表，同时兼容旧版内联括号格式。</p>
+</blockquote>
+<p>修改配置文件后，Backlog.md 会自动加载最新设置，无需重启服务。</p>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="../80-图谱与数据查询/07-MDB查询块.html" class="navigation navigation-prev " aria-label="Previous page: MDB 查询块">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="01-Shell补全.html" class="navigation navigation-next " aria-label="Next page: Shell 补全">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"配置管理","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-09 23:30","level":"9.1","depth":1,"next":{"title":"Shell 补全","level":"9.2","depth":1,"path":"60-配置与运维/01-Shell补全.md","ref":"60-配置与运维/01-Shell补全.md","articles":[]},"previous":{"title":"MDB 查询块","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh","gitbook":"*"},"file":{"path":"60-配置与运维/00-配置管理.md","mtime":"2026-11-01T16:24:40.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-01T16:38:00.452Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+
