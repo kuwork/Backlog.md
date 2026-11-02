@@ -1,0 +1,6 @@
+{
+	"title": "Backlog.md User Manual",
+	"author": "Backlog.md Contributors",
+	"description": "Backlog.md bilingual user manual (Simplified Chinese and English).",
+	"ignores": ["**/*", "!LANGS.md", "!book.json", "!usermanual/**", "!usermanual-en/**"]
+}
