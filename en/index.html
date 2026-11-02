@@ -8,7 +8,7 @@
 			name="description"
 			content="Backlog.md stores tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repository. Agents break down and execute the work, you approve at three checkpoints, and knowledge compounds into an LLM managed wiki. MIT licensed, local first."
 		/>
-		<link rel="canonical" href="https://kuwork.github.io/Backlog.md/en/" />
+		<link rel="canonical" href="https://backlog.kuwork.cn/en/" />
 		<meta name="theme-color" content="#000000" />
 		<meta name="color-scheme" content="dark" />
 
@@ -21,8 +21,8 @@
 			property="og:description"
 			content="Tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repo. Agents do the work, you approve at three checkpoints."
 		/>
-		<meta property="og:url" content="https://kuwork.github.io/Backlog.md/en/" />
-		<meta property="og:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
+		<meta property="og:url" content="https://backlog.kuwork.cn/en/" />
+		<meta property="og:image" content="https://backlog.kuwork.cn/assets/img/og-image.jpg" />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta property="og:image:alt" content="The Backlog.md board view grouping task cards by status" />
@@ -32,9 +32,9 @@
 			name="twitter:description"
 			content="Turn agent work into tasks you can read, review, and trace. MIT licensed, and the data stays in your own repository."
 		/>
-		<meta name="twitter:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
-		<link rel="alternate" hreflang="en" href="https://kuwork.github.io/Backlog.md/en/" />
-		<link rel="alternate" hreflang="zh-Hans" href="https://kuwork.github.io/Backlog.md/" />
+		<meta name="twitter:image" content="https://backlog.kuwork.cn/assets/img/og-image.jpg" />
+		<link rel="alternate" hreflang="en" href="https://backlog.kuwork.cn/en/" />
+		<link rel="alternate" hreflang="zh-Hans" href="https://backlog.kuwork.cn/" />
 
 		<link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
 		<link rel="icon" href="../favicon.ico" sizes="any" />
@@ -110,6 +110,7 @@
 		<main id="main">
 			<section class="hero">
 				<canvas class="hero-canvas" data-canvas aria-hidden="true"></canvas>
+				<div class="hero-orb" data-orb aria-hidden="true"></div>
 
 				<div class="container hero-inner" data-hero-inner>
 					<div class="hero-copy">
@@ -955,9 +956,8 @@
 							</p>
 							<a
 								class="text-link body-3"
-								href="https://github.com/kuwork/Backlog.md/tree/main/backlog/wiki/usermanual"
-								rel="noopener"
-								>Read on GitHub<span class="arrow" aria-hidden="true">→</span></a
+								href="../docs/"
+								>Read the user manual<span class="arrow" aria-hidden="true">→</span></a
 							>
 						</article>
 
@@ -1327,5 +1327,15 @@
 		</footer>
 
 		<script src="../assets/js/v2.js" defer></script>
+
+		<!-- Glow orb: Three.js + UnrealBloom (bundled locally), rendered into .hero-orb -->
+		<script src="../assets/vendor/three/three.min.js"></script>
+		<script src="../assets/vendor/three/EffectComposer.js"></script>
+		<script src="../assets/vendor/three/RenderPass.js"></script>
+		<script src="../assets/vendor/three/ShaderPass.js"></script>
+		<script src="../assets/vendor/three/CopyShader.js"></script>
+		<script src="../assets/vendor/three/LuminosityHighPassShader.js"></script>
+		<script src="../assets/vendor/three/UnrealBloomPass.js"></script>
+		<script src="../assets/js/orb.js" defer></script>
 	</body>
 </html>
