@@ -95,8 +95,13 @@ subsite (e.g. `/docs/`, `/en/docs/`).
      `xhtml:link` alternates). `robots.txt` must point at that sitemap.
    - Idempotent: the injected block is wrapped in `<!-- seo:start -->` /
      `<!-- seo:end -->` and replaced in place on re-runs.
-   - Switching to a custom domain is a one-line change: edit `base_url` in
-     `seo.json` and re-run.
+   - Switching the host is a one-line change: edit `base_url` in `seo.json` and
+     re-run. The hand-written landing pages carry absolute URLs in their heads,
+     so the script also rewrites every known legacy base (see `LEGACY_BASES`)
+     to the current one — append the outgoing base there when it changes again.
+   - `404.html` is served at any depth, so its links stay root-absolute and get
+     the deployment sub-path (`/Backlog.md/assets/…`); the script handles that
+     too, and skips it automatically when deployed at a domain root.
 
 5. **Verify offline.** Headless-render `docs/index.html` and `en/docs/index.html`
    plus one nested page each. Sidebar, search box and body text must be styled;

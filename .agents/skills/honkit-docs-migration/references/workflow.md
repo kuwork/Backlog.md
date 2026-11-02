@@ -82,10 +82,16 @@
 - URL 一律 percent-encode（中文目录名），sitemap 与 canonical 同形。
 - `sitemap.xml` 由脚本重建：6 个静态页 + 102 个手册页，手册页带
   `xhtml:link rel="alternate"` 双语互指；`robots.txt` 的 `Sitemap:` 行必须指向它。
-- **域名开关**：`seo.json` 的 `base_url` 是唯一入口。当前值 `https://backlog.kuwork.cn`
-  尚未在 DNS 里解析（权威 NS 为阿里云 `dns9.hichina.com`，实测 NXDOMAIN），
-  实际可访问地址是 `https://kuwork.github.io/Backlog.md/`；启用自定义域名或改回
-  github.io 子路径时，只改这一处并重跑脚本即可，页面里不要硬编码域名。
+- **域名开关**：`seo.json` 的 `base_url` 是唯一入口，当前值
+  `https://kuwork.github.io/Backlog.md`。此前用过的 `https://backlog.kuwork.cn`
+  从未在 DNS 解析（NXDOMAIN），已废弃。
+  - 页面里不要硬编码域名。手写的落地页（`index.html`、`en/index.html`、`v1/`、
+    `privacy.html`、`terms.html`、`robots.txt`）里是绝对 URL，脚本会按
+    `LEGACY_BASES` 把历史域名整体替换成当前 `base_url`；换域名时把旧值追加进
+    这个列表即可，重复运行幂等。
+  - `404.html` 会被在任意深度返回，链接必须是根绝对路径，因此要带部署子路径
+    （`/Backlog.md/assets/…`）。脚本自动处理；部署在域名根目录（`base_url`
+    无 path）时自动跳过。
 
 ## 8. 验证
 
