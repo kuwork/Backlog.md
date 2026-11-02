@@ -1,0 +1,10 @@
+{
+	"title": "Backlog.md User Manual",
+	"author": "Backlog.md Contributors",
+	"language": "en",
+	"description": "English user manual for Backlog.md, a Markdown-native task and kanban visualization tool.",
+	"structure": {
+		"readme": "README.md",
+		"summary": "SUMMARY.md"
+	}
+}

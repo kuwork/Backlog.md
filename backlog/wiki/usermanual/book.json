@@ -1,0 +1,10 @@
+{
+	"title": "Backlog.md 用户手册",
+	"author": "Backlog.md Contributors",
+	"language": "zh-hans",
+	"description": "Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。",
+	"structure": {
+		"readme": "README.md",
+		"summary": "SUMMARY.md"
+	}
+}
