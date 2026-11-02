@@ -1,0 +1,1207 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <title>Gantt View · Backlog.md User Manual</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="author" content="Backlog.md Contributors">
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="10-全局搜索.html" />
+    
+    
+    <link rel="prev" href="08-统计页面.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">Getting Started</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    Product Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    Installation & Initialization
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI Integration Setup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Task Management</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    Task Lifecycle
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    Creating & Editing Tasks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    Draft Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    Subtasks & Dependencies
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    Search & Sequences
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    Archiving & Cleanup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Board & Visualization</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    Board Export
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Documents & Decisions</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    Document Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    Decision Records
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web Interface</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="00-启动与访问.html">
+            
+                <a href="00-启动与访问.html">
+            
+                    
+                    Launch & Access
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="01-看板视图.html">
+            
+                <a href="01-看板视图.html">
+            
+                    
+                    Board View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="02-任务列表.html">
+            
+                <a href="02-任务列表.html">
+            
+                    
+                    Task List
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="03-里程碑管理.html">
+            
+                <a href="03-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="04-文档与决策.html">
+            
+                <a href="04-文档与决策.html">
+            
+                    
+                    Documents & Decisions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="05-设置与主题.html">
+            
+                <a href="05-设置与主题.html">
+            
+                    
+                    Settings & Themes
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="06-富文本粘贴与文档上传.html">
+            
+                <a href="06-富文本粘贴与文档上传.html">
+            
+                    
+                    Rich-text Paste & Document Upload
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="07-Wiki浏览与编辑.html">
+            
+                <a href="07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki Browsing & Editing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="08-统计页面.html">
+            
+                <a href="08-统计页面.html">
+            
+                    
+                    Statistics Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="5.10" data-path="09-甘特图视图.html">
+            
+                <a href="09-甘特图视图.html">
+            
+                    
+                    Gantt View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="10-全局搜索.html">
+            
+                <a href="10-全局搜索.html">
+            
+                    
+                    Global Search
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="11-图谱视图.html">
+            
+                <a href="11-图谱视图.html">
+            
+                    
+                    Graph View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="12-文档预览.html">
+            
+                <a href="12-文档预览.html">
+            
+                    
+                    Document Preview
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI Integration</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP Workflow
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    Supported AI Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    Agent Instruction Files
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Quick Notes</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI Memo Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web Memo Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    Search & Knowledge Links
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    Pinboard View & Archiving
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Graph & Data Queries</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    Graph CLI Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    Graph MCP Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    Databases Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    Legend Persistence
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    Chart Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Configuration & Operations</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="../60-配置与运维/00-配置管理.html">
+            
+                <a href="../60-配置与运维/00-配置管理.html">
+            
+                    
+                    Configuration Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="../60-配置与运维/01-Shell补全.html">
+            
+                <a href="../60-配置与运维/01-Shell补全.html">
+            
+                    
+                    Shell Completions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="../60-配置与运维/02-项目概览.html">
+            
+                <a href="../60-配置与运维/02-项目概览.html">
+            
+                    
+                    Project Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="../60-配置与运维/03-故障排查.html">
+            
+                <a href="../60-配置与运维/03-故障排查.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Gantt View</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="gantt-chart-view">Gantt Chart View</h1>
+<p>The Gantt chart view displays task start/end times and dependencies on a timeline, helping you intuitively grasp project progress, identify the critical path, and spot schedule conflicts.</p>
+<h2 id="entering-the-gantt-chart-view">Entering the Gantt Chart View</h2>
+<p>After starting the Web interface, click the "Gantt" tab in the top navigation bar to enter the Gantt chart view. On first entry, the system automatically parses date data for all tasks and renders the timeline.</p>
+<h2 id="page-layout">Page Layout</h2>
+<p>The Gantt chart view uses a left-right dual-column layout:</p>
+<ul>
+<li><strong>Left task list</strong>: a fixed-width table showing task ID, title, time columns, and action buttons.</li>
+<li><strong>Right timeline area</strong>: dynamically rendered task bars and dependency arrows, with a time-axis scale at the top.</li>
+</ul>
+<p>Scroll events in the two columns are bidirectionally synchronized, so they stay aligned when scrolling vertically.</p>
+<h2 id="time-granularity-switching">Time Granularity Switching</h2>
+<p>The top of the timeline provides five granularity buttons:</p>
+<table>
+<thead>
+<tr>
+<th>Granularity</th>
+<th>Scenario</th>
+<th>Characteristics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Day</strong></td>
+<td>View dense short-term development schedules</td>
+<td>Multiple tasks on the same day are offset horizontally to avoid overlap</td>
+</tr>
+<tr>
+<td><strong>Week</strong></td>
+<td>Iteration progress review</td>
+<td>Suitable for Sprint or weekly meeting scenarios</td>
+</tr>
+<tr>
+<td><strong>Month</strong></td>
+<td>Monthly project review</td>
+<td>Balances detail and overview</td>
+</tr>
+<tr>
+<td><strong>Quarter</strong></td>
+<td>Medium- to long-term project overview</td>
+<td>Large time-span window</td>
+</tr>
+<tr>
+<td><strong>Year</strong></td>
+<td>Annual project big picture</td>
+<td>Most macroscopic perspective</td>
+</tr>
+</tbody>
+</table>
+<p>When switching granularity, task bar positions and widths are recalculated automatically to remain clear at the current scale.</p>
+<h2 id="task-time-parsing">Task Time Parsing</h2>
+<p>The Gantt chart does not require tasks to have planned dates. The system parses each task's effective start/end time according to the following rules:</p>
+<p><strong>Start time</strong></p>
+<ol>
+<li>If the task has <code>plannedStart</code> → use the planned start time first.</li>
+<li>If there is no planned start time → use the task creation date (date part of <code>createdDate</code>).</li>
+</ol>
+<p><strong>End time</strong></p>
+<ol>
+<li>If the task has <code>plannedEnd</code> → use the planned end time first.</li>
+<li>If there is no planned end time but there is <code>updatedDate</code> → use the date part of the update date.</li>
+<li>If only the creation date exists → enable the minimum-width fallback.</li>
+</ol>
+<blockquote>
+<p><strong>Tip</strong>: To make a task show an exact time range on the Gantt chart, fill in <code>plannedStart</code> and <code>plannedEnd</code> in the "Planned dates" area of the task edit page.</p>
+</blockquote>
+<h2 id="minimum-width-fallback">Minimum Width Fallback</h2>
+<p>For tasks that only have a creation time and no planned dates, the system gives them a minimum visual width so they do not compress into invisible thin lines on the timeline:</p>
+<ul>
+<li><strong>Day view</strong>: minimum visual width of about 4 hours; multiple tasks on the same day are automatically offset horizontally to avoid complete overlap.</li>
+<li><strong>Week/Month view</strong>: minimum width of 1 day.</li>
+<li><strong>Quarter/Year view</strong>: fixed 8-pixel color block width, ensuring visibility even at macroscopic scales.</li>
+</ul>
+<p>These tasks are marked with <code>*</code> in the left list; hovering shows a "fallback rendering" hint.</p>
+<h2 id="task-bar-interactions">Task Bar Interactions</h2>
+<h3 id="hover-to-view-details">Hover to View Details</h3>
+<p>Hovering over any task bar pops up a tooltip showing:</p>
+<ul>
+<li>Task ID and title.</li>
+<li>Parsed start and end times.</li>
+<li>Whether it is fallback rendering (tasks with only creation time).</li>
+</ul>
+<h3 id="click-to-highlight-the-dependency-chain">Click to Highlight the Dependency Chain</h3>
+<p>Clicking a task bar highlights the entire dependency chain for that task:</p>
+<ul>
+<li><strong>Predecessor tasks</strong> (what this task depends on) and <strong>successor tasks</strong> (what depends on this task) remain at normal brightness.</li>
+<li><strong>Other unrelated tasks and arrows</strong> fade to 30% opacity.</li>
+<li>Click the task bar again or click an empty area to cancel the highlight.</li>
+</ul>
+<p>This is very useful for quickly locating upstream and downstream impact scope in complex projects.</p>
+<h3 id="open-task-details">Open Task Details</h3>
+<ul>
+<li><strong>Click the "Details" button in the left list</strong>: opens the familiar task edit modal, where you can modify task fields, dates, and dependencies.</li>
+<li><strong>Click the task bar on the right</strong>: highlights the dependency chain (as described above).</li>
+</ul>
+<h2 id="dependency-arrows">Dependency Arrows</h2>
+<p>Dependencies between tasks are visualized with SVG Bézier curve arrows:</p>
+<ul>
+<li>Arrows point from the predecessor task's end position to the successor task's start position.</li>
+<li>Multiple dependencies are automatically staggered to reduce line tangling.</li>
+<li>Arrows scale adaptively when switching time granularity.</li>
+<li>Dependency arrows also participate in the "click to highlight" interaction.</li>
+</ul>
+<blockquote>
+<p><strong>Note</strong>: The Gantt chart view currently only visualizes dependencies and does not support dragging to adjust task times. To modify task dates, use the "Details" button on the left to enter the task edit page.</p>
+</blockquote>
+<h2 id="list-sorting">List Sorting</h2>
+<p>The first four columns of the left task list (ID, Title, Start Time, End Time) support click sorting:</p>
+<ul>
+<li>Each header shows double-arrow icons (↑/↓) on the right.</li>
+<li>Inactive arrows are gray; ascending highlights the left arrow; descending highlights the right arrow.</li>
+<li>Click to toggle ascending/descending; clicking another column sorts by the new column.</li>
+<li>The outer frame width is the same across the three states, so header text does not jitter when switching.</li>
+</ul>
+<p>After sorting, the Gantt bars on the right are re-laid out in the new task order, but their time positions remain unchanged.</p>
+<h2 id="timeline-panning">Timeline Panning</h2>
+<p>Hold the mouse button and drag left or right in the timeline area to pan the time axis and view more dates:</p>
+<ul>
+<li>Drag left to view earlier times.</li>
+<li>Drag right to view later times.</li>
+<li>Panning is smooth and does not refresh the page.</li>
+</ul>
+<h2 id="dark-mode-support">Dark Mode Support</h2>
+<p>The Gantt chart view is fully adapted for dark mode:</p>
+<ul>
+<li>Task bars, timeline scales, and dependency arrows all use Tailwind CSS <code>dark:</code> variants.</li>
+<li>Hover tooltips and highlight states remain clear against dark backgrounds.</li>
+<li>No page refresh is needed after switching system theme or manual switching.</li>
+</ul>
+<h2 id="tracking-gantt-chart">Tracking Gantt Chart</h2>
+<p>The tracking Gantt chart displays both the <strong>planned time range</strong> and <strong>actual task progress</strong> on the same row, helping you intuitively track deviations.</p>
+<h3 id="dual-layer-rendering">Dual-Layer Rendering</h3>
+<p>Each task row draws two independently positioned elements stacked on the z-axis:</p>
+<ul>
+<li><strong>Bottom actual bar</strong>: solid status-color fill.<ul>
+<li>In Progress → blue</li>
+<li>Done / Completed → green</li>
+<li>To Do → gray</li>
+<li>Blocked → red</li>
+<li>Cancelled → light gray</li>
+</ul>
+</li>
+<li><strong>Top planned border</strong>: 60° diagonal-line fill frame (two border layers: 2px shadow layer + 1px final line).</li>
+</ul>
+<h3 id="deviation-scenarios">Deviation Scenarios</h3>
+<table>
+<thead>
+<tr>
+<th>Deviation Scenario</th>
+<th>Condition</th>
+<th>Visual Appearance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Early start</strong></td>
+<td>actualStart &lt; plannedStart</td>
+<td>Actual bar begins to the left of the planned frame; left overflow is solid color.</td>
+</tr>
+<tr>
+<td><strong>Normal</strong></td>
+<td>actualStart = plannedStart, actualEnd ≤ plannedEnd</td>
+<td>Actual bar extends inside the frame; overlap area shows color + diagonal lines, unreached tail shows pure diagonal lines.</td>
+</tr>
+<tr>
+<td><strong>Delay</strong></td>
+<td>actualEnd &gt; plannedEnd</td>
+<td>Actual bar exceeds the planned frame on the right; right overflow is solid color.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="left-time-columns">Left Time Columns</h3>
+<p>The toolbar provides <code>showPlanTime</code> and <code>showActualTime</code> toggles:</p>
+<ul>
+<li><strong>Actual Start / Actual End</strong>: always displayed, parsed in priority order <code>actualStart</code> → <code>actualEnd</code> → <code>createdDate</code>/<code>updatedDate</code>.</li>
+<li><strong>Planned Start / Planned End</strong>: planned time columns, displayed only when <code>showPlanTime</code> is enabled.</li>
+</ul>
+<h3 id="smart-dependency-arrows">Smart Dependency Arrows</h3>
+<p>In tracking mode, dependency arrow connection points consider both actual and planned times:</p>
+<ul>
+<li>If actual start is earlier than planned start, the arrow connects to the earlier actual position.</li>
+<li>If actual end is earlier than planned start (rare), it falls back to planned end to keep the dependency chain coherent.</li>
+<li>Arrow colors are uniformly gray to avoid clashing with status-colored actual bars.</li>
+</ul>
+<h3 id="interaction-enhancements">Interaction Enhancements</h3>
+<ul>
+<li><strong>Hover tooltip</strong>: shows planned time range, actual time range, and fallback indicators together.</li>
+<li><strong>Legend</strong>: the toolbar shows a legend—status-color bar = actual, diagonal-line frame = planned, arrow = dependency, amber <code>*</code> = estimated time.</li>
+<li><strong>Click highlight</strong>: the planned border layer also participates in highlight/dimming.</li>
+<li>Default sort is ID descending; default view is day view.</li>
+<li>The first task is automatically selected on load; switching views auto-scrolls to the selected task.</li>
+</ul>
+<h2 id="date-field-recommendations">Date Field Recommendations</h2>
+<p>To get the most value from the Gantt chart, it is recommended to fill in planned dates for key tasks:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Purpose</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plannedStart</code></td>
+<td>Task planned start time</td>
+<td>Expected start date of the task</td>
+</tr>
+<tr>
+<td><code>plannedEnd</code></td>
+<td>Task planned end time</td>
+<td>Expected completion date of the task</td>
+</tr>
+<tr>
+<td><code>dueDate</code></td>
+<td>Task due date</td>
+<td>Distinguish from <code>plannedEnd</code>: due date is a hard constraint; planned end is the expected completion time</td>
+</tr>
+<tr>
+<td><code>actualStart</code></td>
+<td>Actual start time</td>
+<td>Auto-filled by the system; can be manually corrected</td>
+</tr>
+<tr>
+<td><code>actualEnd</code></td>
+<td>Actual end time</td>
+<td>Auto-filled by the system; can be manually corrected</td>
+</tr>
+</tbody>
+</table>
+<p>These fields can be filled directly in the "Planned dates" area of the task edit page. After filling them, the Gantt chart automatically uses the more precise time range and no longer relies on creation-date fallback rendering.</p>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="08-统计页面.html" class="navigation navigation-prev " aria-label="Previous page: Statistics Page">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="10-全局搜索.html" class="navigation navigation-next " aria-label="Next page: Global Search">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Gantt View","labels":["usermanual"],"created_date":"2026-05-28 00:50","updated_date":"2026-11-04 00:00","level":"5.10","depth":1,"next":{"title":"Global Search","level":"5.11","depth":1,"path":"40-Web界面/10-全局搜索.md","ref":"40-Web界面/10-全局搜索.md","articles":[]},"previous":{"title":"Statistics Page","level":"5.9","depth":1,"path":"40-Web界面/08-统计页面.md","ref":"40-Web界面/08-统计页面.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"40-Web界面/09-甘特图视图.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

@@ -1,0 +1,1084 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <title>Shell Completions · Backlog.md User Manual</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="author" content="Backlog.md Contributors">
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="02-项目概览.html" />
+    
+    
+    <link rel="prev" href="00-配置管理.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">Getting Started</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    Product Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    Installation & Initialization
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI Integration Setup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Task Management</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    Task Lifecycle
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    Creating & Editing Tasks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    Draft Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    Subtasks & Dependencies
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    Search & Sequences
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    Archiving & Cleanup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Board & Visualization</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    Board Export
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Documents & Decisions</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    Document Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    Decision Records
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web Interface</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    Launch & Access
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    Board View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    Task List
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    Documents & Decisions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    Settings & Themes
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    Rich-text Paste & Document Upload
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki Browsing & Editing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    Statistics Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    Gantt View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    Global Search
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    Graph View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    Document Preview
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI Integration</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP Workflow
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    Supported AI Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    Agent Instruction Files
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Quick Notes</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI Memo Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web Memo Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    Search & Knowledge Links
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    Pinboard View & Archiving
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Graph & Data Queries</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    Graph CLI Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    Graph MCP Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    Databases Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    Legend Persistence
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    Chart Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Configuration & Operations</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="00-配置管理.html">
+            
+                <a href="00-配置管理.html">
+            
+                    
+                    Configuration Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="9.2" data-path="01-Shell补全.html">
+            
+                <a href="01-Shell补全.html">
+            
+                    
+                    Shell Completions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="02-项目概览.html">
+            
+                <a href="02-项目概览.html">
+            
+                    
+                    Project Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="03-故障排查.html">
+            
+                <a href="03-故障排查.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Shell Completions</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="shell-completions">Shell Completions</h1>
+<p>Backlog.md includes intelligent shell completion for bash, zsh, fish, and PowerShell. After enabling, press Tab while typing a <code>backlog</code> command in the terminal to auto-complete subcommands, options, and dynamic values, greatly improving efficiency.</p>
+<h2 id="one-click-completion-script-installation">One-Click Completion Script Installation</h2>
+<p>Backlog.md provides automatic detection and installation based on the current shell type:</p>
+<pre><code class="lang-bash">backlog completion install
+</code></pre>
+<p>After running, the tool detects your shell environment and installs the completion script to the corresponding location:</p>
+<table>
+<thead>
+<tr>
+<th>Shell</th>
+<th>Installation Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bash</td>
+<td><code>~/.bashrc</code> or <code>~/.bash_profile</code></td>
+</tr>
+<tr>
+<td>zsh</td>
+<td><code>~/.zshrc</code></td>
+</tr>
+<tr>
+<td>fish</td>
+<td><code>~/.config/fish/completions/</code></td>
+</tr>
+<tr>
+<td>PowerShell</td>
+<td><code>$PROFILE</code> file</td>
+</tr>
+</tbody>
+</table>
+<p>After installation, reload the shell configuration file or open a new terminal window for completions to take effect.</p>
+<h2 id="supported-shells">Supported Shells</h2>
+<h3 id="bash">Bash</h3>
+<p>The Bash completion script supports command, subcommand, and option completion. Dynamic value completion depends on the bash-completion package. It is preinstalled on most Linux distributions; if not, install it via the package manager:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Debian/Ubuntu</span>
+<span class="hljs-built_in">sudo</span> apt-get install bash-completion
+
+<span class="hljs-comment"># macOS (Homebrew)</span>
+brew install bash-completion
+</code></pre>
+<h3 id="zsh">Zsh</h3>
+<p>Zsh users can use completions directly with no extra dependencies. Zsh's completion system is feature-rich, supporting menu selection and description display, providing the most complete experience.</p>
+<h3 id="fish">Fish</h3>
+<p>Fish completion scripts are placed at <code>~/.config/fish/completions/backlog.fish</code>; Fish automatically loads all completion definitions in that directory. Fish completions support description text and argument highlighting.</p>
+<h3 id="powershell">PowerShell</h3>
+<p>PowerShell completion is implemented by registering <code>Register-ArgumentCompleter</code>. The installation script automatically modifies the PowerShell configuration file (view the path via <code>$PROFILE</code>). To register manually, refer to the registration logic in the completion script.</p>
+<h2 id="dynamic-completion-capabilities">Dynamic Completion Capabilities</h2>
+<p>Backlog.md's completion system supports not only static commands and options, but also dynamically extracts real data from the current project:</p>
+<h3 id="actual-task-ids">Actual Task IDs</h3>
+<p>After typing <code>backlog task edit</code>, press Tab to list all valid task IDs in the current project:</p>
+<pre><code class="lang-bash">backlog task edit &lt;TAB&gt;
+<span class="hljs-comment"># shows: task-1  task-2  task-3  doc-1  ...</span>
+</code></pre>
+<h3 id="status-values">Status Values</h3>
+<p>After typing <code>-s</code> or <code>--status</code>, press Tab; the completion system reads the status list from the project config:</p>
+<pre><code class="lang-bash">backlog task list -s &lt;TAB&gt;
+<span class="hljs-comment"># shows: To Do  In Progress  Done</span>
+</code></pre>
+<h3 id="labels">Labels</h3>
+<p>After typing <code>-l</code> or <code>--labels</code>, press Tab; the completion system aggregates all labels already in use:</p>
+<pre><code class="lang-bash">backlog task create <span class="hljs-string">"New feature"</span> -l &lt;TAB&gt;
+<span class="hljs-comment"># shows: bug  feature  docs  backend</span>
+</code></pre>
+<h3 id="assignees">Assignees</h3>
+<p>After typing <code>-a</code> or <code>--assignee</code>, press Tab; the completion system lists all assignees that appear in existing tasks:</p>
+<pre><code class="lang-bash">backlog task edit 1 -a &lt;TAB&gt;
+<span class="hljs-comment"># shows: @alice  @bob  @team-lead</span>
+</code></pre>
+<p>Dynamic completion data comes from the Backlog.md project in the current working directory. If you run a command in a directory without a Backlog.md project, dynamic value completion falls back to an empty list or default values, but static command completion remains available.</p>
+<h2 id="manual-completion-script-installation">Manual Completion Script Installation</h2>
+<p>If automatic installation encounters issues, or you need to deploy completion scripts to a non-standard location, you can install manually. Backlog.md ships with completion script sources for each shell in the package.</p>
+<h3 id="finding-completion-scripts">Finding Completion Scripts</h3>
+<p>Completion scripts are installed with the npm package, in the <code>completions/</code> folder of the package directory:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Find the globally installed backlog.md package path</span>
+npm root -g
+<span class="hljs-comment"># Completion scripts are at:</span>
+<span class="hljs-comment"># &lt;npm-root&gt;/backlog.md/completions/backlog.bash</span>
+<span class="hljs-comment"># &lt;npm-root&gt;/backlog.md/completions/backlog.zsh</span>
+<span class="hljs-comment"># &lt;npm-root&gt;/backlog.md/completions/backlog.fish</span>
+<span class="hljs-comment"># &lt;npm-root&gt;/backlog.md/completions/backlog.ps1</span>
+</code></pre>
+<h3 id="manual-bash-installation">Manual Bash Installation</h3>
+<p>Add the following to <code>~/.bashrc</code>:</p>
+<pre><code class="lang-bash"><span class="hljs-built_in">source</span> /path/to/backlog.bash
+</code></pre>
+<h3 id="manual-zsh-installation">Manual Zsh Installation</h3>
+<p>Copy the completion script to a Zsh function search path, such as <code>~/.zsh/functions/</code>:</p>
+<pre><code class="lang-bash"><span class="hljs-built_in">cp</span> /path/to/backlog.zsh ~/.zsh/functions/_backlog
+</code></pre>
+<p>Ensure <code>~/.zshrc</code> includes that directory in <code>fpath</code>:</p>
+<pre><code class="lang-zsh">fpath=(~/.zsh/functions <span class="hljs-variable">$fpath</span>)
+</code></pre>
+<h3 id="manual-fish-installation">Manual Fish Installation</h3>
+<p>Copy the completion script to Fish's completions directory:</p>
+<pre><code class="lang-bash"><span class="hljs-built_in">cp</span> /path/to/backlog.fish ~/.config/fish/completions/backlog.fish
+</code></pre>
+<h3 id="manual-powershell-installation">Manual PowerShell Installation</h3>
+<p>Add the completion registration code to the PowerShell profile. First determine the profile path:</p>
+<pre><code class="lang-powershell"><span class="hljs-variable">$PROFILE</span>
+</code></pre>
+<p>If the file does not exist, create it:</p>
+<pre><code class="lang-powershell"><span class="hljs-built_in">New-Item</span> <span class="hljs-literal">-Path</span> <span class="hljs-variable">$PROFILE</span> <span class="hljs-literal">-ItemType</span> File <span class="hljs-literal">-Force</span>
+</code></pre>
+<p>Then append the contents of <code>backlog.ps1</code> to the profile.</p>
+<p>After manual installation, reload the shell configuration file or open a new terminal window for completions to take effect.</p>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="00-配置管理.html" class="navigation navigation-prev " aria-label="Previous page: Configuration Management">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="02-项目概览.html" class="navigation navigation-next " aria-label="Next page: Project Overview">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Shell Completions","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-04 00:00","level":"9.2","depth":1,"next":{"title":"Project Overview","level":"9.3","depth":1,"path":"60-配置与运维/02-项目概览.md","ref":"60-配置与运维/02-项目概览.md","articles":[]},"previous":{"title":"Configuration Management","level":"9.1","depth":1,"path":"60-配置与运维/00-配置管理.md","ref":"60-配置与运维/00-配置管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"60-配置与运维/01-Shell补全.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

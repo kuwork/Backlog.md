@@ -1,0 +1,1894 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <title>Creating & Editing Tasks · Backlog.md User Manual</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="author" content="Backlog.md Contributors">
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="02-草稿管理.html" />
+    
+    
+    <link rel="prev" href="00-任务生命周期.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">Getting Started</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    Product Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    Installation & Initialization
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI Integration Setup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Task Management</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="00-任务生命周期.html">
+            
+                <a href="00-任务生命周期.html">
+            
+                    
+                    Task Lifecycle
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="2.2" data-path="01-创建与编辑任务.html">
+            
+                <a href="01-创建与编辑任务.html">
+            
+                    
+                    Creating & Editing Tasks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="02-草稿管理.html">
+            
+                <a href="02-草稿管理.html">
+            
+                    
+                    Draft Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="03-子任务与依赖.html">
+            
+                <a href="03-子任务与依赖.html">
+            
+                    
+                    Subtasks & Dependencies
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="04-搜索与序列.html">
+            
+                <a href="04-搜索与序列.html">
+            
+                    
+                    Search & Sequences
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="05-归档与清理.html">
+            
+                <a href="05-归档与清理.html">
+            
+                    
+                    Archiving & Cleanup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Board & Visualization</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    Board Export
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Documents & Decisions</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    Document Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    Decision Records
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web Interface</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    Launch & Access
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    Board View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    Task List
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    Documents & Decisions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    Settings & Themes
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    Rich-text Paste & Document Upload
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki Browsing & Editing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    Statistics Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    Gantt View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    Global Search
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    Graph View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    Document Preview
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI Integration</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP Workflow
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    Supported AI Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    Agent Instruction Files
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Quick Notes</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI Memo Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web Memo Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    Search & Knowledge Links
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    Pinboard View & Archiving
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Graph & Data Queries</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    Graph CLI Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    Graph MCP Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    Databases Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    Legend Persistence
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    Chart Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Configuration & Operations</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="../60-配置与运维/00-配置管理.html">
+            
+                <a href="../60-配置与运维/00-配置管理.html">
+            
+                    
+                    Configuration Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="../60-配置与运维/01-Shell补全.html">
+            
+                <a href="../60-配置与运维/01-Shell补全.html">
+            
+                    
+                    Shell Completions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="../60-配置与运维/02-项目概览.html">
+            
+                <a href="../60-配置与运维/02-项目概览.html">
+            
+                    
+                    Project Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="../60-配置与运维/03-故障排查.html">
+            
+                <a href="../60-配置与运维/03-故障排查.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Creating & Editing Tasks</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="creating--editing-tasks">Creating &amp; Editing Tasks</h1>
+<h2 id="creating-tasks">Creating Tasks</h2>
+<h3 id="basic-creation">Basic Creation</h3>
+<p>Run the following command and enter a title to quickly create a task:</p>
+<pre><code class="lang-bash">backlog task create <span class="hljs-string">"Task Title"</span>
+</code></pre>
+<p>If the current terminal supports interactive TTY and no title is provided, the creation wizard starts automatically to guide you through task details.</p>
+<blockquote>
+<p>The output of <code>backlog task create --help</code> and <code>backlog task edit --help</code> ends with a Note pointing to <code>backlog instructions overview</code>. The project expects every session to start from that overview—which includes the project state-machine guidance and the <code>--plain</code> convention for AI-readable output—so new readers who check <code>--help</code> directly still see this guidance.</p>
+</blockquote>
+<h3 id="full-parameter-creation">Full-Parameter Creation</h3>
+<p>You can set all fields at creation time via command-line options:</p>
+<pre><code class="lang-bash">backlog task create <span class="hljs-string">"Implement user login"</span> \
+  -d <span class="hljs-string">"Support email and password login"</span> \
+  -a <span class="hljs-string">"@developer"</span> \
+  -s <span class="hljs-string">"To Do"</span> \
+  -l <span class="hljs-string">"feature"</span> \
+  --priority high \
+  --ac <span class="hljs-string">"Users can log in with email"</span> \
+  --ac <span class="hljs-string">"Passwords must be at least 8 characters"</span> \
+  --plan <span class="hljs-string">"1. Design database table 2. Implement API 3. Write tests"</span> \
+  --notes <span class="hljs-string">"Refer to the existing auth module"</span> \
+  --dep <span class="hljs-string">"back-1"</span> \
+  --ref <span class="hljs-string">"https://docs.example.com/auth"</span> \
+  --doc <span class="hljs-string">"doc-5"</span>
+</code></pre>
+<h3 id="common-options">Common Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Repeatable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-d, --description &lt;text&gt;</code></td>
+<td>Task description</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--desc &lt;text&gt;</code></td>
+<td>Alias for <code>--description</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-a, --assignee &lt;assignee&gt;</code></td>
+<td>Assignee; repeatable or comma-separated for multiple</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--unassign</code></td>
+<td>Explicitly clear assignees (does not fall back to <code>defaultAssignee</code>; mutually exclusive with <code>-a</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-s, --status &lt;status&gt;</code></td>
+<td>Initial status</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-l, --labels &lt;labels&gt;</code></td>
+<td>Labels, comma-separated</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--priority &lt;priority&gt;</code></td>
+<td>Priority: <code>high</code>, <code>medium</code>, <code>low</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--ac &lt;criteria&gt;</code></td>
+<td>Append acceptance criterion (repeatable)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--acceptance-criteria &lt;criteria&gt;</code></td>
+<td>Append acceptance criterion, alias for <code>--ac</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--dod &lt;item&gt;</code></td>
+<td>Definition of Done item</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--no-dod-defaults</code></td>
+<td>Disable default DoD</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--plan &lt;text&gt;</code></td>
+<td>Implementation plan; supports <code>\n</code> newline escape</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--notes &lt;text&gt;</code></td>
+<td>Implementation notes; supports <code>\n</code> newline escape</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--final-summary &lt;text&gt;</code></td>
+<td>Final summary; supports <code>\n</code> newline escape</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--ordinal &lt;number&gt;</code></td>
+<td>Sort weight</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-m, --milestone &lt;milestone&gt;</code></td>
+<td>Assigned milestone</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--draft</code></td>
+<td>Create as draft</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-p, --parent &lt;taskId&gt;</code></td>
+<td>Parent task ID (creates a subtask)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--depends-on &lt;taskIds&gt;</code></td>
+<td>Dependent tasks, comma-separated</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--dep &lt;taskIds&gt;</code></td>
+<td>Shorthand for <code>--depends-on</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--ref &lt;reference&gt;</code></td>
+<td>External reference link or file path</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--doc &lt;documentation&gt;</code></td>
+<td>Associated document</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--due-date &lt;date&gt;</code></td>
+<td>Due date (<code>YYYY-MM-DD</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--planned-start &lt;date&gt;</code></td>
+<td>Planned start date (<code>YYYY-MM-DD</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--planned-end &lt;date&gt;</code></td>
+<td>Planned end date (<code>YYYY-MM-DD</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--actual-start &lt;datetime&gt;</code></td>
+<td>Actual start time (<code>YYYY-MM-DD HH:MM</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--actual-end &lt;datetime&gt;</code></td>
+<td>Actual end time (<code>YYYY-MM-DD HH:MM</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--modified-file &lt;path&gt;</code></td>
+<td>Associated modified file</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--plain</code></td>
+<td>Output plain text after creation</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h3 id="newlines-in-descriptions">Newlines in Descriptions</h3>
+<p><code>--description</code> and <code>--desc</code> support cross-platform consistent newline input:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Insert a newline in the description</span>
+backlog task create <span class="hljs-string">"Title"</span> --desc <span class="hljs-string">"First line\nSecond line"</span>
+
+<span class="hljs-comment"># Editing also supports it</span>
+backlog task edit back-10 --desc <span class="hljs-string">"Fixes:\n1. Fix A\n2. Fix B"</span>
+</code></pre>
+<ul>
+<li>On Windows, typing <code>\n</code> produces a newline (the CLI internally simulates a bash double-quote escape layer and processes it uniformly)</li>
+<li>To input a literal <code>\n</code> rather than a newline, enter <code>\\\\n</code> on Windows and <code>\\n</code> on non-Windows</li>
+<li>This escape only handles <code>\n</code> (newline) and <code>\\</code> (literal backslash); other sequences such as <code>\t</code> are preserved as-is</li>
+<li><code>--plan</code>, <code>--notes</code>, and <code>--final-summary</code> support the same cross-platform newline escape</li>
+</ul>
+<blockquote>
+<p><strong>Avoid bash ANSI-C quoting</strong>: do not wrap multi-line values in <code>$'...'</code>. Bash <code>$'...'</code> parses <code>\n</code> into a real newline before the CLI sees the argument, causing the echoed command to break across lines and the CLI to receive only the first line. Use ordinary double quotes with <code>\n</code> escapes instead (<code>--plan "Step 1\nStep 2"</code>). This rule applies to <code>--desc</code>, <code>--notes</code>, <code>--comment</code>, <code>--final-summary</code>, <code>--append-notes</code>, <code>--append-final-summary</code>, and all other multi-line fields.</p>
+</blockquote>
+<h2 id="viewing-tasks">Viewing Tasks</h2>
+<h3 id="interactive-tui-view">Interactive TUI View</h3>
+<pre><code class="lang-bash">backlog task &lt;<span class="hljs-built_in">id</span>&gt;
+</code></pre>
+<p>Or explicitly use the view subcommand:</p>
+<pre><code class="lang-bash">backlog task view &lt;<span class="hljs-built_in">id</span>&gt;
+</code></pre>
+<p>In the TUI:</p>
+<ul>
+<li>Use arrow keys or <code>j</code>/<code>k</code> to browse task details</li>
+<li>Press <code>E</code> to open the task file in the system editor (the TUI suspends and resumes after you close the editor)</li>
+<li>Press <code>Escape</code> or <code>q</code> to exit</li>
+</ul>
+<h3 id="plain-text-output">Plain-Text Output</h3>
+<p>In non-interactive environments (scripts or AI sessions), use <code>--plain</code> for structured plain text:</p>
+<pre><code class="lang-bash">backlog task &lt;<span class="hljs-built_in">id</span>&gt; --plain
+backlog task view &lt;<span class="hljs-built_in">id</span>&gt; --plain
+</code></pre>
+<h3 id="stable-json-output">Stable JSON Output</h3>
+<p>Read commands support <code>--json</code> for structured, versioned JSON output, convenient for script parsing:</p>
+<pre><code class="lang-bash">backlog task list --json
+backlog task view back-10 --json
+backlog task back-10 --json
+backlog search <span class="hljs-string">"api"</span> --json
+backlog doc list --json
+</code></pre>
+<p>Output uses a unified envelope <code>{ schemaVersion: 1, kind: "..." }</code>, with fields consistent with <code>--plain</code>, and includes date fields such as <code>dueDate</code>, <code>plannedStart</code>, <code>plannedEnd</code>, <code>actualStart</code>, <code>actualEnd</code>, plus acceptance-criteria progress <code>acceptanceCriteriaCompleted</code> / <code>acceptanceCriteriaCount</code> (<code>0</code>/<code>0</code> for tasks with no acceptance criteria). Task list, task detail, and search results share the same JSON field set. <code>--json</code> writes only to stdout; errors go to stderr; it is mutually exclusive with <code>--plain</code>, and specifying both errors with a non-zero exit code.</p>
+<p>The JSON payload also includes:</p>
+<ul>
+<li><strong><code>isReady</code></strong>: dependency readiness determination for the task; consistent with the <code>--ready</code> filter projection; <code>task view --json</code> additionally provides a <code>readiness</code> block (<code>isReady</code> / <code>isBlocked</code> / <code>blockingDependencies</code> / <code>missingDependencies</code>)</li>
+<li><strong><code>references</code> / <code>modifiedFiles</code></strong>: the task's references and modified-files lists (empty arrays when none), carried consistently across list, search, and detail payloads</li>
+<li><strong><code>source</code></strong>: defaults to <code>null</code>; rows from the completed corpus when expanded via <code>--completed</code> are marked <code>"completed"</code></li>
+</ul>
+<h3 id="continuous-watch---json---watch">Continuous Watch (<code>--json --watch</code>)</h3>
+<p><code>task list --json --watch</code> enters watch mode: it listens for task-directory changes and emits a complete JSON replacement frame on each change that is byte-for-byte consistent with a one-time <code>--json</code> run; it does not repeat output when nothing changes:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Watch a single assignee's todo queue with jq</span>
+backlog task list -a <span class="hljs-string">"@alice"</span> -s <span class="hljs-string">"To Do"</span> --json --watch | jq --unbuffered <span class="hljs-string">'.tasks | length'</span>
+</code></pre>
+<ul>
+<li>Options, filters, and sorting are re-evaluated on each read, so they do not drift from a one-time command</li>
+<li>Exit via SIGINT / SIGTERM or by closing the pipe; suitable for script subscriptions and dashboard pipelines</li>
+<li><strong>Stops when the initiator exits</strong>: when the upstream program driving the watch (e.g., a script or IDE plugin) exits without stopping the watch, the watcher detects the initiator process disappearance and ends itself, avoiding orphan processes on quiet repositories</li>
+<li><strong>Low CPU at idle</strong>: when nothing happens, the per-second reconcile tick performs only a cheap file stat signature comparison (name + size + mtime + ctime, one level deep); if the signature is unchanged, it does not re-read. Idle CPU for large repositories drops from ~35% to below 1%, with unchanged output bytes and update latency</li>
+</ul>
+<h2 id="editing-tasks">Editing Tasks</h2>
+<h3 id="basic-edit">Basic Edit</h3>
+<pre><code class="lang-bash">backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; --title <span class="hljs-string">"New Title"</span> --status <span class="hljs-string">"In Progress"</span>
+</code></pre>
+<p>If no edit fields are provided and the terminal supports interactive TTY, the edit wizard starts.</p>
+<h3 id="multi-id-batch-edit">Multi-ID Batch Edit</h3>
+<p><code>task edit</code> accepts multiple task IDs for batch application of <strong>shared flags</strong>:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Move multiple tasks to the same status at once</span>
+backlog task edit back-1 back-2 back-3 -s <span class="hljs-string">"In Progress"</span>
+
+<span class="hljs-comment"># Batch append a label</span>
+backlog task edit back-1 back-2 --add-label sprint-3
+</code></pre>
+<p>Rules:</p>
+<ul>
+<li>Batch-applicable flags: <code>-s/--status</code>, <code>-a/--assignee</code>, <code>-l/--label</code>, <code>--add-label</code>, <code>--remove-label</code>, <code>--priority</code>, <code>-m/--milestone</code>, <code>--clear-milestone</code>, <code>--add-doc</code>, <code>--add-ref</code>, and other shared fields</li>
+<li>Per-task fields (<code>--title</code>, <code>--desc</code>, <code>--plan</code>, <code>--notes</code>, <code>--comment</code>, <code>--ordinal</code>, AC/DoD items, date clears, etc.) are rejected in multi-ID calls</li>
+<li>A single task failure does not abort the batch; the command reports each failure at the end</li>
+<li>A multi-ID call with no batch-applicable flags errors rather than opening the edit wizard</li>
+</ul>
+<p>Correspondingly, the server provides a <code>POST /api/tasks/move</code> batch-move endpoint; multi-select drag-and-drop in the Web board submits through it in one request (see the multi-select section in <a href="../40-Web界面/01-看板视图.html">Board View</a>).</p>
+<h3 id="common-edit-options">Common Edit Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Repeatable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-t, --title &lt;title&gt;</code></td>
+<td>Modify title</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-d, --description &lt;text&gt;</code></td>
+<td>Modify description</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--append-description &lt;text&gt;</code></td>
+<td>Append to existing description (repeatable)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--append-desc &lt;text&gt;</code></td>
+<td>Alias for <code>--append-description</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>-a, --assignee &lt;assignee&gt;</code></td>
+<td>Modify assignees; repeatable or comma-separated</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--unassign</code></td>
+<td>Explicitly clear assignees (mutually exclusive with <code>-a</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-s, --status &lt;status&gt;</code></td>
+<td>Modify status</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-l, --label &lt;labels&gt;</code></td>
+<td>Reset labels</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--add-label &lt;label&gt;</code></td>
+<td>Append label</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--remove-label &lt;label&gt;</code></td>
+<td>Remove label</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--priority &lt;priority&gt;</code></td>
+<td>Modify priority</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--ordinal &lt;number&gt;</code></td>
+<td>Modify sort weight</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>-m, --milestone &lt;milestone&gt;</code></td>
+<td>Modify milestone</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--clear-milestone</code></td>
+<td>Clear milestone</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--ac &lt;criteria&gt;</code></td>
+<td>Append acceptance criterion</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--acceptance-criteria &lt;criteria&gt;</code></td>
+<td>Set/override acceptance criteria (comma-separated or repeatable)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--clear-ac</code></td>
+<td>Atomically clear all acceptance criteria (mutually exclusive with other AC changes)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--remove-ac &lt;index&gt;</code></td>
+<td>Delete acceptance criterion at the given 1-based index</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--check-ac &lt;index&gt;</code></td>
+<td>Check acceptance criterion at the given index</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--uncheck-ac &lt;index&gt;</code></td>
+<td>Uncheck acceptance criterion at the given index</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--dod &lt;item&gt;</code></td>
+<td>Append DoD item</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--remove-dod &lt;index&gt;</code></td>
+<td>Delete DoD item at the given index</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--check-dod &lt;index&gt;</code></td>
+<td>Check DoD item at the given index</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--uncheck-dod &lt;index&gt;</code></td>
+<td>Uncheck DoD item at the given index</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--plan &lt;text&gt;</code></td>
+<td>Set implementation plan; supports <code>\n</code> newline escape</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--append-plan &lt;text&gt;</code></td>
+<td>Append to existing implementation plan (repeatable)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--notes &lt;text&gt;</code></td>
+<td>Set notes (overwrite existing); supports <code>\n</code> newline escape</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--append-notes &lt;text&gt;</code></td>
+<td>Append notes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--final-summary &lt;text&gt;</code></td>
+<td>Set final summary; supports <code>\n</code> newline escape</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--append-final-summary &lt;text&gt;</code></td>
+<td>Append final summary</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--clear-final-summary</code></td>
+<td>Clear final summary</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--due-date &lt;date&gt;</code></td>
+<td>Modify due date</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--planned-start &lt;date&gt;</code></td>
+<td>Modify planned start date</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--planned-end &lt;date&gt;</code></td>
+<td>Modify planned end date</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--actual-start &lt;datetime&gt;</code></td>
+<td>Modify actual start time</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--actual-end &lt;datetime&gt;</code></td>
+<td>Modify actual end time</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--clear-due-date</code></td>
+<td>Clear due date</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--clear-planned-start</code></td>
+<td>Clear planned start date</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--clear-planned-end</code></td>
+<td>Clear planned end date</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--clear-actual-start</code></td>
+<td>Clear actual start time</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--clear-actual-end</code></td>
+<td>Clear actual end time</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--depends-on &lt;taskIds&gt;</code></td>
+<td>Set dependencies (overwrite existing)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--dep &lt;taskIds&gt;</code></td>
+<td>Shorthand for <code>--depends-on</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--ref &lt;reference&gt;</code></td>
+<td>Set references (overwrite existing)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--doc &lt;documentation&gt;</code></td>
+<td>Set associated documents (overwrite existing)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--add-ref &lt;reference&gt;</code></td>
+<td>Append reference (preserves existing values)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--remove-ref &lt;reference&gt;</code></td>
+<td>Remove reference by value</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--clear-refs</code></td>
+<td>Clear all references</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--add-doc &lt;documentation&gt;</code></td>
+<td>Append associated document</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--remove-doc &lt;documentation&gt;</code></td>
+<td>Remove associated document by value</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--clear-docs</code></td>
+<td>Clear all associated documents</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--add-dep &lt;taskIds&gt;</code></td>
+<td>Append dependency</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--add-depends-on &lt;taskIds&gt;</code></td>
+<td>Alias for <code>--add-dep</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--remove-dep &lt;taskIds&gt;</code></td>
+<td>Remove dependency by value</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--clear-deps</code></td>
+<td>Clear all dependencies</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--remove-comment &lt;index&gt;</code></td>
+<td>Delete comment at the given 1-based index; comma-separated supported</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--clear-comments</code></td>
+<td>Clear all comments</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>--modified-file &lt;path&gt;</code></td>
+<td>Set associated files (overwrite existing)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>--plain</code></td>
+<td>Output plain text after editing</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h3 id="acceptance-criteria-examples">Acceptance Criteria Examples</h3>
+<pre><code class="lang-bash"><span class="hljs-comment"># Add a new acceptance criterion</span>
+backlog task edit back-10 --ac <span class="hljs-string">"New acceptance item"</span>
+
+<span class="hljs-comment"># Delete the 2nd acceptance criterion</span>
+backlog task edit back-10 --remove-ac 2
+
+<span class="hljs-comment"># Check the 1st acceptance criterion</span>
+backlog task edit back-10 --check-ac 1
+
+<span class="hljs-comment"># Uncheck it</span>
+backlog task edit back-10 --uncheck-ac 1
+
+<span class="hljs-comment"># Atomically clear all acceptance criteria, then re-add (clear-then-add workflow)</span>
+backlog task edit back-10 --clear-ac --ac <span class="hljs-string">"Brand new acceptance criteria"</span>
+</code></pre>
+<p><code>--clear-ac</code> clears all acceptance criteria at once and rejects combinations with other AC change options (<code>--ac</code>, <code>--remove-ac</code>, etc.). AC and DoD editing and serialization are deterministic; repeated edits do not produce redundant or malformed checklists.</p>
+<h3 id="append-plan-example">Append-Plan Example</h3>
+<pre><code class="lang-bash"><span class="hljs-comment"># Append content to the existing plan</span>
+backlog task edit back-10 --append-plan <span class="hljs-string">"Add integration test cases"</span>
+
+<span class="hljs-comment"># Replace plan first, then append multiple items</span>
+backlog task edit back-10 --plan <span class="hljs-string">"New plan"</span> --append-plan <span class="hljs-string">"Step 1"</span> --append-plan <span class="hljs-string">"Step 2"</span>
+</code></pre>
+<p>Each append is separated from existing content by a blank line; multiple <code>--append-plan</code> flags are applied in command-line order. Purely whitespace values are ignored. When the implementation-plan section does not exist, the first non-empty append automatically creates it.</p>
+<h3 id="notes-and-summary-examples">Notes and Summary Examples</h3>
+<pre><code class="lang-bash"><span class="hljs-comment"># Append notes</span>
+backlog task edit back-10 --append-notes <span class="hljs-string">"New note content"</span>
+
+<span class="hljs-comment"># Set final summary</span>
+backlog task edit back-10 --final-summary <span class="hljs-string">"Task completed, implemented..."</span>
+
+<span class="hljs-comment"># Append to final summary</span>
+backlog task edit back-10 --append-final-summary <span class="hljs-string">"Additional note"</span>
+
+<span class="hljs-comment"># Clear final summary</span>
+backlog task edit back-10 --clear-final-summary
+</code></pre>
+<h3 id="comment-examples">Comment Examples</h3>
+<pre><code class="lang-bash"><span class="hljs-comment"># Append a comment</span>
+backlog task edit back-10 --comment <span class="hljs-string">"Consider splitting the UI part into a separate PR"</span>
+
+<span class="hljs-comment"># Append a comment with explicit author</span>
+backlog task edit back-10 --comment <span class="hljs-string">"Consider splitting the UI part into a separate PR"</span> --comment-author @sara
+
+<span class="hljs-comment"># Append multiple comments at once</span>
+backlog task edit back-10 --comment <span class="hljs-string">"First comment"</span> --comment <span class="hljs-string">"Second comment"</span>
+</code></pre>
+<p>Comment bodies support Markdown, but a standalone <code>---</code> line is reserved as a comment separator and cannot appear in the body. Comments appear in the task detail <strong>Comments</strong> section, listed in append order with index, author (if provided), and timestamp.</p>
+<p>Differences between comments, implementation notes, and final summary:</p>
+<table>
+<thead>
+<tr>
+<th>Content Type</th>
+<th>Purpose</th>
+<th>Write Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Comment</td>
+<td>Discussion, review records, Q&amp;A</td>
+<td><code>--comment</code></td>
+</tr>
+<tr>
+<td>Implementation notes</td>
+<td>Execution progress, technical exploration</td>
+<td><code>--notes</code> / <code>--append-notes</code></td>
+</tr>
+<tr>
+<td>Final summary</td>
+<td>PR-style completion summary</td>
+<td><code>--final-summary</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="list-fields-set--add--remove--clear">List Fields: Set / Add / Remove / Clear</h3>
+<p>List fields such as <code>--ref</code>, <code>--doc</code>, and <code>--dep</code> support four semantics, mutually exclusive within a single command:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Flags</th>
+<th>Semantics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Set</td>
+<td><code>--ref</code> / <code>--doc</code> / <code>--dep</code> / <code>--depends-on</code></td>
+<td><strong>Replace</strong> the entire list with the given values</td>
+</tr>
+<tr>
+<td>Add</td>
+<td><code>--add-ref</code> / <code>--add-doc</code> / <code>--add-dep</code> / <code>--add-depends-on</code></td>
+<td>Append to existing values, preserving existing entries</td>
+</tr>
+<tr>
+<td>Remove</td>
+<td><code>--remove-ref</code> / <code>--remove-doc</code> / <code>--remove-dep</code></td>
+<td>Delete the specified entry by <strong>value</strong></td>
+</tr>
+<tr>
+<td>Clear</td>
+<td><code>--clear-refs</code> / <code>--clear-docs</code> / <code>--clear-deps</code></td>
+<td>Clear the entire list</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-bash"><span class="hljs-comment"># Overwrite dependencies</span>
+backlog task edit back-10 --dep <span class="hljs-string">"back-3,back-4"</span>
+
+<span class="hljs-comment"># Append a dependency while keeping existing ones</span>
+backlog task edit back-10 --add-dep back-5
+
+<span class="hljs-comment"># Remove a dependency by value</span>
+backlog task edit back-10 --remove-dep back-4
+
+<span class="hljs-comment"># Clear all dependencies</span>
+backlog task edit back-10 --clear-deps
+</code></pre>
+<p>Rules:</p>
+<ul>
+<li>Set and add cannot be mixed (<code>--ref</code> and <code>--add-ref</code> are mutually exclusive), and clear cannot be combined with set/add/remove of the same kind; violations <strong>fail the command and leave the task file unchanged</strong></li>
+<li>Remove flags can be repeated or comma-separated; empty values are rejected</li>
+<li><strong>Empty set values are rejected</strong>: <code>backlog task edit back-10 --dep ""</code> errors and suggests using <code>--clear-deps</code> (older versions silently no-op'd with exit 0, which was a false success)</li>
+<li>MCP <code>task_edit</code> semantics are consistent: empty-string elements in arrays are rejected; only an explicit empty array <code>[]</code> means clear</li>
+</ul>
+<h3 id="three-forms-of-reference-entries">Three Forms of Reference Entries</h3>
+<p>Each entry for <code>--ref</code> / <code>--add-ref</code> is <strong>one location</strong> and supports three forms:</p>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>External URL</td>
+<td><code>https://docs.example.com/auth</code></td>
+</tr>
+<tr>
+<td>Project-relative file path</td>
+<td><code>src/utils/editor.ts</code></td>
+</tr>
+<tr>
+<td>Path with line range</td>
+<td><code>src/utils/editor.ts:42</code> (single line) or <code>src/utils/editor.ts:40-58</code> (range)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>One entry carries one location; to reference two regions of the same file, use two entries</li>
+<li><code>--remove-ref</code> matches the stored full string, including the line-number suffix</li>
+<li>In the Web UI, clicking a link with a line-number suffix opens the preview box at the specified line range</li>
+</ul>
+<h3 id="comment-deletion">Comment Deletion</h3>
+<pre><code class="lang-bash"><span class="hljs-comment"># Delete the 2nd comment</span>
+backlog task edit back-10 --remove-comment 2
+
+<span class="hljs-comment"># Delete multiple at once (list-edit flags support comma separation)</span>
+backlog task edit back-10 --remove-comment 2,3
+
+<span class="hljs-comment"># Clear all comments</span>
+backlog task edit back-10 --clear-comments
+</code></pre>
+<p><code>--remove-comment</code> accepts 1-based indices; out-of-bounds errors with the available indices listed. <code>--clear-comments</code> cannot be used with <code>--comment</code>. After deletion, remaining comments are <strong>renumbered by position</strong> (the index itself is not persistent). CLI, MCP <code>task_edit</code>, the Web UI comment per-comment delete button, and the "Clear comments" button all behave consistently.</p>
+<h3 id="concurrent-edit-protection">Concurrent Edit Protection</h3>
+<p>Task read-modify-write is protected by file locks to prevent two processes from silently overwriting each other's edits. On contention it fails immediately:</p>
+<pre><code>Edit failed: back-10 is being modified by another process; retry if appropriate.
+</code></pre><table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Behavior on contention</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLI</td>
+<td>Non-zero exit code and the message above; task file unchanged</td>
+</tr>
+<tr>
+<td>Web API</td>
+<td>HTTP 409</td>
+</tr>
+<tr>
+<td>MCP</td>
+<td>Operation error (<code>OPERATION_FAILED</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>It is fail-fast: <strong>no waiting, no merging, no automatic retry</strong>; the failing side must retry itself. The lock is based on the task file itself and works across independent backlog processes, not just within a single process. Locks also cover the draft demotion path.</p>
+<h2 id="task-list-and-filtering">Task List and Filtering</h2>
+<pre><code class="lang-bash"><span class="hljs-comment"># List all tasks</span>
+backlog task list
+
+<span class="hljs-comment"># Filter by status</span>
+backlog task list -s <span class="hljs-string">"In Progress"</span>
+
+<span class="hljs-comment"># Multi-status filter (repeat or comma-separated)</span>
+backlog task list -s <span class="hljs-string">"To Do"</span> -s <span class="hljs-string">"In Progress"</span>
+
+<span class="hljs-comment"># Exclude a status</span>
+backlog task list --exclude-status <span class="hljs-string">"Done"</span>
+
+<span class="hljs-comment"># Show only unassigned tasks (mutually exclusive with --assignee)</span>
+backlog task list --unassigned
+
+<span class="hljs-comment"># Filter by assignee</span>
+backlog task list -a <span class="hljs-string">"@developer"</span>
+
+<span class="hljs-comment"># Filter by milestone</span>
+backlog task list -m <span class="hljs-string">"M1 - CLI"</span>
+
+<span class="hljs-comment"># Filter by priority</span>
+backlog task list --priority high
+
+<span class="hljs-comment"># View subtasks of a specific parent task</span>
+backlog task list -p back-4
+
+<span class="hljs-comment"># Sort by field (priority or id)</span>
+backlog task list --<span class="hljs-built_in">sort</span> priority
+
+<span class="hljs-comment"># Only list tasks whose dependencies are ready to start</span>
+backlog task list --ready
+
+<span class="hljs-comment"># Expand corpus: also list historical tasks from completed directory</span>
+backlog task list --completed
+
+<span class="hljs-comment"># Plain-text output</span>
+backlog task list --plain
+</code></pre>
+<p><code>--completed</code> expands the read scope from active tasks to the <code>backlog/completed/</code> corpus; JSON rows are marked with <code>source: "completed"</code>. <code>backlog search --completed</code> and MCP <code>list_tasks</code> / <code>search_tasks</code> with <code>completed: true</code> have the same semantics. Note: MCP <code>task_search</code> now defaults to searching only active tasks; pass <code>completed: true</code> explicitly to include historical tasks.</p>
+<p>Plain-text list rows append <code>(ac: checked/total)</code> when a task has acceptance criteria; MCP plain-text lists do the same. Tasks without acceptance criteria do not show this suffix.</p>
+<h3 id="list-paging">List Paging</h3>
+<p><code>task list</code>, <code>search</code>, <code>draft list</code>, <code>milestone list</code>, <code>doc list</code>, <code>doc search</code>, <code>decision list</code>, and <code>memo list</code> all support grep-style paging window options:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--max-count &lt;n&gt;</code></td>
+<td>Output at most n items</td>
+<td><code>--max-count 20</code></td>
+</tr>
+<tr>
+<td><code>--skip &lt;n&gt;</code></td>
+<td>Skip the first n items (next page)</td>
+<td><code>--skip 20</code></td>
+</tr>
+<tr>
+<td><code>--count</code></td>
+<td>Output only the match count (a number)</td>
+<td><code>--count</code></td>
+</tr>
+</tbody>
+</table>
+<p>The window is applied after filtering, sorting, and <code>--limit</code>, in output order, so consecutive pages neither overlap nor miss items. Truncated text output ends with <code>Showing &lt;first&gt;-&lt;last&gt; of &lt;total&gt; items. Next: backlog task list --skip &lt;n&gt;</code>; copy that command to page forward. <code>--count</code> outputs only a number and cannot be combined with <code>--json</code> (returns non-zero); JSON envelopes include <code>total</code> / <code>nextSkip</code> only when the window truncates the list. Centralized paging semantics are described in the "List Paging" section of <a href="04-搜索与序列.html">Search &amp; Sequences</a>.</p>
+<h3 id="dependency-ready-filter---ready">Dependency-Ready Filter (<code>--ready</code>)</h3>
+<p><code>backlog task list --ready</code> keeps only tasks that <strong>can start immediately</strong>:</p>
+<ul>
+<li>Determination is fail-closed: if any dependency is <strong>incomplete</strong> or <strong>unresolvable</strong>, the task is considered blocked</li>
+<li>Completed tasks count as "completion evidence" regardless of their status string (based on presence in the completed corpus)</li>
+<li>Dependency identity is matched by normalized ID (prefix and zero-padding differences do not affect determination)</li>
+<li>Circular dependencies and ambiguous dependency data are marked as blocked rather than guessed</li>
+<li>The same determination appears in CLI (<code>--ready</code>, plain/json/interactive output), the TUI task detail panel Readiness row, the Web task detail Dependencies card status badge, and MCP <code>task_list</code>'s <code>ready: true</code> parameter</li>
+<li>This filter only marks and filters; it does not modify tasks or override ordinal-sort authority</li>
+</ul>
+<h2 id="completing-and-archiving-tasks">Completing and Archiving Tasks</h2>
+<p>The first step to complete a task is to change its status to a terminal status (usually <code>Done</code>):</p>
+<pre><code class="lang-bash">backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; --status <span class="hljs-string">"Done"</span>
+</code></pre>
+<p>After reaching a terminal status, if you want to remove the task from the active board, run the <code>complete</code> subcommand to move the task file into <code>backlog/completed/</code>:</p>
+<pre><code class="lang-bash">backlog task complete &lt;<span class="hljs-built_in">id</span>&gt;
+</code></pre>
+<p><code>task complete</code> is a <strong>cleanup operation</strong>: the task must be in a terminal status, otherwise the command errors and prompts you to first advance status with <code>backlog task edit &lt;id&gt; -s "&lt;terminal-status&gt;"</code>. On success, the task disappears from the active board, the file moves to the completed directory, and the output shows <code>Completed task &lt;id&gt;.</code> with the new file path. The corresponding MCP tool is <code>task_complete</code> (parameter <code>id</code>), with the same semantics, and it does not allow completing tasks from other branches.</p>
+<p>Archiving moves the file to <code>backlog/archive/tasks/</code>, which is a soft delete; the original ID can be reused by later new tasks:</p>
+<pre><code class="lang-bash">backlog task archive &lt;<span class="hljs-built_in">id</span>&gt;
+</code></pre>
+<p>To periodically remove completed tasks from the active list, run the cleanup command:</p>
+<pre><code class="lang-bash">backlog cleanup
+</code></pre>
+<h2 id="date-fields">Date Fields</h2>
+<p>When creating or editing tasks, manage date fields with these options:</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># Planning fields (date-only)</span>
+backlog task create <span class="hljs-string">"API docs"</span> --due-date 2026-06-01 --planned-start 2026-05-25 --planned-end 2026-05-30
+
+<span class="hljs-comment"># Actual fields (datetime)</span>
+backlog task create <span class="hljs-string">"Urgent fix"</span> --status <span class="hljs-string">"In Progress"</span> --actual-start <span class="hljs-string">"2026-05-29 10:00"</span>
+backlog task edit back-10 --actual-end <span class="hljs-string">"2026-05-30 18:00"</span> --clear-actual-start
+</code></pre>
+<ul>
+<li>Planning fields use <code>YYYY-MM-DD</code> (date-only)</li>
+<li>Actual fields use <code>YYYY-MM-DD HH:MM</code> (UTC datetime)</li>
+<li>In interactive TTY environments, the create/edit wizard prompts for dates</li>
+</ul>
+<h3 id="date-editing-in-web-ui">Date Editing in Web UI</h3>
+<p>In the task detail modal sidebar:</p>
+<ul>
+<li><strong>Due Date</strong> / <strong>Planned Start</strong> / <strong>Planned End</strong> — <code>date</code> input</li>
+<li><strong>Actual Start</strong> / <strong>Actual End</strong> — <code>datetime-local</code> input (supports UTC ↔ local timezone conversion)</li>
+</ul>
+<p><strong>Auto-fill rules</strong>: when Due Date is set and Planned Start is empty, the system auto-fills Planned Start with the current date and Planned End with the Due Date value. You can modify these auto-filled values before saving.</p>
+<p><strong>Actual-time auto-fill</strong>: when task status is changed to In Progress or Done in the Web UI, the system auto-fills the corresponding actual field (if empty).</p>
+<p><strong>Date clearing</strong>: clicking the Clear button on any date input and saving the task removes the corresponding date field from the file. Clearing is transmitted via an empty string so the server receives the deletion correctly.</p>
+<h3 id="creating-tasks-in-web-ui">Creating Tasks in Web UI</h3>
+<p>Click the "New Task" button in the Web board or task list to open the creation modal:</p>
+<ul>
+<li><strong>References / Documentation</strong>: in creation mode, you can add reference links or associated documents via path autocomplete; typing <code>.back</code> discovers the <code>.backlog</code> directory</li>
+<li>After saving, references and documentation are written to the task file</li>
+</ul>
+<h2 id="demoting-to-draft">Demoting to Draft</h2>
+<p>If a task needs more refinement before execution, demote it to a draft:</p>
+<pre><code class="lang-bash">backlog task demote &lt;<span class="hljs-built_in">id</span>&gt;
+</code></pre>
+<p>After demotion, the task moves to <code>backlog/drafts/</code> and receives an independent draft ID (e.g., <code>draft-3</code>). References to the original ID from other tasks are automatically cleaned up (see <a href="05-归档与清理.html">Archiving &amp; Cleanup</a>).</p>
+<p>The Web UI demotion operation has accidental-trigger protection: all editing, status changes, and shortcuts are locked during demotion; on network errors it clearly warns "demotion may have succeeded" and refreshes the view for verification, avoiding duplicate submissions.</p>
+<h2 id="label-input-web-ui">Label Input (Web UI)</h2>
+<p>When editing labels in the Web task detail modal, the label input supports smart autocomplete:</p>
+<ul>
+<li><strong>Dropdown hints</strong>: clicking the label input or typing displays a dropdown of all existing project labels (configured labels plus labels used in any task)</li>
+<li><strong>Fuzzy search</strong>: typing matches characters in order, e.g. <code>we</code> matches <code>web-ui</code></li>
+<li><strong>Keyboard selection</strong>: use <code>↑</code> / <code>↓</code> to highlight options and <code>Enter</code> to select; press <code>Escape</code> to close the dropdown</li>
+<li><strong>Create new label</strong>: when the input matches no existing label, press <code>Enter</code> or type a comma <code>,</code> to create a new label</li>
+<li><strong>Duplicate detection</strong>: trying to add an item that differs only in case from an existing label (e.g. <code>Feature</code> when <code>feature</code> exists) turns the input border red and the dropdown shows <code>feature already added</code></li>
+</ul>
+<h2 id="opening-tasks-in-an-editor">Opening Tasks in an Editor</h2>
+<h3 id="editing-in-tui">Editing in TUI</h3>
+<p>In the TUI (<code>backlog task &lt;id&gt;</code> or <code>backlog board</code>):</p>
+<ul>
+<li>Select the target task</li>
+<li>Press <code>E</code> (or <code>Shift+e</code>) to open the task file directly in the system editor</li>
+<li>After closing the editor, the TUI automatically resumes and reloads the latest content</li>
+</ul>
+<h3 id="manual-editing">Manual Editing</h3>
+<p>Task files are ordinary Markdown and can be modified with any editor:</p>
+<pre><code class="lang-bash">vim backlog/tasks/back-10.md
+</code></pre>
+<p>After manual editing, Backlog.md's file watcher automatically refreshes the index without restarting the service.</p>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="00-任务生命周期.html" class="navigation navigation-prev " aria-label="Previous page: Task Lifecycle">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="02-草稿管理.html" class="navigation navigation-next " aria-label="Next page: Draft Management">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Creating & Editing Tasks","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-03 00:00","level":"2.2","depth":1,"next":{"title":"Draft Management","level":"2.3","depth":1,"path":"10-任务管理/02-草稿管理.md","ref":"10-任务管理/02-草稿管理.md","articles":[]},"previous":{"title":"Task Lifecycle","level":"2.1","depth":1,"path":"10-任务管理/00-任务生命周期.md","ref":"10-任务管理/00-任务生命周期.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"10-任务管理/01-创建与编辑任务.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

@@ -5,11 +5,21 @@
 
 ## 1. 源（Source）
 
-- 用户手册源码在 `backlog/wiki/usermanual`，采用 GitBook 风格目录结构：
-  `README.md`（封面/简介）+ `SUMMARY.md`（导航）+ `NN-章节/` 编号子目录。
-- **分支**：源码只在 `release` 分支（以及若干版本分支）上。`main` 分支**没有** wiki 目录，
-  直接链接 `github.com/kuwork/Backlog.md/tree/main/backlog/wiki/...` 会得到 404。
+- **HonKit 启动位置是 wiki 根目录** `backlog/wiki`（不是 `usermanual` 子目录）。
+  根目录含 `LANGS.md` + `book.json`，`book.json` 用 `ignores` 把 wiki 的其它内容
+  （`concepts/`、`decisions/`、`index.md`、`log.md` 等）排除在构建外。
+- 每个语言一册，各自是 GitBook 风格目录（`README.md` + `SUMMARY.md` + `NN-章节/`）：
+  - `backlog/wiki/usermanual/` — 简体中文
+  - `backlog/wiki/usermanual-en/` — 英文（文件名沿用中文目录名，正文与导航是英文）
+- `LANGS.md` 内容即语言清单，脚本据此决定构建哪几册：
+  ```markdown
+  * [简体中文](usermanual/)
+  * [English](usermanual-en/)
+  ```
+- **分支**：手册最新内容在 `wiki-tmp`；`release` 分支落后，`main` 分支**没有** wiki 目录
+  （链接 `tree/main/backlog/wiki/...` 会 404）。构建必须显式 `--branch wiki-tmp`。
 - 用 `git archive <branch> <src> | tar -x` 抽取，避免把仓库大历史带进来。
+  `_book/` 已被 `.gitignore` 忽略，不会进归档，脚本会自己构建。
 
 ## 2. Wikilink 归一化（必须）
 
@@ -27,18 +37,26 @@
 
 ## 4. 链接必须是相对路径（子路径安全）
 
-- HonKit 产物（`_book/`）内部全部使用相对链接：`gitbook/style.css`、
-  `00-快速开始/00-产品概述.html`、`../gitbook/...`（嵌套页用 `../`）。
+- 脚本对**每册单独构建**（`npx honkit build usermanual <out>`），产物自包含：
+  `index.html` + 同级 `gitbook/` 资源 + 自己的 `search_index.json`，
+  页面内引用是 `gitbook/style.css`、嵌套页 `../gitbook/...`。
 - 因此手册可挂载在任意子路径下，无需改链接。官网部署在
-  `https://kuwork.github.io/Backlog.md/` 下，手册放在 `docs/` 即 `.../Backlog.md/docs/`。
+  `https://kuwork.github.io/Backlog.md/` 下：中文 `docs/`、英文 `en/docs/`。
+- **不要直接用多语言构建的 `backlog/wiki/_book/`**：那种产物把 `gitbook/` 放在
+  `_book/gitbook` 共享，页面写成 `../gitbook/...`，挂到子路径会样式全丢；
+  而且三个 `search_index.json` 都是同一份 5.5MB 双语索引，
+  英文册搜索会命中中文页面。按语言单独构建后各为约 3.3MB 单语索引。
 
 ## 5. 迁移目标（Target）
 
 - 官网源码仓库：`backlog-md-site`（纯静态站，资源用相对路径引用）。
-- 手册放到 `backlog-md-site/docs/`，覆盖 `_book/` 的全部内容，
-  **剔除** `package.json` / `package-lock.json`（honkit 的 npm 产物，非站点资源）。
-- 首页 `#docs` 区块的「用户手册」卡片链接必须指向本地 `docs/`，
-  不要指向失效的 GitHub `main` wiki URL。
+- 中文册 → `backlog-md-site/docs/`，英文册 → `backlog-md-site/en/docs/`，
+  每册约 6.4MB / 73 个文件 / 51 页；**剔除** `package.json` / `package-lock.json`
+  （honkit 的 npm 产物，非站点资源）。目标目录每次整目录覆盖，避免残留旧页。
+- 首页 `#docs` 区块的「用户手册」卡片：`index.html` 指向 `docs/`，
+  `en/index.html` 指向 `docs/`（相对 `en/` 即 `en/docs/`）。
+  不要指向失效的 GitHub wiki URL。
+- 构建临时目录放站点仓库之外（如 `/d/tmp/um-build`），不要污染 `backlog-md-site`。
 
 ## 6. 部署（Deploy）
 

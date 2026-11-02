@@ -1,0 +1,1038 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <title>Graph CLI Commands · Backlog.md User Manual</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="author" content="Backlog.md Contributors">
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="01-图谱MCP工具.html" />
+    
+    
+    <link rel="prev" href="../70-快速笔记/04-钉板视图与归档.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">Getting Started</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    Product Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    Installation & Initialization
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI Integration Setup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Task Management</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    Task Lifecycle
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    Creating & Editing Tasks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    Draft Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    Subtasks & Dependencies
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    Search & Sequences
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    Archiving & Cleanup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Board & Visualization</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    Board Export
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Documents & Decisions</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    Document Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    Decision Records
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web Interface</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    Launch & Access
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    Board View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    Task List
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    Documents & Decisions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    Settings & Themes
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    Rich-text Paste & Document Upload
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki Browsing & Editing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    Statistics Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    Gantt View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    Global Search
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    Graph View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    Document Preview
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI Integration</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP Workflow
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    Supported AI Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    Agent Instruction Files
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Quick Notes</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI Memo Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web Memo Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    Search & Knowledge Links
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    Pinboard View & Archiving
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Graph & Data Queries</li>
+        
+        
+    
+        <li class="chapter active" data-level="8.1" data-path="00-图谱CLI命令.html">
+            
+                <a href="00-图谱CLI命令.html">
+            
+                    
+                    Graph CLI Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="01-图谱MCP工具.html">
+            
+                <a href="01-图谱MCP工具.html">
+            
+                    
+                    Graph MCP Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="02-SQL查询块.html">
+            
+                <a href="02-SQL查询块.html">
+            
+                    
+                    SQL Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="04-Cypher查询块.html">
+            
+                <a href="04-Cypher查询块.html">
+            
+                    
+                    Cypher Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="03-数据库页面.html">
+            
+                <a href="03-数据库页面.html">
+            
+                    
+                    Databases Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="05-图例配置持久化.html">
+            
+                <a href="05-图例配置持久化.html">
+            
+                    
+                    Legend Persistence
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="06-图表块.html">
+            
+                <a href="06-图表块.html">
+            
+                    
+                    Chart Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="07-MDB查询块.html">
+            
+                <a href="07-MDB查询块.html">
+            
+                    
+                    MDB Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Configuration & Operations</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="../60-配置与运维/00-配置管理.html">
+            
+                <a href="../60-配置与运维/00-配置管理.html">
+            
+                    
+                    Configuration Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="../60-配置与运维/01-Shell补全.html">
+            
+                <a href="../60-配置与运维/01-Shell补全.html">
+            
+                    
+                    Shell Completions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="../60-配置与运维/02-项目概览.html">
+            
+                <a href="../60-配置与运维/02-项目概览.html">
+            
+                    
+                    Project Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="../60-配置与运维/03-故障排查.html">
+            
+                <a href="../60-配置与运维/03-故障排查.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Graph CLI Commands</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="graph-cli-commands">Graph CLI Commands</h1>
+<p>The <code>backlog graph</code> command group lets you run read-only Cypher queries against the project's task/knowledge graph directly from the terminal, and also create your own named databases, write data, and import from CSV. It is the command-line counterpart to the Web interface Cypher search (the magnifying-glass dialog in <code>backlog browser</code>), suitable for ad-hoc analysis, scripting, and pipeline output. The complete official guide is always available:</p>
+<pre><code class="lang-bash">backlog instructions graph
+</code></pre>
+<blockquote>
+<p>Queries are strictly read-only: write keywords (<code>CREATE</code> / <code>DROP</code> / <code>DELETE</code> / <code>INSERT</code> / <code>MERGE</code> / <code>SET</code> / <code>UPDATE</code>) are rejected; neither the graph nor the Markdown corpus is modified. Run from the project root (or a subdirectory) so the CLI can locate <code>backlog/</code>.</p>
+</blockquote>
+<h2 id="backend-and-performance">Backend and Performance</h2>
+<ul>
+<li><strong>Backend status</strong>: the default backend is <strong>RyuGraph WASM</strong> (Kuzu's MIT fork built for WebAssembly), executing inside Bun's WebAssembly runtime and working out of the box on all platforms without any environment variables. The native Kuzu dependency has been removed; <code>BACKLOG_GRAPH_BACKEND=kuzu</code> is no longer a valid value. <code>BACKLOG_GRAPH_BACKEND=memory</code> forces a pure-JS memory fallback mode (Cypher search is not supported). If ryu initialization fails, it automatically falls back to the memory backend without crashing, and prints a one-line English warning explaining the failure path and cause (<code>database path not visible to the WASM filesystem</code> means MEMFS cannot see the path; <code>engine error</code> means an engine-level failure—only the latter needs to be reported). The database itself lives in the WASM in-memory filesystem, while the cache directory only stores locks and fingerprint sidecars; this is normal.</li>
+<li><strong>Snapshot reuse</strong>: the first run of a <code>default</code> graph command requires a full build (about 6–11 seconds for this repository); the CLI writes the build result as a JSON snapshot to the OS cache directory. After that, as long as the corpus fingerprint, parser version, and graph-structure version have not changed, it restores directly from the snapshot (about twice as fast). When the corpus changes, it automatically rebuilds and refreshes the snapshot. Snapshots are only a cache; deleting them only costs one rebuild.</li>
+<li><strong>Each invocation is independent</strong>: each CLI run opens the database in memory and closes it on exit, not contending with the graph held by the Web interface (each uses independent slots and locks).</li>
+</ul>
+<h2 id="database-concepts">Database Concepts</h2>
+<p>Each subcommand operates on a <strong>database name</strong>:</p>
+<ul>
+<li><code>default</code>: the graph derived from Markdown corpus (tasks, drafts, milestones, Wiki, documents, decisions). It is a <strong>read-only cache</strong>; any write operation is rejected and prompts you to use <code>graph create</code> instead.</li>
+<li><strong>User databases</strong>: created with <code>backlog graph create</code>; data is persisted as JSON snapshots under <code>&lt;backlog&gt;/databases/</code> (can be version-controlled with the project) and is readable/writable across processes.</li>
+</ul>
+<pre><code class="lang-bash">backlog graph list                              <span class="hljs-comment"># list default and all user databases (with sizes)</span>
+backlog graph create people <span class="hljs-string">"people and their relationships"</span>   <span class="hljs-comment"># create a user database</span>
+backlog graph describe people                   <span class="hljs-comment"># view description, timestamp, and per-table row counts for a database</span>
+backlog graph drop people                       <span class="hljs-comment"># delete a database and its snapshot (default cannot be deleted)</span>
+</code></pre>
+<h2 id="viewing-the-schema">Viewing the Schema</h2>
+<pre><code class="lang-bash">backlog graph schema default          <span class="hljs-comment"># print node tables (with properties and primary keys) and relationship tables (with endpoints)</span>
+backlog graph schema default --json   <span class="hljs-comment"># machine-readable JSON</span>
+</code></pre>
+<p><code>schema</code> has the alias <code>show-schema</code>. The <code>default</code> graph's node tables are <code>FileNode</code> (one node per Markdown file, properties include <code>path</code> / <code>id</code> (uppercase task ID) / <code>type</code> / <code>title</code> / <code>status</code> / <code>updatedDate</code>), <code>Tag</code>, and <code>Meta</code> (internal bookkeeping, meaningless for queries); relationship tables are <code>ParentOf</code> (parent → child), <code>BelongsToMilestone</code> (task → milestone), <code>DependsOn</code> (dependent → dependency), <code>SourcedFrom</code>, <code>LinksTo</code>, and <code>TaggedWith</code>. Note that the node label is <code>FileNode</code>, not <code>File</code>.</p>
+<h2 id="running-cypher-queries">Running Cypher Queries</h2>
+<pre><code class="lang-bash">backlog graph query default <span class="hljs-string">"MATCH (n:FileNode) RETURN count(n)"</span>
+backlog graph query default <span class="hljs-string">"MATCH (a:FileNode)-[:ParentOf]-&gt;(b:FileNode) RETURN a.path, b.path LIMIT 10"</span>
+backlog graph query people <span class="hljs-string">"MATCH (a:Person)-[:KNOWS]-&gt;(b:Person) RETURN a.name, b.name"</span>
+</code></pre>
+<ul>
+<li>The first positional parameter is the database name, and the second is the Cypher statement (wrap it in quotes; double quotes work across platforms). The old single-argument form <code>backlog graph query "MATCH ..."</code> is still valid and equivalent to querying <code>default</code>.</li>
+<li>Default output is an aligned plain-text table (no ANSI escapes, safe for pipes); <code>--json</code> outputs the raw result object <code>{ columns, rows, nodeKeys, truncated }</code> for script consumption.</li>
+<li>Interactive display limit is 500 rows; results beyond that include a truncation hint; <code>--all</code> removes this limit and returns all rows.</li>
+<li>Task IDs are stored in uppercase. Pay attention to direction when traversing relationships: <code>ParentOf</code> is parent → child, and <code>DependsOn</code> is dependent → dependency.</li>
+</ul>
+<h2 id="writing-to-user-databases-insert">Writing to User Databases (insert)</h2>
+<pre><code class="lang-bash">backlog graph insert people <span class="hljs-string">"CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"</span>
+backlog graph insert people <span class="hljs-string">"CREATE REL TABLE KNOWS(FROM Person TO Person)"</span>
+backlog graph insert people <span class="hljs-string">"CREATE (:Person {name: 'Alice', age: 30})"</span>
+</code></pre>
+<p><code>insert</code> accepts write Cypher (<code>CREATE</code> / <code>MERGE</code> / <code>SET</code> / <code>DELETE</code>); each successful statement rewrites the snapshot—persistent but not cross-statement transactional. Writes are protected by a per-database single-holder lock and snapshot fingerprint; <code>--force</code> skips fingerprint validation. <code>default</code> rejects <code>insert</code>. Snapshots are whole-database serialization/replay; they work well up to roughly 1e5 rows.</p>
+<h2 id="importing-csv">Importing CSV</h2>
+<pre><code class="lang-bash"><span class="hljs-comment"># Import as nodes: table name defaults to filename; use --node to specify, --map to rename columns</span>
+backlog graph import people data/people.csv --node Person --map <span class="hljs-string">"First Name=firstName"</span>
+
+<span class="hljs-comment"># Headerless file: column names auto-generated as column1, column2…</span>
+backlog graph import people data/raw.csv --no-header --node Raw
+
+<span class="hljs-comment"># Import as edges: two columns are the primary keys of the endpoints; endpoints must already exist (matched only, not created)</span>
+backlog graph import people data/knows.csv --rel KNOWS --from person --to friend --node Person
+</code></pre>
+<ul>
+<li><strong>The first column is the primary key</strong>; importing the same file repeatedly upserts existing rows by primary key and does not produce duplicate edges.</li>
+<li>If the table does not exist, it is created automatically and types are inferred from columns (<code>INT64</code> → <code>DOUBLE</code> → <code>BOOLEAN</code>, fallback <code>STRING</code>); empty cells become NULL.</li>
+<li>Malformed files (uneven column counts, unclosed quotes, illegal column names, etc.) report line numbers <strong>before</strong> opening the database, leaving the database unchanged.</li>
+<li>Rows whose endpoints cannot be found during edge import are skipped and the skip count is reported; <code>--from-node</code> / <code>--to-node</code> are only needed when the relationship table does not yet exist.</li>
+</ul>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="../70-快速笔记/04-钉板视图与归档.html" class="navigation navigation-prev " aria-label="Previous page: Pinboard View & Archiving">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="01-图谱MCP工具.html" class="navigation navigation-next " aria-label="Next page: Graph MCP Tools">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Graph CLI Commands","labels":["usermanual"],"created_date":"2026-10-16 01:00","updated_date":"2026-11-04 00:00","level":"8.1","depth":1,"next":{"title":"Graph MCP Tools","level":"8.2","depth":1,"path":"80-图谱与数据查询/01-图谱MCP工具.md","ref":"80-图谱与数据查询/01-图谱MCP工具.md","articles":[]},"previous":{"title":"Pinboard View & Archiving","level":"7.5","depth":1,"path":"70-快速笔记/04-钉板视图与归档.md","ref":"70-快速笔记/04-钉板视图与归档.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"80-图谱与数据查询/00-图谱CLI命令.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

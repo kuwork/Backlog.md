@@ -1,0 +1,1195 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <title>Chart Blocks · Backlog.md User Manual</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="author" content="Backlog.md Contributors">
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="07-MDB查询块.html" />
+    
+    
+    <link rel="prev" href="05-图例配置持久化.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">Getting Started</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    Product Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    Installation & Initialization
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI Integration Setup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Task Management</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    Task Lifecycle
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    Creating & Editing Tasks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    Draft Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    Subtasks & Dependencies
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    Search & Sequences
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    Archiving & Cleanup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Board & Visualization</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    Board Export
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Documents & Decisions</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    Document Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    Decision Records
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web Interface</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    Launch & Access
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    Board View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    Task List
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    Documents & Decisions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    Settings & Themes
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    Rich-text Paste & Document Upload
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki Browsing & Editing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    Statistics Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    Gantt View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    Global Search
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    Graph View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    Document Preview
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI Integration</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP Workflow
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    Supported AI Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    Agent Instruction Files
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Quick Notes</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI Memo Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web Memo Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    Search & Knowledge Links
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    Pinboard View & Archiving
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Graph & Data Queries</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="00-图谱CLI命令.html">
+            
+                <a href="00-图谱CLI命令.html">
+            
+                    
+                    Graph CLI Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="01-图谱MCP工具.html">
+            
+                <a href="01-图谱MCP工具.html">
+            
+                    
+                    Graph MCP Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="02-SQL查询块.html">
+            
+                <a href="02-SQL查询块.html">
+            
+                    
+                    SQL Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="04-Cypher查询块.html">
+            
+                <a href="04-Cypher查询块.html">
+            
+                    
+                    Cypher Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="03-数据库页面.html">
+            
+                <a href="03-数据库页面.html">
+            
+                    
+                    Databases Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="05-图例配置持久化.html">
+            
+                <a href="05-图例配置持久化.html">
+            
+                    
+                    Legend Persistence
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="8.7" data-path="06-图表块.html">
+            
+                <a href="06-图表块.html">
+            
+                    
+                    Chart Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="07-MDB查询块.html">
+            
+                <a href="07-MDB查询块.html">
+            
+                    
+                    MDB Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Configuration & Operations</li>
+        
+        
+    
+        <li class="chapter " data-level="9.1" data-path="../60-配置与运维/00-配置管理.html">
+            
+                <a href="../60-配置与运维/00-配置管理.html">
+            
+                    
+                    Configuration Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="../60-配置与运维/01-Shell补全.html">
+            
+                <a href="../60-配置与运维/01-Shell补全.html">
+            
+                    
+                    Shell Completions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="../60-配置与运维/02-项目概览.html">
+            
+                <a href="../60-配置与运维/02-项目概览.html">
+            
+                    
+                    Project Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="../60-配置与运维/03-故障排查.html">
+            
+                <a href="../60-配置与运维/03-故障排查.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Chart Blocks</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="chart-blocks">Chart Blocks</h1>
+<p>Any Markdown body can embed charts using fenced code blocks: <code>mermaid</code> for flowcharts, sequence diagrams, and Gantt charts; <code>echarts</code> for data charts. The reading view renders them as graphics, while edit mode still shows the source code. Both chart types automatically follow the app's light/dark theme.</p>
+<p>Documents, Wiki, memos, tasks, and decisions all use the same rendering chain, so these blocks work in any body.</p>
+<h2 id="flowcharts-mermaid">Flowcharts: mermaid</h2>
+<pre><code class="lang-markdown"><span class="hljs-code">```mermaid
+graph LR
+  A[Parse fence] --&gt; B{Language registered?}
+  B --&gt;|Yes| C[Render as chart]
+  B --&gt;|No| D[Keep code block]
+```</span>
+</code></pre>
+<h2 id="chart-engine-switch-pele--mermaid">Chart Engine Switch (Pele / Mermaid)</h2>
+<p>Which engine renders mermaid diagrams is now <strong>switchable</strong>, no longer hard-wired:</p>
+<ul>
+<li><strong>Pele</strong> (default): open-sourced by the Obsidian team, renders Mermaid 12.1.0 syntax to SVG, zero dependencies; lines and arrows adapt automatically to the theme (dark-mode contrast has been fixed).</li>
+<li><strong>Mermaid 11.16.1</strong>: kept as an optional fallback engine.</li>
+</ul>
+<p>Switch in the Web settings page under <strong>Diagram Engine</strong> (Pele default / Mermaid); the choice is persisted to project configuration (<code>diagram_engine</code>, default <code>pele</code>) and remains effective after restarting the browser. Both engines affect only Mermaid diagram rendering; ECharts data charts are unaffected.</p>
+<blockquote>
+<p>Want ready-made Mermaid templates? See document <code>doc-32 Mermaid Chart Gallery</code>—18 categories, 25 directly copyable complex examples (flowcharts, sequence diagrams, class diagrams, Gantt charts, ER diagrams, user journeys, mind maps, XY charts, architecture diagrams, etc.), covering project workflows and WeChat/Alipay scenarios.</p>
+</blockquote>
+<h2 id="data-charts-echarts">Data Charts: echarts</h2>
+<p>The body is standard ECharts option <strong>JSON</strong>; no new dialect to learn:</p>
+<pre><code class="lang-markdown"><span class="hljs-code">```echarts
+{
+  "title": { "text": "Tasks completed per week" },
+  "tooltip": { "trigger": "axis" },
+  "legend": {},
+  "xAxis": { "type": "category", "data": ["W1", "W2", "W3", "W4"] },
+  "yAxis": { "type": "value" },
+  "series": [
+    { "name": "Completed", "type": "bar", "data": [10, 18, 25, 33] },
+    { "name": "New", "type": "line", "smooth": true, "data": [14, 20, 22, 30] }
+  ]
+}
+```</span>
+</code></pre>
+<p>The same <code>series</code> array can mix multiple chart types; the above is a bar chart overlaid with a line chart.</p>
+<h2 id="supported-chart-types">Supported Chart Types</h2>
+<p>Available values for <code>series[].type</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Types</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cartesian</td>
+<td><code>bar</code> <code>line</code> <code>scatter</code> <code>effectScatter</code> <code>candlestick</code> <code>boxplot</code> <code>heatmap</code> <code>pictorialBar</code> <code>themeRiver</code></td>
+</tr>
+<tr>
+<td>Proportion and flow</td>
+<td><code>pie</code> <code>funnel</code> <code>sankey</code></td>
+</tr>
+<tr>
+<td>Hierarchy and relationships</td>
+<td><code>tree</code> <code>treemap</code> <code>sunburst</code> <code>graph</code> <code>chord</code></td>
+</tr>
+<tr>
+<td>Multi-dimensional and gauges</td>
+<td><code>radar</code> <code>parallel</code> <code>gauge</code> <code>lines</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two exceptions require extra conditions and are not built into the engine:</p>
+<ul>
+<li><code>custom</code> depends on a <code>renderItem</code> <strong>function</strong>, which JSON cannot express; writing it produces only an empty chart.</li>
+<li><code>map</code> requires GeoJSON registration first, and map data must come from compliant sources, so it is explicitly integrated by the user.</li>
+</ul>
+<p>The default coordinate system is Cartesian <code>xAxis</code> / <code>yAxis</code>; <code>polar</code>, <code>singleAxis</code>, <code>calendar</code>, <code>parallel</code>, and <code>geo</code> components are all registered. <code>themeRiver</code> must be paired with <code>singleAxis</code>, and <code>type</code> must be <code>"time"</code>, otherwise the river bands do not appear.</p>
+<h2 id="charts-directly-from-query-results-view-echarts">Charts Directly from Query Results: view: echarts</h2>
+<p>Query blocks can <strong>draw results directly</strong> instead of showing a table. <code>sqlite-query</code>, <code>duckdb-query</code>, and <code>cypher-query</code> all support this by adding <code>view: echarts</code> and a <code>chart</code> field:</p>
+<pre><code class="lang-markdown"><span class="hljs-code">```sqlite-query
+source: backlog/databases/demo-shop.sqlite
+view: echarts
+chart: { "type": "bar", "categoryField": "category", "valueField": "revenue", "title": "Revenue by category" }
+sql: |
+  SELECT category, ROUND(SUM(amount), 2) AS revenue
+  FROM order_details GROUP BY category ORDER BY revenue DESC
+```</span>
+</code></pre>
+<p>Simple mapping fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type</code></td>
+<td><code>bar</code> / <code>line</code> / <code>pie</code> / <code>scatter</code> / <code>effectScatter</code></td>
+</tr>
+<tr>
+<td><code>categoryField</code></td>
+<td>Category column; for <code>pie</code>, used as sector name</td>
+</tr>
+<tr>
+<td><code>valueField</code></td>
+<td>Value column</td>
+</tr>
+<tr>
+<td><code>title</code> / <code>name</code></td>
+<td>Chart title / series name, optional</td>
+</tr>
+<tr>
+<td><code>categoryAxisName</code> / <code>valueAxisName</code></td>
+<td>Axis names, optional</td>
+</tr>
+</tbody>
+</table>
+<p>For multi-series, dual axes, or custom styles, use the advanced form: write <code>option</code> inside <code>chart</code> and use placeholders for data positions.</p>
+<pre><code class="lang-markdown"><span class="hljs-code">```sqlite-query
+source: backlog/databases/demo-shop.sqlite
+view: echarts
+chart: |
+  {
+    "option": {
+      "title": { "text": "Monthly revenue" },
+      "tooltip": { "trigger": "axis" },
+      "xAxis": { "type": "category", "data": "@result:month" },
+      "yAxis": { "type": "value" },
+      "series": [{ "type": "bar", "data": "@result:revenue" }]
+    }
+  }
+sql: |
+  SELECT substr(ordered_at, 1, 7) AS month, ROUND(SUM(amount), 2) AS revenue
+  FROM order_details GROUP BY month ORDER BY month
+```</span>
+</code></pre>
+<p>Two placeholders:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Replaced with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"@result"</code></td>
+<td>The entire result set, one <code>{column: value}</code> object per row; suitable for <code>dataset.source</code></td>
+</tr>
+<tr>
+<td><code>"@result:&lt;column&gt;"</code></td>
+<td>Array of values for that column; suitable for <code>series.data</code> / <code>xAxis.data</code></td>
+</tr>
+</tbody>
+</table>
+<p>Placeholders must appear as <strong>whole values</strong>, not concatenated into strings; writing a wrong column name yields an empty array.</p>
+<h2 id="referencing-named-query-blocks-fromquery">Referencing Named Query Blocks: fromQuery</h2>
+<p>When you want both a table and a chart, give the query block an <code>id</code>, then reference it from a separate <code>echarts</code> block:</p>
+<pre><code class="lang-markdown"><span class="hljs-code">```sqlite-query
+id: monthly
+source: backlog/databases/demo-shop.sqlite
+sql: |
+  SELECT substr(ordered_at, 1, 7) AS month, ROUND(SUM(amount), 2) AS revenue
+  FROM order_details GROUP BY month ORDER BY month
+```</span>
+
+<span class="hljs-code">```echarts
+{
+  "dataset": { "fromQuery": "monthly" },
+  "tooltip": { "trigger": "axis" },
+  "xAxis": { "type": "category" },
+  "yAxis": { "type": "value" },
+  "series": [{ "type": "bar", "encode": { "x": "month", "y": "revenue" } }]
+}
+```</span>
+</code></pre>
+<p>You can also put the reference on the series itself, directly specifying which two columns to use:</p>
+<pre><code class="lang-json">{ <span class="hljs-string">"type"</span>: <span class="hljs-string">"bar"</span>, <span class="hljs-string">"fromQuery"</span>: <span class="hljs-string">"monthly"</span>, <span class="hljs-string">"categoryField"</span>: <span class="hljs-string">"month"</span>, <span class="hljs-string">"valueField"</span>: <span class="hljs-string">"revenue"</span> }
+</code></pre>
+<p><code>categoryField</code> / <code>valueField</code> are only column-selection instructions on the referencing side and do not remain in the final configuration. When the option has no <code>xAxis</code>, the engine automatically adds a category axis using the first successfully parsed series's <code>categoryField</code>.</p>
+<h2 id="usage-conventions">Usage Conventions</h2>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Theme</td>
+<td>Automatically follows light/dark mode; no configuration needed</td>
+</tr>
+<tr>
+<td>Loading</td>
+<td>ECharts is loaded on demand, not in the initial bundle</td>
+</tr>
+<tr>
+<td>JSON limitation</td>
+<td>Only JSON is parsed; function expressions are not executed. Use template strings for dynamic text, such as <code>"{b}: {c}"</code></td>
+</tr>
+<tr>
+<td>Error behavior</td>
+<td>On invalid JSON, unknown series type, or missing required fields, the block shows an error or falls back to a code block; it does not crash</td>
+</tr>
+<tr>
+<td>Reference scope</td>
+<td><code>fromQuery</code> is only valid <strong>within the same document</strong>; duplicate <code>id</code>s use the last one</td>
+</tr>
+<tr>
+<td>Refresh linkage</td>
+<td>When a referenced query re-runs, the chart referencing it automatically redraws; charts without <code>fromQuery</code> are unaffected</td>
+</tr>
+</tbody>
+</table>
+<p>For complete chart examples, including copyable configurations and pitfalls for each series type, see document <code>doc-31 ECharts Chart Demo</code>; copy templates for Mermaid diagrams are in document <code>doc-32 Mermaid Chart Gallery</code>.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="02-SQL查询块.html">SQL Query Blocks</a> — fields and read-only constraints for <code>sqlite-query</code> / <code>duckdb-query</code></li>
+<li><a href="04-Cypher查询块.html">Cypher Query Blocks</a> — graph database query blocks, also support <code>view: echarts</code></li>
+<li><a href="05-图例配置持久化.html">Legend Configuration Persistence</a> — color and legend settings for graph views</li>
+</ul>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="05-图例配置持久化.html" class="navigation navigation-prev " aria-label="Previous page: Legend Persistence">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="07-MDB查询块.html" class="navigation navigation-next " aria-label="Next page: MDB Query Blocks">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Chart Blocks","labels":["usermanual"],"created_date":"2026-10-18 22:00","updated_date":"2026-11-04 00:00","level":"8.7","depth":1,"next":{"title":"MDB Query Blocks","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"previous":{"title":"Legend Persistence","level":"8.6","depth":1,"path":"80-图谱与数据查询/05-图例配置持久化.md","ref":"80-图谱与数据查询/05-图例配置持久化.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"80-图谱与数据查询/06-图表块.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+

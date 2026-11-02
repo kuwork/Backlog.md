@@ -1,0 +1,1401 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <title>Configuration Management · Backlog.md User Manual</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="author" content="Backlog.md Contributors">
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    <link rel="next" href="01-Shell补全.html" />
+    
+    
+    <link rel="prev" href="../80-图谱与数据查询/07-MDB查询块.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book honkit-cloak">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        <li class="header">Getting Started</li>
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="../">
+            
+                <a href="../">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="../00-快速开始/00-产品概述.html">
+            
+                <a href="../00-快速开始/00-产品概述.html">
+            
+                    
+                    Product Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.3" data-path="../00-快速开始/01-安装与初始化.html">
+            
+                <a href="../00-快速开始/01-安装与初始化.html">
+            
+                    
+                    Installation & Initialization
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.4" data-path="../00-快速开始/02-AI集成设置.html">
+            
+                <a href="../00-快速开始/02-AI集成设置.html">
+            
+                    
+                    AI Integration Setup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Task Management</li>
+        
+        
+    
+        <li class="chapter " data-level="2.1" data-path="../10-任务管理/00-任务生命周期.html">
+            
+                <a href="../10-任务管理/00-任务生命周期.html">
+            
+                    
+                    Task Lifecycle
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.2" data-path="../10-任务管理/01-创建与编辑任务.html">
+            
+                <a href="../10-任务管理/01-创建与编辑任务.html">
+            
+                    
+                    Creating & Editing Tasks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.3" data-path="../10-任务管理/02-草稿管理.html">
+            
+                <a href="../10-任务管理/02-草稿管理.html">
+            
+                    
+                    Draft Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.4" data-path="../10-任务管理/03-子任务与依赖.html">
+            
+                <a href="../10-任务管理/03-子任务与依赖.html">
+            
+                    
+                    Subtasks & Dependencies
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.5" data-path="../10-任务管理/04-搜索与序列.html">
+            
+                <a href="../10-任务管理/04-搜索与序列.html">
+            
+                    
+                    Search & Sequences
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="2.6" data-path="../10-任务管理/05-归档与清理.html">
+            
+                <a href="../10-任务管理/05-归档与清理.html">
+            
+                    
+                    Archiving & Cleanup
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Board & Visualization</li>
+        
+        
+    
+        <li class="chapter " data-level="3.1" data-path="../20-看板与可视化/00-TUI看板.html">
+            
+                <a href="../20-看板与可视化/00-TUI看板.html">
+            
+                    
+                    TUI Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.2" data-path="../20-看板与可视化/01-Web看板.html">
+            
+                <a href="../20-看板与可视化/01-Web看板.html">
+            
+                    
+                    Web Board
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="3.3" data-path="../20-看板与可视化/02-看板导出.html">
+            
+                <a href="../20-看板与可视化/02-看板导出.html">
+            
+                    
+                    Board Export
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Documents & Decisions</li>
+        
+        
+    
+        <li class="chapter " data-level="4.1" data-path="../30-文档与决策/00-文档管理.html">
+            
+                <a href="../30-文档与决策/00-文档管理.html">
+            
+                    
+                    Document Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.2" data-path="../30-文档与决策/01-决策记录.html">
+            
+                <a href="../30-文档与决策/01-决策记录.html">
+            
+                    
+                    Decision Records
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="4.3" data-path="../30-文档与决策/02-里程碑管理.html">
+            
+                <a href="../30-文档与决策/02-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Web Interface</li>
+        
+        
+    
+        <li class="chapter " data-level="5.1" data-path="../40-Web界面/00-启动与访问.html">
+            
+                <a href="../40-Web界面/00-启动与访问.html">
+            
+                    
+                    Launch & Access
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.2" data-path="../40-Web界面/01-看板视图.html">
+            
+                <a href="../40-Web界面/01-看板视图.html">
+            
+                    
+                    Board View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.3" data-path="../40-Web界面/02-任务列表.html">
+            
+                <a href="../40-Web界面/02-任务列表.html">
+            
+                    
+                    Task List
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.4" data-path="../40-Web界面/03-里程碑管理.html">
+            
+                <a href="../40-Web界面/03-里程碑管理.html">
+            
+                    
+                    Milestone Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.5" data-path="../40-Web界面/04-文档与决策.html">
+            
+                <a href="../40-Web界面/04-文档与决策.html">
+            
+                    
+                    Documents & Decisions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.6" data-path="../40-Web界面/05-设置与主题.html">
+            
+                <a href="../40-Web界面/05-设置与主题.html">
+            
+                    
+                    Settings & Themes
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.7" data-path="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                <a href="../40-Web界面/06-富文本粘贴与文档上传.html">
+            
+                    
+                    Rich-text Paste & Document Upload
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.8" data-path="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                <a href="../40-Web界面/07-Wiki浏览与编辑.html">
+            
+                    
+                    Wiki Browsing & Editing
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.9" data-path="../40-Web界面/08-统计页面.html">
+            
+                <a href="../40-Web界面/08-统计页面.html">
+            
+                    
+                    Statistics Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.10" data-path="../40-Web界面/09-甘特图视图.html">
+            
+                <a href="../40-Web界面/09-甘特图视图.html">
+            
+                    
+                    Gantt View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.11" data-path="../40-Web界面/10-全局搜索.html">
+            
+                <a href="../40-Web界面/10-全局搜索.html">
+            
+                    
+                    Global Search
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.12" data-path="../40-Web界面/11-图谱视图.html">
+            
+                <a href="../40-Web界面/11-图谱视图.html">
+            
+                    
+                    Graph View
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="5.13" data-path="../40-Web界面/12-文档预览.html">
+            
+                <a href="../40-Web界面/12-文档预览.html">
+            
+                    
+                    Document Preview
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">AI Integration</li>
+        
+        
+    
+        <li class="chapter " data-level="6.1" data-path="../50-AI集成/00-MCP工作流.html">
+            
+                <a href="../50-AI集成/00-MCP工作流.html">
+            
+                    
+                    MCP Workflow
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.2" data-path="../50-AI集成/01-支持的AI工具.html">
+            
+                <a href="../50-AI集成/01-支持的AI工具.html">
+            
+                    
+                    Supported AI Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.3" data-path="../50-AI集成/02-代理指令文件.html">
+            
+                <a href="../50-AI集成/02-代理指令文件.html">
+            
+                    
+                    Agent Instruction Files
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.4" data-path="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                <a href="../50-AI集成/03-Wiki Skill 安装.html">
+            
+                    
+                    Wiki Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="6.5" data-path="../50-AI集成/04-Migration Skill 安装.html">
+            
+                <a href="../50-AI集成/04-Migration Skill 安装.html">
+            
+                    
+                    Migration Skill Installation
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Quick Notes</li>
+        
+        
+    
+        <li class="chapter " data-level="7.1" data-path="../70-快速笔记/00-Memos简介.html">
+            
+                <a href="../70-快速笔记/00-Memos简介.html">
+            
+                    
+                    Memos Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.2" data-path="../70-快速笔记/01-CLI备忘命令.html">
+            
+                <a href="../70-快速笔记/01-CLI备忘命令.html">
+            
+                    
+                    CLI Memo Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.3" data-path="../70-快速笔记/02-Web备忘页面.html">
+            
+                <a href="../70-快速笔记/02-Web备忘页面.html">
+            
+                    
+                    Web Memo Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.4" data-path="../70-快速笔记/03-搜索与知识互联.html">
+            
+                <a href="../70-快速笔记/03-搜索与知识互联.html">
+            
+                    
+                    Search & Knowledge Links
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="7.5" data-path="../70-快速笔记/04-钉板视图与归档.html">
+            
+                <a href="../70-快速笔记/04-钉板视图与归档.html">
+            
+                    
+                    Pinboard View & Archiving
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Graph & Data Queries</li>
+        
+        
+    
+        <li class="chapter " data-level="8.1" data-path="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                <a href="../80-图谱与数据查询/00-图谱CLI命令.html">
+            
+                    
+                    Graph CLI Commands
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.2" data-path="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                <a href="../80-图谱与数据查询/01-图谱MCP工具.html">
+            
+                    
+                    Graph MCP Tools
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.3" data-path="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                <a href="../80-图谱与数据查询/02-SQL查询块.html">
+            
+                    
+                    SQL Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.4" data-path="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                <a href="../80-图谱与数据查询/04-Cypher查询块.html">
+            
+                    
+                    Cypher Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.5" data-path="../80-图谱与数据查询/03-数据库页面.html">
+            
+                <a href="../80-图谱与数据查询/03-数据库页面.html">
+            
+                    
+                    Databases Page
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.6" data-path="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                <a href="../80-图谱与数据查询/05-图例配置持久化.html">
+            
+                    
+                    Legend Persistence
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.7" data-path="../80-图谱与数据查询/06-图表块.html">
+            
+                <a href="../80-图谱与数据查询/06-图表块.html">
+            
+                    
+                    Chart Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="8.8" data-path="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                <a href="../80-图谱与数据查询/07-MDB查询块.html">
+            
+                    
+                    MDB Query Blocks
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+        
+        <li class="header">Configuration & Operations</li>
+        
+        
+    
+        <li class="chapter active" data-level="9.1" data-path="00-配置管理.html">
+            
+                <a href="00-配置管理.html">
+            
+                    
+                    Configuration Management
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.2" data-path="01-Shell补全.html">
+            
+                <a href="01-Shell补全.html">
+            
+                    
+                    Shell Completions
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.3" data-path="02-项目概览.html">
+            
+                <a href="02-项目概览.html">
+            
+                    
+                    Project Overview
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="9.4" data-path="03-故障排查.html">
+            
+                <a href="03-故障排查.html">
+            
+                    
+                    Troubleshooting
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://github.com/honkit/honkit" target="blank" class="gitbook-link">
+            Published with HonKit
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href=".." >Configuration Management</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="configuration-management">Configuration Management</h1>
+<p>Backlog.md provides a flexible configuration system, supporting project settings through an interactive wizard or direct command-line management. Configuration is stored in YAML files and version-controlled with project code, ensuring team members use consistent workflow conventions.</p>
+<h2 id="interactive-configuration-wizard">Interactive Configuration Wizard</h2>
+<p>The <code>backlog config</code> command starts the advanced configuration wizard, guiding you through all key settings with interactive questions:</p>
+<pre><code class="lang-bash">backlog config
+</code></pre>
+<p>The wizard covers the following configuration areas:</p>
+<ul>
+<li>Shell completion installation</li>
+<li>Cross-branch task status checking</li>
+<li>Git hook bypass settings</li>
+<li>Auto-commit enablement</li>
+<li>ID zero-padding formatting</li>
+<li>Default editor selection</li>
+<li>Definition of Done (DoD) default items management</li>
+<li>Web UI port and auto-open browser</li>
+</ul>
+<p>Follow the prompts; each option has a default value and explanatory hint. After configuration completes, Backlog.md automatically writes the settings to the project configuration file.</p>
+<h2 id="direct-command-line-operations">Direct Command-Line Operations</h2>
+<p>For quickly modifying a single configuration item, use <code>backlog config get</code> and <code>backlog config set</code>.</p>
+<h3 id="viewing-current-configuration">Viewing Current Configuration</h3>
+<p>List all configured items and their current values:</p>
+<pre><code class="lang-bash">backlog config list
+
+<span class="hljs-comment"># Plain-text output (unified convention for AI-readable output; byte-for-byte identical to output without the flag)</span>
+backlog config list --plain
+</code></pre>
+<p><code>--plain</code> is listed by the overview guide as the standard way to read live configuration: output is already plain text, and the flag is accepted so that agent invocations that habitually append <code>--plain</code> to every command do not fail with "unknown option".</p>
+<p>After the <code>statuses</code> row, <code>config list</code> also prints a derived terminal-status set, such as <code>terminalStatuses: [Done, Dropped] (derived from statuses)</code>. Terminal statuses are derived from each status's <code>category</code> (<code>done</code> / <code>dropped</code>) in the state machine; this is read-only presentation, not a settable configuration key—to adjust terminal statuses, modify the corresponding state's <code>category</code> in the state machine editor.</p>
+<p>View a single configuration item:</p>
+<pre><code class="lang-bash">backlog config get projectName
+backlog config get statuses
+backlog config get defaultPort
+</code></pre>
+<h3 id="modifying-configuration-items">Modifying Configuration Items</h3>
+<p>Set the value of a single configuration item:</p>
+<pre><code class="lang-bash">backlog config <span class="hljs-built_in">set</span> projectName <span class="hljs-string">"My Project"</span>
+backlog config <span class="hljs-built_in">set</span> defaultPort 8080
+backlog config <span class="hljs-built_in">set</span> autoCommit <span class="hljs-literal">true</span>
+</code></pre>
+<p>Set list-type configuration items:</p>
+<pre><code class="lang-bash">backlog config <span class="hljs-built_in">set</span> statuses <span class="hljs-string">"To Do,In Progress,Done"</span>
+backlog config <span class="hljs-built_in">set</span> labels <span class="hljs-string">"bug,feature,docs"</span>
+</code></pre>
+<blockquote>
+<p><code>config get/set/list</code> display consistent configuration items through a shared available-keys list. For list-type configurations (<code>statuses</code>, <code>labels</code>), it is recommended to use <code>backlog config get &lt;key&gt;</code> to view the current value and then edit the corresponding field in <code>config.yml</code> directly (supporting block YAML sequences), rather than overwriting through <code>config set</code>.</p>
+</blockquote>
+<h2 id="key-configuration-items">Key Configuration Items</h2>
+<h3 id="project-basics">Project Basics</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projectName</code></td>
+<td>string</td>
+<td>—</td>
+<td>Project name, displayed on the board and overview</td>
+</tr>
+<tr>
+<td><code>statuses</code></td>
+<td>state-machine object list</td>
+<td>Built-in seven-state default machine</td>
+<td>Task status flow, ordered (see "State Machine Configuration" below)</td>
+</tr>
+<tr>
+<td><code>labels</code></td>
+<td>string list</td>
+<td>—</td>
+<td>Project predefined label list</td>
+</tr>
+<tr>
+<td><code>dateFormat</code></td>
+<td>string</td>
+<td>—</td>
+<td>Date display format</td>
+</tr>
+<tr>
+<td><code>locale</code></td>
+<td>string</td>
+<td><code>en</code></td>
+<td>Web UI language: <code>en</code>, <code>ja</code>, <code>zh-CN</code>, <code>zh-TW</code></td>
+</tr>
+<tr>
+<td><code>maxColumnWidth</code></td>
+<td>integer</td>
+<td><code>20</code> (value written by <code>backlog init</code>)</td>
+<td>Maximum width of text columns in CLI output; <code>config set</code> only accepts positive integers</td>
+</tr>
+<tr>
+<td><code>milestones</code></td>
+<td>string list</td>
+<td>—</td>
+<td>Deprecated: milestones now come from milestone files under <code>backlog/milestones/</code> and are no longer stored in config; <code>config get milestones</code> only lists current milestone IDs and cannot be <code>set</code> (use <code>backlog milestone</code> commands to manage)</td>
+</tr>
+</tbody>
+</table>
+<p>The order of the status list determines column order on the board. The first status is treated as the initial task status; terminal statuses are determined by each status's <code>category</code> (<code>done</code> / <code>dropped</code>), no longer simply the last item in the list.</p>
+<h3 id="state-machine-configuration">State Machine Configuration</h3>
+<p><code>statuses</code> describes the state machine in object form; each status is an object:</p>
+<pre><code class="lang-yaml"><span class="hljs-attr">statuses:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">To</span> <span class="hljs-string">Do</span>
+    <span class="hljs-attr">category:</span> <span class="hljs-string">active</span>
+    <span class="hljs-attr">next:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">Planning</span>
+        <span class="hljs-attr">when:</span> <span class="hljs-string">Description</span> <span class="hljs-string">and</span> <span class="hljs-string">acceptance</span> <span class="hljs-string">criteria</span> <span class="hljs-string">are</span> <span class="hljs-string">complete;</span> <span class="hljs-string">ready</span> <span class="hljs-string">to</span> <span class="hljs-string">start</span>
+        <span class="hljs-attr">ai:</span> <span class="hljs-string">allowed</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Done</span>
+    <span class="hljs-attr">category:</span> <span class="hljs-string">done</span>
+    <span class="hljs-attr">exit:</span> <span class="hljs-string">complete</span>
+    <span class="hljs-attr">next:</span> []
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Dropped</span>
+    <span class="hljs-attr">category:</span> <span class="hljs-string">dropped</span>
+    <span class="hljs-attr">exit:</span> <span class="hljs-string">archive</span>
+    <span class="hljs-attr">display:</span> <span class="hljs-literal">false</span>
+    <span class="hljs-attr">next:</span> []
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Status name (required)</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>Category: <code>active</code> / <code>wip</code> / <code>blocked</code> / <code>done</code> / <code>dropped</code>, determines terminal status and completion semantics</td>
+</tr>
+<tr>
+<td><code>exit</code></td>
+<td>Exit action: <code>complete</code> (archive into completed) or <code>archive</code></td>
+</tr>
+<tr>
+<td><code>next</code></td>
+<td>Array of allowed transition edges; can include <code>when</code> / <code>ai</code> / <code>if</code> / <code>requires</code> / <code>evidence</code> declarations</td>
+</tr>
+<tr>
+<td><code>display</code></td>
+<td>When <code>false</code>, the board hides the column and its tasks (default <code>true</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The legacy string-array format is still compatible (last item is terminal). There is no CLI command to set <code>statuses</code>: it is recommended to maintain it visually in the <a href="../40-Web界面/05-设置与主题.html">state machine editor</a> on the Web settings page, or edit this file directly—write the whole object back without losing fields. <code>backlog instructions overview</code> (and the MCP overview resource of the same name) automatically renders a complete readable description of the current state machine. The first <code>backlog init</code> writes the built-in seven-state default machine (To Do / Planning / Plan Review / In Progress / In Review / Done / Dropped, localized with the interface language). Semantic details are in <a href="../10-任务管理/00-任务生命周期.html">Task Lifecycle</a>.</p>
+<h3 id="task-defaults">Task Defaults</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>defaultAssignee</code></td>
+<td>string list</td>
+<td>—</td>
+<td>Automatically applied when creating a task/draft without an explicit assignee</td>
+</tr>
+<tr>
+<td><code>defaultEditor</code></td>
+<td>string</td>
+<td><code>code --wait</code></td>
+<td>Editor command used when pressing <code>E</code> to open a task</td>
+</tr>
+<tr>
+<td><code>defaultStatus</code></td>
+<td>string</td>
+<td><code>To Do</code></td>
+<td>Default status used for new tasks when not explicitly specified; should be a status name from <code>statuses</code></td>
+</tr>
+<tr>
+<td><code>definitionOfDone</code></td>
+<td>string list</td>
+<td>—</td>
+<td>Project-level Definition of Done default checklist, inherited by new tasks (<code>definition_of_done</code> key in <code>config.yml</code>); cannot be modified via <code>config set</code>, use the interactive wizard, Web settings page, or edit <code>config.yml</code> directly</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-bash"><span class="hljs-comment"># Set default assignee (list, comma-separated)</span>
+backlog config <span class="hljs-built_in">set</span> defaultAssignee <span class="hljs-string">"@alice,@bob"</span>
+
+<span class="hljs-comment"># Remove default assignee (empty value removes the key)</span>
+backlog config <span class="hljs-built_in">set</span> defaultAssignee <span class="hljs-string">""</span>
+
+<span class="hljs-comment"># Clear default editor—the service default "code --wait" can hang unattended agent processes</span>
+backlog config <span class="hljs-built_in">set</span> defaultEditor <span class="hljs-string">""</span>
+backlog init --default-editor <span class="hljs-string">""</span>
+</code></pre>
+<p><code>defaultAssignee</code> follows a three-state semantics:</p>
+<ul>
+<li><strong>Not passing</strong> <code>-a</code> (field omitted) → apply the configured default assignee.</li>
+<li><strong>Explicitly passing</strong> <code>-a</code> (even one value) → completely replace the default, not merged.</li>
+<li><strong>Explicitly clearing</strong> <code>--unassign</code> (or clearing assignee chips in the Web UI) → save as an empty list, no fallback to default.</li>
+</ul>
+<p>Defaults are applied at the Core creation-funnel layer, so behavior is consistent across CLI <code>task create</code>, <code>draft create</code>, the creation wizard, TUI <code>N</code> creator, Web <code>POST /api/tasks</code>, and MCP <code>task_create</code>.</p>
+<p>Setting <code>defaultEditor</code> to an empty string means "do not use a default editor": <code>config set defaultEditor ""</code> skips executable validation and removes the key, and <code>init --default-editor ""</code> also clears any existing configuration. Non-empty values still validate that the executable exists.</p>
+<h4 id="editor-resolution-priority-and-vim--neovim-configuration">Editor Resolution Priority and Vim / Neovim Configuration</h4>
+<p>When pressing <code>E</code> to open an editor, resolution priority is (doc-002): <strong><code>EDITOR</code> environment variable</strong> &gt; <code>config.yml</code> <code>defaultEditor</code> &gt; platform default (nano on macOS/Linux, notepad on Windows). For Vim / Neovim, setting the environment variable is recommended:</p>
+<pre><code class="lang-bash"><span class="hljs-built_in">export</span> EDITOR=nvim          <span class="hljs-comment"># or vim</span>
+<span class="hljs-comment"># Or write to project config</span>
+backlog config <span class="hljs-built_in">set</span> defaultEditor nvim
+</code></pre>
+<ul>
+<li>In TUI (<code>backlog board</code> / <code>backlog task &lt;id&gt;</code>), pressing <code>E</code> suspends the character screen, exits the alternate buffer, and automatically restores terminal state after the editor exits.</li>
+<li>Troubleshooting: set <code>TERM=xterm-256color</code> for color issues; editor unresponsiveness or immediate exit usually means the editor path includes arguments—write the full executable path or use a wrapper script.</li>
+<li>Per-command override: <code>EDITOR=nvim backlog board</code>.</li>
+</ul>
+<h3 id="branch-and-git-integration">Branch and Git Integration</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>checkActiveBranches</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Whether to scan other local active branches</td>
+</tr>
+<tr>
+<td><code>includeCrossBranch</code></td>
+<td>boolean</td>
+<td>unset (local-first)</td>
+<td>Whether scan results enter the board, task list, and search</td>
+</tr>
+<tr>
+<td><code>remoteOperations</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Whether to check tasks in remote branches</td>
+</tr>
+<tr>
+<td><code>activeBranchDays</code></td>
+<td>integer</td>
+<td><code>30</code></td>
+<td>Maximum days a branch is considered active</td>
+</tr>
+<tr>
+<td><code>taskResolutionStrategy</code></td>
+<td>string</td>
+<td><code>most_recent</code> (value written by init)</td>
+<td>Conflict strategy when tasks with the same name exist in multiple branches: <code>most_recent</code> takes the most recently modified version, <code>most_progressed</code> takes the version whose status has advanced the furthest (falling back to modification time when progress is equal). Runtime falls back to <code>most_progressed</code> when missing. Not in <code>config get/set</code> available keys; configure via Web settings page or <code>config.yml</code></td>
+</tr>
+</tbody>
+</table>
+<p>When <code>checkActiveBranches</code> is enabled, Backlog.md checks other local and remote branches when loading tasks to ensure cross-branch task statuses are accurate. This may affect performance in large repositories; reduce <code>activeBranchDays</code> to speed it up.</p>
+<p><code>includeCrossBranch</code> (corresponding to <code>include_cross_branch</code> in <code>config.yml</code>) controls <strong>display</strong>: when enabled, the board, task list, and search include tasks that exist only on other branches; when unset, local-first behavior is preserved (historical CLI behavior). It is independent of <code>checkActiveBranches</code>—the latter controls "whether to scan" (and determines the candidate branch set for task ID allocation), while the former controls "whether scan results are displayed". Disabling scanning also narrows the ID allocation candidate set; understand the cost together with <code>activeBranchDays</code>. Both toggles are in the Web settings page Advanced Settings card and take effect immediately without restart.</p>
+<p><code>remoteOperations</code> depends on <code>checkActiveBranches</code>; when the latter is disabled, the former automatically becomes ineffective.</p>
+<h3 id="automation-behavior">Automation Behavior</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>autoCommit</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Whether to automatically create a Git commit after CLI changes</td>
+</tr>
+<tr>
+<td><code>bypassGitHooks</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Whether to bypass Git hooks when committing (using <code>--no-verify</code>)</td>
+</tr>
+<tr>
+<td><code>filesystemOnly</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Whether to disable all Git integration and use only the filesystem</td>
+</tr>
+<tr>
+<td><code>onStatusChange</code></td>
+<td>string</td>
+<td>—</td>
+<td>Callback command executed when a task status changes</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>onStatusChange</code> command is executed via <code>sh -c</code> in the project root, with task information injected through environment variables: <code>$TASK_ID</code> (task ID), <code>$OLD_STATUS</code> (old status), <code>$NEW_STATUS</code> (new status), <code>$TASK_TITLE</code> (title), referenced in the command string as <code>$TASK_ID</code>, etc. Callback failure only prints an error log and does not block the status change. A task's individual <code>onStatusChange</code> frontmatter field takes precedence over the global config. This key is not in the <code>config get/set</code> available-keys list; edit <code>config.yml</code> directly to set it.</p>
+<p>When <code>autoCommit</code> is enabled, Backlog.md automatically runs <code>git commit</code> each time a task is created or modified via CLI, saving the step of manual commit. Combined with <code>bypassGitHooks</code>, this improves efficiency when pre-commit hooks are slow.</p>
+<p><code>autoCommit</code> only commits files actually touched by each write (new files, replaced old paths, source and destination paths of moves/archives), and does not <code>git add</code> the entire <code>backlog/</code> directory or clear your existing staged/unstaged changes. This ensures auto-commits do not interfere with other changes in your current workspace.</p>
+<p><code>filesystemOnly</code> is suitable for pure-filesystem projects or environments without Git; enabling it disables all Git-related features.</p>
+<h3 id="id-and-prefixes">ID and Prefixes</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prefixes.task</code></td>
+<td>string</td>
+<td><code>task</code></td>
+<td>Task ID prefix</td>
+</tr>
+<tr>
+<td><code>prefixes.draft</code></td>
+<td>string</td>
+<td><code>draft</code></td>
+<td>Draft ID prefix</td>
+</tr>
+<tr>
+<td><code>zeroPaddedIds</code></td>
+<td>integer</td>
+<td>—</td>
+<td>ID zero-padding width, e.g., <code>3</code> generates <code>task-001</code></td>
+</tr>
+</tbody>
+</table>
+<p>Prefix configuration allows customizing task and draft ID formats. For example, after setting <code>prefixes.task</code> to <code>back</code>, new task IDs become <code>back-1</code>, <code>back-2</code>, etc.</p>
+<p><strong>Reserved prefixes</strong>: task prefixes may only contain letters and cannot use the reserved names <code>doc</code> and <code>decision</code> (used by documents and decisions respectively). This rule is enforced consistently across all entry points—the <code>init</code> <code>--task-prefix</code> flag, interactive wizard, and browser initialization page all reject them. <code>backlog doctor</code> reports prefix conflicts in existing projects, and refuses to run <code>--fix</code> while conflicts remain (to avoid assigning new numbers into conflicting storage during duplicate-ID repair). Existing projects already using reserved prefixes continue to work normally; re-initialization does not actively rewrite them.</p>
+<p><code>zeroPaddedIds</code> controls the formatted width of IDs. When set to <code>3</code>, IDs display as <code>task-001</code>; when set to <code>4</code>, they display as <code>task-0001</code>. This helps maintain lexicographic consistency in filenames.</p>
+<h3 id="web-ui">Web UI</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>defaultPort</code></td>
+<td>integer</td>
+<td><code>6420</code></td>
+<td>Web UI default listening port</td>
+</tr>
+<tr>
+<td><code>autoPort</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Automatically scan the next 100 user ports when the default port is occupied</td>
+</tr>
+<tr>
+<td><code>autoOpenBrowser</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Whether to automatically open the browser when starting the Web UI</td>
+</tr>
+<tr>
+<td><code>hideEmptyColumns</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Whether the board hides status columns with no tasks</td>
+</tr>
+</tbody>
+</table>
+<p>Modify <code>defaultPort</code> to avoid conflicts with other local services. When <code>autoPort</code> is enabled (default), if the default port is occupied the server automatically uses the next available port and prints the actual address in the terminal; it only accepts ports within the user port range (1024–65535) that it scans itself, and refuses random high ports assigned by the OS. When <code>autoPort</code> is disabled, a port conflict produces an <code>EADDRINUSE</code> error directly. This toggle is also available in the Web interface "Settings" panel. Disabling <code>autoOpenBrowser</code> means running <code>backlog browser</code> only starts the server and does not pop up a browser window, suitable for remote development or server environments.</p>
+<p><code>hideEmptyColumns</code> (corresponding to <code>hide_empty_columns</code> in <code>config.yml</code>) hides status columns that currently have no tasks, reducing visual clutter; all status columns remain visible while dragging a task so it can be dropped. It can also be toggled next to the Auto Open Browser switch in the Web interface "Settings" panel.</p>
+<h3 id="mcp-http-transport">MCP HTTP Transport</h3>
+<p>The <code>mcp.http.*</code> keys (<code>mcp.http.host</code> / <code>mcp.http.port</code> / <code>mcp.http.auth.*</code>) are currently <strong>reserved configuration only</strong>: the current MCP implementation only supports stdio transport (<code>backlog mcp start</code>), does not listen on any network port, and has no consumer logic for HTTP transport. Configuring these keys has no effect; continue using the stdio approach. See <a href="../50-AI集成/00-MCP工作流.html">MCP Workflow</a> for details.</p>
+<h2 id="configuration-storage-location">Configuration Storage Location</h2>
+<p>Backlog.md looks for configuration files in the following priority order:</p>
+<ol>
+<li><code>backlog/config.yml</code></li>
+<li><code>backlog.config.yml</code> (project root)</li>
+</ol>
+<p><code>backlog/config.yml</code> is recommended so configuration is stored centrally with tasks, documents, and other project data, making backup and migration easier. When using <code>backlog.config.yml</code>, you can specify the relative path to the backlog folder via the <code>backlogDirectory</code> item (such as <code>.backlog</code>).</p>
+<blockquote>
+<p><strong>Custom backlog directory fully effective</strong>: memo storage and graph scanning/watching previously hard-coded the directory name as <code>backlog</code>, causing read/write/watch errors and empty graphs in projects with custom directories such as <code>.backlog</code>. This is now resolved by uniformly parsing the configured directory. If you previously used memos in a custom-directory project, old data is still under your <code>backlog-dir/memos</code> and is now correctly recognized; if an empty <code>backlog/memos</code> was mistakenly created at the root, you can delete it manually. Re-running <code>backlog init</code> will also create missing directories such as <code>memos/</code>, <code>docs/</code>, etc.</p>
+</blockquote>
+<p>Example YAML configuration file:</p>
+<pre><code class="lang-yaml"><span class="hljs-attr">projectName:</span> <span class="hljs-string">"My Project"</span>
+<span class="hljs-attr">statuses:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Backlog</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">To</span> <span class="hljs-string">Do</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">In</span> <span class="hljs-string">Progress</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Done</span>
+<span class="hljs-attr">labels:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">bug</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">feature</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">docs</span>
+<span class="hljs-attr">dateFormat:</span> <span class="hljs-string">"YYYY-MM-DD"</span>
+<span class="hljs-attr">checkActiveBranches:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">include_cross_branch:</span> <span class="hljs-literal">false</span>
+<span class="hljs-attr">remoteOperations:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">activeBranchDays:</span> <span class="hljs-number">30</span>
+<span class="hljs-attr">autoCommit:</span> <span class="hljs-literal">false</span>
+<span class="hljs-attr">bypassGitHooks:</span> <span class="hljs-literal">false</span>
+<span class="hljs-attr">prefixes:</span>
+  <span class="hljs-attr">task:</span> <span class="hljs-string">"back"</span>
+  <span class="hljs-attr">draft:</span> <span class="hljs-string">"draft"</span>
+<span class="hljs-attr">defaultAssignee:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">"@alice"</span>
+<span class="hljs-attr">defaultEditor:</span> <span class="hljs-string">"vim"</span>
+<span class="hljs-attr">defaultPort:</span> <span class="hljs-number">6420</span>
+<span class="hljs-attr">autoPort:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">autoOpenBrowser:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">hide_empty_columns:</span> <span class="hljs-literal">false</span>
+</code></pre>
+<blockquote>
+<p><strong>Block YAML lists</strong>: list-type configurations (<code>statuses</code>, <code>labels</code>) support both the block sequence syntax shown above and inline syntax (<code>statuses: ["To Do", "In Progress", "Done"]</code>). The system parses block lists according to standard YAML semantics first, while remaining compatible with the legacy inline bracket format.</p>
+</blockquote>
+<p>After modifying the configuration file, Backlog.md automatically loads the latest settings without restarting the service.</p>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="../80-图谱与数据查询/07-MDB查询块.html" class="navigation navigation-prev " aria-label="Previous page: MDB Query Blocks">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+                <a href="01-Shell补全.html" class="navigation navigation-next " aria-label="Next page: Shell Completions">
+                    <i class="fa fa-angle-right"></i>
+                </a>
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Configuration Management","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-04 00:00","level":"9.1","depth":1,"next":{"title":"Shell Completions","level":"9.2","depth":1,"path":"60-配置与运维/01-Shell补全.md","ref":"60-配置与运维/01-Shell补全.md","articles":[]},"previous":{"title":"MDB Query Blocks","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"60-配置与运维/00-配置管理.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+        });
+    </script>
+</div>
+
+        
+    <noscript>
+        <style>
+            .honkit-cloak {
+                display: block !important;
+            }
+        </style>
+    </noscript>
+    <script>
+        // Restore sidebar state as critical path for prevent layout shift
+        function __init__getSidebarState(defaultValue){
+            var baseKey = "";
+            var key = baseKey + ":sidebar";
+            try {
+                var value = localStorage[key];
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                var parsed = JSON.parse(value);
+                return parsed == null ? defaultValue : parsed;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
+        function __init__restoreLastSidebarState() {
+            var isMobile = window.matchMedia("(max-width: 600px)").matches;
+            if (isMobile) {
+                // Init last state if not mobile
+                return;
+            }
+            var sidebarState = __init__getSidebarState(true);
+            var book = document.querySelector(".book");
+            // Show sidebar if it enabled
+            if (sidebarState && book) {
+                book.classList.add("without-animation", "with-summary");
+            }
+        }
+
+        try {
+            __init__restoreLastSidebarState();
+        } finally {
+            var book = document.querySelector(".book");
+            book.classList.remove("honkit-cloak");
+        }
+    </script>
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+
