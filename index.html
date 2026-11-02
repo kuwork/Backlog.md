@@ -117,6 +117,7 @@
 			<!-- Hero -->
 			<section class="hero">
 				<canvas class="hero-canvas" data-canvas aria-hidden="true"></canvas>
+				<div class="hero-orb" data-orb aria-hidden="true"></div>
 
 				<div class="container hero-inner" data-hero-inner>
 					<div class="hero-copy">
@@ -1445,5 +1446,15 @@
 		</script>
 
 		<script src="assets/js/v2.js" defer></script>
+
+		<!-- 光晕球特效：Three.js + UnrealBloom（本地内置），渲染进 .hero-orb -->
+		<script src="assets/vendor/three/three.min.js"></script>
+		<script src="assets/vendor/three/EffectComposer.js"></script>
+		<script src="assets/vendor/three/RenderPass.js"></script>
+		<script src="assets/vendor/three/ShaderPass.js"></script>
+		<script src="assets/vendor/three/CopyShader.js"></script>
+		<script src="assets/vendor/three/LuminosityHighPassShader.js"></script>
+		<script src="assets/vendor/three/UnrealBloomPass.js"></script>
+		<script src="assets/js/orb.js" defer></script>
 	</body>
 </html>
