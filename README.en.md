@@ -4,7 +4,7 @@
 </h2>
 
 <h2 align="center">Markdown Tasks · Git Native · Human Review · AI Memory</h3>  
-<p align="center">:cn: <a href="./README.md">中文</a></p>
+<p align="center">:cn: <a href="./README.md">中文</a> · :globe_with_meridians: Website <a href="https://kuwork.github.io/Backlog.md/en/">kuwork.github.io/Backlog.md</a></p>
 
 <p align="center">  
 <code>npm i -g @kuwork/backlog.md</code> or <code>bun add -g @kuwork/backlog.md</code> or <code>brew install backlog-md</code> (upstream) or <code>nix run github:MrLesk/Backlog.md</code> (upstream)  

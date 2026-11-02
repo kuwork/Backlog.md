@@ -78,7 +78,7 @@ describe("CLI root entry (bare run)", () => {
 		expect(out).toContain("Task-driven branch merge:");
 		expect(out).toContain("backlog migrate install <agent>");
 		expect(out).toContain("backlog <command> --help");
-		expect(out).toContain("Docs: https://backlog.md");
+		expect(out).toContain("Docs: https://kuwork.github.io/Backlog.md/");
 		expect(out).not.toContain("\u001B[");
 		expect(out).not.toContain("\u001B]");
 	});
@@ -109,7 +109,7 @@ describe("CLI root entry (bare run)", () => {
 		expect(out).toContain("Task-driven branch merge:");
 		expect(out).toContain("backlog migrate install <agent>");
 		expect(out).not.toContain("backlog init");
-		expect(out).toContain("Docs: https://backlog.md");
+		expect(out).toContain("Docs: https://kuwork.github.io/Backlog.md/");
 		expect(out).not.toContain("\u001B[");
 		expect(out).not.toContain("\u001B]");
 	});

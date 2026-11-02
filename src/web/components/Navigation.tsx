@@ -20,7 +20,7 @@ const Navigation: React.FC<NavigationProps> = ({ projectName, loadingMessage, gr
 					<h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{projectName || t.common.loading}</h1>
 					<span className="text-sm text-gray-500 dark:text-gray-400">{t.nav.poweredBy}</span>
 					<a
-						href="https://backlog.md"
+						href="https://kuwork.github.io/Backlog.md/"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="text-sm text-stone-600 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-300 hover:underline transition-colors duration-200"
