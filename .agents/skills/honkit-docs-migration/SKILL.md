@@ -77,11 +77,32 @@ subsite (e.g. `/docs/`, `/en/docs/`).
    own local docs path — `index.html` → `docs/`, `en/index.html` → `docs/`
    (which resolves to `en/docs/`). Never link a GitHub wiki URL that 404s.
 
-4. **Verify offline.** Headless-render `docs/index.html` and `en/docs/index.html`
+4. **Inject SEO metadata (mandatory after every build).** HonKit emits an empty
+   `<meta name="description">` and no canonical/OG/hreflang, and a rebuild wipes
+   anything added by hand. Run the site's injector:
+
+   ```bash
+   python scripts/seo.py --check      # preview
+   python scripts/seo.py              # write metadata + sitemap.xml
+   ```
+
+   - Script: `<site>/scripts/seo.py`, config: `<site>/seo.json` (`base_url`
+     plus one entry per language book).
+   - Per page it writes: description from the first substantive paragraph,
+     canonical, OG/Twitter tags, `hreflang` pairs (zh ↔ en by identical path),
+     `robots`, and JSON-LD `TechArticle` + `BreadcrumbList`.
+   - It also regenerates `sitemap.xml` (static pages + every manual page with
+     `xhtml:link` alternates). `robots.txt` must point at that sitemap.
+   - Idempotent: the injected block is wrapped in `<!-- seo:start -->` /
+     `<!-- seo:end -->` and replaced in place on re-runs.
+   - Switching to a custom domain is a one-line change: edit `base_url` in
+     `seo.json` and re-run.
+
+5. **Verify offline.** Headless-render `docs/index.html` and `en/docs/index.html`
    plus one nested page each. Sidebar, search box and body text must be styled;
    an unstyled page means `gitbook/` did not land next to `index.html`.
 
-5. **Deploy (user action).** If a `--worktree` was synced, the user commits and
+6. **Deploy (user action).** If a `--worktree` was synced, the user commits and
    pushes it. Do not commit or push on the user's behalf unless explicitly asked.
 
 ## Key constraints

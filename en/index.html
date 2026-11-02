@@ -1326,6 +1326,101 @@
 			</div>
 		</footer>
 
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@graph": [
+					{
+						"@type": "SoftwareApplication",
+						"name": "Backlog.md",
+						"applicationCategory": "DeveloperApplication",
+						"operatingSystem": "macOS, Linux, Windows",
+						"url": "https://backlog.kuwork.cn/en/",
+						"description": "Stores tasks, acceptance criteria, implementation plans and execution logs as Markdown files in your repository, so AI agents can work continuously and reviewably.",
+						"license": "https://opensource.org/licenses/MIT",
+						"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+					},
+					{
+						"@type": "FAQPage",
+						"mainEntity": [
+							{
+								"@type": "Question",
+								"name": "Do I need an internet connection or an account?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "No. Everything lives in the local backlog folder inside your project. There is no cloud account, no subscription, and it works offline."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "How is this different from Jira or Linear?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Tasks are Markdown files in your repository. They enter version control with the code, so they can be diffed, reviewed, searched, and archived. It is also built for agents, with CLI instructions and an MCP interface so an agent can work the tasks directly."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "Which AI tools are supported?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Anything that can run a command or speak MCP, including Claude Code, Codex, Gemini CLI, Kiro, and Cursor. CLI instructions are the recommended path: the agent runs backlog instructions overview and gets the current workflow guide."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "Where is the task data stored?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Inside the project backlog directory, backlog/ or .backlog/ by default, configurable to another project relative path in backlog.config.yml. Tasks themselves are plain Markdown files you can read."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "Can I use it without an AI agent?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Yes. The terminal commands and the web interface both work on their own, and every change stays in sync with the Markdown files. You can move between manual and AI assisted work at any time."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "What if I already have a Git repo, or no Git at all?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Run backlog init inside an existing repository. With no Git, use backlog init --no-git to create a file system only project, which turns off cross branch checks, remote operations, and auto commit."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "CLI instructions or MCP, which should I pick?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "CLI instructions are the default recommendation, since backlog instructions overview returns the workflow guide for the installed version instead of a stale copy. If you prefer MCP, backlog init can configure Claude Code, Codex, Gemini CLI, Kiro, or Cursor for you."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "Is the web interface exposed to the public internet?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "No. It binds to 127.0.0.1 by default, so only the local machine can reach it. Use backlog browser --host 0.0.0.0 only when you need LAN access, and note that the API is unauthenticated."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "Does it work for a team?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Yes. Tasks enter version control with the code, so your normal review flow applies. Auto commit is off by default, which suits teams that want control over history. Solo or automated workflows can turn it on for one commit per action."
+								}
+							}
+						]
+					}
+				]
+			}
+		</script>
+
 		<script src="../assets/js/v2.js" defer></script>
 
 		<!-- Glow orb: Three.js + UnrealBloom (bundled locally), rendered into .hero-orb -->

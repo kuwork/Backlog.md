@@ -65,13 +65,35 @@
   再在 worktree 里提交并推送（**提交/推送由用户执行**）。
 - worktree 根目录已存在 `.nojekyll`，确保 `docs/gitbook/` 等不被 Jekyll 处理。
 
-## 7. 验证
+## 7. SEO 元信息（每次构建后必跑）
+
+- 触发原因：HonKit 产物每页都带 `<meta name="description" content="">`（空），且没有
+  canonical / OG / hreflang / JSON-LD；而这些页面是站点内容主体（中英各 51 页），
+  空描述在搜索结果里只会显示抓取的片段。
+- 工具：官网仓 `backlog-md-site/scripts/seo.py` + `seo.json`。构建（含 `--worktree`
+  同步）之后跑一遍；它只改自己标记块 `<!-- seo:start --> … <!-- seo:end -->` 之间的内容，
+  可重复执行。
+- 每页注入：description（取正文第一段实质内容，跳过「执行以下命令…：」这类祈使句，
+  上限 158 字）、canonical（目录页折叠为 `/docs/`）、OG/Twitter、hreflang
+  （zh ↔ en 同名路径互指 + `x-default`）、`robots=index,follow`、JSON-LD
+  `TechArticle` + `BreadcrumbList`。
+- 面包屑只用**真实存在**的页面：HonKit 不给章节目录生成 `index.html`，
+  所以 `docs/00-快速开始/` 这类无页目录要跳过，否则面包屑指向 404。
+- URL 一律 percent-encode（中文目录名），sitemap 与 canonical 同形。
+- `sitemap.xml` 由脚本重建：6 个静态页 + 102 个手册页，手册页带
+  `xhtml:link rel="alternate"` 双语互指；`robots.txt` 的 `Sitemap:` 行必须指向它。
+- **域名开关**：`seo.json` 的 `base_url` 是唯一入口。当前值 `https://backlog.kuwork.cn`
+  尚未在 DNS 里解析（权威 NS 为阿里云 `dns9.hichina.com`，实测 NXDOMAIN），
+  实际可访问地址是 `https://kuwork.github.io/Backlog.md/`；启用自定义域名或改回
+  github.io 子路径时，只改这一处并重跑脚本即可，页面里不要硬编码域名。
+
+## 8. 验证
 
 - 用无头 Chrome（CDP）离线截图验证：`docs/index.html` 与任意嵌套内页
   （如 `docs/80-图谱与数据查询/06-图表块.html`）都应正常渲染侧栏与正文，无样式破损。
 - 因无外部依赖，无需联网即可验证。
 
-## 8. 同源待清理（超出本技能范围）
+## 9. 同源待清理（超出本技能范围）
 
 - 首页「Wiki 知识库」卡片仍指向 `main/backlog/wiki`（404）。它不是用户手册，
   本技能不处理；如要修复需另议（本地化 wiki 或改链接）。

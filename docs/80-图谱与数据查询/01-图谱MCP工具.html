@@ -5,7 +5,27 @@
         <meta charset="UTF-8">
         <title>图谱 MCP 工具 · Backlog.md 用户手册</title>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="description" content="">
+        <!-- seo:start -->
+        <meta name="robots" content="index,follow,max-image-preview:large" />
+        <meta name="description" content="Backlog.md 的 MCP 服务器提供一组 graph_* 工具，让 AI 代理直接查询项目的任务/知识图谱与用户数据库，能力与 CLI 的 backlog graph 子命令一一对应。" />
+        <link rel="canonical" href="https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html" />
+        <link rel="alternate" hreflang="zh-Hans" href="https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html" />
+        <link rel="alternate" hreflang="en" href="https://backlog.kuwork.cn/en/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html" />
+        <link rel="alternate" hreflang="x-default" href="https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html" />
+        <meta property="og:type" content="article" />
+        <meta property="og:site_name" content="Backlog.md" />
+        <meta property="og:locale" content="zh_CN" />
+        <meta property="og:title" content="图谱 MCP 工具" />
+        <meta property="og:description" content="Backlog.md 的 MCP 服务器提供一组 graph_* 工具，让 AI 代理直接查询项目的任务/知识图谱与用户数据库，能力与 CLI 的 backlog graph 子命令一一对应。" />
+        <meta property="og:url" content="https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html" />
+        <meta property="og:image" content="https://backlog.kuwork.cn/assets/img/og-image.jpg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="图谱 MCP 工具" />
+        <meta name="twitter:description" content="Backlog.md 的 MCP 服务器提供一组 graph_* 工具，让 AI 代理直接查询项目的任务/知识图谱与用户数据库，能力与 CLI 的 backlog graph 子命令一一对应。" />
+        <meta name="twitter:image" content="https://backlog.kuwork.cn/assets/img/og-image.jpg" />
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"图谱 MCP 工具","description":"Backlog.md 的 MCP 服务器提供一组 graph_* 工具，让 AI 代理直接查询项目的任务/知识图谱与用户数据库，能力与 CLI 的 backlog graph 子命令一一对应。","inLanguage":"zh-Hans","url":"https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html","mainEntityOfPage":"https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://backlog.kuwork.cn/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://backlog.kuwork.cn/"}}</script>
+        <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://backlog.kuwork.cn/docs/"},{"@type":"ListItem","position":2,"name":"图谱MCP工具","item":"https://backlog.kuwork.cn/docs/80-%E5%9B%BE%E8%B0%B1%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2/01-%E5%9B%BE%E8%B0%B1MCP%E5%B7%A5%E5%85%B7.html"}]}</script>
+        <!-- seo:end -->
         <meta name="generator" content="HonKit 6.2.5">
         <meta name="author" content="Backlog.md Contributors">
         
