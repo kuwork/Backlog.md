@@ -16,6 +16,7 @@ import { useTaskIdIndex } from "../contexts/TaskIdIndexContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-target";
+import { processMarkdownLocalPaths } from "../utils/markdown-paths";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown, sanitizeRawHtmlAngleBrackets } from "../utils/wikiLinks";
 import ChartBlock from "./ChartBlock";
@@ -222,14 +223,17 @@ function rehypeInlineTags(activeTags: ReadonlySet<string>) {
 function encodeLocalFileLinkDestinations(source: string): string {
 	const protectedRanges: { start: number; end: number }[] = [];
 
-	// Protect code blocks (```...```)
+	// Protect code blocks (```...```). The length must be added to the match index, not to the
+	// `??` fallback expression - `??` binds looser than `+` and made end === start (BACK-835).
 	for (const match of source.matchAll(/```[\s\S]*?```/g)) {
-		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
+		const start = match.index ?? 0;
+		protectedRanges.push({ start, end: start + match[0].length });
 	}
 
 	// Protect inline code (`...`)
 	for (const match of source.matchAll(/`[^`\n]+`/g)) {
-		protectedRanges.push({ start: match.index ?? 0, end: match.index ?? 0 + match[0].length });
+		const start = match.index ?? 0;
+		protectedRanges.push({ start, end: start + match[0].length });
 	}
 
 	// Absolute/external URIs are left untouched: micromark preserves them and
@@ -542,6 +546,10 @@ export default function MermaidMarkdown({
 	const safeSource = wikilinkBasePath
 		? encodeLocalFileLinkDestinations(prepareWikiMarkdown(processed, wikilinkBasePath))
 		: sanitizeRawHtmlAngleBrackets(encoded, getMarkdownCodeRanges(encoded));
+	// BACK-835: join every local destination with the path of the document being rendered. The
+	// joined site-absolute URL is what ends up in the emitted <a href> / <img src>, so the browser
+	// requests a real route and the server's try_files resolver can serve it.
+	const renderedSource = processMarkdownLocalPaths(safeSource, filePath);
 	const { t } = useI18n();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
@@ -826,14 +834,20 @@ export default function MermaidMarkdown({
 			const handleClick = async (e: React.MouseEvent) => {
 				e.preventDefault();
 				if (!href) return;
-				// Markdown-it requires percent-encoded spaces in link destinations;
-				// decode back to the real project path before checking/previewing the file.
-				const decodedHref = decodeURIComponent(href);
-				// A link written with a leading slash (e.g. /backlog/wiki/x.md) is a project
-				// path expressed as absolute; reduce it to project-relative so the server
-				// resolves it inside the project root instead of rejecting it as an absolute path.
-				const normalizedHref =
-					decodedHref.startsWith("/") && !decodedHref.startsWith("//") ? decodedHref.slice(1) : decodedHref;
+				// Markdown-it requires percent-encoded spaces in link destinations; decode back to the
+				// real project path before checking/previewing the file. A literal `%` is not a valid
+				// escape, so keep the href as written instead of throwing (BACK-835).
+				let decodedHref = href;
+				try {
+					decodedHref = decodeURIComponent(href);
+				} catch {
+					// Malformed percent-escape: keep the raw href.
+				}
+				// An anchor or query belongs to the browser, not to the file path. A leading slash is
+				// the joined site-absolute URL (or a legacy project path); reduce it to project-relative
+				// so /api/file-content resolves it through the shared resolver.
+				const pathOnly = decodedHref.split(/[?#]/)[0] ?? "";
+				const normalizedHref = pathOnly.startsWith("/") && !pathOnly.startsWith("//") ? pathOnly.slice(1) : pathOnly;
 				try {
 					// Verify file exists before opening preview
 					await apiClient.fetchFileContent(normalizedHref);
@@ -874,7 +888,7 @@ export default function MermaidMarkdown({
 		<QueryResultProvider>
 			<div ref={ref} className="wmde-markdown">
 				<MDEditor.Markdown
-					source={safeSource}
+					source={renderedSource}
 					components={{
 						a: LinkComponent,
 						pre: BoundPreBlock,

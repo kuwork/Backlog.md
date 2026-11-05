@@ -584,6 +584,22 @@
 	color: var(--topic-chip-fg) !important;
 }
 
+/* Markdown links with a space or `：` in the destination use a CommonMark pointy-bracket target
+   (`[label](<path with space.md:10-20>)`), or the bare-space form the view renderer heals. The
+   built-in grammar leaves both colourless; the `mdlink` overlay token paints them the same blue
+   the rendered page shows. Colours only - boxes or spacing would skew the glyph-aligned overlay. */
+.mdlink-aware {
+	--mdlink-fg: #0969da; /* GitHub blue, light canvas */
+}
+
+.dark .mdlink-aware {
+	--mdlink-fg: #58a6ff; /* GitHub blue, dark canvas */
+}
+
+.mdlink-aware .w-md-editor-text-pre .token.mdlink {
+	color: var(--mdlink-fg) !important;
+}
+
 /* Checklist: a rounded box that reads as a control (blue when ticked, hairline when not) and a
    struck-through, muted label once ticked - the state has to be legible without hovering.
 

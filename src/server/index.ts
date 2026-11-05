@@ -1,7 +1,7 @@
-import { existsSync, type FSWatcher, watch } from "node:fs";
+import { existsSync, type FSWatcher, realpathSync, watch } from "node:fs";
 import { rm as removeFile } from "node:fs/promises";
 import { networkInterfaces } from "node:os";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import getPort, { portNumbers } from "get-port";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
@@ -36,6 +36,7 @@ import { DUCKDB_MAX_ROWS, runDuckdbQuery } from "../duckdb/query.ts";
 import { screenDuckdbSqlLiterals } from "../duckdb/sql-literals.ts";
 import { replaceFile } from "../file-system/atomic-write.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
+import { isInsideProject, projectPathForCollection } from "../file-system/reference-paths.ts";
 import { DEFAULT_DATABASE, describeDatabases, UserDatabaseBrowser } from "../graph/browser.ts";
 import { coerceCypherRows } from "../graph/coerce.ts";
 import { listDatabases } from "../graph/databases.ts";
@@ -102,9 +103,6 @@ const MEMO_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const MAX_MEMO_PAGE_SIZE = 100;
 
 // Atomic writes live in ../file-system/atomic-write.ts, shared with the office save routes.
-
-/** Office packages the preview can write back; they are small enough to buffer. */
-const SAVEABLE_OFFICE_EXTS = new Set(["xlsx", "xlsm", "docx"]);
 
 /**
  * Data scopes a client can be told to refetch. Tasks and milestones share a
@@ -1323,13 +1321,13 @@ export class BacklogServer {
 			if (!rawPath.toLowerCase().endsWith(".docx")) {
 				return Response.json({ error: "Only .docx files are supported" }, { status: 400 });
 			}
-			const rootDir = this.core.filesystem.rootDir;
-			const absPath = join(rootDir, rawPath);
-			// Reject anything that escapes the project root (path traversal / leading slash).
-			const rel = relative(rootDir, absPath);
-			if (rel === "" || rel.startsWith("..") || rel.startsWith("/")) {
-				return Response.json({ error: "Access denied" }, { status: 403 });
+			// BACK-835: resolve through the same candidate list as raw-file so a legacy
+			// `assets/...` path and a custom data directory still target the real workbook.
+			const resolved = await this.core.filesystem.resolveReference(rawPath);
+			if (!resolved) {
+				return Response.json({ error: "File not found" }, { status: 404 });
 			}
+			const absPath = resolved.absolutePath;
 			const bytes = new Uint8Array(await req.arrayBuffer());
 			if (bytes.byteLength === 0) {
 				return Response.json({ error: "Empty request body" }, { status: 400 });
@@ -1358,13 +1356,13 @@ export class BacklogServer {
 			if (!lower.endsWith(".xlsx") && !lower.endsWith(".xlsm")) {
 				return Response.json({ error: "Only .xlsx and .xlsm files are supported" }, { status: 400 });
 			}
-			const rootDir = this.core.filesystem.rootDir;
-			const absPath = join(rootDir, rawPath);
-			// Reject anything that escapes the project root (path traversal / leading slash).
-			const rel = relative(rootDir, absPath);
-			if (rel === "" || rel.startsWith("..") || rel.startsWith("/")) {
-				return Response.json({ error: "Access denied" }, { status: 403 });
+			// BACK-835: resolve through the same candidate list as raw-file so a legacy
+			// `assets/...` path and a custom data directory still target the real workbook.
+			const resolved = await this.core.filesystem.resolveReference(rawPath);
+			if (!resolved) {
+				return Response.json({ error: "File not found" }, { status: 404 });
 			}
+			const absPath = resolved.absolutePath;
 			const bytes = new Uint8Array(await req.arrayBuffer());
 			if (bytes.byteLength === 0) {
 				return Response.json({ error: "Empty request body" }, { status: 400 });
@@ -1407,19 +1405,23 @@ export class BacklogServer {
 			const prefix = "/assets/";
 			if (!pathname.startsWith(prefix)) return new Response("Not Found", { status: 404 });
 
-			// Path relative to backlog/assets
+			// Path relative to <data-dir>/assets
 			const relPath = pathname.slice(prefix.length);
 
-			// disallow traversal
-			if (relPath.includes("..")) return new Response("Not Found", { status: 404 });
-
-			// derive backlog root from docsDir (parent of backlog/docs)
+			// derive the data root from docsDir (parent of <data-dir>/docs), then use robust
+			// containment (relative + isAbsolute + realpath) instead of string prefix checks.
 			const docsDir = this.core.filesystem.docsDir;
 			const backlogRoot = dirname(docsDir);
-			const assetsRoot = join(backlogRoot, "assets");
-			const filePath = join(assetsRoot, relPath);
-
-			if (!filePath.startsWith(assetsRoot)) return new Response("Not Found", { status: 404 });
+			const assetsRoot = resolve(join(backlogRoot, "assets"));
+			const filePath = resolve(join(assetsRoot, relPath));
+			if (!isInsideProject(assetsRoot, filePath)) return new Response("Not Found", { status: 404 });
+			try {
+				if (!isInsideProject(assetsRoot, realpathSync(filePath))) {
+					return new Response("Not Found", { status: 404 });
+				}
+			} catch {
+				return new Response("Not Found", { status: 404 });
+			}
 
 			const file = Bun.file(filePath);
 			if (!(await file.exists())) return new Response("Not Found", { status: 404 });
@@ -1456,7 +1458,14 @@ export class BacklogServer {
 			};
 
 			const mime = mimeMap[ext] ?? "application/octet-stream";
-			return new Response(file, { headers: { "Content-Type": mime } });
+			const headers: Record<string, string> = {
+				"Content-Type": mime,
+				"Cache-Control": "no-store, max-age=0",
+				"X-Content-Type-Options": "nosniff",
+			};
+			// SVG and HTML can carry script; never render them in the app's own origin.
+			if (ext === "svg" || ext === "html" || ext === "htm") headers["Content-Disposition"] = "attachment";
+			return new Response(file, { headers });
 		} catch (error) {
 			console.error("Error serving asset:", error);
 			return new Response("Internal Server Error", { status: 500 });
@@ -1473,8 +1482,44 @@ export class BacklogServer {
 			return new Response("WebSocket upgrade failed", { status: 400 });
 		}
 
-		// For all other routes, return 404 since routes should handle all valid paths
-		return new Response("Not Found", { status: 404 });
+		// BACK-835: registered routes keep priority; an unmatched GET falls through to an
+		// nginx-style try_files handler. The renderer has already joined local destinations with
+		// the document path, so the remaining URL is a project-relative file reference.
+		if (req.method !== "GET" && req.method !== "HEAD") {
+			return new Response("Not Found", { status: 404 });
+		}
+		let pathname = new URL(req.url).pathname || "";
+		try {
+			pathname = decodeURIComponent(pathname);
+		} catch {
+			return new Response("Not Found", { status: 404 });
+		}
+		// API and vendor namespaces are never files; leaving them to the fallback would shadow a
+		// route typo with a static file lookup.
+		if (pathname.startsWith("/api/") || pathname.startsWith("/vendor/")) {
+			return new Response("Not Found", { status: 404 });
+		}
+		try {
+			const asset = await this.core.filesystem.readProjectAsset(pathname);
+			const headers: Record<string, string> = {
+				"Content-Type": asset.mime,
+				"Cache-Control": "no-store, max-age=0",
+				"X-Content-Type-Options": "nosniff",
+				"Content-Length": String(asset.size),
+			};
+			if (asset.attachment) {
+				const name = (asset.path.split("/").pop() ?? "file").replace(/["\\]/g, "_");
+				headers["Content-Disposition"] = `attachment; filename="${name}"`;
+			}
+			return new Response(req.method === "HEAD" ? null : asset.bytes, { headers });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "";
+			if (message === "Access denied") return new Response("Access denied", { status: 403 });
+			if (message === "File too large") return new Response("File too large", { status: 400 });
+			// Unknown paths, directories, sensitive files and unsupported types are all a 404 -
+			// the fallback must never disclose why a file was not served.
+			return new Response("Not Found", { status: 404 });
+		}
 	}
 
 	private async resolveCrossBranch(searchParams: URLSearchParams): Promise<boolean> {
@@ -2068,6 +2113,18 @@ export class BacklogServer {
 		});
 	}
 
+	/**
+	 * Derived, never persisted: entity APIs hand the Web a path relative to a collection directory
+	 * (<data-dir>/docs, /wiki, ...), but the renderer needs a project-relative base to fold `../`
+	 * chains against (BACK-835). Handing it the collection-relative path makes a link to a sibling
+	 * collection look like a project-root escape and collapse into a dead `#` anchor.
+	 */
+	private collectionProjectPath(collectionDir: string, path?: string): string | undefined {
+		if (!path?.trim()) return undefined;
+		const root = resolve(this.core.filesystem.rootDir);
+		return projectPathForCollection(relative(root, collectionDir), path);
+	}
+
 	// Documentation handlers
 	private async handleListDocs(): Promise<Response> {
 		try {
@@ -2079,6 +2136,7 @@ export class BacklogServer {
 				title: doc.title,
 				type: doc.type,
 				path: doc.path,
+				projectPath: this.collectionProjectPath(this.core.filesystem.docsDir, doc.path),
 				createdDate: doc.createdDate,
 				updatedDate: doc.updatedDate,
 				lastModified: doc.updatedDate || doc.createdDate,
@@ -2098,7 +2156,7 @@ export class BacklogServer {
 			if (!doc) {
 				return Response.json({ error: "Document not found" }, { status: 404 });
 			}
-			return Response.json(doc);
+			return Response.json({ ...doc, projectPath: this.collectionProjectPath(this.core.filesystem.docsDir, doc.path) });
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {
 				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
@@ -4126,7 +4184,15 @@ export class BacklogServer {
 				}
 				case "wiki": {
 					const wikiPath = id.endsWith(".md") ? id : `${id}.md`;
-					filePath = `${this.core.filesystem.backlogDirName}/wiki/${wikiPath}`;
+					const root = this.core.filesystem.rootDir;
+					const wikiRoot = resolve(join(root, this.core.filesystem.backlogDirName, "wiki"));
+					const target = resolve(join(wikiRoot, wikiPath));
+					// A wiki id is a page path, not a path expression: ../../src/foo.ts must not turn
+					// this endpoint into an arbitrary project file reader (BACK-835).
+					if (!isInsideProject(wikiRoot, target)) {
+						return Response.json({ error: "Access denied" }, { status: 403 });
+					}
+					filePath = relative(root, target).replace(/\\/g, "/");
 					break;
 				}
 			}
@@ -4168,7 +4234,13 @@ export class BacklogServer {
 				return Response.json({ error: "path parameter is required" }, { status: 400 });
 			}
 
-			const result = await this.core.filesystem.readProjectFile(rawPath);
+			// BACK-835: both text and binary previews go through the same try_files resolver.
+			// The resolved path is project-relative, which also gives the nested preview a base.
+			const resolved = await this.core.filesystem.resolveReference(rawPath);
+			if (!resolved) {
+				return Response.json({ error: "File not found" }, { status: 404 });
+			}
+			const result = await this.core.filesystem.readProjectFile(`${resolved.path}${resolved.range}`);
 			return Response.json(result);
 		} catch (error) {
 			console.error("Error reading file:", error);
@@ -4187,11 +4259,11 @@ export class BacklogServer {
 	}
 
 	/**
-	 * Stream raw bytes for a binary project file (docx/pdf/...) addressed by its
-	 * project-relative path. This is the binary counterpart of /api/file-content
-	 * (text): it reads by path so the in-app preview works for any project file,
-	 * not just those under backlog/assets. Guarded against path traversal and
-	 * restricted to the project data directory (backlog/).
+	 * Stream raw bytes for a binary project file (docx/pdf/...) addressed by a Markdown reference.
+	 * BACK-835 widened the guard from the configured data directory to the project root, so Office
+	 * binaries in directories beside the data directory open in-app previews too. All containment,
+	 * size, type and directory checks live in CoreFileSystem.readProjectAsset; this handler only
+	 * adapts the query parameter and maps errors to HTTP statuses.
 	 */
 	private async handleRawFile(req: Request): Promise<Response> {
 		try {
@@ -4200,49 +4272,27 @@ export class BacklogServer {
 			if (!rawPath) {
 				return new Response("path parameter is required", { status: 400 });
 			}
-			const rootDir = this.core.filesystem.rootDir;
-			const absPath = join(rootDir, rawPath);
-			const rel = relative(rootDir, absPath);
-			// Reject anything that escapes the project root (traversal / leading slash).
-			if (rel === "" || rel.startsWith("..") || rel.startsWith("/")) {
-				return new Response("Access denied", { status: 403 });
+			// Buffered rather than streamed: /api/xlsx/save replaces this very file, and an open
+			// read handle makes the rename fail with EPERM on Windows.
+			const asset = await this.core.filesystem.readProjectAsset(rawPath);
+			const headers: Record<string, string> = {
+				"Content-Type": asset.mime,
+				"Cache-Control": "no-store, max-age=0",
+				"X-Content-Type-Options": "nosniff",
+				"Content-Length": String(asset.size),
+			};
+			if (asset.attachment) {
+				const name = (asset.path.split("/").pop() ?? "file").replace(/["\\]/g, "_");
+				headers["Content-Disposition"] = `attachment; filename="${name}"`;
 			}
-			// Restrict to the project data directory (backlog/) so repo files stay private.
-			const backlogRoot = join(rootDir, "backlog");
-			if (!absPath.startsWith(backlogRoot)) {
-				return new Response("Access denied", { status: 403 });
-			}
-			const file = Bun.file(absPath);
-			if (!(await file.exists())) {
+			return new Response(asset.bytes, { headers });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "";
+			if (message === "Access denied") return new Response("Access denied", { status: 403 });
+			if (message === "File too large") return new Response("File too large", { status: 400 });
+			if (message === "File not found" || message === "Unsupported file type" || message === "Path is a directory") {
 				return new Response("Not Found", { status: 404 });
 			}
-			const ext = (absPath.match(/\.([^./]+)$/) || [])[1]?.toLowerCase() ?? "";
-			const mimeMap: Record<string, string> = {
-				docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-				pdf: "application/pdf",
-				png: "image/png",
-				jpg: "image/jpeg",
-				jpeg: "image/jpeg",
-				gif: "image/gif",
-				svg: "image/svg+xml",
-				webp: "image/webp",
-			};
-			const mime = mimeMap[ext] ?? "application/octet-stream";
-			// Never cacheable: these files are replaced in place by the preview's
-			// save, and a same-second edit would otherwise revalidate to a 304 and
-			// keep showing the pre-save content.
-			const headers = { "Content-Type": mime, "Cache-Control": "no-store, max-age=0" };
-			// Buffered for the types the preview can write back: streaming straight
-			// from disk keeps a read handle on the very file /api/xlsx/save has to
-			// replace, which on Windows makes the rename fail with EPERM.
-			if (SAVEABLE_OFFICE_EXTS.has(ext)) {
-				const bytes = await file.arrayBuffer();
-				return new Response(bytes, {
-					headers: { ...headers, "Content-Length": String(bytes.byteLength) },
-				});
-			}
-			return new Response(file, { headers });
-		} catch (error) {
 			console.error("Error serving raw file:", error);
 			return new Response("Internal Server Error", { status: 500 });
 		}

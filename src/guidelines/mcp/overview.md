@@ -126,8 +126,11 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 2. Then add or edit the task content via `task_edit`, referencing the image using the `assets/<relative-path>` path
 
 **Key points:**
-- The path in Markdown starts with `assets/` and maps to the backlog directory's `assets/` folder; do **not** include the backlog directory name itself
-- When `backlog browser` is running, these files are automatically available at `assets/<relative-path>`
+- A destination starting with `/` is a URL or entity short link (`/documentation/10:55-74`, `/assets/paste/{uuid}.png`) and is never joined with a local path
+- Every other destination — `./fig.png`, `../shared/spec.md`, bare `figures/flow.png`, `assets/x.png`, `backlog/docs/x.md` — is joined at render time with the directory of the document containing it. Multi-level `../` chains are allowed while the result stays inside the project root; anything escaping it is refused
+- Images, links and Office binaries in directories beside the configured data directory are previewable: `![flow](./figures/flow.png)` beside the document, or `[spec](../../scripts/spec.docx)` from `backlog/docs/PRDS/`
+- Existing `assets/...` references and pasted `/assets/paste/...` images still work, and the configured data directory name (`.backlog` or a custom name) is honoured
+- **Metadata is different**: `references`, `modifiedFiles`, document paths and query block `source` stay project-relative and are never joined
 - You can add images to descriptions, implementation notes, or final summaries using `task_edit`
 
 ## Search Quick Reference

@@ -267,7 +267,13 @@ export interface Document {
 	tags?: string[];
 	// Web UI specific fields
 	name?: string;
+	/** Collection-relative path (e.g. PRDS/doc-1.md inside <data-dir>/docs). */
 	path?: string;
+	/**
+	 * Project-relative counterpart of `path`, derived by the API for the Web renderer's
+	 * reference join (BACK-835). Never written to disk; the viewer falls back to `path`.
+	 */
+	projectPath?: string;
 	lastModified?: string;
 }
 

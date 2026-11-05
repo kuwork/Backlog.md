@@ -7,6 +7,7 @@ import { useEntityAutocomplete } from "../hooks/useEntityAutocomplete";
 import { useI18n } from "../hooks/useI18n";
 import { useTopicAutocomplete } from "../hooks/useTopicAutocomplete";
 import { apiClient } from "../lib/api";
+import { registerMarkdownLinkHighlight } from "../utils/markdown-link-highlight";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
 import { registerTopicHighlight } from "../utils/topic-highlight";
 import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
@@ -98,6 +99,10 @@ export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 	// registration happens here rather than in an effect. The patch is idempotent.
 	useMemo(() => {
 		if (topicSuggestions) registerTopicHighlight();
+		// Any editor can hold a Markdown link whose destination has spaces (CommonMark pointy
+		// brackets, or the bare-space form the view renderer heals). Register the overlay token
+		// before the first paint so those links read blue while editing, as they do when rendered.
+		registerMarkdownLinkHighlight();
 	}, [topicSuggestions]);
 
 	// The editor's own preview panes ("Live code" / "Preview code") render markdown
@@ -316,7 +321,7 @@ export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 			// supplies a height) but it flattened the preview-only pane to a 20px strip.
 			// `topic-aware` turns on the composer's topic chip styling (see source.css); editors
 			// without a topic vocabulary keep the overlay silent about the token.
-			className={`min-w-0 relative h-full${topicSuggestions ? " topic-aware" : ""}`}
+			className={`min-w-0 relative h-full${topicSuggestions ? " topic-aware" : ""} mdlink-aware`}
 			onDragOver={(e) => e.preventDefault()}
 			onDrop={(e) => {
 				e.preventDefault();

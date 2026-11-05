@@ -1,4 +1,4 @@
-import { mkdir, readdir, rename, stat, unlink } from "node:fs/promises";
+import { mkdir, readdir, realpath, rename, stat, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
@@ -50,6 +50,15 @@ import {
 	taskIdsEqual,
 } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
+import {
+	isAttachmentReference,
+	isInsideProject,
+	isSensitiveReference,
+	MAX_REFERENCE_FILE_SIZE,
+	mimeForReference,
+	referenceCandidates,
+	splitReferenceRange,
+} from "./reference-paths.ts";
 
 // Interface for task path resolution context
 interface TaskPathContext {
@@ -2443,6 +2452,72 @@ export class FileSystem {
 		return changed ? escaped : undefined;
 	}
 
+	/**
+	 * Resolve a Markdown reference (BACK-835) into a real file inside the project root.
+	 *
+	 * The renderer emits a site-absolute URL built from the document path; collection-relative
+	 * bases are also accepted, exactly like BACK-833's query-block resolver. Candidates are
+	 * probed in nginx try_files order and the first existing regular file wins. Any candidate
+	 * that escapes the project root, points at a sensitive dot-directory, or is a symlink whose
+	 * real path escapes the root is skipped.
+	 */
+	async resolveReference(rawPath: string): Promise<{ path: string; range: string; absolutePath: string } | null> {
+		const root = resolve(this.projectRoot);
+		const { range } = splitReferenceRange(rawPath);
+		const candidates = referenceCandidates(rawPath, {
+			dataDir: relative(root, this.backlogDir),
+			docsDir: relative(root, this.docsDir),
+		});
+
+		for (const candidate of candidates) {
+			if (isSensitiveReference(candidate)) continue;
+			const absolutePath = resolve(join(root, candidate));
+			if (!isInsideProject(root, absolutePath)) continue;
+			try {
+				const fileStats = await stat(absolutePath);
+				if (!fileStats.isFile()) continue;
+			} catch {
+				continue;
+			}
+			try {
+				const real = await realpath(absolutePath);
+				if (!isInsideProject(root, real)) continue;
+			} catch {
+				continue;
+			}
+			return { path: candidate, range, absolutePath };
+		}
+		return null;
+	}
+
+	/**
+	 * Read the bytes of a project file addressed by a Markdown reference. Owns the containment,
+	 * size, type and directory checks so server handlers only adapt HTTP input and status codes.
+	 */
+	async readProjectAsset(rawPath: string): Promise<{
+		bytes: ArrayBuffer;
+		mime: string;
+		path: string;
+		attachment: boolean;
+		size: number;
+	}> {
+		const resolved = await this.resolveReference(rawPath);
+		if (!resolved) throw new Error("File not found");
+		const mime = mimeForReference(resolved.path);
+		if (!mime) throw new Error("Unsupported file type");
+		const fileStats = await stat(resolved.absolutePath);
+		if (!fileStats.isFile()) throw new Error("Path is a directory");
+		if (fileStats.size > MAX_REFERENCE_FILE_SIZE) throw new Error("File too large");
+		const buffer = await Bun.file(resolved.absolutePath).arrayBuffer();
+		return {
+			bytes: buffer,
+			mime,
+			path: resolved.path,
+			attachment: isAttachmentReference(resolved.path),
+			size: fileStats.size,
+		};
+	}
+
 	async readProjectFile(rawPath: string): Promise<{
 		content: string;
 		path: string;
@@ -2461,10 +2536,8 @@ export class FileSystem {
 		const rootDir = resolve(this.projectRoot);
 		const targetPath = resolve(join(rootDir, filePath));
 
-		// Robust containment check: reject traversal, absolute paths, and root itself
-		const rel = relative(rootDir, targetPath);
-		const isInside = !rel.startsWith("..") && !isAbsolute(rel);
-		if (!isInside || isAbsolute(filePath)) {
+		// Robust containment check: relative() + isAbsolute(), never a startsWith prefix test.
+		if (!isInsideProject(rootDir, targetPath) || isAbsolute(filePath)) {
 			throw new Error("Access denied");
 		}
 

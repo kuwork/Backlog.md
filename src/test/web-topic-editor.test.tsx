@@ -6,6 +6,7 @@ import { refractor as allRefractor } from "refractor/lib/all.js";
 import { refractor as commonRefractor } from "refractor/lib/common.js";
 import { PasteAwareMDEditor } from "../web/components/PasteAwareMDEditor.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
+import { registerMarkdownLinkHighlight } from "../web/utils/markdown-link-highlight.ts";
 import { registerTopicHighlight } from "../web/utils/topic-highlight.ts";
 
 /**
@@ -61,6 +62,71 @@ describe("registerTopicHighlight", () => {
 		registerTopicHighlight();
 		const children = allRefractor.highlight("#once# and #twice#", "markdown").children as unknown as HighlightNode[];
 		expect(children.filter((node) => classesOf(node).includes("topic"))).toHaveLength(2);
+	});
+});
+
+describe("registerMarkdownLinkHighlight", () => {
+	it("tokenizes a pointy-bracket destination with spaces and a fullwidth colon", () => {
+		registerMarkdownLinkHighlight();
+		for (const instance of [commonRefractor, allRefractor]) {
+			const children = instance.highlight(
+				"见 [Memos-集成](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>) 与 [[page]]。",
+				"markdown",
+			).children as unknown as HighlightNode[];
+			const links = children.filter((node) => classesOf(node).includes("mdlink"));
+			expect(links).toHaveLength(1);
+			expect(flatText(links[0]?.children)).toBe(
+				"[Memos-集成](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)",
+			);
+		}
+	});
+
+	it("covers image links and an ASCII colon inside the filename", () => {
+		registerMarkdownLinkHighlight();
+		const children = allRefractor.highlight("![图](<img/报告:2024版.png>)", "markdown")
+			.children as unknown as HighlightNode[];
+		const links = children.filter((node) => classesOf(node).includes("mdlink"));
+		expect(links).toHaveLength(1);
+		expect(flatText(links[0]?.children)).toBe("![图](<img/报告:2024版.png>)");
+	});
+
+	it("also colours a bare-space destination, which the render-time join pass heals", () => {
+		registerMarkdownLinkHighlight();
+		const children = allRefractor.highlight("[Memos-集成](doc-20 - 快速笔记：Memos-集成.md:10-20)", "markdown")
+			.children as unknown as HighlightNode[];
+		const links = children.filter((node) => classesOf(node).includes("mdlink"));
+		expect(links).toHaveLength(1);
+		expect(flatText(links[0]?.children)).toBe("[Memos-集成](doc-20 - 快速笔记：Memos-集成.md:10-20)");
+	});
+
+	it("paints both doc-34 space-bearing links and leaves the ASCII ones to the built-in grammar", () => {
+		registerMarkdownLinkHighlight();
+		const source = [
+			"[duckdb](../../duckdb/doc-26 - DuckDB-Explorer-演示.md)",
+			"[duckdb:10-50](<../../duckdb/doc-26 - DuckDB-Explorer-演示.md:10-50>)",
+			"[auto-port](../../../../wiki/concepts/auto-port.md)",
+			"[auto-port:10-50](../../../../wiki/concepts/auto-port.md:10-50)",
+		].join("\n");
+		const children = allRefractor.highlight(source, "markdown").children as unknown as HighlightNode[];
+		const links = children.filter((node) => classesOf(node).includes("mdlink"));
+		expect(links).toHaveLength(2);
+		expect(flatText(links[0]?.children)).toBe("[duckdb](../../duckdb/doc-26 - DuckDB-Explorer-演示.md)");
+		expect(flatText(links[1]?.children)).toBe("[duckdb:10-50](<../../duckdb/doc-26 - DuckDB-Explorer-演示.md:10-50>)");
+	});
+
+	it("leaves a space-free link to the built-in markdown grammar", () => {
+		registerMarkdownLinkHighlight();
+		const children = allRefractor.highlight("[plain](doc-20.md:10-20)", "markdown")
+			.children as unknown as HighlightNode[];
+		expect(children.some((node) => classesOf(node).includes("mdlink"))).toBe(false);
+	});
+
+	it("is idempotent, so re-renders cannot stack the token", () => {
+		registerMarkdownLinkHighlight();
+		registerMarkdownLinkHighlight();
+		const children = allRefractor.highlight("[a](<a b.md>) and [c](<c d.md>)", "markdown")
+			.children as unknown as HighlightNode[];
+		expect(children.filter((node) => classesOf(node).includes("mdlink"))).toHaveLength(2);
 	});
 });
 

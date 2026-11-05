@@ -745,7 +745,9 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 					<div className="flex-1 p-8 flex flex-col min-h-0">
 						<MarkdownEditor
 							value={content}
-							filePath={document?.path}
+							// BACK-835: join relative links against the project-relative document path, not the
+							// docs-collection-relative one, so multi-level ../ chains reach sibling collections.
+							filePath={document?.projectPath ?? document?.path}
 							onChange={(val) => setContent(val || "")}
 							isEditing={isEditing}
 							containerRef={contentRef}

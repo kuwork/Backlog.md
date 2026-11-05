@@ -86,20 +86,14 @@ export default function Layout({
 			const path = projectPath.toLowerCase();
 			const isPreviewable = kindFromName(path) !== "unsupported";
 			if (!isPreviewable && !isNonPreviewableOffice(path)) return;
-			// Two addressing conventions, told apart by where the link lives: a rendered
-			// markdown body (description / comment / notes) addresses assets as `assets/...`,
-			// exactly like an image, while metadata fields carry project-root-relative
-			// `backlog/...` paths. A path that resolves in neither context is left to the
-			// browser, which 404s a body link written with the backlog/ prefix.
-			const relPath = projectPath.replace(/^\//, "");
-			const filePath = anchor.closest(".wmde-markdown")
-				? relPath.startsWith("assets/")
-					? `backlog/${relPath}`
-					: null
-				: relPath.startsWith("backlog/")
-					? relPath
-					: null;
-			if (!filePath) return;
+			// BACK-835: the renderer has already joined every local destination into a site-absolute
+			// project-relative URL, so body links and metadata fields now use the same addressing.
+			// Hand the validated path to /api/raw-file, whose shared resolver handles the legacy
+			// `assets/...` convention and custom data directory names. Protocol-relative URLs are
+			// refused here so they can never be turned into a local file path.
+			if (projectPath.startsWith("//")) return;
+			const filePath = projectPath.replace(/^\/+/, "");
+			if (!filePath || filePath.startsWith("/")) return;
 			if (isNonPreviewableOffice(path)) {
 				event.preventDefault();
 				event.stopPropagation();

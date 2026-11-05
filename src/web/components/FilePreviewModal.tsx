@@ -73,6 +73,9 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 	const [totalLines, setTotalLines] = useState<number>(0);
 	const [isMarkdown, setIsMarkdown] = useState<boolean>(false);
 	const [loading, setLoading] = useState(true);
+	// BACK-835: a relative link inside a preview opens another preview, based on the file being
+	// previewed (data.path is the project-relative path returned by the shared resolver).
+	const [nestedPath, setNestedPath] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
@@ -165,6 +168,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 								<MermaidMarkdown
 									source={frontmatter.body}
 									filePath={filePath}
+									onFileClick={setNestedPath}
 									onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
 									onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
 									onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
@@ -184,7 +188,11 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 								</div>
 							)}
 							<div className="code-file-preview" style={{ counterReset: `line ${startLineNumber}` }}>
-								<MermaidMarkdown source={wrapInCodeBlock(content, getLanguage(filePath))} filePath={filePath} />
+								<MermaidMarkdown
+									source={wrapInCodeBlock(content, getLanguage(filePath))}
+									filePath={filePath}
+									onFileClick={setNestedPath}
+								/>
 							</div>
 						</div>
 					)}
@@ -214,6 +222,11 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 					border-radius: 0 !important;
 				}
 			`}</style>
+			{nestedPath && (
+				<div className="relative z-[70]">
+					<FilePreviewModal path={nestedPath} onClose={() => setNestedPath(null)} />
+				</div>
+			)}
 		</Modal>
 	);
 };

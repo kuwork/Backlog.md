@@ -72,7 +72,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - DoD is a completion checklist, not acceptance criteria: keep scope/behavior in acceptance criteria, not DoD fields
 - `task_view` output includes the Definition of Done checklist with checked state
 
-**Task images:** place image files under `backlog/assets/` and reference them in task content with `assets/<relative-path>`. Supported formats: png, jpg, jpeg, gif, svg, webp, avif.
+**Task images:** place image files under `backlog/assets/` and reference them with `assets/<relative-path>`, or put them beside the Markdown file and reference them with `./fig.png` / `figures/flow.png`. Destinations without a leading `/` are joined with the containing document at render time and may reach sibling directories of the configured data directory, as long as the result stays inside the project root. A leading `/` stays a URL / entity short link. `references`, `modifiedFiles`, document paths and query block `source` remain project-relative metadata. Supported formats: png, jpg, jpeg, gif, svg, webp, avif.
 
 **Backlog directory layout:** tasks in `backlog/tasks/`, drafts in `backlog/drafts/`, docs in `backlog/docs/`, decisions in `backlog/decisions/`, memos in `backlog/memos/`, assets in `backlog/assets/`, milestones in `backlog/milestones/`, completed in `backlog/completed/`, archive in `backlog/archive/`, wiki in `backlog/wiki/` (LLM-managed, do not edit manually), wiki output in `backlog/wiki_output/`.
 
