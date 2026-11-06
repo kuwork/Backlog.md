@@ -1883,6 +1883,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												preview="edit"
 												height={320}
 												data-color-mode={theme}
+												wikilinkBasePath="index.md"
 											/>
 										</div>
 									)}
@@ -2304,6 +2305,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												preview="edit"
 												height={280}
 												data-color-mode={theme}
+												wikilinkBasePath="index.md"
 											/>
 										</div>
 									)}
@@ -2342,6 +2344,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												preview="edit"
 												height={280}
 												data-color-mode={theme}
+												wikilinkBasePath="index.md"
 											/>
 										</div>
 									)}
@@ -2439,6 +2442,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 														preview="edit"
 														height={200}
 														data-color-mode={theme}
+														wikilinkBasePath="index.md"
 														commands={COMMENT_EDITOR_COMMANDS}
 														textareaProps={{ placeholder: t.taskDetails.placeholderCommentBody }}
 													/>
@@ -2491,6 +2495,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 													preview="edit"
 													height={220}
 													data-color-mode={theme}
+													wikilinkBasePath="index.md"
 													textareaProps={{
 														placeholder: t.taskDetails.placeholderFinalSummary,
 													}}

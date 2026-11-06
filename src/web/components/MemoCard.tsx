@@ -406,6 +406,7 @@ export function MemoCard({
 						hideToolbar={true}
 						topicSuggestions={topicSuggestions}
 						data-color-mode={theme}
+						wikilinkBasePath="index.md"
 						textareaProps={{
 							onKeyDown: (event) => {
 								if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {

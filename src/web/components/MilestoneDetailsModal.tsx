@@ -780,6 +780,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 													preview="edit"
 													height={300}
 													data-color-mode={theme}
+													wikilinkBasePath="index.md"
 												/>
 											</div>
 										)}

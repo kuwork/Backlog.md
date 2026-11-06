@@ -532,4 +532,8 @@ export interface WikiPage {
 	content: string;
 	frontmatter: Record<string, unknown>;
 	path: string;
+	/** API-derived project-relative render base (BACK-837), never persisted. */
+	projectPath?: string;
+	/** Project-relative wiki collection root, used to split page links from file links. */
+	wikiRoot?: string;
 }

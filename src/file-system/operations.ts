@@ -435,6 +435,10 @@ export class FileSystem {
 		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.DOCS);
 	}
 
+	get wikiDir(): string {
+		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.WIKI);
+	}
+
 	get milestonesDir(): string {
 		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.MILESTONES);
 	}

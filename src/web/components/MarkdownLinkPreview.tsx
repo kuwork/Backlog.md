@@ -63,7 +63,7 @@ export function useMarkdownLinkPreview() {
 			onDraftClick: (id: string, range?: LineRange) => openEntity("draft", id, range),
 			onDocClick: (id: string, range?: LineRange) => openEntity("doc", id, range),
 			onDecisionClick: (id: string, range?: LineRange) => openEntity("decision", id, range),
-			onWikiClick: (id: string, range?: LineRange) => openEntity("wiki", id, range),
+			onWikiClick: (id: string, range?: LineRange, _isWikilink?: boolean) => openEntity("wiki", id, range),
 		}),
 		[openEntity],
 	);

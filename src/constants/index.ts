@@ -26,6 +26,8 @@ export const DEFAULT_DIRECTORIES = {
 	DOCS: "docs",
 	/** Decision logs directory */
 	DECISIONS: "decisions",
+	/** Wiki pages directory */
+	WIKI: "wiki",
 	/** Quick-capture memos directory */
 	MEMOS: "memos",
 	/** Milestones directory */

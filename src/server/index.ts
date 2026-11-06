@@ -2125,6 +2125,12 @@ export class BacklogServer {
 		return projectPathForCollection(relative(root, collectionDir), path);
 	}
 
+	/** Project-relative path of a collection root, used by the wiki join pass (BACK-837). */
+	private collectionRoot(collectionDir: string): string {
+		const root = resolve(this.core.filesystem.rootDir);
+		return relative(root, resolve(collectionDir)).replace(/\\/g, "/");
+	}
+
 	// Documentation handlers
 	private async handleListDocs(): Promise<Response> {
 		try {
@@ -2225,6 +2231,10 @@ export class BacklogServer {
 	private async handleGetWikiPage(pagePath: string): Promise<Response> {
 		try {
 			let page: WikiPage;
+			// The effective collection root decides the project-relative base. The fallback branch
+			// reads pages relative to the data directory (e.g. wiki_output/), so it must not be
+			// labelled with the wiki/ root (BACK-837).
+			let collectionDir = this.core.filesystem.wikiDir;
 			if (pagePath.startsWith("wiki/")) {
 				// Frontend resolveWikiPath prefixes wiki-internal paths with wiki/;
 				// strip it so readWikiPage uses the default wikiRoot.
@@ -2236,9 +2246,16 @@ export class BacklogServer {
 					// Fallback to project root for paths that reference sibling
 					// directories (e.g. wiki_output/).
 					page = await this.core.filesystem.readWikiPage(pagePath, this.core.filesystem.backlogDir);
+					collectionDir = this.core.filesystem.backlogDir;
 				}
 			}
-			return Response.json(page);
+			// Derived, never persisted: `path` stays collection-relative for display/save/loading,
+			// while the renderer needs a project-relative base and the wiki collection boundary.
+			return Response.json({
+				...page,
+				projectPath: this.collectionProjectPath(collectionDir, page.path),
+				wikiRoot: this.collectionRoot(collectionDir),
+			});
 		} catch (error) {
 			console.error("Error loading wiki page:", error);
 			const message = error instanceof Error ? error.message : "Page not found";

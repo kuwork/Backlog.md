@@ -9,7 +9,9 @@ import { useTopicAutocomplete } from "../hooks/useTopicAutocomplete";
 import { apiClient } from "../lib/api";
 import { registerMarkdownLinkHighlight } from "../utils/markdown-link-highlight";
 import { cleanHtml, handlePasteAsMarkdown } from "../utils/paste-as-markdown";
+import { createRemarkWikilink } from "../utils/remarkWikilink";
 import { registerTopicHighlight } from "../utils/topic-highlight";
+import { registerWikilinkHighlight } from "../utils/wikilink-highlight";
 import { EntityLinkAutocompleteMenu } from "./EntityLinkAutocomplete";
 import { ChartAwarePre } from "./MermaidDiagram";
 import { TopicAutocompleteMenu } from "./TopicAutocompleteMenu";
@@ -22,6 +24,12 @@ export interface PasteAwareMDEditorProps extends MDEditorProps {
 	 * menu off - the plain markdown editors elsewhere have no topic vocabulary to suggest.
 	 */
 	topicSuggestions?: string[];
+	/**
+	 * When set, wikilinks (`[[...]]` / `![[...]]`) in the preview pane are resolved against this
+	 * path (same contract as MermaidMarkdown's `wikilinkBasePath`) so they render as styled links
+	 * during editing, matching the rendered view mode. Omit for surfaces without wikilinks.
+	 */
+	wikilinkBasePath?: string;
 }
 
 async function uploadImage(source: Blob | string): Promise<string | null> {
@@ -83,6 +91,7 @@ export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 	extraCommands: propExtraCommands,
 	previewOptions,
 	topicSuggestions,
+	wikilinkBasePath,
 	...rest
 }) => {
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -99,23 +108,32 @@ export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 	// registration happens here rather than in an effect. The patch is idempotent.
 	useMemo(() => {
 		if (topicSuggestions) registerTopicHighlight();
+		// Wikilink surfaces (wiki/doc/task/... editors that pass wikilinkBasePath) get the same
+		// overlay treatment so `[[...]]` reads as a blue link while editing, not white text.
+		if (wikilinkBasePath) registerWikilinkHighlight();
 		// Any editor can hold a Markdown link whose destination has spaces (CommonMark pointy
 		// brackets, or the bare-space form the view renderer heals). Register the overlay token
 		// before the first paint so those links read blue while editing, as they do when rendered.
 		registerMarkdownLinkHighlight();
-	}, [topicSuggestions]);
+	}, [topicSuggestions, wikilinkBasePath]);
 
 	// The editor's own preview panes ("Live code" / "Preview code") render markdown
 	// without going through MermaidMarkdown, so diagrams stayed raw code blocks
 	// there. Overriding `pre` keeps the behaviour identical in every pane.
 	const mergedPreviewOptions = useMemo<MDEditorProps["previewOptions"]>(() => {
 		const callerComponents = (previewOptions?.components ?? {}) as Record<string, unknown>;
+		// Wikilinks resolve the same way in the editor preview as in view mode, so they render as
+		// styled links instead of literal `[[...]]` while editing.
+		const remarkPlugins = wikilinkBasePath
+			? [createRemarkWikilink(wikilinkBasePath), ...(previewOptions?.remarkPlugins ?? [])]
+			: previewOptions?.remarkPlugins;
 		return {
 			...previewOptions,
 			components: { ...callerComponents, pre: ChartAwarePre },
+			...(remarkPlugins ? { remarkPlugins } : {}),
 			// biome-ignore lint/suspicious/noExplicitAny: library types narrow `components` per element
 		} as any;
-	}, [previewOptions]);
+	}, [previewOptions, wikilinkBasePath]);
 
 	// Stable identity: an inline ref callback would detach/attach on every
 	// render and, because it feeds setState, would loop.
@@ -321,7 +339,7 @@ export const PasteAwareMDEditor: React.FC<PasteAwareMDEditorProps> = ({
 			// supplies a height) but it flattened the preview-only pane to a 20px strip.
 			// `topic-aware` turns on the composer's topic chip styling (see source.css); editors
 			// without a topic vocabulary keep the overlay silent about the token.
-			className={`min-w-0 relative h-full${topicSuggestions ? " topic-aware" : ""} mdlink-aware`}
+			className={`min-w-0 relative h-full${topicSuggestions ? " topic-aware" : ""}${wikilinkBasePath ? " wikilink-aware" : ""} mdlink-aware`}
 			onDragOver={(e) => e.preventDefault()}
 			onDrop={(e) => {
 				e.preventDefault();

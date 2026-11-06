@@ -61,6 +61,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 					height="100%"
 					hideToolbar={false}
 					data-color-mode={theme}
+					wikilinkBasePath="index.md"
 					textareaProps={{
 						placeholder: t.documents.placeholderBody,
 						style: {

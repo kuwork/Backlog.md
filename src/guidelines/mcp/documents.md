@@ -119,7 +119,7 @@ Supported patterns:
 | `/draft/:id` (with optional `/:title`) | `DRAFT#:id` | Draft modal |
 | `/documentation/:id` (with optional `/:title`) | `DOC#:id` | Document modal |
 | `/decisions/:id` (with optional `/:title`) | `Decisions#:id` | Decision modal |
-| `/wiki/:path` | `WIKI#:path` | Wiki page |
+| `/wiki/:path` | `WIKI#:path` | Wiki page (`:N-M` range opens a popup partial load) |
 
 When the link text is empty, the renderer fills in the default alias. If you provide a custom label, that label is shown instead.
 
@@ -160,6 +160,37 @@ Rules:
 ```
 
 An item link opens the item modal; a code file link opens the file preview. Add the suffix whenever the reader only needs part of a file — a bare path opens it from line 1.
+
+##### Filenames with spaces or colons
+
+CommonMark requires a link destination containing a space to be wrapped in angle brackets. Without them the destination ends at the first space, so the whole construct stays plain text — white text in the editor and not clickable when rendered:
+
+```markdown
+- Wrong: [Memos-集成](../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20)
+- Right: [Memos-集成](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)
+```
+
+A Chinese fullwidth colon `：` or an ASCII colon `:` inside a filename is never mistaken for the line suffix: the renderer only recognises `:LINE` / `:START-END` immediately after the file extension (`.md:10-20`). Both are safe in filenames, for example `报告：2024版.md:3-9` and `v2:12.md:5-8`.
+
+Prefer the angle-bracket form. The three rendering paths differ for a destination with spaces:
+
+| Path | `<...>` form | Bare-space form |
+|------|--------------|-----------------|
+| View page | Link | Link (the render-time join pass percent-encodes it) |
+| Editor preview pane | Link | Plain text — strict CommonMark does not treat it as a link |
+| Editor textarea overlay | Coloured blue | Coloured blue (a syntax highlight only; the textarea is not clickable) |
+
+So only `<...>` is a link in both the view page and the editor preview pane; the overlay colour is a visual cue in both forms.
+
+To open a document scoped to a line range, use the entity short link `/documentation/:id:START-END` described above. A relative `.md` file path is a code file link, not a document entity link, and is not resolved into one.
+
+##### Links in wiki pages
+
+Wiki pages use the same renderer and click contract as document and decision pages. Their relative destinations are folded against the **project-relative** path of the wiki page, so `../../docs/...` reaches a sibling collection:
+
+- **Sibling wiki pages** — `[Asset management](asset-management.md:10-29)` and `[[concepts/asset-management:10-29]]` become `/wiki/...` links and open the `WikiLinkPreview` popup. A `:LINE` / `:START-END` suffix loads only those lines (a local/partial load, not a highlighted full page); without a range the whole page is shown. A bare sibling name in a wikilink is project-root-relative, so give the sub-path for a page in a subfolder.
+- **Files in other collections** — `[Memos](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)` and `../../decisions/...` stay project file links and open the shared file/Office preview, exactly as on a document page. Only Markdown-ish targets inside the wiki collection become wiki pages; images and other assets are files.
+- **Entity short links** — `/documentation/:id`, `/decisions/:id` (also `/decision/:id`), `/wiki/:path`, `/task/:id` and `/draft/:id` are supported. Without a `:N-M` range they navigate to the entity; with a range they open the shared section preview loaded with only those lines. Escapes outside the project root and sensitive paths stay rejected.
 
 ### Live SQL Query Blocks (`sqlite-query` / `duckdb-query` / `mdb-query`)
 

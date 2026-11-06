@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import type { WikiPage } from "../../types";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { useTheme } from "../contexts/ThemeContext";
@@ -7,45 +7,47 @@ import { usePageToc } from "../contexts/TocContext";
 import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { encodeWikiPath } from "../utils/urlHelpers";
-import { resolveWikiPath } from "../utils/wikiLinks";
 import ChipInput from "./ChipInput";
+import { type MarkdownLinkHandlers, MarkdownPreviewModal, useMarkdownLinkPreview } from "./MarkdownLinkPreview";
 import MermaidMarkdown from "./MermaidMarkdown";
 import Modal from "./Modal";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { SuccessToast } from "./SuccessToast";
 
-/**
- * Resolve a standard Markdown relative link against the current wiki page path.
- * Returns null if the resolved path would escape the wiki root.
- */
-function resolveMarkdownLink(currentPagePath: string, linkPath: string): string | null {
-	if (linkPath.startsWith("/")) return linkPath;
-
-	const currentDir = currentPagePath.split("/").slice(0, -1).join("/");
-	const rawPath = currentDir ? `${currentDir}/${linkPath}` : linkPath;
-
-	const parts = rawPath.split("/");
-	const resolved: string[] = [];
-	for (const part of parts) {
-		if (part === "..") {
-			if (resolved.length === 0) return null;
-			resolved.pop();
-		} else if (part !== "." && part !== "") {
-			resolved.push(part);
-		}
-	}
-	return resolved.join("/");
+/** A wiki section preview target: a wiki page plus an optional line range. */
+interface WikiPreviewTarget {
+	path: string;
+	lineStart?: number;
+	lineEnd?: number;
 }
 
-function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void }) {
+/**
+ * Slice a wiki page body to the requested line range. Returns the full body when no range is given.
+ */
+function sliceWikiContent(content: string, lineStart?: number, lineEnd?: number): string {
+	if (lineStart === undefined) return content;
+	const lines = content.split("\n");
+	const start = Math.max(1, lineStart) - 1;
+	const end = lineEnd !== undefined ? lineEnd : lineStart;
+	return lines.slice(start, end).join("\n");
+}
+
+function WikiLinkPreview({
+	preview,
+	onClose,
+	linkHandlers,
+}: {
+	preview: WikiPreviewTarget;
+	onClose: () => void;
+	linkHandlers: MarkdownLinkHandlers;
+}) {
+	const { path, lineStart, lineEnd } = preview;
 	const [previewPage, setPreviewPage] = useState<WikiPage | null>(null);
 	const [previewLoading, setPreviewLoading] = useState(false);
 	const [previewError, setPreviewError] = useState<Error | null>(null);
 	const { theme } = useTheme();
 	const { t } = useI18n();
 	const previewContentRef = useRef<HTMLDivElement>(null);
-	const navigate = useNavigate();
-	const location = useLocation();
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
 	useEffect(() => {
@@ -70,70 +72,16 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 		};
 	}, [path]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
-	useEffect(() => {
-		if (!previewContentRef.current) return;
-		const container = previewContentRef.current;
-
-		const handleClick = (e: MouseEvent) => {
-			const target = e.target as HTMLElement;
-			const anchor = target.closest("a") as HTMLAnchorElement | null;
-			if (!anchor) return;
-			const href = anchor.getAttribute("href");
-			if (!href) return;
-
-			if (href.startsWith("/wiki/")) {
-				e.preventDefault();
-				const rawPath = decodeURIComponent(href.slice("/wiki/".length));
-				const resolvedPath = resolveWikiPath(path, rawPath);
-				if (resolvedPath === null) {
-					console.warn("Wikilink escapes wiki root:", rawPath);
-					return;
-				}
-				navigate(`/wiki/${encodeWikiPath(resolvedPath)}`);
-				onClose();
-				return;
-			}
-
-			if (href.startsWith("/task/")) {
-				e.preventDefault();
-				const taskId = href.slice("/task/".length).split("/")[0];
-				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
-				onClose();
-				return;
-			}
-
-			if (
-				path &&
-				!href.startsWith("http") &&
-				!href.startsWith("#") &&
-				!href.startsWith("/") &&
-				!href.startsWith("mailto:") &&
-				!href.startsWith("tel:")
-			) {
-				e.preventDefault();
-				const decodedHref = decodeURIComponent(href);
-				const resolvedPath = resolveMarkdownLink(path, decodedHref);
-				if (resolvedPath === null) {
-					console.warn("Markdown link escapes wiki root:", decodedHref);
-					return;
-				}
-				navigate(`/wiki/${encodeWikiPath(resolvedPath)}`);
-				onClose();
-			}
-		};
-
-		container.addEventListener("click", handleClick);
-		return () => container.removeEventListener("click", handleClick);
-	}, [previewPage?.content, path, onClose]);
-
 	const previewTitle =
 		typeof previewPage?.frontmatter?.title === "string" && previewPage.frontmatter.title
 			? previewPage.frontmatter.title
 			: path.split("/").pop()?.replace(/\.md$/i, "") || path;
+	const titleParts = [previewTitle];
+	if (lineStart !== undefined && lineEnd !== undefined) titleParts.push(`(lines ${lineStart}-${lineEnd})`);
+	else if (lineStart !== undefined) titleParts.push(`(line ${lineStart})`);
 
 	return (
-		<Modal isOpen={true} onClose={onClose} title={previewTitle} maxWidthClass="max-w-3xl" toc>
+		<Modal isOpen={true} onClose={onClose} title={titleParts.join(" ")} maxWidthClass="max-w-3xl" toc>
 			{previewLoading ? (
 				<div className="text-gray-500 dark:text-gray-400 py-8 text-center">{t.common.loading}</div>
 			) : previewError || !previewPage ? (
@@ -166,6 +114,11 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 							/>
 						</svg>
 						<span>{previewPage.path}</span>
+						{lineStart !== undefined && (
+							<span className="ml-2 text-blue-600 dark:text-blue-400">
+								{lineEnd !== undefined ? `lines ${lineStart}-${lineEnd}` : `line ${lineStart}`}
+							</span>
+						)}
 					</div>
 					<div
 						ref={previewContentRef}
@@ -173,14 +126,11 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 						data-color-mode={theme}
 					>
 						<MermaidMarkdown
-							source={previewPage?.content || ""}
-							filePath={previewPage?.path}
+							source={sliceWikiContent(previewPage?.content || "", lineStart, lineEnd)}
+							filePath={previewPage?.projectPath ?? previewPage?.path}
+							wikiRoot={previewPage?.wikiRoot}
 							wikilinkBasePath={path}
-							onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
-							onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
-							onDocClick={(docId) => navigate(`/documentation/${docId}`)}
-							onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
-							onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
+							{...linkHandlers}
 						/>
 					</div>
 				</div>
@@ -191,15 +141,42 @@ function WikiLinkPreview({ path, onClose }: { path: string; onClose: () => void 
 
 export default function WikiDetail() {
 	const { "*": wikiPath } = useParams();
-	const { t } = useI18n();
 	const navigate = useNavigate();
-	const location = useLocation();
+	const { t } = useI18n();
 	const [page, setPage] = useState<WikiPage | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
-	const [previewPath, setPreviewPath] = useState<string | null>(null);
+	const [previewPath, setPreviewPath] = useState<WikiPreviewTarget | null>(null);
 	const { theme } = useTheme();
 	const contentRef = useRef<HTMLDivElement>(null);
+	const { linkHandlers, previewTarget, closePreview } = useMarkdownLinkPreview();
+
+	// Wiki targets keep the wiki page preview (rendered markdown, optional :N-M partial load), while
+	// every other link uses the shared file/entity contract from BACK-836. Building the handler set
+	// once keeps MermaidMarkdown's callback identity stable between renders.
+	//
+	// Distinguish a real wikilink (`[[...]]`, emitted with `data-wikilink="true"`) from an explicit
+	// markdown link to a `/wiki/...` route. Wikilinks keep the inline popup preview; an explicit
+	// `/wiki/..` link is a navigation intent and switches the page (SPA route). Ranged links keep
+	// the popup regardless, since the wiki route has no line-range segment to land on.
+	const wikiLinkHandlers = useMemo<MarkdownLinkHandlers>(
+		() => ({
+			...linkHandlers,
+			onWikiClick: (id, range, isWikilink) => {
+				if (isWikilink || range?.lineStart !== undefined) {
+					setPreviewPath({
+						path: id,
+						lineStart: range?.lineStart,
+						lineEnd: range?.lineEnd,
+					});
+					return;
+				}
+				setPreviewPath(null);
+				navigate(`/wiki/${encodeWikiPath(id)}`);
+			},
+		}),
+		[linkHandlers, navigate],
+	);
 
 	// Editing state
 	const [isEditing, setIsEditing] = useState(false);
@@ -242,61 +219,6 @@ export default function WikiDetail() {
 			loadWikiPage();
 		}
 	}, [wikiPath, loadWikiPage]);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
-	useEffect(() => {
-		if (!contentRef.current) return;
-		const container = contentRef.current;
-
-		const handleClick = (e: MouseEvent) => {
-			const target = e.target as HTMLElement;
-			const anchor = target.closest("a") as HTMLAnchorElement | null;
-			if (!anchor) return;
-			const href = anchor.getAttribute("href");
-			if (!href) return;
-
-			if (href.startsWith("/wiki/")) {
-				e.preventDefault();
-				const rawPath = decodeURIComponent(href.slice("/wiki/".length));
-				const resolvedPath = wikiPath ? resolveWikiPath(wikiPath, rawPath) : rawPath;
-				if (resolvedPath === null) {
-					console.warn("Wikilink escapes wiki root:", rawPath);
-					return;
-				}
-				setPreviewPath(resolvedPath);
-				return;
-			}
-
-			if (href.startsWith("/task/")) {
-				e.preventDefault();
-				const taskId = href.slice("/task/".length).split("/")[0];
-				navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
-				return;
-			}
-
-			// Intercept relative Markdown links in wiki pages
-			if (
-				wikiPath &&
-				!href.startsWith("http") &&
-				!href.startsWith("#") &&
-				!href.startsWith("/") &&
-				!href.startsWith("mailto:") &&
-				!href.startsWith("tel:")
-			) {
-				e.preventDefault();
-				const decodedHref = decodeURIComponent(href);
-				const resolvedPath = resolveMarkdownLink(wikiPath, decodedHref);
-				if (resolvedPath === null) {
-					console.warn("Markdown link escapes wiki root:", decodedHref);
-					return;
-				}
-				setPreviewPath(resolvedPath);
-			}
-		};
-
-		container.addEventListener("click", handleClick);
-		return () => container.removeEventListener("click", handleClick);
-	}, [page?.content, wikiPath]);
 
 	const handleEdit = () => {
 		const currentTitle =
@@ -573,6 +495,7 @@ export default function WikiDetail() {
 									height="100%"
 									hideToolbar={false}
 									data-color-mode={theme}
+									wikilinkBasePath={wikiPath}
 									textareaProps={{
 										placeholder: t.wiki.placeholderBody,
 										style: { fontSize: "14px", resize: "none" },
@@ -587,13 +510,10 @@ export default function WikiDetail() {
 							>
 								<MermaidMarkdown
 									source={page.content}
-									filePath={page.path}
+									filePath={page.projectPath ?? page.path}
+									wikiRoot={page.wikiRoot}
 									wikilinkBasePath={wikiPath}
-									onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
-									onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
-									onDocClick={(docId) => navigate(`/documentation/${docId}`)}
-									onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
-									onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
+									{...wikiLinkHandlers}
 								/>
 							</div>
 						)}
@@ -601,7 +521,11 @@ export default function WikiDetail() {
 				</div>
 			</div>
 
-			{previewPath && <WikiLinkPreview path={previewPath} onClose={() => setPreviewPath(null)} />}
+			{previewPath && (
+				<WikiLinkPreview preview={previewPath} onClose={() => setPreviewPath(null)} linkHandlers={wikiLinkHandlers} />
+			)}
+
+			<MarkdownPreviewModal target={previewTarget} onClose={closePreview} />
 
 			{showSaveSuccess && <SuccessToast message={t.wiki.saveSuccess} onDismiss={() => setShowSaveSuccess(false)} />}
 		</ErrorBoundary>

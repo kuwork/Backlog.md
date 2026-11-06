@@ -3,7 +3,7 @@ id: doc-4
 title: Upstream v1.47.1 to v1.48.0 Migration Diff Classification
 type: guide
 created_date: '2026-07-28 06:04'
-updated_date: '2026-08-10'
+updated_date: '2026-11-04 18:10'
 ---
 # 上游变更差异分类（v1.47.1 .. v1.48.0）
 
@@ -40,7 +40,7 @@ updated_date: '2026-08-10'
 
 | # | 标题 | 描述摘要 | 理由 | 潜在冲突 | 是否分析 | 原始/迁移任务 | 分析报告 |
 |---|---|------|----------|------|----------|----------|----------|
-| A2 | **BACK-516 重复任务 ID 检测与修复** | 检测 TASK-1 与 TASK-01 等等价拼写或合并后产生的重复 ID，提供 human-first 的诊断和修复工作流；CLI 对模糊 ID 操作 fail-closed；Web UI 也共享同一修复能力。 | 核心数据完整性修复，避免合并/零填充导致任务静默折叠；当前 fork 无相关实现 | 中 | 是 | [BACK-538](/task/538) | [doc-5 A2](/documentation/5:30-41) |
+| A2 | **BACK-516 重复任务 ID 检测与修复** | 检测 TASK-1 与 TASK-01 等等价拼写或合并后产生的重复 ID，提供 human-first 的诊断和修复工作流；CLI 对模糊 ID 操作 fail-closed；Web UI 也共享同一修复能力。 | 核心数据完整性修复，避免合并/零填充导致任务静默折叠；当前 fork 无相关实现 | 中 | 是 | [BACK-538](/task/538) | [doc-5 A2](/documentation/5:30-41) [doc-5 A2](doc-5 - A类上游任务迁移分析报告.md:30-41) |
 | A3 | **BACK-537 AC/DoD 确定性编辑** | 保持 `--ac` 与 `--acceptance-criteria` 在 `task edit` 中为累加别名（`task create` 不变），新增 `--clear-ac` 原子清除并拒绝与增量操作混用；共享序列化器保证规范章节顺序、自定义内容、空白稳定性与 CRLF 保留。指南中补充说明：如需整体替换可先 clear 再重新添加，或直接用文本编辑器修改 Markdown。 | 当前 fork 刚增强 `task edit`（BACK-530），CLI 编辑语义应与此对齐；同时保持 `--ac` 与 `--acceptance-criteria` 别名一致性 | 低 | 是 | [BACK-537](/task/537) | [doc-5 A3](/documentation/5:44-55) |
 | A4 | **BACK-540 修复 config.yml block-style YAML list** | 修复 `statuses`/`labels`/`types`/`priorities` 等 block-style YAML 列表（如 `- item`）被静默忽略的问题，并修正 `config set` 对列表键的指引。 | 配置解析 bug，可能导致当前 fork 的 `types`/`priorities` 等列表配置失效 | 低 | 是 | [BACK-533](/task/533) | [doc-5 A4](/documentation/5:58-69) |
 | A5 | **BACK-533 防止陈旧 ContentStore 刷新覆盖新状态** | 修复 ContentStore 在接收到较旧刷新时覆盖较新状态的问题，保证任务/文档/决策视图总是基于最新数据。 | 数据一致性修复 | 低 | 是 | [BACK-540](/task/540) | [doc-5 A5](/documentation/5:72-83) |

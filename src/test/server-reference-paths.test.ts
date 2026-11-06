@@ -41,17 +41,22 @@ describe("BACK-835 reference resolution", () => {
 		await mkdir(join(TEST_DIR, "scripts"), { recursive: true });
 		await mkdir(join(TEST_DIR, ".git"), { recursive: true });
 
-		await mkdir(join(backlogDir, "docs", "PRDS", "cypher", "test"), { recursive: true });
+		await mkdir(join(backlogDir, "docs", "PRDS", "RelativeLink"), { recursive: true });
 		await mkdir(join(backlogDir, "decisions"), { recursive: true });
 		await writeFile(
 			join(backlogDir, "decisions", "decision-9 - test-decision.md"),
 			"---\nid: decision-9\ntitle: Test decision\ndate: '2026-11-06'\nstatus: proposed\n---\n## Context\n\n[wiki](../wiki/concepts/auto-port.md)\n\n## Decision\n\nUse project-relative paths.\n\n## Consequences\n\nSibling collections resolve.\n",
 		);
+		await mkdir(join(backlogDir, "wiki", "concepts"), { recursive: true });
+		await writeFile(
+			join(backlogDir, "wiki", "concepts", "auto-port.md"),
+			"---\ntitle: Auto port\n---\n[asset](asset-management.md:10-29)\n",
+		);
 		await writeFile(join(backlogDir, "docs", "PRDS", "sqlite", "fig.png"), "PNG");
 		await writeFile(join(backlogDir, "docs", "PRDS", "sqlite", "doc.md"), "line1\nline2\nline3");
 		await writeFile(
-			join(backlogDir, "docs", "PRDS", "cypher", "test", "doc-34 - test-doc.md"),
-			"---\nid: doc-34\ntitle: test-doc\ntype: other\ncreated_date: '2026-11-06 01:34'\n---\n[auto-port](../../../../wiki/concepts/auto-port.md)\n",
+			join(backlogDir, "docs", "PRDS", "RelativeLink", "doc-34 - Relative-Link-Check.md"),
+			"---\nid: doc-34\ntitle: Relative Link Check\ntype: other\ncreated_date: '2026-11-06 01:34'\n---\n[auto-port](../../../wiki/concepts/auto-port.md)\n",
 		);
 		await writeFile(join(backlogDir, "assets", "legacy.png"), "LEGACY");
 		await writeFile(join(TEST_DIR, "scripts", "note.md"), "sibling\nsecond\nthird");
@@ -166,26 +171,40 @@ describe("BACK-835 reference resolution", () => {
 	});
 
 	it("derives a project-relative collection path without hard-coding the data directory", () => {
-		expect(projectPathForCollection("backlog/docs", "PRDS/cypher/test/doc-34 - test-doc.md")).toBe(
-			"backlog/docs/PRDS/cypher/test/doc-34 - test-doc.md",
+		expect(projectPathForCollection("backlog/docs", "PRDS/RelativeLink/doc-34 - Relative-Link-Check.md")).toBe(
+			"backlog/docs/PRDS/RelativeLink/doc-34 - Relative-Link-Check.md",
 		);
 		expect(projectPathForCollection(".backlog\\docs\\", "\\PRDS\\doc.md")).toBe(".backlog/docs/PRDS/doc.md");
 		expect(projectPathForCollection("", "doc.md")).toBe("doc.md");
 	});
 
 	it("exposes a project-relative path for the render-time join on both document endpoints", async () => {
-		const projectPath = "backlog/docs/PRDS/cypher/test/doc-34 - test-doc.md";
+		const projectPath = "backlog/docs/PRDS/RelativeLink/doc-34 - Relative-Link-Check.md";
 		const list = (await (await fetch(url("/api/docs"))).json()) as {
 			id: string;
 			path?: string;
 			projectPath?: string;
 		}[];
 		const entry = list.find((doc) => doc.id === "doc-34");
-		expect(entry?.path).toBe("PRDS/cypher/test/doc-34 - test-doc.md");
+		expect(entry?.path).toBe("PRDS/RelativeLink/doc-34 - Relative-Link-Check.md");
 		expect(entry?.projectPath).toBe(projectPath);
 
 		const single = (await (await fetch(url("/api/doc/doc-34"))).json()) as { projectPath?: string };
 		expect(single.projectPath).toBe(projectPath);
+	});
+
+	it("exposes a project-relative base and the collection root on the wiki page endpoint", async () => {
+		const page = (await (await fetch(url("/api/wiki/concepts/auto-port.md"))).json()) as {
+			path?: string;
+			projectPath?: string;
+			wikiRoot?: string;
+		};
+		expect(page.path).toBe("concepts/auto-port.md");
+		expect(page.projectPath).toBe("backlog/wiki/concepts/auto-port.md");
+		expect(page.wikiRoot).toBe("backlog/wiki");
+		expect(projectPathForCollection(".backlog/wiki", "concepts/auto-port.md")).toBe(
+			".backlog/wiki/concepts/auto-port.md",
+		);
 	});
 
 	it("exposes a project-relative path for the render-time join on both decision endpoints", async () => {

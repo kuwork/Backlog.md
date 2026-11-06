@@ -33,8 +33,14 @@ interface Props {
 	onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-	onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }, isWikilink?: boolean) => void;
 	wikilinkBasePath?: string;
+	/**
+	 * Project-relative wiki collection root (BACK-837). Only wiki pages pass it: relative links
+	 * that resolve inside this root become `/wiki/<page>` routes, while references to docs/,
+	 * decisions/ and other sibling collections stay project file links.
+	 */
+	wikiRoot?: string;
 	/**
 	 * When set, GFM task-list checkboxes become clickable and report their document-order index, so
 	 * the caller can flip the matching `- [ ]` marker in its own source. Left unset the checkboxes
@@ -391,7 +397,9 @@ export function parseLocalUrl(href: string): LocalLinkInfo | null {
 			};
 		}
 
-		const decisionMatch = url.pathname.match(/^\/decisions\/([^/]+)/);
+		// `/decision/:id` is accepted as an alias for the canonical `/decisions/:id` route so a
+		// singular short link still lands on the decision entity (BACK-837).
+		const decisionMatch = url.pathname.match(/^\/decisions?\/([^/]+)/);
 		if (decisionMatch) {
 			const parsed = parseLineRange(decisionMatch[1] ?? "");
 			if (!parsed) return null;
@@ -534,6 +542,7 @@ export default function MermaidMarkdown({
 	onDecisionClick,
 	onWikiClick,
 	wikilinkBasePath,
+	wikiRoot,
 	onToggleTask,
 	inlineTagChips,
 	activeTags,
@@ -548,8 +557,10 @@ export default function MermaidMarkdown({
 		: sanitizeRawHtmlAngleBrackets(encoded, getMarkdownCodeRanges(encoded));
 	// BACK-835: join every local destination with the path of the document being rendered. The
 	// joined site-absolute URL is what ends up in the emitted <a href> / <img src>, so the browser
-	// requests a real route and the server's try_files resolver can serve it.
-	const renderedSource = processMarkdownLocalPaths(safeSource, filePath);
+	// requests a real route and the server's try_files resolver can serve it. BACK-837: on a wiki
+	// page the API also supplies the wiki collection root, so sibling wiki pages use the /wiki/
+	// route while references to docs/, decisions/ and other collections remain file links.
+	const renderedSource = processMarkdownLocalPaths(safeSource, filePath, wikiRoot ? { wikiRoot } : undefined);
 	const { t } = useI18n();
 	const entityIndex = useTaskIdIndex();
 	const remarkPlugins = useMemo(() => [createEntityLinkPlugin(entityIndex)], [entityIndex]);
@@ -778,7 +789,7 @@ export default function MermaidMarkdown({
 							href={href}
 							onClick={(e) => {
 								e.preventDefault();
-								onWikiClick(localLink.id, localLink.range);
+								onWikiClick(localLink.id, localLink.range, isWikilink);
 							}}
 							className={combinedClassName}
 							style={parsedStyle}

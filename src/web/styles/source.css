@@ -600,6 +600,21 @@
 	color: var(--mdlink-fg) !important;
 }
 
+/* Wiki `[[...]]` links get the same blue the rendered page shows, so editing reveals the link
+   shape instead of a wall of white text. Colours only - the overlay pre is glyph-aligned with the
+   textarea, so box/whitespace changes would skew the caret. Mirrors the topic-overlay block above. */
+.wikilink-aware {
+	--wikilink-fg: #0969da; /* GitHub blue, light canvas */
+}
+
+.dark .wikilink-aware {
+	--wikilink-fg: #58a6ff; /* GitHub blue, dark canvas */
+}
+
+.wikilink-aware .w-md-editor-text-pre .token.wikilink {
+	color: var(--wikilink-fg) !important;
+}
+
 /* Checklist: a rounded box that reads as a control (blue when ticked, hairline when not) and a
    struck-through, muted label once ticked - the state has to be legible without hovering.
 

@@ -122,9 +122,19 @@ export function sanitizeRawHtmlAngleBrackets(
 	source: string,
 	protectedRanges: { start: number; end: number }[],
 ): string {
+	// A CommonMark pointy-bracket destination (`[label](<path with space.md>)`) is not an HTML
+	// tag. Without this guard a destination starting with a slash - `</backlog/docs/report.md>` -
+	// matches the closing-tag branch below and is escaped into `&lt;/...`, so the join pass sees a
+	// relative file name instead of a site-absolute URL (BACK-837).
+	const destinationRanges: { start: number; end: number }[] = [];
+	for (const match of source.matchAll(/\]\(<[^>\n]*>\)/g)) {
+		if (match.index === undefined) continue;
+		destinationRanges.push({ start: match.index, end: match.index + match[0].length });
+	}
+	const ranges = [...protectedRanges, ...destinationRanges];
 	return source.replace(/<\/?([A-Za-z][A-Za-z0-9-]*)/g, (match, tag, offset, fullText) => {
 		const index = offset as number;
-		for (const range of protectedRanges) {
+		for (const range of ranges) {
 			if (index >= range.start && index < range.end) return match;
 		}
 		const remaining = fullText.slice(index);
@@ -311,17 +321,28 @@ export function resolveWikiPath(currentPagePath: string, linkPath: string): stri
 	return resolved.join("/");
 }
 
-function buildWikilinkHtml(inner: string, attrsRaw: string | undefined, basePath: string): string {
+/**
+ * Split a wikilink target into its page path and an optional trailing `:N-M` / `:N` line range.
+ * The range is preserved so the emitted /wiki/<path>:range link can open a section preview.
+ */
+function splitWikilinkRange(target: string): { path: string; range: string } {
+	const match = target.match(/^(.*):(\d+(?:-\d+)?)$/);
+	if (!match) return { path: target, range: "" };
+	return { path: (match[1] ?? target).trim(), range: `:${match[2]}` };
+}
+
+export function buildWikilinkHtml(inner: string, attrsRaw: string | undefined, basePath: string): string {
 	const pipeIndex = inner.indexOf("|");
-	const target = pipeIndex >= 0 ? inner.slice(0, pipeIndex).trim() : inner.trim();
-	const alias = pipeIndex >= 0 ? inner.slice(pipeIndex + 1) : target;
+	const rawTarget = pipeIndex >= 0 ? inner.slice(0, pipeIndex).trim() : inner.trim();
+	const { path: target, range } = splitWikilinkRange(rawTarget);
+	const alias = pipeIndex >= 0 ? inner.slice(pipeIndex + 1) : rawTarget;
 
 	const resolved = resolveWikiPath(basePath, target);
 	if (resolved === null) {
 		return `<del>${escapeHtml(alias)}</del>`;
 	}
 
-	const href = `/wiki/${encodeWikiPath(resolved)}`;
+	const href = `/wiki/${encodeWikiPath(resolved)}${range}`;
 	const attrs = attrsRaw ? parseMarkdownAttrs(attrsRaw.slice(1, -1)) : {};
 	const attrsHtml = attrsToHtmlString(attrs, "wikilink");
 	const aliasHtml = renderInlineMarkdownToHtml(alias);
@@ -363,7 +384,7 @@ export function resolveMediaPath(currentPagePath: string, mediaPath: string): st
 	return resolved.join("/");
 }
 
-function buildWikilinkMediaHtml(inner: string, attrsRaw: string | undefined, basePath: string): string {
+export function buildWikilinkMediaHtml(inner: string, attrsRaw: string | undefined, basePath: string): string {
 	const segments = inner.split("|").map((s) => s.trim());
 	const target = segments[0] ?? "";
 

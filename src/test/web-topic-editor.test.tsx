@@ -8,6 +8,7 @@ import { PasteAwareMDEditor } from "../web/components/PasteAwareMDEditor.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { registerMarkdownLinkHighlight } from "../web/utils/markdown-link-highlight.ts";
 import { registerTopicHighlight } from "../web/utils/topic-highlight.ts";
+import { registerWikilinkHighlight } from "../web/utils/wikilink-highlight.ts";
 
 /**
  * The composer side of the `#topic#` syntax: the grammar the highlight overlay tokenizes with, and
@@ -62,6 +63,42 @@ describe("registerTopicHighlight", () => {
 		registerTopicHighlight();
 		const children = allRefractor.highlight("#once# and #twice#", "markdown").children as unknown as HighlightNode[];
 		expect(children.filter((node) => classesOf(node).includes("topic"))).toHaveLength(2);
+	});
+});
+
+describe("registerWikilinkHighlight", () => {
+	it("tokenizes wiki links as one wikilink run in both refractor instances", () => {
+		registerWikilinkHighlight();
+		for (const instance of [commonRefractor, allRefractor]) {
+			const children = instance.highlight(
+				"参见 [[concepts/asset-management:10-29]] 与 [[sources/back-514-auto-port]]。",
+				"markdown",
+			).children as unknown as HighlightNode[];
+			const links = children.filter((node) => classesOf(node).includes("wikilink"));
+			expect(links).toHaveLength(2);
+			expect(flatText(links[0]?.children)).toBe("[[concepts/asset-management:10-29]]");
+		}
+	});
+
+	it("tokenizes media embeds ![[...]] and an aliased link [[...|alias]]", () => {
+		const children = allRefractor.highlight("图 ![[diagram.png]] 与 [[page|别名]]", "markdown")
+			.children as unknown as HighlightNode[];
+		const links = children.filter((node) => classesOf(node).includes("wikilink"));
+		expect(links).toHaveLength(2);
+		expect(flatText(links[0]?.children)).toBe("![[diagram.png]]");
+		expect(flatText(links[1]?.children)).toBe("[[page|别名]]");
+	});
+
+	it("leaves non-wikilink brackets alone", () => {
+		const children = allRefractor.highlight("a [b] c [[d", "markdown").children as unknown as HighlightNode[];
+		expect(children.some((node) => classesOf(node).includes("wikilink"))).toBe(false);
+	});
+
+	it("is idempotent, so re-renders of wikilink-aware editors cannot stack the token", () => {
+		registerWikilinkHighlight();
+		registerWikilinkHighlight();
+		const children = allRefractor.highlight("[[one]] and [[two]]", "markdown").children as unknown as HighlightNode[];
+		expect(children.filter((node) => classesOf(node).includes("wikilink"))).toHaveLength(2);
 	});
 });
 

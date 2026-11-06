@@ -1,5 +1,5 @@
 /**
- * Render-time local path joining (BACK-835).
+ * Render-time local path joining (BACK-835, BACK-837).
  *
  * Markdown bodies are written next to the files they reference, but the browser resolves a bare
  * `src` / `href` against the page URL. The join pass rewrites every local destination into a
@@ -7,9 +7,22 @@
  * `<img src>` / `<a href>` already carries the resolved location. The server then treats that
  * path as a route and falls back to its try_files resolver.
  *
+ * Wiki pages need one extra distinction: a joined target that stays inside the wiki collection is
+ * a wiki page and must use the `/wiki/<page>` route, while a target in docs/, decisions/ or any
+ * other sibling collection is an ordinary project file and keeps the site-absolute file URL.
+ *
  * This module is deliberately pure (no DOM, no node:path) so it can run both in the browser and
  * under `bun test`.
  */
+
+export interface MarkdownJoinOptions {
+	/**
+	 * Project-relative root of the wiki collection, e.g. `backlog/wiki`. Supplied only when the
+	 * body being rendered is a wiki page. The API derives it, so custom data directory names are
+	 * honoured without hard-coding a `backlog/` prefix here.
+	 */
+	wikiRoot?: string;
+}
 
 export interface JoinedTarget {
 	/** The destination to write into the Markdown source. Rejected targets become a dead `#` anchor. */
@@ -20,7 +33,17 @@ export interface JoinedTarget {
 
 const EXTERNAL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const SAFE_SCHEME = /^(?:https?|ftp|mailto|tel|data):/i;
+// A colon can also live *inside* a filename (`v2:12.md`, `报告:2024版.md`). Such a destination has
+// no authority (`//`) and ends in a file extension, so it is a local path rather than a URI scheme;
+// it is percent-encoded into a site-absolute path below, which is safe. Real schemes either carry
+// `//` or have an opaque body with no extension (e.g. `javascript:alert(1)`).
+const LOCAL_FILE_EXTENSION = /\.[A-Za-z0-9]+$/;
 const LINE_RANGE = /^(.+?)(:\d+(?:-\d+)?)$/;
+// Range suffix anchored to a file extension: `<path>.<ext>:<lines>`. Anchoring the line-range
+// colon right after the extension stops a colon that lives *inside* the filename - a Chinese
+// fullwidth colon `：` or an ASCII `:` such as `报告:2024版.md` - from being mistaken for the
+// range separator. `splitTarget` falls back to LINE_RANGE when no extension is present.
+const EXT_RANGE = /^(.+?)(\.[A-Za-z0-9]+):(\d+(?:-\d+)?)$/;
 
 interface SplitTarget {
 	path: string;
@@ -49,10 +72,18 @@ function splitTarget(raw: string): SplitTarget {
 		value = value.slice(0, queryIndex);
 	}
 	let range = "";
-	const rangeMatch = LINE_RANGE.exec(value);
-	if (rangeMatch) {
-		value = rangeMatch[1] ?? value;
-		range = rangeMatch[2] ?? "";
+	const extRangeMatch = EXT_RANGE.exec(value);
+	if (extRangeMatch) {
+		// Extension-anchored range wins: the colon sits right after `.<ext>`, so any colon that is
+		// part of the filename (Chinese `：` or ASCII `:`) is left in the path, never read as a range.
+		value = `${extRangeMatch[1] ?? value}${extRangeMatch[2] ?? ""}`;
+		range = `:${extRangeMatch[3] ?? ""}`;
+	} else {
+		const rangeMatch = LINE_RANGE.exec(value);
+		if (rangeMatch) {
+			value = rangeMatch[1] ?? value;
+			range = rangeMatch[2] ?? "";
+		}
 	}
 	return { path: value, range, query, fragment, enclosed };
 }
@@ -98,8 +129,15 @@ function normalizeJoin(baseDir: string, targetPath: string): string | null {
  * other destination is a relative path: `./`, `../` and bare names are folded against
  * `dirname(basePath)` and emitted as a site-absolute URL path. Multi-level `../` chains are
  * allowed as long as they stay inside the project root; escaping is rejected.
+ *
+ * With `options.wikiRoot`, a markdown-ish target that resolves inside the wiki collection is
+ * emitted as `/wiki/<page>` instead; every other target stays a project file URL (BACK-837).
  */
-export function joinMarkdownTarget(basePath: string | undefined, target: string): JoinedTarget {
+export function joinMarkdownTarget(
+	basePath: string | undefined,
+	target: string,
+	options?: MarkdownJoinOptions,
+): JoinedTarget {
 	const raw = target.trim();
 	if (!raw) return { href: target, rejected: false };
 
@@ -115,8 +153,25 @@ export function joinMarkdownTarget(basePath: string | undefined, target: string)
 	// URL scheme just because a colon precedes the digits.
 	const parts = splitTarget(raw);
 	if (!parts.path) return { href: target, rejected: false };
+	// `<...>` is CommonMark's legal form for a destination holding spaces, but the brackets are
+	// stripped before joining. An absolute site path inside them is still a URL-layer destination
+	// (e.g. `</backlog/docs/report.md:10-20>`), not a relative path to fold against the document.
+	if (parts.enclosed && parts.path.startsWith("/")) {
+		if (parts.path.startsWith("//")) return { href: "#", rejected: true };
+		return {
+			href: `${encodePath(parts.path)}${parts.range}${parts.query}${parts.fragment}`,
+			rejected: false,
+		};
+	}
 	if (EXTERNAL_SCHEME.test(parts.path)) {
-		return SAFE_SCHEME.test(parts.path) ? { href: target, rejected: false } : { href: "#", rejected: true };
+		if (SAFE_SCHEME.test(parts.path)) return { href: target, rejected: false };
+		// `v2:12.md` looks like a scheme but is a filename holding an ASCII colon. Only reject the
+		// destination when it actually behaves like an opaque URI (no local file extension).
+		if (!parts.path.includes("//") && LOCAL_FILE_EXTENSION.test(parts.path)) {
+			// Fall through to the local-path join below.
+		} else {
+			return { href: "#", rejected: true };
+		}
 	}
 
 	// Without a document path there is no base to join against. Keep the destination as written
@@ -127,6 +182,26 @@ export function joinMarkdownTarget(basePath: string | undefined, target: string)
 	const baseDir = base.includes("/") ? base.slice(0, base.lastIndexOf("/")) : "";
 	const joined = normalizeJoin(baseDir, parts.path.replace(/\\/g, "/"));
 	if (!joined) return { href: "#", rejected: true };
+
+	// Wiki pages: a relative link to a sibling wiki page must use the /wiki/ route so the page is
+	// rendered as a wiki page (with its frontmatter, wikilinks and optional :N-M section preview).
+	// A target in docs/, decisions/ or any other sibling collection stays a project file URL and
+	// goes through the shared file/Office preview. Media and other non-markdown files inside the
+	// wiki directory are files too, not pages.
+	const wikiRoot = options?.wikiRoot?.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+	const targetExt = parts.path.match(/\.([A-Za-z0-9]+)$/)?.[1]?.toLowerCase();
+	const isWikiPageTarget = targetExt === undefined || targetExt === "md" || targetExt === "markdown";
+	if (wikiRoot && isWikiPageTarget && (joined === wikiRoot || joined.startsWith(`${wikiRoot}/`))) {
+		const wikiPage = joined.slice(wikiRoot.length).replace(/^\//, "");
+		if (wikiPage) {
+			// `encodePath` decodes each segment once before re-encoding it. The composer pass that
+			// makes CommonMark-legal destinations (%20 for spaces) has already run, so a plain
+			// encodeURIComponent here would turn `Another%20Page.md` into `Another%2520Page.md`
+			// and the wiki API would look for a file whose name literally contains "%20".
+			const href = `/wiki/${encodePath(wikiPage)}${parts.range}${parts.query}${parts.fragment}`;
+			return { href, rejected: false };
+		}
+	}
 
 	const href = `/${encodePath(joined)}${parts.range}${parts.query}${parts.fragment}`;
 	return { href, rejected: false };
@@ -157,7 +232,7 @@ function isProtected(offset: number, ranges: { start: number; end: number }[]): 
  * Rewrite every local Markdown link / image destination (and raw HTML `src` / `href` attributes
  * used by `<video>`, `<audio>` and `<img>`) into a joined site-absolute URL path.
  */
-export function processMarkdownLocalPaths(source: string, basePath?: string): string {
+export function processMarkdownLocalPaths(source: string, basePath?: string, options?: MarkdownJoinOptions): string {
 	if (!basePath) return source;
 	const ranges = protectedRanges(source);
 
@@ -166,7 +241,7 @@ export function processMarkdownLocalPaths(source: string, basePath?: string): st
 		if (isProtected(offset, ranges)) return match;
 		const prefix = args[0] as string;
 		const destination = args[1] as string;
-		const { href } = joinMarkdownTarget(basePath, destination);
+		const { href } = joinMarkdownTarget(basePath, destination, options);
 		return `${prefix}(${href})`;
 	});
 
@@ -180,7 +255,7 @@ export function processMarkdownLocalPaths(source: string, basePath?: string): st
 			const opening = args[0] as string;
 			const quote = args[1] as string;
 			const destination = args[2] as string;
-			const { href } = joinMarkdownTarget(basePath, destination);
+			const { href } = joinMarkdownTarget(basePath, destination, options);
 			return `${opening}${quote}${href}${quote}`;
 		},
 	);

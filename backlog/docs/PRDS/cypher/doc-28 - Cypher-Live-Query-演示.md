@@ -3,7 +3,12 @@ id: doc-28
 title: Cypher Live Query 演示
 type: guide
 created_date: '2026-10-17 01:04'
+updated_date: '2026-11-06 01:17'
 ---
+[duckdb](<../duckdb/doc-26 - DuckDB-Explorer-演示.md>)
+
+[duckdb:10-50](<../duckdb/doc-26 - DuckDB-Explorer-演示.md:10-50>)
+
 # Cypher Live Query 演示
 
 BACK-802 ~ BACK-805 的验收样本（对应 m-15）。本文档所有 `cypher-query` 块在阅读视图里都会**实时执行**并把结果渲染出来；数据源用现成的 `demo` 演示图，不需要你准备数据。

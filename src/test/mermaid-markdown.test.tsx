@@ -406,6 +406,15 @@ describe("MermaidMarkdown", () => {
 					range: { lineStart: 5, lineEnd: 10 },
 				});
 			});
+
+			it("accepts the singular /decision/:id alias", () => {
+				expect(parseLocalUrl("/decision/7:5-10")).toEqual({
+					type: "decision",
+					id: "7",
+					alias: "Decisions#7:5-10",
+					range: { lineStart: 5, lineEnd: 10 },
+				});
+			});
 		});
 	});
 

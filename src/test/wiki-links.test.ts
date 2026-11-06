@@ -20,6 +20,17 @@ describe("resolveWikiPath", () => {
 });
 
 describe("prepareWikiMarkdown", () => {
+	it("keeps pointy-bracket destinations intact, including site-absolute ones", () => {
+		const source = [
+			"[relative](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)",
+			"[absolute](</backlog/docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)",
+		].join("\n");
+		const out = prepareWikiMarkdown(source, "concepts/auto-port.md");
+		expect(out).toContain("[relative](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)");
+		expect(out).toContain("[absolute](</backlog/docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)");
+		expect(out).not.toContain("&lt;");
+	});
+
 	it("keeps plain wikilinks unchanged in text rendering path", () => {
 		const result = prepareWikiMarkdown("See [[concepts/demo]] for details.", "index.md");
 		expect(result).toContain("<a");
