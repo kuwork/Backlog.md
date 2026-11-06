@@ -113,3 +113,30 @@ describe("BACK-835 project-relative document base (doc-34 regression)", () => {
 		expect(processMarkdownLocalPaths("[a](../../../../wiki/concepts/auto-port.md)", COLLECTION_BASE)).toBe("[a](#)");
 	});
 });
+
+describe("BACK-836 project-relative decision base", () => {
+	// The API derives this from <data-dir>/decisions + the bare decision filename.
+	const DECISION_BASE = "backlog/decisions/decision-9 - test-decision.md";
+	const COLLECTION_BASE = "decision-9 - test-decision.md";
+	const SOURCE = [
+		"[wiki](../wiki/concepts/auto-port.md)",
+		"[spec](../docs/PRDS/sqlite/doc.md:10-20)",
+		"[external](https://example.com/x)",
+		"[route](/documentation/10:55-74)",
+	].join("\n");
+
+	it("joins sibling-collection references against the decisions directory", () => {
+		expect(processMarkdownLocalPaths(SOURCE, DECISION_BASE)).toBe(
+			[
+				"[wiki](/backlog/wiki/concepts/auto-port.md)",
+				"[spec](/backlog/docs/PRDS/sqlite/doc.md:10-20)",
+				"[external](https://example.com/x)",
+				"[route](/documentation/10:55-74)",
+			].join("\n"),
+		);
+	});
+
+	it("shows why a bare filename base collapses a parent reference into a dead anchor", () => {
+		expect(processMarkdownLocalPaths("[wiki](../wiki/concepts/auto-port.md)", COLLECTION_BASE)).toBe("[wiki](#)");
+	});
+});

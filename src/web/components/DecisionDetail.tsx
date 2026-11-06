@@ -11,9 +11,10 @@ import { apiClient, isAmbiguousIdConflict } from "../lib/api";
 import { buildBacklinkIndex, findBacklinks } from "../utils/backlinks";
 import { storedUtcHoverTitle } from "../utils/date-display";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
-import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
+import { sanitizeUrlTitle } from "../utils/urlHelpers";
 import { AmbiguousIdNotice } from "./AmbiguousIdNotice";
 import { BacklinkList } from "./BacklinkList";
+import { type MarkdownLinkHandlers, MarkdownPreviewModal, useMarkdownLinkPreview } from "./MarkdownLinkPreview";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
 import { SuccessToast } from "./SuccessToast";
@@ -71,23 +72,14 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	value,
 	onChange,
 	isEditing,
-	onTaskClick,
-	onDraftClick,
-	onDocClick,
-	onDecisionClick,
-	onWikiClick,
+	linkHandlers,
 	containerRef,
 	filePath,
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
 	isEditing: boolean;
-	isReadonly?: boolean;
-	onTaskClick?: (taskId: string) => void;
-	onDraftClick?: (draftId: string) => void;
-	onDocClick?: (docId: string) => void;
-	onDecisionClick?: (decisionId: string) => void;
-	onWikiClick?: (wikiPath: string) => void;
+	linkHandlers: MarkdownLinkHandlers;
 	containerRef?: Ref<HTMLDivElement | null>;
 	/** Project-relative path of the file being rendered, so query blocks can save an edit (BACK-833). */
 	filePath?: string;
@@ -102,16 +94,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 				className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 				data-color-mode={theme}
 			>
-				<MermaidMarkdown
-					source={value}
-					filePath={filePath}
-					onTaskClick={onTaskClick}
-					onDraftClick={onDraftClick}
-					onDocClick={onDocClick}
-					onDecisionClick={onDecisionClick}
-					onWikiClick={onWikiClick}
-					wikilinkBasePath="index.md"
-				/>
+				<MermaidMarkdown source={value} filePath={filePath} {...linkHandlers} wikilinkBasePath="index.md" />
 			</div>
 		);
 	}
@@ -179,6 +162,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 
 	const [isNewDecision, setIsNewDecision] = useState(false);
 	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+	const { linkHandlers, previewTarget, closePreview } = useMarkdownLinkPreview();
 	const handledRouteIdRef = useRef<string | undefined>(undefined);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	// Publishes the rendered headings to the header outline; empty while editing.
@@ -552,7 +536,7 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 										sources={referencedBy}
 										label={t.decisions.referencedBy}
 										countLabel={t.decisions.referenceCount}
-										onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
+										onTaskClick={linkHandlers.onTaskClick}
 									/>
 								</div>
 							</div>
@@ -622,19 +606,17 @@ export default function DecisionDetail({ decisions, onRefreshData }: DecisionDet
 					<div className="flex-1 p-8 flex flex-col min-h-0">
 						<MarkdownEditor
 							value={content}
-							filePath={decision?.path}
+							filePath={decision?.projectPath ?? decision?.path}
 							onChange={(val) => setContent(val || "")}
 							isEditing={isEditing}
 							containerRef={contentRef}
-							onTaskClick={(taskId) => navigate(`/task/${taskId}`, { state: { backgroundLocation: location } })}
-							onDraftClick={(draftId) => navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } })}
-							onDocClick={(docId) => navigate(`/documentation/${docId}`)}
-							onDecisionClick={(decisionId) => navigate(`/decisions/${decisionId}`)}
-							onWikiClick={(wikiPath) => navigate(`/wiki/${encodeWikiPath(wikiPath)}`)}
+							linkHandlers={linkHandlers}
 						/>
 					</div>
 				</div>
 			</div>
+
+			<MarkdownPreviewModal target={previewTarget} onClose={closePreview} />
 
 			{/* Save Success Toast */}
 			{showSaveSuccess && (

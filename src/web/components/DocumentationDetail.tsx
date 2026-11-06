@@ -10,43 +10,27 @@ import { useI18n } from "../hooks/useI18n";
 import { apiClient, isAmbiguousIdConflict } from "../lib/api";
 import { buildBacklinkIndex, findBacklinks } from "../utils/backlinks";
 import { storedUtcHoverTitle } from "../utils/date-display";
-import { encodeWikiPath, sanitizeUrlTitle } from "../utils/urlHelpers";
+import { sanitizeUrlTitle } from "../utils/urlHelpers";
 import { AmbiguousIdNotice } from "./AmbiguousIdNotice";
 import { BacklinkList } from "./BacklinkList";
-import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
-import DocPreviewModal from "./DocPreviewModal";
-import FilePreviewModal from "./FilePreviewModal";
+import { type MarkdownLinkHandlers, MarkdownPreviewModal, useMarkdownLinkPreview } from "./MarkdownLinkPreview";
 import MermaidMarkdown from "./MermaidMarkdown";
 import { PasteAwareMDEditor } from "./PasteAwareMDEditor";
-import PdfPreviewModal from "./PdfPreviewModal";
-import PptxPreviewModal from "./PptxPreviewModal";
 import { SuccessToast } from "./SuccessToast";
-import XlsxPreviewModal from "./XlsxPreviewModal";
 
 // Custom MDEditor wrapper for proper height handling
 const MarkdownEditor = memo(function MarkdownEditor({
 	value,
 	onChange,
 	isEditing,
-	onFileClick,
-	onTaskClick,
-	onDraftClick,
-	onDocClick,
-	onDecisionClick,
-	onWikiClick,
+	linkHandlers,
 	containerRef,
 	filePath,
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
 	isEditing: boolean;
-	isReadonly?: boolean;
-	onFileClick?: (path: string) => void;
-	onTaskClick?: (taskId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-	onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-	onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-	onDecisionClick?: (decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
-	onWikiClick?: (wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => void;
+	linkHandlers: MarkdownLinkHandlers;
 	containerRef?: Ref<HTMLDivElement | null>;
 	/** Project-relative path of the file being rendered, so query blocks can save an edit (BACK-833). */
 	filePath?: string;
@@ -61,17 +45,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 				className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 				data-color-mode={theme}
 			>
-				<MermaidMarkdown
-					source={value}
-					filePath={filePath}
-					onFileClick={onFileClick}
-					onTaskClick={onTaskClick}
-					onDraftClick={onDraftClick}
-					onDocClick={onDocClick}
-					onDecisionClick={onDecisionClick}
-					onWikiClick={onWikiClick}
-					wikilinkBasePath="index.md"
-				/>
+				<MermaidMarkdown source={value} filePath={filePath} {...linkHandlers} wikilinkBasePath="index.md" />
 			</div>
 		);
 	}
@@ -138,16 +112,7 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 	const [saveError, setSaveError] = useState<Error | null>(null);
 	const [isNewDocument, setIsNewDocument] = useState(false);
 	const [showSaveSuccess, setShowSaveSuccess] = useState(false);
-	type PreviewTarget =
-		| { kind: "file"; path: string }
-		| {
-				kind: "entity";
-				type: "task" | "draft" | "doc" | "decision" | "wiki";
-				id: string;
-				lineStart?: number;
-				lineEnd?: number;
-		  };
-	const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+	const { linkHandlers, previewTarget, closePreview } = useMarkdownLinkPreview();
 	const handledRouteIdRef = useRef<string | undefined>(undefined);
 	// Fingerprint of the body currently on screen, together with the route it belongs to.
 	// It is what tells a real external edit apart from an unrelated refresh.
@@ -211,6 +176,9 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 	// Normalize bare /documentation/:id to slugged /documentation/:id/:title
 	useEffect(() => {
 		if (!id || id === "new" || isLoading || !document) return;
+		// A link to another document changes the route before its content loads; the previous
+		// document is still in state here, and its title would stamp a wrong slug on the new id.
+		if (document.id !== addDocPrefix(id)) return;
 		const expectedSlug = sanitizeUrlTitle(docTitle);
 		if (title !== expectedSlug) {
 			// Keep the anchor: a bare id link with an in-document hash must still land on its heading.
@@ -303,87 +271,6 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 		if (!incoming || incoming === rendered.hash) return;
 		loadDocContent({ silent: true });
 	}, [id, docs, isEditing, isLoading, loadDocContent]);
-
-	const handleTaskClick = useCallback(
-		(taskId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-			if (range?.lineStart !== undefined) {
-				setPreviewTarget({
-					kind: "entity",
-					type: "task",
-					id: taskId,
-					lineStart: range.lineStart,
-					lineEnd: range.lineEnd,
-				});
-				return;
-			}
-			navigate(`/task/${taskId}`, { state: { backgroundLocation: location } });
-		},
-		[navigate, location],
-	);
-	const handleDraftClick = useCallback(
-		(draftId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-			if (range?.lineStart !== undefined) {
-				setPreviewTarget({
-					kind: "entity",
-					type: "draft",
-					id: draftId,
-					lineStart: range.lineStart,
-					lineEnd: range.lineEnd,
-				});
-				return;
-			}
-			navigate(`/draft/${draftId}`, { state: { backgroundLocation: location } });
-		},
-		[navigate, location],
-	);
-	const handleDocClick = useCallback(
-		(docId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-			if (range?.lineStart !== undefined) {
-				setPreviewTarget({
-					kind: "entity",
-					type: "doc",
-					id: docId,
-					lineStart: range.lineStart,
-					lineEnd: range.lineEnd,
-				});
-				return;
-			}
-			navigate(`/documentation/${docId}`);
-		},
-		[navigate],
-	);
-	const handleDecisionClick = useCallback(
-		(decisionId: string, range?: { lineStart?: number; lineEnd?: number }) => {
-			if (range?.lineStart !== undefined) {
-				setPreviewTarget({
-					kind: "entity",
-					type: "decision",
-					id: decisionId,
-					lineStart: range.lineStart,
-					lineEnd: range.lineEnd,
-				});
-				return;
-			}
-			navigate(`/decisions/${decisionId}`);
-		},
-		[navigate],
-	);
-	const handleWikiClick = useCallback(
-		(wikiPath: string, range?: { lineStart?: number; lineEnd?: number }) => {
-			if (range?.lineStart !== undefined) {
-				setPreviewTarget({
-					kind: "entity",
-					type: "wiki",
-					id: wikiPath,
-					lineStart: range.lineStart,
-					lineEnd: range.lineEnd,
-				});
-				return;
-			}
-			navigate(`/wiki/${encodeWikiPath(wikiPath)}`);
-		},
-		[navigate],
-	);
 
 	const extractTempImageUrls = (text: string): string[] => {
 		const matches = text.match(/\/assets\/\.temp\/[^)\s\\"']+/g);
@@ -676,7 +563,7 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 										sources={referencedBy}
 										label={t.documents.referencedBy}
 										countLabel={t.documents.referenceCount}
-										onTaskClick={handleTaskClick}
+										onTaskClick={linkHandlers.onTaskClick}
 									/>
 								</div>
 							</div>
@@ -751,12 +638,7 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 							onChange={(val) => setContent(val || "")}
 							isEditing={isEditing}
 							containerRef={contentRef}
-							onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
-							onTaskClick={handleTaskClick}
-							onDraftClick={handleDraftClick}
-							onDocClick={handleDocClick}
-							onDecisionClick={handleDecisionClick}
-							onWikiClick={handleWikiClick}
+							linkHandlers={linkHandlers}
 						/>
 					</div>
 				</div>
@@ -813,29 +695,7 @@ export default function DocumentationDetail({ docs, onRefreshData }: Documentati
 					}
 				/>
 			)}
-			{previewTarget?.kind === "file" &&
-				(isBinaryOfficeFile(previewTarget.path) ? (
-					kindFromName(previewTarget.path) === "docx" ? (
-						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					) : kindFromName(previewTarget.path) === "pptx" ? (
-						<PptxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					) : kindFromName(previewTarget.path) === "xlsx" ? (
-						<XlsxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					) : (
-						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					)
-				) : (
-					<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />
-				))}
-			{previewTarget?.kind === "entity" && (
-				<FilePreviewModal
-					path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}
-					onClose={() => setPreviewTarget(null)}
-					loader={() =>
-						apiClient.fetchPreview(previewTarget.type, previewTarget.id, previewTarget.lineStart, previewTarget.lineEnd)
-					}
-				/>
-			)}
+			<MarkdownPreviewModal target={previewTarget} onClose={closePreview} />
 		</ErrorBoundary>
 	);
 }

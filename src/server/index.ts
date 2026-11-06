@@ -2635,6 +2635,8 @@ export class BacklogServer {
 				decision: decision.decision,
 				consequences: decision.consequences,
 				alternatives: decision.alternatives,
+				path: decision.path,
+				projectPath: this.collectionProjectPath(this.core.filesystem.decisionsDir, decision.path),
 			}));
 			return Response.json(decisionFiles);
 		} catch (error) {
@@ -2651,7 +2653,10 @@ export class BacklogServer {
 				return Response.json({ error: "Decision not found" }, { status: 404 });
 			}
 
-			return Response.json(decision);
+			return Response.json({
+				...decision,
+				projectPath: this.collectionProjectPath(this.core.filesystem.decisionsDir, decision.path),
+			});
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {
 				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });

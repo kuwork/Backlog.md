@@ -42,6 +42,11 @@ describe("BACK-835 reference resolution", () => {
 		await mkdir(join(TEST_DIR, ".git"), { recursive: true });
 
 		await mkdir(join(backlogDir, "docs", "PRDS", "cypher", "test"), { recursive: true });
+		await mkdir(join(backlogDir, "decisions"), { recursive: true });
+		await writeFile(
+			join(backlogDir, "decisions", "decision-9 - test-decision.md"),
+			"---\nid: decision-9\ntitle: Test decision\ndate: '2026-11-06'\nstatus: proposed\n---\n## Context\n\n[wiki](../wiki/concepts/auto-port.md)\n\n## Decision\n\nUse project-relative paths.\n\n## Consequences\n\nSibling collections resolve.\n",
+		);
 		await writeFile(join(backlogDir, "docs", "PRDS", "sqlite", "fig.png"), "PNG");
 		await writeFile(join(backlogDir, "docs", "PRDS", "sqlite", "doc.md"), "line1\nline2\nline3");
 		await writeFile(
@@ -180,6 +185,29 @@ describe("BACK-835 reference resolution", () => {
 		expect(entry?.projectPath).toBe(projectPath);
 
 		const single = (await (await fetch(url("/api/doc/doc-34"))).json()) as { projectPath?: string };
+		expect(single.projectPath).toBe(projectPath);
+	});
+
+	it("exposes a project-relative path for the render-time join on both decision endpoints", async () => {
+		expect(projectPathForCollection(".backlog/decisions", "decision-9 - test-decision.md")).toBe(
+			".backlog/decisions/decision-9 - test-decision.md",
+		);
+
+		const projectPath = "backlog/decisions/decision-9 - test-decision.md";
+		const list = (await (await fetch(url("/api/decisions"))).json()) as {
+			id: string;
+			path?: string;
+			projectPath?: string;
+		}[];
+		const entry = list.find((decision) => decision.id === "decision-9");
+		expect(entry?.path).toBe("decision-9 - test-decision.md");
+		expect(entry?.projectPath).toBe(projectPath);
+
+		const single = (await (await fetch(url("/api/decisions/decision-9"))).json()) as {
+			path?: string;
+			projectPath?: string;
+		};
+		expect(single.path).toBe("decision-9 - test-decision.md");
 		expect(single.projectPath).toBe(projectPath);
 	});
 });

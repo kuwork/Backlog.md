@@ -114,6 +114,23 @@ describe("registerMarkdownLinkHighlight", () => {
 		expect(flatText(links[1]?.children)).toBe("[duckdb:10-50](<../../duckdb/doc-26 - DuckDB-Explorer-演示.md:10-50>)");
 	});
 
+	it("colours empty-label links, which the built-in grammar skips entirely", () => {
+		registerMarkdownLinkHighlight();
+		const source = ["[](doc.md)", "![](img.png)", "[](doc with space.md)"].join("\n");
+		const children = allRefractor.highlight(source, "markdown").children as unknown as HighlightNode[];
+		const links = children.filter((node) => classesOf(node).includes("mdlink"));
+		expect(links).toHaveLength(3);
+		expect(flatText(links[0]?.children)).toBe("[](doc.md)");
+		expect(flatText(links[1]?.children)).toBe("![](img.png)");
+		expect(flatText(links[2]?.children)).toBe("[](doc with space.md)");
+	});
+
+	it("leaves a whitespace-only label to the built-in grammar", () => {
+		registerMarkdownLinkHighlight();
+		const children = allRefractor.highlight("[ ](doc.md)", "markdown").children as unknown as HighlightNode[];
+		expect(children.some((node) => classesOf(node).includes("mdlink"))).toBe(false);
+	});
+
 	it("leaves a space-free link to the built-in markdown grammar", () => {
 		registerMarkdownLinkHighlight();
 		const children = allRefractor.highlight("[plain](doc-20.md:10-20)", "markdown")

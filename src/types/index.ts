@@ -209,7 +209,9 @@ export interface Decision {
 	consequences: string;
 	alternatives?: string;
 	readonly rawContent: string; // Raw markdown content without frontmatter
-	path?: string; // Backlog-relative markdown path, injected when read from disk
+	path?: string; // Filename relative to the decisions directory, injected when read from disk
+	/** Project-relative counterpart of `path` derived by the API for the renderer (BACK-836). */
+	projectPath?: string;
 }
 
 export interface Milestone {

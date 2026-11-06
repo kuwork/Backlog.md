@@ -5,8 +5,11 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-11-04 18:42'
-updated_date: '2026-11-06 09:52'
-labels: []
+updated_date: '2026-11-06 15:42'
+labels:
+  - web-ui
+  - markdown
+milestone: m-19
 dependencies: []
 references:
   - 'src/web/components/MermaidMarkdown.tsx:222-276'
