@@ -113,6 +113,23 @@ type TaskUpdatePayload = Partial<Task> & {
  */
 export const CHECKLIST_SAVE_DEBOUNCE_MS = 1000;
 
+/**
+ * Trailing debounce for inline metadata edits. Each field owns its timer, but every field dirty
+ * in the same quiet window rides one PUT: a burst of chip edits must not fire overlapping writes
+ * into the fail-fast per-task lock. Kept equal to the checklist window so both save paths agree.
+ */
+export const INLINE_META_SAVE_DEBOUNCE_MS = CHECKLIST_SAVE_DEBOUNCE_MS;
+
+const INLINE_META_DEBOUNCED_FIELDS = [
+	"references",
+	"documentation",
+	"modifiedFiles",
+	"labels",
+	"dependencies",
+] as const;
+type InlineMetaDebouncedField = (typeof INLINE_META_DEBOUNCED_FIELDS)[number];
+type InlineMetaSaveStatus = "idle" | "saving" | "saved" | "failed";
+
 type InlineMetaUpdatePayload = Omit<Partial<Task>, "milestone"> & {
 	milestone?: string | null;
 };
@@ -324,6 +341,15 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	const checklistSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const pendingCriteriaSaveRef = useRef<AcceptanceCriterion[] | null>(null);
 	const pendingDodTogglesRef = useRef<Map<number, boolean>>(new Map());
+	// Pending batched inline-metadata save: one timer per field, one payload for every field dirty
+	// in the same quiet window. The promise chain serialises flushes so a second PUT never races
+	// the first one into the fail-fast task lock.
+	const [inlineMetaSaveStatus, setInlineMetaSaveStatus] = useState<InlineMetaSaveStatus>("idle");
+	const inlineMetaTimersRef = useRef<Map<InlineMetaDebouncedField, ReturnType<typeof setTimeout>>>(new Map());
+	const pendingInlineMetaRef = useRef<Partial<InlineMetaUpdatePayload>>({});
+	const pendingInlineMetaPreviousRef = useRef<Record<string, unknown>>({});
+	const inlineMetaFlushChainRef = useRef<Promise<void>>(Promise.resolve());
+	const latestInlineMetaFlushRef = useRef<() => void>(() => {});
 	const resolveMilestoneToId = useCallback(
 		(value?: string | null): string => {
 			const normalized = (value ?? "").trim();
@@ -1394,6 +1420,99 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		scheduleChecklistSave();
 	};
 
+	/** Put the pre-edit values back after a rejected write, shared by both inline save paths. */
+	const restoreInlineMetaValues = useCallback((previous: Record<string, unknown>) => {
+		if (previous.status !== undefined) setStatus(String(previous.status));
+		if (previous.assignee !== undefined) setAssignee(previous.assignee as string[]);
+		if (previous.labels !== undefined) setLabels(previous.labels as string[]);
+		if (previous.priority !== undefined) setPriority(String(previous.priority));
+		if (previous.dependencies !== undefined) setDependencies(previous.dependencies as string[]);
+		if (previous.references !== undefined) setReferences(previous.references as string[]);
+		if (previous.documentation !== undefined) setDocumentation(previous.documentation as string[]);
+		if (previous.modifiedFiles !== undefined) setModifiedFiles(previous.modifiedFiles as string[]);
+		if (previous.milestone !== undefined) setMilestone((previous.milestone ?? "") as string);
+	}, []);
+
+	/**
+	 * Sends every pending metadata field in one PUT. The payload is read when the chain reaches
+	 * this flush, not when it was scheduled, so edits made while an earlier flush is in flight
+	 * join the next one instead of being lost.
+	 */
+	const runInlineMetaFlush = useCallback(async () => {
+		if (!task) return;
+		const updates = pendingInlineMetaRef.current;
+		const previous = pendingInlineMetaPreviousRef.current;
+		pendingInlineMetaRef.current = {};
+		pendingInlineMetaPreviousRef.current = {};
+		if (Object.keys(updates).length === 0) return;
+		setInlineMetaSaveStatus("saving");
+		try {
+			await apiClient.updateTask(task.id, updates);
+			setInlineMetaSaveStatus("saved");
+			if (onSaved) await onSaved();
+		} catch (err) {
+			restoreInlineMetaValues(previous);
+			setInlineMetaSaveStatus("failed");
+			const message = localizeDependencySaveError(err, t);
+			if (updates.dependencies !== undefined) setDependencySaveError(message);
+			else setError(message);
+		} finally {
+			setClosureRefreshTick((tick) => tick + 1);
+		}
+	}, [task, onSaved, restoreInlineMetaValues, t]);
+
+	const flushInlineMetaSave = useCallback(() => {
+		inlineMetaFlushChainRef.current = inlineMetaFlushChainRef.current.catch(() => {}).then(() => runInlineMetaFlush());
+		return inlineMetaFlushChainRef.current;
+	}, [runInlineMetaFlush]);
+
+	const scheduleInlineMetaSave = useCallback(
+		(updates: InlineMetaUpdatePayload, previous: Record<string, unknown>) => {
+			Object.assign(pendingInlineMetaRef.current, updates);
+			for (const key of Object.keys(updates)) {
+				// Keep the value from before the burst, not an intermediate optimistic one: a later
+				// edit in the same window must not become the rollback target.
+				if (!(key in pendingInlineMetaPreviousRef.current)) {
+					pendingInlineMetaPreviousRef.current[key] = previous[key];
+				}
+			}
+			const timers = inlineMetaTimersRef.current;
+			for (const field of INLINE_META_DEBOUNCED_FIELDS) {
+				if (!(field in updates)) continue;
+				const existing = timers.get(field);
+				if (existing) clearTimeout(existing);
+				timers.set(
+					field,
+					setTimeout(() => {
+						timers.delete(field);
+						void flushInlineMetaSave();
+					}, INLINE_META_SAVE_DEBOUNCE_MS),
+				);
+			}
+		},
+		[flushInlineMetaSave],
+	);
+
+	// Closing the modal inside the quiet window must not drop pending edits. The ref indirection
+	// keeps the cleanup effect from re-running (and flushing early) when the closure changes.
+	useEffect(() => {
+		latestInlineMetaFlushRef.current = () => {
+			for (const timer of inlineMetaTimersRef.current.values()) clearTimeout(timer);
+			inlineMetaTimersRef.current.clear();
+			void flushInlineMetaSave();
+		};
+	}, [flushInlineMetaSave]);
+	useEffect(() => {
+		return () => {
+			if (Object.keys(pendingInlineMetaRef.current).length > 0) latestInlineMetaFlushRef.current();
+		};
+	}, []);
+	useEffect(() => {
+		if (inlineMetaSaveStatus !== "saved") return undefined;
+		const id = setTimeout(() => setInlineMetaSaveStatus("idle"), 2500);
+		return () => clearTimeout(id);
+	}, [inlineMetaSaveStatus]);
+
 	const handleInlineMetaUpdate = async (updates: InlineMetaUpdatePayload) => {
 		if (demoting) return;
 		// Don't allow updates for off-board records
@@ -1443,6 +1562,18 @@ export const TaskDetailsModal: React.FC<Props> = ({
 			setMilestone((updates.milestone ?? "") as string);
 		}
 
+		// The list-shaped metadata fields are edited in bursts (chip add/remove), so their writes
+		// are batched. Everything else keeps its immediate, single-change semantics.
+		const updateKeys = Object.keys(updates);
+		if (
+			task &&
+			updateKeys.length > 0 &&
+			updateKeys.every((key) => (INLINE_META_DEBOUNCED_FIELDS as readonly string[]).includes(key))
+		) {
+			scheduleInlineMetaSave(updates, previous);
+			return;
+		}
+
 		// Only update server if editing existing task
 		if (task) {
 			try {
@@ -1451,15 +1582,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 			} catch (err) {
 				// Put the pre-edit values back: the file does not hold the optimistic ones, and the
 				// dirty-preserve refresh would otherwise keep the rejected value on screen forever.
-				if (previous.status !== undefined) setStatus(String(previous.status));
-				if (previous.assignee !== undefined) setAssignee(previous.assignee as string[]);
-				if (previous.labels !== undefined) setLabels(previous.labels as string[]);
-				if (previous.priority !== undefined) setPriority(String(previous.priority));
-				if (previous.dependencies !== undefined) setDependencies(previous.dependencies as string[]);
-				if (previous.references !== undefined) setReferences(previous.references as string[]);
-				if (previous.documentation !== undefined) setDocumentation(previous.documentation as string[]);
-				if (previous.modifiedFiles !== undefined) setModifiedFiles(previous.modifiedFiles as string[]);
-				if (previous.milestone !== undefined) setMilestone((previous.milestone ?? "") as string);
+				restoreInlineMetaValues(previous);
 				const message = localizeDependencySaveError(err, t);
 				// A dependency rejection surfaces next to the input the user was typing in; everything
 				// else keeps using the banner at the top of the popup.
@@ -1697,6 +1820,49 @@ export const TaskDetailsModal: React.FC<Props> = ({
 				}
 				actions={
 					<div className="flex flex-wrap items-center justify-end gap-2">
+						{inlineMetaSaveStatus !== "idle" && (
+							<span
+								role="status"
+								aria-live="polite"
+								data-testid="inline-meta-save-status"
+								className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 ${
+									inlineMetaSaveStatus === "saving"
+										? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+										: inlineMetaSaveStatus === "saved"
+											? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+											: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+								}`}
+							>
+								{inlineMetaSaveStatus === "saving" ? (
+									<svg aria-hidden="true" className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+										<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={3} />
+										<path
+											className="opacity-90"
+											d="M12 2a10 10 0 0 1 10 10"
+											stroke="currentColor"
+											strokeWidth={3}
+											strokeLinecap="round"
+										/>
+									</svg>
+								) : (
+									<svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d={inlineMetaSaveStatus === "saved" ? "M5 13l4 4L19 7" : "M6 18L18 6M6 6l12 12"}
+										/>
+									</svg>
+								)}
+								<span data-testid="inline-meta-save-status-label">
+									{inlineMetaSaveStatus === "saving"
+										? t.common.saving
+										: inlineMetaSaveStatus === "saved"
+											? t.common.saved
+											: t.common.failedToSave}
+								</span>
+							</span>
+						)}
 						{isDoneStatus && mode === "preview" && !isCreateMode && !isReadOnly && (
 							<button
 								type="button"

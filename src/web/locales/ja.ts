@@ -45,6 +45,7 @@ export const ja: TranslationDict = {
 	common: {
 		loading: "読み込み中...",
 		saving: "保存中…",
+		saved: "保存しました",
 		error: "エラー",
 		failedToLoad: "読み込みに失敗しました",
 		failedToSave: "保存に失敗しました",

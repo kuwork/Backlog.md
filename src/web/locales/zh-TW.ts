@@ -45,6 +45,7 @@ export const zhTW: TranslationDict = {
 	common: {
 		loading: "載入中...",
 		saving: "保存中…",
+		saved: "已儲存",
 		error: "錯誤",
 		failedToLoad: "載入失敗",
 		failedToSave: "保存失敗",

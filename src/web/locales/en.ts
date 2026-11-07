@@ -44,6 +44,7 @@ export const en = {
 	common: {
 		loading: "Loading...",
 		saving: "Saving…",
+		saved: "Saved",
 		error: "Error",
 		failedToLoad: "Failed to load",
 		failedToSave: "Failed to save",

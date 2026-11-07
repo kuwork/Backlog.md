@@ -41,11 +41,11 @@ const setupDom = () => {
 	}
 };
 
-const waitFor = async (predicate: () => boolean) => {
-	for (let attempt = 0; attempt < 10; attempt += 1) {
+const waitFor = async (predicate: () => boolean, attempts = 10, delayMs = 0) => {
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
 		if (predicate()) return;
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
 		});
 	}
 };
@@ -300,7 +300,8 @@ describe("Web task popup dependency closure display", () => {
 
 			// Rejected: the chip comes back, the server's reason is shown next to the input, and the
 			// settled write still triggers the closure refetch so the display matches the file.
-			await waitFor(() => closureCalls === 2);
+			// Dependency edits are batched, so the rejected write lands after the quiet window.
+			await waitFor(() => closureCalls === 2, 30, 50);
 			expect(container.textContent).toContain("BACK-2 - Middle");
 			expect(container.textContent).toContain("Dependency cycle detected: BACK-1 → BACK-2 → BACK-1");
 			expect(closureCalls).toBe(2);
@@ -335,7 +336,8 @@ describe("Web task popup dependency closure display", () => {
 				removeButton?.click();
 			});
 
-			await waitFor(() => container.textContent?.includes("该依赖会形成循环") === true);
+			// Batched dependency save: allow the quiet window before asserting the localized reason.
+			await waitFor(() => container.textContent?.includes("该依赖会形成循环") === true, 30, 50);
 			expect(container.textContent).toContain("该依赖会形成循环：BACK-1 → BACK-2 → BACK-1");
 			expect(container.textContent).not.toContain("would close a cycle");
 		} finally {
