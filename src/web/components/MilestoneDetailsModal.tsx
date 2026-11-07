@@ -14,7 +14,7 @@ import { isTypingTarget } from "../utils/keyboard";
 import { formatMilestoneId, isDoneStatus, milestoneKey } from "../utils/milestones";
 import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
-import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
+import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName, parseOfficeLink } from "./binaryOfficeFile";
 import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import type { NodeStyle } from "./GraphLegend";
@@ -1220,19 +1220,40 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 			{/* In-app preview for a documentation entry (parity with the task popup) */}
 			{isOpen &&
 				previewPath &&
-				(isBinaryOfficeFile(previewPath) ? (
-					kindFromName(previewPath) === "docx" ? (
-						<DocPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
-					) : kindFromName(previewPath) === "pptx" ? (
-						<PptxPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
-					) : kindFromName(previewPath) === "xlsx" ? (
-						<XlsxPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
+				(() => {
+					// Split any `:range` suffix off the path so the byte URL is correct and the range
+					// is handed to the Office modal (BACK-838).
+					const { filePath, range } = parseOfficeLink(previewPath);
+					return isBinaryOfficeFile(filePath) ? (
+						kindFromName(filePath) === "docx" ? (
+							<DocPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewPath(null)}
+							/>
+						) : kindFromName(filePath) === "pptx" ? (
+							<PptxPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewPath(null)}
+							/>
+						) : kindFromName(filePath) === "xlsx" ? (
+							<XlsxPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewPath(null)}
+							/>
+						) : (
+							<PdfPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewPath(null)}
+							/>
+						)
 					) : (
-						<PdfPreviewModal {...binaryOfficeFileProps(previewPath)} onClose={() => setPreviewPath(null)} />
-					)
-				) : (
-					<FilePreviewModal path={previewPath} onClose={() => setPreviewPath(null)} />
-				))}
+						<FilePreviewModal path={filePath} onClose={() => setPreviewPath(null)} />
+					);
+				})()}
 		</>
 	);
 };

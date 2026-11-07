@@ -97,7 +97,7 @@ This avoids shell escaping issues while still keeping the document's frontmatter
 
 ### Links in Documents
 
-Documents can contain two kinds of links: in-document heading links (table of contents) and links to other backlog items (tasks, docs, decisions, drafts, wiki pages).
+Documents can contain in-document heading links (table of contents), links to other backlog items (tasks, docs, decisions, drafts, wiki pages), and links to project files — code files with line ranges, and Office documents with page or sheet ranges (see [Office file links](#office-file-links-page-and-sheet-ranges)).
 
 #### In-document heading links
 
@@ -212,6 +212,38 @@ Wiki pages use the same renderer and click contract as document and decision pag
 - **Sibling wiki pages** — `[Asset management](asset-management.md:10-29)` and `[[concepts/asset-management:10-29]]` become `/wiki/...` links and open the `WikiLinkPreview` popup. A `:LINE` / `:START-END` suffix loads only those lines (a local/partial load, not a highlighted full page); without a range the whole page is shown. A bare sibling name in a wikilink is project-root-relative, so give the sub-path for a page in a subfolder.
 - **Files in other collections** — `[Memos](<../../docs/memos/doc-20 - 快速笔记：Memos-集成.md:10-20>)` and `../../decisions/...` stay project file links and open the shared file/Office preview, exactly as on a document page. Only Markdown-ish targets inside the wiki collection become wiki pages; images and other assets are files.
 - **Entity short links** — `/documentation/:id`, `/decisions/:id` (also `/decision/:id`), `/wiki/:path`, `/task/:id` and `/draft/:id` are supported. Without a `:N-M` range they navigate to the entity; with a range they open the shared section preview loaded with only those lines. Escapes outside the project root and sensitive paths stay rejected.
+
+#### Office file links: page and sheet ranges
+
+A link whose destination is a Word, PowerPoint, PDF or Excel file opens the matching Office viewer. Append a `:range` suffix after the file extension to open only part of the document, and prefix the Markdown with `!` to embed the viewer in the page instead of opening a popup.
+
+| Destination | Suffix | Result |
+|-------------|--------|--------|
+| `report.docx`, `deck.pptx`, `manual.pdf` | `:P1`, `:P1-P4` | Popup scoped to those pages/slides; `P` is case-insensitive and the second one may be omitted (`:P3-7`) |
+| `book.xlsx`, `book.xlsm` | `:p1`, `:p1-p4` | Popup activating the first of the 1-based sheet indices |
+| `book.xlsx` | `:官方基准矩阵` (sheet name) | Popup activating that worksheet; the other tabs stay reachable |
+
+Without a suffix the whole file opens. The suffix never becomes part of the file path or the byte URL, and the popup title is the clean file name — the range appears once as a header badge.
+
+```markdown
+- [报告 第 1-4 页](/quickstart/report.docx:P1-P4) opens pages 1-4 in a popup.
+- [演示文稿 第 2-5 张](/quickstart/deck.pptx:P2-P5) opens only those slides.
+- ![手册 第 2-3 页](/quickstart/manual.pdf:P2-P3) embeds those pages inline.
+- [工作簿 Q1 Sales](/quickstart/book.xlsx:Q1%20Sales) activates that sheet.
+- [工作簿 第 1 张表](/quickstart/book.xlsx:p1) activates sheet 1.
+```
+
+Rules:
+
+- The `P` prefix is mandatory on docx, pptx and pdf. A bare `:1-4` keeps its plain-text line meaning and is **not** a page range, so `report.docx:3-7` simply opens the whole document instead of failing.
+- Workbooks use `pN` for a 1-based sheet index; any other token is a sheet name. `:1-2` therefore looks for a worksheet literally named `1-2` and silently stays on the default sheet when it is missing.
+- A Markdown image whose destination is an Office file embeds the viewer inline with a caption (clean file name plus the range badge). Every other image keeps the image lightbox.
+- A sheet name with spaces needs the angle-bracket form or a percent-escaped space: `[Q1 Sales](</book.xlsx:Q1 Sales>)` and `/book.xlsx:Q1%20Sales` are equivalent.
+- Use a site-root path (`/quickstart/report.docx:P1-P4`) or a project-relative one; the render-time join pass keeps the suffix intact on either.
+- Ranges that overshoot the document are clamped: `:P9-P12` on a 3-page PDF shows the last page and the badge reads `Page 3`, with no error or blank canvas.
+- docx scrolls to the first requested page, pptx and pdf render only the requested window (thumbnail strip and play counter included), and xlsx activates the first requested sheet while the remaining tabs stay reachable.
+- The same syntax works in task details, milestone details, decisions, wiki pages, and inside a nested file preview.
+
 
 ### Searching Documents
 

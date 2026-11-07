@@ -327,3 +327,56 @@ describe("BACK-836 project-relative decision base", () => {
 		expect(processMarkdownLocalPaths("[wiki](../wiki/concepts/auto-port.md)", COLLECTION_BASE)).toBe("[wiki](#)");
 	});
 });
+
+describe("BACK-838 office page and sheet ranges", () => {
+	const BASE = "backlog/docs/PRDS/relative-link/doc-40 - Office-Link-Check.md";
+
+	it("keeps a P-prefixed page range out of the file path", () => {
+		expect(joinMarkdownTarget(BASE, "../../../assets/report.docx:P1-P4")).toEqual({
+			href: "/backlog/assets/report.docx:P1-P4",
+			rejected: false,
+		});
+	});
+
+	it("keeps a deck range and a single pdf page on the joined path", () => {
+		expect(joinMarkdownTarget(BASE, "deck.pptx:P2-P5").href).toBe("/backlog/docs/PRDS/relative-link/deck.pptx:P2-P5");
+		expect(joinMarkdownTarget(BASE, "../../../assets/deck.pptx:p2-p5").href).toBe("/backlog/assets/deck.pptx:p2-p5");
+		expect(joinMarkdownTarget(BASE, "../../../assets/spec.pdf:P3").href).toBe("/backlog/assets/spec.pdf:P3");
+	});
+
+	it("leaves a bare numeric suffix on a document as a line range, not a page range", () => {
+		// `:2-5` on a text file means lines 2-5, so a document must not claim it for pages. The
+		// destination survives untouched and the preview then opens the whole file.
+		expect(joinMarkdownTarget(BASE, "deck.pptx:2-5").href).toBe("/backlog/docs/PRDS/relative-link/deck.pptx:2-5");
+		expect(joinMarkdownTarget(BASE, "../../../assets/report.docx:2-5").href).toBe("/backlog/assets/report.docx:2-5");
+	});
+
+	it("accepts a sheet index and a sheet name on a workbook", () => {
+		expect(joinMarkdownTarget(BASE, "../../../assets/plan.xlsx:p1-p2").href).toBe("/backlog/assets/plan.xlsx:p1-p2");
+		expect(joinMarkdownTarget(BASE, "../../../assets/plan.xlsx:Q1 Sales").href).toBe(
+			"/backlog/assets/plan.xlsx:Q1%20Sales",
+		);
+	});
+
+	it("encodes a spaced sheet name once, whether the source escapes it or brackets it", () => {
+		// `:Q1%20Sales` is already escaped in the source; re-encoding it would emit `%2520`.
+		expect(joinMarkdownTarget(BASE, "../../../assets/plan.xlsx:Q1%20Sales").href).toBe(
+			"/backlog/assets/plan.xlsx:Q1%20Sales",
+		);
+		expect(joinMarkdownTarget(BASE, "../../../assets/plan.xlsx:明细").href).toBe(
+			`/backlog/assets/plan.xlsx:${encodeURIComponent("明细")}`,
+		);
+	});
+
+	it("rewrites an image-style embed the same way", () => {
+		expect(processMarkdownLocalPaths("![deck](../../../assets/deck.pptx:P1-P4)", BASE)).toBe(
+			"![deck](/backlog/assets/deck.pptx:P1-P4)",
+		);
+	});
+
+	it("still refuses a range-looking token on a file whose extension has no ranges", () => {
+		// A colon on a non-ranged extension stays part of the destination and is rejected as an
+		// opaque URI, exactly as before BACK-838.
+		expect(joinMarkdownTarget(BASE, "notes.md:chapter").rejected).toBe(true);
+	});
+});

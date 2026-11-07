@@ -913,6 +913,8 @@ export const zhTW: TranslationDict = {
 			unsavedExitConfirm: "有未保存的修改，確定退出編輯？",
 			unsavedCloseConfirm: "有未保存的修改，確定關閉？",
 			rendering: "渲染中…",
+			pageSingle: "第 {start} 頁",
+			pageRange: "第 {start}–{end} 頁",
 		},
 		docx: {
 			exportFailed: "無法從編輯器匯出文件位元組",
@@ -931,6 +933,9 @@ export const zhTW: TranslationDict = {
 		xlsx: {
 			parsing: "正在解析表格…",
 			openingEditor: "正在開啟編輯器…",
+			sheetIndex: "工作表 {index}",
+			sheetRange: "工作表 {start}–{end}",
+			sheetName: "工作表 {name}",
 			noSheets: "活頁簿中沒有可顯示的工作表",
 			noActiveWorkbook: "目前沒有作用中的活頁簿",
 			noChanges: "沒有偵測到任何修改：編輯可能還停留在輸入狀態，請按 Enter 確認後再保存。",

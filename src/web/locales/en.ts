@@ -942,6 +942,8 @@ export const en = {
 			unsavedExitConfirm: "There are unsaved changes. Exit editing anyway?",
 			unsavedCloseConfirm: "There are unsaved changes. Close anyway?",
 			rendering: "Rendering…",
+			pageSingle: "Page {start}",
+			pageRange: "Pages {start}–{end}",
 		},
 		docx: {
 			exportFailed: "Couldn't export the document bytes",
@@ -960,6 +962,9 @@ export const en = {
 		xlsx: {
 			parsing: "Parsing spreadsheet…",
 			openingEditor: "Opening editor…",
+			sheetIndex: "Sheet {index}",
+			sheetRange: "Sheets {start}–{end}",
+			sheetName: "Sheet {name}",
 			noSheets: "The workbook has no sheets to display",
 			noActiveWorkbook: "No active workbook",
 			noChanges:

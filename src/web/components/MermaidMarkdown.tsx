@@ -19,16 +19,18 @@ import { activateHashTarget, HEADING_PREFIX_ID_REGEX } from "../utils/hash-targe
 import { processMarkdownLocalPaths } from "../utils/markdown-paths";
 import { createEntityLinkPlugin, type EntityKind, resolveEntityRangeToken } from "../utils/task-id-links";
 import { parseStyleString, prepareWikiMarkdown, sanitizeRawHtmlAngleBrackets } from "../utils/wikiLinks";
+import { type OfficeRange, parseOfficeLink } from "./binaryOfficeFile";
 import ChartBlock from "./ChartBlock";
 import CypherQueryBlock from "./CypherQueryBlock";
 import DuckdbQueryBlock from "./DuckdbQueryBlock";
 import EntityIdRangeDropdown from "./EntityIdRangeDropdown";
 import MdbQueryBlock from "./MdbQueryBlock";
+import OfficeEmbedInline from "./OfficeEmbedInline";
 import SqliteQueryBlock from "./SqliteQueryBlock";
 
 interface Props {
 	source: string;
-	onFileClick?: (path: string) => void;
+	onFileClick?: (path: string, range?: OfficeRange) => void;
 	onTaskClick?: (taskId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	onDraftClick?: (draftId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
 	onDocClick?: (docId: string, range?: { lineStart?: number; lineEnd?: number }) => void;
@@ -474,6 +476,29 @@ function LightboxImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
 	);
 }
 
+/**
+ * `img` slot for rendered Markdown. A Markdown image whose destination is an Office file
+ * (`![x.docx](/x.docx)` / `![x.pptx](/x.pptx:P1-P4)`) embeds the Office preview inline (BACK-838);
+ * every other image keeps the existing lightbox behaviour.
+ */
+function MarkdownImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+	const { src, alt } = props;
+	if (typeof src === "string") {
+		const rel = src.startsWith("/") ? src.slice(1) : src;
+		let decoded = rel;
+		try {
+			decoded = decodeURIComponent(rel);
+		} catch {
+			/* keep raw */
+		}
+		const parsed = parseOfficeLink(decoded);
+		if (parsed.kind !== "unsupported") {
+			return <OfficeEmbedInline src={src} alt={typeof alt === "string" ? alt : undefined} />;
+		}
+	}
+	return <LightboxImage {...props} />;
+}
+
 function VideoPlayer(props: React.VideoHTMLAttributes<HTMLVideoElement>) {
 	const { className, ...rest } = props;
 	return <video {...rest} className={`${className ?? ""} max-w-full`.trim()} controls preload="metadata" />;
@@ -859,10 +884,13 @@ export default function MermaidMarkdown({
 				// so /api/file-content resolves it through the shared resolver.
 				const pathOnly = decodedHref.split(/[?#]/)[0] ?? "";
 				const normalizedHref = pathOnly.startsWith("/") && !pathOnly.startsWith("//") ? pathOnly.slice(1) : pathOnly;
+				// A `:range` suffix (e.g. `x.docx:P1-P4`) is metadata for the preview, not part of the
+				// file path, so verify existence against the clean path and pass the range separately.
+				const parsedLink = parseOfficeLink(normalizedHref);
 				try {
 					// Verify file exists before opening preview
-					await apiClient.fetchFileContent(normalizedHref);
-					onFileClick(normalizedHref);
+					await apiClient.fetchFileContent(parsedLink.filePath);
+					onFileClick(parsedLink.filePath, parsedLink.range ?? undefined);
 				} catch {
 					// File not found or inaccessible: fall back to normal link behavior
 					window.open(href, "_blank");
@@ -903,7 +931,7 @@ export default function MermaidMarkdown({
 					components={{
 						a: LinkComponent,
 						pre: BoundPreBlock,
-						img: LightboxImage,
+						img: MarkdownImage,
 						video: VideoPlayer,
 						audio: AudioPlayer,
 						input: TaskCheckbox,

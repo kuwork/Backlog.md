@@ -934,6 +934,8 @@ export const ja: TranslationDict = {
 			unsavedExitConfirm: "保存されていない変更があります。編集を終了しますか？",
 			unsavedCloseConfirm: "保存されていない変更があります。閉じますか？",
 			rendering: "描画中…",
+			pageSingle: "ページ {start}",
+			pageRange: "ページ {start}–{end}",
 		},
 		docx: {
 			exportFailed: "ドキュメントのバイト列を書き出せませんでした",
@@ -952,6 +954,9 @@ export const ja: TranslationDict = {
 		xlsx: {
 			parsing: "スプレッドシートを解析中…",
 			openingEditor: "エディターを開いています…",
+			sheetIndex: "シート {index}",
+			sheetRange: "シート {start}–{end}",
+			sheetName: "シート {name}",
 			noSheets: "表示できるシートがありません",
 			noActiveWorkbook: "アクティブなブックがありません",
 			noChanges:

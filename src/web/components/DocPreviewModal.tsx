@@ -6,9 +6,10 @@ import { apiClient } from "../lib/api";
 import type { Locale } from "../locales";
 import ja from "../locales/docx/ja";
 import zhTW from "../locales/docx/zh-TW";
-import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import type { BinaryOfficePreviewProps, OfficeRange } from "./binaryOfficeFile";
 import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
+import { officeRangeLabel } from "./officeRangeLabel";
 import "@eigenpal/docx-editor-react/styles.css";
 
 // Code-split: the docx editor (ProseMirror + OOXML parsing) is heavy, so it is only
@@ -56,6 +57,7 @@ export default function DocPreviewModal({
 	fileName,
 	fileUrl,
 	filePath,
+	officeRange,
 }: BinaryOfficePreviewProps) {
 	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
@@ -91,6 +93,11 @@ export default function DocPreviewModal({
 
 	const headerActions = (
 		<div className="flex items-center gap-2">
+			{officeRangeLabel(t, officeRange) && (
+				<span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+					{officeRangeLabel(t, officeRange)}
+				</span>
+			)}
 			{docxMode === "viewing" ? (
 				<>
 					<span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
@@ -134,7 +141,7 @@ export default function DocPreviewModal({
 				className={`w-full ${fullscreen ? "h-full overflow-hidden rounded-none" : "h-[72vh] overflow-hidden rounded-lg"}`}
 			>
 				{fileUrl ? (
-					<DocxViewer fileUrl={fileUrl} mode={docxMode} editorRef={editorRef} />
+					<DocxViewer fileUrl={fileUrl} mode={docxMode} editorRef={editorRef} officeRange={officeRange} />
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
 						{t.preview.shared.missingFileUrl}
@@ -149,14 +156,16 @@ export default function DocPreviewModal({
 // Word: parsed client-side by docx-editor, which restores true pagination.
 // Opens read-only; the parent toggles `mode` to "editing" for in-place edits.
 // ---------------------------------------------------------------------------
-function DocxViewer({
+export function DocxViewer({
 	fileUrl,
 	mode,
 	editorRef,
+	officeRange,
 }: {
 	fileUrl: string;
 	mode: DocxMode;
 	editorRef: RefObject<DocxEditorRef | null>;
+	officeRange?: OfficeRange;
 }) {
 	const { locale, t } = useI18nContext();
 	const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
@@ -180,6 +189,48 @@ function DocxViewer({
 		};
 	}, [fileUrl]);
 
+	// A `:P1-P4` range focuses the preview on the start page. docx-editor restores true
+	// pagination but exposes no API to render only a page window, so we scroll to it rather than
+	// slicing the document (BACK-838). `scrollToPage` targets the editor's own scroll container,
+	// which is not the container our modal scrolls, so position the requested `.layout-page`
+	// directly once the lazy editor has laid the document out.
+	// Narrowed once so the effect body and its dependency list agree on the type.
+	const pageStart = officeRange?.type === "pages" ? officeRange.start : null;
+	const bodyRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!pageStart || pageStart < 2) return;
+		let timer = 0;
+		let attempts = 0;
+		let stable = 0;
+		const tryScroll = () => {
+			const body = bodyRef.current;
+			const scroller = body?.querySelector<HTMLElement>('[class*="scroll-container"]') ?? body;
+			const pages = body?.querySelectorAll<HTMLElement>(".layout-page");
+			const target = pages?.length ? pages[Math.min(pageStart, pages.length) - 1] : undefined;
+			if (scroller && target) {
+				// Clamp to the last rendered page when the link overshoots the document.
+				const desired = Math.max(
+					0,
+					target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 8,
+				);
+				scroller.scrollTop = desired;
+				// The editor can reset scrollTop after a late relayout, so keep applying until the
+				// position sticks for several ticks.
+				if (Math.abs(scroller.scrollTop - desired) <= 2) {
+					if (++stable >= 3) return;
+				} else {
+					stable = 0;
+				}
+			}
+			// ~15s of retries covers the lazy chunk plus a slow first layout.
+			if (attempts++ < 100) timer = window.setTimeout(tryScroll, 150);
+		};
+		tryScroll();
+		return () => window.clearTimeout(timer);
+		// The retry loop outlives the lazy editor chunk, so no extra dependency is needed for the
+		// document buffer: the paged DOM simply appears mid-loop.
+	}, [pageStart]);
+
 	if (error) {
 		return (
 			<div className="flex h-full items-center justify-center text-red-500">
@@ -197,7 +248,7 @@ function DocxViewer({
 				<div className="flex h-full items-center justify-center text-gray-400">{t.preview.shared.rendering}</div>
 			}
 		>
-			<div className="h-full w-full overflow-auto">
+			<div ref={bodyRef} className="h-full w-full overflow-auto">
 				<DocxEditor
 					key={locale}
 					ref={editorRef}

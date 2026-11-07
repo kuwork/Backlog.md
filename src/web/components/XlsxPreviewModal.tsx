@@ -10,9 +10,10 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from "react"
 import { useI18nContext } from "../contexts/I18nContext";
 import { apiClient } from "../lib/api";
 import type { Locale } from "../locales";
-import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import type { BinaryOfficePreviewProps, OfficeRange } from "./binaryOfficeFile";
 import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
+import { officeRangeLabel } from "./officeRangeLabel";
 import { applySnapshotToXlsxWithStats } from "./xlsxSnapshotWriter";
 import { xlsxToUniverModel } from "./xlsxToUniverModel";
 
@@ -37,7 +38,7 @@ const primaryBtn =
 type XlsxMode = "viewing" | "editing";
 
 /** What the modal can ask the mounted viewer to do. */
-interface XlsxViewerHandle {
+export interface XlsxViewerHandle {
 	/** Patch the original package with the current editor content and return the bytes. */
 	save: () => Promise<{ bytes: ArrayBuffer; changedCells: number }>;
 }
@@ -61,6 +62,7 @@ export default function XlsxPreviewModal({
 	fileName,
 	fileUrl,
 	filePath,
+	officeRange,
 }: BinaryOfficePreviewProps) {
 	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
@@ -124,6 +126,11 @@ export default function XlsxPreviewModal({
 
 	const headerActions = (
 		<div className="flex items-center gap-2">
+			{officeRangeLabel(t, officeRange) && (
+				<span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+					{officeRangeLabel(t, officeRange)}
+				</span>
+			)}
 			{editing ? (
 				<>
 					<span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
@@ -187,6 +194,7 @@ export default function XlsxPreviewModal({
 						cacheKey={reloadToken}
 						editing={editing}
 						viewerRef={viewerRef}
+						officeRange={officeRange}
 						onDirty={() => {
 							setDirty(true);
 							// A save badge would be misleading once more edits land.
@@ -207,11 +215,12 @@ export default function XlsxPreviewModal({
 // XLSX: SheetJS -> IWorkbookData -> Univer canvas. One Univer instance per open
 // and per mode (the chrome is fixed at construction), disposed on unmount.
 // ---------------------------------------------------------------------------
-function XlsxViewer({
+export function XlsxViewer({
 	fileUrl,
 	cacheKey,
 	editing,
 	viewerRef,
+	officeRange,
 	onDirty,
 }: {
 	fileUrl: string;
@@ -219,6 +228,7 @@ function XlsxViewer({
 	cacheKey: number;
 	editing: boolean;
 	viewerRef: RefObject<XlsxViewerHandle | null>;
+	officeRange?: OfficeRange;
 	onDirty: () => void;
 }) {
 	const { t, locale } = useI18nContext();
@@ -258,6 +268,10 @@ function XlsxViewer({
 			container.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [editing]);
+
+	// Narrowed once so both the effect body and its dependency list can read the
+	// sheet list without re-checking the union in each expression.
+	const sheetsRange = officeRange?.type === "sheets" ? officeRange : null;
 
 	useEffect(() => {
 		let cancelled = false;
@@ -315,6 +329,33 @@ function XlsxViewer({
 					} catch (error) {
 						console.error("Univer setEditable failed:", error);
 					}
+					// A `:p1` / `:p1-p2` / `:sheetName` range focuses the preview on the
+					// first named/numbered sheet (BACK-838). Multi-sheet ranges only auto-activate
+					// the first; the sheet tab bar stays available for the rest.
+					// The facade drops commands issued before the workbook's first render, so the
+					// activation is retried until the active sheet actually matches.
+					if (sheetsRange && sheetsRange.items.length > 0) {
+						const first = sheetsRange.items[0] ?? "";
+						const byName = !first.toLowerCase().startsWith("p");
+						const targetIndex = Number.parseInt(first.slice(1), 10) - 1;
+						let attempts = 0;
+						const activate = () => {
+							if (cancelled) return;
+							try {
+								// `setActiveSheet("name")` expects a sheet *id*, not a name, so always
+								// resolve the requested token to an FWorksheet first (BACK-838).
+								const sheet = byName ? workbook.getSheetByName(first) : workbook.getSheets()[targetIndex];
+								if (sheet && workbook.getActiveSheet()?.getSheetId() === sheet.getSheetId()) return;
+								if (sheet) workbook.setActiveSheet(sheet);
+							} catch (error) {
+								console.error("Univer setActiveSheet failed:", error);
+							}
+							// The facade drops commands issued before the first render; retry until the
+							// active sheet actually matches (~3s).
+							if (attempts++ < 20) window.setTimeout(activate, 150);
+						};
+						activate();
+					}
 					if (editing) {
 						// Only real cell mutations count as unsaved work — selection and
 						// scrolling must not trigger the discard prompt.
@@ -370,7 +411,7 @@ function XlsxViewer({
 			// re-open never renders two workbooks into the same node.
 			container.replaceChildren();
 		};
-	}, [fileUrl, cacheKey, editing, viewerRef, locale, t]);
+	}, [fileUrl, cacheKey, editing, viewerRef, locale, t, sheetsRange]);
 
 	return (
 		<div className="relative h-full w-full bg-white dark:bg-gray-900">

@@ -913,6 +913,8 @@ export const zhCN: TranslationDict = {
 			unsavedExitConfirm: "存在未保存的修改，确定退出编辑？",
 			unsavedCloseConfirm: "存在未保存的修改，确定关闭？",
 			rendering: "渲染中…",
+			pageSingle: "第 {start} 页",
+			pageRange: "第 {start}–{end} 页",
 		},
 		docx: {
 			exportFailed: "无法从编辑器导出文档字节",
@@ -931,6 +933,9 @@ export const zhCN: TranslationDict = {
 		xlsx: {
 			parsing: "正在解析表格…",
 			openingEditor: "正在打开编辑器…",
+			sheetIndex: "工作表 {index}",
+			sheetRange: "工作表 {start}–{end}",
+			sheetName: "工作表 {name}",
 			noSheets: "工作簿中没有可显示的工作表",
 			noActiveWorkbook: "当前没有活动工作簿",
 			noChanges: "没有检测到任何修改：编辑可能还停留在输入状态，请按回车确认后再保存。",

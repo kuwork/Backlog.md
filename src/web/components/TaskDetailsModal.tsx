@@ -18,7 +18,14 @@ import { isModalRoutePath } from "../utils/modal-route";
 import { extractTempImageUrls, replaceTempImageUrls } from "../utils/temp-assets";
 import { encodeWikiPath } from "../utils/urlHelpers";
 import AcceptanceCriteriaEditor from "./AcceptanceCriteriaEditor";
-import { binaryOfficeFileProps, isBinaryOfficeFile, isNonPreviewableOffice, kindFromName } from "./binaryOfficeFile";
+import {
+	binaryOfficeFileProps,
+	isBinaryOfficeFile,
+	isNonPreviewableOffice,
+	kindFromName,
+	type OfficeRange,
+	parseOfficeLink,
+} from "./binaryOfficeFile";
 import ChipInput from "./ChipInput";
 import DependencyInput from "./DependencyInput";
 import DocPreviewModal from "./DocPreviewModal";
@@ -500,7 +507,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	const [availableTasks, setAvailableTasks] = useState<Task[]>(initialAvailableTasks ?? []);
 	const [availableDrafts, setAvailableDrafts] = useState<Task[]>([]);
 	type PreviewTarget =
-		| { kind: "file"; path: string }
+		| { kind: "file"; path: string; range?: OfficeRange }
 		| {
 				kind: "entity";
 				type: "task" | "draft" | "doc" | "decision" | "wiki";
@@ -1863,7 +1870,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												<MermaidMarkdown
 													source={description}
 													filePath={task?.filePath}
-													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
+													onFileClick={(path, range) => setPreviewTarget({ kind: "file", path, range })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
 													onDocClick={handleDocClick}
@@ -2285,7 +2292,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												<MermaidMarkdown
 													source={plan}
 													filePath={task?.filePath}
-													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
+													onFileClick={(path, range) => setPreviewTarget({ kind: "file", path, range })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
 													onDocClick={handleDocClick}
@@ -2324,7 +2331,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												<MermaidMarkdown
 													source={notes}
 													filePath={task?.filePath}
-													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
+													onFileClick={(path, range) => setPreviewTarget({ kind: "file", path, range })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
 													onDocClick={handleDocClick}
@@ -2478,7 +2485,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 												<MermaidMarkdown
 													source={finalSummary}
 													filePath={task?.filePath}
-													onFileClick={(path) => setPreviewTarget({ kind: "file", path })}
+													onFileClick={(path, range) => setPreviewTarget({ kind: "file", path, range })}
 													onTaskClick={handleTaskClick}
 													onDraftClick={handleDraftClick}
 													onDocClick={handleDocClick}
@@ -2914,19 +2921,43 @@ export const TaskDetailsModal: React.FC<Props> = ({
 				/>
 			)}
 			{previewTarget?.kind === "file" &&
-				(isBinaryOfficeFile(previewTarget.path) ? (
-					kindFromName(previewTarget.path) === "docx" ? (
-						<DocPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					) : kindFromName(previewTarget.path) === "pptx" ? (
-						<PptxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					) : kindFromName(previewTarget.path) === "xlsx" ? (
-						<XlsxPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
+				(() => {
+					// Split any `:range` suffix off the path so the byte URL is correct and the range
+					// is handed to the Office modal (BACK-838). Clicking a link already carries the
+					// parsed range, so it takes precedence over parsing the stored path.
+					const parsed = parseOfficeLink(previewTarget.path);
+					const filePath = parsed.filePath;
+					const range = previewTarget.range ?? parsed.range;
+					return isBinaryOfficeFile(filePath) ? (
+						kindFromName(filePath) === "docx" ? (
+							<DocPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewTarget(null)}
+							/>
+						) : kindFromName(filePath) === "pptx" ? (
+							<PptxPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewTarget(null)}
+							/>
+						) : kindFromName(filePath) === "xlsx" ? (
+							<XlsxPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewTarget(null)}
+							/>
+						) : (
+							<PdfPreviewModal
+								{...binaryOfficeFileProps(filePath)}
+								officeRange={range ?? undefined}
+								onClose={() => setPreviewTarget(null)}
+							/>
+						)
 					) : (
-						<PdfPreviewModal {...binaryOfficeFileProps(previewTarget.path)} onClose={() => setPreviewTarget(null)} />
-					)
-				) : (
-					<FilePreviewModal path={previewTarget.path} onClose={() => setPreviewTarget(null)} />
-				))}
+						<FilePreviewModal path={filePath} onClose={() => setPreviewTarget(null)} />
+					);
+				})()}
 			{previewTarget?.kind === "entity" && (
 				<FilePreviewModal
 					path={`preview://${previewTarget.type}/${previewTarget.id}:${previewTarget.lineStart ?? ""}${previewTarget.lineEnd !== undefined ? `-${previewTarget.lineEnd}` : ""}`}

@@ -4,8 +4,19 @@ import { useI18n } from "../hooks/useI18n";
 import { apiClient } from "../lib/api";
 import { extractFrontmatter } from "../utils/frontmatter-extract";
 import { encodeWikiPath } from "../utils/urlHelpers";
+import {
+	binaryOfficeFileProps,
+	isBinaryOfficeFile,
+	kindFromName,
+	type OfficeRange,
+	parseOfficeLink,
+} from "./binaryOfficeFile";
+import DocPreviewModal from "./DocPreviewModal";
 import MermaidMarkdown from "./MermaidMarkdown";
 import Modal from "./Modal";
+import PdfPreviewModal from "./PdfPreviewModal";
+import PptxPreviewModal from "./PptxPreviewModal";
+import XlsxPreviewModal from "./XlsxPreviewModal";
 
 interface FileContentResult {
 	content: string;
@@ -75,7 +86,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 	const [loading, setLoading] = useState(true);
 	// BACK-835: a relative link inside a preview opens another preview, based on the file being
 	// previewed (data.path is the project-relative path returned by the shared resolver).
-	const [nestedPath, setNestedPath] = useState<string | null>(null);
+	const [nestedTarget, setNestedTarget] = useState<{ path: string; range?: OfficeRange } | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
@@ -168,7 +179,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 								<MermaidMarkdown
 									source={frontmatter.body}
 									filePath={filePath}
-									onFileClick={setNestedPath}
+									onFileClick={(nestedPath, range) => setNestedTarget({ path: nestedPath, range })}
 									onTaskClick={(taskId) => window.open(`/task/${taskId}`, "_blank")}
 									onDraftClick={(draftId) => window.open(`/draft/${draftId}`, "_blank")}
 									onDocClick={(docId) => window.open(`/documentation/${docId}`, "_blank")}
@@ -191,7 +202,7 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 								<MermaidMarkdown
 									source={wrapInCodeBlock(content, getLanguage(filePath))}
 									filePath={filePath}
-									onFileClick={setNestedPath}
+									onFileClick={(nestedPath, range) => setNestedTarget({ path: nestedPath, range })}
 								/>
 							</div>
 						</div>
@@ -222,9 +233,34 @@ export const FilePreviewModal: React.FC<Props> = ({ path, onClose, loader }) => 
 					border-radius: 0 !important;
 				}
 			`}</style>
-			{nestedPath && (
+			{nestedTarget && (
 				<div className="relative z-[70]">
-					<FilePreviewModal path={nestedPath} onClose={() => setNestedPath(null)} />
+					{(() => {
+						// A link inside the previewed body follows the same contract as the parent
+						// surface: Office files open their own viewer, everything else stays a text
+						// preview. A `:range` suffix scopes the Office viewer (BACK-838).
+						const parsed = parseOfficeLink(nestedTarget.path);
+						const filePath = parsed.filePath;
+						const range = nestedTarget.range ?? parsed.range;
+						if (!isBinaryOfficeFile(filePath)) {
+							return <FilePreviewModal path={filePath} onClose={() => setNestedTarget(null)} />;
+						}
+						const props = {
+							...binaryOfficeFileProps(filePath),
+							officeRange: range ?? undefined,
+							onClose: () => setNestedTarget(null),
+						};
+						switch (kindFromName(filePath)) {
+							case "docx":
+								return <DocPreviewModal {...props} />;
+							case "pptx":
+								return <PptxPreviewModal {...props} />;
+							case "xlsx":
+								return <XlsxPreviewModal {...props} />;
+							default:
+								return <PdfPreviewModal {...props} />;
+						}
+					})()}
 				</div>
 			)}
 		</Modal>

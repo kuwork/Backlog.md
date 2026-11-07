@@ -578,6 +578,48 @@ describe("MermaidMarkdown", () => {
 			expect(clickedPath as string | null).toBe("src/file-system/operations.ts:1811-1822");
 		});
 
+		it("passes an office page range to onFileClick stripped from the path", async () => {
+			let clicked: { path: string; range: unknown } | null = null;
+			const source = "[report](docs/report.docx:P1-P4)";
+
+			act(() => {
+				root?.render(
+					<I18nProvider initialLocale="en">
+						<ImageLightboxProvider>
+							<MermaidMarkdown
+								source={source}
+								onFileClick={(path, range) => {
+									clicked = { path, range };
+								}}
+							/>
+						</ImageLightboxProvider>
+					</I18nProvider>,
+				);
+			});
+
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			});
+
+			const link = container?.querySelector("a");
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute("href")).toContain("docs/report.docx:P1-P4");
+
+			const MouseEventCtor = (dom?.window as unknown as { MouseEvent: typeof MouseEvent })?.MouseEvent;
+			await act(async () => {
+				link?.dispatchEvent(new MouseEventCtor("click", { bubbles: true, cancelable: true }));
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			});
+
+			// `clicked` is only assigned inside the click handler, so TypeScript still
+			// believes it is `null` here; re-declare it to read the captured value.
+			const captured = clicked as { path: string; range: unknown } | null;
+			expect(captured).not.toBeNull();
+			const hit = captured as { path: string; range: unknown };
+			expect(hit.path).toBe("docs/report.docx");
+			expect(hit.range).toEqual({ type: "pages", start: 1, end: 4 });
+		});
+
 		it("does not treat hash-only links as file links", async () => {
 			let clickedPath: string | null = null;
 			const source = "# Heading\n\n[Jump to heading](#heading)";

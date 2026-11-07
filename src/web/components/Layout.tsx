@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import type { Decision, DocsTreeNode, Document, Task, WikiTreeNode } from "../../types";
 import { useI18nContext } from "../contexts/I18nContext";
 import { TocProvider } from "../contexts/TocContext";
-import { isNonPreviewableOffice, kindFromName } from "./binaryOfficeFile";
+import { binaryOfficeFileProps, isNonPreviewableOffice, type OfficeRange, parseOfficeLink } from "./binaryOfficeFile";
 import DocPreviewModal from "./DocPreviewModal";
 import { HealthIndicator, HealthSuccessToast } from "./HealthIndicator";
 import Navigation from "./Navigation";
@@ -44,7 +44,13 @@ export default function Layout({
 	loadError,
 	onRefreshData,
 }: LayoutProps) {
-	const [previewFile, setPreviewFile] = useState<{ url: string; name: string; filePath?: string } | null>(null);
+	const [previewFile, setPreviewFile] = useState<{
+		url: string;
+		name: string;
+		filePath?: string;
+		kind: "docx" | "pptx" | "xlsx" | "pdf";
+		range?: OfficeRange;
+	} | null>(null);
 	const [officeNotice, setOfficeNotice] = useState(false);
 	const { t } = useI18nContext();
 
@@ -84,15 +90,20 @@ export default function Layout({
 				// Malformed percent-escape: keep the href as written rather than failing.
 			}
 			const path = projectPath.toLowerCase();
-			const isPreviewable = kindFromName(path) !== "unsupported";
+			// A `:range` suffix on an Office link (`x.docx:P1-P4`, `x.xlsx:p1`) is preview metadata,
+			// not part of the file path (BACK-838). Split it off before the kind check and the byte
+			// URL, otherwise the raw-file request 404s on `...docx:P1-P4` and the modal title shows
+			// the range a second time next to the range badge.
+			const { filePath: cleanPath, kind, range } = parseOfficeLink(projectPath);
+			const isPreviewable = kind !== "unsupported";
 			if (!isPreviewable && !isNonPreviewableOffice(path)) return;
 			// BACK-835: the renderer has already joined every local destination into a site-absolute
 			// project-relative URL, so body links and metadata fields now use the same addressing.
 			// Hand the validated path to /api/raw-file, whose shared resolver handles the legacy
 			// `assets/...` convention and custom data directory names. Protocol-relative URLs are
 			// refused here so they can never be turned into a local file path.
-			if (projectPath.startsWith("//")) return;
-			const filePath = projectPath.replace(/^\/+/, "");
+			if (cleanPath.startsWith("//")) return;
+			const filePath = cleanPath.replace(/^\/+/, "");
 			if (!filePath || filePath.startsWith("/")) return;
 			if (isNonPreviewableOffice(path)) {
 				event.preventDefault();
@@ -102,9 +113,18 @@ export default function Layout({
 			}
 			event.preventDefault();
 			event.stopPropagation();
-			const name = filePath.split("/").pop() || anchor.textContent?.trim() || "文件";
-			const fileUrl = `/api/raw-file?path=${encodeURIComponent(filePath)}`;
-			setPreviewFile({ url: fileUrl, name, filePath });
+			const props = binaryOfficeFileProps(filePath);
+			const fileUrl = props.fileUrl;
+			if (!fileUrl) return;
+			setPreviewFile({
+				url: fileUrl,
+				// The clean file name: the range travels separately so the title and the badge never
+				// say the same thing twice.
+				name: props.fileName,
+				filePath,
+				kind: kind === "unsupported" ? "pdf" : kind,
+				range: range ?? undefined,
+			});
 			// Everything else (images, markdown, code, external, ...) keeps default browser behavior.
 		};
 		document.addEventListener("click", handleAssetLinkClick, true);
@@ -151,29 +171,32 @@ export default function Layout({
 				// Stack above the task/doc modal layer (z-50): the click that opened this
 				// preview often came from inside an already-open modal.
 				<div className="relative z-[60]">
-					{kindFromName(previewFile.name) === "docx" ? (
+					{previewFile.kind === "docx" ? (
 						<DocPreviewModal
 							isOpen={Boolean(previewFile)}
 							onClose={() => setPreviewFile(null)}
 							fileUrl={previewFile.url}
 							filePath={previewFile.filePath}
 							fileName={previewFile.name}
+							officeRange={previewFile.range}
 						/>
-					) : kindFromName(previewFile.name) === "pptx" ? (
+					) : previewFile.kind === "pptx" ? (
 						<PptxPreviewModal
 							isOpen={Boolean(previewFile)}
 							onClose={() => setPreviewFile(null)}
 							fileUrl={previewFile.url}
 							filePath={previewFile.filePath}
 							fileName={previewFile.name}
+							officeRange={previewFile.range}
 						/>
-					) : kindFromName(previewFile.name) === "xlsx" ? (
+					) : previewFile.kind === "xlsx" ? (
 						<XlsxPreviewModal
 							isOpen={Boolean(previewFile)}
 							onClose={() => setPreviewFile(null)}
 							fileUrl={previewFile.url}
 							filePath={previewFile.filePath}
 							fileName={previewFile.name}
+							officeRange={previewFile.range}
 						/>
 					) : (
 						<PdfPreviewModal
@@ -182,6 +205,7 @@ export default function Layout({
 							fileUrl={previewFile.url}
 							filePath={previewFile.filePath}
 							fileName={previewFile.name}
+							officeRange={previewFile.range}
 						/>
 					)}
 				</div>

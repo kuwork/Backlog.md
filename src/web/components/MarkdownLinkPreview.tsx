@@ -2,7 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiClient } from "../lib/api";
 import { encodeWikiPath } from "../utils/urlHelpers";
-import { binaryOfficeFileProps, isBinaryOfficeFile, kindFromName } from "./binaryOfficeFile";
+import {
+	binaryOfficeFileProps,
+	isBinaryOfficeFile,
+	kindFromName,
+	type OfficeRange,
+	parseOfficeLink,
+} from "./binaryOfficeFile";
 import DocPreviewModal from "./DocPreviewModal";
 import FilePreviewModal from "./FilePreviewModal";
 import PdfPreviewModal from "./PdfPreviewModal";
@@ -13,7 +19,7 @@ type EntityType = "task" | "draft" | "doc" | "decision" | "wiki";
 type LineRange = { lineStart?: number; lineEnd?: number };
 
 export type PreviewTarget =
-	| { kind: "file"; path: string }
+	| { kind: "file"; path: string; range?: OfficeRange }
 	| ({ kind: "entity"; type: EntityType; id: string } & LineRange);
 
 function entityPath(type: EntityType, id: string): string {
@@ -58,7 +64,7 @@ export function useMarkdownLinkPreview() {
 
 	const linkHandlers = useMemo(
 		() => ({
-			onFileClick: (path: string) => setPreviewTarget({ kind: "file", path }),
+			onFileClick: (path: string, range?: OfficeRange) => setPreviewTarget({ kind: "file", path, range }),
 			onTaskClick: (id: string, range?: LineRange) => openEntity("task", id, range),
 			onDraftClick: (id: string, range?: LineRange) => openEntity("draft", id, range),
 			onDocClick: (id: string, range?: LineRange) => openEntity("doc", id, range),
@@ -92,8 +98,13 @@ export function MarkdownPreviewModal({ target, onClose }: { target: PreviewTarge
 		return <FilePreviewModal path={target.path} onClose={onClose} />;
 	}
 
-	const props = { ...binaryOfficeFileProps(target.path), onClose };
-	switch (kindFromName(target.path)) {
+	// Strip any `:range` suffix (e.g. `x.docx:P1-P4`) so the byte URL points at the file, and
+	// hand the range to the Office modal to scope the preview (BACK-838). The click contract may
+	// already carry the range separately, so prefer it over re-parsing the path.
+	const parsed = parseOfficeLink(target.path);
+	const range = target.range ?? parsed.range;
+	const props = { ...binaryOfficeFileProps(parsed.filePath), onClose, officeRange: range ?? undefined };
+	switch (kindFromName(parsed.filePath)) {
 		case "docx":
 			return <DocPreviewModal {...props} />;
 		case "pptx":

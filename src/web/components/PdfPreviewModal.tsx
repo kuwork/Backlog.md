@@ -2,9 +2,10 @@ import type * as PdfJs from "pdfjs-dist";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useI18nContext } from "../contexts/I18nContext";
-import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import type { BinaryOfficePreviewProps, OfficeRange } from "./binaryOfficeFile";
 import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
+import { officeRangeLabel } from "./officeRangeLabel";
 
 const LIST_ICON_PATH = "M4 6h16M4 12h10M4 18h7";
 const CHEVRON_ICON_PATH = "M9 5l7 7-7 7";
@@ -19,11 +20,40 @@ const CHEVRON_ICON_PATH = "M9 5l7 7-7 7";
  * fullscreen toggle that fills the viewport, and the preview body clips to the modal window's
  * rounded corner radius.
  */
-export default function PdfPreviewModal({ isOpen = true, onClose, fileName, fileUrl }: BinaryOfficePreviewProps) {
+export default function PdfPreviewModal({
+	isOpen = true,
+	onClose,
+	fileName,
+	fileUrl,
+	officeRange,
+}: BinaryOfficePreviewProps) {
 	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
+	const [pageCount, setPageCount] = useState(0);
 
-	const headerActions = <FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />;
+	// Clamp the badge to the pages the document actually has: `:P9-P12` on a 3-page PDF renders
+	// page 3, so the badge says "page 3" instead of promising pages 9-12 (BACK-838).
+	const rangeLabel = officeRangeLabel(
+		t,
+		officeRange?.type === "pages" && pageCount > 0
+			? {
+					type: "pages",
+					start: Math.min(officeRange.start, pageCount),
+					end: officeRange.end ? Math.min(officeRange.end, pageCount) : undefined,
+				}
+			: officeRange,
+	);
+
+	const headerActions = (
+		<>
+			{rangeLabel && (
+				<span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+					{rangeLabel}
+				</span>
+			)}
+			<FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />
+		</>
+	);
 
 	return (
 		<Modal
@@ -39,7 +69,7 @@ export default function PdfPreviewModal({ isOpen = true, onClose, fileName, file
 				className={`w-full ${fullscreen ? "h-full overflow-hidden rounded-none" : "h-[72vh] overflow-hidden rounded-lg"}`}
 			>
 				{fileUrl ? (
-					<PdfViewer fileUrl={fileUrl} />
+					<PdfViewer fileUrl={fileUrl} officeRange={officeRange} onPageCount={setPageCount} />
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
 						{t.preview.shared.missingFileUrl}
@@ -63,7 +93,16 @@ interface PdfOutlineNode {
 	items: PdfOutlineNode[];
 }
 
-function PdfViewer({ fileUrl }: { fileUrl: string }) {
+export function PdfViewer({
+	fileUrl,
+	officeRange,
+	onPageCount,
+}: {
+	fileUrl: string;
+	officeRange?: OfficeRange;
+	/** Reports the document page count once loaded, so a badge can clamp an out-of-range request. */
+	onPageCount?: (pageCount: number) => void;
+}) {
 	const { t } = useI18nContext();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const pageRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
@@ -77,6 +116,8 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 	const [activeKey, setActiveKey] = useState<string | null>(null);
 	const [scale, setScale] = useState(1.5);
 	const MAX_SCALE = 2.2;
+	// Narrowed once so the render effect and its dependency list share one type.
+	const pagesRange = officeRange?.type === "pages" ? officeRange : null;
 
 	// Load the document once; page rendering reacts to `scale` below.
 	useEffect(() => {
@@ -91,6 +132,7 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 				const doc = await loadingTask.promise;
 				if (cancelled) return;
 				docRef.current = doc;
+				onPageCount?.(doc.numPages);
 				const first = await doc.getPage(1);
 				baseWidthRef.current = first.getViewport({ scale: 1 }).width;
 				first.cleanup();
@@ -111,7 +153,7 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 			pageRefs.current.clear();
 			setDocReady(false);
 		};
-	}, [fileUrl]);
+	}, [fileUrl, onPageCount]);
 
 	// Fit the page width to the available space so the page never needs horizontal
 	// scrolling — especially once the outline sidebar collapses/expands (the sidebar is
@@ -145,7 +187,16 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 		(async () => {
 			container.innerHTML = "";
 			pageRefs.current.clear();
-			for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
+			// A `:P1-P4` range scopes the preview to those pages only (BACK-838). The window is
+			// clamped into the document, so `:P9-P12` on a 3-page file shows page 3 rather than a
+			// blank canvas.
+			const totalPages = doc.numPages;
+			const pageStart = pagesRange ? Math.min(Math.max(1, pagesRange.start), totalPages) : 1;
+			const pageEnd = Math.min(
+				totalPages,
+				Math.max(pageStart, pagesRange?.end ?? (pagesRange ? pageStart : totalPages)),
+			);
+			for (let pageNum = pageStart; pageNum <= pageEnd; pageNum++) {
 				if (cancelled) return;
 				const page = await doc.getPage(pageNum);
 				const viewport = page.getViewport({ scale });
@@ -167,7 +218,7 @@ function PdfViewer({ fileUrl }: { fileUrl: string }) {
 		return () => {
 			cancelled = true;
 		};
-	}, [scale, docReady]);
+	}, [scale, docReady, pagesRange]);
 
 	const goToOutlineDest = async (dest: string | unknown[] | null | undefined) => {
 		const doc = docRef.current;

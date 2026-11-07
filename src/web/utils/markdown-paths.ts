@@ -39,11 +39,28 @@ const SAFE_SCHEME = /^(?:https?|ftp|mailto|tel|data):/i;
 // `//` or have an opaque body with no extension (e.g. `javascript:alert(1)`).
 const LOCAL_FILE_EXTENSION = /\.[A-Za-z0-9]+$/;
 const LINE_RANGE = /^(.+?)(:\d+(?:-\d+)?)$/;
-// Range suffix anchored to a file extension: `<path>.<ext>:<lines>`. Anchoring the line-range
-// colon right after the extension stops a colon that lives *inside* the filename - a Chinese
-// fullwidth colon `：` or an ASCII `:` such as `报告:2024版.md` - from being mistaken for the
-// range separator. `splitTarget` falls back to LINE_RANGE when no extension is present.
-const EXT_RANGE = /^(.+?)(\.[A-Za-z0-9]+):(\d+(?:-\d+)?)$/;
+// Range suffix anchored to a file extension: `<path>.<ext>:<token>`. Anchoring the colon right
+// after the extension stops a colon that lives *inside* the filename - a Chinese fullwidth colon
+// `：` or an ASCII `:` such as `报告:2024版.md` - from being mistaken for the range separator.
+// `splitTarget` falls back to LINE_RANGE when no extension is present.
+//
+// The token itself is accepted by extension (BACK-838): workbooks take a sheet index (`p1`,
+// `p1-p2`) or a sheet name, paged Office formats take `P1-P4` / `P1` only, and every other
+// extension keeps its plain-text `12-20` line range. The `P` is what separates "pages 1-4 of a
+// document" from "lines 1-4 of a text file", so a bare `1-4` is never a page range. Anything
+// else stays part of the path, so a bogus colon is never silently turned into a range.
+const EXT_RANGE = /^(.+?)(\.[A-Za-z0-9]+):([^/\\?#]+)$/;
+const PAGE_RANGE_TOKEN = /^[Pp]\d+(?:-[Pp]?\d+)?$/;
+const LINE_RANGE_TOKEN = /^\d+(?:-\d+)?$/;
+const SHEET_EXTENSIONS = new Set(["xlsx", "xlsm"]);
+const PAGED_EXTENSIONS = new Set(["pdf", "docx", "pptx"]);
+
+/** True when `token` is a range for a destination ending in `ext`. */
+function acceptsRangeToken(ext: string, token: string): boolean {
+	if (SHEET_EXTENSIONS.has(ext)) return token.length > 0;
+	if (PAGED_EXTENSIONS.has(ext)) return PAGE_RANGE_TOKEN.test(token);
+	return LINE_RANGE_TOKEN.test(token);
+}
 
 interface SplitTarget {
 	path: string;
@@ -73,11 +90,16 @@ function splitTarget(raw: string): SplitTarget {
 	}
 	let range = "";
 	const extRangeMatch = EXT_RANGE.exec(value);
-	if (extRangeMatch) {
+	const ext = (extRangeMatch?.[2] ?? "").replace(".", "").toLowerCase();
+	const token = extRangeMatch?.[3] ?? "";
+	const rangeAccepted = extRangeMatch !== null && acceptsRangeToken(ext, token);
+	if (extRangeMatch && rangeAccepted) {
 		// Extension-anchored range wins: the colon sits right after `.<ext>`, so any colon that is
 		// part of the filename (Chinese `：` or ASCII `:`) is left in the path, never read as a range.
 		value = `${extRangeMatch[1] ?? value}${extRangeMatch[2] ?? ""}`;
-		range = `:${extRangeMatch[3] ?? ""}`;
+		// Decode once before encoding: `:Q1%20Sales` is already escaped in the source, and a
+		// second encode would emit `%2520`.
+		range = `:${encodeRangeToken(decodeSegment(token))}`;
 	} else {
 		const rangeMatch = LINE_RANGE.exec(value);
 		if (rangeMatch) {
@@ -86,6 +108,11 @@ function splitTarget(raw: string): SplitTarget {
 		}
 	}
 	return { path: value, range, query, fragment, enclosed };
+}
+
+/** Percent-encode a range token so a sheet name with spaces or brackets stays inside the destination. */
+function encodeRangeToken(token: string): string {
+	return encodeURIComponent(token).replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/'/g, "%27");
 }
 
 /** Decode an already escaped segment once; a literal `%` is kept instead of throwing. */

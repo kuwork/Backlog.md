@@ -1,12 +1,13 @@
 import type { SlideHandle, ZipParseLimits } from "@aiden0z/pptx-renderer";
 import { PptxViewer, RECOMMENDED_ZIP_LIMITS } from "@aiden0z/pptx-renderer";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18nContext } from "../contexts/I18nContext";
-import type { BinaryOfficePreviewProps } from "./binaryOfficeFile";
+import type { BinaryOfficePreviewProps, OfficeRange } from "./binaryOfficeFile";
 import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
+import { officeRangeLabel } from "./officeRangeLabel";
 
 const actionBtn =
 	"rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700";
@@ -56,11 +57,28 @@ const PREVIEW_ZIP_LIMITS: ZipParseLimits = {
  * click to jump) and a play mode (one slide at a time, fit-to-contain, with
  * prev/next + keyboard navigation). Both reuse the same loaded viewer instance.
  */
-export default function PptxPreviewModal({ isOpen = true, onClose, fileName, fileUrl }: BinaryOfficePreviewProps) {
+export default function PptxPreviewModal({
+	isOpen = true,
+	onClose,
+	fileName,
+	fileUrl,
+	officeRange,
+}: BinaryOfficePreviewProps) {
 	const { t } = useI18nContext();
 	const [fullscreen, setFullscreen] = useState(false);
 
-	const headerActions = <FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />;
+	const rangeLabel = officeRangeLabel(t, officeRange);
+
+	const headerActions = (
+		<>
+			{rangeLabel && (
+				<span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+					{rangeLabel}
+				</span>
+			)}
+			<FullscreenToggleButton active={fullscreen} onClick={() => setFullscreen((f) => !f)} />
+		</>
+	);
 
 	return (
 		<Modal
@@ -76,7 +94,7 @@ export default function PptxPreviewModal({ isOpen = true, onClose, fileName, fil
 				className={`w-full ${fullscreen ? "h-full overflow-hidden rounded-none" : "h-[72vh] overflow-hidden rounded-lg"}`}
 			>
 				{fileUrl ? (
-					<PptxViewerInner fileUrl={fileUrl} />
+					<PptxViewerInner fileUrl={fileUrl} officeRange={officeRange} />
 				) : (
 					<div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
 						{t.preview.shared.missingFileUrl}
@@ -132,15 +150,23 @@ function PlayOverlay({
 	viewer,
 	slideCount,
 	startIndex,
+	indices,
 	onClose,
 }: {
 	viewer: PptxViewer;
 	slideCount: number;
 	startIndex: number;
+	/** Slides to walk through; a `:P2-P5` preview plays only that window (BACK-838). */
+	indices?: number[];
 	onClose: () => void;
 }) {
 	const { t } = useI18nContext();
 	const [index, setIndex] = useState(startIndex);
+	// Play order: the requested window when the link carried a page range, else the whole deck.
+	const order = useMemo(
+		() => (indices && indices.length > 0 ? indices : Array.from({ length: slideCount }, (_, i) => i)),
+		[indices, slideCount],
+	);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const handleRef = useRef<SlideHandle | null>(null);
 	const [box, setBox] = useState({ w: 0, h: 0 });
@@ -148,8 +174,22 @@ function PlayOverlay({
 	const hintTimer = useRef<number | null>(null);
 	const [hintOn, setHintOn] = useState(true);
 
-	const next = useCallback(() => setIndex((i) => Math.min(slideCount - 1, i + 1)), [slideCount]);
-	const prev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
+	const next = useCallback(
+		() =>
+			setIndex((i) => {
+				const at = order.indexOf(i);
+				return order[Math.min(order.length - 1, at + 1)] ?? i;
+			}),
+		[order],
+	);
+	const prev = useCallback(
+		() =>
+			setIndex((i) => {
+				const at = order.indexOf(i);
+				return order[Math.max(0, at - 1)] ?? i;
+			}),
+		[order],
+	);
 
 	// Keep the hint visible, then dim it after a short idle.
 	const bumpHint = useCallback(() => {
@@ -227,10 +267,10 @@ function PlayOverlay({
 				bumpHint();
 			} else if (e.key === "Home") {
 				e.preventDefault();
-				setIndex(0);
+				setIndex(order[0] ?? 0);
 			} else if (e.key === "End") {
 				e.preventDefault();
-				setIndex(slideCount - 1);
+				setIndex(order[order.length - 1] ?? slideCount - 1);
 			} else if (e.key === "Escape") {
 				e.preventDefault();
 				e.stopPropagation();
@@ -239,7 +279,7 @@ function PlayOverlay({
 		};
 		window.addEventListener("keydown", onKey, true);
 		return () => window.removeEventListener("keydown", onKey, true);
-	}, [next, prev, bumpHint, slideCount, onClose]);
+	}, [next, prev, bumpHint, slideCount, order, onClose]);
 
 	// Mouse wheel navigation, throttled so a single trackpad flick doesn't skip
 	// several slides. Ctrl+wheel (browser zoom) is left alone.
@@ -282,7 +322,9 @@ function PlayOverlay({
 				}`}
 			>
 				<div className="text-sm font-medium tabular-nums">
-					{t.preview.pptx.pageOfPages.replace("{current}", String(index + 1)).replace("{total}", String(slideCount))}
+					{t.preview.pptx.pageOfPages
+						.replace("{current}", String(Math.max(0, order.indexOf(index)) + 1))
+						.replace("{total}", String(order.length))}
 				</div>
 				<div className="mt-0.5 text-[11px] leading-relaxed text-white/70">{t.preview.pptx.shortcutHint}</div>
 			</div>
@@ -306,7 +348,7 @@ function PlayOverlay({
 }
 
 // ---------------------------------------------------------------------------
-function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
+export function PptxViewerInner({ fileUrl, officeRange }: { fileUrl: string; officeRange?: OfficeRange }) {
 	const { t } = useI18nContext();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewerRef = useRef<PptxViewer | null>(null);
@@ -318,6 +360,25 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [tocOpen, setTocOpen] = useState(true);
 	const [playing, setPlaying] = useState(false);
+
+	// The `:P1-P4` window, clamped into the real slide count so an out-of-range request still
+	// shows the nearest slide instead of hiding every slide and leaving a blank stage.
+	const slideWindow = useMemo(() => {
+		if (!officeRange || officeRange.type !== "pages" || slideCount === 0) return null;
+		const start = Math.min(Math.max(1, officeRange.start), slideCount);
+		const end = Math.min(slideCount, Math.max(start, officeRange.end ?? officeRange.start));
+		return { start: start - 1, end: end - 1 };
+	}, [officeRange, slideCount]);
+
+	// Slides to surface when a `:P1-P4` range is given: the projected window only.
+	const visibleIndices = useMemo(() => {
+		if (slideWindow) {
+			const arr: number[] = [];
+			for (let i = slideWindow.start; i <= slideWindow.end; i++) arr.push(i);
+			return arr;
+		}
+		return Array.from({ length: slideCount }, (_, i) => i);
+	}, [slideWindow, slideCount]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -375,13 +436,32 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 		};
 	}, [fileUrl]);
 
+	// A `:P1-P4` range hides every slide outside the window. The renderer mounts
+	// slides lazily (windowed mode), so re-apply the filter on any DOM change.
+	useEffect(() => {
+		if (!ready || !slideWindow) return undefined;
+		const container = containerRef.current;
+		if (!container) return undefined;
+		const { start, end } = slideWindow;
+		const apply = () => {
+			container.querySelectorAll<HTMLElement>("[data-slide-index]").forEach((el) => {
+				const idx = Number(el.dataset.slideIndex);
+				el.style.display = idx >= start && idx <= end ? "" : "none";
+			});
+		};
+		apply();
+		const observer = new MutationObserver(apply);
+		observer.observe(container, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, [ready, slideWindow]);
+
 	// Render thumbnails into the sidebar once the viewer is ready and the
 	// directory is open. Dispose every handle on cleanup (toggle off / unmount).
 	useEffect(() => {
 		if (!ready || !tocOpen || !viewerRef.current) return undefined;
 		const viewer = viewerRef.current;
 		const handles: SlideHandle[] = [];
-		for (let i = 0; i < slideCount; i++) {
+		for (const i of visibleIndices) {
 			const el = thumbRefs.current[i];
 			if (!el) continue;
 			// Clear first (a prior width change or theme toggle re-runs this
@@ -398,7 +478,7 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 		return () => {
 			for (const h of handles) h.dispose();
 		};
-	}, [ready, tocOpen, slideCount]);
+	}, [ready, tocOpen, visibleIndices]);
 
 	const goTo = (i: number) => {
 		viewerRef.current?.goToSlide(i);
@@ -429,15 +509,15 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 					</button>
 					<span className="ml-auto text-xs tabular-nums text-gray-500 dark:text-gray-400">
 						{t.preview.pptx.pageOfPages
-							.replace("{current}", String(currentIndex + 1))
-							.replace("{total}", String(slideCount))}
+							.replace("{current}", String(slideWindow ? currentIndex - slideWindow.start + 1 : currentIndex + 1))
+							.replace("{total}", String(slideWindow ? visibleIndices.length : slideCount))}
 					</span>
 				</div>
 			)}
 			<div className="flex min-h-0 flex-1">
-				{ready && tocOpen && slideCount > 1 && (
+				{ready && tocOpen && visibleIndices.length > 1 && (
 					<aside className="w-44 shrink-0 min-h-0 overflow-y-auto border-r border-gray-200 p-2 [scrollbar-gutter:stable] dark:border-gray-700">
-						{Array.from({ length: slideCount }, (_, i) => i).map((slideIndex) => (
+						{visibleIndices.map((slideIndex) => (
 							<button
 								key={slideIndex}
 								type="button"
@@ -481,6 +561,7 @@ function PptxViewerInner({ fileUrl }: { fileUrl: string }) {
 					viewer={viewerRef.current}
 					slideCount={slideCount}
 					startIndex={currentIndex}
+					indices={slideWindow ? visibleIndices : undefined}
 					onClose={() => setPlaying(false)}
 				/>
 			)}
