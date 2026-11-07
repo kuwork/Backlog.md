@@ -11,6 +11,7 @@ import { normalizeStatusSet, statusMatchesSet } from "../utils/status-filter.ts"
 import { statusLine } from "../utils/status-line.ts";
 import { canonicalTaskId, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
+import { computeCorpusDigest } from "./corpus-digest.ts";
 import {
 	normalizeTaskLifecyclePath,
 	type TaskIdentityIndex,
@@ -518,6 +519,12 @@ export class ContentStore {
 			// requested after initialization, so the guarded call cannot throw.
 			taskCorpus: this.initialized ? this.getTaskCorpusSnapshot() : undefined,
 		};
+	}
+
+	/** Stable content digest of the currently published corpus, or null before initialization. */
+	getCorpusDigest(): string | null {
+		if (!this.initialized) return null;
+		return computeCorpusDigest(this.getSnapshot());
 	}
 
 	dispose(): void {

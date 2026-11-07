@@ -5,14 +5,13 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-11-07 13:03'
-updated_date: '2026-11-07 13:33'
+updated_date: '2026-11-07 17:01'
 labels:
   - web-ui
 dependencies: []
 references:
-  - 'src/web/components/TaskDetailsModal.tsx:1397'
-  - 'src/web/components/TaskDetailsModal.tsx:1324'
-  - 'src/web/components/Modal.tsx:13'
+  - src/web/components/TaskDetailsModal.tsx
+  - src/web/components/Modal.tsx
 modified_files:
   - src/web/components/TaskDetailsModal.tsx
   - src/web/locales/en.ts

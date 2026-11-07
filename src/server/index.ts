@@ -73,6 +73,7 @@ import {
 import { launchBrowser } from "../utils/browser-launch.ts";
 import type { BrowserLoadingState } from "../utils/browser-loading-state.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
+import { CORPUS_DIGEST_HEADER, formatCorpusStateMessage } from "../utils/corpus-state.ts";
 import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import { DependencyQuery } from "../utils/dependency-query.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
@@ -566,6 +567,18 @@ export class BacklogServer {
 			// Memos are not in the ContentStore, so nothing else broadcasts for them: every memo
 			// write pushes this scope explicitly.
 			if (pending.has("memos")) messages.add("memos-updated");
+			// Newer clients read the corpus digest before they decide whether a data-change message
+			// needs a full refetch. One state message per window is enough; the bare strings below
+			// are kept so older clients still refresh exactly as before.
+			const digest = this.contentStore?.getCorpusDigest() ?? null;
+			if (digest) {
+				const state = formatCorpusStateMessage(digest);
+				for (const ws of this.sockets) {
+					try {
+						ws.send(state);
+					} catch {}
+				}
+			}
 			for (const message of messages) {
 				for (const ws of this.sockets) {
 					try {
@@ -1732,7 +1745,10 @@ export class BacklogServer {
 				// statistics page uses the same parameter for its own scope.
 				includeCompleted: url.searchParams.get("completed") === "true",
 			});
-			return Response.json(results);
+			// Read the digest only now: refreshTasksForTaskRead above may have ingested a write, and
+			// the client cursor must describe the data actually carried by this response.
+			const digest = this.contentStore?.getCorpusDigest() ?? null;
+			return Response.json(results, digest ? { headers: { [CORPUS_DIGEST_HEADER]: digest } } : undefined);
 		} catch (error) {
 			console.error("Error performing search:", error);
 			return Response.json({ error: "Search failed" }, { status: 500 });

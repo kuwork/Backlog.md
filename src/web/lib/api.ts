@@ -15,10 +15,31 @@ import type {
 	WikiPage,
 	WikiTreeNode,
 } from "../../types/index.ts";
+import { CORPUS_DIGEST_HEADER } from "../../utils/corpus-state.ts";
 import type { DependencyQueryAnswer } from "../../utils/dependency-query.ts";
 import type { ListPage } from "../../utils/list-page.ts";
 import { type GraphLegendConfig, normalizeLegendConfig } from "../utils/graph-legend-config.ts";
 import { encodeWikiPath } from "../utils/urlHelpers.ts";
+
+export interface SearchOptions {
+	query?: string;
+	types?: SearchResultType[];
+	status?: string | string[];
+	statusExcluded?: string | string[];
+	priority?: SearchPriorityFilter | SearchPriorityFilter[];
+	assignee?: string | string[];
+	labels?: string[];
+	modifiedFiles?: string[];
+	completed?: boolean;
+	/** Omitted by default so the server's configured cross-branch visibility applies. */
+	crossBranch?: boolean;
+	limit?: number;
+}
+
+export interface SearchResponse {
+	results: SearchResult[];
+	digest: string | null;
+}
 
 export function isAmbiguousIdConflict(error: unknown): error is ApiError {
 	return error instanceof ApiError && error.status === 409;
@@ -477,22 +498,7 @@ export class ApiClient {
 		return this.fetchJson<Task[]>(url);
 	}
 
-	async search(
-		options: {
-			query?: string;
-			types?: SearchResultType[];
-			status?: string | string[];
-			statusExcluded?: string | string[];
-			priority?: SearchPriorityFilter | SearchPriorityFilter[];
-			assignee?: string | string[];
-			labels?: string[];
-			modifiedFiles?: string[];
-			completed?: boolean;
-			/** Omitted by default so the server's configured cross-branch visibility applies. */
-			crossBranch?: boolean;
-			limit?: number;
-		} = {},
-	): Promise<SearchResult[]> {
+	private async searchRequest(options: SearchOptions): Promise<SearchResponse> {
 		const params = new URLSearchParams();
 		if (options.query) {
 			params.set("query", options.query);
@@ -554,7 +560,20 @@ export class ApiClient {
 		}
 
 		const url = `${API_BASE}/search${params.toString() ? `?${params.toString()}` : ""}`;
-		return this.fetchJson<SearchResult[]>(url);
+		const response = await this.fetchWithRetry(url);
+		const digest = response.headers.get(CORPUS_DIGEST_HEADER);
+		const results = (await response.json()) as SearchResult[];
+		return { results, digest };
+	}
+
+	/** Plain search for query surfaces; those callers must not advance the corpus cursor. */
+	async search(options: SearchOptions = {}): Promise<SearchResult[]> {
+		return (await this.searchRequest(options)).results;
+	}
+
+	/** Full-corpus loader variant; only these callers may persist the digest as a cursor. */
+	async searchWithDigest(options: SearchOptions = {}): Promise<SearchResponse> {
+		return await this.searchRequest(options);
 	}
 
 	async fetchTask(id: string): Promise<Task> {

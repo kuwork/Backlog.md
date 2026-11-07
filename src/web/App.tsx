@@ -18,6 +18,7 @@ import type {
 	WikiTreeNode,
 } from "../types";
 import { parseBrowserLoadingState } from "../utils/browser-loading-state";
+import { parseCorpusStateMessage, shouldSkipCorpusRefresh } from "../utils/corpus-state.ts";
 import { collectAvailableLabels } from "../utils/label-filter";
 import { stripAnyPrefix } from "../utils/prefix-config";
 import { normalizeDiagramEngine, setActiveDiagramEngine } from "./charts/diagram-engine";
@@ -302,6 +303,12 @@ function AppContent() {
 	const { setLocale } = useI18nContext();
 	const previousOnlineRef = useRef<boolean | null>(null);
 	const hasBeenRunningRef = useRef(false);
+	// Corpus digest from the newest broadcast and from the last full load that was actually applied.
+	// Both live in memory only: a reload starts with a full load and a failed refresh never advances
+	// the cursor. Query surfaces use apiClient.search and cannot write either ref.
+	const serverCorpusDigestRef = useRef<string | null>(null);
+	const lastSyncedDigestRef = useRef<string | null>(null);
+	const refreshInFlightRef = useRef(false);
 
 	// Set version data attribute on body
 	React.useEffect(() => {
@@ -468,7 +475,7 @@ function AppContent() {
 			const [
 				statusesData,
 				configData,
-				searchResults,
+				searchResponse,
 				draftsData,
 				milestonesData,
 				archivedMilestonesData,
@@ -477,17 +484,21 @@ function AppContent() {
 			] = await Promise.all([
 				apiClient.fetchStatuses(),
 				apiClient.fetchConfig(),
-				apiClient.search(),
+				apiClient.searchWithDigest(),
 				apiClient.fetchDrafts(),
 				apiClient.fetchMilestones(),
 				apiClient.fetchArchivedMilestones(),
 				apiClient.fetchWikiTree(),
 				apiClient.fetchDocsTree(),
 			]);
+			// This digest describes the snapshot the request read. Record it even when a newer
+			// request has already superseded this one: an older cursor only causes one extra
+			// refresh, while leaving it unset lets echo broadcasts keep piling up.
+			if (searchResponse.digest) lastSyncedDigestRef.current = searchResponse.digest;
 
 			const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestonesData, milestonesData));
 			const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
-			const { tasks: tasksList } = applySearchResults(searchResults, archivedKeys, milestoneAliases);
+			const { tasks: tasksList } = applySearchResults(searchResponse.results, archivedKeys, milestoneAliases);
 			hasLoadedDataRef.current = true;
 			// A load that read the whole store just replaced whatever the failure left behind, so the
 			// error clears here: otherwise the incremental refresh would keep falling back to this
@@ -578,11 +589,15 @@ function AppContent() {
 			pendingDataRequestRef.current = requestId;
 			pendingScopeRankRef.current = withMilestones ? 1 : 0;
 			try {
-				const [milestonesData, archivedMilestonesData, searchResults] = await Promise.all([
+				const [milestonesData, archivedMilestonesData, searchResponse] = await Promise.all([
 					withMilestones ? apiClient.fetchMilestones() : milestoneEntitiesRef.current,
 					withMilestones ? apiClient.fetchArchivedMilestones() : archivedMilestonesRef.current,
-					apiClient.search(),
+					apiClient.searchWithDigest(),
 				]);
+				// Record the digest before the supersede check: a response that loses the request-id
+				// race still describes real data, and an older cursor is safe (it can only add a
+				// refresh, never suppress one).
+				if (searchResponse.digest) lastSyncedDigestRef.current = searchResponse.digest;
 				if (dataRequestRef.current !== requestId) return;
 
 				if (withMilestones) {
@@ -599,7 +614,7 @@ function AppContent() {
 						.sort()
 						.join("\n");
 				const previousIdSignature = idSignature(tasksRef.current);
-				const { tasks: tasksList } = applySearchResults(searchResults, archivedKeys, milestoneAliases);
+				const { tasks: tasksList } = applySearchResults(searchResponse.results, archivedKeys, milestoneAliases);
 				// A task-only refresh does not reread the milestone entities, so a milestone named by a
 				// task but never loaded would keep rendering as its raw id. Fetch exactly those.
 				void ensureReferencedMilestones(tasksList);
@@ -914,10 +929,21 @@ function AppContent() {
 	}, [navigate, state]);
 
 	const refreshData = useCallback(async () => {
-		await refreshTasksData(false);
 		// Drafts are loaded by the drafts page, not by this refresh, and creating, editing, promoting
 		// or demoting a task can change them, so tell that page to reload whenever the rest does.
 		window.dispatchEvent(new Event("drafts-updated"));
+		// A full refresh can take seconds on a large corpus. Broadcasts arriving while one is in
+		// flight describe the same write and must not start competing requests.
+		if (refreshInFlightRef.current) return;
+		// One task write reaches the server through several paths seconds apart. When the newest
+		// broadcast describes exactly the corpus we already applied, this is an echo, not a change.
+		if (shouldSkipCorpusRefresh(serverCorpusDigestRef.current, lastSyncedDigestRef.current)) return;
+		refreshInFlightRef.current = true;
+		try {
+			await refreshTasksData(false);
+		} finally {
+			refreshInFlightRef.current = false;
+		}
 	}, [refreshTasksData]);
 
 	/** A milestone change also moves the milestone entities, so that scope is refetched with it. */
@@ -1055,6 +1081,11 @@ function AppContent() {
 				// No retry signal exists yet; dropping the chip beats a spinner that never ends.
 				setGraphStatus(null);
 			} else {
+				const corpusDigest = parseCorpusStateMessage(event.data);
+				if (corpusDigest) {
+					serverCorpusDigestRef.current = corpusDigest;
+					return;
+				}
 				const legendUpdated = parseGraphLegendUpdatedMessage(event.data);
 				if (legendUpdated) {
 					// A legend config changed in another tab/session: tell the only consumer (the graph
@@ -1092,6 +1123,9 @@ function AppContent() {
 
 		// After a reconnect, pull every entity scope so broadcasts missed during the gap are recovered.
 		const catchUpAfterReconnect = () => {
+			// Broadcasts may have been missed while offline, so ignore the last known digest and
+			// force one full refresh before the gate can skip anything again.
+			serverCorpusDigestRef.current = null;
 			void refreshData();
 			void refreshMilestoneData();
 			void refreshDocumentsData();
