@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-10-31 23:53
+updated_date: 2026-11-08 23:05
 ---
 
 
@@ -448,6 +448,19 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-834-consolidate-query-block-i18n]] |  BACK-834 - 合并四个查询块 i18n 字典为共享基 | source, web-ui, i18n |
 | [[sources/doc-33-mdb-live-query-demo]] |  doc-33 - MDB (Access) 实况查询演示 | source, guide, mdb |
 | [[sources/m-18-mdb-live-query]] |  m-18 - MDB Live Query 里程碑 | source, milestone, mdb |
+| [[sources/m-19-fix-relative-reference-resolution]] |  m-19 - 修复相对引用解析里程碑 | source, milestone, m-19, markdown |
+| [[sources/back-835-unify-relative-reference-resolution]] |  BACK-835 - 统一 Markdown 相对引用解析 | source, web-ui, markdown, core, server, high-priority |
+| [[sources/back-836-decision-relative-reference-resolution]] |  BACK-836 - 修复 decision 页相对引用解析 | source, web-ui, markdown, decisions |
+| [[sources/back-837-wiki-relative-references-entity-links]] |  BACK-837 - Wiki 相对引用与实体链接 | source, web-ui, markdown, wiki, wikilink |
+| [[sources/back-838-office-page-sheet-ranges]] |  BACK-838 - Office 链接页范围与工作表范围 | source, web-ui, markdown, office, i18n, high-priority |
+| [[sources/back-839-batch-inline-metadata-edits]] |  BACK-839 - 内联元数据批量写入与保存状态 | source, web-ui, task-modal, i18n |
+| [[sources/back-840-corpus-digest-refresh-skip]] |  BACK-840 - 语料摘要抑制冗余任务刷新 | source, web-ui, core, server, performance |
+| [[sources/back-841-corpus-digest-gap-fixes]] |  BACK-841 - 补齐语料摘要首载与广播抖动缺口 | source, web-ui, server, performance |
+| [[sources/back-842-reduce-modal-side-effect-requests]] |  BACK-842 - 削减任务详情弹窗的副作用请求 | source, web-ui, task-modal, performance |
+| [[sources/back-843-browser-startup-cache]] |  BACK-843 - 浏览器启动提速、UI 包缓存与 --no-cache | source, cli, core, server, performance, cache, high-priority |
+| [[sources/doc-34-relative-link-check]] |  doc-34 - 相对链接解析验收页 | source, doc, fixture, m-19, markdown |
+| [[sources/doc-35-office-link-check]] |  doc-35 - Office 页范围与工作表范围验收页 | source, doc, fixture, office, markdown |
+| [[sources/decision-2-relative-link-check]] |  decision-2 - 相对链接解析验收载体 | source, decision, fixture, m-19, markdown |
 
 ## Execution Notes
 
@@ -481,6 +494,8 @@ Read this file FIRST on any wiki operation.
 | [[execution/webgl-html-overlay-hover-control]] |  WebGL canvas HTML 控件悬挂模式 | overlay 定位、容器层指针追踪、内缩防 hover 中断、全屏子树约束，BACK-746/747 提炼 |
 | [[execution/custom-backlog-dir-rollout-audit]] |  backlog-dir 推广硬编码路径审计模式 | 症状归族→grep 字面量→纯模块直调解析函数→每处 .backlog 种子回归用例，BACK-757/758 提炼 |
 | [[execution/ryugraph-wasm-gotchas]] |  RyuGraph WASM 在 Bun 下的陷阱集 | MEMFS 路径不可达/不持久、INT64 ToBigInt 崩溃、COPY FROM 静默零行，BACK-766~771/823 提炼 |
+| [[execution/browser-startup-perf-gotchas]] |  浏览器启动性能排查陷阱集 | 有无浏览器附着的归因、Windows 批量写、缓存键选择、upgrade 让回，BACK-843 提炼 |
+| [[execution/markdown-link-contract-parity]] |  跨页面 Markdown 链接契约对齐与验收步骤 | 基准检查、契约单点化、capture 拦截器、三向 fixture 与回归清单，BACK-835~838 提炼 |
 
 ## Decisions
 
@@ -569,6 +584,9 @@ Read this file FIRST on any wiki operation.
 | [[decisions/ryugraph-wasm-default-backend]] |  默认图谱后端切换为 RyuGraph WASM | BACK-766 用 Kuzu MIT fork 的 WASM 构建取代原生 NAPI 绑定，kuzu 依赖移除 |
 | [[decisions/mermaid-into-chartblock]] |  图表渲染选择彻底统一而非最小改动 | BACK-812 把 mermaid 折进 ChartBlock，移除 post-render 替换与 key={theme} 重挂载 |
 | [[decisions/memfs-handle-over-nodejs-backend]] |  用 MEMFS 句柄而非 NODEFS 构建 | BACK-823 宿主路径换成 /tmp 句柄；NODEFS 构建在 Bun 下 abort、basename 会跨项目撞库 |
+| [[decisions/two-stage-reference-resolution]] |  相对引用采用渲染期 join 加服务端 try_files | BACK-835 拒绝组件内拼路径/Referer 反推/数据目录边界，项目根为包含边界 |
+| [[decisions/corpus-digest-over-event-version]] |  用快照内容摘要而非事件版本号抑制冗余刷新 | BACK-840 拒绝 ContentStoreEvent.version 与 rawContent-only，游标只能由全量加载器推进 |
+| [[decisions/p-prefix-for-office-page-ranges]] |  Office 页范围强制 P 前缀并让 capture 拦截器走共享解析器 | BACK-838 守住裸数字的文本行含义，修掉范围链接 404 与重复徽标 |
 
 ## Concepts
 
@@ -623,6 +641,9 @@ Read this file FIRST on any wiki operation.
 | [[concepts/graph-legend-persistence]] |  图例配置持久化 | 图例从 localStorage 迁到 graph-legends.yaml，服务端/浏览器/CLI/MCP 四写入面一份存储 + watcher 热更新 |
 | [[concepts/chart-block-engine]] |  统一图表引擎（ChartBlock + 注册表） | fence 语言查表渲染，mermaid 与 echarts 同级；全系列注册守卫、JSON-only 安全、per-block dispose |
 | [[concepts/query-chart-binding]] |  图表与查询结果的两种绑定方式 | 紧耦合 view: echarts 与松耦合 fromQuery 的分工、占位符语义与刷新边界 |
+| [[concepts/relative-reference-resolution]] |  相对引用解析 | 两阶段 join + try_files、项目根边界、元数据/正文分道、projectPath 与 wikiRoot 分流 |
+| [[concepts/corpus-digest]] |  语料摘要与刷新抑制 | ContentStore 快照 SHA-256、广播窗口起始采样、双游标、谁能推进游标、fail-open |
+| [[concepts/browser-startup-cache]] |  浏览器启动缓存体系 | 五段成本、branch/web-bundle/content 三层缓存、统一缓存根、--no-cache 与两处回归 |
 
 ## Entities
 
@@ -652,6 +673,7 @@ Read this file FIRST on any wiki operation.
 | [[reasoning/kuzu-graph-backend-and-lifecycle]] |  Kuzu 图谱的后端、生命周期与存储治理设计推理 | 双后端、FileNode 路径主键、指纹冷启动、三层热更新、自描述版本与 slot 缓存/锁 |
 | [[reasoning/knowledge-graph-relations]] |  知识图谱关系模型的设计推理 | 类型来源反转（frontmatter → 目录决定）、机械派生三边、语义关系暂缓、两视图与 caption 宽度 |
 | [[reasoning/m-17-echarts-task-decomposition]] |  m-17 图表引擎的任务分解推理 | 7 项拆分压到 3 个任务：按耦合度合并、测试并入 AC、B 先于 A |
+| [[reasoning/m-19-relative-reference-resolution]] |  m-19 相对引用解析的分解推导链 | 按基准深度而非链接类型分层、四种替代分解、六条反转检验与证据链 |
 
 ## Retrospectives
 

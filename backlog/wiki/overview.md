@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-10-28 15:30
+updated_date: 2026-11-08 23:05
 ---
 
 # Knowledge Base Overview
@@ -186,6 +186,16 @@ v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代�
 - **MDB (Access) 实况查询第四块**（m-18，BACK-832~834）：`mdb-query` 围栏块接入与 sqlite/duckdb/cypher 同一共享内核，`src/mdb/*` 用 `mdb-reader` 把 Access 表载入内存 SQLite（`PRAGMA query_only=ON`）再执行，支持跨表 JOIN 与完整 SQL 面；`decodeMdbText` 做 GBK/CP936 字节级恢复修复乱码；不支持 `copy_to`（服务端拒）、CLI/MCP 入口与 sqlite/duckdb 一致保持无，验收样本 doc-33 用真实 `lizheng.mdb`（87 表）。BACK-833 给四个查询块加阅读视图内就地编辑流（Save/Test/Discard/Format，块定位改发整段围栏体、服务端 `POST /api/query-block/save` 原子写），BACK-834 把四方言 i18n 字典合并为共享 `queryBlock` 基（净减约 355 行重复）。概念页 [[concepts/mdb-live-query]]、[[concepts/sql-query-blocks]] 已更新，用户手册新增「MDB 查询块」页。
 
 
+### 相对引用统一与浏览器性能收敛（m-19 / BACK-835~843，2026-11-04~08）
+
+两条并行的工作线：**链接解析契约的统一**，以及**请求与启动成本的收敛**。前者挂在 m-19（BACK-835~837），后者（BACK-839~843）与 Office 范围链接（BACK-838）是同期但独立的任务，不属该里程碑。
+
+- **两阶段相对引用解析**（BACK-835）：渲染期把每个本地 href/src 与所在文档 join 成站点绝对 URL，服务端注册路由优先、其余落到唯一一个 nginx 风格 try_files 候选表（项目根 → 数据目录 → assets）；`/` 前缀目标永不 join，包含边界是**项目根**而非数据目录，多级 `../` 可达兄弟目录。`/api/file-content` 与 `/api/raw-file` 共用 `readProjectAsset`，raw-file 守卫放宽到项目根。**元数据字段与正文分道**：前者始终项目根相对。BACK-836/837 把 `projectPath` 边界转换依次推广到 decision（此前传裸文件名）与 wiki（额外 `wikiRoot` 分流），并把点击契约单点化到 `MarkdownLinkPreview`。三向验收 fixture：doc-34、decision-2、`wiki/test/back-837 - Link-Check.md`。新概念页 [[concepts/relative-reference-resolution]]，推导链 [[reasoning/m-19-relative-reference-resolution]]，裁决 [[decisions/two-stage-reference-resolution]]。
+- **Office 范围链接**（BACK-838）：`:P1-P4` 页窗口 / `:p1` / `:表名`，`P` 前缀强制以守住裸数字的文本行含义；`!` 图片改内联 viewer。真正的 404 根因是 `Layout.tsx` 的 capture-phase 拦截器绕过共享解析器把范围拼进了字节 URL。验收页 doc-35 用四个真实 `quickstart/` 文件覆盖越界 clamp、中文表名与裸数字反例。见 [[concepts/file-preview]]、[[decisions/p-prefix-for-office-page-ranges]]。
+- **写入与刷新治理**（BACK-839~842）：五个列表型内联元数据字段合并成一次 PUT（消除自伤型文件锁 409）并加保存状态 chip；服务端 `corpus-state` 摘要 + 客户端双游标把一次编辑的 `/api/search` 从 3~4 次压到 1 次，BACK-841 补齐连接时播种与广播窗口起始采样；BACK-842 再削减 L1 管不到的闭包与预载请求。三层互不覆盖，见 [[concepts/corpus-digest]]、[[decisions/corpus-digest-over-event-version]]。
+- **浏览器启动提速**（BACK-843）：85~175s 空白页降到约 1.5s 热启动。五段成本里最贵的是 **Bun 对 HTML 入口的惰性构建**（24MB JS 跑在服务器线程上，饿死所有 continuation），其次是 eager graph WASM 冷启动与远端 refs fetch。按 commit 的分支缓存、stat 签名快路径、内容指纹 UI 包缓存（未命中用子进程构建 + 自刷新进度页）、统一平台缓存根、`--no-cache` 只跳读不跳写。两处回归必查：shell 路由吞掉 WebSocket upgrade、五个模块各自解析缓存根。见 [[concepts/browser-startup-cache]]、[[execution/browser-startup-perf-gotchas]]。
+- **wiki 契约订正**：BACK-835 的 Implementation Notes 明确把 `concepts/file-preview`、`concepts/web-server`、中英文 `12-文档预览` 手册与 `sources/back-827` 列为「单独批准的后续变更」，任务本身未改 `backlog/wiki/`。本次摄取完成订正，并给 [[sources/back-827-project-wide-docx-pdf-preview]] 追加「已被 BACK-835 取代」注记而非删改历史记录。
+
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
 - **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
@@ -275,14 +285,15 @@ v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代�
 
 ## 统计
 
-- Sources ingested: 420
-- Concepts extracted: 48
+- Sources ingested: 446
+- Concepts extracted: 52
 - Entities catalogued: 2
-- Execution notes: 28
-- Decisions recorded: 83
+- Execution notes: 30
+- Decisions recorded: 86
 - Patterns: 6
 - Comparisons: 1
-- Reasoning traces: 6
+- Reasoning traces: 7
 - Retrospectives: 1
-- User manual pages: 48
+- User manual pages: 50 (zh) + 50 (en)
+- Developer notes: 7
 - Reports generated: 10

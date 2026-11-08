@@ -1202,3 +1202,25 @@ Chronological, append-only record of all wiki operations.
 **统计**：Sources 420→433、Concepts 48→49、User manual 48→50 页、Decisions 83（无新增）。
 
 **mini-lint**：13 个新增 source 页 `source_path` 全数解析成功（`tmp/wiki-lint-check.sh` 等价校验）；index.md 全子目录章节完整（Sources/Concepts/User Manual 等均已含本次新增条目）；新增/改动页面的 wikilink 逐条校验，除文档内语法示例外无断链。
+
+## [2026-11-08 23:18:52] batch-ingest+usermanual | 增量摄取 m-19 / BACK-835~843（13 源），订正相对引用旧契约并补齐双语手册
+
+**摄取范围**：git-aware 增量（基线 2026-10-31 23:54 的 batch-ingest+usermanual 条目）。`git log --since` 检出 14 份 backlog 源变更，其中 13 份为新增且全部 Done / 已提交：m-19、BACK-835~843、doc-34、doc-35、decision-2；`backlog/docs/migration/doc-4` 仅被 BACK-837 加了一条相对路径验收链接，无知识增量，已有 [[sources/doc-4-upstream-migration-classification]] 不改写。摄取前 `git status --porcelain` 为空，无未跟踪产物纳入。`backlog/wiki/test/` 的两个验收页位于 wiki/ 内，按排除规则不作为源。`drafts/` 本批无变更，沿用「drafts 完全排除」隔离规则。
+
+**新建** 13 个 source 页：[[sources/m-19-fix-relative-reference-resolution]]、[[sources/back-835-unify-relative-reference-resolution]]、[[sources/back-836-decision-relative-reference-resolution]]、[[sources/back-837-wiki-relative-references-entity-links]]、[[sources/back-838-office-page-sheet-ranges]]、[[sources/back-839-batch-inline-metadata-edits]]、[[sources/back-840-corpus-digest-refresh-skip]]、[[sources/back-841-corpus-digest-gap-fixes]]、[[sources/back-842-reduce-modal-side-effect-requests]]、[[sources/back-843-browser-startup-cache]]、[[sources/doc-34-relative-link-check]]、[[sources/doc-35-office-link-check]]、[[sources/decision-2-relative-link-check]]。三处易错事实被刻意记牢：① BACK-838 的 `P` 前缀是为了守住裸数字的文本行含义，doc-35 的两条反例即守卫；② BACK-840 不用 `Task.rawContent` 作摘要，因为它不含 frontmatter，会让 status/priority 编辑跳过唯一刷新；③ BACK-843 的 175s 空白页根因是 Bun 在服务器线程上惰性构建 HTML 入口，不是语料扫描，也不含 Bun 版本进缓存指纹。
+
+**新建** 3 个 concept 页：[[concepts/relative-reference-resolution]]（两阶段 join + try_files、项目根边界、元数据/正文分道、projectPath 与 wikiRoot 分流）、[[concepts/corpus-digest]]（快照 SHA-256、窗口起始采样、双游标、谁能推进游标、fail-open）、[[concepts/browser-startup-cache]]（五段成本、三层缓存、统一缓存根、`--no-cache` 与两处回归）。
+
+**更新** 6 个 concept 页：[[concepts/file-preview]]（路径规则整节重写 + Office 范围节）、[[concepts/web-server]]（try_files、corpus-state、bundle 缓存与 upgrade 让回）、[[concepts/markdown-pipeline]]（渲染期 join、扩展名锚定范围切分、mdlink/wikilink overlay）、[[concepts/wikilink]]（wikiRoot 分流、`:N-M` 局部加载、显式 `/wiki/...` 走 SPA 导航）、[[concepts/web-ui-features]]（内联元数据写入预算与跨页面点击契约）、[[concepts/browser-loading]]（启动日志与冷/热首屏）。**订正** [[sources/back-827-project-wide-docx-pdf-preview]]：追加「后续变更：路径契约已被 BACK-835 取代」注记并补关联，保留原文历史记录不删改。
+
+**BACK-835 遗留的单独批准变更已执行**：该任务 Implementation Notes 点名 5 处仍描述旧契约的 wiki 页面，本次全部订正 —— concepts/file-preview、concepts/web-server、sources/back-827、中文与英文 `40-Web界面/12-文档预览`。旧契约（正文只认 `assets/...`、raw-file 守卫限数据目录、`../` 一律拒绝）在两版手册与概念页中均已改为「正文按所在文档 join、项目根为边界、元数据字段项目根相对」。
+
+**配对记忆**：新建 3 个 decision 页 [[decisions/two-stage-reference-resolution]]、[[decisions/corpus-digest-over-event-version]]、[[decisions/p-prefix-for-office-page-ranges]]；2 个 execution 页 [[execution/browser-startup-perf-gotchas]]、[[execution/markdown-link-contract-parity]]；1 个 reasoning 页 [[reasoning/m-19-relative-reference-resolution]]（按基准深度而非链接类型分层、四种替代分解、六条反转检验与证据链，与 decisions/ 职责严格分开）。`patterns/` 未新建：BACK-835~837 的「边界转换逐集合推广」与 BACK-839~842 的「请求治理分层」各成候选模式，按约定需人工确认后才落盘；`retrospectives/` 本批未生成。
+
+**overview**：新增「相对引用统一与浏览器性能收敛（m-19 / BACK-835~843，2026-11-04~08）」小节，串起链接契约、Office 范围、请求治理、启动提速与 wiki 契约订正五条线；统计按实际文件数校正（此前 Sources 停在 420、Concepts 48、手册 48）。
+
+**手册**（无新增页，中英文 SUMMARY 不变）：中文更新 `40-Web界面/12-文档预览`（路径契约 + 页/表范围语法）、`40-Web界面/04-文档与决策`（相对引用与跨集合链接）、`40-Web界面/02-任务列表`（内联元数据保存状态）、`40-Web界面/00-启动与访问`（`--no-cache` / `web:build` / 启动日志 / 冷路径进度页）、`60-配置与运维/03-故障排查`（首次启动特别慢）；英文同步 `12-文档预览`、`04-文档与决策`、`00-启动与访问`、`03-故障排查` 四页，其余英文页本批未动。`.agents/skills/llm-wiki-for-backlog/scripts/merge.py` 重新合并中文手册：`backlog/wiki_output/用户手册/manual.md` 6518 行。
+
+**统计**：Sources 433→446、Concepts 49→52、Decisions 83→86、Execution notes 28→30、Reasoning 6→7；Entities 2、Patterns 6、Comparisons 1、Retrospectives 1、Developer notes 7、Reports 10、User manual 50 (zh) + 50 (en) 页。全部为磁盘实际 `.md` 计数（sources 446 含 frontmatter 齐备）。
+
+**mini-lint**：446 个 source 页 `source_path` 全量校验 + frontmatter 四字段齐备性检查，新增 13 页全部解析成功、0 缺字段；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）与上次裁决一致，本次不改写。index.md 12 个必需章节齐全、697 条 wikilink 仅 `[[path/to/page]]` 语法示例未解析；本批 31 个改动 wiki 页的 wikilink 逐条校验，除既有的 `[[wikilinks]]` / `[[path|...]]` 反引号语法示例外无断链。
