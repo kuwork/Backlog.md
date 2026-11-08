@@ -2,7 +2,7 @@
 title: Markdown 解析与序列化流水线
 labels: [concept]
 created_date: 2026-05-06 00:00
-updated_date: 2026-10-28 15:24
+updated_date: 2026-11-08 23:05
 ---
 
 # Markdown 解析与序列化流水线
@@ -128,6 +128,20 @@ Mermaid 渲染修复的一部分是围栏标记大小写处理——大写/混�
 
 这一改动的副作用是**编辑器预览必须与正文同源**：`MermaidAwarePre` 改名 `ChartAwarePre`，同样查表，否则会出现「正文渲染成图、编辑预览还是代码块」。新引擎的接入方式、生命周期与注册守卫见 [[concepts/chart-block-engine]]。
 
+## 渲染期路径 join 与范围切分（BACK-835~838）
+
+`src/web/utils/markdown-paths.ts` 的 `processMarkdownLocalPaths` / `joinMarkdownTarget` 在生成 HTML 之前改写每个本地 `href`/`src`：先剥离 `:N-M` 范围、与所在文档目录做 POSIX join、把结果作为站点绝对 URL 写回标签、再回挂范围。以 `/` 开头的目标归 URL / 路由层、**永不 join**；HTML 属性转义、`#` 锚点守卫、`//` 协议相对目标拒绝、单次解码都在这里完成。BACK-835 顺带修掉 `??` 运算符优先级 bug，代码围栏保护范围才计算正确。完整契约见 [[concepts/relative-reference-resolution]]。
+
+三个容易回归的切分细节：
+
+- `splitTarget` **只在文件扩展名之后**切 `:N-M`，因此 `doc-20 - 快速笔记：Memos-集成.md:10-20` 里的全角冒号不会被当成范围。BACK-838 又按扩展名决定 token 是否合法：docx/pptx/pdf 只接受 `P1-P4`、xlsx 接受任意 sheet token、其它扩展名保留 `12-20` 文本行含义，避免 `report.docx:P1-P4` 被误判为不透明 URI scheme 而塌成 `#`。
+- `sanitizeRawHtmlAngleBrackets` 必须保护 `](<...>)`，否则 `</backlog/docs/report.md>` 会命中闭合标签分支变成 `&lt;/backlog/...`。
+- 带空格目标用 `encodePath`「每段先解码一次再编码」；直接复用 `encodeWikiPath` 会把 composer 写好的 `%20` 二次编成 `%2520`。
+
+## 编辑态链接高亮（BACK-835 / 836 / 837）
+
+composer 的 prism 语法只认不含空格的 Markdown 目标，因此用两个**幂等 overlay token** 补齐：`mdlink`（含空格、尖括号 `<...>`、空标签 `[]` / `![]` 目标）与 `wikilink`（`[[...]]`）。`PasteAwareMDEditor` 注册两者并注入 `createRemarkWikilink` 预览插件，包装器标记 `wikilink-aware mdlink-aware`，`source.css` 给出与渲染态一致的浅/深蓝；六个可含 wikilink 的编辑器表面传 `wikilinkBasePath`。非空标签且目标无空格的普通链接仍走内建语法，不要盲目扩大 overlay 覆盖面。
+
 ## Related Sources
 - [[sources/back-537-deterministic-checklist-serialization]] — BACK-537 清单确定性解析
 - [[sources/back-536-in-document-hash-links]] — BACK-536 文档锚点链接
@@ -140,3 +154,7 @@ Mermaid 渲染修复的一部分是围栏标记大小写处理——大写/混�
 - [[sources/back-812-core-echarts-engine]] — 围栏图表路由统一，移除 post-render 替换
 - [[sources/back-821-raw-html-table-doc-preview]] — 全量转义改为白名单 + rehype-sanitize，原始 HTML 表格恢复渲染
 - [[sources/inline-code-html-escaping-fix]] — 围栏感知的 `<` 转义豁免（BACK-476）
+- [[sources/back-835-unify-relative-reference-resolution]] — 渲染期 join 与 mdlink overlay
+- [[sources/back-836-decision-relative-reference-resolution]] — 空标签 mdlink 分支
+- [[sources/back-837-wiki-relative-references-entity-links]] — wikilink overlay 与扩展名锚定切分
+- [[sources/back-838-office-page-sheet-ranges]] — Office 范围 token 的扩展名判定

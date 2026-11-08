@@ -2,7 +2,7 @@
 title: 浏览器加载状态
 labels: [concept, web-ui, server, performance]
 created_date: 2026-08-17 23:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-11-08 23:05
 ---
 
 # 浏览器加载状态
@@ -50,6 +50,14 @@ updated_date: 2026-10-09 23:30
 - 服务器先 `Bun.serve` 绑定，handler 后台等待同一 promise
 - 消除空闲 publications 和重复全量扫描
 
+## 启动可观测性与冷/热首屏（BACK-843）
+
+此前进度只通过 WebSocket 推给浏览器，页面没连上时终端一片沉默，启动看起来像挂死。现在 `src/utils/log.ts` 统一 `HH:MM:SS.mmm [tag]`：原本只走 WebSocket 的 `browserLoadingState` 镜像到控制台，新增 `[startup]` 阶段耗时（services ready / content loaded / watchers ready / fingerprint baseline / graph）、`[cache]` 每 ref restored/building（分支 + local|remote + 短哈希）、`[merge]` 三步；`ensureServicesReady()` 在 bind 后 `setTimeout(0)` 立刻开始。进度日志由 `enableProgressLogs()` 显式开启，只有 `browser` 命令与 Web server 打开，避免污染一次性 CLI 的纯文本 stdout。
+
+冷/热首屏的关键差别不在语料而在 **Bun 对 HTML 入口的惰性构建**：24MB JS 编译跑在服务器线程上（123~159s），会饿死包括 wiki 扫描与阶段日志在内的所有 continuation，这正是「有浏览器 175s、无浏览器 1.5s」的根因。UI 包改按内容指纹落盘缓存，未命中时 shell 立即回自刷新进度页（或继续服务上一份构建），构建在子进程里跑完即生效。热启动约 1.5~2.3s、零文件读取。完整体系见 [[concepts/browser-startup-cache]]。
+
+一个必须连查的回归：shell 路由会抢在 websocket handler 之前匹配，客户端在 origin root 开的 `WebSocket` 是带 `Upgrade` 的 GET；`serveAppShell` 必须先判 `Upgrade: websocket` 并交回 `handleRequest`，否则 socket 拿 HTML 而非 101、反复重连，连 [[concepts/corpus-digest]] 的连接时摘要播种也收不到。
+
 ## Related Sources
 
 - [[sources/back-566-browser-async-loading]] — 异步加载指示实现
@@ -60,3 +68,4 @@ updated_date: 2026-10-09 23:30
 - [[sources/back-670-loading-motion-reduce-removal]] — BACK-670 always-animate 约定
 - [[sources/back-637-hash-anchors-on-load]] — BACK-637 handledRouteIdRef 守卫与 hash 保留
 - [[sources/back-639-document-fingerprint-reload]] — BACK-639 指纹静默重载
+- [[sources/back-843-browser-startup-cache]] — 缓存分层、子进程构建与启动日志

@@ -2,7 +2,7 @@
 title: Web Server 与浏览器界面
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-28 15:26
+updated_date: 2026-11-08 23:05
 ---
 
 # Web Server 与浏览器界面
@@ -134,10 +134,26 @@ BACK-815 的 `ContentStore periodic rescan completed at <ISO>` 心跳原先用�
 - `src/utils/status-line.ts` 的 `StatusLine` 单例把「钉住末行」变成有契约的能力：TTY 下 `\r\x1b[K` 原地重写，非 TTY 退化为普通一行（无 ANSI）；`installStatusLineHooks()` 包裹 `console.log/error/warn`，其它日志先 `lift()` 把状态行推进 scrollback 再打印，因此状态行只在安静时占据底部。`start()` 装载 hooks、`stop()` 清理。
 - **激活策略保守**：`process.stdout.isTTY || BACKLOG_STATUS_LINE==1`。Git Bash / MSYS2 的 winpty 会让真实终端报 `isTTY === false`，但用 `MSYSTEM`/`TERM` 全局判定不安全（CI、`> file` 重定向里同样出现），因此自动开启只发生在 `backlog browser` 命令内（Windows + `MSYSTEM`/`MSYS` + stdout 未重定向 + 非 CI）；MCP 与直接 `server.start()` 保持安静。
 
+## try_files 回退与共享文件解析器（BACK-835）
+
+未命中的 GET 不再散落在多个 handler 里各按各的基准找文件：注册路由保持优先，其余全部落到一个 nginx 风格 `try_files` 处理器，按「项目根 → 配置数据目录 → 其 assets」有序候选表返回第一个存在的文件。`/api/file-content` 与 `/api/raw-file` 共用 `CoreFileSystem.readProjectAsset`（5MB 上限、扩展名 + MIME 白名单、排除 `.git`/`.env`/`.temp`、`nosniff`、svg/html attachment disposition），raw-file 守卫由数据目录放宽到**项目根**。`isInsideProject` 用 `relative()` + `isAbsolute()` 并校验符号链接 realpath，渲染期与服务端各判一次。路径解析、包含判定、文件 IO 都在 core 层（`reference-paths.ts` + `operations.ts`），server handler 只做 HTTP 参数适配与状态码映射。详见 [[concepts/relative-reference-resolution]]。
+
+## 广播摘要与首屏时序（BACK-840 / 841 / 843）
+
+- 每个 data-change 广播窗口前发一条 JSON `corpus-state`，摘要在**窗口开始**由 `contentStore.getCorpusDigest()` 采样一次并整窗复用；`/api/search` 在读完快照后把摘要放进 `X-Corpus-Digest`。纯字符串广播一条不少，旧客户端行为不变。WebSocket **open** 时（services ready 之后）也发一条播种客户端。完整规则见 [[concepts/corpus-digest]]。
+- bind 时不再 eager 启动 graph 服务（约 100s 的 WASM 构建），改到首个 `/api/graph` 请求；远端 refs fetch 也从首载关键路径推迟到后台追平。
+- HTML 入口的 `Bun.build`（24MB JS、123~159s）原先跑在服务器线程上，会饿死所有 continuation —— 这是「有浏览器 175s、无浏览器 1.5s」的根因。现由 `web-bundle.ts` 按内容指纹落盘缓存，未命中时 `scripts/build-web.ts` 在**子进程**构建，期间服务自刷新进度页或上一份构建，落地后无需重启。完整体系见 [[concepts/browser-startup-cache]]。
+- **路由回归必查**：shell 改成路由 handler 后，SPA 路由会抢在 websocket handler 之前匹配，而客户端在 origin root 开的 `WebSocket` 是带 `Upgrade` 的 GET；`serveAppShell` 必须先判 `Upgrade: websocket` 并把请求交回 `handleRequest`，否则 socket 拿到 HTML 而非 101、反复重连，连接时的 `corpus-state` 也永远收不到。
+- 进度日志（`HH:MM:SS.mmm [tag]`）由 `enableProgressLogs()` 显式开启，**只有 `browser` 命令与 Web server 打开**，避免污染 `task list` / `decision list` 的纯文本 stdout。
+
 ## Related Concepts
 
 - [[concepts/kuzu-graph]] — 进程内 Graph Service、`/api/graph` 与 `graph-updated` 广播
 - [[concepts/web-ui-features]] — 消费这些 API 的前端视图
+- [[concepts/relative-reference-resolution]] — 渲染期 join 与服务端候选表
+- [[concepts/corpus-digest]] — 摘要计算、游标与 fail-open
+- [[concepts/browser-startup-cache]] — 缓存分层与冷/热启动
+- [[concepts/file-preview]] — 共享解析器的使用方
 
 ## Related Sources
 
@@ -154,3 +170,6 @@ BACK-815 的 `ContentStore periodic rescan completed at <ISO>` 心跳原先用�
 - [[sources/back-815.01-pinned-rescan-status-line]] — 重扫心跳的状态行契约
 - [[sources/back-815-server-cache-self-heal]] — BACK-815 指纹对账自愈与 WS 重连
 - [[sources/back-818-checklist-batching-broadcast-debounce]] — BACK-818 广播防抖 75ms→300ms
+- [[sources/back-835-unify-relative-reference-resolution]] — try_files 与共享解析器
+- [[sources/back-840-corpus-digest-refresh-skip]] / [[sources/back-841-corpus-digest-gap-fixes]] — corpus-state 消息
+- [[sources/back-843-browser-startup-cache]] — bundle 缓存、子进程构建与 upgrade 让回

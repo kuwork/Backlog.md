@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-11-08 23:05
 ---
 
 # Web UI 功能
@@ -235,6 +235,19 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - **输入端前缀自动补全**：输入裸数字 ID 时按上下文补全前缀
 - **共享 canonical entity index**：三实体共用同一索引；`canonicalTaskId` 提取到纯模块 `src/utils/task-id.ts`，渲染与输入两侧复用（[[sources/back-614-entity-id-auto-link-autocomplete]]）
 
+## 任务详情弹窗的写入与请求预算（BACK-839 / 842）
+
+弹窗里 references / documentation / modifiedFiles / labels / dependencies 五个列表型字段原先每加/减一个 chip 就立即 PUT。连续操作会撞上 fail-fast 的单任务文件锁（约持有 2 秒）产生「being modified by another process」409，每次成功写入又扇出两次全量 `/api/search`，10 秒客户端超时甚至让重试 PUT 撞上自己仍在跑的请求。
+
+- 五个字段各有 1000ms trailing timer，把最新值合并进**一个** pending payload，按字段记录 burst 前初值作回滚快照；`runInlineMetaFlush` 一次 PUT 倒完，promise 链串行化 flush，杜绝两个元数据 PUT 重叠。乐观更新即时发生，失败通过 `restoreInlineMetaValues` 复原；卸载前 flush pending。`Modal` 的 actions 头部槽显示三态保存 chip（旋转 / 绿勾 / 红叉），四语言新增 `common.saved`。
+- status、assignee、priority、milestone、日期、title 等**非列表型**字段保持即时单写；AC/DoD 继续用 BACK-818 的清单防抖。
+- 副作用请求另算一笔预算：从依赖闭包 effect 移除 `tasksVersion`（它随每次语料替换自增，会让并不改闭包的文档编辑也重拉 `/api/task/:id/dependencies`），`fetchTasks` / `fetchDrafts` 改为「每次打开一次」的 ref 守卫 effect。代价是外部编辑器在弹窗打开期间改动不再自动刷新闭包，显示上次已知值直到重开。
+- `/api/search` 本身由 [[concepts/corpus-digest]] 的 L1 摘要抑制，三层互不覆盖：写入侧消 409、L1 消搜索扇出、弹窗侧消预载请求。
+
+## 跨页面统一的 Markdown 点击契约（BACK-836 / 837）
+
+`MarkdownLinkPreview.tsx` 的 `useMarkdownLinkPreview` + `MarkdownPreviewModal` 是 doc / decision / wiki / task / milestone / memo 的单一来源：本地文件与 Office 开预览、带范围实体链接开区间预览、普通实体链接导航。此前 `DocumentationDetail` 独有完整契约、`DecisionDetail` 只有内联导航、`WikiDetail` 有两个先于 React 委派运行的 DOM 级 handler，三者行为互不一致（本地文件退化成普通 anchor、范围丢失、`/wiki/` 既导航又弹窗）。统一后所有 `MarkdownEditor` 包装器只接一个从 hook 推导类型的 `linkHandlers` 属性。验证期还修掉一个陈旧标题 slug bug：换文档的链接在新文档加载前改路由会把旧标题写进 URL，slug effect 需等 `document.id` 与路由 id 一致。
+
 ## Related Concepts
 - [[concepts/kuzu-graph]] — /graph、/knowledge 与模态关系图的后端支撑
 - [[concepts/spotlight-search]] — 全局搜索对话框的路由、虚拟列表与滚动记忆
@@ -242,6 +255,9 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - [[concepts/date-fields]] — 日期字段语义与存储格式
 - [[concepts/gantt-view]] — 甘特图详细技术实现
 - [[concepts/task-lifecycle]] — 任务状态流转
+- [[concepts/relative-reference-resolution]] — 链接渲染与点击契约的底层规则
+- [[concepts/corpus-digest]] — 刷新抑制
+- [[concepts/browser-startup-cache]] — 首屏加载时序
 
 ## Related Sources
 - [[sources/web-ui-sort-optimization]] — BACK-484 排序优化
@@ -255,6 +271,9 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - [[sources/back-505]] — BACK-505 依赖项钻取导航
 - [[sources/stable-task-modal-urls-task]] — BACK-509 稳定任务模态框 URL
 - [[sources/wiki-page-switch-edit-mode-fix]] — BACK-510 Wiki 编辑模式修复
+- [[sources/back-839-batch-inline-metadata-edits]] — 内联元数据批量写入与保存状态
+- [[sources/back-842-reduce-modal-side-effect-requests]] — 弹窗副作用请求削减
+- [[sources/back-836-decision-relative-reference-resolution]] / [[sources/back-837-wiki-relative-references-entity-links]] — 共享点击契约
 - [[sources/local-url-short-aliases-task]] — BACK-511 本地 URL 短别名
 - [[sources/back-512-kanban-column-sort-menu-cross-branch]] — BACK-512 看板列跨分支排序菜单修复
 - [[sources/back-526-create-task-references-and-backlog-autocomplete]] — BACK-526 创建任务引用与 .backlog 自动补全

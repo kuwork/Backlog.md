@@ -2,7 +2,7 @@
 title: 本地文件预览
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-10-28 15:25
+updated_date: 2026-11-08 23:05
 ---
 
 # 本地文件预览
@@ -15,12 +15,17 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 - Documentation 中的 `CLI-INSTRUCTIONS.md`
 - Markdown 内容（Description、Plan、Notes、Final Summary）中的本地路径链接
 
-## 路径规则
+## 路径规则（BACK-835 后）
 
-- 始终相对于**项目根目录**（包含 `backlog/` 的目录）
-- 使用相对路径，如 `src/server/index.ts`
-- 绝对路径不支持
-- 目录遍历（`../`）被 API 拒绝
+完整契约见 [[concepts/relative-reference-resolution]]，这里只列与预览直接相关的部分。
+
+- **元数据字段**（`--ref` / `references`、`modifiedFiles`、文档路径、查询块 `source`）：始终相对**项目根目录**（含 `backlog/` 的目录），如 `src/server/index.ts`。
+- **Markdown 正文的 href/src**：相对**所在文档所在目录**解析，渲染期 join 成站点绝对 URL，服务端按「项目根 → 数据目录 → assets」有序候选表兜底。
+- **包含边界是项目根**：多级 `../` 只要结果仍在根内就允许，可到达 `src/`、`quickstart/`、`scripts/` 等与数据目录同级的兄弟目录；越界在渲染期与服务端各拒一次，符号链接 realpath 逃逸同样拒绝。
+- 以 `/` 开头的目标属于 URL / 路由层，永不参与 join（`/documentation/26:10-50`、`/quickstart/report.pdf`）；外链、`#` 锚点、实体短链原样放行。
+- 既有的 `assets/...` 链接、粘贴的 `/assets/paste/...` 图片无需内容迁移；自定义数据目录名被自动尊重。
+
+> 历史注记：BACK-827 时期「正文只认 `assets/...`、写 `backlog/...` 会 404、raw-file 守卫限数据目录内、`../` 一律拒绝」是当时的真实行为，BACK-835 起已失效。
 
 ## 行范围
 
@@ -62,9 +67,9 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 
 ## Office 文档预览模态框（BACK-825~831）
 
-文档预览从「文本/Markdown/代码」扩展到**原生 Office 文档**：点链接在专用模态框中预览，而非下载。需注意路径解析按链接上下文区分——**引用字段**（元数据里的 `backlog/...` 路径）可预览项目任意路径；**正文**（`.wmde-markdown` 描述/评论/笔记）里的链接只支持 `assets/...` 约定（映射到 `backlog/assets/`），写 `backlog/...` 前缀的正文链接不会被拦截、会落到浏览器 404。
+文档预览从「文本/Markdown/代码」扩展到**原生 Office 文档**：点链接在专用模态框中预览，而非下载。BACK-835 之后路径解析不再按「引用字段 vs 正文」分两套：正文里的本地链接按所在文档 join，可到项目根内任意兄弟目录；`/api/raw-file` 的守卫也从数据目录放宽到项目根，因此正文链接到 `quickstart/`、`scripts/` 下的 docx/pdf 同样能在应用内预览。
 
-- **引用字段任意路径 + 原始字节端点**：BACK-827 加同源守卫与 `GET /api/raw-file`（项目相对路径取字节 + content-type，穿越守卫限 `backlog/` 内，`Cache-Control: no-store`）；该端点服务于引用字段携带的 `backlog/...` 路径，正文 `assets/` 链接仍走既有静态 `/assets/*` 路由。
+- **原始字节端点**：BACK-827 引入同源守卫与 `GET /api/raw-file`（项目相对路径取字节 + content-type，`Cache-Control: no-store`），BACK-835 把守卫放宽到项目根并与 `/api/file-content` 共用 `readProjectAsset` 解析器（5MB 上限、扩展名 + MIME 白名单、排除 `.git`/`.env`/`.temp`、svg/html attachment disposition）。`/assets/*` 静态路由保留给未被拦截的默认资源。
 - **Word（`.docx`）**：`DocPreviewModal`（BACK-825）基于 docx-editor，真实分页 A4；默认只读、Edit 进编辑态（工具栏/标尺/页边距参考线）、Save 经 `POST /api/docx/save` 写回；头部显式模式徽章（只读灰 / 编辑蓝）；四语言自构建 zh-TW/ja 覆盖包；docx-editor 代码分割。
 - **PDF**：`PdfPreviewModal`（BACK-828）基于自托管 pdf.js（运行时加载、不打包），逐页 canvas；有大纲时左侧可点击目录栏（复用任务模态框 `TocRows` 视觉）；fit-to-width + 全屏圆角裁切。
 - **PPTX**：`PptxPreviewModal`（BACK-829）基于 `@aiden0z/pptx-renderer`（Apache-2.0，OOXML→HTML/SVG 高保真，窗口化挂载）；缩略图目录跳转 + WPS 式边缘全屏放映；仅只读（无编辑 API）。
@@ -72,11 +77,27 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 - **不可预览格式提示**（BACK-826）：`.doc`/`.ppt`/`.xls` 家族等非可预览 Office 链接被拦截并弹非阻塞 toast 建议转 `.docx`/`.pdf`，而非让浏览器下载；修饰键/`target=_blank` 仍开新标签。
 - **本地化**（BACK-831）：四个预览模态框约 60 行 CJK 字面量移入字典——通用动词从 `common` 读、`fullscreen`/`exitFullscreen` 提升（promote）到 `common`、预览专用文案进 `preview` 命名空间；XLSX 额外把 Univer 工作台映射到应用语言包。
 
+## Office 页范围与工作表范围（BACK-838）
+
+Office 链接可带可选 `:range` 后缀，`parseOfficeLink` 把 `<path>.<ext>:<token>` 拆成干净路径、文件种类和 `pages` / `sheets` 范围。
+
+| 文件 | 合法 token | viewer 行为 |
+|---|---|---|
+| docx / pptx / pdf | `:P1`、`:P1-P4` | docx 定位 `.layout-page`（带重试挺过迟到重排）；pptx 投影 clamp 后的 slide 窗口并用 `MutationObserver` 隐藏窗口外懒挂载节点；pdf 只渲染窗口内页，越界 clamp 并把实际页数回报徽标 |
+| xlsx / xlsm | `:p1`、`:p1-p4`、`:表名` | 序号 / 名字 token 都先解析成 `FWorksheet` 再 `setActiveSheet`（该 API 要 id 而非名字），其余 tab 保持可点 |
+| 其它文本 | `:3-7` | 仍是**纯文本行范围** |
+
+**`P` 前缀是强制的**：去掉它会让文档夺走 `:1-4` 已有的文本行含义；`doc-35` 的两条裸数字反例就是守这条边界。`splitTarget` 按扩展名决定是否接受 token，避免 `report.docx:P1-P4` 被当成不透明 URI scheme 塌成死 `#` 锚点。`officeRangeLabel` 统一四个 viewer 与内联嵌入的徽标，四语言文案在 `preview.shared` / `preview.xlsx`。
+
+指向 Office 的 Markdown **图片**（`![]()`）由 `OfficeEmbedInline` 在 `<figure>` 内嵌同一 viewer，图注为干净文件名 + 范围徽标，`alt` 降级为 tooltip 以免重复；非 Office 图片仍走 lightbox。最后一公里在 `Layout.tsx` 的 document 级 capture-phase 拦截器：它先于所有 Markdown handler 并 `stopPropagation`，必须走 `parseOfficeLink` 把范围从字节 URL 与标题里剥离，否则每个范围链接都 404 且标题与徽标重复。
+
 ## Related Concepts
 
 - [[concepts/web-ui-features]] — Web UI 功能集，含任务详情弹窗集成点
 - [[concepts/markdown-pipeline]] — frontmatter 剥离与正文渲染
 - [[concepts/query-chart-binding]] — 同一渲染树里的图表路由
+- [[concepts/relative-reference-resolution]] — 路径基准、边界与点击契约
+- [[concepts/web-server]] — try_files 与共享解析器
 
 ## Related Sources
 
@@ -89,3 +110,6 @@ Web UI 中点击本地文件路径即可在模态框中预览文件内容的功�
 - [[sources/back-829-pptx-preview-modal]] — PPTX 预览模态框
 - [[sources/back-830-xlsx-preview-modal]] — XLSX 高保真布局预览与写回
 - [[sources/back-831-localize-preview-modals]] — 四模态框本地化
+- [[sources/back-835-unify-relative-reference-resolution]] — 路径契约重写
+- [[sources/back-838-office-page-sheet-ranges]] — Office 范围链接
+- [[sources/doc-35-office-link-check]] — 四格式验收 fixture
