@@ -2,7 +2,7 @@
 title: BACK-827 - 项目任意路径的 docx 与 pdf 预览
 labels: [source, web, docs]
 created_date: 2026-10-31 23:53
-updated_date: 2026-10-31 23:53
+updated_date: 2026-11-08 23:05
 source_path: backlog/tasks/back-827 - Project-wide-docx-and-pdf-preview-for-any-project-path.md
 ---
 
@@ -21,10 +21,19 @@ source_path: backlog/tasks/back-827 - Project-wide-docx-and-pdf-preview-for-any-
 
 `/api/raw-file` 拒绝路径穿越、限定在 `backlog/` 数据目录内，content-type 映射（docx、pdf、常见图片）。`/assets/*` 静态路由保留给未被拦截的默认资源（图片）。同源守卫把外部链接挡在应用外。`/api/raw-file` 用 `Cache-Control: no-store` 并缓冲可保存的 Office 类型，避免重开预览时读到旧内容、也避免服务器持有待替换文件上的读句柄（Windows 重命名会失败）。
 
+## 后续变更：路径契约已被 BACK-835 取代
+
+> 本节记录 2026-11-08 wiki 摄取的订正。上文描述的「正文只认 `assets/...`、引用字段才走任意路径」是 BACK-827 当时的真实行为，但**已不再成立**，勿据此实现或排查。
+
+BACK-835 统一了渲染期 join 与服务端 try_files 解析：正文里的本地链接按**所在文档**解析，可以到达与数据目录同级的兄弟目录；`/api/raw-file` 的守卫从数据目录放宽到**项目根**；`/api/file-content` 与 `/api/raw-file` 共用一个解析器。BACK-838 又让 Office 链接带上 `:P1-P4` / `:p1` / `:表名` 范围，并由 `Layout.tsx` 拦截器统一走 `parseOfficeLink`（原先「把原始 href 拼进 `/api/raw-file`」的做法正是范围链接 404 的根因）。
+
+仍有效的部分：元数据字段（`--ref`/`references`、`modifiedFiles`）保持项目根相对；`Cache-Control: no-store`、缓冲可保存 Office 类型以避免 Windows 重命名失败、外部链接与修饰键的默认行为都未变。
+
 ## Related Concepts
 
 - [[concepts/file-preview]] — 文档预览家族与同源守卫
 - [[concepts/web-server]] — 原始字节端点
+- [[concepts/relative-reference-resolution]] — 取代本页描述的新路径契约
 
 ## Related Sources
 
@@ -32,3 +41,5 @@ source_path: backlog/tasks/back-827 - Project-wide-docx-and-pdf-preview-for-any-
 - [[sources/back-828-pdf-preview-modal]] — PDF 预览模态框
 - [[sources/back-829-pptx-preview-modal]] — PPTX 预览模态框（复用本拦截器）
 - [[sources/back-830-xlsx-preview-modal]] — XLSX 预览模态框（复用本拦截器）
+- [[sources/back-835-unify-relative-reference-resolution]] — 取代本页路径契约
+- [[sources/back-838-office-page-sheet-ranges]] — Office 范围链接与拦截器修复

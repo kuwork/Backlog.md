@@ -30,13 +30,13 @@ Backlog.md 将任意 Git 仓库目录转变为自包含的项目看板。每个�
 ## 安装
 
 ```bash
-npm i -g backlog.md
+npm i -g @kuwork/backlog.md
 ```
 
 其他安装方式：
-- `bun add -g backlog.md`
-- `brew install backlog-md`
-- `nix run github:MrLesk/Backlog.md`
+- `bun add -g @kuwork/backlog.md`
+- `brew install backlog-md`（上游 formula）
+- `nix run github:MrLesk/Backlog.md`（上游 flake）
 
 ## 快速开始
 
@@ -57,6 +57,12 @@ backlog browser
 ---
 
 本手册涵盖从基础安装到高级 AI 集成的完整使用指南。
+
+## Related Concepts
+
+- [产品概述](00-快速开始/00-产品概述.md) — Backlog.md 核心定位与功能概览
+- [安装与初始化](00-快速开始/01-安装与初始化.md) — 安装方式与项目初始化步骤
+- [AI 集成设置](00-快速开始/02-AI集成设置.md) — AI 集成配置与工作流
 
 ---
 
@@ -136,10 +142,16 @@ Backlog.md 是一款 Markdown 原生的任务管理与看板可视化 CLI 工具
 
 ### 1.1.4 分发渠道
 
-- npm：`backlog.md`
-- Homebrew：`backlog-md`
-- Nix：`nix run github:MrLesk/Backlog.md`
-- GitHub Releases：平台二进制文件
+- npm：`@kuwork/backlog.md`
+- Homebrew：`backlog-md`（上游 formula）
+- Nix：`nix run github:MrLesk/Backlog.md`（上游 flake）
+- GitHub Releases：`kuwork/Backlog.md` 平台二进制文件
+
+### 1.1.5 Related Concepts
+
+- [用户手册封面](../README.md) — 用户手册封面与快速入口
+- [安装与初始化](./01-安装与初始化.md) — 安装方式与项目初始化步骤
+- [AI 集成设置](./02-AI集成设置.md) — AI 集成配置与工作流
 
 ## 1.2 安装与初始化
 
@@ -148,16 +160,18 @@ Backlog.md 是一款 Markdown 原生的任务管理与看板可视化 CLI 工具
 #### 1.2.1.1 通过 npm（推荐）
 
 ```bash
-npm i -g backlog.md
+npm i -g @kuwork/backlog.md
 ```
 
 #### 1.2.1.2 通过 Bun
 
 ```bash
-bun add -g backlog.md
+bun add -g @kuwork/backlog.md
 ```
 
 #### 1.2.1.3 通过 Homebrew（macOS / Linux）
+
+Homebrew formula 目前仍指向上游仓库：
 
 ```bash
 brew install backlog-md
@@ -165,13 +179,15 @@ brew install backlog-md
 
 #### 1.2.1.4 通过 Nix
 
+Nix flake 目前仍指向上游仓库：
+
 ```bash
 nix run github:MrLesk/Backlog.md
 ```
 
 #### 1.2.1.5 GitHub Releases
 
-访问 [Releases](https://github.com/MrLesk/Backlog.md/releases) 页面下载对应平台的二进制文件。
+访问 [Releases](https://github.com/kuwork/Backlog.md/releases) 页面下载对应平台的二进制文件。
 
 > **Apple Silicon（M1/M2）提示**：如果你通过 Rosetta 运行 x64 版 Node 或 Bun，CLI 启动器会自动检测本机架构与 Rosetta 状态，解析到匹配的 arm64 平台包；若安装的包与 CPU 架构不匹配，会给出明确的架构信息与重装命令，避免 `illegal hardware instruction` 错误。若遇到二进制解析问题，优先用原生 arm64 运行时重新安装。
 
@@ -288,7 +304,7 @@ npm i -g @kuwork/backlog.md@latest
 brew upgrade backlog-md
 ```
 
-**GitHub Releases 二进制**：到 [Releases](https://github.com/MrLesk/Backlog.md/releases) 下载新版替换旧二进制即可。
+**GitHub Releases 二进制**：到 [Releases](https://github.com/kuwork/Backlog.md/releases) 下载新版替换旧二进制即可。
 
 升级后建议做两件事：
 
@@ -310,6 +326,12 @@ backlog config
 - 默认编辑器
 - Web UI 端口与自动打开浏览器
 - Git 集成选项（自动提交、绕过 hooks 等）
+
+### 7.0.2 Related Concepts
+
+- [产品概述](./00-产品概述.md) — Backlog.md 核心定位与功能概览
+- [AI 集成设置](./02-AI集成设置.md) — 初始化后的 AI 集成配置
+- [配置管理](../60-配置与运维/00-配置管理.md) — 初始化后的配置调整
 
 ## 7.1 AI 集成设置
 
@@ -454,7 +476,7 @@ Draft（草稿） → To Do → In Progress → Done → Archived / Completed
 - 默认机器已内置**收尾门禁**：`In Progress → In Review` 要求任务文件按 task-finalization 完成、`In Review → Done` 要求按 task-finalization 验收通过——新项目开箱即带，无需手动配置（BACK-816 把定稿门禁同步进了四语言默认机器）
 - 状态机**只声明、不强制**：越界推进不报错，但 CLI/MCP 指南（`backlog instructions overview`）会渲染完整的状态表、类别、迁移边与「停下等人工」清单，AI 代理按声明的机器工作
 - 旧式字符串数组配置仍兼容；设置页提供可视化**状态机编辑器**维护对象形式配置
-- 完整语义见 wiki 概念页 [[concepts/state-machine]]
+- 完整语义见 wiki 概念页 [状态机语义](../../concepts/state-machine.md)
 
 ### 8.1.3 任务文件结构
 
@@ -2814,7 +2836,19 @@ BROWSER=/usr/bin/chromium backlog browser
 
 `BROWSER` 被视为单个可执行路径（去除包裹引号，不会拆分或 shell 求值），URL 作为独立参数传入。未设置时按平台自动回退：`open`（macOS）、`cmd /c start`（Windows）、`xdg-open`（Linux）。
 
-#### 120.0.0.2 组合使用
+#### 120.0.0.2 强制冷启动
+
+启动时会使用磁盘缓存（按 commit 的分支索引、任务解析签名、文档/决策/Wiki 页签名，以及按内容指纹构建的 UI 包），热启动通常约 1.5 秒。若怀疑缓存损坏，或想复现首次启动行为，用 `--no-cache` 忽略所有缓存：
+
+```bash
+backlog browser --no-cache
+```
+
+该参数**只跳过读取、不跳过写入**：本次冷启动会重建它忽略的那些缓存，因此下一次普通启动又回到热路径，无需额外清理。也可以用 `bun run web:build` 提前为当前源码重建 UI 包。
+
+缓存统一放在平台的标准位置：Windows `%LOCALAPPDATA%`、macOS `~/Library/Caches`、Linux `$XDG_CACHE_HOME` 或 `~/.cache`；显式设置 `$XDG_CACHE_HOME` 会覆盖所有平台。
+
+#### 120.0.0.3 组合使用
 
 ```bash
 backlog browser --port 3000 --no-open
@@ -2868,6 +2902,10 @@ Web 界面的加载反馈分为两层：
 - **后台索引**：跨分支索引等后台工作进行时，头部右侧显示一个状态 chip（展示当前阶段文案，悬停可见完整信息），头部下缘附带扫动进度条；已加载的看板与树保持可交互，不会被骨架屏覆盖
 
 加载动画在系统开启「减少动态效果」（reduced motion）时仍然播放——加载进度属于必要反馈而非装饰，静止的加载环在远程桌面、虚拟机等环境下容易被误读为卡死。
+
+终端里也会同步打印带时间戳的启动进度（`HH:MM:SS.mmm [tag] ...`），包括 `[startup]` 各阶段耗时、`[cache]` 每个 ref 是 restored 还是 building（附分支名、local/remote 与短哈希）、`[merge]` 三个步骤。这些日志在浏览器页面连接之前就开始输出，所以即使首屏还是空白，终端也能看出当前卡在哪一步。一次性 CLI 命令（如 `backlog task list`）不会打印进度行，输出保持干净。
+
+若 UI 包尚无缓存，页面会先显示一个自动刷新的进度页，构建在后台子进程里进行，服务与接口保持可用；构建完成后自动切换到完整界面，无需重启。
 
 ### 120.0.6 作为常驻服务运行
 
@@ -3249,6 +3287,12 @@ http://localhost:6420/task/506/Fix-CLI-actualStart-actualEnd-missing-local-to-UT
 
 > 三种状态的外框宽度完全一致，切换排序方向时表头文字不会产生抖动。
 
+### 120.2.6 内联元数据的保存状态
+
+在任务详情弹窗里编辑**参考文件、文档、修改文件、标签、依赖**这五个列表型字段时，界面会立即显示改动，但写入会在短暂停顿后合并成一次保存，避免连续加减条目触发「文件正被其他进程修改」的冲突。弹窗标题栏同时显示保存状态：旋转图标表示保存中，绿色对勾表示已保存，红叉表示失败（失败时字段回滚到修改前的值并保留错误提示）。在保存窗口内关闭弹窗，未写入的改动会立即提交。
+
+状态、指派人、优先级、里程碑、日期与标题等字段仍是即时保存；验收清单沿用原有的批量保存。
+
 ## 120.3 里程碑管理
 
 里程碑用于将任务分组到阶段性目标中，便于追踪项目整体进度。Web 界面提供完整的里程碑列表、详情查看和任务分配功能。
@@ -3411,6 +3455,18 @@ Web 界面提供文档列表和决策记录的浏览功能，支持按子文件�
 #### 120.4.3.4 Mermaid 图表
 
 文档、决策与 Wiki 正文中的 ` ```mermaid ` 代码块会渲染为图表：围栏语言标识不区分大小写；图表主题跟随界面亮 / 暗模式自动切换；Markdown 编辑器的预览窗格同样渲染 Mermaid。
+
+#### 120.4.3.5 相对引用与跨集合链接
+
+文档页、决策页与 Wiki 页里的本地链接遵循同一套规则，可以从一个集合指向另一个集合：
+
+- **正文里的本地链接按所在文档所在目录解析**：渲染时拼成站点绝对 URL，服务端按「项目根目录 → 数据目录 → assets 目录」顺序找到第一个存在的文件。多级 `../` 只要结果仍在项目根内就允许，因此能链接到与数据目录同级的兄弟目录（如 `quickstart/`、`scripts/`）。
+- **以 `/` 开头的目标不参与拼接**：它们属于站点路径或实体短链，例如 `/quickstart/report.pdf`、`/documentation/26:10-50`、`/decisions/2`、`/wiki/concepts/auto-port`。
+- **文件名含空格时用尖括号包裹**：`[验收页](<../RelativeLink/doc-34 - Relative-Link-Check.md:3-8>)`；`:3-8` 是行区间，点击后在预览里只显示这几行。全角冒号的文件名也能正确解析，不会被误认成区间。
+- **元数据字段不走这套规则**：`references`、`modifiedFiles`、文档路径、查询块 `source` 始终是项目根相对路径。
+- 既有的 `assets/...` 链接、粘贴图片和 `/documentation/10:55-74` 无需修改仍然可用。
+
+编辑时，含空格、尖括号与空标签的链接，以及 `[[wikilink]]`，都会显示为与渲染态一致的蓝色；普通链接仍按内建语法高亮。Wiki 页里的 `[[...]]` 会在弹窗内打开目标页（可带 `:N-M` 只加载指定行），而显式写出的 `/wiki/...` Markdown 链接则切换到该 Wiki 页面。
 
 ### 120.4.4 进入决策记录页面
 
@@ -4203,14 +4259,31 @@ http://localhost:6420/search?q=timezone&type=task
 
 Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档：点击文档链接，都会在专用模态框中打开预览，而不是下载到本地。Word 与 Excel 还支持编辑并写回源文件。
 
-预览支持哪些路径，取决于链接所处的位置：
+### 120.12.1 链接路径
 
-- **引用字段**（任务 / 里程碑 / 文档等元数据里写的 `backlog/...` 项目相对路径，如 `backlog/docs/report.pdf`）：走原始字节端点 `GET /api/raw-file` 获取内容（带 content-type，并限制在项目数据目录内），覆盖项目任意路径。
-- **正文**（描述 / 评论 / 笔记 / 文档 Markdown 里的链接）：只支持 `assets/...` 约定（即 `backlog/assets/` 目录）下的文档；若正文里直接写 `backlog/...` 前缀，链接不会被拦截、会落到浏览器 404。
+预览不再按「引用字段 / 正文」分两套规则。Markdown 正文里的本地链接按**所在文档所在目录**解析，渲染时拼成站点绝对 URL，服务端按「项目根目录 → 数据目录 → assets 目录」的顺序找到第一个存在的文件。以 `/` 开头的目标（如 `/quickstart/report.pdf`）是站点根路径，不参与拼接。
 
-跨源文档、修饰键或 `target=_blank` / `download` 链接仍按浏览器默认行为打开。
+- 多级 `../` 只要结果仍在**项目根目录**内就允许，因此能引用与数据目录同级的兄弟目录（`src/`、`quickstart/`、`scripts/`）；越出项目根会被拒绝。
+- 元数据字段（`references`、`modifiedFiles`、文档路径、查询块 `source`）始终是**项目根相对**路径，不受正文拼接规则影响。
+- 既有的 `assets/...` 链接与粘贴的图片无需改动，自定义数据目录名同样生效。
+- `GET /api/raw-file` 的守卫已放宽到项目根，Word / PDF / PPTX / Excel 都能在应用内预览；跨源文档、修饰键或 `target=_blank` / `download` 链接仍按浏览器默认行为打开。
 
-### 120.12.1 Word 文档
+### 120.12.2 页范围与工作表范围
+
+Office 链接可以带范围后缀，只打开文档的局部：
+
+| 文件 | 写法 | 效果 |
+| --- | --- | --- |
+| Word / PDF / PPTX | `:P2`、`:P1-P4` | 滚到起始页、只渲染窗口内的页或幻灯片 |
+| Excel | `:p1`、`:p1-p4` | 按 1-based 序号激活工作表，其余标签仍可点 |
+| Excel | `:官方基准矩阵` | 按中文表名激活工作表 |
+
+- **`P` 是必需的**：不带 `P` 的 `:3-7` 仍是纯文本文件的行范围，不会被当成页范围；这是刻意的兼容设计。
+- 越界范围会收敛到实际页数（3 页 PDF 的 `:P9-P12` 显示「第 3 页」），不存在的工作表名停在默认表，都不报错。
+- 写 `!` 图片语法（如 `![报告](/quickstart/report.docx:P1-P2)`）会把预览**直接嵌入页面**，带干净文件名与范围徽标；普通图片仍走图片灯箱。
+- 范围徽标与标题不重复，标题始终是干净的文件名；范围文案跟随应用语言（en / zh-CN / zh-TW / ja）。
+
+### 120.12.3 Word 文档
 
 基于 docx-editor 渲染，呈现真实分页的 A4 页面。
 
@@ -4219,7 +4292,7 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 模态框头部显式展示状态徽章：只读态为灰色 `read-only preview`，编辑态为蓝色 `edit mode`，状态不靠外观推断。
 - 支持 CSS 全屏填充视口，内容裁切到圆角。
 
-### 120.12.2 PDF 文档
+### 120.12.4 PDF 文档
 
 基于自托管的 pdf.js（运行时加载，不进初始包），页面逐页绘制到 canvas。
 
@@ -4227,7 +4300,7 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 含大纲（目录）的 PDF 显示可点击的左侧目录栏，点击滚动到目标页。
 - 支持 CSS 全屏，页面区裁切到圆角。
 
-### 120.12.3 PPTX 演示文稿
+### 120.12.5 PPTX 演示文稿
 
 基于 `@aiden0z/pptx-renderer`（Apache-2.0），把 OOXML 高保真还原为 HTML/SVG，大文档窗口化挂载。
 
@@ -4235,7 +4308,7 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 播放模式为边缘全屏放映，支持 WPS 式键盘导航（→↓Space PageDown Enter 下一页；←↑PageUp Backspace 上一页；Home/End 首/末页；Esc 退出）。
 - 仅只读预览。
 
-### 120.12.4 Excel 电子表格
+### 120.12.6 Excel 电子表格
 
 基于 Univer 开源 sheets 预设，保留让表格可读的布局：单元格文字与值、字体、填充、边框、对齐、合并区域、列宽、行高、数字格式。
 
@@ -4244,11 +4317,11 @@ Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档�
 - 保存为原地 OOXML 补丁：只重写被编辑工作表的单元格与合并区域，其余内容（图表、图片、条件格式等）原样保留；无实际改动的保存会如实提示而非报成功。
 - 仅 `.xlsx` / `.xlsm`；编辑器内新增的工作表不写回，单元格格式改动不写回。
 
-### 120.12.5 不支持的格式
+### 120.12.7 不支持的格式
 
 对应用无法渲染的 Office 格式（传统 `.doc`、PowerPoint 与 Excel 家族、宏与模板变体），点击不会直接下载或打开，而是弹出提示，建议先转换为 `.docx` 或 `.pdf`。修饰键或 `target=_blank` / `download` 仍开新标签。
 
-### 120.12.6 本地化
+### 120.12.8 本地化
 
 四个预览模态框的所有用户可见文案都跟随应用语言（en / zh-CN / zh-TW / ja），包括状态徽章、按钮、对话框与播放器提示。
 
@@ -6339,7 +6412,20 @@ backlog overview --plain --completed
 
 本页聚合使用 Backlog.md 时的常见故障，每节按「症状 → 原因 → 处置」组织。各功能页的详细说明仍归原页，这里只做排错索引与处置建议。
 
-### 161.2.1 Web 端口被占用
+### 161.2.1 首次启动特别慢 / 页面一直空白
+
+**症状**：`backlog browser` 后页面长时间空白，终端没有输出；或热启动也要等数十秒到数分钟。
+
+**原因**：常见有四类，按顺序排查：
+
+1. **UI 包尚未缓存**（最常见）：源码里的 HTML 入口需要 Bun 构建约 24MB 的 JS，旧版本会在服务器线程上同步进行，期间所有请求与日志都被饿死。当前版本把它放进子进程，页面先显示自动刷新的进度页，构建完成即切换，无需重启。
+2. **跨分支扫描与远端 refs**：旧版本每次启动都重读所有分支并同步 fetch 远端；当前版本按 commit 缓存分支数据，并把远端 fetch 推迟到首屏之后后台执行。
+3. **图谱服务冷启动**：当前版本已改为首次 `/api/graph` 请求时才启动。
+4. **缓存损坏或与源码不匹配**：可用 `backlog browser --no-cache` 强制重建全部缓存（该参数只跳读、保留写，下一次普通启动又是热路径）；也可先跑 `bun run web:build` 单独重建 UI 包。
+
+**处置**：先看终端带时间戳的 `[startup]` / `[cache]` / `[web]` 行确认卡在哪一阶段；确认是构建时耐心等待后台完成即可。热启动正常约 1.5~2 秒、日志显示 `restored`；若反复出现 `building` 且耗时异常，检查缓存目录是否可写、是否有第二个服务实例争抢同一项目的 graph 锁。缓存位置见[启动与访问](../40-Web界面/00-启动与访问.md)。
+
+### 161.2.2 Web 端口被占用
 
 **症状**：启动 `backlog browser` 时端口不可用，或访问的地址打不开。
 
@@ -6353,7 +6439,7 @@ backlog overview --plain --completed
 
 详见[启动与访问](../40-Web界面/00-启动与访问.md)与[配置管理](00-配置管理.md)的 Web UI 一节。
 
-### 161.2.2 图谱一直 building / 锁冲突
+### 161.2.3 图谱一直 building / 锁冲突
 
 **症状**：图谱页面长时间显示加载中，`/api/graph` 一直返回 `building`；或启动时报锁冲突。
 
@@ -6367,7 +6453,7 @@ backlog overview --plain --completed
 - 可用环境变量 `BACKLOG_GRAPH_CACHE_DIR` 覆盖缓存目录；`BACKLOG_GRAPH_BACKEND=kuzu` 已不再是合法取值（原生依赖已移除），能覆盖的只有 `memory`。
 - **Cypher 检索不可用**（图谱页搜不到内容、`backlog graph query` 报错）时先看终端有没有 `[graph] RyuGraph (WASM) backend init failed for <path>, falling back to memory` 告警：有则后端已降级到内存（无 Cypher），按告警末尾的原因区分「路径对 WASM 不可见」（v1.53.9 已修复）与「引擎故障」（需上报）。
 
-### 161.2.3 watch / 文件变更不刷新
+### 161.2.4 watch / 文件变更不刷新
 
 **症状**：TUI 看板、Web 界面或 `task list --json --watch` 没有反映刚做的修改。
 
@@ -6377,7 +6463,7 @@ backlog overview --plain --completed
 - **`--json --watch`**：通知是提示性的，1 秒的 reconcile tick 会用文件 stat 签名兜底修复漏掉的事件；签名不变就不重复输出。确认监听进程的上游程序还活着（启动方退出即停）。
 - **Web 界面**：通过 WebSocket 广播刷新。整页不刷新时先确认浏览器控制台 WebSocket 连接正常；CLI / TUI / MCP 的写入都会触发通知。
 
-### 161.2.4 macOS 报 illegal hardware instruction / 架构不匹配
+### 161.2.5 macOS 报 illegal hardware instruction / 架构不匹配
 
 **症状**（M 系列 Mac）：运行 `backlog` 报 `illegal hardware instruction` 或 `Binary package not installed for darwin-...`。
 
@@ -6395,14 +6481,14 @@ which brew                          # /opt/homebrew = arm64 brew，/usr/local = 
 架构不一致时用原生架构重装：
 
 ```bash
-brew reinstall backlog-md                    # 先确认 which brew 输出 /opt/homebrew
+brew reinstall backlog-md                    # 上游 formula；先确认 which brew 输出 /opt/homebrew
 arch -arm64 npm i -g @kuwork/backlog.md
 arch -arm64 bun add -g @kuwork/backlog.md
 ```
 
 刻意在 Rosetta 下运行 x64 Node 也可以：启动器会回退到实际已安装的任一 `backlog.md-darwin-*` 包。详见[安装与初始化](../00-快速开始/01-安装与初始化.md)。
 
-### 161.2.5 watch 进程空转 CPU 高（旧版本）
+### 161.2.6 watch 进程空转 CPU 高（旧版本）
 
 **症状**：`backlog task list --json --watch` 在无事发生时仍持续占用高 CPU（大仓库实测约 35–42%）。
 
@@ -6410,7 +6496,7 @@ arch -arm64 bun add -g @kuwork/backlog.md
 
 **处置**：升级到最新版本——空转时每秒只做一次廉价的 stat 签名比较，CPU 降到 1% 以下，输出与延迟不变。浏览器与 TUI 的 watcher 无此轮询，不受影响。
 
-### 161.2.6 MCP 连接问题
+### 161.2.7 MCP 连接问题
 
 **症状**：AI 客户端报告 MCP 服务器启动失败、超时，或任务写入到了错误项目。
 
@@ -6419,7 +6505,7 @@ arch -arm64 bun add -g @kuwork/backlog.md
 - 启动失败/超时：多为本地 `backlog` 命令解析到陈旧二进制——重新构建、用 `codex mcp add backlog -- backlog mcp start` 格式注册，并单独测试 `backlog mcp start`。
 - 写入错误项目：升级到最新版本（服务器跟随客户端 workspace roots），或 `backlog mcp start --cwd <path>` 固定目录。
 
-### 161.2.7 按 E 打开编辑器无响应
+### 161.2.8 按 E 打开编辑器无响应
 
 **症状**：TUI / Web 中按 `E` 打开编辑器后界面挂起或编辑器不启动。
 
