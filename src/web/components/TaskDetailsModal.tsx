@@ -59,8 +59,6 @@ interface Props {
 	 */
 	statusesConfig?: StatusesConfig;
 	availableTasks?: Task[]; // Task corpus for hierarchy display and dependency picker
-	/** Bumped by the app whenever the task corpus is refreshed (broadcast or own writes). */
-	tasksVersion?: number;
 	isDraftMode?: boolean; // Whether creating a draft
 	availableMilestones?: string[];
 	milestoneEntities?: Milestone[];
@@ -246,7 +244,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	availableStatuses,
 	statusesConfig,
 	availableTasks: initialAvailableTasks,
-	tasksVersion = 0,
 	availableMilestones: _availableMilestones,
 	milestoneEntities,
 	archivedMilestoneEntities,
@@ -691,11 +688,13 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
 	// BACK-709 AC #9: the closure endpoint answers both directions in one request per popup open -
 	// what the record transitively waits for and what waits on it, each with hop counts, plus root
-	// blockers, cycles and references that resolve to nothing. Refetched when an inline edit has
-	// settled on the server and when the app broadcasts a corpus refresh (an external editor changed
-	// a file while this popup is open), never on the optimistic state and never on a timer: a
-	// refetch fired at removal time would read the pre-write corpus and re-report the very cycle
-	// that was just removed.
+	// blockers, cycles and references that resolve to nothing. Refetched only when an inline edit has
+	// settled on the server (the write path bumps closureRefreshTick); never on the optimistic state
+	// and never on a timer. The app-level tasks refresh no longer drives this effect - the redundant
+	// fetch it caused on every corpus refresh was removed in BACK-842, so an external editor changing
+	// a file while the popup is open will not auto-refresh the closure (the popup keeps the last known
+	// closure until it is reopened). A refetch fired at removal time would read the pre-write corpus
+	// and re-report the very cycle that was just removed.
 	const [closure, setClosure] = useState<DependencyQueryAnswer | null>(null);
 	const [closureFailed, setClosureFailed] = useState(false);
 	const [closureRefreshTick, setClosureRefreshTick] = useState(0);
@@ -730,7 +729,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [isOpen, isCreateMode, closureSubjectId, closureRefreshTick, tasksVersion]);
+	}, [isOpen, isCreateMode, closureSubjectId, closureRefreshTick]);
 	const hasClosureContent =
 		closureFailed ||
 		(closure !== null &&
@@ -1025,17 +1024,6 @@ export const TaskDetailsModal: React.FC<Props> = ({
 			previousIsOpen.current = isOpen;
 			formBaselineRef.current = nextFormState;
 			setError(null);
-			// Preload tasks for dependency picker
-			if (isOpen) {
-				apiClient
-					.fetchTasks()
-					.then(setAvailableTasks)
-					.catch(() => setAvailableTasks([]));
-				apiClient
-					.fetchDrafts()
-					.then(setAvailableDrafts)
-					.catch(() => setAvailableDrafts([]));
-			}
 			return;
 		}
 
@@ -1070,19 +1058,28 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		previousIsOpen.current = isOpen;
 		formBaselineRef.current = nextFormState;
 		setError(null);
-		// Preload tasks for dependency picker. Only while the modal is open: this effect also runs for a
-		// closed modal on every data change, and the picker's options are not read before it opens.
-		if (isOpen) {
-			apiClient
-				.fetchTasks()
-				.then(setAvailableTasks)
-				.catch(() => setAvailableTasks([]));
-			apiClient
-				.fetchDrafts()
-				.then(setAvailableDrafts)
-				.catch(() => setAvailableDrafts([]));
-		}
 	}, [task, isOpen, isCreateMode, isDraftMode, availableStatuses, defaultDefinitionOfDone]);
+
+	// The dependency picker and draft suggestions read the full task/draft corpus. Preload both once
+	// when the popup opens - not on every `task` prop change - so a post-edit app refresh (which
+	// replaces `task`) does not re-fetch them. The guard resets on close so the next open preloads again.
+	const preloadedForOpenRef = useRef(false);
+	useEffect(() => {
+		if (!isOpen) {
+			preloadedForOpenRef.current = false;
+			return;
+		}
+		if (preloadedForOpenRef.current) return;
+		preloadedForOpenRef.current = true;
+		apiClient
+			.fetchTasks()
+			.then(setAvailableTasks)
+			.catch(() => setAvailableTasks([]));
+		apiClient
+			.fetchDrafts()
+			.then(setAvailableDrafts)
+			.catch(() => setAvailableDrafts([]));
+	}, [isOpen]);
 
 	const refreshAfterCommentChange = useCallback(() => {
 		if (!commentsChanged) return;

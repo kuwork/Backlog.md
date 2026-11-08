@@ -1028,15 +1028,6 @@ function AppContent() {
 		}
 	}, [tasks, editingTask, showModal]);
 
-	// Bumped every time the task corpus is replaced - by a broadcast-driven refresh (an external
-	// editor changed a file) or by this client's own writes. Surfaces that cache an answer keyed to
-	// the corpus, like the popup's dependency closure, use it to refetch.
-	const [tasksVersion, setTasksVersion] = useState(0);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally scoped
-	useEffect(() => {
-		setTasksVersion((version) => version + 1);
-	}, [tasks]);
-
 	useEffect(() => {
 		let closedByUs = false;
 		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1452,7 +1443,6 @@ function AppContent() {
 				availableStatuses={isDraftMode ? ["Draft", ...statuses] : statuses}
 				statusesConfig={config?.statuses}
 				availableTasks={tasks}
-				tasksVersion={tasksVersion}
 				availableMilestones={milestones}
 				milestoneEntities={milestoneEntities}
 				archivedMilestoneEntities={archivedMilestones}
