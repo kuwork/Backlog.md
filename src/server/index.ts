@@ -303,6 +303,11 @@ export class BacklogServer {
 	// Content-entity scopes (documents/decisions/wikis) are independent: each pending scope is
 	// delivered as its own message, while tasks/milestones keep their merge-to-widest semantics.
 	private pendingDataBroadcastScopes = new Set<DataUpdatedScope>();
+	// Digest sampled at the start of a coalescing window (when the triggering change has already
+	// landed in ContentStore), so the broadcast corpus-state describes the same snapshot the
+	// post-edit /api/search reads. Sampling at the window end would expose it to watcher re-reads
+	// and rescans and let the two digests drift (the D1->D2->D1 jitter).
+	private pendingCorpusDigest: string | null = null;
 	private configWatcher: { stop: () => void } | null = null;
 	// Statistics cache, one entry per corpus scope so the two can never serve each other's numbers
 	private readonly statisticsCache = new Map<string, string>();
@@ -549,7 +554,15 @@ export class BacklogServer {
 		// scopes are independent: each pending scope is delivered as its own message so
 		// a mixed window (e.g. a task edit and a doc edit) sends both messages instead
 		// of one swallowing the other.
+		const isNewWindow = this.taskBroadcastTimer === undefined;
 		this.pendingDataBroadcastScopes.add(scope);
+		// Capture the digest only when a fresh window opens, i.e. once the change that
+		// triggered this broadcast has already landed in ContentStore. Later echoes within
+		// the same window (watcher re-reads, rescans) never enter the digest, so the
+		// broadcast and the post-edit /api/search agree on the same snapshot.
+		if (isNewWindow) {
+			this.pendingCorpusDigest = this.contentStore?.getCorpusDigest() ?? null;
+		}
 		clearTimeout(this.taskBroadcastTimer);
 		this.taskBroadcastTimer = setTimeout(() => {
 			this.taskBroadcastTimer = undefined;
@@ -570,7 +583,7 @@ export class BacklogServer {
 			// Newer clients read the corpus digest before they decide whether a data-change message
 			// needs a full refetch. One state message per window is enough; the bare strings below
 			// are kept so older clients still refresh exactly as before.
-			const digest = this.contentStore?.getCorpusDigest() ?? null;
+			const digest = this.pendingCorpusDigest;
 			if (digest) {
 				const state = formatCorpusStateMessage(digest);
 				for (const ws of this.sockets) {
@@ -1083,19 +1096,33 @@ export class BacklogServer {
 				},
 				error: this.handleError.bind(this),
 				websocket: {
-					open: (ws: ServerWebSocket) => {
-						this.sockets.add(ws);
-						// Delay the initial state send so the upgrade handshake completes;
-						// an immediate send can be dropped before the client attaches.
-						setImmediate(() => {
-							try {
-								ws.send(JSON.stringify(this.browserLoadingState));
-							} catch {}
-						});
-						if (this.browserLoadingState.type === "loading") {
-							void this.ensureServicesReady().catch(() => {});
-						}
-					},
+				open: (ws: ServerWebSocket) => {
+					this.sockets.add(ws);
+					// Delay the initial state send so the upgrade handshake completes;
+					// an immediate send can be dropped before the client attaches.
+					setImmediate(() => {
+						try {
+							ws.send(JSON.stringify(this.browserLoadingState));
+						} catch {}
+					});
+					if (this.browserLoadingState.type === "loading") {
+						void this.ensureServicesReady().catch(() => {});
+					}
+					// Seed the client's server digest on connect so the first post-load broadcast is
+					// comparable and can be skipped. Sent after services are ready because
+					// ContentStore is null before then; the promise resolves well after the handshake,
+					// so delivery is safe.
+					void this.ensureServicesReady()
+						.then(() => {
+							const digest = this.contentStore?.getCorpusDigest() ?? null;
+							if (digest) {
+								try {
+									ws.send(formatCorpusStateMessage(digest));
+								} catch {}
+							}
+						})
+						.catch(() => {});
+				},
 					message(ws: ServerWebSocket) {
 						ws.send("pong");
 					},

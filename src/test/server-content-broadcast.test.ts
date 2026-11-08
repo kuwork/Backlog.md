@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { BacklogServer } from "../server/index.ts";
+import { CORPUS_DIGEST_HEADER, parseCorpusStateMessage } from "../utils/corpus-state.ts";
 import { createUniqueTestDir, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
@@ -232,5 +233,73 @@ describe("content-entity WebSocket publication", () => {
 			40,
 			250,
 		);
+	}, 20000);
+});
+
+describe("corpus digest broadcast (BACK-841)", () => {
+	it("seeds the client with a corpus-state message on connect", async () => {
+		const messages: string[] = [];
+		await openSocket(messages);
+		await settleStore();
+		// The connect-time digest is sent only after services are ready, so allow a moment for it.
+		await withTimeout(sleep(800), "connect-time corpus-state", 3000);
+		const digests = messages
+			.map((message) => parseCorpusStateMessage(message))
+			.filter((digest): digest is string => digest !== null);
+		expect(digests.length).toBeGreaterThanOrEqual(1);
+		for (const digest of digests) expect(digest).toMatch(/^[0-9a-f]{32}$/);
+	}, 20000);
+
+	it("broadcast corpus-state digest matches the post-change search digest", async () => {
+		const messages: string[] = [];
+		await openSocket(messages);
+		await settleStore();
+		messages.length = 0;
+
+		const readDigest = async () => (await request("/api/search")).headers.get(CORPUS_DIGEST_HEADER);
+		const before = await readDigest();
+
+		// A single new task, detected inside one debounce window by the folder watcher.
+		await writeFile(
+			join(core.filesystem.tasksDir, "task-941 - Digest-Align.md"),
+			[
+				"---",
+				"id: TASK-941",
+				"title: Digest Align",
+				"status: To Do",
+				"assignee: []",
+				"created_date: '2026-09-24 10:00'",
+				"labels: []",
+				"dependencies: []",
+				"ordinal: 2941",
+				"---",
+				"",
+				"Body",
+				"",
+			].join("\n"),
+			"utf8",
+		);
+
+		await retry(
+			async () => {
+				if (!messages.some((message) => parseCorpusStateMessage(message) !== null))
+					throw new Error("No corpus-state broadcast received");
+			},
+			40,
+			250,
+		);
+
+		const broadcastDigest = messages
+			.map((message) => parseCorpusStateMessage(message))
+			.find((digest): digest is string => digest !== null);
+		const after = await readDigest();
+
+		expect(before).not.toBeNull();
+		expect(after).not.toBeNull();
+		// The broadcast digest is sampled at the window start (when the change landed), so it
+		// describes the same corpus the post-change /api/search reads - this is the contract that
+		// stops the D1->D2->D1 refresh jitter.
+		expect(broadcastDigest).toBe(after!);
+		expect(broadcastDigest).not.toBe(before!);
 	}, 20000);
 });
