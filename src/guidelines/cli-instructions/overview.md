@@ -280,6 +280,12 @@ backlog wiki install claude
 
 # Install branch-merge skill (task-migration-architect)
 backlog migrate install claude
+
+# Web UI on the loopback port without launching a browser; --no-cache rebuilds every startup cache instead of reading it
+backlog browser --no-open
+
+# Serve another project's backlog while the process stays where it is
+BACKLOG_CWD=/path/to/project backlog browser --no-open
 ```
 
 `task list --json --watch` keeps a live view of one filtered scenario, such as a single assignee's In Progress queue: read each complete JSON value and replace the previous list with it, rather than parsing lines. Filters, sorting, limits, and local task scope are unchanged, and unchanged results are suppressed. Dependency or configuration changes can update derived fields or which tasks match. `--watch` requires `--json` and cannot be combined with `--plain`; stop it with Ctrl+C, by terminating the process, or by closing the output pipe. The watch ends when the process that started it ends.

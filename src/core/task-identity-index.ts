@@ -56,33 +56,59 @@ export function normalizeTaskLifecyclePath(path: string, backlogDirectory: strin
 	return path;
 }
 
-function normalizeRecordPath(record: TaskIdentityRecord, context: TaskIdentityPathContext): string {
+/**
+ * Repository-relative POSIX form of a record path, without paying for `path.relative` on every
+ * record: on Windows it costs ~80us per call, and this runs for every record of every load. A
+ * record path that already sits under the source root is the overwhelmingly common case, so strip
+ * the root instead; anything else (another drive, a `..` escape) still goes through `relative`.
+ * Windows paths are case-insensitive, so the prefix comparison is too, and the slice keeps the
+ * original casing.
+ */
+function relativeToRoot(sourceRoot: string, path: string): string {
+	const root = toPosixPath(sourceRoot).replace(/\/+$/, "");
+	const target = toPosixPath(path);
+	const rootLower = root.toLowerCase();
+	const targetLower = target.toLowerCase();
+	if (targetLower === rootLower) return "";
+	if (targetLower.startsWith(`${rootLower}/`)) return target.slice(root.length + 1);
+	return toPosixPath(relative(sourceRoot, path));
+}
+
+/**
+ * Builds the record -> logical path mapper once per index. Everything that depends only on the
+ * context (the project prefix inside the repository, the backlog directories) is computed here
+ * rather than once per record.
+ */
+function createRecordPathNormalizer(context: TaskIdentityPathContext) {
 	const repositoryRoot = context.repositoryRoot ?? context.projectRoot;
 	const projectPrefix = context.repositoryRoot
 		? toPosixPath(relative(context.repositoryRoot, context.projectRoot))
 		: "";
-	let path = record.path;
-
-	if (isAbsolute(path)) {
-		const worktreePrefix = "worktree:";
-		const sourceRoot = record.branch.startsWith(worktreePrefix)
-			? record.branch.slice(worktreePrefix.length)
-			: repositoryRoot;
-		path = relative(sourceRoot, path);
-	}
-
-	path = toPosixPath(path);
 	const repositoryBacklogDirectory = joinPosix(projectPrefix, context.backlogDirectory);
 	const projectBacklogDirectory = toPosixPath(context.backlogDirectory);
-	if (
-		projectPrefix &&
-		(path === projectBacklogDirectory || path.startsWith(`${projectBacklogDirectory}/`)) &&
-		!(path === repositoryBacklogDirectory || path.startsWith(`${repositoryBacklogDirectory}/`))
-	) {
-		path = joinPosix(projectPrefix, path);
-	}
 
-	return normalizeTaskLifecyclePath(path, repositoryBacklogDirectory);
+	return (record: TaskIdentityRecord): string => {
+		let path = record.path;
+
+		if (isAbsolute(path)) {
+			const worktreePrefix = "worktree:";
+			const sourceRoot = record.branch.startsWith(worktreePrefix)
+				? record.branch.slice(worktreePrefix.length)
+				: repositoryRoot;
+			path = relativeToRoot(sourceRoot, path);
+		}
+
+		path = toPosixPath(path);
+		if (
+			projectPrefix &&
+			(path === projectBacklogDirectory || path.startsWith(`${projectBacklogDirectory}/`)) &&
+			!(path === repositoryBacklogDirectory || path.startsWith(`${repositoryBacklogDirectory}/`))
+		) {
+			path = joinPosix(projectPrefix, path);
+		}
+
+		return normalizeTaskLifecyclePath(path, repositoryBacklogDirectory);
+	};
 }
 
 function recordKey(record: TaskIdentityRecord): string {
@@ -164,9 +190,10 @@ export class TaskIdentityIndex {
 		private readonly resolutionStrategy: "most_recent" | "most_progressed",
 	) {
 		this.records = records.slice();
+		const normalizePath = createRecordPathNormalizer(context);
 		for (const record of this.records) {
 			const canonicalId = canonicalTaskId(record.id);
-			const path = normalizeRecordPath(record, context);
+			const path = normalizePath(record);
 			const group = this.groups.get(canonicalId) ?? { id: canonicalId, identities: new Map() };
 			const identity = group.identities.get(path) ?? { path, records: [] };
 			identity.records.push(record);
@@ -211,6 +238,23 @@ export class TaskIdentityIndex {
 			.map((record) => `${recordKey(record)}\0${record.type}\0${record.workingCopy ? "1" : "0"}`)
 			.sort((left, right) => left.localeCompare(right))
 			.join("\n");
+	}
+
+	/**
+	 * Counts for the console summary of a corpus load. Cheap on purpose: it walks the groups
+	 * without copying tasks, so it can run on every load without becoming part of the cost it
+	 * is meant to report.
+	 */
+	getStats(): { records: number; ids: number; identities: number; ambiguous: number; workingCopy: number } {
+		let identities = 0;
+		let ambiguous = 0;
+		let workingCopy = 0;
+		for (const record of this.records) if (record.workingCopy) workingCopy += 1;
+		for (const group of this.groups.values()) {
+			identities += group.identities.size;
+			if (this.ambiguousCandidates(group).length > 0) ambiguous += 1;
+		}
+		return { records: this.records.length, ids: this.groups.size, identities, ambiguous, workingCopy };
 	}
 
 	private getGroup(taskId: string): TaskIdentityGroup | undefined {

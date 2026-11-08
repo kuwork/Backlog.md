@@ -4,6 +4,7 @@ import { Core } from "../core/backlog.ts";
 import { BranchTaskLoader } from "../core/task-loader.ts";
 import type { GitBranchTip, GitOperations } from "../git/operations.ts";
 import type { BacklogConfig, Task } from "../types/index.ts";
+import { NO_CACHE_ENV } from "../utils/cache-policy.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
 const config: BacklogConfig = {
@@ -136,6 +137,136 @@ describe("shared immutable branch task loading", () => {
 		);
 		expect(historyCalls).toEqual(treeCalls);
 		expect(showCalls).toEqual(treeCalls);
+	});
+
+	it("persists per-commit branch index and parsed tasks to disk so a fresh loader skips git on restart", async () => {
+		const repoRoot = createUniqueTestDir("branch-cache-persist");
+		const sharedCommit = "a".repeat(40);
+		const changedCommit = "b".repeat(40);
+		const sharedPath = "backlog/tasks/task-1 - Shared.md";
+		const changedPath = "backlog/tasks/task-2 - Changed.md";
+		const treeCalls = new Map<string, number>();
+		const historyCalls = new Map<string, number>();
+		const showCalls = new Map<string, number>();
+		const git = {
+			getRepositoryRoot: async () => repoRoot,
+			getCurrentBranch: async () => "main",
+			listFilesInTree: async (commit: string) => {
+				treeCalls.set(commit, (treeCalls.get(commit) ?? 0) + 1);
+				return commit === sharedCommit ? [sharedPath] : [changedPath];
+			},
+			getBranchLastModifiedMap: async (commit: string) => {
+				historyCalls.set(commit, (historyCalls.get(commit) ?? 0) + 1);
+				const path = commit === sharedCommit ? sharedPath : changedPath;
+				return new Map([[path, new Date("2026-08-10T00:00:00Z")]]);
+			},
+			showFile: async (commit: string) => {
+				showCalls.set(commit, (showCalls.get(commit) ?? 0) + 1);
+				return commit === sharedCommit ? taskMarkdown("TASK-1", "Shared task") : taskMarkdown("TASK-2", "Changed task");
+			},
+		} as unknown as GitOperations;
+
+		const currentTip: GitBranchTip = { name: "main", commit: "0".repeat(40), current: true };
+		const tips: GitBranchTip[] = [
+			currentTip,
+			{ name: "feature/shared", commit: sharedCommit, current: false },
+			{ name: "origin/feature/shared", commit: sharedCommit, current: false },
+		];
+
+		// First "process": loads and warms the on-disk cache.
+		const first = new BranchTaskLoader(git);
+		const { entries: firstEntries } = await first.load(tips, config, [], false);
+		expect(firstEntries.flatMap((e) => (e.task ? [e.task.title] : [])).sort()).toEqual(["Shared task", "Shared task"]);
+		expect(treeCalls).toEqual(new Map([[sharedCommit, 1]]));
+		expect(historyCalls).toEqual(new Map([[sharedCommit, 1]]));
+		expect(showCalls).toEqual(new Map([[sharedCommit, 1]]));
+
+		// Second "process" (simulated restart): a brand-new loader instance must serve the unchanged
+		// branch entirely from disk and not invoke a single git read.
+		const second = new BranchTaskLoader(git);
+		const { entries: secondEntries } = await second.load(tips, config, [], false);
+		expect(secondEntries.flatMap((e) => (e.task ? [e.task.title] : [])).sort()).toEqual(["Shared task", "Shared task"]);
+		expect(treeCalls).toEqual(new Map([[sharedCommit, 1]]));
+		expect(historyCalls).toEqual(new Map([[sharedCommit, 1]]));
+		expect(showCalls).toEqual(new Map([[sharedCommit, 1]]));
+
+		// A branch whose tip commit changed is re-read from git; the unchanged one stays disk-served.
+		const changedTips: GitBranchTip[] = [
+			currentTip,
+			{ name: "feature/shared", commit: sharedCommit, current: false },
+			{ name: "origin/feature/shared", commit: changedCommit, current: false },
+		];
+		const { entries: changedEntries } = await second.load(changedTips, config, [], false);
+		expect(changedEntries.flatMap((e) => (e.task ? [e.task.title] : [])).sort()).toEqual([
+			"Changed task",
+			"Shared task",
+		]);
+		expect(treeCalls).toEqual(
+			new Map([
+				[sharedCommit, 1],
+				[changedCommit, 1],
+			]),
+		);
+		expect(historyCalls).toEqual(
+			new Map([
+				[sharedCommit, 1],
+				[changedCommit, 1],
+			]),
+		);
+		expect(showCalls).toEqual(
+			new Map([
+				[sharedCommit, 1],
+				[changedCommit, 1],
+			]),
+		);
+
+		await safeCleanup(repoRoot);
+	});
+
+	it("ignores the disk caches while the no-cache policy is on and rewrites them for the next run", async () => {
+		const repoRoot = createUniqueTestDir("branch-cache-no-cache");
+		const commit = "c".repeat(40);
+		const path = "backlog/tasks/task-1 - Shared.md";
+		const treeCalls = new Map<string, number>();
+		const showCalls = new Map<string, number>();
+		const git = {
+			getRepositoryRoot: async () => repoRoot,
+			getCurrentBranch: async () => "main",
+			listFilesInTree: async (tip: string) => {
+				treeCalls.set(tip, (treeCalls.get(tip) ?? 0) + 1);
+				return [path];
+			},
+			getBranchLastModifiedMap: async () => new Map([[path, new Date("2026-08-10T00:00:00Z")]]),
+			showFile: async (tip: string) => {
+				showCalls.set(tip, (showCalls.get(tip) ?? 0) + 1);
+				return taskMarkdown("TASK-1", "Shared task");
+			},
+		} as unknown as GitOperations;
+		const tips: GitBranchTip[] = [{ name: "feature/shared", commit, current: false }];
+
+		try {
+			// Warm the on-disk cache first, then confirm a second loader serves it without git.
+			await new BranchTaskLoader(git).load(tips, config, [], false);
+			await new BranchTaskLoader(git).load(tips, config, [], false);
+			expect(treeCalls).toEqual(new Map([[commit, 1]]));
+			expect(showCalls).toEqual(new Map([[commit, 1]]));
+
+			// The policy must send a fresh loader back to git instead of the warm cache.
+			process.env[NO_CACHE_ENV] = "1";
+			const { entries } = await new BranchTaskLoader(git).load(tips, config, [], false);
+			expect(entries.flatMap((entry) => (entry.task ? [entry.task.title] : []))).toEqual(["Shared task"]);
+			expect(treeCalls).toEqual(new Map([[commit, 2]]));
+			expect(showCalls).toEqual(new Map([[commit, 2]]));
+
+			// The rebuild is written back, so the run after --no-cache is warm again.
+			delete process.env[NO_CACHE_ENV];
+			await new BranchTaskLoader(git).load(tips, config, [], false);
+			expect(treeCalls).toEqual(new Map([[commit, 2]]));
+			expect(showCalls).toEqual(new Map([[commit, 2]]));
+		} finally {
+			delete process.env[NO_CACHE_ENV];
+			await safeCleanup(repoRoot);
+		}
 	});
 
 	it("hydrates a cached branch fallback when a warm public read sees its local identity removed", async () => {

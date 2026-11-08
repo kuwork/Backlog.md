@@ -41,6 +41,7 @@ import { openInEditor } from "../utils/editor.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { findBacklogRoot } from "../utils/find-backlog-root.ts";
 import { generateNextDecisionId, generateNextDocId } from "../utils/id-generators.ts";
+import { logLine } from "../utils/log.ts";
 import { createMilestoneFilterValueResolver, type MilestoneFilterValueResolver } from "../utils/milestone-filter.ts";
 import {
 	buildGlobPattern,
@@ -165,6 +166,12 @@ interface TaskCorpusLoadOptions {
 	publishSharedState?: boolean;
 	/** Set by task ID allocation, which cannot trust the coalesced remote-refresh window. */
 	forceRemoteRefresh?: boolean;
+	/**
+	 * Skip the awaited remote-refresh fetch on the very first page-load. The fetch only matters for
+	 * ID allocation; display can use slightly stale refs. The caller must run refreshTasksForTaskRead()
+	 * in the background to catch up. Keeps first paint off a potentially slow network fetch.
+	 */
+	skipRemoteRefresh?: boolean;
 }
 
 interface ActiveBranchSnapshot {
@@ -313,6 +320,8 @@ export class Core {
 	private searchService?: SearchService;
 	private readonly enableWatchers: boolean;
 	private branchTaskLoader: BranchTaskLoader;
+	/** One-shot: when set, the first ContentStore corpus load skips the blocking remote fetch. */
+	private initialRemoteRefreshDeferred = false;
 	private projectGeneration = 0;
 	private activeBranchFingerprint: string | null = null;
 	private activeBranchSnapshotPromise: {
@@ -359,11 +368,15 @@ export class Core {
 		return Math.max(...ordinals) + DEFAULT_ORDINAL_STEP;
 	}
 
-	async getContentStore(progressCallback?: (message: string) => void): Promise<ContentStore> {
+	async getContentStore(
+		progressCallback?: (message: string) => void,
+		options?: { skipInitialRemoteRefresh?: boolean },
+	): Promise<ContentStore> {
 		while (true) {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
 			const backlogRoot = filesystem.backlogDir;
+			if (options?.skipInitialRemoteRefresh) this.initialRemoteRefreshDeferred = true;
 			let store = this.contentStore;
 			if (!store) {
 				// Use loadContentStoreCorpus as the task loader to include cross-branch tasks
@@ -4088,13 +4101,14 @@ export class Core {
 
 	private async loadTaskCorpusSnapshot(
 		progressCallback?: (message: string) => void,
-		options?: { publishSharedState?: boolean },
+		options?: { publishSharedState?: boolean; skipRemoteRefresh?: boolean },
 	): Promise<TaskCorpusSnapshot> {
 		return await this.loadTasksWithStableBranchSnapshot({
 			progressCallback,
 			includeCompleted: true,
 			visibleCompleted: false,
 			publishSharedState: options?.publishSharedState,
+			skipRemoteRefresh: options?.skipRemoteRefresh,
 		});
 	}
 
@@ -4107,6 +4121,11 @@ export class Core {
 		progressCallback?: (message: string) => void,
 		options?: { publish?: boolean },
 	): Promise<TaskCorpusSnapshot> {
+		// Consume the one-shot flag set by getContentStore({ skipInitialRemoteRefresh: true }):
+		// the first corpus load skips the blocking remote fetch so first paint isn't held hostage
+		// to a slow network. A background refreshTasksForTaskRead() catches remote refs up after.
+		const skipRemoteRefresh = this.initialRemoteRefreshDeferred;
+		this.initialRemoteRefreshDeferred = false;
 		if (Object.hasOwn(this, "loadTasks")) {
 			const [activeTasks, completedTasks, config] = await Promise.all([
 				this.loadTasks(progressCallback),
@@ -4129,7 +4148,10 @@ export class Core {
 				config,
 			};
 		}
-		return await this.loadTaskCorpusSnapshot(progressCallback, { publishSharedState: options?.publish ?? true });
+		return await this.loadTaskCorpusSnapshot(progressCallback, {
+			publishSharedState: options?.publish ?? true,
+			skipRemoteRefresh,
+		});
 	}
 
 	private async loadTasksWithStableBranchSnapshot(
@@ -4165,7 +4187,13 @@ export class Core {
 		if (abortSignal?.aborted) {
 			throw new Error("Loading cancelled");
 		}
-		await this.refreshRemoteRefsForTaskRead(config, git, { force: options.forceRemoteRefresh });
+		// The initial content-store load serves the first page render. A remote ref refresh is
+		// only needed for ID-allocation safety, not for displaying tasks, so it must not block
+		// first paint on a (potentially slow) network fetch. Callers pass skipRemoteRefresh for
+		// that initial load and run refreshTasksForTaskRead() in the background instead.
+		if (!options.skipRemoteRefresh) {
+			await this.refreshRemoteRefsForTaskRead(config, git, { force: options.forceRemoteRefresh });
+		}
 		if (projectChanged()) return await retryForCurrentProject();
 		const settingsKey = JSON.stringify(this.getActiveBranchSettings(config, filesystem));
 		const snapshotBefore =
@@ -4226,6 +4254,11 @@ export class Core {
 		if (shouldLoadBranches) {
 			progressCallback?.("Applying latest task states from branch scans...");
 		}
+		const mergeStartedAt = performance.now();
+		logLine(
+			"merge",
+			`1/3 collected ${localTasks.length + completedTasks.length + branchStateEntries.length} records (local ${localTasks.length}, completed ${completedTasks.length}, branches ${branchStateEntries.length} across ${snapshotBefore.branchTips.length} refs)`,
+		);
 		const identityIndex = await this.buildTaskIdentityIndex(
 			localTasks,
 			completedTasks,
@@ -4237,7 +4270,18 @@ export class Core {
 			git,
 		);
 		if (projectChanged()) return await retryForCurrentProject();
+		const indexBuiltIn = Math.round(performance.now() - mergeStartedAt);
+		const mergeStats = identityIndex.getStats();
+		logLine(
+			"merge",
+			`2/3 identity index: ${mergeStats.ids} ids / ${mergeStats.identities} identities, ${mergeStats.ambiguous} ambiguous (${indexBuiltIn}ms)`,
+		);
+		const selectStartedAt = performance.now();
 		const filteredTasks = identityIndex.getTasks(options.visibleCompleted ?? includeCompleted);
+		logLine(
+			"merge",
+			`3/3 selected ${filteredTasks.length} tasks (${filteredTasks.filter((task) => task.branch).length} branch-backed, ${filteredTasks.filter((task) => task.source === "completed").length} completed) in ${Math.round(performance.now() - selectStartedAt)}ms`,
+		);
 
 		// This read must begin after this scan finishes. Reusing an unrelated
 		// in-flight pre-scan snapshot could otherwise publish a generation that

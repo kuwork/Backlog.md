@@ -62,6 +62,7 @@
     "check:types": "bunx tsc --noEmit",
     "prepare": "husky",
     "build": "bun scripts/build.ts",
+    "web:build": "bun scripts/build-web.ts",
     "cli": "bun src/cli.ts",
     "mcp": "bun src/cli.ts mcp start",
     "update-nix": "sh scripts/update-nix.sh",

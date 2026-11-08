@@ -25,6 +25,7 @@ If you can simplify the code, do it.
 - `bunx tsc --noEmit` - Type-check code
 - `bun run check .` - Run all Biome checks (format + lint)
 - `bun run build` - Build the CLI tool
+- `bun run web:build` - Build the browser UI bundle only (the server does this on the first run; this prebuilds it)
 - `bun run cli` - Uses the CLI tool directly
 
 ### Testing

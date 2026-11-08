@@ -78,6 +78,7 @@ import { localDateKeyFromStoredUtc } from "../utils/date-utc.ts";
 import { DependencyQuery } from "../utils/dependency-query.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
 import { type GraphLegendWatcherHandle, watchGraphLegendStore } from "../utils/graph-legend-watcher.ts";
+import { enableProgressLogs, logError, logLine } from "../utils/log.ts";
 import { resolveMilestoneInputForStorage } from "../utils/milestone-storage.ts";
 import { watchMilestones } from "../utils/milestone-watcher.ts";
 import { DRAFT_PREFIX, extractAnyPrefix, getTaskPrefixError } from "../utils/prefix-config.ts";
@@ -91,6 +92,7 @@ import { AmbiguousTaskIdError } from "../utils/task-path.ts";
 import { getTerminalStatuses } from "../utils/terminal-status.ts";
 import { getVersion } from "../utils/version.ts";
 import { withWikiPageTitles } from "../utils/wiki-titles.ts";
+import { WEB_BUILDING_HTML, WebBundleProvider } from "./web-bundle.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
@@ -320,6 +322,11 @@ export class BacklogServer {
 	private databaseBrowser: UserDatabaseBrowser | null = null;
 	private graphSlot: GraphSlot = DEFAULT_SLOT;
 	private graphAttempt: Promise<GraphService | null> | null = null;
+	/**
+	 * Cached, prebuilt UI bundle for source runs; null when the UI is embedded in a compiled binary.
+	 * See src/server/web-bundle.ts for why the bundle is not left to Bun's lazy HTML-entry build.
+	 */
+	private webBundle: WebBundleProvider | null = null;
 
 	constructor(
 		projectPath: string,
@@ -343,6 +350,8 @@ export class BacklogServer {
 	}
 
 	private async launchGraphService(): Promise<GraphService | null> {
+		const startAt = Date.now();
+		logLine("startup", "cold-starting graph service (RyuGraph WASM)...");
 		const service = await startGraphService(this.core, {
 			slot: this.graphSlot,
 			onLockConflict: this.onGraphLockConflict,
@@ -350,12 +359,21 @@ export class BacklogServer {
 			// Startup messages run in parallel with the normal browser loading flow: one line when
 			// the cold start begins, one when the graph is ready (doc-014 §3.3).
 			onColdStart: (phase) => {
-				if (phase === "start") this.sendToSockets("graph-started");
-				else if (phase === "complete") this.sendToSockets("graph-ready");
-				else this.sendToSockets("graph-failed");
+				if (phase === "start") {
+					this.sendToSockets("graph-started");
+				} else if (phase === "complete") {
+					this.sendToSockets("graph-ready");
+					logLine("startup", `graph service ready in ${Date.now() - startAt}ms`);
+				} else {
+					this.sendToSockets("graph-failed");
+					logError("startup", `graph service cold start failed after ${Date.now() - startAt}ms`);
+				}
 			},
 		});
-		if (!service) return null;
+		if (!service) {
+			logLine("startup", `graph service skipped in ${Date.now() - startAt}ms`);
+			return null;
+		}
 		this.graphService = service;
 		return service;
 	}
@@ -378,11 +396,17 @@ export class BacklogServer {
 
 	private async ensureServicesReady(): Promise<void> {
 		if (!this.servicesReadyPromise) {
+			const startAt = Date.now();
+			logLine("startup", "initializing services (content store + search)...");
 			this.publishBrowserLoadingState({ type: "loading", message: null });
 			const readyPromise = this.initializeServices()
-				.then(() => this.publishBrowserLoadingState({ type: "loaded" }))
+				.then(() => {
+					logLine("startup", `services ready in ${Date.now() - startAt}ms`);
+					this.publishBrowserLoadingState({ type: "loaded" });
+				})
 				.catch((error) => {
 					if (this.servicesReadyPromise === readyPromise) this.servicesReadyPromise = null;
+					logError("startup", `service initialization failed after ${Date.now() - startAt}ms:`, error);
 					this.publishBrowserLoadingState({
 						type: "error",
 						message: error instanceof Error ? error.message : String(error),
@@ -395,10 +419,22 @@ export class BacklogServer {
 	}
 
 	private async initializeServices(): Promise<void> {
-		const store = await this.core.getContentStore((message) => {
-			this.publishBrowserLoadingState({ type: "loading", message });
-		});
+		// Load the corpus without blocking first paint on a (potentially slow) remote fetch. The
+		// fetch only protects ID allocation; display can use slightly stale refs. A background
+		// refreshTasksForTaskRead() below catches remote refs up after the page is already shown.
+		const store = await this.core.getContentStore(
+			(message) => {
+				this.publishBrowserLoadingState({ type: "loading", message });
+			},
+			{ skipInitialRemoteRefresh: true },
+		);
 		this.contentStore = store;
+
+		// Background catch-up: refresh remote refs + cross-branch state without holding the boot path.
+		void this.core
+			.refreshTasksForTaskRead()
+			.then(() => logLine("startup", "background remote ref refresh complete"))
+			.catch((error) => logError("startup", "background remote ref refresh failed (display kept local state):", error));
 
 		if (!this.unsubscribeContentStore) {
 			this.unsubscribeContentStore = store.subscribe((event) => {
@@ -520,6 +556,16 @@ export class BacklogServer {
 
 	private publishBrowserLoadingState(state: BrowserLoadingState) {
 		this.browserLoadingState = state;
+		// Mirror corpus-loading phases to the server console. These progress lines were only
+		// ever pushed to the browser over WebSocket, so the server terminal stayed silent while
+		// the first-load / cross-branch indexing ran - the "blank page, no logs" gap.
+		if (state.type === "loading" && state.message) {
+			logLine("loading", `${state.message}`);
+		} else if (state.type === "error" && state.message) {
+			logLine("loading", `error: ${state.message}`);
+		} else if (state.type === "loaded") {
+			logLine("loading", "corpus loaded");
+		}
 		const message = JSON.stringify(state);
 		for (const ws of this.sockets) {
 			try {
@@ -694,6 +740,8 @@ export class BacklogServer {
 	async start(port?: number, openBrowser = true, host = BROWSER_HOST): Promise<void> {
 		// Pin the heartbeat to the bottom line and make other server logs lift it first, so the
 		// "ContentStore periodic rescan completed" line stays put instead of stacking in a TTY.
+		// Cache/startup progress is a session thing; one-shot CLI commands stay quiet.
+		enableProgressLogs();
 		installStatusLineHooks();
 		// Prevent duplicate starts (e.g., accidental re-entry)
 		if (this.server) {
@@ -758,45 +806,61 @@ export class BacklogServer {
 			bindPort = preferredPort;
 		}
 
-		// Start the Graph Service eagerly (doc-014 §3.3): it cold-starts the task graph in this
-		// process while the server boots, so /api/graph is warm on the first request. The port is
-		// only known now, and it is what names this session's cache entry. Failing to take the
-		// database just leaves the service null - it never blocks the server.
+		// The port is only known now, and it names this session's graph cache entry. The graph
+		// service is NOT cold-started here: a full WASM graph build takes ~100s and monopolizes the
+		// event loop, which starves the browser's first page load and the initial content indexing
+		// (blank page for the whole duration). It instead starts lazily on the first /api/graph
+		// request (handled by getGraphService), so boot stays fast and the server stays responsive
+		// during normal task browsing. doc-014 §3.3.
 		this.graphSlot = portSlot(bindPort);
-		void this.getGraphService().catch(() => {});
+
+		// Warm the corpus as soon as the port is bound instead of waiting for the first request.
+		// The work is the same either way (requests share this memoized promise), but starting it
+		// here makes the startup/cache progress visible in the terminal immediately - previously
+		// nothing was printed until a browser connected, which read as a silent hang.
+		setTimeout(() => void this.ensureServicesReady().catch(() => {}), 0);
 
 		try {
 			void this.cleanupTempAssets();
+			// Prefer the on-disk UI bundle cache over Bun's lazy HTML-entry build: that build runs on
+			// this thread for ~2 minutes on a cold bundle and stalls every startup continuation with it.
+			// Null in a compiled binary, where the UI is embedded and needs no build.
+			this.webBundle = WebBundleProvider.create();
+			if (this.webBundle) void this.webBundle.initialize();
+			const appShellRoute = this.webBundle
+				? (req: Request, server: Server<unknown>) => this.serveAppShell(req, server)
+				: spaIndexHtml;
+
 			const serveOptions = {
 				port: bindPort,
 				hostname: host,
 				development: process.env.NODE_ENV === "development",
 				routes: {
-					"/": spaIndexHtml,
-					"/tasks": spaIndexHtml,
-					"/milestones": spaIndexHtml,
-					"/drafts": spaIndexHtml,
-					"/gantt": spaIndexHtml,
-					"/memos": spaIndexHtml,
-					"/documentation": spaIndexHtml,
-					"/documentation/*": spaIndexHtml,
-					"/decisions": spaIndexHtml,
-					"/decisions/*": spaIndexHtml,
-					"/wiki": spaIndexHtml,
-					"/wiki/*": spaIndexHtml,
-					"/statistics": spaIndexHtml,
-					"/graph": spaIndexHtml,
-					"/knowledge": spaIndexHtml,
-					"/databases": spaIndexHtml,
-					"/settings": spaIndexHtml,
-					"/task/:id": spaIndexHtml,
-					"/task/:id/*": spaIndexHtml,
-					"/draft/:id": spaIndexHtml,
-					"/draft/:id/*": spaIndexHtml,
-					"/milestone/:id": spaIndexHtml,
-					"/milestone/:id/*": spaIndexHtml,
-					"/search": spaIndexHtml,
-					"/search/*": spaIndexHtml,
+					"/": appShellRoute,
+					"/tasks": appShellRoute,
+					"/milestones": appShellRoute,
+					"/drafts": appShellRoute,
+					"/gantt": appShellRoute,
+					"/memos": appShellRoute,
+					"/documentation": appShellRoute,
+					"/documentation/*": appShellRoute,
+					"/decisions": appShellRoute,
+					"/decisions/*": appShellRoute,
+					"/wiki": appShellRoute,
+					"/wiki/*": appShellRoute,
+					"/statistics": appShellRoute,
+					"/graph": appShellRoute,
+					"/knowledge": appShellRoute,
+					"/databases": appShellRoute,
+					"/settings": appShellRoute,
+					"/task/:id": appShellRoute,
+					"/task/:id/*": appShellRoute,
+					"/draft/:id": appShellRoute,
+					"/draft/:id/*": appShellRoute,
+					"/milestone/:id": appShellRoute,
+					"/milestone/:id/*": appShellRoute,
+					"/search": appShellRoute,
+					"/search/*": appShellRoute,
 
 					// API Routes using Bun's native route syntax
 					"/api/tasks": {
@@ -1083,6 +1147,15 @@ export class BacklogServer {
 					"/assets/*": {
 						GET: async (req: Request) => await this.handleAssetRequest(req),
 					},
+					// The UI bundle, when served from the on-disk cache (source runs); everything that
+					// is not a bundle file falls back to the project-asset handler.
+					...(this.webBundle
+						? {
+								"/*": {
+									GET: async (req: Request, server: Server<unknown>) => await this.serveWebAsset(req, server),
+								},
+							}
+						: {}),
 				},
 				fetch: async (req: Request, server: Server<unknown>) => {
 					const res = await this.handleRequest(req, server);
@@ -1510,6 +1583,46 @@ export class BacklogServer {
 			console.error("Error serving asset:", error);
 			return new Response("Internal Server Error", { status: 500 });
 		}
+	}
+
+	/**
+	 * The SPA shell. Served from the on-disk bundle cache when available; while a rebuild is in
+	 * flight (first run, or the UI sources changed) the previous shell keeps working, and with no
+	 * bundle at all the page shows its own progress instead of a blank tab.
+	 *
+	 * The shell routes are matched before the WebSocket handler ever sees a request, and the client
+	 * opens its socket on the same origin root - so an upgrade request that lands here has to be
+	 * handed back to the request handler, or the live-reload connection dies right after boot.
+	 */
+	private async serveAppShell(req: Request, server: Server<unknown>): Promise<Response> {
+		if (req.headers.get("upgrade") === "websocket") return await this.handleRequest(req, server);
+		const headers = {
+			"Content-Type": "text/html; charset=utf-8",
+			"Cache-Control": "no-store, max-age=0",
+		};
+		const html = this.webBundle?.indexHtml ?? null;
+		if (html) return new Response(html, { headers });
+		void this.webBundle?.ensureBuilt();
+		return new Response(WEB_BUILDING_HTML, { headers });
+	}
+
+	/**
+	 * Bundle assets (hashed JS/CSS/images emitted by the build). Anything else falls through to the
+	 * project-asset handler so user files keep being served from backlog/assets.
+	 */
+	private async serveWebAsset(req: Request, server: Server<unknown>): Promise<Response> {
+		const filePath = this.webBundle?.resolveAsset(new URL(req.url).pathname) ?? null;
+		if (filePath) {
+			return new Response(Bun.file(filePath), {
+				headers: {
+					"Content-Type": this.webBundle?.contentTypeFor(filePath) ?? "application/octet-stream",
+					// Build output is content-hashed, so a file name never changes meaning.
+					"Cache-Control": "public, max-age=31536000, immutable",
+					"X-Content-Type-Options": "nosniff",
+				},
+			});
+		}
+		return await this.handleRequest(req, server);
 	}
 
 	private async handleRequest(req: Request, server: Server<unknown>): Promise<Response> {

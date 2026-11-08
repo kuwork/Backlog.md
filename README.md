@@ -387,6 +387,12 @@ backlog browser --no-open
 # 开放局域网访问（危险：API 未认证）
 backlog browser --host 0.0.0.0
 
+# 忽略已有缓存，从头加载（怀疑界面显示的是旧内容时使用）
+backlog browser --no-cache
+
+# 强制把重扫心跳钉在终端底部（--no-status-line 让它按普通行输出；BACKLOG_STATUS_LINE=1/0 等效）
+backlog browser --status-line
+
 # 使用指定浏览器打开（BROWSER 环境变量；devcontainer 场景常用）
 BROWSER="/path/to/browser" backlog browser
 ```

@@ -24,6 +24,17 @@ You can rerun the wizard anytime with `backlog config`. All existing CLI flags (
 
 Humans and agents can run `backlog instructions` for workflow guides and `backlog instructions overview` for the overview.
 
+## Configuration
+
+| Action      | Example                                              |
+|-------------|------------------------------------------------------|
+| Interactive wizard | `backlog config` (no args) - the full advanced flow |
+| List every value | `backlog config list` |
+| Read one value | `backlog config get defaultPort` |
+| Write one value | `backlog config set defaultEditor "code --wait"` (validated before it is written) |
+
+Values live in the project's config file (`backlog/config.yml`, or `backlog.config.yml` in the project root when configured that way). `statuses` is deliberately not settable through `config set`: edit the state machine from the settings page of `backlog browser` or the config file itself.
+
 ## Documentation
 
 - Document IDs are global across all subdirectories under `backlog/docs`. You can organize files in nested folders (e.g., `backlog/docs/guides/`), and `backlog doc list` and `backlog doc view <id>` work across the entire tree.
@@ -31,6 +42,17 @@ Humans and agents can run `backlog instructions` for workflow guides and `backlo
 - Use `backlog doc update doc-1 --content "Updated markdown"` to update document content. Add `--title`, `-t/--type`, `--tags`, or `-p/--path` to update metadata or move the document while preserving omitted fields.
 - Use `backlog doc search "query"` for scoped document search with plain text output that includes document IDs and follow-up `backlog doc view <docId>` commands. Use `--limit <number>` to cap results.
 - Document paths are always relative to the docs directory. Absolute paths and traversal segments such as `..` are rejected.
+
+| Action      | Example                                              |
+|-------------|------------------------------------------------------|
+| Create doc | `backlog doc create "API Guidelines"` |
+| Create with path | `backlog doc create "Setup Guide" -p guides/setup` |
+| Create with type | `backlog doc create "Architecture" -t guide` |
+| Update content | `backlog doc update doc-1 --content "Updated markdown"` |
+| Update metadata/path | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
+| List docs | `backlog doc list` |
+| Search docs | `backlog doc search "architecture" --limit 5` |
+| View doc | `backlog doc view doc-1` |
 
 ## Task Management
 
@@ -53,7 +75,9 @@ Humans and agents can run `backlog instructions` for workflow guides and `backlo
 | Create with docs | `backlog task create "Feature" --doc https://design-docs.example.com --doc docs/spec.md` |
 | Create sub task | `backlog task create -p 14 "Add Login with Google"`|
 | Create (all options) | `backlog task create "Feature" -d "Description" -a @sara -s "To Do" -l auth --priority high --ac "Must work" --notes "Initial setup done" --dep task-1 --ref src/api.ts --doc docs/spec.md -p 14` |
-| List tasks  | `backlog task list [-s <status>] [-a <assignee>] [-p <parent>] [--labels <labels>] [--search <query>] [--limit <n>]` |
+| List tasks  | `backlog task list [-s <status>] [--exclude-status <status>] [-a <assignee>] [--unassigned] [-p <parent>] [-m <milestone>] [--priority <priority>] [--labels <labels>] [--search <query>] [--ready] [--completed] [--limit <n>] [--sort priority\|id\|ordinal]` |
+| List ready-to-start work | `backlog task list --ready` (only tasks whose dependencies are all completed) |
+| List including completed corpus | `backlog task list --completed --plain` |
 | List filtered | `backlog task list --labels frontend,bug --search "login" --limit 10 --plain` |
 | List by parent | `backlog task list --parent 42` or `backlog task list -p task-42` |
 | Watch a queue | `backlog task list --json --watch --status "In Progress" --assignee @sara` |
@@ -192,6 +216,26 @@ Find tasks, documents, and decisions across your entire backlog with fuzzy searc
 - **Interactive filters** -- refine your search in real-time with the TUI
 - **Live filtering** -- see results update as you type (no Enter needed)
 
+## Graph Queries
+
+`backlog graph` runs read-only Cypher against the derived markdown graph (`default`), or write Cypher against durable user databases stored under `<backlog>/databases/`. The `default` graph is rebuilt in process from the markdown corpus on each call (~5-7 seconds) and can never be written to.
+
+| Action      | Example                                              |
+|-------------|------------------------------------------------------|
+| Show the schema | `backlog graph schema default` |
+| Query the markdown graph | `backlog graph query default "MATCH (t:Task) RETURN t.id LIMIT 5"` |
+| Full result set | `backlog graph query default "..." --all` (interactive output caps at 500 rows) |
+| Raw JSON result | `backlog graph query default "..." --json` |
+| List databases | `backlog graph list` |
+| Describe one database | `backlog graph describe mydb` |
+| Create a user database | `backlog graph create mydb "Papers I am tracking"` |
+| Write to a user database | `backlog graph insert mydb "CREATE (:Paper {title: 'X'})"` |
+| Load CSV as nodes | `backlog graph import mydb papers.csv --node Paper --header` |
+| Load CSV as edges | `backlog graph import mydb edges.csv --rel CITES --from src --to dst` |
+| Drop a user database | `backlog graph drop mydb` (`default` cannot be dropped) |
+
+`graph import` creates a missing table with inferred column types and inserts with batched parameterised `UNWIND`; `--map "First Name=firstName"` renames columns on the way in.
+
 ## Paging Long Lists
 
 Every list command (`search`, `doc search`, `task list`, `draft list`, `milestone list`, `doc list`, `decision list`, `memo list`) pages the same way, so one set of options and one footer covers them all.
@@ -216,7 +260,13 @@ backlog search "auth" --max-count 20 --plain
 |-------------|------------------------------------------------------|
 | Create draft | `backlog task create "Feature" --draft`             |
 | Draft flow  | `backlog draft create "Spike GraphQL"` → `backlog draft edit 1 --priority high` → `backlog draft promote 3.1` |
+| List drafts | `backlog draft list --plain` (interactive by default; `--sort priority\|id`, pages with `--max-count` / `--skip` / `--count`) |
+| View draft | `backlog draft view 3.1 --plain` |
+| Edit draft | `backlog draft edit 3.1 --priority high --labels spike` (same fields a task has: title, description, priority, labels, assignees, AC/DoD) |
+| Archive draft | `backlog draft archive 3.1` |
 | Demote to draft| `backlog task demote <id>` |
+
+Drafts keep the fields a task has but live outside the board: they are not counted by the board, are not picked up by `task list`, and become a task only through `draft promote`.
 
 ## Dependency Management
 
@@ -235,6 +285,17 @@ Manage task dependencies to create execution sequences and prevent circular rela
 - **Flexible formats**: Use `task-1`, `1`, or comma-separated lists like `1,2,3`
 - **Visual sequences**: Dependencies create visual execution sequences in board view
 - **Completion tracking**: See which dependencies are blocking task progress
+
+## Sequences
+
+`backlog sequence list` groups active tasks into the ordered layers their `dependencies` imply, so it is obvious what can run in parallel and what has to wait. It is read-only.
+
+| Action      | Example                                              |
+|-------------|------------------------------------------------------|
+| List sequences (plain) | `backlog sequence list --plain` |
+| Browse interactively | `backlog sequence list` |
+
+Sequences are computed on read from `dependencies`; the command never writes task data.
 
 ## Board Operations
 
@@ -255,25 +316,21 @@ Manage task dependencies to create execution sequences and prevent circular rela
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Web interface | `backlog browser` (launches web UI on localhost, loopback-only at 127.0.0.1, port 6420) |
+| Web interface | `backlog browser` (UI on `127.0.0.1:6420`, loopback-only unless `--host` is given) |
 | Web custom port | `backlog browser --port 8080 --no-open` |
 | Web LAN access | `backlog browser --host 0.0.0.0` (unauthenticated API, use with caution) |
+| Web no auto-open | `backlog browser --no-open` (print the URL instead of launching a browser) |
 | Web custom browser | `BROWSER=/path/to/browser backlog browser` (opens the UI with a specific executable; the URL is passed as a separate argument) |
+| Web cold start | `backlog browser --no-cache` (ignore every local startup cache - branch, task, content and UI bundle - and rebuild them; use to measure boot time or rule out a stale cache) |
+| Status line pinned | `backlog browser --status-line` (force the rescan heartbeat onto the bottom line) |
+| Status line inline | `backlog browser --no-status-line` (force the heartbeat to print as normal lines) |
+| Serve another project | `BACKLOG_CWD=/path/to/project backlog browser` (the server reads that project while the process stays where it is) |
+
+`--no-cache` skips cache *reads* but not writes: the run rebuilds what it ignored, so the next normal start is warm again - which is what makes it a repair path for a suspect cache rather than a permanent mode. The UI bundle is rebuilt only when its fingerprint changes (the contents of `src/web`, the dependency maps of `package.json`, the lockfile); a packaged binary uses its embedded bundle instead. `bun run web:build` rebuilds the bundle ahead of time.
+
+The status line pins the rescan heartbeat to the bottom of a real terminal. Auto-detection is on in Git Bash and off under winpty; `--status-line` / `--no-status-line` override it, and `BACKLOG_STATUS_LINE=1` / `=0` sets it without a flag.
 
 To keep the Web UI running in the background with auto-start on boot, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
-
-## Documentation
-
-| Action      | Example                                              |
-|-------------|------------------------------------------------------|
-| Create doc | `backlog doc create "API Guidelines"` |
-| Create with path | `backlog doc create "Setup Guide" -p guides/setup` |
-| Create with type | `backlog doc create "Architecture" -t guide` |
-| Update content | `backlog doc update doc-1 --content "Updated markdown"` |
-| Update metadata/path | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
-| List docs | `backlog doc list` |
-| Search docs | `backlog doc search "architecture" --limit 5` |
-| View doc | `backlog doc view doc-1` |
 
 ## Decisions
 
@@ -281,6 +338,28 @@ To keep the Web UI running in the background with auto-start on boot, see [Runni
 |-------------|------------------------------------------------------|
 | Create decision | `backlog decision create "Use PostgreSQL for primary database"` |
 | Create with status | `backlog decision create "Migrate to TypeScript" -s proposed` |
+| List decisions | `backlog decision list --plain` (interactive by default; pages with `--max-count` / `--skip` / `--count`) |
+| View a decision | `backlog decision view decision-1 --plain` |
+| Update status | `backlog decision update decision-1 --status accepted` |
+| Append rationale | `backlog decision update decision-1 --append-content "Reversibility: ..."` |
+
+## Memos
+
+Quick notes captured from the terminal, shared with the Web UI's `/memos` feed.
+
+| Action      | Example                                              |
+|-------------|------------------------------------------------------|
+| Capture a memo | `backlog memo create --content "Cache the UI bundle" --tags idea,perf` |
+| Capture interactively | `backlog memo create` (omitting `--content` types the body on a TTY, or reads it from stdin) |
+| List memos | `backlog memo list` |
+| Filter by date | `backlog memo list --date 2026-11-08` |
+| Filter by tags | `backlog memo list --tags idea,perf` (a memo matches any listed tag) |
+| Read one | `backlog memo view 3` |
+| Append a line | `backlog memo update 3 --append "follow-up: measure cold boot"` |
+| Replace the body | `backlog memo update 3 --content "Rewritten note"` |
+| Delete a memo | `backlog memo delete 3` |
+
+`memo list` pages with `--max-count` / `--skip` / `--count` (`--cursor` was removed in favour of `--skip`). The CLI and the Web UI share one store and one ID scheme, so a memo captured in the terminal shows up in the feed immediately.
 
 ## Agent Instructions
 
@@ -291,12 +370,20 @@ To keep the Web UI running in the background with auto-start on boot, see [Runni
 | Required first read for task workflow | `backlog instructions overview` |
 | Read a detailed workflow guide | `backlog instructions task-execution` |
 | Update CLI agent instruction files | `backlog agents --update-instructions` (updates CLAUDE.md, AGENTS.md, GEMINI.md, .github/copilot-instructions.md) |
+| Install the wiki skill | `backlog wiki install claude --dry-run`, then rerun without `--dry-run` (agents: `claude`, `codex`, `agents`; `--force` overwrites) |
+| Install the branch-merge skill | `backlog migrate install claude` (task-migration-architect; same agent names) |
 
 ## Maintenance
 
 | Action      | Example                                                                                      |
 |-------------|----------------------------------------------------------------------------------------------|
 | Cleanup done tasks | `backlog cleanup` (move old completed tasks to completed folder to cleanup the kanban board) |
+| Diagnose duplicate IDs | `backlog doctor` (reports duplicate task/draft IDs plus dependency defects such as cycles) |
+| Repair duplicates | `backlog doctor --fix` (previews, then renames the files and their frontmatter IDs); `--fix --yes` skips the confirmation |
+| Finalize a repair | `backlog doctor --commit` (discards the retained backups once references are resolved) |
+| Undo a repair | `backlog doctor --rollback` (restores the original files from the backups) |
+
+`doctor` only repairs duplicate IDs; the dependency defects it reports are warnings and need a normal `task edit --dep` fix. Never rename a task file or edit its ID by hand to resolve a duplicate - that is what the `--fix` / `--commit` / `--rollback` lifecycle exists for.
 
 Full help: `backlog --help`
 

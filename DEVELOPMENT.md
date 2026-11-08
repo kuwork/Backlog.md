@@ -20,6 +20,19 @@ Format and lint:
 npx biome check .
 ```
 
+### Web UI bundle
+
+The browser UI is not shipped pre-built while you run from source: `backlog browser` compiles `src/web/index.html` on the first request and caches the result under the platform cache directory (`backlog.md/web-bundle/<fingerprint>/`, see `src/utils/cache-dir.ts`). That first compile takes one to two minutes and runs in a child process, so the server keeps answering with the previous build while it works. Later starts reuse the cache; a change under `src/web`, to the dependency list or to the lockfile triggers one new compile.
+
+`bun run web:build` runs the same build by hand, which is what you want after editing UI code:
+
+```bash
+bun run web:build           # into the cache slot the server uses for the current sources
+bun run web:build /tmp/ui   # into a directory of your choosing
+```
+
+The release path is different: `bun run build` compiles the CLI and embeds the UI into the executable, so an installed `backlog` never reads this cache.
+
 ### Graph backend (ryu)
 
 Cypher graph search (BACK-765) runs on the **ryu** backend, which is the default -

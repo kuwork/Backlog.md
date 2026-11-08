@@ -7,6 +7,7 @@ import type { BacklogConfig, Decision, Document, Task, TaskListFilter, WikiPage 
 import { watchConfigFile } from "../utils/config-watcher.ts";
 import { documentFilenameId, documentIdsEqual } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath } from "../utils/document-path.ts";
+import { logLine } from "../utils/log.ts";
 import { normalizeStatusSet, statusMatchesSet } from "../utils/status-filter.ts";
 import { statusLine } from "../utils/status-line.ts";
 import { canonicalTaskId, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "../utils/task-path.ts";
@@ -625,6 +626,12 @@ export class ContentStore {
 	}
 
 	private async loadInitialData(progressCallback?: (message: string) => void): Promise<void> {
+		let lastPhaseAt = performance.now();
+		const markPhase = (label: string) => {
+			const now = performance.now();
+			logLine("startup", `${label} in ${Math.round(now - lastPhaseAt)}ms`);
+			lastPhaseAt = now;
+		};
 		let ready = false;
 		for (let attempt = 0; attempt < 12 && !ready; attempt += 1) {
 			if (this.closed) {
@@ -650,9 +657,11 @@ export class ContentStore {
 			if (!attemptLoaded || !this.isPublicationOwnerCurrent(owner)) {
 				continue;
 			}
+			markPhase("content loaded (tasks, documents, decisions, wikis)");
 
 			if (this.enableWatchers) {
 				await this.setupWatchers();
+				markPhase("file watchers ready");
 				if (
 					this.publishedRoot !== this.currentRoot() ||
 					(this.rootWatchersInitialized && !this.hasCurrentRootWatchers())
@@ -675,6 +684,7 @@ export class ContentStore {
 		// Capture a fingerprint baseline before any external deletion can occur, so the first
 		// periodic scan can detect removals instead of silently seeding an already-stale view.
 		await this.seedFingerprintBaseline();
+		markPhase("fingerprint baseline seeded");
 		this.startPeriodicRescan();
 	}
 
@@ -921,12 +931,22 @@ export class ContentStore {
 			documents: new Map(this.contentItemVersions.documents),
 			decisions: new Map(this.contentItemVersions.decisions),
 		};
+		// Per-collection completion times: when one of them is slow the total is useless on its own,
+		// and this is the only place that knows which collection held the load.
+		const collectionsStartedAt = performance.now();
+		const collectionTimings: string[] = [];
+		const timed = <T>(label: string, promise: Promise<T>) =>
+			promise.then((value) => {
+				collectionTimings.push(`${label} ${Math.round(performance.now() - collectionsStartedAt)}ms`);
+				return value;
+			});
 		const [taskCorpus, documents, decisions, wikis] = await Promise.all([
-			this.loadTasksWithLoader(progressCallback),
-			this.filesystem.listDocuments(),
-			this.filesystem.listDecisions(),
-			this.filesystem.listWikiPages(),
+			timed("tasks", this.loadTasksWithLoader(progressCallback)),
+			timed("documents", this.filesystem.listDocuments()),
+			timed("decisions", this.filesystem.listDecisions()),
+			timed("wikis", this.filesystem.listWikiPages()),
 		]);
+		logLine("startup", `collections ready: ${collectionTimings.join(", ")}`);
 		if (
 			!this.isRootWatcherCurrent(epoch) ||
 			targetRoot !== this.currentRoot() ||

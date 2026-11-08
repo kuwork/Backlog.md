@@ -396,6 +396,12 @@ backlog browser --no-open
 # Allow LAN access (danger: unauthenticated API)
 backlog browser --host 0.0.0.0
 
+# Ignore the existing caches and load everything from scratch (when the UI shows stale content)
+backlog browser --no-cache
+
+# Pin the rescan heartbeat to the bottom line (--no-status-line prints it as normal lines; BACKLOG_STATUS_LINE=1/0 is equivalent)
+backlog browser --status-line
+
 # Open with a specific browser via the BROWSER environment variable (common in devcontainers)
 BROWSER="/path/to/browser" backlog browser
 ```

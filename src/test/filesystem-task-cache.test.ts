@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { stat, unlink, utimes } from "node:fs/promises";
+import { readFile, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import * as markdownParser from "../markdown/parser.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
-import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
+import { NO_CACHE_ENV } from "../utils/cache-policy.ts";
+import { createUniqueTestDir, safeCleanup, sleep } from "./test-utils.ts";
 
 function task(id: string, title: string): Task {
 	return {
@@ -38,9 +39,10 @@ interface TaskCacheHarness {
 		options: { normalizeIdentity: boolean; debugLabel: string },
 		cacheEpoch?: number,
 	): Promise<Task[]>;
-	parsedTaskFiles: Map<string, { content: string; task: Task }>;
+	parsedTaskFiles: Map<string, { hash: string; task: Task }>;
 	taskFileReadGenerations: Map<string, number>;
 	taskParseCacheEpoch: number;
+	taskCacheFilePath(): string;
 }
 
 describe("FileSystem task parse cache", () => {
@@ -327,6 +329,84 @@ describe("FileSystem task parse cache", () => {
 			expect(completedTasks).toHaveLength(32);
 		} finally {
 			fileSpy.mockRestore();
+		}
+	});
+
+	it("serves an unchanged file from the stat signature without reading it", async () => {
+		await filesystem.saveTask(task("TASK-1", "Parsed once"));
+		const harness = filesystem as unknown as TaskCacheHarness;
+		expect((await filesystem.listTasks())[0]?.title).toBe("Parsed once");
+		await sleep(2300);
+
+		// Overwrite the cached parse with a title that exists nowhere on disk: a stat-only hit is the
+		// only way it can come back, because reading the file would re-parse the real content.
+		const cacheFile = harness.taskCacheFilePath();
+		const cached = JSON.parse(await readFile(cacheFile, "utf8")) as Record<string, { task: Task }>;
+		const entry = Object.values(cached)[0];
+		if (!entry) throw new Error("expected a persisted cache entry");
+		entry.task.title = "From stat signature";
+		await writeFile(cacheFile, JSON.stringify(cached), "utf8");
+
+		const restarted = new FileSystem(testDir);
+		await restarted.ensureBacklogStructure();
+		expect((await restarted.listTasks())[0]?.title).toBe("From stat signature");
+	});
+
+	it("parses from the files themselves when the no-cache policy is on, then rewrites the cache", async () => {
+		await filesystem.saveTask(task("TASK-1", "Real task"));
+		expect((await filesystem.listTasks())[0]?.title).toBe("Real task");
+		await sleep(2300);
+
+		// Poison the persisted snapshot: only the cache can return this title.
+		const cacheFile = (filesystem as unknown as TaskCacheHarness).taskCacheFilePath();
+		const cached = JSON.parse(await readFile(cacheFile, "utf8")) as Record<string, { task: Task }>;
+		const entry = Object.values(cached)[0];
+		if (!entry) throw new Error("expected a persisted cache entry");
+		entry.task.title = "From poisoned cache";
+		await writeFile(cacheFile, JSON.stringify(cached), "utf8");
+
+		const parseSpy = spyOn(markdownParser, "parseTask");
+		try {
+			process.env[NO_CACHE_ENV] = "1";
+			const cold = new FileSystem(testDir);
+			await cold.ensureBacklogStructure();
+			expect((await cold.listTasks())[0]?.title).toBe("Real task");
+			expect(parseSpy).toHaveBeenCalledTimes(1);
+
+			// The rebuild replaced the ignored snapshot, so the next instance is warm again.
+			delete process.env[NO_CACHE_ENV];
+			await sleep(2300); // let the debounced flush land
+			const warm = new FileSystem(testDir);
+			await warm.ensureBacklogStructure();
+			expect((await warm.listTasks())[0]?.title).toBe("Real task");
+			expect(parseSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			delete process.env[NO_CACHE_ENV];
+			parseSpy.mockRestore();
+		}
+	});
+
+	it("persists parsed tasks to disk so a fresh instance skips re-parsing after restart", async () => {
+		await filesystem.saveTask(task("TASK-1", "Persisted task"));
+		const parseSpy = spyOn(markdownParser, "parseTask");
+		try {
+			expect((await filesystem.listTasks())[0]?.title).toBe("Persisted task");
+			expect(parseSpy).toHaveBeenCalledTimes(1);
+
+			// Let the debounced cache flush to disk complete.
+			await sleep(2300);
+
+			// A brand-new instance (simulating a server restart) must load the cache from disk
+			// and serve the parsed task without re-parsing the markdown file.
+			const restarted = new FileSystem(testDir);
+			await restarted.ensureBacklogStructure();
+			const tasks = await restarted.listTasks();
+			expect(tasks).toHaveLength(1);
+			expect(tasks[0]?.title).toBe("Persisted task");
+			// No additional parse - the cached parse was reused across the restart.
+			expect(parseSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			parseSpy.mockRestore();
 		}
 	});
 });

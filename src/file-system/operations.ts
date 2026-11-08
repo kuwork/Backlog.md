@@ -1,4 +1,6 @@
-import { mkdir, readdir, realpath, rename, stat, unlink } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { statSync } from "node:fs";
+import { mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
@@ -26,11 +28,14 @@ import type {
 } from "../types/index.ts";
 import type { BacklogConfigSource } from "../utils/backlog-directory.ts";
 import { normalizeProjectBacklogDirectory, resolveBacklogDirectory } from "../utils/backlog-directory.ts";
+import { backlogCacheDir } from "../utils/cache-dir.ts";
+import { isCacheDisabled } from "../utils/cache-policy.ts";
 import { findDecisionById } from "../utils/decision-id.ts";
 import { documentIdsEqual, findDocumentById, normalizeDocumentId } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath, normalizeDocumentSubPath } from "../utils/document-path.ts";
 import type { DraftIdentityFindings } from "../utils/duplicate-detection.ts";
 import { AmbiguousIdError, isAmbiguousIdError } from "../utils/entity-id.ts";
+import { logLine } from "../utils/log.ts";
 import {
 	buildGlobPattern,
 	extractAnyPrefix,
@@ -50,6 +55,7 @@ import {
 	taskIdsEqual,
 } from "../utils/task-path.ts";
 import { sortByTaskId } from "../utils/task-sorting.ts";
+import { ContentCache, contentCacheFilePath, contentSignature } from "./content-cache.ts";
 import {
 	isAttachmentReference,
 	isInsideProject,
@@ -86,9 +92,45 @@ const DEFAULT_CREATE_LOCK_RETRY_DELAY_MS = 100;
 const DEFAULT_CREATE_LOCK_STALE_MS = 10_000;
 const TASK_FILE_READ_CONCURRENCY = 32;
 
+// Cheap, stable content hash used to decide whether a parsed task can be reused from the
+// cross-restart parse cache without re-parsing the markdown file.
+function hashContent(content: string): string {
+	return createHash("sha256").update(content).digest("hex");
+}
+
 interface ParsedTaskFile {
-	content: string;
+	/** Hash of the file content; lets us reuse the parsed task across restarts without re-parsing. */
+	hash: string;
+	/**
+	 * Size and timestamps of the file this parse came from. When all three still match, a warm
+	 * start serves the parse without reading the file at all. Optional so caches written before
+	 * this existed keep working: they just take the slower content-hash path once.
+	 */
+	size?: number;
+	mtimeMs?: number;
+	ctimeMs?: number;
 	task: Task;
+}
+
+/** What a stat says about a task file, compared against the values stored with its parse. */
+interface FileSignature {
+	size: number;
+	mtimeMs: number;
+	ctimeMs: number;
+}
+
+/**
+ * Stat a task file without reading it. This stays synchronous on purpose: the first await in
+ * readParsedTaskFile must be the read slot, so a miss still reaches Bun.file inside the tick that
+ * created it (concurrent scans rely on that ordering to see their reads start).
+ */
+function fileSignature(filepath: string): FileSignature | null {
+	try {
+		const stats = statSync(filepath);
+		return { size: stats.size, mtimeMs: stats.mtimeMs, ctimeMs: stats.ctimeMs };
+	} catch {
+		return null;
+	}
 }
 
 export const CREATE_LOCK_ERROR_CODE = "ECREATELOCK";
@@ -385,11 +427,23 @@ export class FileSystem {
 	private cachedConfig: BacklogConfig | null = null;
 	private cachedConfigContent: { path: string; content: string } | null = null;
 	private readonly parsedTaskFiles = new Map<string, ParsedTaskFile>();
+	// Same idea for the content collections: documents, decisions and wiki pages are small and
+	// rarely edited, so their last parse is reused while the file signatures match.
+	private readonly contentCaches = new Map<string, ContentCache<unknown>>();
 	private taskParseCacheEpoch = 0;
 	private taskFileReadGeneration = 0;
 	private readonly taskFileReadGenerations = new Map<string, number>();
 	private activeTaskFileReads = 0;
 	private readonly pendingTaskFileReads: Array<() => void> = [];
+	// Cross-restart parse cache: parsed tasks are persisted to disk so a warm boot skips re-parsing
+	// the (often thousands of) task files. Size and timestamps decide whether a file has to be read
+	// at all; the content hash still catches a rewrite that kept the timestamps.
+	private cacheLoadPromise: Promise<void> | null = null;
+	private persistTimer: Timer | null = null;
+	/** When the first cache miss was scheduled for persistence, so the flush can report elapsed time. */
+	private cacheFillStartedAt: number | null = null;
+	/** Directories whose first scan was already reported, so rescans do not repeat the summary. */
+	private readonly scanLoggedDirs = new Set<string>();
 
 	constructor(projectRoot: string) {
 		this.projectRoot = projectRoot;
@@ -865,24 +919,153 @@ export class FileSystem {
 	}
 
 	/** Re-read for freshness, but only reparse when the exact text changed. */
-	private async readParsedTaskFile(filepath: string, cacheEpoch = this.taskParseCacheEpoch): Promise<Task> {
+	private async readParsedTaskFile(
+		filepath: string,
+		cacheEpoch = this.taskParseCacheEpoch,
+		tally?: { statHits: number; reads: number },
+	): Promise<Task> {
 		const cacheKey = resolve(filepath);
 		const generation = ++this.taskFileReadGeneration;
 		if (cacheEpoch === this.taskParseCacheEpoch) {
 			this.taskFileReadGenerations.set(cacheKey, generation);
 		}
+		// Kick off the cross-restart cache load without awaiting it yet: the synchronous part of
+		// withTaskFileReadSlot calls Bun.file immediately, and concurrent prune logic in readTaskFiles
+		// relies on the generation being registered before any await.
+		const cacheReady = this.ensureCacheLoaded();
+		const signature = fileSignature(filepath);
+
+		// Warm start: same size and timestamps means the bytes on disk are the bytes the stored parse
+		// came from, so the file is never read. A copy that preserves the mtime still moves the ctime,
+		// which is why all three are compared; anything else falls through to reading the content.
+		// Reads carrying a stale epoch are the ones that exist to observe the disk as it is now (root
+		// changes, in-flight prunes), so they always read.
+		if (signature && cacheEpoch === this.taskParseCacheEpoch) {
+			await cacheReady;
+			const cached = this.parsedTaskFiles.get(cacheKey);
+			if (
+				cached &&
+				cached.size === signature.size &&
+				cached.mtimeMs === signature.mtimeMs &&
+				cached.ctimeMs === signature.ctimeMs
+			) {
+				if (tally) tally.statHits += 1;
+				return structuredClone(cached.task);
+			}
+		}
+
+		if (tally) tally.reads += 1;
 		const content = await this.withTaskFileReadSlot(async () => await Bun.file(filepath).text());
-		const cached = this.parsedTaskFiles.get(cacheKey);
-		if (cached?.content === content) {
-			return structuredClone(cached.task);
+		await cacheReady;
+		const hash = hashContent(content);
+		const previous = this.parsedTaskFiles.get(cacheKey);
+		// Track whether this read is still the newest one for the path: a root change or a newer
+		// read invalidates the generation, and writing then would resurrect a pruned entry.
+		const storeResult =
+			cacheEpoch === this.taskParseCacheEpoch && this.taskFileReadGenerations.get(cacheKey) === generation;
+		if (previous?.hash === hash) {
+			// Touched but unchanged: keep the parse and refresh the signature so the next load takes
+			// the stat path instead of reading the file again.
+			if (storeResult && signature) {
+				this.parsedTaskFiles.set(cacheKey, { ...previous, ...signature });
+				this.schedulePersistTaskCache();
+			}
+			return structuredClone(previous.task);
 		}
 
 		const parsed = parseTask(content);
-		if (cacheEpoch === this.taskParseCacheEpoch && this.taskFileReadGenerations.get(cacheKey) === generation) {
-			this.parsedTaskFiles.set(cacheKey, { content, task: parsed });
+		if (storeResult) {
+			this.parsedTaskFiles.set(cacheKey, { hash, ...signature, task: parsed });
+			this.schedulePersistTaskCache();
 		}
 		// Task consumers mutate nested lists while preparing edits and branch metadata.
 		return structuredClone(parsed);
+	}
+
+	/** Load the cross-restart parse cache from disk once, best-effort. */
+	private ensureCacheLoaded(): Promise<void> {
+		if (!this.cacheLoadPromise) {
+			this.cacheLoadPromise = this.loadPersistedTaskCache().catch(() => {});
+		}
+		return this.cacheLoadPromise;
+	}
+
+	private async loadPersistedTaskCache(): Promise<void> {
+		const file = this.taskCacheFilePath();
+		if (isCacheDisabled()) {
+			logLine("cache", `building parsed-tasks (cache disabled, ${file})`);
+			return; // --no-cache: rebuild from the files themselves, replacing the ignored snapshot.
+		}
+		let raw: string;
+		try {
+			raw = await readFile(file, "utf8");
+		} catch {
+			logLine("cache", `building parsed-tasks (no cache at ${file})`);
+			return; // No cache yet - we'll build it during this session.
+		}
+		try {
+			const parsed = JSON.parse(raw) as Record<string, ParsedTaskFile>;
+			let loaded = 0;
+			for (const [key, value] of Object.entries(parsed)) {
+				if (value && typeof value.hash === "string" && value.task) {
+					this.parsedTaskFiles.set(key, value);
+					loaded += 1;
+				}
+			}
+			logLine("cache", `restored parsed-tasks (${loaded} entries) from ${file}`);
+		} catch {
+			logLine("cache", `building parsed-tasks (unreadable cache at ${file})`);
+		}
+	}
+
+	private schedulePersistTaskCache(): void {
+		if (this.cacheFillStartedAt === null) this.cacheFillStartedAt = Date.now();
+		if (this.persistTimer) return;
+		this.persistTimer = setTimeout(() => {
+			this.persistTimer = null;
+			void this.persistTaskCache();
+		}, 2000) as ReturnType<typeof setTimeout>;
+		// Don't keep a short-lived process (e.g. a one-shot CLI call) alive just to flush the cache;
+		// a long-running server stays up long enough for the timer to fire regardless.
+		this.persistTimer.unref?.();
+	}
+
+	private async persistTaskCache(): Promise<void> {
+		const file = this.taskCacheFilePath();
+		const snapshot: Record<string, ParsedTaskFile> = {};
+		for (const [key, value] of this.parsedTaskFiles) {
+			snapshot[key] = value;
+		}
+		try {
+			await mkdir(dirname(file), { recursive: true });
+			const tmp = `${file}.tmp`;
+			await writeFile(tmp, JSON.stringify(snapshot), "utf8");
+			await rename(tmp, file);
+			const elapsed = this.cacheFillStartedAt === null ? 0 : Date.now() - this.cacheFillStartedAt;
+			this.cacheFillStartedAt = null;
+			logLine("cache", `built    parsed-tasks (${Object.keys(snapshot).length} entries, ${elapsed}ms) to ${file}`);
+		} catch {
+			// Best-effort cache; never let cache I/O fail a real request.
+		}
+	}
+
+	private taskCacheFilePath(): string {
+		const rootHash = hashContent(resolve(this.projectRoot));
+		return backlogCacheDir("task-cache", `${rootHash}.json`);
+	}
+
+	/**
+	 * Cache for one content collection. Loaded once per FileSystem instance; the persisted snapshot
+	 * is only rewritten when a scan actually read or dropped something.
+	 */
+	private async loadContentCache<T>(name: "documents" | "decisions" | "wikis"): Promise<ContentCache<T>> {
+		let cache = this.contentCaches.get(name) as ContentCache<T> | undefined;
+		if (!cache) {
+			cache = new ContentCache<T>(name, contentCacheFilePath(this.projectRoot, name));
+			this.contentCaches.set(name, cache as unknown as ContentCache<unknown>);
+		}
+		await cache.load();
+		return cache;
 	}
 
 	private async readTaskFiles(
@@ -904,6 +1087,7 @@ export class FileSystem {
 		}
 
 		const tasks = new Array<Task | undefined>(files.length);
+		const tally = { statHits: 0, reads: 0 };
 		let nextIndex = 0;
 		const worker = async () => {
 			while (nextIndex < files.length) {
@@ -912,7 +1096,7 @@ export class FileSystem {
 				if (!file) continue;
 				const filepath = join(directory, file);
 				try {
-					const parsed = await this.readParsedTaskFile(filepath, cacheEpoch);
+					const parsed = await this.readParsedTaskFile(filepath, cacheEpoch, tally);
 					const task = options.normalizeIdentity ? normalizeTaskIdentity(parsed) : parsed;
 					tasks[index] = { ...task, filePath: filepath };
 				} catch (error) {
@@ -924,6 +1108,15 @@ export class FileSystem {
 		};
 
 		await Promise.all(Array.from({ length: Math.min(TASK_FILE_READ_CONCURRENCY, files.length) }, () => worker()));
+		// One line per directory per process: a warm start should show every file served from the
+		// cache, and only the files that actually changed counted as reads.
+		if (files.length > 0 && !this.scanLoggedDirs.has(directoryPath)) {
+			this.scanLoggedDirs.add(directoryPath);
+			logLine(
+				"cache",
+				`parsed-tasks ${options.debugLabel}s: ${tally.statHits} from cache, ${tally.reads} read (${files.length} files)`,
+			);
+		}
 		return tasks.filter((task): task is Task => task !== undefined);
 	}
 
@@ -1511,20 +1704,33 @@ export class FileSystem {
 				new Bun.Glob("decision-*.md").scan({ cwd: decisionsDir, followSymlinks: true }),
 			);
 			const decisions: Decision[] = [];
+			const cache = await this.loadContentCache<Decision>("decisions");
+			const seen = new Set<string>();
 			for (const file of decisionFiles) {
 				// Filter out README files as they're just instruction files
 				if (file.toLowerCase().match(/^readme\.md$/i)) {
 					continue;
 				}
+				seen.add(file);
 				const filepath = join(decisionsDir, file);
+				const signature = contentSignature(filepath);
+				const cached = cache.reuse(file, signature);
+				if (cached) {
+					decisions.push(cached);
+					continue;
+				}
 				try {
 					const content = await Bun.file(filepath).text();
-					decisions.push({ ...parseDecision(content), path: file });
+					const decision = { ...parseDecision(content), path: file };
+					cache.remember(file, signature, decision);
+					decisions.push(decision);
 				} catch {
 					// One malformed file must not hide every other decision from lookups.
 					unreadable?.push(file);
 				}
 			}
+			cache.retainOnly(seen);
+			await cache.flush();
 			return sortByTaskId(decisions);
 		} catch (error) {
 			recordUnreadableDirectory(error, unreadable);
@@ -1539,19 +1745,32 @@ export class FileSystem {
 			const glob = new Bun.Glob("**/*.md");
 			const docFiles = await Array.fromAsync(glob.scan({ cwd: docsDir, followSymlinks: true }));
 			const docs: Document[] = [];
+			const cache = await this.loadContentCache<Document>("documents");
+			const seen = new Set<string>();
 			for (const file of docFiles) {
 				const relativePath = normalizeDocumentRelativePath(file);
 				const base = relativePath.split("/").pop() || relativePath;
 				if (base.toLowerCase() === "readme.md") continue;
 				const filepath = join(docsDir, ...relativePath.split("/"));
+				seen.add(relativePath);
+				const signature = contentSignature(filepath);
+				const cached = cache.reuse(relativePath, signature);
+				if (cached) {
+					docs.push(cached);
+					continue;
+				}
 				try {
 					const content = await Bun.file(filepath).text();
-					docs.push({ ...parseDocument(content), path: relativePath });
+					const document = { ...parseDocument(content), path: relativePath };
+					cache.remember(relativePath, signature, document);
+					docs.push(document);
 				} catch {
 					// One malformed file must not hide every other document from lookups.
 					unreadable?.push(relativePath);
 				}
 			}
+			cache.retainOnly(seen);
+			await cache.flush();
 
 			// Stable sort by title for UI/CLI listing
 			return docs.sort((a, b) => a.title.localeCompare(b.title));
@@ -2670,6 +2889,8 @@ export class FileSystem {
 	async listWikiPages(): Promise<WikiPage[]> {
 		const wikiRoot = join(this.resolvedBacklogDir, "wiki");
 		const pages: WikiPage[] = [];
+		const cache = await this.loadContentCache<WikiPage>("wikis");
+		const seen = new Set<string>();
 		const walk = async (dirPath: string, relPath: string) => {
 			const entries = await readdir(dirPath, { withFileTypes: true });
 			for (const entry of entries) {
@@ -2678,19 +2899,33 @@ export class FileSystem {
 					if (entry.name === "wiki_output") continue;
 					await walk(join(dirPath, entry.name), entryRelPath);
 				} else if (entry.isFile() && entry.name.endsWith(".md")) {
+					seen.add(entryRelPath);
+					const signature = contentSignature(join(dirPath, entry.name));
+					const cached = cache.reuse(entryRelPath, signature);
+					if (cached) {
+						pages.push(cached);
+						continue;
+					}
 					try {
-						pages.push(await this.readWikiPage(entryRelPath));
+						const page = await this.readWikiPage(entryRelPath);
+						cache.remember(entryRelPath, signature, page);
+						pages.push(page);
 					} catch {
 						// skip unreadable pages
 					}
 				}
 			}
 		};
+		let scanned = false;
 		try {
 			await walk(wikiRoot, "");
+			scanned = true;
 		} catch {
 			// wiki directory may not exist
 		}
+		// Only prune when the whole tree was walked: a missing directory must not empty the cache.
+		if (scanned) cache.retainOnly(seen);
+		await cache.flush();
 		return pages;
 	}
 

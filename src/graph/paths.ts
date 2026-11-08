@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { backlogCacheDir } from "../utils/cache-dir.ts";
 
 /**
  * Where the derived task graph lives (doc-014 §0/§3.3).
@@ -50,15 +50,7 @@ export interface GraphPaths {
 
 export function graphCacheDir(override = process.env.BACKLOG_GRAPH_CACHE_DIR): string {
 	if (override) return resolve(override);
-	const home = homedir();
-	switch (process.platform) {
-		case "win32":
-			return join(process.env.LOCALAPPDATA ?? join(home, "AppData", "Local"), "backlog.md", "graph");
-		case "darwin":
-			return join(home, "Library", "Caches", "backlog.md", "graph");
-		default:
-			return join(process.env.XDG_CACHE_HOME ?? join(home, ".cache"), "backlog.md", "graph");
-	}
+	return backlogCacheDir("graph");
 }
 
 export function graphPaths(projectRoot: string, slot: GraphSlot = DEFAULT_SLOT): GraphPaths {

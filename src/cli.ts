@@ -109,6 +109,7 @@ import { scrollableViewer } from "./ui/tui.ts";
 import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-selection.ts";
 import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
+import { setCacheDisabled } from "./utils/cache-policy.ts";
 import { localDateTimeToStoredUtc } from "./utils/date-utc.ts";
 import { DependencyCorpus } from "./utils/dependency-closure.ts";
 import {
@@ -136,6 +137,7 @@ import {
 	printListWindow,
 	selectListWindow,
 } from "./utils/list-window.ts";
+import { enableProgressLogs } from "./utils/log.ts";
 import {
 	formatMcpClientSetupCommand,
 	getMcpClientSetupCommand,
@@ -7601,10 +7603,16 @@ program
 	.option("-p, --port <port>", "port to run server on")
 	.option("--host <host>", "host interface to bind (default 127.0.0.1; use 0.0.0.0 to allow LAN access)")
 	.option("--no-open", "don't automatically open browser")
+	.option(
+		"--no-cache",
+		"ignore local startup caches and rebuild them (cold start; useful for measuring boot time or ruling out a stale cache)",
+	)
 	.option("--status-line", "force the rescan heartbeat to pin to the bottom line (override auto-detection)")
 	.option("--no-status-line", "force the rescan heartbeat to a normal line (override auto-detection)")
 	.action(async (options) => {
 		try {
+			// This command is a long-running session: cache/startup progress belongs in its terminal.
+			enableProgressLogs();
 			// Status line activation, in priority order:
 			// 1. explicit flag, 2. auto-detect winpty/Git Bash (interactive terminal where isTTY
 			//    lies), 3. otherwise fall back to isTTY in StatusLine. We keep piped/CI/file logs
@@ -7612,6 +7620,10 @@ program
 			if (options.statusLine === true) process.env.BACKLOG_STATUS_LINE = "1";
 			else if (options.statusLine === false) process.env.BACKLOG_STATUS_LINE = "0";
 			else if (shouldAutoEnableStatusLineForBrowser()) process.env.BACKLOG_STATUS_LINE = "1";
+
+			// Only --no-cache turns the policy on; a plain run must not clear an explicitly exported
+			// BACKLOG_NO_CACHE from the environment.
+			if (options.cache === false) setCacheDisabled(true);
 
 			const cwd = await requireProjectRoot();
 			const { BacklogServer } = await import("./server/index.ts");
