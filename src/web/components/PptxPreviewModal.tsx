@@ -4,6 +4,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18nContext } from "../contexts/I18nContext";
+import { normalizePptxMedia } from "../utils/pptxMediaNormalize";
 import type { BinaryOfficePreviewProps, OfficeRange } from "./binaryOfficeFile";
 import FullscreenToggleButton from "./FullscreenToggleButton";
 import Modal from "./Modal";
@@ -390,7 +391,12 @@ export function PptxViewerInner({ fileUrl, officeRange }: { fileUrl: string; off
 			try {
 				const resp = await fetch(fileUrl);
 				if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-				const buffer = await resp.arrayBuffer();
+				// pptx-renderer only resolves media under `ppt/media/`; decks that
+				// stash pictures under a slide-local `ppt/slides/media/` folder
+				// (common from some exporters) would otherwise render as blank
+				// "No image data" boxes. Normalize in memory so every picture is
+				// reachable, without touching the on-disk file.
+				const buffer = await normalizePptxMedia(await resp.arrayBuffer());
 				if (cancelled) return;
 				const viewer = await PptxViewer.open(buffer, container, {
 					zipLimits: PREVIEW_ZIP_LIMITS,
