@@ -105,9 +105,9 @@ describe("ChartBlock fullscreen entry", () => {
 		expect(html).toContain("View fullscreen");
 	});
 
-	it("hides the fullscreen button for non-svg engines", () => {
+	it("shows a fullscreen button for echarts charts", () => {
 		const html = renderChart("echarts", '{"series":[]}');
-		expect(html).not.toContain("View fullscreen");
+		expect(html).toContain("View fullscreen");
 	});
 
 	it("keeps the rendered diagram container for mermaid", () => {

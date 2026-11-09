@@ -391,6 +391,8 @@ describe("SqliteQueryBlock echarts view (BACK-813)", () => {
 		expect(queryCalls).toBe(1);
 		expect(container?.querySelector(".chart-block")).not.toBeNull();
 		expect(container?.querySelector("table")).toBeNull();
+		// Query charts share the ChartBlock render path, so they get the fullscreen entry too.
+		expect(container?.querySelector('[aria-label="View fullscreen"]')).not.toBeNull();
 	});
 
 	it("reports a missing chart field instead of crashing", async () => {

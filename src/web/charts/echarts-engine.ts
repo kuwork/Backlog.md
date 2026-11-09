@@ -1,6 +1,9 @@
 import { resolveFromQuery } from "./from-query";
 import type { ChartEngine, ChartRenderer } from "./types";
 
+/** Test seam: jsdom has no canvas context, so tests inject a stub renderer. */
+type EchartsGlobal = typeof globalThis & { __ECHARTS_MOCK__?: ChartRenderer };
+
 let registered = false;
 
 /**
@@ -15,6 +18,9 @@ export const echartsEngine: ChartEngine = {
 	containerClassName: "chart-block",
 	containerStyle: { width: "100%", minHeight: 320 },
 	async load(): Promise<ChartRenderer> {
+		const stub = (globalThis as EchartsGlobal).__ECHARTS_MOCK__;
+		if (stub) return stub;
+
 		const echarts = await import("echarts/core");
 		const charts = await import("echarts/charts");
 		const components = await import("echarts/components");

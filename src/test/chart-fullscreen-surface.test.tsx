@@ -3,8 +3,11 @@ import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { setActiveDiagramEngine } from "../web/charts/diagram-engine";
+import EchartsFromResult from "../web/charts/EchartsFromResult.tsx";
 import { peleDarkPalette } from "../web/charts/pele-engine";
+import type { ChartRenderer } from "../web/charts/types.ts";
 import ChartBlock from "../web/components/ChartBlock.tsx";
+import type { QueryBlockResult } from "../web/components/SqlQueryBlock.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
 
@@ -45,6 +48,36 @@ const setupDom = (theme: "light" | "dark") => {
 	};
 };
 
+interface EchartsStubLog {
+	renders: { container: HTMLElement; mode: string }[];
+	disposed: HTMLElement[];
+}
+
+/**
+ * ECharts needs a real canvas context, which jsdom lacks. Install a stub renderer
+ * (mirroring the `__MERMAID_MOCK__` seam) that stamps a `<canvas>` into the
+ * container and records the mode/dispose calls so we can assert the overlay path.
+ */
+const installEchartsStub = (): EchartsStubLog => {
+	const log: EchartsStubLog = { renders: [], disposed: [] };
+	const stub: ChartRenderer = {
+		render({ container, mode }) {
+			log.renders.push({ container, mode });
+			// A plain element stands in for the canvas bitmap: jsdom has no canvas
+			// context, and the assertion only needs to see a fresh render child.
+			const surface = document.createElement("div");
+			surface.setAttribute("data-testid", "echarts-canvas");
+			container.appendChild(surface);
+		},
+		dispose(container) {
+			log.disposed.push(container);
+			container.replaceChildren();
+		},
+	};
+	(globalThis as Record<string, unknown>).__ECHARTS_MOCK__ = stub;
+	return log;
+};
+
 const renderInteractive = (engine: "pele" | "mermaid", theme: "light" | "dark" = "light") => {
 	setupDom(theme);
 	setActiveDiagramEngine(engine);
@@ -79,6 +112,7 @@ afterEach(() => {
 	delete (globalThis as { navigator?: unknown }).navigator;
 	delete (globalThis as { localStorage?: unknown }).localStorage;
 	delete (globalThis as Record<string, unknown>).__MERMAID_MOCK__;
+	delete (globalThis as Record<string, unknown>).__ECHARTS_MOCK__;
 	setActiveDiagramEngine("pele");
 });
 
@@ -125,8 +159,9 @@ describe("ChartBlock fullscreen overlay", () => {
 		expect(surface.querySelector("svg[data-testid='diagram']")).toBeTruthy();
 	});
 
-	it("does not render a fullscreen overlay for non-svg engines", () => {
+	it("renders an echarts chart fresh into the overlay with a sized dark canvas", async () => {
 		setupDom("light");
+		const log = installEchartsStub();
 		const container = document.getElementById("root");
 		expect(container).toBeTruthy();
 		activeRoot = createRoot(container as HTMLElement);
@@ -139,7 +174,90 @@ describe("ChartBlock fullscreen overlay", () => {
 				</I18nProvider>,
 			);
 		});
-		expect(container?.querySelector('[aria-label="View fullscreen"]')).toBeNull();
-		expect(container?.querySelector(".chart-fullscreen-content")).toBeNull();
+		// ECharts now opts into the fullscreen entry, just like Mermaid.
+		expect(container?.querySelector('[aria-label="View fullscreen"]')).toBeTruthy();
+		await flush();
+		openFullscreen(container as HTMLElement);
+		await flush();
+
+		const surface = container?.querySelector(".chart-fullscreen-content") as HTMLElement;
+		expect(surface).toBeTruthy();
+		// The canvas engine re-renders into the clean overlay node (not a blank clone).
+		expect(surface.querySelector("div[data-testid='echarts-canvas']")).toBeTruthy();
+		// It needs an explicit box before init, otherwise the bitmap renders at 0x0.
+		expect(surface.style.width).toBeTruthy();
+		expect(surface.style.height).toBeTruthy();
+		// ECharts renders natively dark, so no light-SVG inversion is applied.
+		expect(surface.style.filter).not.toContain("invert(1)");
+		// The overlay render (the last one) is the dark one.
+		expect(log.renders.at(-1)?.mode).toBe("dark");
+		expect(log.renders.at(-1)?.container).toBe(surface);
+	});
+
+	it("disposes the echarts chart instance when the overlay closes", async () => {
+		setupDom("light");
+		const log = installEchartsStub();
+		const container = document.getElementById("root");
+		activeRoot = createRoot(container as HTMLElement);
+		act(() => {
+			activeRoot?.render(
+				<I18nProvider initialLocale="en">
+					<ThemeProvider>
+						<ChartBlock lang="echarts" source={'{"series":[]}'} />
+					</ThemeProvider>
+				</I18nProvider>,
+			);
+		});
+		await flush();
+		openFullscreen(container as HTMLElement);
+		await flush();
+		expect(log.disposed.length).toBe(0);
+
+		const closeButton = container?.querySelector('[aria-label="Close"]') as HTMLButtonElement | null;
+		expect(closeButton).toBeTruthy();
+		act(() => {
+			closeButton?.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		});
+		expect(log.disposed.length).toBeGreaterThan(0);
+	});
+
+	it("gives query-direct (view: echarts) charts the same fullscreen entry", async () => {
+		setupDom("light");
+		const log = installEchartsStub();
+		const container = document.getElementById("root") as HTMLElement;
+		activeRoot = createRoot(container);
+		const result: QueryBlockResult = {
+			columns: ["day", "cnt"],
+			rows: [
+				["Mon", 3],
+				["Tue", 5],
+			],
+			truncated: false,
+			elapsedMs: 2,
+			dbPath: "shop.sqlite",
+			totalRows: 2,
+		};
+		const chart = JSON.stringify({ type: "bar", categoryField: "day", valueField: "cnt" });
+		act(() => {
+			activeRoot?.render(
+				<I18nProvider initialLocale="en">
+					<EchartsFromResult result={result} chart={chart} />
+				</I18nProvider>,
+			);
+		});
+		await flush();
+
+		// The query-direct path used to render ECharts on its own and had no button.
+		expect(container.querySelector('[aria-label="View fullscreen"]')).toBeTruthy();
+		expect(log.renders.length).toBe(1);
+		expect(log.renders[0]?.mode).toBe("light");
+
+		openFullscreen(container);
+		await flush();
+		const surface = container.querySelector(".chart-fullscreen-content") as HTMLElement;
+		expect(surface.querySelector("div[data-testid='echarts-canvas']")).toBeTruthy();
+		// The overlay re-renders from the built option with the native dark theme.
+		expect(log.renders.at(-1)?.mode).toBe("dark");
+		expect(log.renders.at(-1)?.container).toBe(surface);
 	});
 });

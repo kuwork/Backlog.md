@@ -11,11 +11,13 @@ const MAX_SCALE = 8;
 const SCALE_STEP = 0.15;
 
 /**
- * Only engines that draw to a cloneable SVG DOM (not canvas) can be shown in the
- * fullscreen overlay. Mermaid/Pele emits SVG, so its node subtree can be cloned
- * verbatim; an engine that renders to a canvas bitmap would clone a blank surface.
+ * Languages whose charts support the fullscreen overlay. The overlay re-renders
+ * the block into a clean container (it never clones the on-page node), so both
+ * SVG engines (Mermaid/Pele) and canvas engines (ECharts) work: Mermaid yields a
+ * scalable SVG that we size to fit, while ECharts re-initialises into a sized
+ * canvas with its own dark theme.
  */
-const FULLSCREEN_LANGS = new Set(["mermaid"]);
+const FULLSCREEN_LANGS = new Set(["mermaid", "echarts"]);
 
 interface Point {
 	x: number;
@@ -47,9 +49,9 @@ interface ChartBlockProps {
  * unmount/theme change — no post-render DOM replacement, unlike the old
  * `renderMermaidIn` pass.
  *
- * For SVG-based engines (mermaid) a "view fullscreen" button overlays the chart;
- * opening it clones the rendered SVG into a CSS fullscreen overlay with the same
- * zoom/pan/rotate interactions as the image lightbox.
+ * For supported engines (mermaid/echarts) a "view fullscreen" button overlays the
+ * chart; opening it re-renders the block into a CSS fullscreen overlay with the
+ * same zoom/pan/rotate interactions as the image lightbox.
  */
 export default function ChartBlock({ lang, source }: ChartBlockProps) {
 	const ref = useRef<HTMLDivElement | null>(null);
@@ -63,9 +65,15 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 	// keep the dependency key at 0 otherwise so an unrelated result update does not redraw this chart.
 	const registryKey = source.includes("fromQuery") ? (registry?.version ?? 0) : 0;
 
-	// The overlay always sits on a dimmed (dark) backdrop. Render Pele with its dark palette and
-	// the classic Mermaid engine with a light theme that we then invert, so both read clearly.
-	const overlayMode: "light" | "dark" = engineId === "pele" ? "dark" : "light";
+	// Which backend actually renders THIS block. `engineId` is the global diagram-engine
+	// setting and is meaningless for an echarts block, so per-block theming must come from
+	// the resolved engine instead.
+	const resolvedEngineId = engine?.id;
+	// The overlay sits on a dimmed backdrop: Pele and ECharts render natively in dark mode,
+	// while the classic Mermaid engine renders a light SVG that we invert so its strokes
+	// stay visible. Only that one backend needs the CSS inversion.
+	const needsInvert = resolvedEngineId === "mermaid";
+	const overlayMode: "light" | "dark" = needsInvert ? "light" : "dark";
 
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [view, setView] = useState<ViewState>(defaultView);
@@ -190,6 +198,16 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 		if (!renderEngine) return;
 
 		let cancelled = false;
+		let renderer: Awaited<ReturnType<typeof renderEngine.load>> | null = null;
+		// Canvas engines (ECharts) size their bitmap from the container, so the overlay
+		// surface needs an explicit box before `init` runs. An auto-sized flex box would
+		// give it zero width/height and the chart would render blank.
+		if (renderEngine.id === "echarts") {
+			const w = Math.round((typeof window !== "undefined" ? window.innerWidth : 1024) * 0.9);
+			const h = Math.round((typeof window !== "undefined" ? window.innerHeight : 768) * 0.9);
+			target.style.width = `${w}px`;
+			target.style.height = `${h}px`;
+		}
 		target.replaceChildren();
 		const frame = requestAnimationFrame(() => {
 			if (cancelled) return;
@@ -197,6 +215,7 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 				.load()
 				.then((r) => {
 					if (cancelled) return;
+					renderer = r;
 					void r.render({ container: target, source, mode: overlayMode, resolveQuery });
 					const svg = target.querySelector("svg");
 					if (svg) {
@@ -241,6 +260,10 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 						if (!cancelled) {
 							setHasOverflow(naturalW * fit > availW || naturalH * fit > availH);
 						}
+					} else if (!cancelled) {
+						// A canvas chart fills the explicit surface; there is no SVG to fit and
+						// no readability-floor overflow to pan.
+						setHasOverflow(false);
 					}
 				})
 				.catch((err: unknown) => {
@@ -251,6 +274,10 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 		return () => {
 			cancelled = true;
 			cancelAnimationFrame(frame);
+			// Canvas backends keep a chart instance + ResizeObserver attached to the
+			// container; tear them down when the overlay closes (SVG backends are no-ops).
+			if (renderer && target) renderer.dispose?.(target);
+			target.replaceChildren();
 		};
 	}, [isFullscreen, lang, source, resolveQuery, overlayMode]);
 
@@ -361,9 +388,10 @@ export default function ChartBlock({ lang, source }: ChartBlockProps) {
 								transformOrigin: "center",
 								cursor,
 								transition: "transform 100ms ease-out",
-								// The classic Mermaid backend bakes light colors into its SVG;
+								// Only the classic Mermaid backend bakes light colors into its SVG;
 								// invert it so the (light) strokes become visible on the dimmed backdrop.
-								...(engineId === "mermaid" ? { filter: "invert(1) hue-rotate(180deg)" } : {}),
+								// Pele/ECharts render a native dark theme and must not be inverted.
+								...(needsInvert ? { filter: "invert(1) hue-rotate(180deg)" } : {}),
 							}}
 						/>
 					</div>
