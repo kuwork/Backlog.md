@@ -2,7 +2,7 @@
 title: 本地文件预览
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-11-08 23:05
+updated_date: 2026-11-10 00:27
 ---
 
 # 本地文件预览
@@ -91,6 +91,12 @@ Office 链接可带可选 `:range` 后缀，`parseOfficeLink` 把 `<path>.<ext>:
 
 指向 Office 的 Markdown **图片**（`![]()`）由 `OfficeEmbedInline` 在 `<figure>` 内嵌同一 viewer，图注为干净文件名 + 范围徽标，`alt` 降级为 tooltip 以免重复；非 Office 图片仍走 lightbox。最后一公里在 `Layout.tsx` 的 document 级 capture-phase 拦截器：它先于所有 Markdown handler 并 `stopPropagation`，必须走 `parseOfficeLink` 把范围从字节 URL 与标题里剥离，否则每个范围链接都 404 且标题与徽标重复。
 
+## PPTX 幻灯片本地媒体归一化（BACK-845）
+
+`@aiden0z/pptx-renderer@1.4.0` 只从 `ppt/media/` 收集图片（`rv()` 只登记该前缀，`gs()` 也把关系目标重写到那里），而 PowerPoint 允许把图片放在幻灯片本地的 `ppt/slides/media/`。这类 deck 的图片全部落到 "No image data" 占位再被 `hideEmptyPictures()` 隐去——**与 SVG 格式无关**，渲染器本就支持 svg → blob `<img>`。
+
+`PptxPreviewModal` 现在在 fetch 到 `arrayBuffer` 之后、`PptxViewer.open` 之前调 `src/web/utils/pptxMediaNormalize.ts`：用 JSZip 把偏离路径的媒体迁到 `ppt/media/<碰撞安全唯一名>`，重写所有 `*_rels/*.rels` 的 `Target` 相对路径，再重新打包；没有偏离路径的媒体时**原样返回同一个 buffer**，标准 deck 零开销。磁盘上的 pptx 从不修改，公开 `open()` 也不转发 `mediaResolver`，所以只能在内存层做。长期正解是上游让索引器认识 slide-local 目录。
+
 ## Related Concepts
 
 - [[concepts/web-ui-features]] — Web UI 功能集，含任务详情弹窗集成点
@@ -113,3 +119,5 @@ Office 链接可带可选 `:range` 后缀，`parseOfficeLink` 把 `<path>.<ext>:
 - [[sources/back-835-unify-relative-reference-resolution]] — 路径契约重写
 - [[sources/back-838-office-page-sheet-ranges]] — Office 范围链接
 - [[sources/doc-35-office-link-check]] — 四格式验收 fixture
+- [[sources/back-845-pptx-slide-local-media]] — PPTX 非标准媒体路径的内存归一化
+- [[sources/back-844-korean-web-ui-locale]] — 五种语言下 DOCX / XLSX 预览的语言包接线

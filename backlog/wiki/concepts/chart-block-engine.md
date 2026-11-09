@@ -2,7 +2,7 @@
 title: 统一图表引擎（ChartBlock + 注册表）
 labels: [concept, web-ui, charts, markdown]
 created_date: 2026-10-18 22:00
-updated_date: 2026-10-23 17:20
+updated_date: 2026-11-10 00:27
 ---
 
 # 统一图表引擎（ChartBlock + 注册表）
@@ -44,6 +44,8 @@ mermaid 不再是硬接线的渲染器，而是注册表里的两个 engine 之�
 
 暗色主题下 Pele 线条不可见的根因是 `--pele-line`/`--pele-border`/`--pele-fg` 曾被设为近黑；改为亮值（`#c9d1d9` / `#8b949e` / `#e6edf3`）后恢复。`src/web/charts/pele-engine.test.ts` 验证双引擎渲染 doc-32 的 25/25 mermaid 块。
 
+**设置在重启后失效的坑（BACK-846 修复）**：`file-system/operations.ts` 的 `parseConfig` 在 switch 里已把 `diagram_engine` 解析进 `config.diagramEngine`，但函数末尾的手写返回对象字面量漏了这个字段，解析值每次都被丢弃；且 `serializeConfig` 写出带引号的 `diagram_engine: "mermaid"`，旧的字面比较也匹配不上。补字段 + 解析时剥离引号后 `loadConfig()` 往返才稳定返回 `mermaid`。引申的通用教训：手写返回对象与解析循环很容易脱节，改配置字段时务必验一次往返。
+
 ## 安全：只吃 JSON
 
 `echarts` fence 的正文是一段 ECharts option 的 **JSON**，引擎只做 `JSON.parse`，函数永远不执行——与 mermaid 的 `securityLevel: "strict"` 同一口径。非法 JSON 或未知 series 时回退为普通代码块，不崩不空白。
@@ -56,6 +58,17 @@ mermaid 不再是硬接线的渲染器，而是注册表里的两个 engine 之�
 
 漏注册的后果是**静默白屏**：`setOption` 抛错，异常被 `ChartBlock` 的 `catch` 吞成一行 warn，容器留白。`themeRiver` 就是这样栽在 `SingleAxisComponent` 上的。因此加了 `src/test/echarts-engine-registration.test.ts`——对照 `echarts/charts` 的每个导出断言「已注册」，漏一个就构建失败。
 
+## 全屏浏览叠加层（BACK-846 / BACK-847）
+
+`ChartBlock` 也是全屏入口的宿主：`FULLSCREEN_LANGS = { mermaid, echarts }` 决定右上角是否出现展开按钮。叠加层**在同一个组件内重新渲染**图表到干净容器，而不是克隆页面节点——经典 Mermaid 的 `run` 会跳过 `data-processed` 节点，克隆经常出空图；干净节点同时让 canvas 引擎可用。要点：
+
+- 主题判定按 `getChartEngine(lang).id`，不是全局 `useDiagramEngine()`：Pele / ECharts 用 `mode: "dark"`，经典 Mermaid 用浅色 SVG + `invert(1) hue-rotate(180deg)`。
+- canvas 引擎须在 `init` 前给容器显式像素尺寸；SVG 引擎在渲染后按 `viewBox` 做 contain-fit + 可读下限。
+- 滚轮缩放用原生 `{ passive: false }` 绑定；关闭时 `renderer.dispose(target)` 销毁第二个实例的 `ResizeObserver`。
+- 完整架构见 [[concepts/chart-fullscreen-overlay]]。
+
+**查询直出也归到这里**：`view: echarts` 原由 `EchartsFromResult` 自建 effect 直接调引擎，绕过 `ChartBlock` 因而没有按钮；BACK-847 把它收敛成「构建 option → 交给 `<ChartBlock lang="echarts" source={optionJson} />`」的薄适配层。至此所有图表来源只有一条渲染路径，注册表、`fromQuery` 解析、主题、dispose 与全屏能力才真正统一。
+
 ## 与旧 mermaid 路径的差异
 
 | | 旧 | 新 |
@@ -67,6 +80,7 @@ mermaid 不再是硬接线的渲染器，而是注册表里的两个 engine 之�
 
 ## Related Concepts
 
+- [[concepts/chart-fullscreen-overlay]] — 挂在本组件上的全屏叠加层
 - [[concepts/query-chart-binding]] — 让图表吃查询结果的两种方式
 - [[concepts/markdown-pipeline]] — 围栏分支的挂载点
 - [[concepts/sql-query-blocks]] — 图表视图所属的块模型
@@ -80,3 +94,5 @@ mermaid 不再是硬接线的渲染器，而是注册表里的两个 engine 之�
 - [[sources/back-640-mermaid-rendering-fixes]] — 被替换的旧路径上的修复历史
 - [[sources/back-819-switchable-diagram-engine]] — 把 mermaid 改为可切换引擎、Pele 默认
 - [[sources/doc-32-mermaid-diagram-gallery]] — 随本任务发布的 Mermaid 画廊（18 类 25 例）
+- [[sources/back-846-mermaid-css-fullscreen]] — 全屏叠加层与引擎设置重启修复
+- [[sources/back-847-echarts-css-fullscreen]] — 叠加层扩展到 ECharts、查询直出收敛到本组件

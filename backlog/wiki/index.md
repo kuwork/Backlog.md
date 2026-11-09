@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-11-08 23:05
+updated_date: 2026-11-10 00:40
 ---
 
 
@@ -461,6 +461,10 @@ Read this file FIRST on any wiki operation.
 | [[sources/doc-34-relative-link-check]] |  doc-34 - 相对链接解析验收页 | source, doc, fixture, m-19, markdown |
 | [[sources/doc-35-office-link-check]] |  doc-35 - Office 页范围与工作表范围验收页 | source, doc, fixture, office, markdown |
 | [[sources/decision-2-relative-link-check]] |  decision-2 - 相对链接解析验收载体 | source, decision, fixture, m-19, markdown |
+| [[sources/back-844-korean-web-ui-locale]] |  BACK-844 - 韩语成为第五种 Web UI 语言 | source, web-ui, i18n |
+| [[sources/back-845-pptx-slide-local-media]] |  BACK-845 - PPTX 幻灯片本地媒体路径归一化 | source, web, office, pptx |
+| [[sources/back-846-mermaid-css-fullscreen]] |  BACK-846 - Mermaid 图表 CSS 全屏浏览入口 | source, web-ui, charts, mermaid |
+| [[sources/back-847-echarts-css-fullscreen]] |  BACK-847 - ECharts 图表 CSS 全屏浏览入口 | source, web-ui, charts, echarts |
 
 ## Execution Notes
 
@@ -496,6 +500,7 @@ Read this file FIRST on any wiki operation.
 | [[execution/ryugraph-wasm-gotchas]] |  RyuGraph WASM 在 Bun 下的陷阱集 | MEMFS 路径不可达/不持久、INT64 ToBigInt 崩溃、COPY FROM 静默零行，BACK-766~771/823 提炼 |
 | [[execution/browser-startup-perf-gotchas]] |  浏览器启动性能排查陷阱集 | 有无浏览器附着的归因、Windows 批量写、缓存键选择、upgrade 让回，BACK-843 提炼 |
 | [[execution/markdown-link-contract-parity]] |  跨页面 Markdown 链接契约对齐与验收步骤 | 基准检查、契约单点化、capture 拦截器、三向 fixture 与回归清单，BACK-835~838 提炼 |
+| [[execution/chart-fullscreen-overlay-gotchas]] |  图表全屏叠加层接线与陷阱 | 干净容器重渲染、按块引擎 id 定主题、canvas 显式尺寸、非 passive wheel 与 dispose，BACK-846/847 提炼 |
 
 ## Decisions
 
@@ -587,6 +592,7 @@ Read this file FIRST on any wiki operation.
 | [[decisions/two-stage-reference-resolution]] |  相对引用采用渲染期 join 加服务端 try_files | BACK-835 拒绝组件内拼路径/Referer 反推/数据目录边界，项目根为包含边界 |
 | [[decisions/corpus-digest-over-event-version]] |  用快照内容摘要而非事件版本号抑制冗余刷新 | BACK-840 拒绝 ContentStoreEvent.version 与 rawContent-only，游标只能由全量加载器推进 |
 | [[decisions/p-prefix-for-office-page-ranges]] |  Office 页范围强制 P 前缀并让 capture 拦截器走共享解析器 | BACK-838 守住裸数字的文本行含义，修掉范围链接 404 与重复徽标 |
+| [[decisions/fresh-render-for-fullscreen-overlay]] |  图表全屏叠加层采用干净容器重新渲染 | BACK-846 拒绝克隆 SVG 与复用节点，避开 Mermaid data-processed 且让 canvas 引擎可用 |
 
 ## Concepts
 
@@ -644,6 +650,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/relative-reference-resolution]] |  相对引用解析 | 两阶段 join + try_files、项目根边界、元数据/正文分道、projectPath 与 wikiRoot 分流 |
 | [[concepts/corpus-digest]] |  语料摘要与刷新抑制 | ContentStore 快照 SHA-256、广播窗口起始采样、双游标、谁能推进游标、fail-open |
 | [[concepts/browser-startup-cache]] |  浏览器启动缓存体系 | 五段成本、branch/web-bundle/content 三层缓存、统一缓存根、--no-cache 与两处回归 |
+| [[concepts/chart-fullscreen-overlay]] |  图表全屏浏览叠加层 | 干净容器重渲染、分引擎暗色、SVG contain+可读下限与 canvas 显式盒、非 passive wheel、dispose |
 
 ## Entities
 
@@ -662,6 +669,7 @@ Read this file FIRST on any wiki operation.
 | [[patterns/tui-editor-integration]] |  TUI / 编辑器集成模式 | blessed TUI 中安全启动外部编辑器的 8 步流程 |
 | [[patterns/skill-file-change-sync]] |  Skill 文件变更 → 嵌入代码同步模式 | 修改 Skill 源文件后必须重新运行 embed 脚本并提交生成文件 |
 | [[patterns/upstream-migration-wave]] |  上游迁移波次执行模式 | 分类→领域分析→draft 导入→任务落地→三段式验证→清算闭环，经三波 60+ 任务验证 |
+| [[patterns/entry-convergence-for-shared-capability]] |  共享能力的入口收敛模式 | 能力扩展先列产出路径、旁路收敛到统一底座、每条入口各加断言 |
 
 ## Reasoning
 
