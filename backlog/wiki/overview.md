@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-11-08 23:05
+updated_date: 2026-11-10 00:40
 ---
 
 # Knowledge Base Overview
@@ -196,6 +196,16 @@ v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代�
 - **浏览器启动提速**（BACK-843）：85~175s 空白页降到约 1.5s 热启动。五段成本里最贵的是 **Bun 对 HTML 入口的惰性构建**（24MB JS 跑在服务器线程上，饿死所有 continuation），其次是 eager graph WASM 冷启动与远端 refs fetch。按 commit 的分支缓存、stat 签名快路径、内容指纹 UI 包缓存（未命中用子进程构建 + 自刷新进度页）、统一平台缓存根、`--no-cache` 只跳读不跳写。两处回归必查：shell 路由吞掉 WebSocket upgrade、五个模块各自解析缓存根。见 [[concepts/browser-startup-cache]]、[[execution/browser-startup-perf-gotchas]]。
 - **wiki 契约订正**：BACK-835 的 Implementation Notes 明确把 `concepts/file-preview`、`concepts/web-server`、中英文 `12-文档预览` 手册与 `sources/back-827` 列为「单独批准的后续变更」，任务本身未改 `backlog/wiki/`。本次摄取完成订正，并给 [[sources/back-827-project-wide-docx-pdf-preview]] 追加「已被 BACK-835 取代」注记而非删改历史记录。
 
+### 多语言补齐与图表全屏浏览（BACK-844~847，2026-11-09~10）
+
+四个单日完成的 Web 任务，共同主题是「把已有能力补齐到所有入口」：语言补齐到第五种、全屏补齐到 canvas 与查询直出、图片补齐到非标准 OOXML 路径。
+
+- **韩语成为第五种语言**（BACK-844）：`ko` 进入 `Locale` 联合、字典表、默认状态机与校验；设置页 `한국어`；XLSX 接 Univer `ko-KR`。DOCX 编辑器外壳因 `@eigenpal/docx-editor-i18n` 无韩语，改用项目自持 `PartialLocaleStrings` 深合并到 en 缺键回落——与既有 ja / zh-TW 同构。状态机状态名保持英文，只本地化散文。见 [[concepts/web-ui-i18n]]。
+- **PPTX 非标准媒体路径**（BACK-845）：`@aiden0z/pptx-renderer@1.4.0` 只认 `ppt/media/`，而 PowerPoint 允许 `ppt/slides/media/`，导致整份 deck 图片空白（与 SVG 格式无关，公开 `open()` 也不转发 `mediaResolver`）。`pptxMediaNormalize.ts` 在浏览器内用 JSZip 迁路径 + 重写所有 `.rels` Target，磁盘文件不动，标准 deck 直通原 buffer。见 [[concepts/file-preview]]。
+- **图表全屏叠加层**（BACK-846/847）：从 Mermaid 扩到 ECharts，并把 `view: echarts` 的 `EchartsFromResult` 收敛回 `ChartBlock`，使**所有图表来源只有一条渲染路径**。叠加层每次在干净容器重新渲染（克隆会撞上经典 Mermaid 的 `data-processed`），按块实际引擎 id 分派暗色主题，SVG 用 contain-fit + 可读下限、canvas 用显式像素盒，滚轮走原生非 passive 绑定，关闭时 dispose。顺带修掉引擎设置重启回落 Pele（`parseConfig` 返回对象漏字段 + 引号未剥离）。见 [[concepts/chart-fullscreen-overlay]]、[[decisions/fresh-render-for-fullscreen-overlay]]、[[execution/chart-fullscreen-overlay-gotchas]]。
+
+- **模式沉淀**：本批「把已有能力补齐到所有入口」的教训落成 [[patterns/entry-convergence-for-shared-capability]]——先列产出路径、把旁路收敛成薄适配层、每条入口各加断言；与 [[patterns/cross-surface-feature-addition]] 的纵向分层遍历互补。
+
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
 - **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
@@ -285,12 +295,12 @@ v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代�
 
 ## 统计
 
-- Sources ingested: 446
-- Concepts extracted: 52
+- Sources ingested: 450
+- Concepts extracted: 53
 - Entities catalogued: 2
-- Execution notes: 30
-- Decisions recorded: 86
-- Patterns: 6
+- Execution notes: 31
+- Decisions recorded: 87
+- Patterns: 7
 - Comparisons: 1
 - Reasoning traces: 7
 - Retrospectives: 1

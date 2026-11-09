@@ -1224,3 +1224,31 @@ Chronological, append-only record of all wiki operations.
 **统计**：Sources 433→446、Concepts 49→52、Decisions 83→86、Execution notes 28→30、Reasoning 6→7；Entities 2、Patterns 6、Comparisons 1、Retrospectives 1、Developer notes 7、Reports 10、User manual 50 (zh) + 50 (en) 页。全部为磁盘实际 `.md` 计数（sources 446 含 frontmatter 齐备）。
 
 **mini-lint**：446 个 source 页 `source_path` 全量校验 + frontmatter 四字段齐备性检查，新增 13 页全部解析成功、0 缺字段；3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）与上次裁决一致，本次不改写。index.md 12 个必需章节齐全、697 条 wikilink 仅 `[[path/to/page]]` 语法示例未解析；本批 31 个改动 wiki 页的 wikilink 逐条校验，除既有的 `[[wikilinks]]` / `[[path|...]]` 反引号语法示例外无断链。
+
+## [2026-11-10 00:34:09] batch-ingest | 增量摄取 BACK-844~847（4 源），补齐第五种语言、PPTX 非标准媒体与图表全屏叠加层
+
+**摄取范围**：git-aware 增量，基线 2026-11-08 23:18:52 的 `batch-ingest+usermanual` 条目。`git log --since` 与 `git status --porcelain` 合并后，backlog 源目录仅 4 份新增且全部 Done 并已提交：BACK-844（韩语第五种 locale）、BACK-845（PPTX 幻灯片本地媒体）、BACK-846（Mermaid 全屏）、BACK-847（ECharts 全屏 + 查询直出收敛）。四者在 `wiki/sources/` 均无对应页。`drafts/` 本批无变更，沿用「drafts 完全排除」隔离规则；`wiki/test/` 位于 wiki/ 内按排除规则不作为源；`backlog/config.yml` 属用户配置改动，不是摄取源。`wiki/`、`wiki_output/` 自身未递归处理，backlog 源目录未写入任何内容。
+
+**新建** 4 个 source 页：[[sources/back-844-korean-web-ui-locale]]、[[sources/back-845-pptx-slide-local-media]]、[[sources/back-846-mermaid-css-fullscreen]]、[[sources/back-847-echarts-css-fullscreen]]。刻意记牢的易错事实：① PPTX 图片空白是渲染器硬编码 `ppt/media/` 所致，与 SVG 格式无关，公开 `open()` 也不转发 `mediaResolver`，故只能内存归一化且不动磁盘文件；② 全屏叠加层叠加白色卡片被用户否决、宽图按高度铺满（方案 B）因横向溢出被撤回，终态是 contain + 每边 50% 可读下限；③ `parseConfig` 返回对象字面量漏写 `diagramEngine` + 序列化值带引号未剥离，是引擎设置重启回落 Pele 的两个独立原因；④ `view: echarts` 原由 `EchartsFromResult` 自建 effect 绕过 ChartBlock，只放宽 `FULLSCREEN_LANGS` 对查询直出无效。按用户要求不提交具体业务 PPT 文件名。
+
+**新建** 1 个 concept 页 [[concepts/chart-fullscreen-overlay]]：干净容器重渲染、按块实际引擎 id 分派暗色（Pele/ECharts 原生 dark，经典 Mermaid 反相）、SVG contain+可读下限 / canvas 显式像素盒、原生非 passive wheel、关闭时 dispose。**更新** 4 个 concept 页：[[concepts/chart-block-engine]]（新增全屏小节、parseConfig 往返坑、查询直出收敛）、[[concepts/query-chart-binding]]（方式 B 渲染路径统一，差别只在数据来源）、[[concepts/file-preview]]（PPTX slide-local 媒体归一化）、[[concepts/web-ui-i18n]]（四语言→五语言、DOCX 部分覆盖、状态名不翻译）。
+
+**配对记忆**：新建 decision 页 [[decisions/fresh-render-for-fullscreen-overlay]]（拒绝克隆 SVG / 复用节点 / 白底卡片 / 纯 contain / 方案 B / React onWheel，理由锚定 Mermaid `data-processed` 与 canvas 可用性）与 execution 页 [[execution/chart-fullscreen-overlay-gotchas]]（6 步接线 + 8 条陷阱，含来源是否经过 ChartBlock、engine id 误用、0×0 init、dispose 泄漏）。`reasoning/` 本批未新建：这四项是执行后摄取而非规划期分解，且完整推导链（替代/反转/证据）需人工复核；`patterns/` 未新建：BACK-845/846/847 的「把已有能力补齐到所有入口」构成候选模式，按约定需人工确认后落盘；`retrospectives/` 本批仅 4 源，未生成。
+
+**overview**：新增「多语言补齐与图表全屏浏览（BACK-844~847，2026-11-09~10）」小节，串起语言补齐、非标准 OOXML 路径、统一渲染路径三条线；统计按磁盘实际计数校正。
+
+**手册**：本批未改动 `usermanual/` 与 `usermanual-en/`，SUMMARY 不变。韩语第五种语言、图表全屏按钮若需进入手册 `40-Web界面` 相关页，按「先审后补」另行放行。
+
+**统计**：Sources 446→450、Concepts 52→53、Decisions 86→87、Execution notes 30→31；Entities 2、Patterns 6、Comparisons 1、Reasoning 7、Retrospectives 1、Developer notes 7、Reports 10、User manual 50 (zh) + 50 (en) 页，均为磁盘实际 `.md` 计数。
+
+**mini-lint**：4 个新 source 页 `source_path` 全部解析成功；7 个新页 frontmatter 四字段齐备、H1 逐字等于 title、行尾 LF 无 CRLF；index.md 12 个必需章节齐全且新增 7 条目录项全部命中；本批 11 个新增/改动页共 93 条 wikilink 逐条校验，全部解析成功。3 个既存断链（config-docs 目录表达式、doc-6 ID 被复用、doc-16 源文件已删）沿用上次裁决，本次未改写。
+
+## [2026-11-10 00:45:10] pattern+usermanual | 用户放行后落盘入口收敛模式，并把 BACK-844~847 的用户可见变化补进双语手册
+
+**候选模式落盘**：新建 [[patterns/entry-convergence-for-shared-capability]]（共享能力的入口收敛模式）。以 BACK-847 首轮漏掉 `view: echarts` 查询直出为主案例：能力挂在 `ChartBlock` 上，而 `EchartsFromResult` 私有渲染路径绕过它。给出判定三问、5 步做法（列入口清单 → 薄适配层收敛 → 删除分叉生命周期 → 区分全局设置与块级 id → 每条入口各加断言）与 6 条陷阱，并说明与 [[patterns/cross-surface-feature-addition]] 的「纵向分层 / 横向收敛」之别。`index.md` Patterns 表补 1 条、`overview.md` 统计 Patterns 6→7；新页 11 条 wikilink 全解析，frontmatter 四字段齐备、H1 与 title 一致、LF 行尾。
+
+**双语手册**：按「先审后补」放行后改动 `usermanual/` 与 `usermanual-en/` 各 2 页共 4 页：`40-Web界面/05-设置与主题.md` 语言列表补 `한국어`（第五种语言）；`80-图谱与数据查询/06-图表块.md` 新增「图表全屏浏览 / Fullscreen Chart Viewing」小节并在使用约定表补一行（Mermaid/ECharts 全屏、遮罩内缩放平移旋转重置、极端宽高比可读下限、经典 Mermaid 反相、查询直出与 fromQuery 同源）；`40-Web界面/12-文档预览.md` PPTX 段补非标准 `ppt/slides/media/` 内存归一化且不改磁盘文件。SUMMARY 未变、未新增页，业务文件名未写入。
+
+**构建与发布产物**：用 `honkit-docs-migration` 重建双语手册，各 51 HTML / 73 文件。本批改动尚未提交，故以 `git write-tree` 生成 index tree `6fb926e…` 作为 `--branch` 传给 `migrate_docs.py`（`git archive` 接受 tree-ish），既不新建提交、又显式覆盖默认的 `release` 分支。产物迁移到 `backlog-md-site` 的 `docs/` 与 `en/docs/` 并同步 `backlog-md-pages` worktree。`seo.py` 写入 102 页元数据并重建 sitemap.xml（108 URL），带 SEO 的 docs 与 sitemap 再同步进 worktree；robots.txt 一致未动。6 处新内容在中英产物及 worktree 逐项命中，两册内页均带 `<!-- seo:start -->`。
+
+**统计**：Patterns 6→7；Sources 450、Concepts 53、Decisions 87、Execution 31、Reasoning 7 不变；用户手册仍为 50 (zh) + 50 (en) 内容页。**提交/推送**：主仓 wiki 改动已 stage；`backlog-md-site` 与 `backlog-md-pages` 两仓改动未提交，由用户执行。
