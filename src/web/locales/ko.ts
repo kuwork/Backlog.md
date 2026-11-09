@@ -1012,6 +1012,7 @@ export const ko: TranslationDict = {
 		rotateLeft: "왼쪽으로 회전",
 		rotateRight: "오른쪽으로 회전",
 		goToImage: "{index}번 이미지로 이동",
+		viewFullscreen: "전체 화면 보기",
 	},
 
 	taskColumn: {

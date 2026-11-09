@@ -1014,6 +1014,7 @@ export const en = {
 		rotateLeft: "Rotate left",
 		rotateRight: "Rotate right",
 		goToImage: "Go to image {index}",
+		viewFullscreen: "View fullscreen",
 	},
 
 	taskColumn: {

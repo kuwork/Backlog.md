@@ -1007,6 +1007,7 @@ export const ja: TranslationDict = {
 		rotateLeft: "左回転",
 		rotateRight: "右回転",
 		goToImage: "{index}枚目の画像へ",
+		viewFullscreen: "全画面表示",
 	},
 
 	taskColumn: {

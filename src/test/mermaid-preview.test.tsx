@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { renderToString } from "react-dom/server";
+import ChartBlock from "../web/components/ChartBlock.tsx";
 import { ChartAwarePre } from "../web/components/MermaidDiagram.tsx";
 import { PasteAwareMDEditor } from "../web/components/PasteAwareMDEditor.tsx";
 import { I18nProvider } from "../web/contexts/I18nContext.tsx";
@@ -20,7 +21,12 @@ function preNode(language: string, code: string) {
 	};
 }
 
-const renderPre = (language: string, code: string) => renderToString(<ChartAwarePre node={preNode(language, code)} />);
+const renderPre = (language: string, code: string) =>
+	renderToString(
+		<I18nProvider initialLocale="en">
+			<ChartAwarePre node={preNode(language, code)} />
+		</I18nProvider>,
+	);
 
 describe("ChartAwarePre", () => {
 	it("turns a mermaid fence into a diagram container", () => {
@@ -40,9 +46,11 @@ describe("ChartAwarePre", () => {
 
 	it("leaves other code blocks untouched", () => {
 		const html = renderToString(
-			<ChartAwarePre node={preNode("typescript", "const a = 1;")}>
-				<code className="language-typescript">const a = 1;</code>
-			</ChartAwarePre>,
+			<I18nProvider initialLocale="en">
+				<ChartAwarePre node={preNode("typescript", "const a = 1;")}>
+					<code className="language-typescript">const a = 1;</code>
+				</ChartAwarePre>
+			</I18nProvider>,
 		);
 
 		expect(html).toContain("<pre");
@@ -81,5 +89,29 @@ describe("PasteAwareMDEditor preview panes", () => {
 
 		expect(html).toContain("language-js");
 		expect(html).not.toContain("language-mermaid");
+	});
+});
+
+describe("ChartBlock fullscreen entry", () => {
+	const renderChart = (lang: string, code: string) =>
+		renderToString(
+			<I18nProvider initialLocale="en">
+				<ChartBlock lang={lang} source={code} />
+			</I18nProvider>,
+		);
+
+	it("shows a fullscreen button for mermaid diagrams", () => {
+		const html = renderChart("mermaid", "graph TD\nA --> B");
+		expect(html).toContain("View fullscreen");
+	});
+
+	it("hides the fullscreen button for non-svg engines", () => {
+		const html = renderChart("echarts", '{"series":[]}');
+		expect(html).not.toContain("View fullscreen");
+	});
+
+	it("keeps the rendered diagram container for mermaid", () => {
+		const html = renderChart("mermaid", "graph TD\nA --> B");
+		expect(html).toContain('class="pele"');
 	});
 });

@@ -984,6 +984,7 @@ export const zhCN: TranslationDict = {
 		rotateLeft: "向左旋转",
 		rotateRight: "向右旋转",
 		goToImage: "转到第 {index} 张图片",
+		viewFullscreen: "全屏查看",
 	},
 
 	taskColumn: {

@@ -43,6 +43,9 @@ function applyTheme(container: HTMLElement, mode: "light" | "dark"): void {
 
 let instanceCounter = 0;
 
+/** Dark palette used by the Mermaid fullscreen overlay to re-theme a cloned Pele SVG. */
+export const peleDarkPalette: Record<string, string> = PALETTES.dark;
+
 export const peleEngine: ChartEngine = {
 	id: "pele",
 	languages: ["mermaid"],

@@ -984,6 +984,7 @@ export const zhTW: TranslationDict = {
 		rotateLeft: "向左旋轉",
 		rotateRight: "向右旋轉",
 		goToImage: "轉到第 {index} 張圖片",
+		viewFullscreen: "全螢幕檢視",
 	},
 
 	taskColumn: {

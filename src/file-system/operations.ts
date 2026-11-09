@@ -2362,7 +2362,10 @@ export class FileSystem {
 					break;
 				case "diagram_engine":
 				case "diagramEngine":
-					config.diagramEngine = value === "mermaid" ? "mermaid" : "pele";
+					// `serializeConfig` quotes this value (`diagram_engine: "mermaid"`), so strip
+					// the quotes before matching — otherwise the persisted choice never matches and
+					// the engine silently reverts to `pele` on restart.
+					config.diagramEngine = value.replace(/['"]/g, "") === "mermaid" ? "mermaid" : "pele";
 					break;
 				case "auto_open_browser":
 					config.autoOpenBrowser = value.toLowerCase() === "true";
@@ -2461,6 +2464,7 @@ export class FileSystem {
 			paginationPageSize: config.paginationPageSize,
 			defaultPagination: config.defaultPagination,
 			defaultEditor: config.defaultEditor,
+			diagramEngine: config.diagramEngine,
 			autoOpenBrowser: config.autoOpenBrowser,
 			autoPort: config.autoPort,
 			hideEmptyColumns: config.hideEmptyColumns,
