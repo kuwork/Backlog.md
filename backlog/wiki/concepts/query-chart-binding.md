@@ -2,7 +2,7 @@
 title: 图表与查询结果的两种绑定方式
 labels: [concept, web-ui, charts, query-block]
 created_date: 2026-10-18 22:00
-updated_date: 2026-10-18 22:00
+updated_date: 2026-11-10 00:27
 ---
 
 # 图表与查询结果的两种绑定方式
@@ -31,6 +31,8 @@ chart: |
 
 两种写法：**简单映射**（`type` + `categoryField` + `valueField`，可选标题/轴名/图例名，覆盖 bar/line/pie/scatter）与**高级**（`option` 键放完整 option，数据位置写占位符）。占位符只匹配整值：`"@result"` → 整个结果集的对象数组，`"@result:<列名>"` → 该列的扁平数组。
 
+**渲染路径已统一（BACK-847）**：方式 B 原由 `EchartsFromResult` 自建 effect 直接调 ECharts 引擎，虽然复用同一张注册表，却不经过 `ChartBlock`，因此所有挂在 `ChartBlock` 上的能力（全屏按钮、主题切换、per-block dispose）它都拿不到。现在 `EchartsFromResult` 只负责把 `chart` + 结果构建成标准 option 并序列化，再交给 `<ChartBlock lang="echarts" source={optionJson} />`。非法配置仍在挂载前内联报错。这与方式 A 天然走 `ChartBlock` 对齐——两种绑定方式的差别只在「数据怎么来」，不再有「谁负责渲染」的差别。
+
 ## 方式 A：图引用块
 
 查询块加 `id`，图表在 dataset 或 series 上写 `fromQuery`：
@@ -56,6 +58,7 @@ chart: |
 ## Related Concepts
 
 - [[concepts/chart-block-engine]] — 两种方式共同的渲染底座
+- [[concepts/chart-fullscreen-overlay]] — 收敛到 ChartBlock 后两种方式共有的全屏能力
 - [[concepts/sql-query-blocks]] — 被扩展的块模型（`view: echarts` / `chart` / `id`）
 - [[concepts/live-sync-pattern]] — 查询重跑 → 图表重绘的传播链
 - [[concepts/cypher-live-query-block]] — 同样支持 `view` 扩展的 Cypher 块
@@ -67,3 +70,4 @@ chart: |
 - [[sources/doc-30-echarts-chart-engine-prd]] — 两种方式的原始设想（§8.3）
 - [[sources/doc-31-echarts-demo]] — 两种方式的活示例
 - [[sources/m-17-echarts-chart-engine]] — 里程碑
+- [[sources/back-847-echarts-css-fullscreen]] — 把方式 B 收敛回 ChartBlock 统一路径

@@ -2,7 +2,7 @@
 title: Web UI 国际化（i18n）
 labels: [concept]
 created_date: 2026-05-17 02:20
-updated_date: 2026-10-09 23:30
+updated_date: 2026-11-10 00:27
 ---
 
 # Web UI 国际化（i18n）
@@ -32,7 +32,7 @@ type DeepString<T> = T extends (...args: infer P) => infer R
 - 函数签名（参数个数与类型）必须一致
 - 访问不存在的键产生编译错误
 
-**tsc 强制规则**：`TranslationDict` 派生自 en，任何新键必须在四个字典同时落地，否则 tsc 编译失败——这是四语言覆盖的制度性保障（如 BACK-663 `completedCorpusHint`、BACK-667 排序开关键）。注意没有测试导入 locale 模块，四语言正确性依赖浏览器验证（BACK-636 先例）。
+**tsc 强制规则**：`TranslationDict` 派生自 en，任何新键必须在全部五个字典同时落地，否则 tsc 编译失败——这是多语言覆盖的制度性保障（如 BACK-663 `completedCorpusHint`、BACK-667 排序开关键、BACK-846 `imageLightbox.viewFullscreen`）。注意没有测试导入 locale 模块，各语言文案正确性依赖浏览器验证（BACK-636 先例）。
 
 ### 字典结构
 
@@ -62,7 +62,7 @@ type DeepString<T> = T extends (...args: infer P) => infer R
 
 ### I18nContext
 
-- 维护 `locale` 状态（`"en" | "ja" | "zh-CN" | "zh-TW"`）
+- 维护 `locale` 状态（`"en" | "ja" | "zh-CN" | "zh-TW" | "ko"`）
 - 挂载时通过 `apiClient.fetchConfig()` 读取后端保存的语言偏好
 - 提供 `setLocale` 与 `t`（当前语言字典）给子树
 
@@ -86,6 +86,14 @@ const { t } = useI18n();
 
 `locale` 字段存储于 `backlog.config.yml`（或项目根配置），通过现有的 `/api/config` API 读写。切换语言后 Settings 页面调用 `apiClient.updateConfig({ ...config, locale })`，后端序列化到 YAML，随后 WebSocket 广播 `config-updated` 事件，但语言切换在前端即时生效，无需等待广播。
 
+## 第五种语言：韩语（BACK-844）
+
+Web UI 原有 en / ja / zh-CN / zh-TW 四种，BACK-844 补齐 `ko`。改动跨越五个面：`src/web/locales/ko.ts`（完整 `TranslationDict` + 韩语默认状态机）、`index.ts`（`Locale` 联合 / 字典表 / `DEFAULT_STATE_MACHINES` / `isValidLocale`）、设置页下拉 `한국어`、`state-machine.ts` 把 `ko*` 映射到 `ko`、以及两个 Office 预览模态框的语言包。
+
+**第三方语言包缺语言时要自持部分覆盖**：`@eigenpal/docx-editor-i18n` 只发布 en/de/fr/he/hi/id/pl/pt-BR/tr/zh-CN，没有韩语。项目自持 `PartialLocaleStrings`（`src/web/locales/docx/ko.ts`）深合并到包内 en 字典，缺键回落英语；ja / zh-TW 早已是这个形态。XLSX 一侧 Univer 自带 `ko-KR`，直接经 `LocaleType.KO_KR` 接上即可。
+
+**状态机状态名刻意不翻译**：沿用既有 zh-CN / ja 约定，只本地化 `when` / `if` / `requires` / `evidence` 的散文，避免持久化状态字符串被翻译后破坏比较逻辑。这类「数据字符串与展示字符串分离」是所有新增语言都要守的边界。
+
 ## 与现有功能的关系
 
 - **粘贴为 Markdown**：编辑器提示词（"Upload Word document"）已纳入 `pasteAwareMDEditor` 命名空间
@@ -107,3 +115,5 @@ const { t } = useI18n();
 - [[sources/back-636-decision-status-i18n]] — BACK-636 决策状态标签四语言本地化
 - [[sources/back-663-completed-popup-read-only]] — BACK-663 completedCorpusHint 四字典同时落地（tsc 强制）
 - [[sources/back-667-sidebar-docs-sort-toggles]] — BACK-667 排序开关标签四语言
+- [[sources/back-844-korean-web-ui-locale]] — BACK-844 补齐第五种语言与 DOCX 部分覆盖
+- [[sources/back-846-mermaid-css-fullscreen]] — BACK-846 `viewFullscreen` 在五种字典同步落地
