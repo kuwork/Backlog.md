@@ -32,7 +32,7 @@ export const DEFAULT_STATE_MACHINE: StatusDefinition[] = DEFAULT_STATE_MACHINES.
  * `LC_MESSAGES`, `LANG`, then the OS locale (`Intl`) - the env vars do not exist on a stock
  * Windows install, so without the OS fallback detection would always land on English there.
  * Any Traditional-Chinese locale (`tw`, `hk`, `hant`) maps to "zh-TW", other Chinese locales
- * to "zh-CN", Japanese to "ja", and everything else to "en".
+ * to "zh-CN", Japanese to "ja", Korean to "ko", and everything else to "en".
  */
 export function detectDefaultLocale(): keyof typeof DEFAULT_STATE_MACHINES {
 	const env = typeof process === "undefined" ? undefined : process.env;
@@ -49,6 +49,9 @@ export function detectDefaultLocale(): keyof typeof DEFAULT_STATE_MACHINES {
 	if (raw.startsWith("ja")) {
 		return "ja";
 	}
+	if (raw.startsWith("ko")) {
+		return "ko";
+	}
 	return "en";
 }
 
@@ -63,6 +66,8 @@ export function defaultStateMachineForLocale(locale?: string): StatusDefinition[
 		key = /tw|hk|hant/.test(raw) ? "zh-TW" : "zh-CN";
 	} else if (raw.startsWith("ja")) {
 		key = "ja";
+	} else if (raw.startsWith("ko")) {
+		key = "ko";
 	}
 	return structuredClone(DEFAULT_STATE_MACHINES[key] ?? DEFAULT_STATE_MACHINES.en ?? []);
 }

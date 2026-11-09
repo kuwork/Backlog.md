@@ -5,6 +5,7 @@ import { useI18nContext } from "../contexts/I18nContext";
 import { apiClient } from "../lib/api";
 import type { Locale } from "../locales";
 import ja from "../locales/docx/ja";
+import ko from "../locales/docx/ko";
 import zhTW from "../locales/docx/zh-TW";
 import type { BinaryOfficePreviewProps, OfficeRange } from "./binaryOfficeFile";
 import FullscreenToggleButton from "./FullscreenToggleButton";
@@ -19,10 +20,11 @@ const DocxEditor = lazy(() => import("@eigenpal/docx-editor-react").then((m) => 
 type DocxMode = "viewing" | "editing";
 
 // docx-editor ships a fixed set of locales (en, de, fr, he, hi, id, pl, pt-BR, tr, zh-CN).
-// Our app supports en, ja, zh-CN, zh-TW. Map each app locale to the nearest docx-editor
-// locale so the editor UI follows the app language: both Chinese variants use zhCN (there is
-// no Traditional Chinese locale, Simplified is the closest), and Japanese falls back to English
-// (no Japanese locale exists). Missing keys in a partial locale fall back to en automatically.
+// Our app supports en, ja, ko, zh-CN, zh-TW. The package has no Korean, Japanese or
+// Traditional-Chinese locale, so ko, ja and zh-TW use project-owned override files
+// (docx/ko.ts, docx/ja.ts, docx/zh-TW.ts) that deep-merge onto the bundled en locale.
+// zh-CN uses the package's own zhCN. Missing keys in any partial locale fall back to en
+// automatically.
 function docxI18nFor(locale: Locale): Translations {
 	switch (locale) {
 		case "zh-TW":
@@ -31,6 +33,8 @@ function docxI18nFor(locale: Locale): Translations {
 			return ja;
 		case "zh-CN":
 			return zhCN;
+		case "ko":
+			return ko;
 		case "en":
 			return en;
 	}
@@ -49,7 +53,7 @@ const primaryBtn =
  * switches to edit mode, where changes can be saved back to the source file via the
  * server-side /api/docx/save endpoint. Supports a CSS fullscreen toggle that fills the
  * viewport, and the preview body clips to the modal window's rounded corner radius.
- * The editor locale follows the app language (en / ja / zh-CN / zh-TW).
+ * The editor locale follows the app language (en / ja / ko / zh-CN / zh-TW).
  */
 export default function DocPreviewModal({
 	isOpen = true,

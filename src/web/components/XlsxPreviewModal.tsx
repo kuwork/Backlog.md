@@ -2,6 +2,7 @@ import { UniverSheetsCorePreset } from "@univerjs/preset-sheets-core";
 import "@univerjs/preset-sheets-core/lib/index.css";
 import UniverSheetsCoreEnUSLocale from "@univerjs/preset-sheets-core/locales/en-US";
 import UniverSheetsCoreJaJPLocale from "@univerjs/preset-sheets-core/locales/ja-JP";
+import UniverSheetsCoreKoKRLocale from "@univerjs/preset-sheets-core/locales/ko-KR";
 import UniverSheetsCoreZhCNLocale from "@univerjs/preset-sheets-core/locales/zh-CN";
 import UniverSheetsCoreZhTWLocale from "@univerjs/preset-sheets-core/locales/zh-TW";
 import type { Univer } from "@univerjs/presets";
@@ -19,13 +20,14 @@ import { xlsxToUniverModel } from "./xlsxToUniverModel";
 
 /**
  * The Univer workbench localizes itself, so it needs its own locale pack next to
- * the app dictionary. Univer ships all four of our languages, so the workbench
- * follows the app language the same way the dictionary does — without this it
- * stayed Chinese in every locale.
+ * the app dictionary. Univer ships all five of our languages (en, ja, ko, zh-CN,
+ * zh-TW), so the workbench follows the app language the same way the dictionary
+ * does — without this it stayed Chinese in every locale.
  */
 const UNIVER_LOCALE: Record<Locale, { type: LocaleType; pack: typeof UniverSheetsCoreEnUSLocale }> = {
 	en: { type: LocaleType.EN_US, pack: UniverSheetsCoreEnUSLocale },
 	ja: { type: LocaleType.JA_JP, pack: UniverSheetsCoreJaJPLocale },
+	ko: { type: LocaleType.KO_KR, pack: UniverSheetsCoreKoKRLocale },
 	"zh-CN": { type: LocaleType.ZH_CN, pack: UniverSheetsCoreZhCNLocale },
 	"zh-TW": { type: LocaleType.ZH_TW, pack: UniverSheetsCoreZhTWLocale },
 };

@@ -1,17 +1,19 @@
 import type { StatusDefinition } from "../../types/index.ts";
 import { en, defaultStateMachine as enStateMachine } from "./en";
 import { ja, defaultStateMachine as jaStateMachine } from "./ja";
+import { ko, defaultStateMachine as koStateMachine } from "./ko";
 import type { TranslationDict } from "./types";
 import { zhCN, defaultStateMachine as zhCNStateMachine } from "./zh-CN";
 import { zhTW, defaultStateMachine as zhTWStateMachine } from "./zh-TW";
 
-export type Locale = "en" | "ja" | "zh-CN" | "zh-TW";
+export type Locale = "en" | "ja" | "ko" | "zh-CN" | "zh-TW";
 
 export type { TranslationDict };
 
 const dictionaries: Record<Locale, TranslationDict> = {
 	en,
 	ja,
+	ko,
 	"zh-CN": zhCN,
 	"zh-TW": zhTW,
 };
@@ -28,6 +30,7 @@ const dictionaries: Record<Locale, TranslationDict> = {
 export const DEFAULT_STATE_MACHINES: Record<Locale, StatusDefinition[]> = {
 	en: enStateMachine,
 	ja: jaStateMachine,
+	ko: koStateMachine,
 	"zh-CN": zhCNStateMachine,
 	"zh-TW": zhTWStateMachine,
 };
@@ -37,5 +40,5 @@ export function getDictionary(locale: Locale): TranslationDict {
 }
 
 export function isValidLocale(value: string): value is Locale {
-	return value === "en" || value === "ja" || value === "zh-CN" || value === "zh-TW";
+	return value === "en" || value === "ja" || value === "ko" || value === "zh-CN" || value === "zh-TW";
 }

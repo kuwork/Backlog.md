@@ -6,7 +6,7 @@ import { getDictionary } from "../web/locales";
 
 describe("Web init Cursor copy", () => {
 	it("describes the AGENTS.md option as shared with Cursor in every locale", () => {
-		for (const locale of ["en", "ja", "zh-CN", "zh-TW"] as const) {
+		for (const locale of ["en", "ja", "ko", "zh-CN", "zh-TW"] as const) {
 			const desc = getDictionary(locale).init.agentFilesLabels.agentsMdDesc;
 			expect(desc).toContain("Cursor");
 		}

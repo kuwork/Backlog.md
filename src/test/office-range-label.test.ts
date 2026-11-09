@@ -24,7 +24,7 @@ describe("officeRangeLabel (BACK-838)", () => {
 	});
 
 	it("is localized in every supported locale", () => {
-		for (const locale of ["en", "ja", "zh-CN", "zh-TW"] as const) {
+		for (const locale of ["en", "ja", "ko", "zh-CN", "zh-TW"] as const) {
 			const dict = getDictionary(locale);
 			expect(officeRangeLabel(dict, { type: "pages", start: 2, end: 5 })).toContain("2");
 			expect(officeRangeLabel(dict, { type: "sheets", items: ["p1", "p2"] })).toBeTruthy();

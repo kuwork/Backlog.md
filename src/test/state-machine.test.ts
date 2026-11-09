@@ -142,7 +142,7 @@ describe("compileStateMachine — the agreed seven-column default (FR-2)", () =>
 });
 
 describe("the localized default machines", () => {
-	const LOCALES = ["en", "zh-CN", "zh-TW", "ja"] as const;
+	const LOCALES = ["en", "zh-CN", "zh-TW", "ja", "ko"] as const;
 	const SEVEN = ["To Do", "Planning", "Plan Review", "In Progress", "In Review", "Done", "Dropped"];
 
 	it("ships exactly the four web-UI locales, all with the same shape", () => {
@@ -175,7 +175,13 @@ describe("the localized default machines", () => {
 	});
 
 	it("hints that dropping archives the task in every variant", () => {
-		const archiveWords: Record<string, string> = { en: "archive", "zh-CN": "归档", "zh-TW": "歸檔", ja: "アーカイブ" };
+		const archiveWords: Record<string, string> = {
+			en: "archive",
+			"zh-CN": "归档",
+			"zh-TW": "歸檔",
+			ja: "アーカイブ",
+			ko: "보관",
+		};
 		for (const locale of LOCALES) {
 			const machine = compileStateMachine(DEFAULT_STATE_MACHINES[locale] ?? []);
 			const [, toDropped] = machine.transitionsOf("To Do");
