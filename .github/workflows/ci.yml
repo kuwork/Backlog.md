@@ -33,7 +33,12 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.os }}-bun-${{ env.BUN_VERSION }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.os }}-bun-${{ env.BUN_VERSION }}-
-      - run: bun install --frozen-lockfile --linker=isolated
+      # Use Bun's default hoisted linker. The codebase imports several transitive packages
+      # directly (e.g. github-slugger, refractor, @eigenpal/docx-editor-i18n) and build.ts
+      # resolves the DuckDB native binding from the project root; with --linker=isolated
+      # those packages are only linked inside node_modules/.bun and cannot be resolved.
+      # release.yml already uses this same install command successfully.
+      - run: bun install --frozen-lockfile
       - run: bun run lint
       - name: Run tests
         run: |
@@ -41,8 +46,9 @@ jobs:
             # Windows runners hit Bun/file-system resource pressure under the default parallelism.
             bun test --timeout=30000 --max-concurrency=4 --reporter=junit --reporter-outfile=test-results.xml
           else
-            # Run tests with increased timeout to handle Bun shell operations
-            bun test --timeout=10000 --reporter=junit --reporter-outfile=test-results.xml
+            # CLI/graph tests regularly take 10-12s on Linux runners; keep the same
+            # 30s budget as Windows and bunfig.toml instead of timing them out at 10s.
+            bun test --timeout=30000 --reporter=junit --reporter-outfile=test-results.xml
           fi
         shell: bash
       - name: Run interactive TUI regression tests
@@ -90,7 +96,7 @@ jobs:
       # --os/--cpu make bun install the build target's DuckDB native binding too; by default only
       # the runner host's platform-specific optionalDependencies are installed, and the build
       # embeds the target's binding (see scripts/build.ts).
-      - run: bun install --frozen-lockfile --linker=isolated --os ${{ matrix.duckOs }} --cpu ${{ matrix.duckCpu }}
+      - run: bun install --frozen-lockfile --os ${{ matrix.duckOs }} --cpu ${{ matrix.duckCpu }}
       - name: Prime Bun cache for baseline target (Windows workaround)
         if: ${{ contains(matrix.target, 'baseline') && matrix.os == 'windows-latest' }}
         shell: bash
