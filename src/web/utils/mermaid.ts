@@ -1,7 +1,6 @@
 // Type definitions for Mermaid API
 interface MermaidAPI {
 	initialize: (config: MermaidConfig) => void;
-	run?: (options?: MermaidRunOptions) => Promise<void>;
 	render: (id: string, text: string) => Promise<MermaidRenderResult>;
 }
 
@@ -11,12 +10,6 @@ interface MermaidConfig {
 	theme?: "base" | "default" | "dark" | "forest" | "neutral" | "null";
 	logLevel?: number;
 	[key: string]: unknown;
-}
-
-interface MermaidRunOptions {
-	nodes?: HTMLElement[];
-	querySelector?: string;
-	suppressErrors?: boolean;
 }
 
 interface MermaidRenderResult {
@@ -38,6 +31,20 @@ export type MermaidMode = "light" | "dark";
 const MERMAID_THEME_BY_MODE: Record<MermaidMode, MermaidConfig["theme"]> = {
 	light: "default",
 	dark: "dark",
+};
+
+/**
+ * `treeView-beta` is an experimental Mermaid diagram whose palette is hardcoded
+ * to black in its own stylesheet — it ignores the active Mermaid theme. Its
+ * stylesheet reads the palette from `themeVariables.treeView` (not the top-level
+ * `treeView` config, which only controls layout), so override it there to keep
+ * the tree readable on a dark surface instead of rendering black-on-dark.
+ */
+const DARK_TREE_VIEW_COLORS = {
+	labelColor: "#e6edf3",
+	lineColor: "#c9d1d9",
+	iconColor: "#9198a1",
+	descriptionColor: "#7ee787",
 };
 
 export interface RenderMermaidOptions {
@@ -82,6 +89,7 @@ async function initializeMermaid(mermaid: MermaidAPI, mode: MermaidMode): Promis
 		startOnLoad: false,
 		securityLevel: "strict",
 		theme: MERMAID_THEME_BY_MODE[mode],
+		...(mode === "dark" ? { themeVariables: { treeView: DARK_TREE_VIEW_COLORS } } : {}),
 	});
 
 	initializedMode = mode;
@@ -103,38 +111,47 @@ function isMermaidCodeBlock(node: Element): boolean {
 	return hasMermaidLanguageClass(Array.from(node.classList));
 }
 
-/** Renders one diagram into an already attached `.mermaid` container. */
-async function renderDiagram(m: MermaidModule, wrapper: HTMLElement, diagramText: string): Promise<void> {
+/**
+ * Each container keeps the generation of its newest render. A theme switch
+ * re-renders every diagram at once, but React's effect cleanup cannot cancel a
+ * render already in flight; without this guard the older render can finish last
+ * and overwrite the newer SVG.
+ */
+const renderGeneration = new WeakMap<HTMLElement, number>();
+let nextGeneration = 0;
+let diagramCounter = 0;
+
+/**
+ * Renders one diagram into an already attached container. `render()` takes the
+ * source as a string, unlike `run()` which reads `element.innerHTML` — that
+ * matters when two renders overlap on one container, because `run()` would
+ * parse the previous SVG as diagram source.
+ */
+async function renderDiagram(
+	m: MermaidModule,
+	wrapper: HTMLElement,
+	diagramText: string,
+	isCurrent: () => boolean = () => true,
+): Promise<void> {
 	try {
-		if (m?.default?.run) {
-			try {
-				await m.default.run({ nodes: [wrapper] });
-				return;
-			} catch {
-				// Continue to render fallback if run fails
-			}
+		if (!m?.default?.render) {
+			console.warn("mermaid: no compatible render method found");
+			return;
 		}
-
-		if (m?.default?.render) {
-			const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
-			try {
-				const result = await m.default.render(id, diagramText);
-				wrapper.innerHTML = result.svg;
-
-				// Bind interactive functions if available (for click events, etc.)
-				if (result.bindFunctions) {
-					result.bindFunctions(wrapper);
-				}
-				return;
-			} catch {
-				// Continue to next fallback if render fails
-			}
-		}
-
-		// If none of the above worked, log warning
-		console.warn("mermaid: no compatible render method found, leaving raw code block");
+		// Mermaid derives SVG ids and temporary DOM ids from this. A gallery can
+		// render dozens of diagrams in the same tick, so the id must be unique.
+		const id = `backlog-mermaid-${++diagramCounter}-${Math.random().toString(36).slice(2, 7)}`;
+		const result = await m.default.render(id, diagramText);
+		if (!isCurrent()) return;
+		wrapper.innerHTML = result.svg;
+		result.bindFunctions?.(wrapper);
 	} catch (err) {
 		console.warn("mermaid render failed", err);
+		// Keep the previous SVG on a failed re-render; on a first render there is
+		// nothing to keep, so surface the source instead of an empty box.
+		if (isCurrent() && !wrapper.firstChild) {
+			wrapper.textContent = diagramText;
+		}
 	}
 }
 
@@ -142,6 +159,10 @@ async function renderDiagram(m: MermaidModule, wrapper: HTMLElement, diagramText
  * Renders one diagram into a container owned by the caller. Unlike
  * {@link renderMermaidIn} the container is not replaced, which keeps it safe to
  * call from a React effect on an element React owns.
+ *
+ * The previous SVG stays until the new one is ready. Clearing the container
+ * first made a whole gallery collapse and jump while a theme switch re-rendered
+ * its diagrams one by one.
  */
 export async function renderMermaidDiagram(
 	container: HTMLElement,
@@ -153,14 +174,18 @@ export async function renderMermaidDiagram(
 	}
 
 	const mode = options.mode ?? "light";
+	const generation = ++nextGeneration;
+	renderGeneration.set(container, generation);
+	const isCurrent = () => renderGeneration.get(container) === generation;
 
 	try {
 		const m = await ensureMermaid();
+		if (!isCurrent()) return;
 		await initializeMermaid(m.default, mode);
+		if (!isCurrent()) return;
 
 		container.classList.add("mermaid");
-		container.textContent = diagramText;
-		await renderDiagram(m, container, diagramText);
+		await renderDiagram(m, container, diagramText, isCurrent);
 	} catch (err) {
 		console.warn("Failed to load mermaid", err);
 	}

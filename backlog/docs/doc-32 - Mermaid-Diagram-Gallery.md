@@ -3,7 +3,7 @@ id: doc-32
 title: Mermaid Diagram Gallery
 type: specification
 created_date: '2026-10-22 15:02'
-updated_date: '2026-10-22 15:29'
+updated_date: '2026-11-14 13:04'
 ---
 # Mermaid Diagram Gallery
 
@@ -721,6 +721,25 @@ treemap-beta
 "杂务"
     "文档": 12
     "流水线": 8
+```
+
+
+```mermaid
+treeView-beta
+├── tasks/ ## 原料
+├── docs/ ## 原料
+├── decisions/ ## 原料
+├── wiki/ :::highlight ## ingest 摄取后生成
+│   ├── index.md ## 目录
+│   ├── log.md ## 操作日志
+│   ├── overview.md ## 总览
+│   ├── sources/ ## 每份原料一页摘要，回链原文件
+│   ├── concepts/ ## 概念说明
+│   ├── execution/ ## 执行踩坑与可复用做法
+│   ├── patterns/ ## 反复验证过的模式
+│   ├── decisions/ ## 微决策：为什么选 A 不选 B
+│   └── reasoning/ ## 拆任务时的推理过程
+└── wiki_output/ ## wiki query 产出的报告与手册
 ```
 
 ---
