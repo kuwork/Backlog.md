@@ -10,6 +10,14 @@
 <code>npm i -g @kuwork/backlog.md</code> or <code>bun add -g @kuwork/backlog.md</code> or <code>brew install backlog-md</code> (upstream) or <code>nix run github:MrLesk/Backlog.md</code> (upstream)  
 </p>
 
+<p align="center">  
+<a href="https://github.com/deepseek-ai/deepseek-harness"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/deepseek-harness-dark.svg" /><img src=".github/deepseek-harness-light.svg" alt="DeepSeek Harness" width="187" height="24" /></picture></a>  
+</p>
+
+<p align="center">  
+Also one command away in DeepSeek Harness: <code>dsh plugin --profile web add dsh-backlog.md</code> (<a href="https://github.com/kuwork/DSH-Backlog.md">plugin repo</a>)  
+</p>
+
 ---
 
 > **AI can write code, but who tells it what to do next?**

@@ -12,6 +12,14 @@
 <code>npm i -g @kuwork/backlog.md</code> 或 <code>bun add -g @kuwork/backlog.md</code> 或 <code>brew install backlog-md</code>（上游）或 <code>nix run github:MrLesk/Backlog.md</code>（上游）  
 </p>
 
+<p align="center">  
+<a href="https://github.com/deepseek-ai/deepseek-harness"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/deepseek-harness-dark.svg" /><img src=".github/deepseek-harness-light.svg" alt="DeepSeek Harness" width="187" height="24" /></picture></a>  
+</p>
+
+<p align="center">  
+也可一行命令装进 DeepSeek Harness：<code>dsh plugin --profile web add dsh-backlog.md</code>（<a href="https://github.com/kuwork/DSH-Backlog.md">插件仓库</a>）  
+</p>
+
 ---
 
 
