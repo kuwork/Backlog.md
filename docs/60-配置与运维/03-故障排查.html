@@ -875,6 +875,16 @@
                                 
                                 <h1 id="故障排查">故障排查</h1>
 <p>本页聚合使用 Backlog.md 时的常见故障，每节按「症状 → 原因 → 处置」组织。各功能页的详细说明仍归原页，这里只做排错索引与处置建议。</p>
+<h2 id="首次启动特别慢--页面一直空白">首次启动特别慢 / 页面一直空白</h2>
+<p><strong>症状</strong>：<code>backlog browser</code> 后页面长时间空白，终端没有输出；或热启动也要等数十秒到数分钟。</p>
+<p><strong>原因</strong>：常见有四类，按顺序排查：</p>
+<ol>
+<li><strong>UI 包尚未缓存</strong>（最常见）：源码里的 HTML 入口需要 Bun 构建约 24MB 的 JS，旧版本会在服务器线程上同步进行，期间所有请求与日志都被饿死。当前版本把它放进子进程，页面先显示自动刷新的进度页，构建完成即切换，无需重启。</li>
+<li><strong>跨分支扫描与远端 refs</strong>：旧版本每次启动都重读所有分支并同步 fetch 远端；当前版本按 commit 缓存分支数据，并把远端 fetch 推迟到首屏之后后台执行。</li>
+<li><strong>图谱服务冷启动</strong>：当前版本已改为首次 <code>/api/graph</code> 请求时才启动。</li>
+<li><strong>缓存损坏或与源码不匹配</strong>：可用 <code>backlog browser --no-cache</code> 强制重建全部缓存（该参数只跳读、保留写，下一次普通启动又是热路径）；也可先跑 <code>bun run web:build</code> 单独重建 UI 包。</li>
+</ol>
+<p><strong>处置</strong>：先看终端带时间戳的 <code>[startup]</code> / <code>[cache]</code> / <code>[web]</code> 行确认卡在哪一阶段；确认是构建时耐心等待后台完成即可。热启动正常约 1.5~2 秒、日志显示 <code>restored</code>；若反复出现 <code>building</code> 且耗时异常，检查缓存目录是否可写、是否有第二个服务实例争抢同一项目的 graph 锁。缓存位置见<a href="../40-Web界面/00-启动与访问.html">启动与访问</a>。</p>
 <h2 id="web-端口被占用">Web 端口被占用</h2>
 <p><strong>症状</strong>：启动 <code>backlog browser</code> 时端口不可用，或访问的地址打不开。</p>
 <p><strong>原因</strong>：默认端口 <code>6420</code> 已被其他进程占用。</p>
@@ -978,7 +988,7 @@ sysctl -<span class="hljs-keyword">in</span> sysctl.proc_translated   <span clas
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"故障排查","labels":["usermanual"],"created_date":"2026-10-09 23:30","updated_date":"2026-11-02 00:18","level":"9.4","depth":1,"previous":{"title":"项目概览","level":"9.3","depth":1,"path":"60-配置与运维/02-项目概览.md","ref":"60-配置与运维/02-项目概览.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"60-配置与运维/03-故障排查.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:35.106Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"故障排查","labels":["usermanual"],"created_date":"2026-10-09 23:30","updated_date":"2026-11-08 23:05","level":"9.4","depth":1,"previous":{"title":"项目概览","level":"9.3","depth":1,"path":"60-配置与运维/02-项目概览.md","ref":"60-配置与运维/02-项目概览.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"60-配置与运维/03-故障排查.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

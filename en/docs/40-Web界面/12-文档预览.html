@@ -877,12 +877,48 @@
                                 
                                 <h1 id="document-preview">Document Preview</h1>
 <p>The Backlog.md Web interface supports in-app preview of common Office documents: clicking a document link opens a dedicated preview modal instead of downloading locally. Word and Excel also support editing and writing back to the source file.</p>
-<p>Which paths are supported for preview depends on where the link is located:</p>
+<h2 id="link-paths">Link Paths</h2>
+<p>Preview no longer uses two different rules for "reference fields" and "body links". A local link in Markdown is resolved against the <strong>directory of the document containing it</strong>, joined into a site-absolute URL at render time, and the server then returns the first existing file from an ordered candidate list: project root, configured data directory, then its assets directory. A target starting with <code>/</code> (for example <code>/quickstart/report.pdf</code>) is a site-root path and is never joined.</p>
 <ul>
-<li><strong>Reference fields</strong> (project-relative <code>backlog/...</code> paths written in task / milestone / document metadata, such as <code>backlog/docs/report.pdf</code>): use the raw-byte endpoint <code>GET /api/raw-file</code> to fetch content (with content-type, restricted to the project data directory), covering any path inside the project.</li>
-<li><strong>Body</strong> (links in descriptions / comments / notes / document Markdown): only documents under the <code>assets/...</code> convention (i.e., the <code>backlog/assets/</code> directory) are supported. If the body directly uses a <code>backlog/...</code> prefix, the link is not intercepted and will result in a browser 404.</li>
+<li>Multi-level <code>../</code> chains are allowed as long as the result stays inside the <strong>project root</strong>, so sibling directories of the data directory (<code>src/</code>, <code>quickstart/</code>, <code>scripts/</code>) are reachable. Escapes outside the root are refused.</li>
+<li>Metadata fields (<code>references</code>, <code>modifiedFiles</code>, document paths, query block <code>source</code>) remain <strong>project-root-relative</strong> and are not affected by the body join rule.</li>
+<li>Existing <code>assets/...</code> links and pasted images need no migration; custom data directory names are honoured.</li>
+<li>The <code>GET /api/raw-file</code> guard has been widened to the project root, so Word / PDF / PPTX / Excel files outside the data directory also open in-app. Cross-origin documents, modifier-key clicks, or links with <code>target=_blank</code> / <code>download</code> still follow the browser's default behavior.</li>
 </ul>
-<p>Cross-origin documents, modifier-key clicks, or links with <code>target=_blank</code> / <code>download</code> still follow the browser's default behavior.</p>
+<h2 id="page-and-sheet-ranges">Page and Sheet Ranges</h2>
+<p>An Office link can carry a range suffix to open only part of the document:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Syntax</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Word / PDF / PPTX</td>
+<td><code>:P2</code>, <code>:P1-P4</code></td>
+<td>Scroll to the first page, or render only the requested page / slide window</td>
+</tr>
+<tr>
+<td>Excel</td>
+<td><code>:p1</code>, <code>:p1-p4</code></td>
+<td>Activate a worksheet by 1-based index; other tabs stay reachable</td>
+</tr>
+<tr>
+<td>Excel</td>
+<td><code>:Official Benchmark</code></td>
+<td>Activate a worksheet by name, including CJK names</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The <code>P</code> prefix is mandatory</strong>: a bare <code>:3-7</code> still means text lines 3-7 and is never read as pages. This is deliberate backward compatibility.</li>
+<li>Out-of-range requests clamp to the real page count (<code>:P9-P12</code> on a 3-page PDF shows "Page 3"); an unknown sheet name leaves the default sheet active. Neither produces an error.</li>
+<li>Using image syntax (<code>![report](/quickstart/report.docx:P1-P2)</code>) <strong>embeds the viewer inline</strong> with a clean filename and a range badge; ordinary images still use the lightbox.</li>
+<li>The range badge and the modal title never duplicate each other; the title is always the clean filename. Range labels follow the app language (en / zh-CN / zh-TW / ja).</li>
+</ul>
 <h2 id="word-documents">Word Documents</h2>
 <p>Rendered with docx-editor, showing real paginated A4 pages.</p>
 <ul>
@@ -903,6 +939,7 @@
 <ul>
 <li>A thumbnail panel lists each slide; click to jump to the main view.</li>
 <li>Presentation mode is edge-to-edge full-screen playback, supporting WPS-style keyboard navigation (→ ↓ Space PageDown Enter for next; ← ↑ PageUp Backspace for previous; Home/End for first/last; Esc to exit).</li>
+<li>Embedded slide images display even when stored under the non-standard <code>ppt/slides/media/</code> path: before previewing, media is normalized in memory to the path the renderer recognizes and relationship targets are rewritten; the file on disk is unchanged.</li>
 <li>Read-only preview only.</li>
 </ul>
 <h2 id="excel-spreadsheets">Excel Spreadsheets</h2>
@@ -960,7 +997,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Document Preview","labels":["usermanual"],"created_date":"2026-10-31 23:53","updated_date":"2026-11-04 00:00","level":"5.13","depth":1,"next":{"title":"MCP Workflow","level":"6.1","depth":1,"path":"50-AI集成/00-MCP工作流.md","ref":"50-AI集成/00-MCP工作流.md","articles":[]},"previous":{"title":"Graph View","level":"5.12","depth":1,"path":"40-Web界面/11-图谱视图.md","ref":"40-Web界面/11-图谱视图.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"40-Web界面/12-文档预览.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Document Preview","labels":["usermanual"],"created_date":"2026-10-31 23:53","updated_date":"2026-11-10 00:40","level":"5.13","depth":1,"next":{"title":"MCP Workflow","level":"6.1","depth":1,"path":"50-AI集成/00-MCP工作流.md","ref":"50-AI集成/00-MCP工作流.md","articles":[]},"previous":{"title":"Graph View","level":"5.12","depth":1,"path":"40-Web界面/11-图谱视图.md","ref":"40-Web界面/11-图谱视图.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"40-Web界面/12-文档预览.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:47.607Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

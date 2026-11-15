@@ -1052,6 +1052,15 @@ sql: |
 <pre><code class="lang-json">{ <span class="hljs-string">"type"</span>: <span class="hljs-string">"bar"</span>, <span class="hljs-string">"fromQuery"</span>: <span class="hljs-string">"monthly"</span>, <span class="hljs-string">"categoryField"</span>: <span class="hljs-string">"month"</span>, <span class="hljs-string">"valueField"</span>: <span class="hljs-string">"revenue"</span> }
 </code></pre>
 <p><code>categoryField</code> / <code>valueField</code> 只是引用侧的取列指令，不会留在最终配置里。option 没有 <code>xAxis</code> 时，引擎会用第一个解析成功的 series 的 <code>categoryField</code> 补一条类目轴。</p>
+<h2 id="图表全屏浏览">图表全屏浏览</h2>
+<p>Mermaid 与 ECharts 图表右上角都有全屏按钮，点击后在暗色遮罩中重新渲染该图：</p>
+<ul>
+<li>滚轮以光标为中心缩放，拖动平移，左右各可旋转 90°，一键重置；Esc 或右上角关闭退出。</li>
+<li>打开时默认居中、等比全览。极宽或极窄的图会停在可读下限，而不是缩成一条细线；此时可拖动查看溢出部分。</li>
+<li>经典 Mermaid 引擎在遮罩上做颜色反相以保持线条可读；Pele 与 ECharts 用各自的原生暗色主题。</li>
+<li>查询直出 <code>view: echarts</code>、<code>fromQuery</code> 引用与手写 <code>echarts</code> 围栏走同一条渲染链，都带全屏入口。</li>
+</ul>
+<p>全屏叠加层是临时重渲染，不改动页面里的图表，也不会修改文档内容。</p>
 <h2 id="使用约定">使用约定</h2>
 <table>
 <thead>
@@ -1061,6 +1070,10 @@ sql: |
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>全屏浏览</td>
+<td>Mermaid 与 ECharts 均可，遮罩内可缩放、平移、旋转与重置</td>
+</tr>
 <tr>
 <td>主题</td>
 <td>自动跟随明暗模式，无需配置</td>
@@ -1137,7 +1150,7 @@ sql: |
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"图表块","labels":["usermanual"],"created_date":"2026-10-18 22:00","updated_date":"2026-10-23 17:20","level":"8.7","depth":1,"next":{"title":"MDB 查询块","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"previous":{"title":"图例配置持久化","level":"8.6","depth":1,"path":"80-图谱与数据查询/05-图例配置持久化.md","ref":"80-图谱与数据查询/05-图例配置持久化.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"80-图谱与数据查询/06-图表块.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:35.106Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"图表块","labels":["usermanual"],"created_date":"2026-10-18 22:00","updated_date":"2026-11-10 00:40","level":"8.7","depth":1,"next":{"title":"MDB 查询块","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"previous":{"title":"图例配置持久化","level":"8.6","depth":1,"path":"80-图谱与数据查询/05-图例配置持久化.md","ref":"80-图谱与数据查询/05-图例配置持久化.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"80-图谱与数据查询/06-图表块.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

@@ -877,12 +877,48 @@
                                 
                                 <h1 id="文档预览">文档预览</h1>
 <p>Backlog.md 的 Web 界面支持在应用内直接预览常见的 Office 文档：点击文档链接，都会在专用模态框中打开预览，而不是下载到本地。Word 与 Excel 还支持编辑并写回源文件。</p>
-<p>预览支持哪些路径，取决于链接所处的位置：</p>
+<h2 id="链接路径">链接路径</h2>
+<p>预览不再按「引用字段 / 正文」分两套规则。Markdown 正文里的本地链接按<strong>所在文档所在目录</strong>解析，渲染时拼成站点绝对 URL，服务端按「项目根目录 → 数据目录 → assets 目录」的顺序找到第一个存在的文件。以 <code>/</code> 开头的目标（如 <code>/quickstart/report.pdf</code>）是站点根路径，不参与拼接。</p>
 <ul>
-<li><strong>引用字段</strong>（任务 / 里程碑 / 文档等元数据里写的 <code>backlog/...</code> 项目相对路径，如 <code>backlog/docs/report.pdf</code>）：走原始字节端点 <code>GET /api/raw-file</code> 获取内容（带 content-type，并限制在项目数据目录内），覆盖项目任意路径。</li>
-<li><strong>正文</strong>（描述 / 评论 / 笔记 / 文档 Markdown 里的链接）：只支持 <code>assets/...</code> 约定（即 <code>backlog/assets/</code> 目录）下的文档；若正文里直接写 <code>backlog/...</code> 前缀，链接不会被拦截、会落到浏览器 404。</li>
+<li>多级 <code>../</code> 只要结果仍在<strong>项目根目录</strong>内就允许，因此能引用与数据目录同级的兄弟目录（<code>src/</code>、<code>quickstart/</code>、<code>scripts/</code>）；越出项目根会被拒绝。</li>
+<li>元数据字段（<code>references</code>、<code>modifiedFiles</code>、文档路径、查询块 <code>source</code>）始终是<strong>项目根相对</strong>路径，不受正文拼接规则影响。</li>
+<li>既有的 <code>assets/...</code> 链接与粘贴的图片无需改动，自定义数据目录名同样生效。</li>
+<li><code>GET /api/raw-file</code> 的守卫已放宽到项目根，Word / PDF / PPTX / Excel 都能在应用内预览；跨源文档、修饰键或 <code>target=_blank</code> / <code>download</code> 链接仍按浏览器默认行为打开。</li>
 </ul>
-<p>跨源文档、修饰键或 <code>target=_blank</code> / <code>download</code> 链接仍按浏览器默认行为打开。</p>
+<h2 id="页范围与工作表范围">页范围与工作表范围</h2>
+<p>Office 链接可以带范围后缀，只打开文档的局部：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>写法</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Word / PDF / PPTX</td>
+<td><code>:P2</code>、<code>:P1-P4</code></td>
+<td>滚到起始页、只渲染窗口内的页或幻灯片</td>
+</tr>
+<tr>
+<td>Excel</td>
+<td><code>:p1</code>、<code>:p1-p4</code></td>
+<td>按 1-based 序号激活工作表，其余标签仍可点</td>
+</tr>
+<tr>
+<td>Excel</td>
+<td><code>:官方基准矩阵</code></td>
+<td>按中文表名激活工作表</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>P</code> 是必需的</strong>：不带 <code>P</code> 的 <code>:3-7</code> 仍是纯文本文件的行范围，不会被当成页范围；这是刻意的兼容设计。</li>
+<li>越界范围会收敛到实际页数（3 页 PDF 的 <code>:P9-P12</code> 显示「第 3 页」），不存在的工作表名停在默认表，都不报错。</li>
+<li>写 <code>!</code> 图片语法（如 <code>![报告](/quickstart/report.docx:P1-P2)</code>）会把预览<strong>直接嵌入页面</strong>，带干净文件名与范围徽标；普通图片仍走图片灯箱。</li>
+<li>范围徽标与标题不重复，标题始终是干净的文件名；范围文案跟随应用语言（en / zh-CN / zh-TW / ja）。</li>
+</ul>
 <h2 id="word-文档">Word 文档</h2>
 <p>基于 docx-editor 渲染，呈现真实分页的 A4 页面。</p>
 <ul>
@@ -903,6 +939,7 @@
 <ul>
 <li>缩略图目录列出每张幻灯片，点击跳转主视图。</li>
 <li>播放模式为边缘全屏放映，支持 WPS 式键盘导航（→↓Space PageDown Enter 下一页；←↑PageUp Backspace 上一页；Home/End 首/末页；Esc 退出）。</li>
+<li>幻灯片内嵌图片即使放在非标准的 <code>ppt/slides/media/</code> 路径下也能显示：预览前会在内存中把媒体归一化到渲染器识别的路径并重写关系引用，磁盘文件不变。</li>
 <li>仅只读预览。</li>
 </ul>
 <h2 id="excel-电子表格">Excel 电子表格</h2>
@@ -960,7 +997,7 @@
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"文档预览","labels":["usermanual"],"created_date":"2026-10-31 23:53","updated_date":"2026-10-31 23:53","level":"5.13","depth":1,"next":{"title":"MCP 工作流","level":"6.1","depth":1,"path":"50-AI集成/00-MCP工作流.md","ref":"50-AI集成/00-MCP工作流.md","articles":[]},"previous":{"title":"图谱视图","level":"5.12","depth":1,"path":"40-Web界面/11-图谱视图.md","ref":"40-Web界面/11-图谱视图.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/12-文档预览.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:35.106Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"文档预览","labels":["usermanual"],"created_date":"2026-10-31 23:53","updated_date":"2026-11-10 00:40","level":"5.13","depth":1,"next":{"title":"MCP 工作流","level":"6.1","depth":1,"path":"50-AI集成/00-MCP工作流.md","ref":"50-AI集成/00-MCP工作流.md","articles":[]},"previous":{"title":"图谱视图","level":"5.12","depth":1,"path":"40-Web界面/11-图谱视图.md","ref":"40-Web界面/11-图谱视图.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/12-文档预览.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

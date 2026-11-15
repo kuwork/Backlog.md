@@ -820,6 +820,18 @@ button {
 	background: var(--accent);
 }
 
+.hero-eyebrow-row {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-100);
+}
+
+.eyebrow-logo {
+	display: block;
+	width: auto;
+	height: 26px;
+}
+
 .hero-heading {
 	background: linear-gradient(90deg, #ffffff 0%, #9b9b9b 100%);
 	-webkit-background-clip: text;
@@ -1455,6 +1467,40 @@ p code {
 	color: var(--text);
 	border-color: var(--accent-line);
 	transform: translateY(-2px);
+}
+
+.harness-card {
+	display: grid;
+	gap: var(--sp-200);
+	max-width: 720px;
+	margin-top: var(--sp-400);
+	padding: var(--sp-300);
+	border: 1px solid var(--line);
+	border-radius: var(--r-xl);
+	background: var(--surface-1);
+}
+
+.harness-card-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--sp-200);
+}
+
+.harness-logo {
+	display: block;
+	width: 187px;
+	max-width: 100%;
+	height: auto;
+}
+
+.harness-copy {
+	display: grid;
+	gap: var(--sp-50);
+}
+
+.harness-cmd {
+	max-width: none;
 }
 
 /* ---------- faq ---------- */

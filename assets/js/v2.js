@@ -613,8 +613,9 @@
 	document.querySelectorAll("[data-copy]").forEach(function (button) {
 		button.addEventListener("click", function () {
 			var target = document.querySelector(button.dataset.copy);
-			var state = document.querySelector("[data-copy-state]");
 			if (!target) return;
+			var scope = target.closest("[data-copy-scope]");
+			var state = (scope && scope.querySelector("[data-copy-state]")) || document.querySelector("[data-copy-state]");
 			var text = (target.dataset.copyValue || target.textContent).trim();
 			var copied = button.dataset.copiedLabel || "Copied";
 			var failed = button.dataset.failedLabel || "Copy failed";

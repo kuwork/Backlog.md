@@ -912,6 +912,12 @@ backlog browser --host 0.0.0.0
 <pre><code class="lang-bash">BROWSER=/usr/bin/chromium backlog browser
 </code></pre>
 <p><code>BROWSER</code> 被视为单个可执行路径（去除包裹引号，不会拆分或 shell 求值），URL 作为独立参数传入。未设置时按平台自动回退：<code>open</code>（macOS）、<code>cmd /c start</code>（Windows）、<code>xdg-open</code>（Linux）。</p>
+<h3 id="强制冷启动">强制冷启动</h3>
+<p>启动时会使用磁盘缓存（按 commit 的分支索引、任务解析签名、文档/决策/Wiki 页签名，以及按内容指纹构建的 UI 包），热启动通常约 1.5 秒。若怀疑缓存损坏，或想复现首次启动行为，用 <code>--no-cache</code> 忽略所有缓存：</p>
+<pre><code class="lang-bash">backlog browser --no-cache
+</code></pre>
+<p>该参数<strong>只跳过读取、不跳过写入</strong>：本次冷启动会重建它忽略的那些缓存，因此下一次普通启动又回到热路径，无需额外清理。也可以用 <code>bun run web:build</code> 提前为当前源码重建 UI 包。</p>
+<p>缓存统一放在平台的标准位置：Windows <code>%LOCALAPPDATA%</code>、macOS <code>~/Library/Caches</code>、Linux <code>$XDG_CACHE_HOME</code> 或 <code>~/.cache</code>；显式设置 <code>$XDG_CACHE_HOME</code> 会覆盖所有平台。</p>
 <h3 id="组合使用">组合使用</h3>
 <pre><code class="lang-bash">backlog browser --port 3000 --no-open
 BROWSER=/usr/bin/chromium backlog browser --host 127.0.0.1 --port 8080
@@ -954,6 +960,8 @@ BROWSER=/usr/bin/chromium backlog browser --host 127.0.0.1 --port 8080
 <li><strong>后台索引</strong>：跨分支索引等后台工作进行时，头部右侧显示一个状态 chip（展示当前阶段文案，悬停可见完整信息），头部下缘附带扫动进度条；已加载的看板与树保持可交互，不会被骨架屏覆盖</li>
 </ul>
 <p>加载动画在系统开启「减少动态效果」（reduced motion）时仍然播放——加载进度属于必要反馈而非装饰，静止的加载环在远程桌面、虚拟机等环境下容易被误读为卡死。</p>
+<p>终端里也会同步打印带时间戳的启动进度（<code>HH:MM:SS.mmm [tag] ...</code>），包括 <code>[startup]</code> 各阶段耗时、<code>[cache]</code> 每个 ref 是 restored 还是 building（附分支名、local/remote 与短哈希）、<code>[merge]</code> 三个步骤。这些日志在浏览器页面连接之前就开始输出，所以即使首屏还是空白，终端也能看出当前卡在哪一步。一次性 CLI 命令（如 <code>backlog task list</code>）不会打印进度行，输出保持干净。</p>
+<p>若 UI 包尚无缓存，页面会先显示一个自动刷新的进度页，构建在后台子进程里进行，服务与接口保持可用；构建完成后自动切换到完整界面，无需重启。</p>
 <h2 id="作为常驻服务运行">作为常驻服务运行</h2>
 <p><code>backlog browser --no-open</code> 只启动服务、不打开浏览器，适合注册为开机自启的常驻服务（doc-003）。要点：<strong>每个项目一个独立服务与独立端口</strong>，工作目录必须指向项目根。</p>
 <ul>
@@ -1004,7 +1012,7 @@ BROWSER=/usr/bin/chromium backlog browser --host 127.0.0.1 --port 8080
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"启动与访问","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-07 22:50","level":"5.1","depth":1,"next":{"title":"看板视图","level":"5.2","depth":1,"path":"40-Web界面/01-看板视图.md","ref":"40-Web界面/01-看板视图.md","articles":[]},"previous":{"title":"里程碑管理","level":"4.3","depth":1,"path":"30-文档与决策/02-里程碑管理.md","ref":"30-文档与决策/02-里程碑管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/00-启动与访问.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:35.106Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"启动与访问","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-08 23:05","level":"5.1","depth":1,"next":{"title":"看板视图","level":"5.2","depth":1,"path":"40-Web界面/01-看板视图.md","ref":"40-Web界面/01-看板视图.md","articles":[]},"previous":{"title":"里程碑管理","level":"4.3","depth":1,"path":"30-文档与决策/02-里程碑管理.md","ref":"30-文档与决策/02-里程碑管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/00-启动与访问.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

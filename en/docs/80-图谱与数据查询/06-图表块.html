@@ -1052,6 +1052,15 @@ sql: |
 <pre><code class="lang-json">{ <span class="hljs-string">"type"</span>: <span class="hljs-string">"bar"</span>, <span class="hljs-string">"fromQuery"</span>: <span class="hljs-string">"monthly"</span>, <span class="hljs-string">"categoryField"</span>: <span class="hljs-string">"month"</span>, <span class="hljs-string">"valueField"</span>: <span class="hljs-string">"revenue"</span> }
 </code></pre>
 <p><code>categoryField</code> / <code>valueField</code> are only column-selection instructions on the referencing side and do not remain in the final configuration. When the option has no <code>xAxis</code>, the engine automatically adds a category axis using the first successfully parsed series's <code>categoryField</code>.</p>
+<h2 id="fullscreen-chart-viewing">Fullscreen Chart Viewing</h2>
+<p>Mermaid and ECharts charts both have a fullscreen button in the top-right corner. Clicking it re-renders the chart in a dimmed overlay:</p>
+<ul>
+<li>Scroll to zoom around the cursor, drag to pan, rotate 90 degrees left or right, and reset with one click; press Esc or the top-right close button to exit.</li>
+<li>It opens centered and fully visible at a proportional size. Extremely wide or tall diagrams stop at a readable minimum instead of shrinking to a thin strip; the overflow can then be panned.</li>
+<li>The classic Mermaid engine is colour-inverted over the backdrop so its lines stay readable; Pele and ECharts use their native dark themes.</li>
+<li>Query-direct <code>view: echarts</code>, <code>fromQuery</code> references, and hand-written <code>echarts</code> fences all share the same rendering chain and therefore all get the fullscreen entry.</li>
+</ul>
+<p>The overlay is a temporary re-render; it does not change the chart on the page or modify the document.</p>
 <h2 id="usage-conventions">Usage Conventions</h2>
 <table>
 <thead>
@@ -1061,6 +1070,10 @@ sql: |
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Fullscreen viewing</td>
+<td>Available for Mermaid and ECharts; zoom, pan, rotate, and reset inside the overlay</td>
+</tr>
 <tr>
 <td>Theme</td>
 <td>Automatically follows light/dark mode; no configuration needed</td>
@@ -1137,7 +1150,7 @@ sql: |
     <script>
         var gitbook = gitbook || [];
         gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Chart Blocks","labels":["usermanual"],"created_date":"2026-10-18 22:00","updated_date":"2026-11-04 00:00","level":"8.7","depth":1,"next":{"title":"MDB Query Blocks","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"previous":{"title":"Legend Persistence","level":"8.6","depth":1,"path":"80-图谱与数据查询/05-图例配置持久化.md","ref":"80-图谱与数据查询/05-图例配置持久化.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"80-图谱与数据查询/06-图表块.md","mtime":"2026-11-02T14:24:12.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-02T14:30:48.537Z"},"basePath":"..","book":{"language":""}});
+            gitbook.page.hasChanged({"page":{"title":"Chart Blocks","labels":["usermanual"],"created_date":"2026-10-18 22:00","updated_date":"2026-11-10 00:40","level":"8.7","depth":1,"next":{"title":"MDB Query Blocks","level":"8.8","depth":1,"path":"80-图谱与数据查询/07-MDB查询块.md","ref":"80-图谱与数据查询/07-MDB查询块.md","articles":[]},"previous":{"title":"Legend Persistence","level":"8.6","depth":1,"path":"80-图谱与数据查询/05-图例配置持久化.md","ref":"80-图谱与数据查询/05-图例配置持久化.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"80-图谱与数据查询/06-图表块.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:47.607Z"},"basePath":"..","book":{"language":""}});
         });
     </script>
 </div>

@@ -7,7 +7,7 @@
 		<title>Backlog.md — Keep AI agents working in your repo, with every step reviewable</title>
 		<meta
 			name="description"
-			content="Backlog.md stores tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repository. Agents break down and execute the work, you approve at three checkpoints, and knowledge compounds into an LLM managed wiki. MIT licensed, local first."
+			content="Backlog.md stores tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repository. Agents break down and execute the work, you approve at three checkpoints, and knowledge compounds into an LLM managed wiki. MIT licensed, local first. DeepSeek Harness plugin available."
 		/>
 		<link rel="canonical" href="https://kuwork.github.io/Backlog.md/en/" />
 		<meta name="theme-color" content="#000000" />
@@ -20,7 +20,7 @@
 		<meta property="og:title" content="Backlog.md — Keep AI agents working in your repo, with every step reviewable" />
 		<meta
 			property="og:description"
-			content="Tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repo. Agents do the work, you approve at three checkpoints."
+			content="Tasks, acceptance criteria, implementation plans, and execution notes as Markdown files in your repo. Agents do the work, you approve at three checkpoints. DeepSeek Harness plugin available."
 		/>
 		<meta property="og:url" content="https://kuwork.github.io/Backlog.md/en/" />
 		<meta property="og:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
@@ -31,7 +31,7 @@
 		<meta name="twitter:title" content="Backlog.md — Keep AI agents working in your repo, with every step reviewable" />
 		<meta
 			name="twitter:description"
-			content="Turn agent work into tasks you can read, review, and trace. MIT licensed, and the data stays in your own repository."
+			content="Turn agent work into tasks you can read, review, and trace. MIT licensed, and the data stays in your own repository, with a DeepSeek Harness plugin."
 		/>
 		<meta name="twitter:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
 		<link rel="alternate" hreflang="en" href="https://kuwork.github.io/Backlog.md/en/" />
@@ -118,10 +118,19 @@
 
 				<div class="container hero-inner" data-hero-inner>
 					<div class="hero-copy">
-						<span class="eyebrow caption-4">
-							<span class="eyebrow-dot" aria-hidden="true"></span>
-							MIT licensed · data stays in your repo
-						</span>
+						<div class="hero-eyebrow-row">
+							<span class="eyebrow caption-4">
+								<span class="eyebrow-dot" aria-hidden="true"></span>
+								MIT licensed · data stays in your repo
+							</span>
+							<img
+								class="eyebrow-logo"
+								src="../assets/deepseek-harness.svg"
+								alt="DeepSeek Harness"
+								width="203"
+								height="26"
+							/>
+						</div>
 
 						<h1 class="heading-1 hero-heading" data-split style="margin: var(--sp-300) 0 0">
 							<span class="line">Keep AI agents working in your repo,</span>
@@ -938,6 +947,51 @@
 						<span class="pill">Terminal</span>
 						<span class="pill">Web interface</span>
 					</div>
+					<div class="harness-card" data-reveal>
+						<div class="harness-card-head">
+							<img
+								class="harness-logo"
+								src="../assets/deepseek-harness.svg"
+								alt="DeepSeek Harness"
+								width="187"
+								height="24"
+							/>
+							<span class="pill caption-1">DeepSeek Harness plugin</span>
+						</div>
+						<p class="body-3 muted">
+							Embed the Backlog.md board into DeepSeek Harness: a persistent sidebar entry, a dedicated
+							conversation tab, and per-workspace start and stop.
+						</p>
+						<div class="harness-copy" data-copy-scope>
+							<div
+								class="cmd harness-cmd"
+								id="harness-install-cmd"
+								data-copy-value="dsh plugin --profile web add dsh-backlog.md"
+							>
+								<code class="body-5 mono"
+									><span class="cmd-prompt">$</span>
+									<span>dsh plugin --profile web add dsh-backlog.md</span></code
+								>
+								<button
+									class="btn btn-secondary btn-slim button-sm"
+									type="button"
+									data-copy="#harness-install-cmd"
+									data-copied-label="Plugin command copied"
+									data-failed-label="Copy failed, select the command manually"
+								>
+									Copy
+								</button>
+							</div>
+							<span class="copy-state caption-4" data-copy-state role="status" aria-live="polite"></span>
+						</div>
+						<a
+							class="text-link body-5"
+							href="https://github.com/kuwork/DSH-Backlog.md"
+							target="_blank"
+							rel="noopener"
+							>View the plugin repo <span class="arrow" aria-hidden="true">→</span></a
+						>
+					</div>
 				</div>
 			</section>
 
@@ -1062,7 +1116,21 @@
 							</div>
 						</div>
 
-						<div class="faq-item">
+												<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-harness">
+									<span>How do I install the Backlog.md plugin in DeepSeek Harness?</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-harness">
+								<p>
+									Run <code>dsh plugin --profile web add dsh-backlog.md</code> in DeepSeek Harness, then refresh the page. The board appears in the sidebar and as a conversation tab; the plugin installs the <code>backlog</code> CLI on first launch.
+								</p>
+							</div>
+						</div>
+
+<div class="faq-item">
 							<h3>
 								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-4">
 									<span>Where is the task data stored?</span>
@@ -1345,6 +1413,17 @@
 						"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 					},
 					{
+						"@type": "SoftwareApplication",
+						"name": "dsh-backlog.md — Backlog.md plugin for DeepSeek Harness",
+						"applicationCategory": "DeveloperApplication",
+						"applicationSubCategory": "DeepSeek Harness plugin",
+						"operatingSystem": "macOS, Linux, Windows",
+						"url": "https://github.com/kuwork/DSH-Backlog.md",
+						"description": "Embed the Backlog.md board into DeepSeek Harness: a sidebar panel, a conversation tab, and per-workspace start and stop. Install: dsh plugin --profile web add dsh-backlog.md.",
+						"license": "https://opensource.org/licenses/MIT",
+						"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+					},
+					{
 						"@type": "FAQPage",
 						"mainEntity": [
 							{
@@ -1369,6 +1448,14 @@
 								"acceptedAnswer": {
 									"@type": "Answer",
 									"text": "Anything that can run a command or speak MCP, including Claude Code, Codex, Gemini CLI, Kiro, and Cursor. CLI instructions are the recommended path: the agent runs backlog instructions overview and gets the current workflow guide."
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "How do I install the Backlog.md plugin in DeepSeek Harness?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Run dsh plugin --profile web add dsh-backlog.md in DeepSeek Harness, then refresh the page. The board appears in the sidebar and as a conversation tab; the plugin installs the backlog CLI on first launch."
 								}
 							},
 							{

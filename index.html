@@ -7,7 +7,7 @@
 		<title>Backlog.md — 让 AI Agent 在你的代码仓库里持续工作</title>
 		<meta
 			name="description"
-			content="Backlog.md 把任务、验收标准、实施计划和执行记录存成仓库里的 Markdown 文件。AI 负责拆解与执行，你在三个关键节点审查批准，知识自动沉淀进 LLM Wiki。MIT 开源，本地离线，无需账号。"
+			content="Backlog.md 把任务、验收标准、实施计划和执行记录存成仓库里的 Markdown 文件。AI 负责拆解与执行，你在三个关键节点审查批准，知识自动沉淀进 LLM Wiki。MIT 开源，本地离线，无需账号。支持 DeepSeek Harness 插件。"
 		/>
 		<link rel="canonical" href="https://kuwork.github.io/Backlog.md/" />
 		<meta name="theme-color" content="#000000" />
@@ -20,7 +20,7 @@
 		<meta property="og:title" content="Backlog.md — 让 AI Agent 在你的代码仓库里持续工作" />
 		<meta
 			property="og:description"
-			content="任务、验收标准、实施计划与执行记录都是仓库里的 Markdown 文件。AI 拆解执行，人类审查批准，知识沉淀进 LLM Wiki。"
+			content="任务、验收标准、实施计划与执行记录都是仓库里的 Markdown 文件。AI 拆解执行，人类审查批准，知识沉淀进 LLM Wiki。一行命令装进 DeepSeek Harness。"
 		/>
 		<meta property="og:url" content="https://kuwork.github.io/Backlog.md/" />
 		<meta property="og:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
@@ -31,7 +31,7 @@
 		<meta name="twitter:title" content="Backlog.md — 让 AI Agent 在你的代码仓库里持续工作" />
 		<meta
 			name="twitter:description"
-			content="把 AI 的工作变成可以阅读、可以审查、可以追踪的任务。MIT 开源，数据留在你自己的仓库里。"
+			content="把 AI 的工作变成可以阅读、可以审查、可以追踪的任务。MIT 开源，数据留在你自己的仓库里，也能装进 DeepSeek Harness。"
 		/>
 		<meta name="twitter:image" content="https://kuwork.github.io/Backlog.md/assets/img/og-image.jpg" />
 		<link rel="alternate" hreflang="en" href="https://kuwork.github.io/Backlog.md/en/" />
@@ -125,10 +125,19 @@
 
 				<div class="container hero-inner" data-hero-inner>
 					<div class="hero-copy">
-						<span class="eyebrow caption-4">
-							<span class="eyebrow-dot" aria-hidden="true"></span>
-							MIT 开源 · 数据留在你的仓库
-						</span>
+						<div class="hero-eyebrow-row">
+							<span class="eyebrow caption-4">
+								<span class="eyebrow-dot" aria-hidden="true"></span>
+								MIT 开源 · 数据留在你的仓库
+							</span>
+							<img
+								class="eyebrow-logo"
+								src="assets/deepseek-harness.svg"
+								alt="DeepSeek Harness"
+								width="203"
+								height="26"
+							/>
+						</div>
 
 						<h1 class="heading-1 hero-heading" data-split style="margin: var(--sp-300) 0 0">
 							<span class="line">让 AI Agent 在你的仓库里</span>
@@ -934,6 +943,50 @@
 						<span class="pill">终端</span>
 						<span class="pill">Web 界面</span>
 					</div>
+					<div class="harness-card" data-reveal>
+						<div class="harness-card-head">
+							<img
+								class="harness-logo"
+								src="assets/deepseek-harness.svg"
+								alt="DeepSeek Harness"
+								width="187"
+								height="24"
+							/>
+							<span class="pill caption-1">DeepSeek Harness 插件</span>
+						</div>
+						<p class="body-3 muted">
+							把 Backlog.md 看板嵌进 DeepSeek Harness：侧边栏常驻入口，对话区独立标签页，按工作区启停。
+						</p>
+						<div class="harness-copy" data-copy-scope>
+							<div
+								class="cmd harness-cmd"
+								id="harness-install-cmd"
+								data-copy-value="dsh plugin --profile web add dsh-backlog.md"
+							>
+								<code class="body-5 mono"
+									><span class="cmd-prompt">$</span>
+									<span>dsh plugin --profile web add dsh-backlog.md</span></code
+								>
+								<button
+									class="btn btn-secondary btn-slim button-sm"
+									type="button"
+									data-copy="#harness-install-cmd"
+									data-copied-label="已复制插件安装命令"
+									data-failed-label="复制失败，请手动选择命令"
+								>
+									复制
+								</button>
+							</div>
+							<span class="copy-state caption-4" data-copy-state role="status" aria-live="polite"></span>
+						</div>
+						<a
+							class="text-link body-5"
+							href="https://github.com/kuwork/DSH-Backlog.md"
+							target="_blank"
+							rel="noopener"
+							>查看插件仓库 <span class="arrow" aria-hidden="true">→</span></a
+						>
+					</div>
 				</div>
 			</section>
 
@@ -1052,7 +1105,21 @@
 							</div>
 						</div>
 
-						<div class="faq-item">
+												<div class="faq-item">
+							<h3>
+								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-harness">
+									<span>如何在 DeepSeek Harness 中安装 Backlog.md 插件？</span>
+									<span class="faq-sign" aria-hidden="true"></span>
+								</button>
+							</h3>
+							<div class="faq-a body-3" id="faq-harness">
+								<p>
+									在 DeepSeek Harness 中运行 <code>dsh plugin --profile web add dsh-backlog.md</code>，刷新页面后即可在侧边栏和对话区看到 Backlog.md 看板。首次启动时插件会自动安装 <code>backlog</code> CLI。
+								</p>
+							</div>
+						</div>
+
+<div class="faq-item">
 							<h3>
 								<button class="faq-q title-2" type="button" data-faq-q aria-expanded="false" aria-controls="faq-4">
 									<span>任务数据存在哪里？</span>
@@ -1332,6 +1399,17 @@
 						"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 					},
 					{
+						"@type": "SoftwareApplication",
+						"name": "dsh-backlog.md — Backlog.md DeepSeek Harness 插件",
+						"applicationCategory": "DeveloperApplication",
+						"applicationSubCategory": "DeepSeek Harness plugin",
+						"operatingSystem": "macOS, Linux, Windows",
+						"url": "https://github.com/kuwork/DSH-Backlog.md",
+						"description": "把 Backlog.md 看板嵌入 DeepSeek Harness：侧边栏面板、对话区标签页，按工作区独立启停。安装命令：dsh plugin --profile web add dsh-backlog.md。",
+						"license": "https://opensource.org/licenses/MIT",
+						"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+					},
+					{
 						"@type": "FAQPage",
 						"mainEntity": [
 							{
@@ -1356,6 +1434,14 @@
 								"acceptedAnswer": {
 									"@type": "Answer",
 									"text": "任何能执行命令行或支持 MCP 的工具都可以，包括 Claude Code、Codex、Gemini CLI、Kiro 和 Cursor。推荐用 CLI 指令接入。"
+								}
+							},
+							{
+								"@type": "Question",
+								"name": "如何在 DeepSeek Harness 中安装 Backlog.md 插件？",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "在 DeepSeek Harness 中运行 dsh plugin --profile web add dsh-backlog.md，刷新页面后即可在侧边栏和对话区看到 Backlog.md 看板。首次启动时插件会自动安装 backlog CLI。"
 								}
 							},
 							{
