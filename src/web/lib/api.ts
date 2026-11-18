@@ -1228,6 +1228,19 @@ export class ApiClient {
 		return response.json();
 	}
 
+	async moveDocsFolder(sourcePath: string, targetParentPath: string): Promise<{ success: boolean; path: string }> {
+		const response = await fetch(`${API_BASE}/docs/folder`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ sourcePath, targetParentPath }),
+		});
+		if (!response.ok) {
+			const data = await response.json().catch(() => ({}));
+			throw new Error(data.error || "Failed to move docs folder");
+		}
+		return response.json();
+	}
+
 	async fetchWikiTree(): Promise<WikiTreeNode[]> {
 		const response = await fetch(`${API_BASE}/wiki/tree`);
 		if (!response.ok) {

@@ -124,6 +124,30 @@ describe("content-entity WebSocket publication", () => {
 		expect(messages).not.toContain("milestones-updated");
 	}, 20000);
 
+	it("publishes a document-scoped update when an empty docs folder moves", async () => {
+		await mkdir(join(core.filesystem.docsDir, "empty-source"), { recursive: true });
+		await mkdir(join(core.filesystem.docsDir, "destination"), { recursive: true });
+		const messages: string[] = [];
+		await openSocket(messages);
+		await settleStore();
+		messages.length = 0;
+
+		const response = await request("/api/docs/folder", {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ sourcePath: "empty-source", targetParentPath: "destination" }),
+		});
+		expect(response.ok).toBe(true);
+
+		await retry(
+			async () => {
+				if (!messages.includes("documents-updated")) throw new Error("The empty folder move was not published");
+			},
+			40,
+			250,
+		);
+	}, 20000);
+
 	it("publishes a decision-scoped update for a decisions file change", async () => {
 		const messages: string[] = [];
 		await openSocket(messages);

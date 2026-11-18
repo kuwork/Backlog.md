@@ -935,6 +935,7 @@ export class BacklogServer {
 					},
 					"/api/docs/folder": {
 						POST: async (req: Request) => await this.handleCreateDocsFolder(req),
+						PATCH: async (req: Request) => await this.handleMoveDocsFolder(req),
 					},
 					"/api/memos": {
 						GET: async (req: Request) => await this.handleListMemos(req),
@@ -2356,6 +2357,40 @@ export class BacklogServer {
 				return Response.json({ error: message }, { status: 409 });
 			}
 			console.error("Error creating docs folder:", error);
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
+	private async handleMoveDocsFolder(req: Request): Promise<Response> {
+		try {
+			const body = await req.json();
+			const sourcePath = typeof body?.sourcePath === "string" ? body.sourcePath.trim() : undefined;
+			const targetParentPath = typeof body?.targetParentPath === "string" ? body.targetParentPath : undefined;
+			if (!sourcePath || targetParentPath === undefined) {
+				return Response.json({ error: "Source and target parent paths are required" }, { status: 400 });
+			}
+
+			const movedPath = await this.core.filesystem.moveDocsFolder(sourcePath, targetParentPath);
+			this.broadcastDataUpdated("documents");
+			return Response.json({ success: true, path: movedPath });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to move docs folder";
+			if (
+				message.startsWith("Document path ") ||
+				message === "Invalid docs path" ||
+				message === "Cannot move a docs folder into itself or a descendant folder" ||
+				message === "Source is not a docs folder" ||
+				message === "Target is not a docs folder"
+			) {
+				return Response.json({ error: message }, { status: 400 });
+			}
+			if (message === "Docs folder not found" || message === "Target docs folder not found") {
+				return Response.json({ error: message }, { status: 404 });
+			}
+			if (message === "Docs folder already exists") {
+				return Response.json({ error: message }, { status: 409 });
+			}
+			console.error("Error moving docs folder:", error);
 			return Response.json({ error: message }, { status: 500 });
 		}
 	}

@@ -686,7 +686,7 @@ const DocActionDropdown = memo(function DocActionDropdown({
 }) {
 	const { t } = useI18n();
 	const [isOpen, setIsOpen] = useState(false);
-	const menuRef = useRef<HTMLDivElement>(null);
+	const menuRef = useRef<HTMLFieldSetElement>(null);
 
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
@@ -699,7 +699,12 @@ const DocActionDropdown = memo(function DocActionDropdown({
 	}, []);
 
 	return (
-		<div className="relative flex" ref={menuRef}>
+		<fieldset
+			className="relative flex m-0 min-w-0 border-0 p-0"
+			ref={menuRef}
+			aria-label={t.common.actions}
+			onMouseLeave={() => setIsOpen(false)}
+		>
 			<button
 				type="button"
 				onClick={(e) => {
@@ -741,18 +746,24 @@ const DocActionDropdown = memo(function DocActionDropdown({
 					)}
 				</div>
 			)}
-		</div>
+		</fieldset>
 	);
 });
 
 const DOC_DRAG_TYPE = "application/x-backlog-document";
+const DOCS_FOLDER_DRAG_TYPE = "application/x-backlog-docs-folder";
 
 interface DocDragPayload {
 	docId: string;
 	path: string;
 }
 
+interface DocsFolderDragPayload {
+	path: string;
+}
+
 const isDocDrag = (dataTransfer: DataTransfer) => Array.from(dataTransfer.types).includes(DOC_DRAG_TYPE);
+const isDocsFolderDrag = (dataTransfer: DataTransfer) => Array.from(dataTransfer.types).includes(DOCS_FOLDER_DRAG_TYPE);
 
 const readDocDragPayload = (dataTransfer: DataTransfer): DocDragPayload | null => {
 	try {
@@ -765,7 +776,23 @@ const readDocDragPayload = (dataTransfer: DataTransfer): DocDragPayload | null =
 	}
 };
 
-const DocumentDragHandle = () => (
+const readDocsFolderDragPayload = (dataTransfer: DataTransfer): DocsFolderDragPayload | null => {
+	try {
+		const payload = JSON.parse(dataTransfer.getData(DOCS_FOLDER_DRAG_TYPE)) as Partial<DocsFolderDragPayload>;
+		return typeof payload.path === "string" ? { path: payload.path } : null;
+	} catch {
+		return null;
+	}
+};
+
+const getDocsFolderParentPath = (path: string): string => path.split("/").slice(0, -1).join("/");
+
+const isValidDocsFolderDropTarget = (sourcePath: string, targetParentPath: string): boolean =>
+	getDocsFolderParentPath(sourcePath) !== targetParentPath &&
+	sourcePath !== targetParentPath &&
+	!targetParentPath.startsWith(`${sourcePath}/`);
+
+const DocsDragHandle = () => (
 	<svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
 		<circle cx="9" cy="6" r="1.5" />
 		<circle cx="15" cy="6" r="1.5" />
@@ -835,35 +862,54 @@ const DocTreeItem = memo(function DocTreeItem({
 		const hasChildren = (node.children || []).length > 0;
 
 		return (
-			<div className="group/directory">
-				<button
-					type="button"
+			<div>
+				<fieldset
 					data-docs-drop-target={node.path}
-					onClick={() => hasChildren && toggleExpanded()}
 					onDragOver={(event) => onDocDragOver(event, node.path)}
 					onDragLeave={onDocDragLeave}
 					onDrop={(event) => onDocDrop(event, node.path)}
-					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? "cursor-default" : ""} ${
+					className={`group/directory relative m-0 flex min-w-0 items-center rounded-lg border-0 p-0 transition-colors duration-200 ${
 						activeDropTarget === node.path ? "bg-blue-50 ring-2 ring-blue-400 dark:bg-blue-600/20" : ""
 					}`}
 				>
-					<span className="text-gray-400 dark:text-gray-500 w-4">
-						{hasChildren ? isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight /> : null}
-					</span>
-					<span className="text-gray-400 dark:text-gray-500">
-						<Icons.Folder />
-					</span>
-					<span className="truncate">{node.name}</span>
-					{fileCount > 0 && <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({fileCount})</span>}
-					<div className="ml-auto opacity-0 group-hover/directory:opacity-100 group-hover/directory:pointer-events-auto pointer-events-none transition-opacity duration-150">
+					<button
+						type="button"
+						onClick={() => hasChildren && toggleExpanded()}
+						className={`flex min-w-0 flex-1 items-center space-x-2 rounded-lg px-3 py-1.5 text-left text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${
+							!hasChildren ? "cursor-default" : ""
+						}`}
+					>
+						<span className="w-4 shrink-0 text-gray-400 dark:text-gray-500">
+							{hasChildren ? isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight /> : null}
+						</span>
+						<span className="shrink-0 text-gray-400 dark:text-gray-500">
+							<Icons.Folder />
+						</span>
+						<span className="min-w-0 truncate">{node.name}</span>
+						{fileCount > 0 && (
+							<span className="ml-1 shrink-0 text-xs text-gray-400 dark:text-gray-500">({fileCount})</span>
+						)}
+					</button>
+					<div className="pointer-events-none absolute right-1 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded bg-gray-50/95 p-0.5 opacity-0 shadow-sm transition-opacity duration-150 group-hover/directory:pointer-events-auto group-hover/directory:opacity-100 dark:bg-gray-900/95">
 						<DocActionDropdown
 							parentPath={node.path}
 							isFile={false}
 							onCreateFile={onCreateFile}
 							onCreateFolder={onCreateFolder}
 						/>
+						<button
+							type="button"
+							draggable
+							onDragStart={(event) => onDocDragStart(event, node)}
+							onDragEnd={onDocDragEnd}
+							title={t.nav.dragFolder}
+							aria-label={`${t.nav.dragFolder}: ${node.name}`}
+							className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+						>
+							<DocsDragHandle />
+						</button>
 					</div>
-				</button>
+				</fieldset>
 				{isExpanded && node.children && (
 					<div className="ml-4 space-y-1">
 						{node.children.map((child) => (
@@ -916,7 +962,7 @@ const DocTreeItem = memo(function DocTreeItem({
 				aria-label={`${t.nav.dragDocument}: ${docTitle}`}
 				className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded bg-gray-50/95 p-1 text-gray-400 opacity-0 shadow-sm transition-opacity duration-150 hover:bg-gray-200 hover:text-gray-600 focus:opacity-100 focus:pointer-events-auto group-hover/file:opacity-100 group-hover/file:pointer-events-auto pointer-events-none dark:bg-gray-900/95 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
 			>
-				<DocumentDragHandle />
+				<DocsDragHandle />
 			</button>
 		</div>
 	);
@@ -976,6 +1022,7 @@ const SideNavigation = memo(function SideNavigation({
 	const [docsSortColumn, setDocsSortColumn] = useState<DocsSortColumn>("name");
 	const [docsSortDirection, setDocsSortDirection] = useState<SortDirection>("asc");
 	const [activeDocsDropTarget, setActiveDocsDropTarget] = useState<string | null>(null);
+	const [draggedDocsFolderPath, setDraggedDocsFolderPath] = useState<string | null>(null);
 	const [docsMoveError, setDocsMoveError] = useState<string | null>(null);
 	const [wikiSortColumn, setWikiSortColumn] = useState<WikiSortColumn>("title");
 	const [wikiSortDirection, setWikiSortDirection] = useState<SortDirection>("asc");
@@ -1067,25 +1114,41 @@ const SideNavigation = memo(function SideNavigation({
 	}, [newDocsFolderName, createDocsFolderParentPath, onRefreshData, t.nav.failedToCreate]);
 
 	const handleDocDragStart = useCallback((event: React.DragEvent<HTMLButtonElement>, node: DocsTreeNode) => {
-		if (!node.docId) return;
+		if (node.type === "file" && !node.docId) return;
 		event.stopPropagation();
 		event.dataTransfer.effectAllowed = "move";
-		event.dataTransfer.setData(DOC_DRAG_TYPE, JSON.stringify({ docId: node.docId, path: node.path }));
+		if (node.type === "directory") {
+			event.dataTransfer.setData(DOCS_FOLDER_DRAG_TYPE, JSON.stringify({ path: node.path }));
+			setDraggedDocsFolderPath(node.path);
+		} else {
+			event.dataTransfer.setData(DOC_DRAG_TYPE, JSON.stringify({ docId: node.docId, path: node.path }));
+			setDraggedDocsFolderPath(null);
+		}
 		setActiveDocsDropTarget(null);
 		setDocsMoveError(null);
 	}, []);
 
 	const handleDocDragEnd = useCallback(() => {
 		setActiveDocsDropTarget(null);
+		setDraggedDocsFolderPath(null);
 	}, []);
 
-	const handleDocDragOver = useCallback((event: React.DragEvent<HTMLElement>, targetPath: string) => {
-		if (!isDocDrag(event.dataTransfer)) return;
-		event.preventDefault();
-		event.stopPropagation();
-		event.dataTransfer.dropEffect = "move";
-		setActiveDocsDropTarget((current) => (current === targetPath ? current : targetPath));
-	}, []);
+	const handleDocDragOver = useCallback(
+		(event: React.DragEvent<HTMLElement>, targetPath: string) => {
+			const folderDrag = isDocsFolderDrag(event.dataTransfer);
+			if (!isDocDrag(event.dataTransfer) && !folderDrag) return;
+			event.stopPropagation();
+			if (folderDrag && (!draggedDocsFolderPath || !isValidDocsFolderDropTarget(draggedDocsFolderPath, targetPath))) {
+				event.dataTransfer.dropEffect = "none";
+				setActiveDocsDropTarget(null);
+				return;
+			}
+			event.preventDefault();
+			event.dataTransfer.dropEffect = "move";
+			setActiveDocsDropTarget((current) => (current === targetPath ? current : targetPath));
+		},
+		[draggedDocsFolderPath],
+	);
 
 	const handleDocDragLeave = useCallback((event: React.DragEvent<HTMLElement>) => {
 		if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget as Node)) return;
@@ -1094,10 +1157,25 @@ const SideNavigation = memo(function SideNavigation({
 
 	const handleDocDrop = useCallback(
 		async (event: React.DragEvent<HTMLElement>, targetPath: string) => {
-			if (!isDocDrag(event.dataTransfer)) return;
+			const folderDrag = isDocsFolderDrag(event.dataTransfer);
+			if (!isDocDrag(event.dataTransfer) && !folderDrag) return;
 			event.preventDefault();
 			event.stopPropagation();
 			setActiveDocsDropTarget(null);
+			setDraggedDocsFolderPath(null);
+
+			if (folderDrag) {
+				const payload = readDocsFolderDragPayload(event.dataTransfer);
+				if (!payload || !isValidDocsFolderDropTarget(payload.path, targetPath)) return;
+				setDocsMoveError(null);
+				try {
+					await apiClient.moveDocsFolder(payload.path, targetPath);
+					await onRefreshData();
+				} catch (error) {
+					setDocsMoveError(error instanceof Error ? error.message : t.nav.failedToMoveFolder);
+				}
+				return;
+			}
 
 			const payload = readDocDragPayload(event.dataTransfer);
 			if (!payload || getDocumentSubPathFromRelativePath(payload.path) === targetPath) return;
@@ -1111,7 +1189,7 @@ const SideNavigation = memo(function SideNavigation({
 				setDocsMoveError(error instanceof Error ? error.message : t.nav.failedToMoveDocument);
 			}
 		},
-		[onRefreshData, t.nav.failedToMoveDocument],
+		[onRefreshData, t.nav.failedToMoveDocument, t.nav.failedToMoveFolder],
 	);
 
 	const handleDocsSortChange = (column: DocsSortColumn) => {
@@ -1722,9 +1800,9 @@ const SideNavigation = memo(function SideNavigation({
 											<Icons.Document />
 										</span>
 										<fieldset
-											aria-label={t.nav.moveDocumentToRoot}
+											aria-label={draggedDocsFolderPath ? t.nav.moveFolderToRoot : t.nav.moveDocumentToRoot}
 											data-docs-drop-target=""
-											title={t.nav.moveDocumentToRoot}
+											title={draggedDocsFolderPath ? t.nav.moveFolderToRoot : t.nav.moveDocumentToRoot}
 											onDragOver={(event) => handleDocDragOver(event, "")}
 											onDragLeave={handleDocDragLeave}
 											onDrop={(event) => handleDocDrop(event, "")}

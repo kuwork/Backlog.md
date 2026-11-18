@@ -2990,6 +2990,66 @@ export class FileSystem {
 		return normalizedPath;
 	}
 
+	async moveDocsFolder(sourcePath: string, targetParentPath: string): Promise<string> {
+		const docsDir = await this.getDocsDir();
+		const normalizedSource = normalizeDocumentRelativePath(sourcePath);
+		const normalizedTargetParent = normalizeDocumentSubPath(targetParentPath);
+		const sourceName = normalizedSource.split("/").pop() ?? "";
+		const sourceDir = resolve(join(docsDir, ...normalizedSource.split("/")));
+		const targetParentDir = normalizedTargetParent
+			? resolve(join(docsDir, ...normalizedTargetParent.split("/")))
+			: resolve(docsDir);
+		const targetDir = resolve(join(targetParentDir, sourceName));
+		const isInsideDocs = (path: string): boolean => {
+			const rel = relative(docsDir, path);
+			return !rel.startsWith("..") && !isAbsolute(rel);
+		};
+		if (!isInsideDocs(sourceDir) || !isInsideDocs(targetParentDir) || !isInsideDocs(targetDir)) {
+			throw new Error("Invalid docs path");
+		}
+
+		let sourceStats: Awaited<ReturnType<typeof stat>>;
+		try {
+			sourceStats = await stat(sourceDir);
+		} catch {
+			throw new Error("Docs folder not found");
+		}
+		if (!sourceStats.isDirectory()) {
+			throw new Error("Source is not a docs folder");
+		}
+
+		if (dirname(sourceDir) === targetParentDir) {
+			return normalizedSource;
+		}
+		const targetRelativeToSource = relative(sourceDir, targetParentDir);
+		if (
+			targetRelativeToSource === "" ||
+			(!targetRelativeToSource.startsWith("..") && !isAbsolute(targetRelativeToSource))
+		) {
+			throw new Error("Cannot move a docs folder into itself or a descendant folder");
+		}
+
+		let targetParentStats: Awaited<ReturnType<typeof stat>>;
+		try {
+			targetParentStats = await stat(targetParentDir);
+		} catch {
+			throw new Error("Target docs folder not found");
+		}
+		if (!targetParentStats.isDirectory()) {
+			throw new Error("Target is not a docs folder");
+		}
+
+		try {
+			await stat(targetDir);
+			throw new Error("Docs folder already exists");
+		} catch (error) {
+			if (error instanceof Error && error.message === "Docs folder already exists") throw error;
+		}
+
+		await rename(sourceDir, targetDir);
+		return normalizedTargetParent ? `${normalizedTargetParent}/${sourceName}` : sourceName;
+	}
+
 	async readWikiPage(pagePath: string, rootDir?: string): Promise<WikiPage> {
 		const normalizedPath = pagePath.endsWith(".md") ? pagePath : `${pagePath}.md`;
 		const effectiveRoot = rootDir ? resolve(rootDir) : resolve(join(this.resolvedBacklogDir, "wiki"));
