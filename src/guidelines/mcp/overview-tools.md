@@ -56,10 +56,12 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `task_edit` also supports acceptance criteria operations (`acceptanceCriteriaClear`, `acceptanceCriteriaAdd/Remove/Check/Uncheck`) and task-level Definition of Done operations (`definitionOfDoneAdd/Remove/Check/Uncheck`). For large acceptance-criteria replacements, clear first with `acceptanceCriteriaClear`, then add the replacement list with `acceptanceCriteriaAdd` in a second call.
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters
 - `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_remove`, `milestone_archive` — for details read the `milestones` guide via `get_backlog_instructions`
-- `document_list`, `document_view`, `document_create`, `document_update`, `document_search`
+- `document_list`, `document_view`, `document_create`, `document_update`, `document_delete`, `document_folder_delete`, `document_search`
 - `document_create` and `document_update` support docs-directory-relative `path` values such as `guides/setup`; absolute paths and `..` traversal are rejected
+- `document_delete` removes one document by id; `document_folder_delete` recursively removes a docs folder and everything beneath it. Both are destructive and resolve targets through `document_list` first.
 - `decision_list` lists decisions with optional `status` (exact, case-insensitive) and `search` (substring over id/title) filtering plus `offset`/`limit` paging; it returns the same `total`/`hasMore` envelope as the other list tools so a caller can tell whether the list is complete
 - `decision_update` updates a decision's status and/or body by id (`status` alone changes only the status; `content` replaces the body and `appendContent` appends to it); for the full decision workflow read the `decisions` guide via `get_backlog_instructions`
+- `decision_delete` permanently removes one decision by id; decisions are flat and have no folder deletion
 - `task_list`, `task_search`, `document_list`, `document_search`, `milestone_list`, `memo_list`, and `decision_list` all accept `offset` (0-based skip, default 0) and `limit` (page size; omit or 0 for the whole list). Each returns a structured envelope `{ items, total, offset, limit, hasMore }` and appends a `Showing X-Y of N items` hint to its text, so an agent can paginate without guessing whether more rows exist.
 - `memo_create`, `memo_list`, `memo_view`, `memo_update`, `memo_delete` — quick-capture notes with `YYYYMMDD-N` IDs; for the full memo workflow read the `memos` guide via `get_backlog_instructions`
 - `definition_of_done_defaults_get`, `definition_of_done_defaults_upsert`

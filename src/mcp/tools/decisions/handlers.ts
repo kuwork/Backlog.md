@@ -5,6 +5,10 @@ import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
 import { buildListResult, selectListPage } from "../../utils/list-page.ts";
 
+export type DecisionDeleteArgs = {
+	id: string;
+};
+
 export type DecisionUpdateArgs = {
 	id: string;
 	content?: string;
@@ -28,6 +32,16 @@ export class DecisionHandlers {
 			throw new BacklogToolError(`Decision not found: ${id}`, "DECISION_NOT_FOUND");
 		}
 		return decision;
+	}
+
+	async deleteDecision(args: DecisionDeleteArgs): Promise<CallToolResult> {
+		const deleted = await this.core.filesystem.deleteDecision(args.id);
+		if (!deleted) {
+			throw new BacklogToolError(`Decision not found: ${args.id}`, "DECISION_NOT_FOUND");
+		}
+		return {
+			content: [{ type: "text", text: `Decision deleted: ${args.id}` }],
+		};
 	}
 
 	async updateDecision(args: DecisionUpdateArgs): Promise<CallToolResult> {

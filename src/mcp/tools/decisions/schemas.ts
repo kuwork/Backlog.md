@@ -1,5 +1,18 @@
 import type { JsonSchema } from "../../validation/validators.ts";
 
+export const decisionDeleteSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		id: {
+			type: "string",
+			minLength: 1,
+			maxLength: 100,
+		},
+	},
+	required: ["id"],
+	additionalProperties: false,
+};
+
 export const decisionUpdateSchema: JsonSchema = {
 	type: "object",
 	properties: {

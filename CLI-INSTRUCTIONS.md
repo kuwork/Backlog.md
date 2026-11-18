@@ -41,6 +41,7 @@ Values live in the project's config file (`backlog/config.yml`, or `backlog.conf
 - Use `backlog doc create "New Guide" -p guides` to create a document in a docs subdirectory. The created output includes the persisted docs-relative file path, such as `backlog/docs/guides/doc-1 - New-Guide.md`.
 - Use `backlog doc update doc-1 --content "Updated markdown"` to update document content. Add `--title`, `-t/--type`, `--tags`, or `-p/--path` to update metadata or move the document while preserving omitted fields.
 - Use `backlog doc search "query"` for scoped document search with plain text output that includes document IDs and follow-up `backlog doc view <docId>` commands. Use `--limit <number>` to cap results.
+- Use `backlog doc delete doc-1` to remove a document. Use `backlog doc folder delete guides/setup` to remove a folder and every document beneath it; the docs root and paths containing `..` are rejected. Deletion is permanent, so confirm the target before running the command.
 - Document paths are always relative to the docs directory. Absolute paths and traversal segments such as `..` are rejected.
 
 | Action      | Example                                              |
@@ -53,6 +54,8 @@ Values live in the project's config file (`backlog/config.yml`, or `backlog.conf
 | List docs | `backlog doc list` |
 | Search docs | `backlog doc search "architecture" --limit 5` |
 | View doc | `backlog doc view doc-1` |
+| Delete doc | `backlog doc delete doc-1` |
+| Delete docs folder | `backlog doc folder delete guides/setup` |
 
 ## Task Management
 
@@ -342,6 +345,7 @@ To keep the Web UI running in the background with auto-start on boot, see [Runni
 | View a decision | `backlog decision view decision-1 --plain` |
 | Update status | `backlog decision update decision-1 --status accepted` |
 | Append rationale | `backlog decision update decision-1 --append-content "Reversibility: ..."` |
+| Delete decision | `backlog decision delete decision-1` |
 
 ## Memos
 

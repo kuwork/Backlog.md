@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { join } from "node:path";
 import { $ } from "bun";
+import { serializeDecision } from "../markdown/serializer.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerDecisionTools } from "../mcp/tools/decisions/index.ts";
+import type { Decision } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 // Helper to extract text from MCP content (handles union types)
@@ -111,6 +114,55 @@ describe("MCP decision tools", () => {
 
 		expect(result.isError).toBe(true);
 		expect(getText(result.content)).toContain("Decision not found");
+	});
+
+	it("decision_delete removes a decision and reports not-found afterwards", async () => {
+		await mcpServer.createDecisionWithTitle("Adopt Bun");
+
+		const deleteResult = await mcpServer.testInterface.callTool({
+			params: { name: "decision_delete", arguments: { id: "decision-1" } },
+		});
+		expect(deleteResult.isError).toBeFalsy();
+		expect(getText(deleteResult.content)).toContain("Decision deleted: decision-1");
+
+		const updateResult = await mcpServer.testInterface.callTool({
+			params: { name: "decision_update", arguments: { id: "decision-1", status: "accepted" } },
+		});
+		expect(updateResult.isError).toBe(true);
+		expect((updateResult.structuredContent as { code?: string }).code).toBe("DECISION_NOT_FOUND");
+	});
+
+	it("decision_delete reports DECISION_NOT_FOUND for a missing id", async () => {
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "decision_delete", arguments: { id: "decision-99" } },
+		});
+		expect(result.isError).toBe(true);
+		expect((result.structuredContent as { code?: string }).code).toBe("DECISION_NOT_FOUND");
+	});
+
+	it("decision_delete reports AMBIGUOUS_ID when equivalent IDs collide", async () => {
+		await mcpServer.createDecisionWithTitle("First Choice");
+		const decision: Decision = {
+			id: "decision-01",
+			title: "Second Choice",
+			date: "2026-08-01 00:00",
+			status: "proposed",
+			context: "",
+			decision: "",
+			consequences: "",
+			alternatives: "",
+			rawContent: "",
+		};
+		await Bun.write(
+			join(mcpServer.filesystem.decisionsDir, "decision-01 - Second-Choice.md"),
+			serializeDecision(decision),
+		);
+
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "decision_delete", arguments: { id: "decision-1" } },
+		});
+		expect(result.isError).toBe(true);
+		expect((result.structuredContent as { code?: string }).code).toBe("AMBIGUOUS_ID");
 	});
 
 	describe("decision_list (BACK-742)", () => {

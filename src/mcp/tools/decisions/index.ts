@@ -1,9 +1,9 @@
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
-import type { DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
+import type { DecisionDeleteArgs, DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
 import { DecisionHandlers } from "./handlers.ts";
-import { decisionListSchema, decisionUpdateSchema } from "./schemas.ts";
+import { decisionDeleteSchema, decisionListSchema, decisionUpdateSchema } from "./schemas.ts";
 
 export function registerDecisionTools(server: McpServer): void {
 	const handlers = new DecisionHandlers(server);
@@ -19,6 +19,17 @@ export function registerDecisionTools(server: McpServer): void {
 		async (input) => handlers.listDecisions(input as DecisionListArgs),
 	);
 
+	const deleteDecisionTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "decision_delete",
+			description: "Delete a Backlog.md decision by id",
+			inputSchema: decisionDeleteSchema,
+			annotations: { title: "Delete Decision", destructiveHint: true },
+		},
+		decisionDeleteSchema,
+		async (input) => handlers.deleteDecision(input as DecisionDeleteArgs),
+	);
+
 	const updateDecisionTool: McpToolHandler = createSimpleValidatedTool(
 		{
 			name: "decision_update",
@@ -31,8 +42,9 @@ export function registerDecisionTools(server: McpServer): void {
 	);
 
 	server.addTool(listDecisionTool);
+	server.addTool(deleteDecisionTool);
 	server.addTool(updateDecisionTool);
 }
 
-export type { DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
-export { decisionListSchema, decisionUpdateSchema } from "./schemas.ts";
+export type { DecisionDeleteArgs, DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
+export { decisionDeleteSchema, decisionListSchema, decisionUpdateSchema } from "./schemas.ts";

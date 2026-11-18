@@ -68,6 +68,8 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 - `document_create` — create a document with title, content, optional type/tags, and optional docs-directory-relative path
 - `document_update` — update document content, append content blocks, optional title/type/tags, and optional docs-directory-relative path
 - `document_search` — search documents using the shared fuzzy index
+- `document_delete` — permanently remove one document by id
+- `document_folder_delete` — recursively remove a docs folder and every document beneath it; the docs root and `..` traversal are rejected
 - `task_create` — create new tasks with description and acceptance criteria; DoD fields are for **exceptional** task-level overrides only (`definitionOfDoneAdd`, `disableDefinitionOfDoneDefaults`)
 - `task_edit` — update task metadata, status, description (`description` or `descriptionAppend`), plan, notes, comments (`commentsAppend` with optional `commentAuthor`; `commentRemove` by 1-based index or `commentClear` for all), final summary, acceptance criteria, task-level Definition of Done (`definitionOfDoneAdd/Remove/Check/Uncheck`) for **exceptional** per-task updates, and dependencies
 - DoD is not acceptance criteria: acceptance criteria define scope/behavior, while DoD tracks completion hygiene
@@ -152,6 +154,7 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 - `task_complete` — move a Done task to the completed folder (cleanup, not finalization)
 - `milestone_list`, `milestone_add`, `milestone_edit`, `milestone_remove`, `milestone_archive` — milestone management
 - `decision_list` — list decisions with optional `status` (exact, case-insensitive) and `search` (substring over id/title) filtering plus `limit`/`offset` paging
+- `decision_delete` — permanently remove one decision by id; decisions are flat and have no folder deletion
 - `definition_of_done_defaults_get` / `definition_of_done_defaults_upsert` — project-level DoD defaults
 
 ### List Paging

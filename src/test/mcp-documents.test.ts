@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
@@ -331,6 +332,81 @@ describe("MCP document tools", () => {
 		expect(structured.code).toBe("AMBIGUOUS_ID");
 		expect(structured.details?.candidates).toHaveLength(2);
 		expect(getText(result.content)).toContain("ambiguous");
+	});
+
+	it("document_delete removes a document and reports not-found afterwards", async () => {
+		await mcpServer.testInterface.callTool({
+			params: { name: "document_create", arguments: { title: "To Be Deleted", content: "Body" } },
+		});
+
+		const deleteResult = await mcpServer.testInterface.callTool({
+			params: { name: "document_delete", arguments: { id: "doc-1" } },
+		});
+		expect(deleteResult.isError).toBeFalsy();
+		expect(getText(deleteResult.content)).toContain("Document deleted: doc-1");
+
+		const viewResult = await mcpServer.testInterface.callTool({
+			params: { name: "document_view", arguments: { id: "doc-1" } },
+		});
+		expect(viewResult.isError).toBe(true);
+		expect((viewResult.structuredContent as { code?: string }).code).toBe("DOCUMENT_NOT_FOUND");
+	});
+
+	it("document_delete reports DOCUMENT_NOT_FOUND for a missing id", async () => {
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "document_delete", arguments: { id: "doc-99" } },
+		});
+		expect(result.isError).toBe(true);
+		expect((result.structuredContent as { code?: string }).code).toBe("DOCUMENT_NOT_FOUND");
+	});
+
+	it("document_delete reports AMBIGUOUS_ID when equivalent IDs collide", async () => {
+		await mcpServer.testInterface.callTool({
+			params: { name: "document_create", arguments: { title: "Alpha", content: "Body" } },
+		});
+		const filePath = join(mcpServer.filesystem.docsDir, "doc-01 - Beta.md");
+		await Bun.write(
+			filePath,
+			"---\nid: doc-01\ntitle: Beta\ntype: other\ncreated_date: 2026-08-01 00:00\n---\n\nBeta body\n",
+		);
+
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "document_delete", arguments: { id: "doc-1" } },
+		});
+		expect(result.isError).toBe(true);
+		expect((result.structuredContent as { code?: string }).code).toBe("AMBIGUOUS_ID");
+	});
+
+	it("document_folder_delete removes a folder and every document beneath it", async () => {
+		await mcpServer.testInterface.callTool({
+			params: {
+				name: "document_create",
+				arguments: { title: "Setup", content: "Body", path: "guides/setup" },
+			},
+		});
+
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "document_folder_delete", arguments: { path: "guides" } },
+		});
+		expect(result.isError).toBeFalsy();
+		expect(getText(result.content)).toContain("Docs folder deleted: guides");
+		expect(existsSync(join(mcpServer.filesystem.docsDir, "guides"))).toBe(false);
+	});
+
+	it("document_folder_delete rejects traversal paths", async () => {
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "document_folder_delete", arguments: { path: "../decisions" } },
+		});
+		expect(result.isError).toBe(true);
+		expect((result.structuredContent as { code?: string }).code).toBe("VALIDATION_ERROR");
+	});
+
+	it("document_folder_delete reports FOLDER_NOT_FOUND for a missing folder", async () => {
+		const result = await mcpServer.testInterface.callTool({
+			params: { name: "document_folder_delete", arguments: { path: "absent" } },
+		});
+		expect(result.isError).toBe(true);
+		expect((result.structuredContent as { code?: string }).code).toBe("FOLDER_NOT_FOUND");
 	});
 
 	describe("document list paging envelope (BACK-742)", () => {

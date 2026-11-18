@@ -38,6 +38,32 @@ export const documentViewSchema: JsonSchema = {
 	additionalProperties: false,
 };
 
+export const documentDeleteSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		id: {
+			type: "string",
+			minLength: 1,
+			maxLength: 100,
+		},
+	},
+	required: ["id"],
+	additionalProperties: false,
+};
+
+export const documentFolderDeleteSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		path: {
+			type: "string",
+			minLength: 1,
+			maxLength: 300,
+		},
+	},
+	required: ["path"],
+	additionalProperties: false,
+};
+
 export const documentCreateSchema: JsonSchema = {
 	type: "object",
 	properties: {

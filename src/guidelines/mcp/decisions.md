@@ -10,8 +10,9 @@ Always use Backlog.md interfaces to create, list and update decisions so IDs, fr
 |--------|------|
 | List decisions | `decision_list` |
 | Update a decision | `decision_update` |
+| Delete a decision | `decision_delete` |
 
-Creating and viewing decisions are done through the CLI (`backlog decision create`, `backlog decision view`) or the `decisions` workflow guide. Listing decisions **is** exposed over MCP via `decision_list`, and `decision_update` records the outcome (status) of a decision an agent is implementing.
+Creating and viewing decisions are done through the CLI (`backlog decision create`, `backlog decision view`) or the `decisions` workflow guide. Listing decisions **is** exposed over MCP via `decision_list`, `decision_update` records the outcome (status) of a decision an agent is implementing, and `decision_delete` permanently removes one decision by id. A missing id returns `DECISION_NOT_FOUND` and colliding equivalent ids return `AMBIGUOUS_ID`. Decisions have no folder concept, so only single-file deletion is available.
 
 ### Listing Decisions
 

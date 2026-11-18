@@ -888,7 +888,7 @@ Use Backlog.md public interfaces for document creation and updates so IDs, front
 
 #### CLI Usage
 
-The CLI supports creating, updating, listing, and viewing documents.
+The CLI supports creating, updating, listing, viewing, and deleting documents.
 
 ```bash
 # Create a new doc (saved under backlog/docs/ by default)
@@ -912,12 +912,19 @@ backlog doc list
 # View a specific doc (--plain prints raw content without the interactive viewer)
 backlog doc view doc-1
 backlog doc view doc-1 --plain
+
+# Delete a document permanently
+backlog doc delete doc-1
+
+# Delete a docs folder and every document beneath it
+backlog doc folder delete guides/setup
 ```
 
 #### MCP / API Usage
 
 - Use `document_create` to create documents with title, content, optional type/tags, and optional docs-directory-relative path.
 - Use `document_update` to update document content, title, type, tags, or path while preserving document metadata.
+- Use `document_delete` to remove one document and `document_folder_delete` to remove a docs folder recursively. Both are destructive; resolve the target with `document_list` first.
 - Document responses include the persisted docs-relative file path so agents can reference the created file without scanning source internals.
 
 #### Key Rules

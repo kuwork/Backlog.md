@@ -5215,14 +5215,14 @@ addListWindowOptions(docSearchCommand).action(async (query: string, options) => 
 	cleanup();
 });
 
-/** Suggests ready-to-run doc view references so an ambiguous ID needs no rename to inspect files. */
-function printDocumentViewHints(candidates: readonly string[]): void {
+/** Suggests ready-to-run doc references so an ambiguous ID needs no rename. */
+function printDocumentReferenceHints(candidates: readonly string[], command: "view" | "delete"): void {
 	const suggestions = documentReferenceSuggestions(candidates);
 	if (suggestions.length === 0) return;
-	console.error("Hint: view one file directly without renaming:");
+	console.error(`Hint: ${command} one file directly without renaming:`);
 	for (const suggestion of suggestions) {
 		const reference = /\s/.test(suggestion) ? `"${suggestion}"` : suggestion;
-		console.error(`  backlog doc view ${reference}`);
+		console.error(`  backlog doc ${command} ${reference}`);
 	}
 }
 // Document view command
@@ -5261,11 +5261,74 @@ addHelpSchema(docCmd.command("view <docId>"), {
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {
 				console.error(error.message);
-				printDocumentViewHints(error.candidates);
+				printDocumentReferenceHints(error.candidates, "view");
 				process.exitCode = 1;
 				return;
 			}
 			console.error(`Document ${docId} not found.`);
+		}
+	});
+
+addHelpSchema(docCmd.command("delete <docId>"), {
+	required: [
+		{ name: "docId", type: "String", description: "Document ID, code-name short path, title, or full filename" },
+	],
+	optional: [],
+	writes: "Removes the document file from the configured docs directory",
+	output: "Deleted document ID",
+	examples: ["backlog doc delete doc-1", 'backlog doc delete "guides/doc-2 - Setup.md"'],
+})
+	.description("delete a document")
+	.action(async (docId: string) => {
+		const cwd = await requireProjectRoot();
+		const core = new Core(cwd);
+		try {
+			const deleted = await core.filesystem.deleteDocument(docId);
+			if (!deleted) {
+				console.error(`Document ${docId} not found.`);
+				process.exitCode = 1;
+				return;
+			}
+			console.log(`Deleted document ${docId}`);
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				console.error(error.message);
+				printDocumentReferenceHints(error.candidates, "delete");
+				process.exitCode = 1;
+				return;
+			}
+			throw error;
+		}
+	});
+
+const docFolderCmd = docCmd.command("folder").description("manage docs folders");
+
+addHelpSchema(docFolderCmd.command("delete <path>"), {
+	required: [{ name: "path", type: "String", description: "Docs-relative folder path" }],
+	optional: [],
+	writes: "Recursively removes the folder and every document beneath it",
+	output: "Deleted folder path",
+	examples: ["backlog doc folder delete guides", "backlog doc folder delete guides/setup"],
+})
+	.description("delete a docs folder and all files beneath it")
+	.action(async (folderPath: string) => {
+		const cwd = await requireProjectRoot();
+		const core = new Core(cwd);
+		try {
+			const deleted = await core.filesystem.deleteDocsFolder(folderPath);
+			if (!deleted) {
+				console.error(`Docs folder ${folderPath} not found or not a deletable folder.`);
+				process.exitCode = 1;
+				return;
+			}
+			console.log(`Deleted docs folder ${folderPath}`);
+		} catch (error) {
+			if (error instanceof Error) {
+				console.error(`Cannot delete docs folder ${folderPath}: ${error.message}`);
+				process.exitCode = 1;
+				return;
+			}
+			throw error;
 		}
 	});
 
@@ -5497,6 +5560,35 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 			status: hasStatus ? String(options.status) : undefined,
 		});
 		console.log(`Updated decision ${existingDecision.id}`);
+	});
+
+addHelpSchema(decisionCmd.command("delete <decisionId>"), {
+	required: [{ name: "decisionId", type: "Decision ID", description: "Decision to delete" }],
+	optional: [],
+	writes: "Removes the decision file from the configured decisions directory",
+	output: "Deleted decision ID",
+	examples: ["backlog decision delete decision-1", 'backlog decision delete "decision-2 - Use PostgreSQL.md"'],
+})
+	.description("delete a decision")
+	.action(async (decisionId: string) => {
+		const cwd = await requireProjectRoot();
+		const core = new Core(cwd);
+		try {
+			const deleted = await core.filesystem.deleteDecision(decisionId);
+			if (!deleted) {
+				console.error(`Decision ${decisionId} not found.`);
+				process.exitCode = 1;
+				return;
+			}
+			console.log(`Deleted decision ${decisionId}`);
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				console.error(error.message);
+				process.exitCode = 1;
+				return;
+			}
+			throw error;
+		}
 	});
 
 // Memo command group: throwaway notes. Deliberately not routed through the doc channel - memo ids

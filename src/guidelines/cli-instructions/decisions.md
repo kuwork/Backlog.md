@@ -12,6 +12,11 @@ Always use Backlog.md CLI commands to create and list decisions so IDs, frontmat
 | List decisions | `backlog decision list [--plain] [--json]` |
 | View a decision | `backlog decision view <decisionId> [--plain]` |
 | Update a decision | `backlog decision update <decisionId> [--content "..."] [--append-content "..."] [--status <status>]` |
+| Delete a decision | `backlog decision delete <decisionId>` |
+
+### Deleting Decisions
+
+`backlog decision delete <decisionId>` permanently removes one decision file. A missing id exits with code 1 and an explicit not-found message. When equivalent ids collide, the command fails with an ambiguity error; use the exact filename from `backlog decision list` to select one. Decisions have no folder concept, so only single-file deletion is available.
 
 ### Creating Decisions
 

@@ -16,6 +16,14 @@ export type DocumentViewArgs = {
 	id: string;
 };
 
+export type DocumentDeleteArgs = {
+	id: string;
+};
+
+export type DocumentFolderDeleteArgs = {
+	path: string;
+};
+
 export type DocumentCreateArgs = {
 	title: string;
 	content: string;
@@ -153,6 +161,34 @@ export class DocumentHandlers {
 				throw new BacklogToolError(`Failed to update document: ${error.message}`, "OPERATION_FAILED");
 			}
 			throw new BacklogToolError("Failed to update document.", "OPERATION_FAILED");
+		}
+	}
+
+	async deleteDocument(args: DocumentDeleteArgs): Promise<CallToolResult> {
+		const deleted = await this.core.filesystem.deleteDocument(args.id);
+		if (!deleted) {
+			throw new BacklogToolError(`Document not found: ${args.id}`, "DOCUMENT_NOT_FOUND");
+		}
+		return {
+			content: [{ type: "text", text: `Document deleted: ${args.id}` }],
+		};
+	}
+
+	async deleteDocsFolder(args: DocumentFolderDeleteArgs): Promise<CallToolResult> {
+		try {
+			const deleted = await this.core.filesystem.deleteDocsFolder(args.path);
+			if (!deleted) {
+				throw new BacklogToolError(`Docs folder not found or not a folder: ${args.path}`, "FOLDER_NOT_FOUND");
+			}
+			return {
+				content: [{ type: "text", text: `Docs folder deleted: ${args.path}` }],
+			};
+		} catch (error) {
+			if (error instanceof BacklogToolError) throw error;
+			if (error instanceof Error) {
+				throw new BacklogToolError(`Invalid docs folder path: ${error.message}`, "VALIDATION_ERROR");
+			}
+			throw error;
 		}
 	}
 

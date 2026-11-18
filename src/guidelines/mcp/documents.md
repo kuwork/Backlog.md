@@ -17,6 +17,14 @@ Always use Backlog.md MCP document tools to create and update documents so IDs, 
 | Search documents | `document_search` |
 | Create a document | `document_create` |
 | Update a document | `document_update` |
+| Delete a document | `document_delete` |
+| Delete a docs folder | `document_folder_delete` |
+
+### Deleting Documents
+
+`document_delete` takes an `id` and permanently removes one document. A missing target returns `DOCUMENT_NOT_FOUND`; equivalent ids that collide return `AMBIGUOUS_ID` with the candidate files, so pass a full filename or code-name short path to select one.
+
+`document_folder_delete` takes a docs-relative `path` and recursively removes the folder with everything beneath it. The path must be relative to `backlog/docs`; absolute paths and `..` traversal return `VALIDATION_ERROR`, and a path that is missing or not a folder returns `FOLDER_NOT_FOUND`. Both tools are marked destructive, so resolve the exact target with `document_list` before calling them.
 
 ### Creating Documents
 

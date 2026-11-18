@@ -22,6 +22,14 @@ Always use Backlog.md CLI commands to create and update documents so IDs, frontm
 | Update metadata or move a doc | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
 | List all documents | `backlog doc list` / `backlog doc list --plain` / `backlog doc list --json` |
 | View a document | `backlog doc view 1` / `backlog doc view doc-1` / `backlog doc view subdir/doc-1` / `backlog doc view Title` / `backlog doc view "doc-1 - Title.md"` / `backlog doc view 1 --plain` |
+| Delete a document | `backlog doc delete doc-1` / `backlog doc delete "guides/doc-2 - Setup.md"` |
+| Delete a docs folder | `backlog doc folder delete guides` / `backlog doc folder delete guides/setup` |
+
+### Deleting Documents
+
+`backlog doc delete <docId>` permanently removes one document. It accepts the same references as `doc view`, including a bare id, a code-name short path, a title, or a full filename. A missing target exits with code 1 and an explicit not-found message. When equivalent ids collide, the command fails with `AMBIGUOUS_ID` and prints ready-to-run `backlog doc delete` references so you can pick one file without renaming anything.
+
+`backlog doc folder delete <path>` recursively removes a docs folder and every document beneath it. The path is relative to `backlog/docs`, for example `guides/setup`. The docs root itself, absolute paths, and paths containing `..` are rejected. There is no interactive confirmation, so resolve the exact folder with `backlog doc list` before deleting.
 
 ### Listing Documents
 
