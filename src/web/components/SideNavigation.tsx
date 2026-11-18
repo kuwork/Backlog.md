@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Tooltip } from "react-tooltip";
 import type { Decision, DocsTreeNode, Document, Task, WikiTreeNode } from "../../types";
+import { getDocumentSubPathFromRelativePath } from "../../utils/document-path";
 import { compareTaskIds } from "../../utils/task-sorting";
 import { useAutoFocus } from "../hooks/useAutoFocus";
 import { useI18n } from "../hooks/useI18n";
@@ -744,17 +745,61 @@ const DocActionDropdown = memo(function DocActionDropdown({
 	);
 });
 
+const DOC_DRAG_TYPE = "application/x-backlog-document";
+
+interface DocDragPayload {
+	docId: string;
+	path: string;
+}
+
+const isDocDrag = (dataTransfer: DataTransfer) => Array.from(dataTransfer.types).includes(DOC_DRAG_TYPE);
+
+const readDocDragPayload = (dataTransfer: DataTransfer): DocDragPayload | null => {
+	try {
+		const payload = JSON.parse(dataTransfer.getData(DOC_DRAG_TYPE)) as Partial<DocDragPayload>;
+		return typeof payload.docId === "string" && typeof payload.path === "string"
+			? { docId: payload.docId, path: payload.path }
+			: null;
+	} catch {
+		return null;
+	}
+};
+
+const DocumentDragHandle = () => (
+	<svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+		<circle cx="9" cy="6" r="1.5" />
+		<circle cx="15" cy="6" r="1.5" />
+		<circle cx="9" cy="12" r="1.5" />
+		<circle cx="15" cy="12" r="1.5" />
+		<circle cx="9" cy="18" r="1.5" />
+		<circle cx="15" cy="18" r="1.5" />
+	</svg>
+);
+
 const DocTreeItem = memo(function DocTreeItem({
 	node,
 	docTitles,
+	activeDropTarget,
 	onCreateFile,
 	onCreateFolder,
+	onDocDragStart,
+	onDocDragEnd,
+	onDocDragOver,
+	onDocDragLeave,
+	onDocDrop,
 }: {
 	node: DocsTreeNode;
 	docTitles: Map<string, string>;
+	activeDropTarget: string | null;
 	onCreateFile: (parentPath: string) => void;
 	onCreateFolder: (parentPath: string) => void;
+	onDocDragStart: (event: React.DragEvent<HTMLButtonElement>, node: DocsTreeNode) => void;
+	onDocDragEnd: () => void;
+	onDocDragOver: (event: React.DragEvent<HTMLElement>, targetPath: string) => void;
+	onDocDragLeave: (event: React.DragEvent<HTMLElement>) => void;
+	onDocDrop: (event: React.DragEvent<HTMLElement>, targetPath: string) => void;
 }) {
+	const { t } = useI18n();
 	const [isExpanded, setIsExpanded] = useState(() => {
 		if (typeof window === "undefined") return false;
 		try {
@@ -793,8 +838,14 @@ const DocTreeItem = memo(function DocTreeItem({
 			<div className="group/directory">
 				<button
 					type="button"
+					data-docs-drop-target={node.path}
 					onClick={() => hasChildren && toggleExpanded()}
-					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? "cursor-default" : ""}`}
+					onDragOver={(event) => onDocDragOver(event, node.path)}
+					onDragLeave={onDocDragLeave}
+					onDrop={(event) => onDocDrop(event, node.path)}
+					className={`flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 ${!hasChildren ? "cursor-default" : ""} ${
+						activeDropTarget === node.path ? "bg-blue-50 ring-2 ring-blue-400 dark:bg-blue-600/20" : ""
+					}`}
 				>
 					<span className="text-gray-400 dark:text-gray-500 w-4">
 						{hasChildren ? isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight /> : null}
@@ -820,8 +871,14 @@ const DocTreeItem = memo(function DocTreeItem({
 								key={child.path}
 								node={child}
 								docTitles={docTitles}
+								activeDropTarget={activeDropTarget}
 								onCreateFile={onCreateFile}
 								onCreateFolder={onCreateFolder}
+								onDocDragStart={onDocDragStart}
+								onDocDragEnd={onDocDragEnd}
+								onDocDragOver={onDocDragOver}
+								onDocDragLeave={onDocDragLeave}
+								onDocDrop={onDocDrop}
 							/>
 						))}
 					</div>
@@ -838,7 +895,7 @@ const DocTreeItem = memo(function DocTreeItem({
 			<NavLink
 				to={`/documentation/${stripIdPrefix(docId)}/${sanitizeUrlTitle(docTitle)}`}
 				className={({ isActive }) =>
-					`flex-1 flex items-center space-x-3 px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${
+					`min-w-0 flex-1 flex items-center space-x-3 px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${
 						isActive
 							? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
 							: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
@@ -850,6 +907,17 @@ const DocTreeItem = memo(function DocTreeItem({
 				</span>
 				<span className="truncate">{docTitle}</span>
 			</NavLink>
+			<button
+				type="button"
+				draggable
+				onDragStart={(event) => onDocDragStart(event, node)}
+				onDragEnd={onDocDragEnd}
+				title={t.nav.dragDocument}
+				aria-label={`${t.nav.dragDocument}: ${docTitle}`}
+				className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded bg-gray-50/95 p-1 text-gray-400 opacity-0 shadow-sm transition-opacity duration-150 hover:bg-gray-200 hover:text-gray-600 focus:opacity-100 focus:pointer-events-auto group-hover/file:opacity-100 group-hover/file:pointer-events-auto pointer-events-none dark:bg-gray-900/95 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+			>
+				<DocumentDragHandle />
+			</button>
 		</div>
 	);
 });
@@ -907,6 +975,8 @@ const SideNavigation = memo(function SideNavigation({
 	});
 	const [docsSortColumn, setDocsSortColumn] = useState<DocsSortColumn>("name");
 	const [docsSortDirection, setDocsSortDirection] = useState<SortDirection>("asc");
+	const [activeDocsDropTarget, setActiveDocsDropTarget] = useState<string | null>(null);
+	const [docsMoveError, setDocsMoveError] = useState<string | null>(null);
 	const [wikiSortColumn, setWikiSortColumn] = useState<WikiSortColumn>("title");
 	const [wikiSortDirection, setWikiSortDirection] = useState<SortDirection>("asc");
 	const [decisionSortColumn, setDecisionSortColumn] = useState<DecisionSortColumn>("title");
@@ -995,6 +1065,54 @@ const SideNavigation = memo(function SideNavigation({
 			setIsCreatingDocsFolder(false);
 		}
 	}, [newDocsFolderName, createDocsFolderParentPath, onRefreshData, t.nav.failedToCreate]);
+
+	const handleDocDragStart = useCallback((event: React.DragEvent<HTMLButtonElement>, node: DocsTreeNode) => {
+		if (!node.docId) return;
+		event.stopPropagation();
+		event.dataTransfer.effectAllowed = "move";
+		event.dataTransfer.setData(DOC_DRAG_TYPE, JSON.stringify({ docId: node.docId, path: node.path }));
+		setActiveDocsDropTarget(null);
+		setDocsMoveError(null);
+	}, []);
+
+	const handleDocDragEnd = useCallback(() => {
+		setActiveDocsDropTarget(null);
+	}, []);
+
+	const handleDocDragOver = useCallback((event: React.DragEvent<HTMLElement>, targetPath: string) => {
+		if (!isDocDrag(event.dataTransfer)) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.dataTransfer.dropEffect = "move";
+		setActiveDocsDropTarget((current) => (current === targetPath ? current : targetPath));
+	}, []);
+
+	const handleDocDragLeave = useCallback((event: React.DragEvent<HTMLElement>) => {
+		if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget as Node)) return;
+		setActiveDocsDropTarget(null);
+	}, []);
+
+	const handleDocDrop = useCallback(
+		async (event: React.DragEvent<HTMLElement>, targetPath: string) => {
+			if (!isDocDrag(event.dataTransfer)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			setActiveDocsDropTarget(null);
+
+			const payload = readDocDragPayload(event.dataTransfer);
+			if (!payload || getDocumentSubPathFromRelativePath(payload.path) === targetPath) return;
+
+			setDocsMoveError(null);
+			try {
+				const doc = await apiClient.fetchDoc(payload.docId);
+				await apiClient.updateDoc(payload.docId, doc.rawContent, undefined, targetPath);
+				await onRefreshData();
+			} catch (error) {
+				setDocsMoveError(error instanceof Error ? error.message : t.nav.failedToMoveDocument);
+			}
+		},
+		[onRefreshData, t.nav.failedToMoveDocument],
+	);
 
 	const handleDocsSortChange = (column: DocsSortColumn) => {
 		if (docsSortColumn === column) {
@@ -1603,10 +1721,20 @@ const SideNavigation = memo(function SideNavigation({
 										<span className="text-gray-500 dark:text-gray-400">
 											<Icons.Document />
 										</span>
-										<span className="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">
+										<fieldset
+											aria-label={t.nav.moveDocumentToRoot}
+											data-docs-drop-target=""
+											title={t.nav.moveDocumentToRoot}
+											onDragOver={(event) => handleDocDragOver(event, "")}
+											onDragLeave={handleDocDragLeave}
+											onDrop={(event) => handleDocDrop(event, "")}
+											className={`rounded px-1 py-0.5 text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap ${
+												activeDocsDropTarget === "" ? "bg-blue-50 ring-2 ring-blue-400 dark:bg-blue-600/20" : ""
+											}`}
+										>
 											{t.nav.documents} (
 											<NavigationCount count={docs.length} isLoading={isLoading} error={error} label="document" />)
-										</span>
+										</fieldset>
 									</div>
 									<div className="flex items-center gap-1">
 										{renderDocsSortButton(t.nav.sortDocsByName, t.nav.sortDocsByNameHint, "name")}
@@ -1619,6 +1747,12 @@ const SideNavigation = memo(function SideNavigation({
 										/>
 									</div>
 								</div>
+
+								{docsMoveError && (
+									<p role="alert" className="mb-2 px-3 text-sm text-red-600 dark:text-red-400">
+										{docsMoveError}
+									</p>
+								)}
 
 								{/* Document Tree */}
 								{!isDocsCollapsed && (
@@ -1635,8 +1769,14 @@ const SideNavigation = memo(function SideNavigation({
 													key={node.path}
 													node={node}
 													docTitles={docTitles}
+													activeDropTarget={activeDocsDropTarget}
 													onCreateFile={handleCreateDocFile}
 													onCreateFolder={handleCreateDocFolder}
+													onDocDragStart={handleDocDragStart}
+													onDocDragEnd={handleDocDragEnd}
+													onDocDragOver={handleDocDragOver}
+													onDocDragLeave={handleDocDragLeave}
+													onDocDrop={handleDocDrop}
 												/>
 											))
 										)}
