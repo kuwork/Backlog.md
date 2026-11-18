@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
-import { mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
@@ -3048,6 +3048,65 @@ export class FileSystem {
 
 		await rename(sourceDir, targetDir);
 		return normalizedTargetParent ? `${normalizedTargetParent}/${sourceName}` : sourceName;
+	}
+
+	/** Delete a single document. `idOrPath` is either a doc id or a path relative to docsDir. */
+	async deleteDocument(idOrPath: string): Promise<boolean> {
+		const trimmed = idOrPath.trim();
+		if (!trimmed) return false;
+		const docsDir = await this.getDocsDir();
+		const documents = await this.listDocuments();
+		const matched = findDocumentById(documents, trimmed) ?? documents.find((d) => d.path === trimmed);
+		if (!matched?.path) return false;
+		const filePath = resolve(join(docsDir, ...normalizeDocumentRelativePath(matched.path).split("/")));
+		if (!this.isPathInsideDir(filePath, docsDir)) return false;
+		try {
+			await unlink(filePath);
+			return true;
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return false;
+			throw error;
+		}
+	}
+
+	/** Delete a single decision by id. Decisions are stored flat in decisionsDir. */
+	async deleteDecision(decisionId: string): Promise<boolean> {
+		const decisions = await this.listDecisions();
+		const decision = findDecisionById(decisions, decisionId.trim());
+		if (!decision?.path) return false;
+		const decisionsDir = await this.getDecisionsDir();
+		const filePath = resolve(join(decisionsDir, ...normalizeDocumentRelativePath(decision.path).split("/")));
+		if (!this.isPathInsideDir(filePath, decisionsDir)) return false;
+		try {
+			await unlink(filePath);
+			return true;
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return false;
+			throw error;
+		}
+	}
+
+	/** Recursively delete a docs folder. Refuses the docs root itself and any outside path. */
+	async deleteDocsFolder(folderPath: string): Promise<boolean> {
+		const docsDir = await this.getDocsDir();
+		const normalizedPath = normalizeDocumentRelativePath(folderPath);
+		const dirPath = resolve(join(docsDir, ...normalizedPath.split("/")));
+		if (!this.isPathInsideDir(dirPath, docsDir) || dirPath === resolve(docsDir)) return false;
+		let stats: Awaited<ReturnType<typeof stat>>;
+		try {
+			stats = await stat(dirPath);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return false;
+			throw error;
+		}
+		if (!stats.isDirectory()) return false;
+		await rm(dirPath, { recursive: true, force: true });
+		return true;
+	}
+
+	private isPathInsideDir(filePath: string, dir: string): boolean {
+		const rel = relative(dir, filePath);
+		return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
 	}
 
 	async readWikiPage(pagePath: string, rootDir?: string): Promise<WikiPage> {

@@ -929,6 +929,7 @@ export class BacklogServer {
 					"/api/docs/:id": {
 						GET: async (req: Request & { params: { id: string } }) => await this.handleGetDoc(req.params.id),
 						PUT: async (req: Request & { params: { id: string } }) => await this.handleUpdateDoc(req, req.params.id),
+						DELETE: async (req: Request & { params: { id: string } }) => await this.handleDeleteDoc(req.params.id),
 					},
 					"/api/docs/tree": {
 						GET: async () => await this.handleGetDocsTree(),
@@ -936,6 +937,7 @@ export class BacklogServer {
 					"/api/docs/folder": {
 						POST: async (req: Request) => await this.handleCreateDocsFolder(req),
 						PATCH: async (req: Request) => await this.handleMoveDocsFolder(req),
+						DELETE: async (req: Request) => await this.handleDeleteDocsFolder(req),
 					},
 					"/api/memos": {
 						GET: async (req: Request) => await this.handleListMemos(req),
@@ -996,6 +998,7 @@ export class BacklogServer {
 						GET: async (req: Request & { params: { id: string } }) => await this.handleGetDecision(req.params.id),
 						PUT: async (req: Request & { params: { id: string } }) =>
 							await this.handleUpdateDecision(req, req.params.id),
+						DELETE: async (req: Request & { params: { id: string } }) => await this.handleDeleteDecision(req.params.id),
 					},
 					"/api/drafts": {
 						GET: async () => await this.handleListDrafts(),
@@ -2618,6 +2621,46 @@ export class BacklogServer {
 		}
 	}
 
+	private async handleDeleteDoc(docId: string): Promise<Response> {
+		try {
+			const deleted = await this.core.filesystem.deleteDocument(docId);
+			if (!deleted) {
+				return Response.json({ error: "Document not found" }, { status: 404 });
+			}
+			this.broadcastDataUpdated("documents");
+			return new Response(null, { status: 204 });
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
+			console.error("Error deleting document:", error);
+			return Response.json({ error: "Failed to delete document" }, { status: 500 });
+		}
+	}
+
+	private async handleDeleteDocsFolder(req: Request): Promise<Response> {
+		try {
+			const body = await req.json();
+			const path = typeof body?.path === "string" ? body.path.trim() : undefined;
+			if (!path) {
+				return Response.json({ error: "Path is required" }, { status: 400 });
+			}
+			const deleted = await this.core.filesystem.deleteDocsFolder(path);
+			if (!deleted) {
+				return Response.json({ error: "Docs folder not found" }, { status: 404 });
+			}
+			this.broadcastDataUpdated("documents");
+			return new Response(null, { status: 204 });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to delete docs folder";
+			if (message.startsWith("Document path ") || message === "Invalid docs path") {
+				return Response.json({ error: message }, { status: 400 });
+			}
+			console.error("Error deleting docs folder:", error);
+			return Response.json({ error: message }, { status: 500 });
+		}
+	}
+
 	// Memo handlers
 	//
 	// The server owns no memo IO: every handler validates its input, delegates to src/core/memos.ts
@@ -2920,6 +2963,23 @@ export class BacklogServer {
 			}
 			console.error("Error updating decision:", error);
 			return Response.json({ error: "Failed to update decision" }, { status: 500 });
+		}
+	}
+
+	private async handleDeleteDecision(decisionId: string): Promise<Response> {
+		try {
+			const deleted = await this.core.filesystem.deleteDecision(decisionId);
+			if (!deleted) {
+				return Response.json({ error: "Decision not found" }, { status: 404 });
+			}
+			this.broadcastDataUpdated("decisions");
+			return new Response(null, { status: 204 });
+		} catch (error) {
+			if (isAmbiguousIdError(error)) {
+				return Response.json({ error: error.message, candidates: error.candidates }, { status: 409 });
+			}
+			console.error("Error deleting decision:", error);
+			return Response.json({ error: "Failed to delete decision" }, { status: 500 });
 		}
 	}
 

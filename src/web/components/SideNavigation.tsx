@@ -18,6 +18,11 @@ const stripIdPrefix = (id: string): string => {
 	return id.replace(/^[a-zA-Z]+-/, "");
 };
 
+const routeIdFor = (pathname: string, section: string): string | undefined => {
+	const prefix = `/${section}/`;
+	return pathname.startsWith(prefix) ? pathname.slice(prefix.length).split("/")[0] : undefined;
+};
+
 const LoadingPhase = ({ className }: { className: string }) => (
 	<p className={className} role="status" aria-label="Loading content">
 		<span className="inline-block h-3 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-700" aria-hidden="true" />
@@ -322,6 +327,16 @@ export const Icons = {
 	Plus: () => (
 		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+		</svg>
+	),
+	Trash: () => (
+		<svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0h10"
+			/>
 		</svg>
 	),
 	// Memos nav icon: a quill-over-page glyph (user-supplied, iconfont 1024 grid). Reads as
@@ -678,11 +693,13 @@ const DocActionDropdown = memo(function DocActionDropdown({
 	isFile,
 	onCreateFile,
 	onCreateFolder,
+	onDeleteFolder,
 }: {
 	parentPath: string;
 	isFile: boolean;
 	onCreateFile: (parentPath: string) => void;
 	onCreateFolder: (parentPath: string) => void;
+	onDeleteFolder?: (folderPath: string) => void;
 }) {
 	const { t } = useI18n();
 	const [isOpen, setIsOpen] = useState(false);
@@ -742,6 +759,19 @@ const DocActionDropdown = memo(function DocActionDropdown({
 							className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 						>
 							{t.nav.createFolder}
+						</button>
+					)}
+					{!isFile && parentPath && onDeleteFolder && (
+						<button
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								setIsOpen(false);
+								onDeleteFolder(parentPath);
+							}}
+							className="w-full text-left px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						>
+							{t.nav.deleteFolder}
 						</button>
 					)}
 				</div>
@@ -809,6 +839,8 @@ const DocTreeItem = memo(function DocTreeItem({
 	activeDropTarget,
 	onCreateFile,
 	onCreateFolder,
+	onDeleteFolder,
+	onDeleteDoc,
 	onDocDragStart,
 	onDocDragEnd,
 	onDocDragOver,
@@ -820,6 +852,8 @@ const DocTreeItem = memo(function DocTreeItem({
 	activeDropTarget: string | null;
 	onCreateFile: (parentPath: string) => void;
 	onCreateFolder: (parentPath: string) => void;
+	onDeleteFolder: (folderPath: string) => void;
+	onDeleteDoc: (docId: string, title: string) => void;
 	onDocDragStart: (event: React.DragEvent<HTMLButtonElement>, node: DocsTreeNode) => void;
 	onDocDragEnd: () => void;
 	onDocDragOver: (event: React.DragEvent<HTMLElement>, targetPath: string) => void;
@@ -896,6 +930,7 @@ const DocTreeItem = memo(function DocTreeItem({
 							isFile={false}
 							onCreateFile={onCreateFile}
 							onCreateFolder={onCreateFolder}
+							onDeleteFolder={onDeleteFolder}
 						/>
 						<button
 							type="button"
@@ -920,6 +955,8 @@ const DocTreeItem = memo(function DocTreeItem({
 								activeDropTarget={activeDropTarget}
 								onCreateFile={onCreateFile}
 								onCreateFolder={onCreateFolder}
+								onDeleteFolder={onDeleteFolder}
+								onDeleteDoc={onDeleteDoc}
 								onDocDragStart={onDocDragStart}
 								onDocDragEnd={onDocDragEnd}
 								onDocDragOver={onDocDragOver}
@@ -964,6 +1001,20 @@ const DocTreeItem = memo(function DocTreeItem({
 			>
 				<DocsDragHandle />
 			</button>
+			{docId && (
+				<button
+					type="button"
+					onClick={(event) => {
+						event.stopPropagation();
+						onDeleteDoc(docId, docTitle);
+					}}
+					title={t.nav.deleteDocument}
+					aria-label={`${t.nav.deleteDocument}: ${docTitle}`}
+					className="absolute right-7 top-1/2 z-10 -translate-y-1/2 rounded bg-gray-50/95 p-1 text-gray-400 opacity-0 shadow-sm transition-opacity duration-150 hover:bg-red-50 hover:text-red-600 focus:opacity-100 focus:pointer-events-auto group-hover/file:opacity-100 group-hover/file:pointer-events-auto pointer-events-none dark:bg-gray-900/95 dark:text-gray-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+				>
+					<Icons.Trash />
+				</button>
+			)}
 		</div>
 	);
 });
@@ -1080,6 +1131,7 @@ const SideNavigation = memo(function SideNavigation({
 	const newDocsFolderNameRef = useAutoFocus<HTMLInputElement>();
 	const [isCreatingDocsFolder, setIsCreatingDocsFolder] = useState(false);
 	const [createDocsFolderError, setCreateDocsFolderError] = useState<string | null>(null);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
 
 	const handleCreateDocFile = useCallback(
 		(parentPath: string) => {
@@ -1112,6 +1164,60 @@ const SideNavigation = memo(function SideNavigation({
 			setIsCreatingDocsFolder(false);
 		}
 	}, [newDocsFolderName, createDocsFolderParentPath, onRefreshData, t.nav.failedToCreate]);
+
+	const runDelete = useCallback(
+		async (message: string, deleteAction: () => Promise<void>, fallbackPath: string, isOpen: boolean) => {
+			if (!window.confirm(message)) return;
+			try {
+				setDeleteError(null);
+				await deleteAction();
+				if (isOpen) {
+					navigate(fallbackPath);
+				}
+				await onRefreshData();
+			} catch (err) {
+				setDeleteError(err instanceof Error ? err.message : t.nav.failedToDelete);
+			}
+		},
+		[navigate, onRefreshData, t.nav.failedToDelete],
+	);
+
+	const handleDeleteDoc = useCallback(
+		(docId: string, title: string) =>
+			runDelete(
+				t.nav.confirmDeleteDocument(title),
+				() => apiClient.deleteDoc(docId),
+				"/documentation",
+				routeIdFor(location.pathname, "documentation") === stripIdPrefix(docId),
+			),
+		[runDelete, t.nav.confirmDeleteDocument, location.pathname],
+	);
+
+	const handleDeleteDocsFolder = useCallback(
+		(folderPath: string) => {
+			const currentDocId = routeIdFor(location.pathname, "documentation");
+			const openDoc = currentDocId ? docs.find((doc) => stripIdPrefix(doc.id) === currentDocId) : undefined;
+			const shouldNavigate = openDoc?.path?.startsWith(`${folderPath}/`) ?? false;
+			return runDelete(
+				t.nav.confirmDeleteFolder(folderPath),
+				() => apiClient.deleteDocsFolder(folderPath),
+				"/documentation",
+				shouldNavigate,
+			);
+		},
+		[runDelete, t.nav.confirmDeleteFolder, location.pathname, docs],
+	);
+
+	const handleDeleteDecision = useCallback(
+		(decisionId: string, title: string) =>
+			runDelete(
+				t.nav.confirmDeleteDecision(title),
+				() => apiClient.deleteDecision(decisionId),
+				"/decisions",
+				routeIdFor(location.pathname, "decisions") === stripIdPrefix(decisionId),
+			),
+		[runDelete, t.nav.confirmDeleteDecision, location.pathname],
+	);
 
 	const handleDocDragStart = useCallback((event: React.DragEvent<HTMLButtonElement>, node: DocsTreeNode) => {
 		if (node.type === "file" && !node.docId) return;
@@ -1781,6 +1887,12 @@ const SideNavigation = memo(function SideNavigation({
 								</div>
 							)}
 
+							{deleteError && (
+								<div role="alert" className="mx-3 mb-2 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+									{deleteError}
+								</div>
+							)}
+
 							{/* Divider between Graphs and Documents */}
 							<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
 
@@ -1850,6 +1962,8 @@ const SideNavigation = memo(function SideNavigation({
 													activeDropTarget={activeDocsDropTarget}
 													onCreateFile={handleCreateDocFile}
 													onCreateFolder={handleCreateDocFolder}
+													onDeleteFolder={handleDeleteDocsFolder}
+													onDeleteDoc={handleDeleteDoc}
 													onDocDragStart={handleDocDragStart}
 													onDocDragEnd={handleDocDragEnd}
 													onDocDragOver={handleDocDragOver}
@@ -1910,22 +2024,35 @@ const SideNavigation = memo(function SideNavigation({
 											<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{t.nav.noDecisions}</p>
 										) : (
 											sortedDecisions.map((decision) => (
-												<NavLink
-													key={decision.id}
-													to={`/decisions/${stripIdPrefix(decision.id)}/${sanitizeUrlTitle(decision.title)}`}
-													className={({ isActive }) =>
-														`flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-															isActive
-																? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
-																: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-														}`
-													}
-												>
-													<span className="text-gray-400 dark:text-gray-500">
-														<Icons.DecisionPage />
-													</span>
-													<span className="truncate">{decision.title}</span>
-												</NavLink>
+												<div key={decision.id} className="group/file relative flex items-center rounded-lg">
+													<NavLink
+														to={`/decisions/${stripIdPrefix(decision.id)}/${sanitizeUrlTitle(decision.title)}`}
+														className={({ isActive }) =>
+															`flex min-w-0 flex-1 items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+																isActive
+																	? "bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-medium"
+																	: "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+															}`
+														}
+													>
+														<span className="text-gray-400 dark:text-gray-500">
+															<Icons.DecisionPage />
+														</span>
+														<span className="truncate">{decision.title}</span>
+													</NavLink>
+													<button
+														type="button"
+														onClick={(event) => {
+															event.stopPropagation();
+															handleDeleteDecision(decision.id, decision.title);
+														}}
+														title={t.nav.deleteDecision}
+														aria-label={`${t.nav.deleteDecision}: ${decision.title}`}
+														className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded bg-gray-50/95 p-1 text-gray-400 opacity-0 shadow-sm transition-opacity duration-150 hover:bg-red-50 hover:text-red-600 focus:opacity-100 focus:pointer-events-auto group-hover/file:opacity-100 group-hover/file:pointer-events-auto pointer-events-none dark:bg-gray-900/95 dark:text-gray-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+													>
+														<Icons.Trash />
+													</button>
+												</div>
 											))
 										)}
 									</div>

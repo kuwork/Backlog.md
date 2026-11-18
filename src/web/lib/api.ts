@@ -954,6 +954,27 @@ export class ApiClient {
 		return response.json();
 	}
 
+	async deleteDoc(id: string): Promise<void> {
+		const response = await fetch(`${API_BASE}/docs/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to delete document");
+		}
+	}
+
+	async deleteDocsFolder(path: string): Promise<void> {
+		const response = await fetch(`${API_BASE}/docs/folder`, {
+			method: "DELETE",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ path }),
+		});
+		if (!response.ok) {
+			const data = await response.json().catch(() => ({}));
+			throw new Error(data.error || "Failed to delete docs folder");
+		}
+	}
+
 	// Memo endpoints mirror /api/docs but stay out of the doc channel (see core/memos.ts): ids are
 	// `YYYYMMDD-N` and there is no title, so nothing here goes through the document helpers.
 	async fetchMemosPage(options: { limit?: number; offset?: number; date?: string } = {}): Promise<ListPage<Memo>> {
@@ -1076,6 +1097,15 @@ export class ApiClient {
 			return throwResponseError(response, "Failed to create decision");
 		}
 		return response.json();
+	}
+
+	async deleteDecision(id: string): Promise<void> {
+		const response = await fetch(`${API_BASE}/decisions/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+		});
+		if (!response.ok) {
+			return throwResponseError(response, "Failed to delete decision");
+		}
 	}
 
 	async fetchMilestones(): Promise<Milestone[]> {
