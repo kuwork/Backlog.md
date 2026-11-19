@@ -1571,15 +1571,19 @@ export const TaskDetailsModal: React.FC<Props> = ({
 			return;
 		}
 
-		// Only update server if editing existing task
+		// Only update server if editing existing task. These single-change fields skip the debounce
+		// pipeline, so drive the same header badge directly instead of leaving the edit with no feedback.
 		if (task) {
+			setInlineMetaSaveStatus("saving");
 			try {
 				await apiClient.updateTask(task.id, updates);
+				setInlineMetaSaveStatus("saved");
 				if (onSaved) await onSaved();
 			} catch (err) {
 				// Put the pre-edit values back: the file does not hold the optimistic ones, and the
 				// dirty-preserve refresh would otherwise keep the rejected value on screen forever.
 				restoreInlineMetaValues(previous);
+				setInlineMetaSaveStatus("failed");
 				const message = localizeDependencySaveError(err, t);
 				// A dependency rejection surfaces next to the input the user was typing in; everything
 				// else keeps using the banner at the top of the popup.
