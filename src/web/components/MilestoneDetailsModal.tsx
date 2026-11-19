@@ -116,6 +116,15 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 	const [saving, setSaving] = useState(false);
 	const [archiving, setArchiving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	// Save feedback for the sidebar's immediate writes (name blur, date changes), mirroring the
+	// task popup's header chip: those writes never touch the edit-mode Save button, so without this
+	// they complete silently.
+	const [metaSaveStatus, setMetaSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+	useEffect(() => {
+		if (metaSaveStatus !== "saved") return undefined;
+		const id = setTimeout(() => setMetaSaveStatus("idle"), 2500);
+		return () => clearTimeout(id);
+	}, [metaSaveStatus]);
 
 	const [sortConfig, setSortConfig] = useState<TaskSortConfig | null>(null);
 
@@ -305,6 +314,7 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 			return;
 		}
 		setSaving(true);
+		setMetaSaveStatus("saving");
 		setError(null);
 		try {
 			await apiClient.updateMilestone(
@@ -318,9 +328,11 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				undefined,
 				updates.documentation ?? documentation,
 			);
+			setMetaSaveStatus("saved");
 			setFetchedMilestone(null);
 			if (onRefreshData) await onRefreshData();
 		} catch (err) {
+			setMetaSaveStatus("failed");
 			setError(err instanceof Error ? err.message : t.milestones.editError);
 		} finally {
 			setSaving(false);
@@ -640,6 +652,55 @@ export const MilestoneDetailsModal: React.FC<Props> = ({
 				actions={
 					activeMilestone ? (
 						<div className="flex items-center gap-2">
+							{metaSaveStatus !== "idle" && (
+								<span
+									role="status"
+									aria-live="polite"
+									data-testid="milestone-meta-save-status"
+									className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 ${
+										metaSaveStatus === "saving"
+											? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+											: metaSaveStatus === "saved"
+												? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+												: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+									}`}
+								>
+									{metaSaveStatus === "saving" ? (
+										<svg aria-hidden="true" className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+											<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={3} />
+											<path
+												className="opacity-90"
+												d="M12 2a10 10 0 0 1 10 10"
+												stroke="currentColor"
+												strokeWidth={3}
+												strokeLinecap="round"
+											/>
+										</svg>
+									) : (
+										<svg
+											aria-hidden="true"
+											className="h-3.5 w-3.5"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d={metaSaveStatus === "saved" ? "M5 13l4 4L19 7" : "M6 18L18 6M6 6l12 12"}
+											/>
+										</svg>
+									)}
+									<span data-testid="milestone-meta-save-status-label">
+										{metaSaveStatus === "saving"
+											? t.common.saving
+											: metaSaveStatus === "saved"
+												? t.common.saved
+												: t.common.failedToSave}
+									</span>
+								</span>
+							)}
 							{mode === "preview" ? (
 								<>
 									<Link
