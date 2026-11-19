@@ -1,3 +1,4 @@
+import { entityNewIdSchema, entitySourcePathSchema } from "../../utils/schema-generators.ts";
 import type { JsonSchema } from "../../validation/validators.ts";
 
 export const decisionDeleteSchema: JsonSchema = {
@@ -20,6 +21,16 @@ export const decisionUpdateSchema: JsonSchema = {
 			type: "string",
 			minLength: 1,
 			maxLength: 100,
+			description:
+				"Source decision ID. Required unless sourcePath is provided; must match sourcePath when both are set.",
+		},
+		newId: entityNewIdSchema,
+		sourcePath: entitySourcePathSchema,
+		title: {
+			type: "string",
+			minLength: 1,
+			maxLength: 200,
+			description: "New decision title; also updates the filename and matching title-based routes",
 		},
 		content: {
 			type: "string",
@@ -35,7 +46,22 @@ export const decisionUpdateSchema: JsonSchema = {
 			maxLength: 50,
 		},
 	},
-	required: ["id"],
+	required: [],
+	additionalProperties: false,
+};
+
+export const decisionViewSchema: JsonSchema = {
+	type: "object",
+	properties: {
+		id: {
+			type: "string",
+			minLength: 1,
+			maxLength: 100,
+			description: "Decision ID. Required unless sourcePath is provided; must match sourcePath when both are set.",
+		},
+		sourcePath: entitySourcePathSchema,
+	},
+	required: [],
 	additionalProperties: false,
 };
 

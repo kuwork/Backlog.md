@@ -1,5 +1,6 @@
 import { basename, join } from "node:path";
 import { DEFAULT_STATUSES } from "../../../constants/index.ts";
+import { loadTaskFromSource } from "../../../core/entity-source.ts";
 import { statusNames } from "../../../core/state-machine.ts";
 import { isCreateLockError, isTaskLockError } from "../../../file-system/operations.ts";
 import {
@@ -21,7 +22,7 @@ import { buildTaskUpdateInput } from "../../../utils/task-edit-builder.ts";
 import { applyTaskFilters, createTaskSearchIndex } from "../../../utils/task-search.ts";
 import { sortByOrdinalAndPriority } from "../../../utils/task-sorting.ts";
 import { getTerminalStatus, isTerminalStatus } from "../../../utils/terminal-status.ts";
-import { BacklogToolError } from "../../errors/mcp-errors.ts";
+import { BacklogToolError, getEntityIdentityErrorCode } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
 import { buildListResult, selectListPage } from "../../utils/list-page.ts";
@@ -403,7 +404,15 @@ export class TaskHandlers {
 		return buildListResult([{ type: "text", text: lines.join("\n") }], taskPage, { label: "task" });
 	}
 
-	async viewTask(args: { id: string }): Promise<CallToolResult> {
+	async viewTask(args: { id?: string; sourcePath?: string }): Promise<CallToolResult> {
+		if (args.sourcePath) {
+			const task = await loadTaskFromSource(this.core, { id: args.id, sourcePath: args.sourcePath });
+			return await formatTaskCallResult(task);
+		}
+		if (!args.id) {
+			throw new BacklogToolError("Provide id or sourcePath to view a task.", "VALIDATION_ERROR");
+		}
+
 		const draft = await this.core.filesystem.loadDraft(args.id);
 		if (draft) {
 			return await formatTaskCallResult(draft);
@@ -515,6 +524,10 @@ export class TaskHandlers {
 
 	async editTask(args: TaskEditRequest): Promise<CallToolResult> {
 		try {
+			if (!args.id && !args.sourcePath) {
+				throw new BacklogToolError("Provide id or sourcePath to edit a task.", "VALIDATION_ERROR");
+			}
+
 			const rawOrdinal = (args as { ordinal?: unknown }).ordinal;
 			if (rawOrdinal === null) {
 				throw new BacklogToolError("Ordinal must be a non-negative number.", "VALIDATION_ERROR");
@@ -549,15 +562,21 @@ export class TaskHandlers {
 			}
 
 			const updateInput = buildTaskUpdateInput(args);
+			if (args.newId !== undefined) updateInput.newId = args.newId;
 			if (typeof updateInput.milestone === "string") {
 				updateInput.milestone = await this.resolveMilestoneInput(updateInput.milestone);
 			}
 			let toleratedDependencies: string[] = [];
-			const updatedTask = await this.core.editTaskOrDraft(args.id, updateInput, undefined, {
-				onToleratedDependencies: (ids) => {
+			const updateOptions = {
+				...(args.sourcePath ? { sourcePath: args.sourcePath } : {}),
+				onToleratedDependencies: (ids: string[]) => {
 					toleratedDependencies = ids;
 				},
-			});
+			};
+			const updatedTask =
+				args.newId !== undefined || args.sourcePath
+					? await this.core.editTask(args.id ?? "", updateInput, undefined, updateOptions)
+					: await this.core.editTaskOrDraft(args.id as string, updateInput, undefined, updateOptions);
 			const extraLines =
 				toleratedDependencies.length > 0
 					? [`Kept unresolvable dependencies as written: ${toleratedDependencies.join(", ")}`]
@@ -568,7 +587,7 @@ export class TaskHandlers {
 				throw new BacklogToolError(error.message, "OPERATION_FAILED");
 			}
 			if (error instanceof Error) {
-				throw new BacklogToolError(error.message, "VALIDATION_ERROR");
+				throw new BacklogToolError(error.message, getEntityIdentityErrorCode(error) ?? "VALIDATION_ERROR");
 			}
 			throw new BacklogToolError(String(error), "VALIDATION_ERROR");
 		}

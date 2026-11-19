@@ -32,6 +32,8 @@ Tasks in the terminal status stay there until periodic cleanup moves them to com
 
 If `-t` changes the sanitized task filename, the CLI renames the file automatically while preserving its ID and directory. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/task/:id/:title` title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
 
+To change the ID itself, use `backlog task edit <taskId> --id <newId>`, optionally with `--title` or another single-task edit. For duplicate old IDs, source-path selection, task hierarchy restrictions, and reference behavior, run `backlog instructions entity-identity`.
+
 ### Definition of Done Checklist
 
 Confirm:

@@ -45,7 +45,25 @@ Use `document_create` with at least `title` and `content`:
 
 ### Updating Documents
 
-Use `document_update` to replace content, metadata, or path while preserving omitted fields.
+Use `document_update` to change ID, title, content, metadata, or path while preserving omitted fields. In particular, omitting `content` preserves the current body, so an ID-only or title-only update does not need to send the document back.
+
+Select the source in one of three ways:
+
+- `id` only: normal ID lookup, including a bare numeric alias such as `1`.
+- `sourcePath` only: read the old ID from an exact project-relative file such as `backlog/docs/guides/doc-1 - Old-Title.md`.
+- Both: the supplied `id` must match the file's frontmatter ID, otherwise `SOURCE_MISMATCH` is returned before writing.
+
+Use `newId` to set the target ID; bare `10` and prefixed `doc-10` are both accepted. `document_view` accepts the same `id`/`sourcePath` selection rules.
+
+```json
+{
+  "sourcePath": "backlog/docs/guides/doc-1 - Old-Title.md",
+  "newId": "10",
+  "title": "New Title"
+}
+```
+
+ID and title changes update the filename, frontmatter, matching relative links, structured task path fields, Wiki `source_path`, and `/documentation/:id/:title` routes in the same operation. Other files with a duplicate old ID are left unchanged. Target ID/path collisions fail before installation.
 
 ```json
 {
@@ -69,7 +87,7 @@ To add blocks to an existing document without replacing the entire body, use `ap
 }
 ```
 
-When both `content` and `appendContent` are provided, the body is first replaced with `content` and then the `appendContent` blocks are appended. To only append to the existing body, pass the current document content as `content` and include `appendContent`.
+When both `content` and `appendContent` are provided, the body is first replaced with `content` and then the `appendContent` blocks are appended. To only append to the existing body, omit `content` and pass `appendContent` alone.
 
 ### Multi-line Content
 

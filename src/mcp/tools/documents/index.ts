@@ -63,7 +63,7 @@ export function registerDocumentTools(server: McpServer, _config: BacklogConfig)
 		{
 			name: "document_update",
 			description:
-				"Update an existing Backlog.md document's content, optional title, metadata, and optional docs subdirectory path",
+				"Update an existing Backlog.md document's content, optional title, metadata, and optional docs subdirectory path; also supports newId for ID updates and sourcePath for exact source selection",
 			inputSchema: documentUpdateSchema,
 			annotations: { title: "Update Document", destructiveHint: false },
 		},

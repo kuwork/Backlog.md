@@ -20,6 +20,8 @@ Always use Backlog.md CLI commands to create and update documents so IDs, frontm
 | Replace document content | `backlog doc update doc-1 --content "Updated markdown"` |
 | Append content to a document | `backlog doc update doc-1 --append-content "Additional section"` |
 | Update metadata or move a doc | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
+| Change a document ID | `backlog doc update doc-1 --id doc-10 [--title "Setup Handbook"]` |
+| Select an exact source | `backlog doc update --source-path "backlog/docs/guides/doc-1 - Old-Title.md" --id doc-10` |
 | List all documents | `backlog doc list` / `backlog doc list --plain` / `backlog doc list --json` |
 | View a document | `backlog doc view 1` / `backlog doc view doc-1` / `backlog doc view subdir/doc-1` / `backlog doc view Title` / `backlog doc view "doc-1 - Title.md"` / `backlog doc view 1 --plain` |
 | Delete a document | `backlog doc delete doc-1` / `backlog doc delete "guides/doc-2 - Setup.md"` |
@@ -50,6 +52,8 @@ For example `backlog/docs/subdir/doc-1 - Title.md`. The `<docId>` reference may 
 - Full filename (quote when it contains spaces): `backlog doc view "doc-1 - Title.md"`
 
 When several files share the referenced ID, path stem, or title, the command fails closed: it prints all matching candidates instead of picking one, together with ready-to-run `backlog doc view` alternatives for each candidate. Use the code-name short path form to disambiguate documents that legitimately share an ID in different subdirectories.
+
+For ID changes, exact project-relative `--source-path` selection on both `doc view` and `doc update`, ID/title combination updates, and rename/reference behavior, run `backlog instructions entity-identity`.
 
 ### Document Types
 

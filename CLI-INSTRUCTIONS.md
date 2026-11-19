@@ -22,7 +22,7 @@ The advanced wizard includes interactive Definition of Done defaults editing (ad
 
 You can rerun the wizard anytime with `backlog config`. All existing CLI flags (for example `--defaults`, `--agent-instructions`) continue to provide fully non-interactive setups, and init also supports `--backlog-dir <path>` plus `--config-location <folder|root>` for scripted configuration.
 
-Humans and agents can run `backlog instructions` for workflow guides and `backlog instructions overview` for the overview.
+Humans and agents can run `backlog instructions` for workflow guides and `backlog instructions overview` for the overview. Run `backlog instructions entity-identity` before changing task, document, or decision IDs or using `--source-path` to select a duplicate old ID.
 
 ## Configuration
 
@@ -39,7 +39,7 @@ Values live in the project's config file (`backlog/config.yml`, or `backlog.conf
 
 - Document IDs are global across all subdirectories under `backlog/docs`. You can organize files in nested folders (e.g., `backlog/docs/guides/`), and `backlog doc list` and `backlog doc view <id>` work across the entire tree.
 - Use `backlog doc create "New Guide" -p guides` to create a document in a docs subdirectory. The created output includes the persisted docs-relative file path, such as `backlog/docs/guides/doc-1 - New-Guide.md`.
-- Use `backlog doc update doc-1 --content "Updated markdown"` to update document content. Add `--title`, `-t/--type`, `--tags`, or `-p/--path` to update metadata or move the document while preserving omitted fields.
+- Use `backlog doc update doc-1 --content "Updated markdown"` to update document content. Add `--title`, `--id`, `-t/--type`, `--tags`, or `-p/--path` to update identity, metadata, or location while preserving omitted fields. Use `--source-path <project-relative-markdown-path>` on view/update to select one exact file when the old ID is duplicated; the positional ID is optional and, when supplied, must match the source frontmatter.
 - Use `backlog doc search "query"` for scoped document search with plain text output that includes document IDs and follow-up `backlog doc view <docId>` commands. Use `--limit <number>` to cap results.
 - Use `backlog doc delete doc-1` to remove a document. Use `backlog doc folder delete guides/setup` to remove a folder and every document beneath it; the docs root and paths containing `..` are rejected. Deletion is permanent, so confirm the target before running the command.
 - Document paths are always relative to the docs directory. Absolute paths and traversal segments such as `..` are rejected.
@@ -51,6 +51,8 @@ Values live in the project's config file (`backlog/config.yml`, or `backlog.conf
 | Create with type | `backlog doc create "Architecture" -t guide` |
 | Update content | `backlog doc update doc-1 --content "Updated markdown"` |
 | Update metadata/path | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
+| Change ID | `backlog doc update doc-1 --id doc-10 [--title "Setup Handbook"]` |
+| Select exact source | `backlog doc update --source-path "backlog/docs/guides/doc-1 - Old-Title.md" --id doc-10` |
 | List docs | `backlog doc list` |
 | Search docs | `backlog doc search "architecture" --limit 5` |
 | View doc | `backlog doc view doc-1` |
@@ -87,7 +89,9 @@ Values live in the project's config file (`backlog/config.yml`, or `backlog.conf
 | View detail | `backlog task 7` (interactive UI, press 'E' to edit in editor) |
 | View (AI mode) | `backlog task 7 --plain`                           |
 | Edit        | `backlog task edit 7 -a @sara -l auth,backend`       |
-| Edit several | `backlog task edit 7 8 9 -s "In Progress"` (one shared-field change per task; per-task-only flags such as `-t`, `--plan`, `--notes`, `--comment`, `--ordinal`, `--modified-file`, or a checklist index are rejected) |
+| Edit several | `backlog task edit 7 8 9 -s "In Progress"` (one shared-field change per task; per-task-only flags such as `-t`, `--id`, `--source-path`, `--plan`, `--notes`, `--comment`, `--ordinal`, `--modified-file`, or a checklist index are rejected) |
+| Change ID | `backlog task edit 7 --id 10 [--title "New title"]` (single task only) |
+| Select exact source | `backlog task edit --source-path "backlog/tasks/task-7 - Old-Title.md" --id task-10` |
 | Add plan    | `backlog task edit 7 --plan "Implementation approach"`    |
 | Add AC      | `backlog task edit 7 --ac "New criterion" --ac "Another one"` |
 | Add DoD     | `backlog task edit 7 --dod "Ship notes"` |
@@ -344,6 +348,8 @@ To keep the Web UI running in the background with auto-start on boot, see [Runni
 | List decisions | `backlog decision list --plain` (interactive by default; pages with `--max-count` / `--skip` / `--count`) |
 | View a decision | `backlog decision view decision-1 --plain` |
 | Update status | `backlog decision update decision-1 --status accepted` |
+| Change ID | `backlog decision update decision-1 --id decision-10 [--title "New title"]` |
+| Select exact source | `backlog decision update --source-path "backlog/decisions/decision-1 - Old-Title.md" --id decision-10` |
 | Append rationale | `backlog decision update decision-1 --append-content "Reversibility: ..."` |
 | Delete decision | `backlog decision delete decision-1` |
 

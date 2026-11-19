@@ -180,6 +180,21 @@ export function generateTaskCreateSchema(config: BacklogConfig): JsonSchema {
 /**
  * Generates the task_edit input schema with dynamic status enum and MCP-specific operations.
  */
+export const entityNewIdSchema: JsonSchema = {
+	type: "string",
+	minLength: 1,
+	maxLength: 50,
+	description: "Target entity ID. A bare number or a prefixed ID is accepted.",
+};
+
+export const entitySourcePathSchema: JsonSchema = {
+	type: "string",
+	minLength: 1,
+	maxLength: 500,
+	description:
+		"Exact project-relative Markdown source file in the entity's Backlog directory. Use alone or together with a matching id.",
+};
+
 export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 	return {
 		type: "object",
@@ -188,7 +203,10 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 				type: "string",
 				minLength: 1,
 				maxLength: 50,
+				description: "Source task ID. Required unless sourcePath is provided; must match sourcePath when both are set.",
 			},
+			newId: entityNewIdSchema,
+			sourcePath: entitySourcePathSchema,
 			title: {
 				type: "string",
 				maxLength: 200,
@@ -496,7 +514,7 @@ export function generateTaskEditSchema(config: BacklogConfig): JsonSchema {
 				description: "Actual end date in YYYY-MM-DD HH:MM format. Set to empty string to clear.",
 			},
 		},
-		required: ["id"],
+		required: [],
 		additionalProperties: false,
 	};
 }

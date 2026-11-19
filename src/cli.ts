@@ -26,6 +26,7 @@ import { watchJson } from "./commands/watch-json.ts";
 import { formatInstallResult, installWikiSkill } from "./commands/wiki-install.ts";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
 import { findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
+import { loadDecisionFromSource, loadDocumentFromSource, loadTaskFromSource } from "./core/entity-source.ts";
 import { initializeProject } from "./core/init.ts";
 import { captureInteractiveBody, InteractiveCaptureAbortedError } from "./core/interactive-input.ts";
 import { createMemo, deleteMemo, getMemo, listMemosPage, updateMemo } from "./core/memos.ts";
@@ -123,7 +124,7 @@ import {
 	formatDuplicateTaskIdWarning,
 	hasDraftIdentityFindings,
 } from "./utils/duplicate-detection.ts";
-import { isAmbiguousIdError } from "./utils/entity-id.ts";
+import { isAmbiguousIdError, normalizeEntityId } from "./utils/entity-id.ts";
 import { findBacklogRoot } from "./utils/find-backlog-root.ts";
 import { generateNextDecisionId } from "./utils/id-generators.ts";
 import {
@@ -293,6 +294,7 @@ function createMultiValueAccumulator() {
 
 function printMissingRequiredArgument(argumentName: string): void {
 	console.error(`error: missing required argument '${argumentName}'`);
+	console.error("Run with --help for more information.");
 	process.exitCode = 1;
 }
 
@@ -417,6 +419,7 @@ function hasCreateFieldFlags(options: Record<string, unknown>): boolean {
 function hasEditFieldFlags(options: Record<string, unknown>): boolean {
 	return Boolean(
 		options.title !== undefined ||
+			options.id !== undefined ||
 			options.description !== undefined ||
 			options.desc !== undefined ||
 			options.appendDescription !== undefined ||
@@ -491,6 +494,8 @@ function hasEditFieldFlags(options: Record<string, unknown>): boolean {
  * batchable on purpose.
  */
 const PER_TASK_ONLY_EDIT_FLAGS: ReadonlyArray<{ option: string; flag: string }> = [
+	{ option: "id", flag: "--id" },
+	{ option: "sourcePath", flag: "--source-path" },
 	{ option: "title", flag: "--title" },
 	{ option: "description", flag: "--description" },
 	{ option: "desc", flag: "--desc" },
@@ -3192,6 +3197,12 @@ const editFieldHelpOptions: HelpField[] = [
 	},
 ];
 
+const taskEditHelpOptions: HelpField[] = [
+	{ name: "id", type: "String", description: "Target task ID; changes the file name and synchronized references" },
+	{ name: "source-path", type: "Path", description: "Exact project-relative source Markdown path; may replace taskId" },
+	...editFieldHelpOptions,
+];
+
 const draftEditHelpOptions: HelpField[] = editFieldHelpOptions.map((option) =>
 	option.name === "status"
 		? {
@@ -3780,25 +3791,30 @@ async function buildEditArgs(
 }
 
 addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
-	required: [
+	required: [],
+	optional: [
 		{
 			name: "taskIds",
 			type: "Task IDs",
 			description:
-				"Tasks to update; prompted when omitted in interactive mode. Several IDs apply the same shared-field change to every task",
+				"Tasks to update; prompted when omitted in interactive mode and optional with --source-path. Several IDs apply the same shared-field change to every task",
 		},
+		...taskEditHelpOptions,
 	],
-	optional: editFieldHelpOptions,
 	writes: "Updates task metadata and structured task sections through Backlog.md",
 	output: "Updated task details; use --plain for text output",
 	examples: [
 		'backlog task edit {{TASK_ID:1}} --status "<active status>" -a @sara',
+		'backlog task edit {{TASK_ID:1}} --id {{TASK_ID:10}} --title "New title"',
+		'backlog task edit --source-path "backlog/tasks/BACK-1 - Old-Title.md" --id BACK-10',
 		"backlog task edit {{TASK_ID:1}} --check-ac 1",
 		'backlog task edit {{TASK_ID:1}} {{TASK_ID:2}} --status "<active status>"',
 	],
 	note: INSTRUCTIONS_OVERVIEW_HINT,
 })
 	.description("edit an existing task")
+	.option("--id <newId>", "set the target task ID")
+	.option("--source-path <path>", "read and update an exact project-relative task Markdown file")
 	.action(async (taskIds: string[] | undefined, options) => {
 		// Listing the same task twice is a slip, not a request to edit it twice, so identities that
 		// compare equal collapse to the first spelling the user typed. Canonical identity keeps a bare
@@ -3812,7 +3828,7 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 		}
 		const taskId = requestedIds[0];
 		const shouldUseWizard = hasInteractiveTTY && !hasEditFieldFlags(options);
-		if (!shouldUseWizard && !taskId) {
+		if (!shouldUseWizard && !taskId && !options.sourcePath) {
 			printMissingRequiredArgument("taskId");
 			return;
 		}
@@ -3841,7 +3857,7 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 		const core = new Core(cwd);
 		if (shouldUseWizard) {
 			let selectedTaskId = taskId;
-			if (!selectedTaskId) {
+			if (!selectedTaskId && !options.sourcePath) {
 				const localTasks = await core.queryTasks({ includeCrossBranch: false });
 				const taskOptions = localTasks.map((candidate) => ({
 					id: candidate.id,
@@ -3858,7 +3874,9 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 				}
 			}
 
-			const existingTaskForWizard = await core.loadTaskById(selectedTaskId);
+			const existingTaskForWizard = options.sourcePath
+				? await loadTaskFromSource(core, { id: selectedTaskId, sourcePath: options.sourcePath })
+				: await core.loadTaskById(selectedTaskId ?? "");
 			if (!existingTaskForWizard) {
 				console.error(`Task ${selectedTaskId} not found.`);
 				process.exitCode = 1;
@@ -3874,6 +3892,7 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 
 			try {
 				const updatedTask = await core.editTask(existingTaskForWizard.id, wizardInput, undefined, {
+					...(options.sourcePath ? { sourcePath: options.sourcePath } : {}),
 					onToleratedDependencies: (ids) => warnToleratedDependencies(ids, existingTaskForWizard.id),
 				});
 				console.log(`Updated task ${updatedTask.id}`);
@@ -3888,9 +3907,12 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 		// instead of aborting the tasks that did resolve. A single ID keeps the original one-error output.
 		const resolvedTasks: Task[] = [];
 		const editFailures: Array<{ taskId: string; message: string }> = [];
-		for (const requestedId of requestedIds) {
+		const resolutionIds = requestedIds.length > 0 ? requestedIds : [""];
+		for (const requestedId of resolutionIds) {
 			try {
-				const loaded = await core.loadTaskById(requestedId);
+				const loaded = options.sourcePath
+					? await loadTaskFromSource(core, { id: requestedId || undefined, sourcePath: options.sourcePath })
+					: await core.loadTaskById(requestedId);
 				// Under a custom prefix, a bare number is an alias the pre-resolution dedup cannot see
 				// ("7" and "BACK-7"), so the resolved identity is the last line of defense against
 				// editing the same task twice.
@@ -3923,11 +3945,13 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 		// The branch follows the IDs the user typed, not the ones that resolved: "task-1 task-999"
 		// is a batch that must still report the missing ID instead of silently dropping it because
 		// only one task was found.
-		if (requestedIds.length === 1) {
+		if (requestedIds.length <= 1) {
 			let updatedTask: Task;
 			try {
 				const updateInput = buildTaskUpdateInput(editArgs);
+				if (options.id !== undefined) updateInput.newId = String(options.id);
 				updatedTask = await core.editTask(existingTask.id, updateInput, undefined, {
+					...(options.sourcePath ? { sourcePath: options.sourcePath } : {}),
 					onToleratedDependencies: (ids) => warnToleratedDependencies(ids, existingTask.id),
 				});
 			} catch (error) {
@@ -3970,28 +3994,40 @@ addHelpSchema(addEditFieldOptions(taskCmd.command("edit [taskIds...]")), {
 
 // Note: Implementation notes appending is handled via `task edit --append-notes` only.
 
-addHelpSchema(taskCmd.command("view <taskId>"), {
+addHelpSchema(taskCmd.command("view [taskId]"), {
 	reads: "Task metadata, description, plan, notes, comments, final summary, AC, and DoD",
-	required: [{ name: "taskId", type: "Task ID", description: "Task to display" }],
+	required: [],
 	optional: [
+		{ name: "taskId", type: "Task ID", description: "Task to display; optional with --source-path" },
+		{ name: "source-path", type: "Path", description: "Exact project-relative source Markdown path" },
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
 	],
 	output: "Interactive task detail view, plain text with --plain, or versioned JSON with --json",
-	examples: ["backlog task view {{TASK_ID:1}} --plain", "backlog task view {{TASK_ID:1}} --json"],
+	examples: [
+		"backlog task view {{TASK_ID:1}} --plain",
+		'backlog task view --source-path "backlog/tasks/BACK-1 - Old-Title.md" --plain',
+		"backlog task view {{TASK_ID:1}} --json",
+	],
 })
 	.description("display task details")
+	.option("--source-path <path>", "read an exact project-relative task Markdown file")
 	.option("--plain", "use plain text output instead of interactive UI")
 	.option("--json", "print versioned machine-readable JSON output")
-	.action(async (taskId: string, options) => {
+	.action(async (taskId: string | undefined, options) => {
 		const outputMode = getTaskReadOutputMode(options);
 		if (!outputMode) return;
+		if (!taskId && !options.sourcePath) {
+			printMissingRequiredArgument("taskId");
+			return;
+		}
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		const localTasks = await core.fs.listTasks();
-		// No pool argument: children that moved to backlog/completed must still be found, and the
-		// detail read is one-shot, so it may build that wider corpus itself.
-		const task = await core.getTaskWithSubtasks(taskId);
+		// An exact path must not be resolved again by a duplicated ID.
+		const task = options.sourcePath
+			? await loadTaskFromSource(core, { id: taskId, sourcePath: options.sourcePath })
+			: await core.getTaskWithSubtasks(taskId ?? "");
 		if (!task) {
 			console.error(`Task ${taskId} not found.`);
 			process.exitCode = 1;
@@ -5022,9 +5058,12 @@ addHelpSchema(docCmd.command("create <title>"), {
 		}
 	});
 
-addHelpSchema(docCmd.command("update <docId>"), {
-	required: [{ name: "docId", type: "Document ID", description: "Document to update" }],
+addHelpSchema(docCmd.command("update [docId]"), {
+	required: [],
 	optional: [
+		{ name: "docId", type: "Document ID", description: "Document to update; optional with --source-path" },
+		{ name: "id", type: "String", description: "Target document ID" },
+		{ name: "source-path", type: "Path", description: "Exact project-relative source Markdown path" },
 		{ name: "title", type: "String", description: "Replacement title" },
 		{ name: "content", type: "Markdown", description: "Replacement document body" },
 		{
@@ -5042,10 +5081,14 @@ addHelpSchema(docCmd.command("update <docId>"), {
 		'backlog doc update doc-1 --content "Updated markdown"',
 		'backlog doc update doc-1 --content "Line 1\\nLine 2"',
 		'backlog doc update doc-1 --append-content "Additional section"',
+		'backlog doc update doc-1 --id doc-10 --title "New title"',
+		'backlog doc update --source-path "backlog/docs/doc-1 - Old-Title.md" --id doc-10',
 		"backlog doc update doc-1 -p guides",
 	],
 })
 	.description("update a document")
+	.option("--id <newId>", "set the target document ID")
+	.option("--source-path <path>", "read and update an exact project-relative document Markdown file")
 	.option("--title <title>", "update document title")
 	.option(
 		"--content <content>",
@@ -5059,10 +5102,16 @@ addHelpSchema(docCmd.command("update <docId>"), {
 	.option("-p, --path <path>", "move document under a docs-relative path (absolute paths and .. are rejected)")
 	.option("-t, --type <type>", `document type (${DOCUMENT_TYPE_VALUES.join(", ")})`)
 	.option("--tags <tags>", "set tags (comma-separated or use multiple times)", createMultiValueAccumulator())
-	.action(async (docId: string, options) => {
+	.action(async (docId: string | undefined, options) => {
+		if (!docId && !options.sourcePath) {
+			printMissingRequiredArgument("docId");
+			return;
+		}
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
-		const existingDocument = await core.getDocument(docId);
+		const existingDocument = options.sourcePath
+			? await loadDocumentFromSource(core, { id: docId, sourcePath: options.sourcePath })
+			: await core.getDocument(docId ?? "");
 		if (!existingDocument) {
 			throw new Error(`Document not found: ${docId}`);
 		}
@@ -5070,15 +5119,20 @@ addHelpSchema(docCmd.command("update <docId>"), {
 		const appendContent = toStringArray(options.appendContent)
 			.map((chunk) => processCliEscapes(String(chunk)))
 			.filter((chunk) => chunk.length > 0);
-		const document = await core.updateDocumentFromInput({
-			id: docId,
-			title: options.title,
-			content: typeof options.content === "string" ? processCliEscapes(options.content) : existingDocument.rawContent,
-			...(appendContent.length > 0 && { appendContent }),
-			type: options.type,
-			path: options.path,
-			...(options.tags !== undefined && { tags: parseDelimitedStringList(options.tags) ?? [] }),
-		});
+		const document = await core.updateDocumentFromInput(
+			{
+				id: existingDocument.id,
+				...(options.id !== undefined ? { newId: String(options.id) } : {}),
+				title: options.title,
+				content: typeof options.content === "string" ? processCliEscapes(options.content) : existingDocument.rawContent,
+				...(appendContent.length > 0 && { appendContent }),
+				type: options.type,
+				path: options.path,
+				...(options.tags !== undefined && { tags: parseDelimitedStringList(options.tags) ?? [] }),
+			},
+			undefined,
+			{ id: docId, ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) },
+		);
 		console.log(`Updated document ${document.id}`);
 		if (document.path) {
 			console.log(`Path: ${core.filesystem.backlogDirName}/docs/${document.path}`);
@@ -5226,12 +5280,18 @@ function printDocumentReferenceHints(candidates: readonly string[], command: "vi
 	}
 }
 // Document view command
-addHelpSchema(docCmd.command("view <docId>"), {
+addHelpSchema(docCmd.command("view [docId]"), {
 	reads: "Document metadata and markdown body",
-	required: [
-		{ name: "docId", type: "String", description: "Document ID, code-name short path, title, or full filename" },
+	required: [],
+	optional: [
+		{
+			name: "docId",
+			type: "String",
+			description: "Document ID, code-name short path, title, or full filename; optional with --source-path",
+		},
+		{ name: "source-path", type: "Path", description: "Exact project-relative source Markdown path" },
+		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 	],
-	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
 	output: "Document metadata and markdown content",
 	examples: [
 		"backlog doc view 1",
@@ -5239,15 +5299,26 @@ addHelpSchema(docCmd.command("view <docId>"), {
 		"backlog doc view Title",
 		'backlog doc view "doc-1 - Title.md"',
 		"backlog doc view 1 --plain",
+		'backlog doc view --source-path "backlog/docs/doc-1 - Old-Title.md" --plain',
 	],
 })
 	.description("view a document")
+	.option("--source-path <path>", "read an exact project-relative document Markdown file")
 	.option("--plain", "use plain text output instead of interactive UI")
-	.action(async (docId: string, options) => {
+	.action(async (docId: string | undefined, options) => {
+		if (!docId && !options.sourcePath) {
+			printMissingRequiredArgument("docId");
+			return;
+		}
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		try {
-			const content = await core.getDocumentContentByReference(docId);
+			const content = options.sourcePath
+				? await (async () => {
+						const document = await loadDocumentFromSource(core, { id: docId, sourcePath: options.sourcePath });
+						return await Bun.file(join(core.filesystem.docsDir, ...(document.path ?? "").split("/"))).text();
+					})()
+				: await core.getDocumentContentByReference(docId ?? "");
 			if (content === null) {
 				console.error(`Document ${docId} not found.`);
 				return;
@@ -5265,7 +5336,8 @@ addHelpSchema(docCmd.command("view <docId>"), {
 				process.exitCode = 1;
 				return;
 			}
-			console.error(`Document ${docId} not found.`);
+			console.error(options.sourcePath && error instanceof Error ? error.message : `Document ${docId} not found.`);
+			process.exitCode = 1;
 		}
 	});
 
@@ -5434,21 +5506,36 @@ addListWindowOptions(decisionListCommand).action(async (options) => {
 	}
 });
 
-addHelpSchema(decisionCmd.command("view <decisionId>"), {
+addHelpSchema(decisionCmd.command("view [decisionId]"), {
 	reads: "Decision metadata and markdown body",
-	required: [{ name: "decisionId", type: "Decision ID", description: "Decision to display" }],
-	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
+	required: [],
+	optional: [
+		{ name: "decisionId", type: "Decision ID", description: "Decision to display; optional with --source-path" },
+		{ name: "source-path", type: "Path", description: "Exact project-relative source Markdown path" },
+		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
+	],
 	output: "Decision frontmatter and markdown content",
-	examples: ["backlog decision view decision-1", "backlog decision view decision-1 --plain"],
+	examples: [
+		"backlog decision view decision-1",
+		'backlog decision view --source-path "backlog/decisions/decision-1 - Old-Title.md" --plain',
+		"backlog decision view decision-1 --plain",
+	],
 })
 	.description("view a decision")
+	.option("--source-path <path>", "read an exact project-relative decision Markdown file")
 	.option("--plain", "use plain text output instead of interactive UI")
-	.action(async (decisionId: string, options) => {
+	.action(async (decisionId: string | undefined, options) => {
+		if (!decisionId && !options.sourcePath) {
+			printMissingRequiredArgument("decisionId");
+			return;
+		}
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		let decision: Decision | null;
 		try {
-			decision = await core.filesystem.loadDecision(decisionId);
+			decision = options.sourcePath
+				? await loadDecisionFromSource(core, { id: decisionId, sourcePath: options.sourcePath })
+				: await core.filesystem.loadDecision(decisionId ?? "");
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {
 				console.error(error.message);
@@ -5470,9 +5557,13 @@ addHelpSchema(decisionCmd.command("view <decisionId>"), {
 		await scrollableViewer(content);
 	});
 
-addHelpSchema(decisionCmd.command("update <decisionId>"), {
-	required: [{ name: "decisionId", type: "Decision ID", description: "Decision to update" }],
+addHelpSchema(decisionCmd.command("update [decisionId]"), {
+	required: [],
 	optional: [
+		{ name: "decisionId", type: "Decision ID", description: "Decision to update; optional with --source-path" },
+		{ name: "id", type: "String", description: "Target decision ID" },
+		{ name: "source-path", type: "Path", description: "Exact project-relative source Markdown path" },
+		{ name: "title", type: "String", description: "Replacement decision title" },
 		{ name: "content", type: "Markdown", description: "Replacement decision body" },
 		{
 			name: "append-content",
@@ -5492,9 +5583,14 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 		'backlog decision update decision-1 --content "## Context\\n\\n..."',
 		'backlog decision update decision-1 --append-content "## Alternatives\\n\\n..."',
 		"backlog decision update decision-1 --status accepted",
+		'backlog decision update decision-1 --id decision-10 --title "New title"',
+		'backlog decision update --source-path "backlog/decisions/decision-1 - Old-Title.md" --id decision-10',
 	],
 })
 	.description("update a decision")
+	.option("--id <newId>", "set the target decision ID")
+	.option("--source-path <path>", "read and update an exact project-relative decision Markdown file")
+	.option("--title <title>", "update decision title")
 	.option(
 		"--content <content>",
 		"replace decision markdown content (multi-line: write \\n literally inside a single-quoted or double-quoted argument)",
@@ -5508,12 +5604,18 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 		"--status <status>",
 		"set the decision status (free-form; common values are proposed, accepted, rejected, superseded)",
 	)
-	.action(async (decisionId: string, options) => {
+	.action(async (decisionId: string | undefined, options) => {
+		if (!decisionId && !options.sourcePath) {
+			printMissingRequiredArgument("decisionId");
+			return;
+		}
 		const cwd = await requireProjectRoot();
 		const core = new Core(cwd);
 		let existingDecision: Decision | null;
 		try {
-			existingDecision = await core.filesystem.loadDecision(decisionId);
+			existingDecision = options.sourcePath
+				? await loadDecisionFromSource(core, { id: decisionId, sourcePath: options.sourcePath })
+				: await core.filesystem.loadDecision(decisionId ?? "");
 		} catch (error) {
 			if (isAmbiguousIdError(error)) {
 				console.error(error.message);
@@ -5534,14 +5636,16 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 		const hasContent = typeof options.content === "string";
 		const hasAppend = appendContent.length > 0;
 		const hasStatus = typeof options.status === "string" && options.status.trim().length > 0;
+		const hasTitle = typeof options.title === "string" && options.title.trim().length > 0;
+		const hasNewId = typeof options.id === "string" && options.id.trim().length > 0;
 
-		if (!hasContent && !hasAppend && !hasStatus) {
-			console.error("No update options provided. Provide --content, --append-content or --status.");
+		if (!hasContent && !hasAppend && !hasStatus && !hasTitle && !hasNewId) {
+			console.error("No update options provided. Provide --content, --append-content, --status, --title or --id.");
 			process.exitCode = 1;
 			return;
 		}
 
-		let content: string;
+		let content = existingDecision.rawContent;
 		if (hasContent) {
 			content = processCliEscapes(options.content);
 			if (hasAppend) {
@@ -5549,17 +5653,23 @@ addHelpSchema(decisionCmd.command("update <decisionId>"), {
 			}
 		} else if (hasAppend) {
 			content = [existingDecision.rawContent, ...appendContent].join("\n\n");
-		} else {
+		} else if (!hasTitle && !hasNewId) {
 			// Status-only update: write the status without round-tripping the body.
 			await core.updateDecisionStatus(existingDecision.id, String(options.status));
 			console.log(`Updated decision ${existingDecision.id}`);
 			return;
+		} else if (!hasContent && !hasAppend) {
+			content = existingDecision.rawContent;
 		}
 
+		const targetId = hasNewId ? normalizeEntityId("decision", String(options.id)) : existingDecision.id;
 		await core.updateDecisionFromContent(existingDecision.id, content, {
 			status: hasStatus ? String(options.status) : undefined,
+			title: hasTitle ? String(options.title) : undefined,
+			newId: hasNewId ? String(options.id) : undefined,
+			...(options.sourcePath ? { sourcePath: options.sourcePath } : {}),
 		});
-		console.log(`Updated decision ${existingDecision.id}`);
+		console.log(`Updated decision ${targetId}`);
 	});
 
 addHelpSchema(decisionCmd.command("delete <decisionId>"), {

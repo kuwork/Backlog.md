@@ -1,6 +1,6 @@
 ## Task Execution Guide
 
-Use this guide when you are working on an existing Backlog task.
+Use this guide when you are working on an existing Backlog task. Return to `backlog instructions overview` for the project-wide workflow and the other detailed guides.
 
 ## The Project State Machine (`backlog/config.yml` -> `statuses`)
 
@@ -251,10 +251,12 @@ Use CLI commands for Backlog changes:
 - Combine multi-select with exclusion: `backlog task list --status "To Do,In Progress" --exclude-status "Blocked" --plain`
 - Watch a filtered queue as it changes: `backlog task list --json --watch --status "In Progress" --assignee @your-name`
 - Update: `backlog task edit {{TASK_ID:123}} ...`
+- Change a task ID: `backlog task edit {{TASK_ID:123}} --id {{TASK_ID:456}}`; combine with `--title`, status, or other single-task edit flags as needed
+- Select one exact task when an old ID is duplicated: `backlog task edit --source-path "backlog/tasks/BACK-1 - Old-Title.md" --id BACK-10`
 - Create docs: `backlog doc create "Title"`
 - Update docs: `backlog doc update doc-1 --content "Markdown"`
 
-Do not edit Backlog markdown files directly. The CLI preserves metadata, IDs, filenames, relationships, and structured sections.
+Do not edit Backlog markdown files directly. The CLI preserves metadata, IDs, filenames, relationships, and structured sections. For all three source-selection modes, duplicate old IDs, ID/title combination updates, task hierarchy restrictions, and reference synchronization, run `backlog instructions entity-identity`.
 
 ### Duplicate Task ID Recovery
 

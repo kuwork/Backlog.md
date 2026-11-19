@@ -1,3 +1,4 @@
+import { entitySourcePathSchema } from "../../utils/schema-generators.ts";
 import type { JsonSchema } from "../../validation/validators.ts";
 
 export const taskListSchema: JsonSchema = {
@@ -118,9 +119,11 @@ export const taskViewSchema: JsonSchema = {
 			type: "string",
 			minLength: 1,
 			maxLength: 50,
+			description: "Task ID. Required unless sourcePath is provided; must match sourcePath when both are set.",
 		},
+		sourcePath: entitySourcePathSchema,
 	},
-	required: ["id"],
+	required: [],
 	additionalProperties: false,
 };
 

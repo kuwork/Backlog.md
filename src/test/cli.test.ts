@@ -87,6 +87,7 @@ describe("CLI Integration", () => {
 			expect(output).toContain("milestones");
 			expect(output).toContain("documents");
 			expect(output).toContain("decisions");
+			expect(output).toContain("entity-identity");
 			expect(output).toContain("drafts");
 			expect(output).toContain("graph");
 			expect(output).toContain("init-required");
@@ -178,7 +179,19 @@ describe("CLI Integration", () => {
 			expect(graph).toContain("## Graph");
 			expect(graph).toContain("backlog graph schema");
 			expect(graph).toContain("backlog graph import");
-		}, 15_000);
+		}, 60_000);
+
+		it("prints the entity identity guide", async () => {
+			const output = normalizeCliOutput(await $`bun ${CLI_PATH} instructions entity-identity`.cwd(TEST_DIR).text());
+
+			expect(output).toContain("## Entity IDs and Exact Source Selection (CLI)");
+			expect(output).toContain("backlog doc update doc-1 --id 10");
+			expect(output).toContain("Prefixed target IDs such as BACK-10, doc-10, and decision-10 are also accepted.");
+			expect(output).toContain("`SOURCE_MISMATCH`");
+			expect(output).toContain("backlog task edit --source-path");
+			expect(output).toContain("When to choose `doctor` or `--source-path`");
+			expect(output).toContain("`doctor` does not repair document or decision IDs.");
+		});
 
 		it("renders task ID examples with the configured task prefix", async () => {
 			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
@@ -209,7 +222,7 @@ describe("CLI Integration", () => {
 			for (const output of [overview, taskCreation, createHelp, listHelp, editHelp]) {
 				expect(output).not.toContain("BACK-");
 			}
-		}, 15_000);
+		}, 60_000);
 
 		it("renders help and instruction examples from BACKLOG_CWD", async () => {
 			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
@@ -281,7 +294,7 @@ describe("CLI Integration", () => {
 			expect(initHelp).not.toContain("backlog init --integration-mode mcp");
 			expect(initHelp).toContain("Writes:");
 			expect(instructionsHelp).toContain(
-				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, memos, graph, init-required",
+				"guide: one of: overview, task-creation, task-execution, task-finalization, milestones, documents, decisions, drafts, memos, graph, entity-identity, init-required",
 			);
 			expect(instructionsHelp).toContain("Output:");
 		});

@@ -1,4 +1,5 @@
 import { DOCUMENT_TYPE_VALUES } from "../../../types/index.ts";
+import { entityNewIdSchema, entitySourcePathSchema } from "../../utils/schema-generators.ts";
 import type { JsonSchema } from "../../validation/validators.ts";
 
 const DOCUMENT_TYPE_ENUM = [...DOCUMENT_TYPE_VALUES];
@@ -32,9 +33,11 @@ export const documentViewSchema: JsonSchema = {
 			type: "string",
 			minLength: 1,
 			maxLength: 100,
+			description: "Document ID. Required unless sourcePath is provided; must match sourcePath when both are set.",
 		},
+		sourcePath: entitySourcePathSchema,
 	},
-	required: ["id"],
+	required: [],
 	additionalProperties: false,
 };
 
@@ -101,7 +104,11 @@ export const documentUpdateSchema: JsonSchema = {
 			type: "string",
 			minLength: 1,
 			maxLength: 100,
+			description:
+				"Source document ID. Required unless sourcePath is provided; must match sourcePath when both are set.",
 		},
+		newId: entityNewIdSchema,
+		sourcePath: entitySourcePathSchema,
 		title: {
 			type: "string",
 			minLength: 1,
@@ -109,6 +116,7 @@ export const documentUpdateSchema: JsonSchema = {
 		},
 		content: {
 			type: "string",
+			description: "Replacement Markdown body. Omit to preserve the existing body.",
 		},
 		appendContent: {
 			type: "array",
@@ -130,7 +138,7 @@ export const documentUpdateSchema: JsonSchema = {
 			maxItems: 50,
 		},
 	},
-	required: ["id", "content"],
+	required: [],
 	additionalProperties: false,
 };
 

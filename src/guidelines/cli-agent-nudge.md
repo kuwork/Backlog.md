@@ -15,6 +15,7 @@ Use the detailed guides when needed:
 - `backlog instructions milestones` for creating, editing, removing, and archiving milestones
 - `backlog instructions documents` for creating, updating, listing, and viewing project documents (including live `sqlite-query` / `duckdb-query` / `cypher-query` blocks)
 - `backlog instructions decisions` for creating or listing decisions
+- `backlog instructions entity-identity` for changing task/document/decision IDs or selecting an exact source file with `--source-path`
 - `backlog instructions drafts` for creating, promoting, demoting, or archiving drafts
 - `backlog instructions graph` for running Cypher graph queries from the CLI
 - `backlog instructions memos` for capturing or managing memos (quick notes, stdin capture, listing, updating, deleting)

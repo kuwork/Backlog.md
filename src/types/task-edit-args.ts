@@ -53,4 +53,4 @@ export interface TaskEditArgs {
 	actualEnd?: string;
 }
 
-export type TaskEditRequest = TaskEditArgs & { id: string };
+export type TaskEditRequest = TaskEditArgs & { id?: string; newId?: string; sourcePath?: string };

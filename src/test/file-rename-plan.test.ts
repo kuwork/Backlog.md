@@ -94,6 +94,24 @@ describe("file rename reference rewriting", () => {
 		expect(parseFrontmatter(wiki).data.source_path).toBe(NEW_PATH);
 	});
 
+	it("updates exact task identity fields without adding serializer-unknown keys", () => {
+		const task =
+			"---\nid: BACK-2\ntitle: Reference\ndependencies: [BACK-1, BACK-2]\nreferences: [BACK-1]\nparent_task_id: BACK-1\n---\nBody";
+		const result = rewriteFileRenameContent({
+			content: task,
+			referencingPath: "backlog/tasks/back-2.md",
+			sourcePath: "backlog/tasks/back-1 - Old.md",
+			targetPath: "backlog/tasks/back-10 - New.md",
+			kind: "task",
+			entityRoute: { kind: "task", id: "BACK-1", newId: "BACK-10", oldTitle: "Old", newTitle: "New" },
+		});
+		const parsed = parseFrontmatter(result);
+		expect(parsed.data.dependencies).toEqual(["BACK-10", "BACK-2"]);
+		expect(parsed.data.references).toEqual(["BACK-10"]);
+		expect(parsed.data.parent_task_id).toBe("BACK-10");
+		expect(parsed.data.parentTaskId).toBeUndefined();
+	});
+
 	it("supports legacy unquoted assignee and reporter handles while rewriting references", () => {
 		const legacyTask = `---\nid: BACK-1\ntitle: Legacy\nassignee: @MrLesk\nreporter: @MrLesk\ndocumentation: [${OLD_PATH}]\n---\n[doc](../docs/PRDS/rename/${OLD_FILENAME})`;
 		const result = rewriteFileRenameContent({
@@ -137,7 +155,7 @@ describe("file rename reference rewriting", () => {
 		expect(decision).toBe("[decision](/decisions/decision-02/new-decision)");
 	});
 
-	it("builds no writes for an unchanged path and only changed references otherwise", () => {
+	it("writes same-path content changes and only changed references otherwise", () => {
 		const input = {
 			sourcePath: OLD_PATH,
 			targetPath: NEW_PATH,
@@ -148,7 +166,10 @@ describe("file rename reference rewriting", () => {
 			],
 		};
 		expect(buildFileRenamePlan(input).changes).toHaveLength(1);
-		expect(buildFileRenamePlan({ ...input, targetPath: OLD_PATH }).changes).toHaveLength(0);
+		expect(buildFileRenamePlan({ ...input, targetPath: OLD_PATH }).changes).toHaveLength(1);
+		expect(
+			buildFileRenamePlan({ ...input, targetPath: OLD_PATH, targetContent: input.sourceContent }).changes,
+		).toHaveLength(0);
 	});
 });
 

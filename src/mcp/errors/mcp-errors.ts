@@ -50,6 +50,25 @@ export class McpInternalError extends BacklogToolError {
 	}
 }
 
+const ENTITY_IDENTITY_ERROR_CODES = new Set([
+	"AMBIGUOUS_ID",
+	"SOURCE_MISMATCH",
+	"ID_CONFLICT",
+	"PATH_CONFLICT",
+	"HIERARCHY_CONFLICT",
+	"INVALID_ID",
+]);
+
+export function getEntityIdentityErrorCode(error: unknown): string | undefined {
+	const explicitCode = (error as { code?: unknown } | null)?.code;
+	if (typeof explicitCode === "string" && ENTITY_IDENTITY_ERROR_CODES.has(explicitCode)) return explicitCode;
+	if (error instanceof Error) {
+		const messageCode = error.message.match(/^([A-Z_]+):/)?.[1];
+		if (messageCode && ENTITY_IDENTITY_ERROR_CODES.has(messageCode)) return messageCode;
+	}
+	return undefined;
+}
+
 /**
  * Formats MCP errors into standardized tool responses
  */
@@ -74,6 +93,10 @@ export function handleBacklogToolError(error: unknown): CallToolResult {
 	}
 	if (error instanceof BacklogToolError) {
 		return buildErrorResult(error.code, error.message, error.details);
+	}
+	const identityErrorCode = getEntityIdentityErrorCode(error);
+	if (identityErrorCode && error instanceof Error) {
+		return buildErrorResult(identityErrorCode, error.message);
 	}
 
 	console.error("Unexpected MCP error:", error);

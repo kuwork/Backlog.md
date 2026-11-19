@@ -136,6 +136,8 @@ export interface TaskCreateInput {
 }
 
 export interface TaskUpdateInput {
+	/** Target ID for identity updates; the source task is resolved separately. */
+	newId?: string;
 	title?: string;
 	description?: string;
 	descriptionAppend?: string[];
@@ -289,6 +291,7 @@ export interface DocumentCreateInput {
 
 export interface DocumentUpdateInput {
 	id: string;
+	newId?: string;
 	content: string;
 	appendContent?: string[];
 	title?: string;

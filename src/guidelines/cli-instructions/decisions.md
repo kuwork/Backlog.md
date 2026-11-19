@@ -10,8 +10,8 @@ Always use Backlog.md CLI commands to create and list decisions so IDs, frontmat
 |--------|---------|
 | Create a decision | `backlog decision create "<title>" [-s <status>] [--plain]` |
 | List decisions | `backlog decision list [--plain] [--json]` |
-| View a decision | `backlog decision view <decisionId> [--plain]` |
-| Update a decision | `backlog decision update <decisionId> [--content "..."] [--append-content "..."] [--status <status>]` |
+| View a decision | `backlog decision view <decisionId> [--source-path <path>] [--plain]` |
+| Update a decision | `backlog decision update [decisionId] [--id <newId>] [--source-path <path>] [--title <title>] [--content "..."] [--append-content "..."] [--status <status>]` |
 | Delete a decision | `backlog decision delete <decisionId>` |
 
 ### Deleting Decisions
@@ -69,35 +69,44 @@ backlog decision list --count
 
 ### Updating Decisions
 
-`backlog decision update <decisionId>` changes a decision's structured sections, title, and/or its status. It parses the provided markdown body and updates the matching Context / Decision / Consequences / Alternatives sections, leaving unrelated frontmatter intact. Omitted sections keep their current values.
+`backlog decision update [decisionId]` changes a decision's ID, structured sections, title, and/or status. It parses the provided markdown body and updates the matching Context / Decision / Consequences / Alternatives sections, leaving unrelated frontmatter intact. Omitted fields keep their current values. Use `--source-path` with `decision view` or `decision update` to select one exact project-relative Markdown file, especially when the old ID is duplicated; the positional ID is optional and must be equivalent to the source frontmatter when both are supplied.
 
-If the title in `--content` changes the sanitized decision filename, the CLI renames the file automatically while preserving its ID and directory. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/decisions/:id/:title` title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
+ID and title changes update the source frontmatter and sanitized filename automatically. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/decisions/:id/:title` ID/title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually. Run `backlog instructions entity-identity` for source-selection modes, duplicate old IDs, reference scope, and conflict handling.
 
 Parameters:
 
 | Parameter | Required | Description |
 |-------------|----------|-------------|
+| `--id <newId>` | No | Set the target decision ID. |
+| `--source-path <path>` | No | Select an exact project-relative Markdown file under `backlog/decisions/`. |
+| `--title <title>` | No | Set the decision title. |
 | `--content <content>` | No | Replace the entire decision body. |
 | `--append-content <text>` | No | Append a markdown block to the body (can be used multiple times). |
 | `--status <status>` | No | Set the decision status; free-form, common values are `proposed`, `accepted`, `rejected`, `superseded`. |
 
-At least one of `--content`, `--append-content` or `--status` is required.
+At least one update flag is required.
 
 When both content flags are provided, `--content` replaces the body first and `--append-content` blocks are appended after it.
 
-`--status` can be combined with the content flags; the explicit value wins over any `status` in the content frontmatter. Used on its own it changes only the status and leaves the body untouched.
+`--status` can be combined with identity, title, and content flags; the explicit value wins over any `status` in the content frontmatter. Used on its own it changes only the status and leaves the body untouched.
 
 ```bash
-# Mark a decision as accepted without touching its body
-backlog decision update decision-1 --status accepted
+# Change only the ID
+backlog decision update decision-1 --id decision-10
 
-# Replace the body and set the status in one call
+# Change ID, title, and status in one call
+backlog decision update decision-1 --id decision-10 --title "Adopt Bun test runner" --status accepted
+
+# Select one exact source when decision-1 is duplicated
+backlog decision update --source-path "backlog/decisions/decision-1 - Old-Title.md" --id decision-10
+
+# Replace the body and set the status without changing identity
 backlog decision update decision-1 --status superseded --content "## Context\n\nOutdated runtime choice"
 ```
 
 ### Updating Decisions over MCP
 
-The MCP server exposes the same capability as `decision_update`, so agents working through MCP do not have to shell out. It takes the decision `id` plus any of `content`, `appendContent` and `status`, with the same rules as the CLI flags (at least one is required; `status` alone changes only the status).
+The MCP server exposes the same capability as `decision_update`, so agents working through MCP do not have to shell out. It accepts `id` and/or `sourcePath` for source selection, optional `newId` and `title`, plus any of `content`, `appendContent` and `status`. At least one update field is required; `status` alone changes only the status. `decision_view` supports the same `id`/`sourcePath` selection rules.
 
 ### Multi-line Content
 

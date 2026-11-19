@@ -1,9 +1,9 @@
 import type { McpServer } from "../../server.ts";
 import type { McpToolHandler } from "../../types.ts";
 import { createSimpleValidatedTool } from "../../validation/tool-wrapper.ts";
-import type { DecisionDeleteArgs, DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
+import type { DecisionDeleteArgs, DecisionListArgs, DecisionUpdateArgs, DecisionViewArgs } from "./handlers.ts";
 import { DecisionHandlers } from "./handlers.ts";
-import { decisionDeleteSchema, decisionListSchema, decisionUpdateSchema } from "./schemas.ts";
+import { decisionDeleteSchema, decisionListSchema, decisionUpdateSchema, decisionViewSchema } from "./schemas.ts";
 
 export function registerDecisionTools(server: McpServer): void {
 	const handlers = new DecisionHandlers(server);
@@ -17,6 +17,17 @@ export function registerDecisionTools(server: McpServer): void {
 		},
 		decisionListSchema,
 		async (input) => handlers.listDecisions(input as DecisionListArgs),
+	);
+
+	const viewDecisionTool: McpToolHandler = createSimpleValidatedTool(
+		{
+			name: "decision_view",
+			description: "View a Backlog.md decision by ID or exact project-relative source path",
+			inputSchema: decisionViewSchema,
+			annotations: { title: "View Decision", readOnlyHint: true, destructiveHint: false },
+		},
+		decisionViewSchema,
+		async (input) => handlers.viewDecision(input as DecisionViewArgs),
 	);
 
 	const deleteDecisionTool: McpToolHandler = createSimpleValidatedTool(
@@ -33,7 +44,8 @@ export function registerDecisionTools(server: McpServer): void {
 	const updateDecisionTool: McpToolHandler = createSimpleValidatedTool(
 		{
 			name: "decision_update",
-			description: "Update an existing Backlog.md decision's status, body, or both",
+			description:
+				"Update an existing Backlog.md decision's status, body, or both; also supports optional title and newId updates and sourcePath for exact source selection",
 			inputSchema: decisionUpdateSchema,
 			annotations: { title: "Update Decision", destructiveHint: false },
 		},
@@ -42,9 +54,10 @@ export function registerDecisionTools(server: McpServer): void {
 	);
 
 	server.addTool(listDecisionTool);
+	server.addTool(viewDecisionTool);
 	server.addTool(deleteDecisionTool);
 	server.addTool(updateDecisionTool);
 }
 
-export type { DecisionDeleteArgs, DecisionListArgs, DecisionUpdateArgs } from "./handlers.ts";
-export { decisionDeleteSchema, decisionListSchema, decisionUpdateSchema } from "./schemas.ts";
+export type { DecisionDeleteArgs, DecisionListArgs, DecisionUpdateArgs, DecisionViewArgs } from "./handlers.ts";
+export { decisionDeleteSchema, decisionListSchema, decisionUpdateSchema, decisionViewSchema } from "./schemas.ts";

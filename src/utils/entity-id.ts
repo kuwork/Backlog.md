@@ -6,6 +6,7 @@
  */
 
 export class AmbiguousIdError extends Error {
+	readonly code = "AMBIGUOUS_ID";
 	readonly id: string;
 	readonly candidates: string[];
 
@@ -20,7 +21,7 @@ export class AmbiguousIdError extends Error {
 		const sortedCandidates = [...candidates].sort((left, right) => left.localeCompare(right));
 		super(
 			[
-				`${subject ?? `${entityLabel} ID ${id}`} is ambiguous; ${sortedCandidates.length} files match:`,
+				`AMBIGUOUS_ID: ${subject ?? `${entityLabel} ID ${id}`} is ambiguous; ${sortedCandidates.length} files match:`,
 				...sortedCandidates.map((candidate) => `  - ${candidate}`),
 				guidance,
 			].join("\n"),

@@ -1,6 +1,7 @@
+import { loadDocumentFromSource } from "../../../core/entity-source.ts";
 import type { Document, DocumentSearchResult } from "../../../types/index.ts";
 import { isAmbiguousIdError } from "../../../utils/entity-id.ts";
-import { BacklogToolError } from "../../errors/mcp-errors.ts";
+import { BacklogToolError, getEntityIdentityErrorCode } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
 import { formatDocumentCallResult } from "../../utils/document-response.ts";
@@ -13,7 +14,8 @@ export type DocumentListArgs = {
 };
 
 export type DocumentViewArgs = {
-	id: string;
+	id?: string;
+	sourcePath?: string;
 };
 
 export type DocumentDeleteArgs = {
@@ -33,9 +35,11 @@ export type DocumentCreateArgs = {
 };
 
 export type DocumentUpdateArgs = {
-	id: string;
+	id?: string;
+	newId?: string;
+	sourcePath?: string;
 	title?: string;
-	content: string;
+	content?: string;
 	appendContent?: string[];
 	type?: Document["type"];
 	path?: string;
@@ -76,10 +80,16 @@ export class DocumentHandlers {
 		return ` [score ${invertedScore.toFixed(3)}]`;
 	}
 
-	private async loadDocumentOrThrow(id: string): Promise<Document> {
-		const document = await this.core.getDocument(id);
+	private async loadDocumentOrThrow(selector: { id?: string; sourcePath?: string }): Promise<Document> {
+		if (selector.sourcePath) {
+			return await loadDocumentFromSource(this.core, selector);
+		}
+		if (!selector.id) {
+			throw new BacklogToolError("Provide id or sourcePath to select a document.", "VALIDATION_ERROR");
+		}
+		const document = await this.core.getDocument(selector.id);
 		if (!document) {
-			throw new BacklogToolError(`Document not found: ${id}`, "DOCUMENT_NOT_FOUND");
+			throw new BacklogToolError(`Document not found: ${selector.id}`, "DOCUMENT_NOT_FOUND");
 		}
 		return document;
 	}
@@ -114,7 +124,7 @@ export class DocumentHandlers {
 	}
 
 	async viewDocument(args: DocumentViewArgs): Promise<CallToolResult> {
-		const document = await this.loadDocumentOrThrow(args.id);
+		const document = await this.loadDocumentOrThrow(args);
 		return await formatDocumentCallResult(document);
 	}
 
@@ -140,25 +150,33 @@ export class DocumentHandlers {
 	}
 
 	async updateDocument(args: DocumentUpdateArgs): Promise<CallToolResult> {
-		await this.loadDocumentOrThrow(args.id);
+		const existing = await this.loadDocumentOrThrow(args);
 
 		try {
-			const document = await this.core.updateDocumentFromInput({
-				id: args.id,
-				content: args.content,
-				...(args.appendContent && args.appendContent.length > 0 && { appendContent: args.appendContent }),
-				title: args.title,
-				type: args.type,
-				path: args.path,
-				tags: args.tags,
-			});
+			const document = await this.core.updateDocumentFromInput(
+				{
+					id: existing.id,
+					newId: args.newId,
+					content: args.content ?? existing.rawContent,
+					...(args.appendContent && args.appendContent.length > 0 && { appendContent: args.appendContent }),
+					title: args.title,
+					type: args.type,
+					path: args.path,
+					tags: args.tags,
+				},
+				undefined,
+				{ id: args.id, ...(args.sourcePath ? { sourcePath: args.sourcePath } : {}) },
+			);
 			return await formatDocumentCallResult(document, {
 				summaryLines: ["Document updated successfully."],
 			});
 		} catch (error) {
-			if (isAmbiguousIdError(error)) throw error;
+			if (isAmbiguousIdError(error) || error instanceof BacklogToolError) throw error;
 			if (error instanceof Error) {
-				throw new BacklogToolError(`Failed to update document: ${error.message}`, "OPERATION_FAILED");
+				throw new BacklogToolError(
+					`Failed to update document: ${error.message}`,
+					getEntityIdentityErrorCode(error) ?? "OPERATION_FAILED",
+				);
 			}
 			throw new BacklogToolError("Failed to update document.", "OPERATION_FAILED");
 		}

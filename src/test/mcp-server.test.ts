@@ -347,6 +347,7 @@ describe("McpServer bootstrap", () => {
 			"document_folder_delete",
 			"document_search",
 			"decision_list",
+			"decision_view",
 			"decision_delete",
 			"decision_update",
 			"graph_query",

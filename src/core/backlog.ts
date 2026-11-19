@@ -37,14 +37,19 @@ import {
 } from "../types/index.ts";
 import { normalizeAssignee } from "../utils/assignee.ts";
 import { getStoredUtcTimestamp } from "../utils/date-utc.ts";
-import { findDocumentById, findDocumentByReference, normalizeDocumentId } from "../utils/document-id.ts";
+import {
+	documentIdsEqual,
+	findDocumentById,
+	findDocumentByReference,
+	normalizeDocumentId,
+} from "../utils/document-id.ts";
 import {
 	getDocumentSubPathFromRelativePath,
 	normalizeDocumentRelativePath,
 	normalizeDocumentSubPath,
 } from "../utils/document-path.ts";
 import { openInEditor } from "../utils/editor.ts";
-import { isAmbiguousIdError } from "../utils/entity-id.ts";
+import { entityIdKey, entityIdsEqual, isAmbiguousIdError, normalizeEntityId } from "../utils/entity-id.ts";
 import { findBacklogRoot } from "../utils/find-backlog-root.ts";
 import { generateNextDecisionId, generateNextDocId } from "../utils/id-generators.ts";
 import { logLine } from "../utils/log.ts";
@@ -71,7 +76,7 @@ import {
 	validateDependencies,
 } from "../utils/task-builders.ts";
 import { mergeCompletedIntoActive } from "../utils/task-corpus.ts";
-import { canonicalTaskId } from "../utils/task-id.ts";
+import { canonicalTaskId, extractTaskBody } from "../utils/task-id.ts";
 import {
 	AmbiguousTaskIdError,
 	getTaskFilename,
@@ -87,6 +92,7 @@ import { isTerminalStatus } from "../utils/terminal-status.ts";
 import { AssetManager } from "./assets.ts";
 import { migrateConfig, needsMigration } from "./config-migration.ts";
 import { ContentStore, type TaskCorpusSnapshot } from "./content-store.ts";
+import { loadDecisionFromSource, loadDocumentFromSource, loadTaskFromSource } from "./entity-source.ts";
 import { applyFileRenamePlan, buildFileRenamePlan, collectFileRenameReferences } from "./file-rename-plan.ts";
 import { listMemos, memosSignature } from "./memos.ts";
 import { migrateDraftPrefixes, needsDraftPrefixMigration } from "./prefix-migration.ts";
@@ -160,8 +166,26 @@ interface TaskMutationOptions extends TaskReadOptions {
  * can surface them. Reported as data rather than printed here, because Core has no opinion about
  * whether the caller has a terminal to print to; this mirrors onVacatedIdCleanup above.
  */
-interface TaskUpdateOptions {
+interface EntityUpdateSource {
+	id?: string;
+	sourcePath?: string;
+}
+
+interface TaskUpdateOptions extends EntityUpdateSource {
 	onToleratedDependencies?: (toleratedDependencyIds: string[]) => void;
+}
+
+function normalizeEntityIdUpdate(
+	prefix: "doc" | "decision",
+	requestedId: string | undefined,
+	currentId: string,
+): string {
+	if (requestedId === undefined) return currentId;
+	const normalized = normalizeEntityId(prefix, requestedId.trim());
+	if (entityIdKey(prefix, normalized) === null) {
+		throw new Error(`INVALID_ID: Invalid ${prefix} ID: ${requestedId}`);
+	}
+	return normalized;
 }
 
 interface TaskCorpusLoadOptions {
@@ -1724,11 +1748,27 @@ export class Core {
 		return filepath;
 	}
 
-	async updateTask(task: Task, autoCommit?: boolean): Promise<string | null> {
+	private getFileRenameReferenceDirectories() {
+		return {
+			rootDir: this.fs.rootDir,
+			tasksDir: this.fs.tasksDir,
+			completedDir: this.fs.completedDir,
+			draftsDir: this.fs.draftsDir,
+			docsDir: this.fs.docsDir,
+			decisionsDir: this.fs.decisionsDir,
+			milestonesDir: this.fs.milestonesDir,
+			archiveMilestonesDir: this.fs.archiveMilestonesDir,
+			wikiDir: this.fs.wikiDir,
+		};
+	}
+
+	async updateTask(task: Task, autoCommit?: boolean, source?: EntityUpdateSource): Promise<string | null> {
 		normalizeAssignee(task);
 
-		// Load original task to detect status changes for callbacks
-		const originalTask = await this.fs.loadTask(task.id);
+		// Load the original file separately from the target ID so identity changes keep their source anchor.
+		const originalTask = source?.sourcePath
+			? await loadTaskFromSource(this, { id: source.id ?? task.id, sourcePath: source.sourcePath })
+			: await this.fs.loadTask(source?.id ?? task.id);
 		const oldStatus = originalTask?.status ?? "";
 		const newStatus = task.status ?? "";
 		const statusChanged = oldStatus !== newStatus;
@@ -1786,42 +1826,38 @@ export class Core {
 		let renamedFrom: string | null = null;
 		let renameReferencePaths: string[] = [];
 		const sourceAbsolutePath = originalTask?.filePath;
-		if (sourceAbsolutePath && originalTask && originalTask.title !== task.title) {
+		if (
+			sourceAbsolutePath &&
+			originalTask &&
+			(originalTask.title !== task.title || originalTask.id !== task.id || source?.sourcePath)
+		) {
 			const targetAbsolutePath = join(dirname(sourceAbsolutePath), buildTaskFilename(task));
-			if (targetAbsolutePath !== sourceAbsolutePath) {
-				const sourceProjectPath = relative(this.fs.rootDir, sourceAbsolutePath).replace(/\\/g, "/");
-				const targetProjectPath = relative(this.fs.rootDir, targetAbsolutePath).replace(/\\/g, "/");
-				const plan = buildFileRenamePlan({
-					sourcePath: sourceProjectPath,
-					targetPath: targetProjectPath,
-					sourceContent: await readFile(sourceAbsolutePath, "utf8"),
-					targetContent: serializeTask(task),
-					entityRoute: {
-						kind: "task",
-						id: originalTask.id,
-						oldTitle: originalTask.title,
-						newTitle: task.title,
-					},
-					references: await collectFileRenameReferences(
-						{
-							rootDir: this.fs.rootDir,
-							tasksDir: this.fs.tasksDir,
-							completedDir: this.fs.completedDir,
-							docsDir: this.fs.docsDir,
-							decisionsDir: this.fs.decisionsDir,
-							wikiDir: this.fs.wikiDir,
-						},
-						sourceProjectPath,
-					),
-				});
-				await applyFileRenamePlan(this.fs.rootDir, plan);
-				task.filePath = targetAbsolutePath;
-				filePath = targetAbsolutePath;
-				renamedFrom = sourceAbsolutePath;
-				renameReferencePaths = plan.changes
-					.slice(1)
-					.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
-			}
+			const sourceProjectPath = relative(this.fs.rootDir, sourceAbsolutePath).replace(/\\/g, "/");
+			const targetProjectPath = relative(this.fs.rootDir, targetAbsolutePath).replace(/\\/g, "/");
+			const plan = buildFileRenamePlan({
+				sourcePath: sourceProjectPath,
+				targetPath: targetProjectPath,
+				sourceContent: await readFile(sourceAbsolutePath, "utf8"),
+				targetContent: serializeTask(task),
+				entityRoute: {
+					kind: "task",
+					id: originalTask.id,
+					...(originalTask.id !== task.id ? { newId: task.id } : {}),
+					oldTitle: originalTask.title,
+					newTitle: task.title,
+				},
+				references: await collectFileRenameReferences(this.getFileRenameReferenceDirectories(), sourceProjectPath, {
+					kind: "task",
+					id: originalTask.id,
+				}),
+			});
+			await applyFileRenamePlan(this.fs.rootDir, plan);
+			task.filePath = targetAbsolutePath;
+			filePath = targetAbsolutePath;
+			renamedFrom = targetAbsolutePath === sourceAbsolutePath ? null : sourceAbsolutePath;
+			renameReferencePaths = plan.changes
+				.filter((change) => change.sourcePath !== sourceProjectPath)
+				.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
 		}
 
 		if (!filePath) {
@@ -2594,19 +2630,66 @@ export class Core {
 		return { task, mutated };
 	}
 
+	private async normalizeTaskIdUpdate(current: Task, requestedId: string): Promise<string> {
+		const trimmed = requestedId.trim();
+		const config = await this.fs.loadConfig();
+		const prefix = config?.prefixes?.task ?? "task";
+		const explicitPrefix = extractAnyPrefix(trimmed);
+		if (!trimmed || (explicitPrefix && explicitPrefix.toLowerCase() !== prefix.toLowerCase())) {
+			throw new Error(`INVALID_ID: Task ID must use the configured "${prefix}" prefix: ${requestedId}`);
+		}
+		const normalized = normalizeTaskId(trimmed, prefix);
+		const oldBody = extractTaskBody(current.id, prefix);
+		const newBody = extractTaskBody(normalized, prefix);
+		if (!newBody) throw new Error(`INVALID_ID: Invalid task ID: ${requestedId}`);
+		if (oldBody) {
+			const oldSegments = oldBody.split(".");
+			const newSegments = newBody.split(".");
+			if (oldSegments.length !== newSegments.length) {
+				throw new Error("HIERARCHY_CONFLICT: Use reparent to change a task's parent or hierarchy level.");
+			}
+			if (
+				oldSegments.length > 1 &&
+				!taskIdsEqual(oldSegments.slice(0, -1).join("."), newSegments.slice(0, -1).join("."), prefix)
+			) {
+				throw new Error("HIERARCHY_CONFLICT: A subtask ID can change only its final number within the same parent.");
+			}
+		}
+
+		const allTasks = [...(await this.fs.listTasks()), ...(await this.fs.listCompletedTasks())];
+		if (
+			normalized !== current.id &&
+			allTasks.some((task) => task.parentTaskId && taskIdsEqual(task.parentTaskId, current.id))
+		) {
+			throw new Error("HIERARCHY_CONFLICT: A task with subtasks cannot change ID directly.");
+		}
+		if (
+			!taskIdsEqual(current.id, normalized, prefix) &&
+			allTasks.some((task) => task.filePath !== current.filePath && taskIdsEqual(task.id, normalized, prefix))
+		) {
+			throw new Error(`ID_CONFLICT: Task ${normalized} already exists.`);
+		}
+		return normalized;
+	}
+
 	async updateTaskFromInput(
 		taskId: string,
 		input: TaskUpdateInput,
 		autoCommit?: boolean,
 		options?: TaskUpdateOptions,
 	): Promise<Task> {
-		const task = await this.fs.loadTask(taskId);
+		const task = options?.sourcePath
+			? await loadTaskFromSource(this, { id: taskId, sourcePath: options.sourcePath })
+			: await this.fs.loadTask(taskId);
 		if (!task) {
 			throw new Error(`Task not found: ${taskId}`);
 		}
 
 		const requestedStatus = input.status?.trim().toLowerCase();
 		if (requestedStatus === "draft") {
+			if (input.newId !== undefined) {
+				throw new Error("Cannot change a task ID while demoting it to Draft.");
+			}
 			// demoteTaskWithUpdates takes the task lock itself, so it must not be nested here.
 			return await this.demoteTaskWithUpdates(task, input, autoCommit, options);
 		}
@@ -2616,10 +2699,13 @@ export class Core {
 		// whenever one writer releases before the next acquires: the second would then apply
 		// its changes to a snapshot taken before the first wrote.
 		return await this.fs.withTaskLock(task, async () => {
-			const current = await this.fs.loadTask(taskId);
+			const current = options?.sourcePath
+				? await loadTaskFromSource(this, { id: taskId, sourcePath: options.sourcePath })
+				: await this.fs.loadTask(taskId);
 			if (!current) {
 				throw new Error(`Task not found: ${taskId}`);
 			}
+			const nextId = input.newId === undefined ? current.id : await this.normalizeTaskIdUpdate(current, input.newId);
 
 			const { mutated } = await this.applyTaskUpdateInput(
 				current,
@@ -2627,13 +2713,18 @@ export class Core {
 				async (status) => this.requireCanonicalStatus(status),
 				options,
 			);
+			const idChanged = nextId !== current.id;
+			if (idChanged) current.id = nextId;
 
-			if (!mutated) {
+			if (!mutated && !idChanged) {
 				return current;
 			}
 
-			await this.updateTask(current, autoCommit);
-			const refreshed = await this.fs.loadTask(taskId);
+			await this.updateTask(current, autoCommit, {
+				id: task.id,
+				...(options?.sourcePath ? { sourcePath: options.sourcePath } : {}),
+			});
+			const refreshed = await this.fs.loadTask(current.id);
 			return refreshed ?? current;
 		});
 	}
@@ -3748,52 +3839,65 @@ export class Core {
 	 * Persist an updated decision and auto-commit with an Update message. Distinct
 	 * from createDecision so the commit history distinguishes creation from updates.
 	 */
-	async updateDecision(decision: Decision, autoCommit?: boolean): Promise<void> {
-		const originalDecision = await this.fs.loadDecision(decision.id);
-		const sourceAbsolutePath = originalDecision?.path ? join(this.fs.decisionsDir, originalDecision.path) : undefined;
-		if (sourceAbsolutePath && originalDecision && originalDecision.title !== decision.title) {
-			const targetAbsolutePath = join(dirname(sourceAbsolutePath), buildDecisionFilename(decision));
-			if (targetAbsolutePath !== sourceAbsolutePath) {
-				const sourceProjectPath = relative(this.fs.rootDir, sourceAbsolutePath).replace(/\\/g, "/");
-				const targetProjectPath = relative(this.fs.rootDir, targetAbsolutePath).replace(/\\/g, "/");
-				const plan = buildFileRenamePlan({
-					sourcePath: sourceProjectPath,
-					targetPath: targetProjectPath,
-					sourceContent: await readFile(sourceAbsolutePath, "utf8"),
-					targetContent: serializeDecision(decision),
-					entityRoute: {
-						kind: "decisions",
-						id: originalDecision.id,
-						oldTitle: originalDecision.title,
-						newTitle: decision.title,
-					},
-					references: await collectFileRenameReferences(
-						{
-							rootDir: this.fs.rootDir,
-							tasksDir: this.fs.tasksDir,
-							completedDir: this.fs.completedDir,
-							docsDir: this.fs.docsDir,
-							decisionsDir: this.fs.decisionsDir,
-							wikiDir: this.fs.wikiDir,
-						},
-						sourceProjectPath,
-					),
-				});
-				await applyFileRenamePlan(this.fs.rootDir, plan);
-				decision.path = relative(this.fs.decisionsDir, targetAbsolutePath).replace(/\\/g, "/");
-				const referencePaths = plan.changes
-					.slice(1)
-					.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
-				if (await this.shouldAutoCommit(autoCommit)) {
-					await this.commitWrittenFile(
-						`backlog: Update decision ${decision.id}`,
-						[sourceAbsolutePath],
-						targetAbsolutePath,
-						referencePaths,
-					);
-				}
-				return;
+	async updateDecision(decision: Decision, autoCommit?: boolean, source?: EntityUpdateSource): Promise<void> {
+		const originalDecision = source?.sourcePath
+			? await loadDecisionFromSource(this, { id: source.id ?? decision.id, sourcePath: source.sourcePath })
+			: await this.fs.loadDecision(source?.id ?? decision.id);
+		if (originalDecision) {
+			decision.id = normalizeEntityIdUpdate("decision", decision.id, originalDecision.id);
+			if (entityIdKey("decision", decision.id) === null) {
+				throw new Error(`INVALID_ID: Invalid decision ID: ${decision.id}`);
 			}
+			if (
+				!entityIdsEqual("decision", originalDecision.id, decision.id) &&
+				(await this.fs.listDecisions()).some(
+					(candidate) =>
+						candidate.path !== originalDecision.path && entityIdsEqual("decision", candidate.id, decision.id),
+				)
+			) {
+				throw new Error(`ID_CONFLICT: Decision ${decision.id} already exists.`);
+			}
+		}
+		const sourceAbsolutePath = originalDecision?.path ? join(this.fs.decisionsDir, originalDecision.path) : undefined;
+		if (
+			sourceAbsolutePath &&
+			originalDecision &&
+			(originalDecision.title !== decision.title || originalDecision.id !== decision.id || source?.sourcePath)
+		) {
+			const targetAbsolutePath = join(dirname(sourceAbsolutePath), buildDecisionFilename(decision));
+			const sourceProjectPath = relative(this.fs.rootDir, sourceAbsolutePath).replace(/\\/g, "/");
+			const targetProjectPath = relative(this.fs.rootDir, targetAbsolutePath).replace(/\\/g, "/");
+			const plan = buildFileRenamePlan({
+				sourcePath: sourceProjectPath,
+				targetPath: targetProjectPath,
+				sourceContent: await readFile(sourceAbsolutePath, "utf8"),
+				targetContent: serializeDecision(decision),
+				entityRoute: {
+					kind: "decisions",
+					id: originalDecision.id,
+					...(originalDecision.id !== decision.id ? { newId: decision.id } : {}),
+					oldTitle: originalDecision.title,
+					newTitle: decision.title,
+				},
+				references: await collectFileRenameReferences(this.getFileRenameReferenceDirectories(), sourceProjectPath, {
+					kind: "decisions",
+					id: originalDecision.id,
+				}),
+			});
+			await applyFileRenamePlan(this.fs.rootDir, plan);
+			decision.path = relative(this.fs.decisionsDir, targetAbsolutePath).replace(/\\/g, "/");
+			const referencePaths = plan.changes
+				.filter((change) => change.sourcePath !== sourceProjectPath)
+				.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
+			if (await this.shouldAutoCommit(autoCommit)) {
+				await this.commitWrittenFile(
+					`backlog: Update decision ${decision.id}`,
+					targetAbsolutePath === sourceAbsolutePath ? [] : [sourceAbsolutePath],
+					targetAbsolutePath,
+					referencePaths,
+				);
+			}
+			return;
 		}
 
 		const { filepath, removedFilepaths } = await this.fs.saveDecision(decision);
@@ -3806,9 +3910,11 @@ export class Core {
 	async updateDecisionFromContent(
 		decisionId: string,
 		content: string,
-		options: { status?: string; autoCommit?: boolean } = {},
+		options: { status?: string; title?: string; newId?: string; sourcePath?: string; autoCommit?: boolean } = {},
 	): Promise<void> {
-		const existingDecision = await this.fs.loadDecision(decisionId);
+		const existingDecision = options.sourcePath
+			? await loadDecisionFromSource(this, { id: decisionId, sourcePath: options.sourcePath })
+			: await this.fs.loadDecision(decisionId);
 		if (!existingDecision) {
 			throw new Error(`Decision ${decisionId} not found`);
 		}
@@ -3818,7 +3924,8 @@ export class Core {
 
 		const updatedDecision = {
 			...existingDecision,
-			title: frontmatter.title || existingDecision.title,
+			...(options.newId !== undefined ? { id: normalizeEntityId("decision", options.newId) } : {}),
+			title: options.title ?? frontmatter.title ?? existingDecision.title,
 			// An explicit status argument wins, so a caller can change the status
 			// without rewriting the body (and without hand-writing frontmatter).
 			// Statuses are free-form at runtime, hence the cast at the boundary.
@@ -3830,17 +3937,35 @@ export class Core {
 			alternatives: extractSection(content, "Alternatives") || existingDecision.alternatives,
 		};
 
-		await this.updateDecision(updatedDecision, options.autoCommit);
+		await this.updateDecision(updatedDecision, options.autoCommit, {
+			id: decisionId,
+			...(options.sourcePath ? { sourcePath: options.sourcePath } : {}),
+		});
 	}
 
 	/** Change only the status of an existing decision, leaving its body untouched. */
-	async updateDecisionStatus(decisionId: string, status: string, autoCommit?: boolean): Promise<void> {
-		const existingDecision = await this.fs.loadDecision(decisionId);
+	async updateDecisionStatus(
+		decisionId: string,
+		status: string,
+		autoCommit?: boolean,
+		options: { newId?: string; sourcePath?: string } = {},
+	): Promise<void> {
+		const existingDecision = options.sourcePath
+			? await loadDecisionFromSource(this, { id: decisionId, sourcePath: options.sourcePath })
+			: await this.fs.loadDecision(decisionId);
 		if (!existingDecision) {
 			throw new Error(`Decision ${decisionId} not found`);
 		}
 
-		await this.updateDecision({ ...existingDecision, status: status as Decision["status"] }, autoCommit);
+		await this.updateDecision(
+			{
+				...existingDecision,
+				...(options.newId !== undefined ? { id: normalizeEntityId("decision", options.newId) } : {}),
+				status: status as Decision["status"],
+			},
+			autoCommit,
+			{ id: decisionId, ...(options.sourcePath ? { sourcePath: options.sourcePath } : {}) },
+		);
 	}
 
 	async createDecisionWithTitle(title: string, autoCommit?: boolean): Promise<Decision> {
@@ -3917,8 +4042,14 @@ export class Core {
 		return (await this.getDocument(document.id)) ?? document;
 	}
 
-	async updateDocumentFromInput(input: DocumentUpdateInput, autoCommit?: boolean): Promise<Document> {
-		const existingDoc = await this.getDocument(input.id);
+	async updateDocumentFromInput(
+		input: DocumentUpdateInput,
+		autoCommit?: boolean,
+		source?: EntityUpdateSource,
+	): Promise<Document> {
+		const existingDoc = source?.sourcePath
+			? await loadDocumentFromSource(this, { id: input.id, sourcePath: source.sourcePath })
+			: await this.getDocument(input.id);
 		if (!existingDoc) {
 			throw new Error(`Document not found: ${input.id}`);
 		}
@@ -3943,9 +4074,22 @@ export class Core {
 			rawContent = rawContent ? `${rawContent}\n\n${appendChunks.join("\n\n")}` : appendChunks.join("\n\n");
 		}
 
+		const updatedId = normalizeEntityIdUpdate("doc", input.newId, normalizeDocumentId(existingDoc.id));
+		if (entityIdKey("doc", updatedId) === null) {
+			throw new Error(`INVALID_ID: Invalid document ID: ${input.newId}`);
+		}
+		if (
+			!documentIdsEqual(existingDoc.id, updatedId) &&
+			(await this.fs.listDocuments()).some(
+				(candidate) => candidate.path !== existingDoc.path && documentIdsEqual(candidate.id, updatedId),
+			)
+		) {
+			throw new Error(`ID_CONFLICT: Document ${updatedId} already exists.`);
+		}
+
 		const updatedDoc: Document = {
 			...existingDoc,
-			id: normalizeDocumentId(existingDoc.id),
+			id: updatedId,
 			title: normalizedTitle ?? existingDoc.title,
 			type,
 			rawContent,
@@ -3955,7 +4099,10 @@ export class Core {
 
 		const targetFilename = getDocumentFilename(updatedDoc);
 		const targetDocumentPath = subPath ? `${subPath}/${targetFilename}` : targetFilename;
-		if (existingDoc.path && existingDoc.path !== targetDocumentPath) {
+		if (
+			existingDoc.path &&
+			(existingDoc.path !== targetDocumentPath || existingDoc.id !== updatedDoc.id || source?.sourcePath)
+		) {
 			const sourceDocumentPath = normalizeDocumentRelativePath(existingDoc.path);
 			const sourceAbsolutePath = join(this.fs.docsDir, ...sourceDocumentPath.split("/"));
 			const targetAbsolutePath = join(this.fs.docsDir, ...targetDocumentPath.split("/"));
@@ -3970,41 +4117,34 @@ export class Core {
 				entityRoute: {
 					kind: "documentation",
 					id: existingDoc.id,
+					...(existingDoc.id !== updatedDoc.id ? { newId: updatedDoc.id } : {}),
 					oldTitle: existingDoc.title,
 					newTitle: updatedDoc.title,
 				},
-				references: await collectFileRenameReferences(
-					{
-						rootDir: this.fs.rootDir,
-						tasksDir: this.fs.tasksDir,
-						completedDir: this.fs.completedDir,
-						docsDir: this.fs.docsDir,
-						decisionsDir: this.fs.decisionsDir,
-						wikiDir: this.fs.wikiDir,
-					},
-					sourceProjectPath,
-				),
+				references: await collectFileRenameReferences(this.getFileRenameReferenceDirectories(), sourceProjectPath, {
+					kind: "documentation",
+					id: existingDoc.id,
+				}),
 			});
 			await applyFileRenamePlan(this.fs.rootDir, plan);
 			updatedDoc.path = targetDocumentPath;
 
 			if (await this.shouldAutoCommit(autoCommit)) {
 				const referencePaths = plan.changes
-					.slice(1)
+					.filter((change) => change.sourcePath !== sourceProjectPath)
 					.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
-				const repoRoot = await this.git.stageFileMove(sourceAbsolutePath, targetAbsolutePath);
-				for (const referencePath of referencePaths) await this.git.addFile(referencePath);
-				await this.git.commitFiles(
+				await this.commitWrittenFile(
 					`backlog: Update document ${updatedDoc.id}`,
-					[sourceAbsolutePath, targetAbsolutePath, ...referencePaths],
-					repoRoot,
+					targetAbsolutePath === sourceAbsolutePath ? [] : [sourceAbsolutePath],
+					targetAbsolutePath,
+					referencePaths,
 				);
 			}
-			return (await this.getDocument(existingDoc.id)) ?? updatedDoc;
+			return updatedDoc;
 		}
 
 		await this.createDocument(updatedDoc, autoCommit, subPath, `backlog: Update document ${updatedDoc.id}`);
-		return (await this.getDocument(existingDoc.id)) ?? updatedDoc;
+		return (await this.getDocument(updatedDoc.id)) ?? updatedDoc;
 	}
 
 	async listTasksWithMetadata(

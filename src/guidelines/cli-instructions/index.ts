@@ -1,6 +1,7 @@
 import decisions from "./decisions.md" with { type: "text" };
 import documents from "./documents.md" with { type: "text" };
 import drafts from "./drafts.md" with { type: "text" };
+import entityIdentity from "./entity-identity.md" with { type: "text" };
 import graph from "./graph.md" with { type: "text" };
 import initRequired from "./init-required.md" with { type: "text" };
 import memos from "./memos.md" with { type: "text" };
@@ -17,6 +18,7 @@ export const CLI_TASK_FINALIZATION_GUIDE = taskFinalization.trim();
 export const CLI_MILESTONES_GUIDE = milestones.trim();
 export const CLI_DOCUMENTS_GUIDE = documents.trim();
 export const CLI_DECISIONS_GUIDE = decisions.trim();
+export const CLI_ENTITY_IDENTITY_GUIDE = entityIdentity.trim();
 export const CLI_DRAFTS_GUIDE = drafts.trim();
 export const CLI_MEMOS_GUIDE = memos.trim();
 export const CLI_GRAPH_GUIDE = graph.trim();

@@ -2,6 +2,7 @@ import {
 	CLI_DECISIONS_GUIDE,
 	CLI_DOCUMENTS_GUIDE,
 	CLI_DRAFTS_GUIDE,
+	CLI_ENTITY_IDENTITY_GUIDE,
 	CLI_GRAPH_GUIDE,
 	CLI_INIT_REQUIRED_GUIDE,
 	CLI_MEMOS_GUIDE,
@@ -37,7 +38,7 @@ export const WORKFLOW_GUIDE_KEYS = [
 	"memos",
 	"graph",
 ] as const;
-export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "init-required"] as const;
+export const INSTRUCTION_GUIDE_KEYS = [...WORKFLOW_GUIDE_KEYS, "entity-identity", "init-required"] as const;
 
 export type WorkflowGuideKey = (typeof WORKFLOW_GUIDE_KEYS)[number];
 export type InstructionGuideKey = (typeof INSTRUCTION_GUIDE_KEYS)[number];
@@ -156,6 +157,14 @@ export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [
 		resourceText: CLI_INSTRUCTION_TEXT_BY_KEY[guide.key],
 		toolText: undefined,
 	})),
+	{
+		key: "entity-identity",
+		uri: "backlog://instructions/entity-identity",
+		name: "Entity IDs and Exact Source Selection Guide",
+		description: "How to change task, document, and decision IDs or select an exact source path",
+		mimeType: "text/markdown",
+		resourceText: CLI_ENTITY_IDENTITY_GUIDE,
+	},
 	{
 		key: "init-required",
 		uri: "backlog://init-required",

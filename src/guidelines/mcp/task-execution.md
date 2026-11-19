@@ -101,6 +101,8 @@ Use `task_edit` to modify these fields:
 | What You Want to Change | MCP Field(s) |
 |-------------------------|--------------|
 | Title | `title` |
+| Target ID | `newId` (bare number or prefixed ID) |
+| Exact source file | `sourcePath` (project-relative Markdown path) |
 | Status | `status` |
 | Assignee | `assignee` (array) |
 | Labels | `labels` (array) |
@@ -130,6 +132,8 @@ Use `task_edit` to modify these fields:
 | Parent | `parentTaskId` |
 
 `title` updates the frontmatter title and renames the task file when the sanitized filename changes. The rename preserves the task ID and directory and updates matching local references and `/task/:id/:title` title segments. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
+
+`newId` changes the target ID without overloading the source `id`; both bare numbers and prefixed IDs are accepted. Use `sourcePath` alone to select an exact file in `backlog/tasks/` or `backlog/completed/`, or provide it with a matching `id`. A mismatch returns `SOURCE_MISMATCH`; duplicate old IDs require an exact path. `task_view` supports the same source-selection rules. Task ID changes preserve the parent and hierarchy level, reject parents with children, update dependencies and matching structured/route references, and cannot be combined with demotion to Draft.
 
 ### Clearing List Fields
 
@@ -192,7 +196,9 @@ If new work appears during implementation that wasn't in the original acceptance
 
 ### Duplicate Task ID Recovery
 
-If task IDs are ambiguous or duplicated (for example `task-1` and `task-01` coexist, or a merge produced two files with the same numeric ID), do not rename files or edit frontmatter IDs directly. Use the CLI repair workflow through a terminal tool:
+To view or update one known file without renumbering other duplicates, use `task_view` or `task_edit` with its exact project-relative `sourcePath`. This preserves every other file with the same old ID.
+
+For project-wide duplicate diagnosis and deterministic task/draft renumbering, do not rename files or edit frontmatter IDs directly. Use the CLI repair workflow through a terminal tool:
 
 1. Run a preview diagnosis:
    ```bash

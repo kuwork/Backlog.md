@@ -11,12 +11,15 @@ import {
 	splitMarkdownTarget,
 } from "./local-paths.ts";
 
-export type FileRenameReferenceKind = "task" | "document" | "decision" | "wiki" | "source";
+export type FileRenameReferenceKind = "task" | "document" | "decision" | "milestone" | "wiki" | "source";
 export type EntityTitleRouteKind = "documentation" | "task" | "decisions";
 
 export interface EntityTitleRouteChange {
 	kind: EntityTitleRouteKind;
+	/** Previous ID used to match routes and structured identity fields. */
 	id: string;
+	/** Target ID; title-only changes leave this unset. */
+	newId?: string;
 	oldTitle: string;
 	newTitle: string;
 }
@@ -47,7 +50,7 @@ function rewriteEntityTitleRouteTarget(target: string, route: EntityTitleRouteCh
 	if (decodeMarkdownSegment(oldSlug) !== sanitizeUrlTitle(route.oldTitle)) return target;
 	const newSlug = sanitizeUrlTitle(route.newTitle);
 	if (!newSlug) return target;
-	const path = `/${route.kind}/${id}/${newSlug}`;
+	const path = `/${route.kind}/${route.newId ?? id}/${newSlug}`;
 	return `${parts.enclosed ? `<${path}>` : path}${parts.range}${parts.query}${parts.fragment}`;
 }
 
@@ -90,6 +93,27 @@ function rewriteExactPathList(value: unknown, sourcePath: string, targetPath: st
 	return [next, changed];
 }
 
+function rewriteTaskIdentityFields(data: Record<string, unknown>, route: EntityTitleRouteChange): boolean {
+	if (route.kind !== "task" || !route.newId || route.newId === route.id) return false;
+	let changed = false;
+	for (const field of ["dependencies", "references"]) {
+		const value = data[field];
+		if (!Array.isArray(value)) continue;
+		const next = value.map((entry) =>
+			typeof entry === "string" && taskIdsEqual(entry, route.id) ? route.newId : entry,
+		);
+		if (next.some((entry, index) => entry !== value[index])) {
+			data[field] = next;
+			changed = true;
+		}
+	}
+	if (typeof data.parent_task_id === "string" && taskIdsEqual(data.parent_task_id, route.id)) {
+		data.parent_task_id = route.newId;
+		changed = true;
+	}
+	return changed;
+}
+
 /**
  * Rewrite one Markdown file without touching the filesystem. Relative links resolve from the
  * referencing file, while task list fields and Wiki source_path retain project-root semantics.
@@ -104,13 +128,16 @@ export function rewriteFileRenameContent(input: FileRenameContentInput): string 
 	});
 	let frontmatterChanged = false;
 
-	if (input.kind === "task") {
+	if (input.kind === "task" || input.kind === "milestone") {
 		for (const field of ["documentation", "references", "modified_files"]) {
 			const [next, changed] = rewriteExactPathList(data[field], input.sourcePath, input.targetPath);
 			if (changed) {
 				data[field] = next;
 				frontmatterChanged = true;
 			}
+		}
+		if (input.kind === "task" && input.entityRoute) {
+			frontmatterChanged = rewriteTaskIdentityFields(data, input.entityRoute) || frontmatterChanged;
 		}
 	} else if (input.kind === "wiki" && data.source_path === input.sourcePath) {
 		data.source_path = input.targetPath;

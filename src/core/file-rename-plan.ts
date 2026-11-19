@@ -6,6 +6,9 @@ import {
 	type FileRenameReferenceKind,
 	rewriteFileRenameContent,
 } from "../markdown/file-rename-references.ts";
+import { parseFrontmatter } from "../markdown/frontmatter.ts";
+import { entityIdsEqual } from "../utils/entity-id.ts";
+import { taskIdsEqual } from "../utils/task-id.ts";
 
 export interface FileRenameReferenceInput {
 	path: string;
@@ -36,23 +39,24 @@ export interface FileRenamePlan {
 
 /** Build all writes in memory. No filesystem operation is performed here. */
 export function buildFileRenamePlan(input: FileRenamePlanInput): FileRenamePlan {
-	if (input.sourcePath === input.targetPath) return { changes: [] };
-	const changes: FileRenameChange[] = [
-		{
+	const changes: FileRenameChange[] = [];
+	const targetContent = rewriteFileRenameContent({
+		content: input.targetContent,
+		referencingPath: input.sourcePath,
+		sourcePath: input.sourcePath,
+		targetPath: input.targetPath,
+		kind: "source",
+		...(input.entityRoute && { entityRoute: input.entityRoute }),
+	});
+	if (input.sourcePath !== input.targetPath || input.sourceContent !== targetContent) {
+		changes.push({
 			sourcePath: input.sourcePath,
 			targetPath: input.targetPath,
 			beforeContent: input.sourceContent,
-			afterContent: rewriteFileRenameContent({
-				content: input.targetContent,
-				referencingPath: input.sourcePath,
-				sourcePath: input.sourcePath,
-				targetPath: input.targetPath,
-				kind: "source",
-				...(input.entityRoute && { entityRoute: input.entityRoute }),
-			}),
+			afterContent: targetContent,
 			kind: "source",
-		},
-	];
+		});
+	}
 	const seen = new Set([input.sourcePath]);
 	for (const reference of input.references) {
 		if (seen.has(reference.path)) continue;
@@ -81,8 +85,11 @@ export interface FileRenameReferenceDirectories {
 	rootDir: string;
 	tasksDir: string;
 	completedDir: string;
+	draftsDir?: string;
 	docsDir: string;
 	decisionsDir: string;
+	milestonesDir?: string;
+	archiveMilestonesDir?: string;
 	wikiDir: string;
 }
 
@@ -132,15 +139,36 @@ async function scanMarkdownFiles(
 export async function collectFileRenameReferences(
 	directories: FileRenameReferenceDirectories,
 	excludePath: string,
+	excludeEntity?: Pick<EntityTitleRouteChange, "kind" | "id">,
 ): Promise<FileRenameReferenceInput[]> {
 	const groups = await Promise.all([
 		scanMarkdownFiles(directories.rootDir, directories.tasksDir, "task"),
 		scanMarkdownFiles(directories.rootDir, directories.completedDir, "task"),
+		...(directories.draftsDir ? [scanMarkdownFiles(directories.rootDir, directories.draftsDir, "task", true)] : []),
 		scanMarkdownFiles(directories.rootDir, directories.docsDir, "document"),
 		scanMarkdownFiles(directories.rootDir, directories.decisionsDir, "decision"),
+		...(directories.milestonesDir
+			? [scanMarkdownFiles(directories.rootDir, directories.milestonesDir, "milestone", true)]
+			: []),
+		...(directories.archiveMilestonesDir
+			? [scanMarkdownFiles(directories.rootDir, directories.archiveMilestonesDir, "milestone", true)]
+			: []),
 		scanMarkdownFiles(directories.rootDir, directories.wikiDir, "wiki", true),
 	]);
-	return groups.flat().filter((reference) => reference.path !== excludePath);
+	return groups.flat().filter((reference) => {
+		if (reference.path === excludePath) return false;
+		if (!excludeEntity) return true;
+		const expectedKind =
+			excludeEntity.kind === "documentation" ? "document" : excludeEntity.kind === "decisions" ? "decision" : "task";
+		if (reference.kind !== expectedKind) return true;
+		const id = parseFrontmatter(reference.content).data.id;
+		if (typeof id !== "string") return true;
+		const matches =
+			excludeEntity.kind === "task"
+				? taskIdsEqual(id, excludeEntity.id)
+				: entityIdsEqual(excludeEntity.kind === "documentation" ? "doc" : "decision", id, excludeEntity.id);
+		return !matches;
+	});
 }
 
 function absoluteProjectPath(rootDir: string, projectPath: string): string {
@@ -210,7 +238,7 @@ export async function applyFileRenamePlan(rootDir: string, plan: FileRenamePlan)
 				throw new Error(`File changed while preparing the rename: ${item.change.sourcePath}`);
 			}
 			if (item.source !== item.target && (await exists(item.target))) {
-				throw new Error(`Rename target already exists: ${item.change.targetPath}`);
+				throw new Error(`PATH_CONFLICT: Rename target already exists: ${item.change.targetPath}`);
 			}
 		}
 		for (const item of applied) {
