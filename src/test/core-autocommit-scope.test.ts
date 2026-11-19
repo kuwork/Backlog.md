@@ -97,7 +97,7 @@ describe("core auto-commit scoping", () => {
 		await expectOwnedCommit("backlog/tasks/", "backlog/completed/");
 	});
 
-	it("decision update auto-commit uses an Update message", async () => {
+	it("decision title rename auto-commit stages the move and nothing else", async () => {
 		await seedUnrelatedDirtyState();
 		await core.createDecision(
 			{
@@ -112,14 +112,19 @@ describe("core auto-commit scoping", () => {
 			},
 			true,
 		);
+		const oldPath = join(core.filesystem.decisionsDir, "decision-1 - Scoped-decision.md");
+		const newPath = join(core.filesystem.decisionsDir, "decision-1 - Scoped-decision-renamed.md");
 
 		await core.updateDecisionFromContent(
 			"decision-1",
-			"---\ntitle: Scoped decision\nstatus: approved\n---\n\n## Context\n\nUpdated context\n\n## Decision\n\nUpdated decision\n\n## Consequences\n\nUpdated consequences\n",
+			"---\ntitle: Scoped decision renamed\nstatus: approved\n---\n\n## Context\n\nUpdated context\n\n## Decision\n\nUpdated decision\n\n## Consequences\n\nUpdated consequences\n",
 			{ autoCommit: true },
 		);
 
 		expect(await core.gitOps.getLastCommitMessage()).toContain("backlog: Update decision decision-1");
+		expect(await Bun.file(oldPath).exists()).toBe(false);
+		expect(await Bun.file(newPath).exists()).toBe(true);
+		await expectOwnedCommit("decision-1 - Scoped-decision.md", "decision-1 - Scoped-decision-renamed.md");
 	});
 
 	it("document update auto-commit uses an Update message", async () => {

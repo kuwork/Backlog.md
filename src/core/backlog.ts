@@ -2,11 +2,16 @@ import { rename as moveFile, readFile, stat, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { DEFAULT_DIRECTORIES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
 import { milestoneKey } from "../core/milestones.ts";
-import { getTaskFilename as buildTaskFilename, FileSystem, getDocumentFilename } from "../file-system/operations.ts";
+import {
+	getDecisionFilename as buildDecisionFilename,
+	getTaskFilename as buildTaskFilename,
+	FileSystem,
+	getDocumentFilename,
+} from "../file-system/operations.ts";
 import { type GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import { extractSection } from "../markdown/parser.ts";
-import { serializeDocument, serializeTask } from "../markdown/serializer.ts";
+import { serializeDecision, serializeDocument, serializeTask } from "../markdown/serializer.ts";
 import { assertSectionInputHasNoMarkerLines } from "../markdown/structured-sections.ts";
 import {
 	type AcceptanceCriterion,
@@ -3744,6 +3749,53 @@ export class Core {
 	 * from createDecision so the commit history distinguishes creation from updates.
 	 */
 	async updateDecision(decision: Decision, autoCommit?: boolean): Promise<void> {
+		const originalDecision = await this.fs.loadDecision(decision.id);
+		const sourceAbsolutePath = originalDecision?.path ? join(this.fs.decisionsDir, originalDecision.path) : undefined;
+		if (sourceAbsolutePath && originalDecision && originalDecision.title !== decision.title) {
+			const targetAbsolutePath = join(dirname(sourceAbsolutePath), buildDecisionFilename(decision));
+			if (targetAbsolutePath !== sourceAbsolutePath) {
+				const sourceProjectPath = relative(this.fs.rootDir, sourceAbsolutePath).replace(/\\/g, "/");
+				const targetProjectPath = relative(this.fs.rootDir, targetAbsolutePath).replace(/\\/g, "/");
+				const plan = buildFileRenamePlan({
+					sourcePath: sourceProjectPath,
+					targetPath: targetProjectPath,
+					sourceContent: await readFile(sourceAbsolutePath, "utf8"),
+					targetContent: serializeDecision(decision),
+					entityRoute: {
+						kind: "decisions",
+						id: originalDecision.id,
+						oldTitle: originalDecision.title,
+						newTitle: decision.title,
+					},
+					references: await collectFileRenameReferences(
+						{
+							rootDir: this.fs.rootDir,
+							tasksDir: this.fs.tasksDir,
+							completedDir: this.fs.completedDir,
+							docsDir: this.fs.docsDir,
+							decisionsDir: this.fs.decisionsDir,
+							wikiDir: this.fs.wikiDir,
+						},
+						sourceProjectPath,
+					),
+				});
+				await applyFileRenamePlan(this.fs.rootDir, plan);
+				decision.path = relative(this.fs.decisionsDir, targetAbsolutePath).replace(/\\/g, "/");
+				const referencePaths = plan.changes
+					.slice(1)
+					.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
+				if (await this.shouldAutoCommit(autoCommit)) {
+					await this.commitWrittenFile(
+						`backlog: Update decision ${decision.id}`,
+						[sourceAbsolutePath],
+						targetAbsolutePath,
+						referencePaths,
+					);
+				}
+				return;
+			}
+		}
+
 		const { filepath, removedFilepaths } = await this.fs.saveDecision(decision);
 
 		if (await this.shouldAutoCommit(autoCommit)) {

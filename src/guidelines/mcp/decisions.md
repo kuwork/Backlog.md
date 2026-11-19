@@ -62,6 +62,8 @@ At least one of `content`, `appendContent` or `status` is required.
 
 `status` on its own changes only the status and leaves the body untouched. Combined with `content`/`appendContent` the explicit `status` wins over any `status` in the content frontmatter.
 
+If the title in `content` changes the sanitized decision filename, the decision file is renamed automatically while preserving its ID and directory. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/decisions/:id/:title` title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
+
 When both content parameters are provided, the body is first replaced with `content` and then the `appendContent` blocks are appended. To only append to the existing body, omit `content` and pass `appendContent` alone.
 
 ```json

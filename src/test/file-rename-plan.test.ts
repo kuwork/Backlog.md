@@ -450,3 +450,125 @@ describe("task title rename integration", () => {
 		expect(await readFile(targetPath, "utf8")).toBe("conflicting target");
 	});
 });
+
+describe("decision title rename integration", () => {
+	let core: Core;
+	let testDir: string;
+
+	beforeEach(async () => {
+		testDir = createUniqueTestDir("decision-rename-core");
+		core = new Core(testDir);
+		await initializeFilesystemTestProject(core, "Decision rename test");
+	});
+
+	afterEach(async () => {
+		await safeCleanup(testDir);
+	});
+
+	it("renames the decision file and updates local references and only decision title routes", async () => {
+		const source = await core.createDecisionWithTitle("Old Decision Title", false);
+		const oldFilename = "decision-1 - Old-Decision-Title.md";
+		const newFilename = "decision-1 - New-Decision-Title.md";
+		const sourcePath = join(core.filesystem.decisionsDir, oldFilename);
+		const oldProjectPath = `backlog/decisions/${oldFilename}`;
+		const newProjectPath = `backlog/decisions/${newFilename}`;
+		const original = await core.fs.loadDecision(source.id);
+		if (!original) throw new Error("Expected source decision");
+		await core.updateDecision(
+			{
+				...original,
+				context: `[self](${oldFilename})\n[route](/decisions/decision-1/old-decision-title)`,
+			},
+			false,
+		);
+
+		const { task: active } = await core.createTaskFromInput({
+			title: "Active decision reference",
+			description: `[decision](../decisions/${oldFilename})`,
+			documentation: [oldProjectPath],
+			references: [oldProjectPath],
+			modifiedFiles: [oldProjectPath],
+		});
+		const { task: completed } = await core.createTaskFromInput({
+			title: "Completed decision reference",
+			status: "Done",
+			description: `[decision](../decisions/${oldFilename})`,
+		});
+		const document = await core.createDocumentFromInput({
+			title: "Decision routes",
+			content: `[decision](../decisions/${oldFilename})\n[decision route](/decisions/decision-1/old-decision-title?x=1#part)\n[task route](/task/task-1/old-decision-title)\n[doc route](/documentation/doc-1/old-decision-title)`,
+		});
+		const otherDecision = await core.createDecisionWithTitle("Decision Reference", false);
+		const otherOriginal = await core.fs.loadDecision(otherDecision.id);
+		if (!otherOriginal) throw new Error("Expected referencing decision");
+		await core.updateDecision({ ...otherOriginal, context: `[decision](${oldFilename})` }, false);
+		const wikiPage = join(core.filesystem.wikiDir, "sources", "decision.md");
+		await mkdir(dirname(wikiPage), { recursive: true });
+		await writeFile(
+			wikiPage,
+			`---\ntitle: Decision\nsource_path: ${oldProjectPath}\n---\n[decision](../../decisions/${oldFilename})`,
+		);
+
+		const beforeUpdate = await core.fs.loadDecision(source.id);
+		if (!beforeUpdate) throw new Error("Expected source decision before rename");
+		await core.updateDecision({ ...beforeUpdate, title: "New Decision Title" }, false);
+
+		const updated = await core.fs.loadDecision(source.id);
+		const newPath = join(core.filesystem.decisionsDir, newFilename);
+		expect(updated?.path).toBe(newFilename);
+		expect(await Bun.file(sourcePath).exists()).toBe(false);
+		expect(await Bun.file(newPath).exists()).toBe(true);
+		const primary = await readFile(newPath, "utf8");
+		expect(primary).toContain(`[self](${newFilename})`);
+		expect(primary).toContain("/decisions/decision-1/new-decision-title");
+
+		for (const reference of [active, completed]) {
+			const saved = await core.fs.loadTask(reference.id);
+			const content = await readFile(saved?.filePath ?? "", "utf8");
+			expect(content).toContain(`../decisions/${newFilename}`);
+			if (reference.id === active.id) {
+				const parsed = parseFrontmatter(content);
+				expect(parsed.data.documentation).toEqual([newProjectPath]);
+				expect(parsed.data.references).toEqual([newProjectPath]);
+				expect(parsed.data.modified_files).toEqual([newProjectPath]);
+			}
+		}
+
+		const documentContent = await readFile(join(core.filesystem.docsDir, document.path ?? ""), "utf8");
+		expect(documentContent).toContain(`../decisions/${newFilename}`);
+		expect(documentContent).toContain("/decisions/decision-1/new-decision-title?x=1#part");
+		expect(documentContent).toContain("/task/task-1/old-decision-title");
+		expect(documentContent).toContain("/documentation/doc-1/old-decision-title");
+		expect((await core.fs.loadDecision(otherDecision.id))?.context).toContain(newFilename);
+		const wikiContent = await readFile(wikiPage, "utf8");
+		expect(parseFrontmatter(wikiContent).data.source_path).toBe(newProjectPath);
+		expect(wikiContent).toContain(`../../decisions/${newFilename}`);
+	});
+
+	it("keeps the existing path when different titles sanitize to the same filename", async () => {
+		const source = await core.createDecisionWithTitle("Same Filename", false);
+		const original = await core.fs.loadDecision(source.id);
+		if (!original) throw new Error("Expected source decision");
+		const oldPath = join(core.filesystem.decisionsDir, original.path ?? "");
+		await core.updateDecision({ ...original, title: "Same   Filename" }, false);
+		const updated = await core.fs.loadDecision(source.id);
+		expect(updated?.title).toBe("Same   Filename");
+		expect(updated?.path).toBe(original.path);
+		expect(await Bun.file(oldPath).exists()).toBe(true);
+	});
+
+	it("rejects a same-ID target conflict without changing either file", async () => {
+		const source = await core.createDecisionWithTitle("Conflict Old", false);
+		const original = await core.fs.loadDecision(source.id);
+		if (!original) throw new Error("Expected source decision");
+		const sourcePath = join(core.filesystem.decisionsDir, original.path ?? "");
+		const targetPath = join(core.filesystem.decisionsDir, "decision-1 - Conflict-New.md");
+		const sourceBefore = await readFile(sourcePath, "utf8");
+		await writeFile(targetPath, sourceBefore.replace("Conflict Old", "Conflict New"));
+		const targetBefore = await readFile(targetPath, "utf8");
+
+		await expect(core.updateDecision({ ...original, title: "Conflict New" }, false)).rejects.toThrow("ambiguous");
+		expect(await readFile(sourcePath, "utf8")).toBe(sourceBefore);
+		expect(await readFile(targetPath, "utf8")).toBe(targetBefore);
+	});
+});

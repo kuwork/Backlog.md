@@ -102,6 +102,11 @@ export function getDocumentFilename(document: Pick<Document, "id" | "title">): s
 	return `${document.id} - ${sanitizeFilename(document.title)}.md`;
 }
 
+export function getDecisionFilename(decision: Pick<Decision, "id" | "title">): string {
+	const normalizedId = decision.id.replace(/^decision-/, "");
+	return `decision-${normalizedId} - ${sanitizeFilename(decision.title)}.md`;
+}
+
 export function getTaskFilename(task: Pick<Task, "id" | "title">, prefix = DEFAULT_TASK_PREFIX): string {
 	const taskId = normalizeId(task.id, extractAnyPrefix(task.id) ?? prefix);
 	return `${idForFilename(taskId)} - ${sanitizeFilename(task.title)}.md`;
@@ -1621,9 +1626,8 @@ export class FileSystem {
 
 	// Decision log operations
 	async saveDecision(decision: Decision): Promise<{ filepath: string; removedFilepaths: string[] }> {
-		// Normalize ID - remove "decision-" prefix if present
 		const normalizedId = decision.id.replace(/^decision-/, "");
-		const filename = `decision-${normalizedId} - ${this.sanitizeFilename(decision.title)}.md`;
+		const filename = getDecisionFilename(decision);
 		const decisionsDir = await this.getDecisionsDir();
 		const filepath = join(decisionsDir, filename);
 		const content = serializeDecision(decision);

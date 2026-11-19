@@ -69,7 +69,9 @@ backlog decision list --count
 
 ### Updating Decisions
 
-`backlog decision update <decisionId>` changes a decision's structured sections and/or its status. It parses the provided markdown body and updates the matching Context / Decision / Consequences / Alternatives sections, leaving the frontmatter intact. Omitted sections keep their current values.
+`backlog decision update <decisionId>` changes a decision's structured sections, title, and/or its status. It parses the provided markdown body and updates the matching Context / Decision / Consequences / Alternatives sections, leaving unrelated frontmatter intact. Omitted sections keep their current values.
+
+If the title in `--content` changes the sanitized decision filename, the CLI renames the file automatically while preserving its ID and directory. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/decisions/:id/:title` title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
 
 Parameters:
 
