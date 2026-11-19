@@ -1,10 +1,10 @@
 ---
 id: doc-18
-title: 差异化管理机制横向差距分析：七层模型与五个缺口（完整版）
+title: 差异化管理机制横向差距分析：七层模型与五个缺口
 type: other
 created_date: '2026-09-28 04:59'
+updated_date: '2026-11-19 02:55'
 ---
-
 # 差异化管理机制横向差距分析：以 Backlog.md 为主视角
 
 > 本文由根目录 `differentiation-management-report.html`（生成于 2026-09-27）**全文转换**而来，用于指导差异化 / 定制化相关 PRD 的编写。

@@ -1,11 +1,12 @@
-import { rename as moveFile, stat, unlink } from "node:fs/promises";
+import { rename as moveFile, readFile, stat, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { DEFAULT_DIRECTORIES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
 import { milestoneKey } from "../core/milestones.ts";
-import { FileSystem } from "../file-system/operations.ts";
+import { FileSystem, getDocumentFilename } from "../file-system/operations.ts";
 import { type GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import { extractSection } from "../markdown/parser.ts";
+import { serializeDocument } from "../markdown/serializer.ts";
 import { assertSectionInputHasNoMarkerLines } from "../markdown/structured-sections.ts";
 import {
 	type AcceptanceCriterion,
@@ -81,6 +82,7 @@ import { isTerminalStatus } from "../utils/terminal-status.ts";
 import { AssetManager } from "./assets.ts";
 import { migrateConfig, needsMigration } from "./config-migration.ts";
 import { ContentStore, type TaskCorpusSnapshot } from "./content-store.ts";
+import { applyFileRenamePlan, buildFileRenamePlan, collectFileRenameReferences } from "./file-rename-plan.ts";
 import { listMemos, memosSignature } from "./memos.ts";
 import { migrateDraftPrefixes, needsDraftPrefixMigration } from "./prefix-migration.ts";
 import {
@@ -3846,6 +3848,56 @@ export class Core {
 			updatedDate: new Date().toISOString().slice(0, 16).replace("T", " "),
 			tags: tags && tags.length > 0 ? tags : undefined,
 		};
+
+		const targetFilename = getDocumentFilename(updatedDoc);
+		const targetDocumentPath = subPath ? `${subPath}/${targetFilename}` : targetFilename;
+		if (existingDoc.path && existingDoc.path !== targetDocumentPath) {
+			const sourceDocumentPath = normalizeDocumentRelativePath(existingDoc.path);
+			const sourceAbsolutePath = join(this.fs.docsDir, ...sourceDocumentPath.split("/"));
+			const targetAbsolutePath = join(this.fs.docsDir, ...targetDocumentPath.split("/"));
+			const docsProjectDir = relative(this.fs.rootDir, this.fs.docsDir).replace(/\\/g, "/");
+			const sourceProjectPath = `${docsProjectDir}/${sourceDocumentPath}`;
+			const targetProjectPath = `${docsProjectDir}/${targetDocumentPath}`;
+			const plan = buildFileRenamePlan({
+				sourcePath: sourceProjectPath,
+				targetPath: targetProjectPath,
+				sourceContent: await readFile(sourceAbsolutePath, "utf8"),
+				targetContent: serializeDocument(updatedDoc),
+				entityRoute: {
+					kind: "documentation",
+					id: existingDoc.id,
+					oldTitle: existingDoc.title,
+					newTitle: updatedDoc.title,
+				},
+				references: await collectFileRenameReferences(
+					{
+						rootDir: this.fs.rootDir,
+						tasksDir: this.fs.tasksDir,
+						completedDir: this.fs.completedDir,
+						docsDir: this.fs.docsDir,
+						decisionsDir: this.fs.decisionsDir,
+						wikiDir: this.fs.wikiDir,
+					},
+					sourceProjectPath,
+				),
+			});
+			await applyFileRenamePlan(this.fs.rootDir, plan);
+			updatedDoc.path = targetDocumentPath;
+
+			if (await this.shouldAutoCommit(autoCommit)) {
+				const referencePaths = plan.changes
+					.slice(1)
+					.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
+				const repoRoot = await this.git.stageFileMove(sourceAbsolutePath, targetAbsolutePath);
+				for (const referencePath of referencePaths) await this.git.addFile(referencePath);
+				await this.git.commitFiles(
+					`backlog: Update document ${updatedDoc.id}`,
+					[sourceAbsolutePath, targetAbsolutePath, ...referencePaths],
+					repoRoot,
+				);
+			}
+			return (await this.getDocument(existingDoc.id)) ?? updatedDoc;
+		}
 
 		await this.createDocument(updatedDoc, autoCommit, subPath, `backlog: Update document ${updatedDoc.id}`);
 		return (await this.getDocument(existingDoc.id)) ?? updatedDoc;

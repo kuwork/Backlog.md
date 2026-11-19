@@ -87,6 +87,21 @@ interface LockAttemptSettings {
 
 const DEFAULT_TASK_PREFIX = "task";
 
+function sanitizeFilename(filename: string): string {
+	const sanitized = filename
+		.replace(/[<>:"/\\|?*]/g, "-")
+		// biome-ignore lint/complexity/noUselessEscapeInRegex: explicit escapes keep the character class clear
+		.replace(/['(),!@#$%^&+=\[\]{};]/g, "")
+		.replace(/\s+/g, "-")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "");
+	return sanitized || "untitled";
+}
+
+export function getDocumentFilename(document: Pick<Document, "id" | "title">): string {
+	return `${document.id} - ${sanitizeFilename(document.title)}.md`;
+}
+
 const DEFAULT_CREATE_LOCK_TIMEOUT_MS = 30_000;
 const DEFAULT_CREATE_LOCK_RETRY_DELAY_MS = 100;
 const DEFAULT_CREATE_LOCK_STALE_MS = 10_000;
@@ -1640,7 +1655,7 @@ export class FileSystem {
 		const docsDir = await this.getDocsDir();
 		const canonicalId = normalizeDocumentId(document.id);
 		document.id = canonicalId;
-		const filename = `${canonicalId} - ${this.sanitizeFilename(document.title)}.md`;
+		const filename = getDocumentFilename(document);
 		const normalizedSubPath = normalizeDocumentSubPath(subPath);
 		const relativePath = normalizedSubPath ? `${normalizedSubPath}/${filename}` : filename;
 		const filepath = join(docsDir, ...relativePath.split("/"));
@@ -2266,16 +2281,7 @@ export class FileSystem {
 
 	// Utility methods
 	private sanitizeFilename(filename: string): string {
-		// Remove path-unsafe characters, then strip noisy punctuation before normalizing whitespace
-		const sanitized = filename
-			.replace(/[<>:"/\\|?*]/g, "-")
-			// biome-ignore lint/complexity/noUselessEscapeInRegex: we need explicit escapes inside the character class
-			.replace(/['(),!@#$%^&+=\[\]{};]/g, "")
-			.replace(/\s+/g, "-")
-			.replace(/-+/g, "-")
-			.replace(/^-|-$/g, "");
-		// A punctuation-only title sanitizes to nothing; fall back so filenames keep the "<id> - <title>.md" shape
-		return sanitized || "untitled";
+		return sanitizeFilename(filename);
 	}
 
 	private async ensureDirectoryExists(dirPath: string): Promise<void> {

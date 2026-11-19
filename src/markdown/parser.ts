@@ -9,64 +9,6 @@ import {
 	STRUCTURED_SECTION_KEYS,
 } from "./structured-sections.ts";
 
-function normalizeFlowList(prefix: string, rawValue: string): string | null {
-	// Handle inline lists like assignee: [@user, "someone"]
-	const match = rawValue.match(/^\[(.*)\]\s*(#.*)?$/);
-	if (!match) return null;
-
-	const listBody = match[1] ?? "";
-	const comment = match[2];
-	const items = listBody
-		.split(",")
-		.map((entry) => entry.trim())
-		.filter((entry) => entry.length > 0);
-
-	const normalizedItems = items.map((entry) => {
-		if (entry.startsWith("'") || entry.startsWith('"')) {
-			return entry;
-		}
-		if (entry.startsWith("@")) {
-			const escaped = entry.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-			return `"${escaped}"`;
-		}
-		return entry;
-	});
-
-	const trailingComment = comment ? ` ${comment}` : "";
-	return `${prefix}[${normalizedItems.join(", ")}]${trailingComment}`;
-}
-
-function preprocessFrontmatter(frontmatter: string): string {
-	return frontmatter
-		.split(/\r?\n/) // Handle both Windows (\r\n) and Unix (\n) line endings
-		.map((line) => {
-			// Handle both assignee and reporter fields that start with @
-			const match = line.match(/^(\s*(?:assignee|reporter):\s*)(.*)$/);
-			if (!match) return line;
-
-			const prefix = match[1] ?? "";
-			const raw = match[2] ?? "";
-			const value = raw.trim();
-
-			const normalizedFlowList = normalizeFlowList(prefix, value);
-			if (normalizedFlowList !== null) {
-				return normalizedFlowList;
-			}
-
-			if (
-				value &&
-				!value.startsWith("[") &&
-				!value.startsWith("'") &&
-				!value.startsWith('"') &&
-				!value.startsWith("-")
-			) {
-				return `${prefix}"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-			}
-			return line;
-		})
-		.join("\n"); // Always join with \n for consistent YAML parsing
-}
-
 function normalizeDate(value: unknown): string {
 	if (!value) return "";
 	if (value instanceof Date) {
@@ -127,18 +69,7 @@ function normalizeDate(value: unknown): string {
 }
 
 export function parseMarkdown(content: string): ParsedMarkdown {
-	// Updated regex to handle both Windows (\r\n) and Unix (\n) line endings
-	const fmRegex = /^---\r?\n([\s\S]*?)\r?\n---/;
-	const match = content.match(fmRegex);
-	let toParse = content;
-
-	if (match) {
-		const processed = preprocessFrontmatter(match[1] || "");
-		// Replace with consistent line endings
-		toParse = content.replace(fmRegex, () => `---\n${processed}\n---`);
-	}
-
-	const parsed = parseFrontmatter(toParse);
+	const parsed = parseFrontmatter(content);
 	return {
 		frontmatter: parsed.data,
 		content: parsed.content.trim(),

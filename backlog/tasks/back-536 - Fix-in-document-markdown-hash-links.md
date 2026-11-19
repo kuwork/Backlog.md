@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@kimi'
 created_date: '2026-04-25 12:14'
-updated_date: '2026-08-01 15:19'
+updated_date: '2026-11-19 07:40'
 labels:
   - migration
 dependencies: []
@@ -19,9 +19,9 @@ modified_files:
   - src/test/hash-links.test.ts
   - src/web/components/DecisionDetail.tsx
   - src/web/components/DocumentationDetail.tsx
-  - backlog/docs/migration/doc-5 - A类上游任务迁移分析报告（v1.47.1-..-v1.48.0）.md
   - src/guidelines/cli-instructions/documents.md
   - src/guidelines/mcp/documents.md
+  - backlog/docs/migration/doc-5 - v1.47.1-至-v1.48.0-A类上游任务迁移分析报告.md
 priority: medium
 actual_start: '2026-08-01 09:27'
 actual_end: '2026-08-01 22:19'
