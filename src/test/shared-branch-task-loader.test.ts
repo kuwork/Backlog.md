@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { BranchTaskLoader } from "../core/task-loader.ts";
@@ -221,6 +222,59 @@ describe("shared immutable branch task loading", () => {
 		);
 
 		await safeCleanup(repoRoot);
+	});
+
+	it("keeps a successful Git index in memory when the disk cache cannot be written", async () => {
+		const repoRoot = createUniqueTestDir("branch-cache-write-failure");
+		const commit = "d".repeat(40);
+		const path = "backlog/tasks/task-1 - Shared.md";
+		const treeCalls = new Map<string, number>();
+		const historyCalls = new Map<string, number>();
+		const showCalls = new Map<string, number>();
+		const git = {
+			getRepositoryRoot: async () => repoRoot,
+			getCurrentBranch: async () => "main",
+			listFilesInTree: async (tip: string) => {
+				treeCalls.set(tip, (treeCalls.get(tip) ?? 0) + 1);
+				return [path];
+			},
+			getBranchLastModifiedMap: async (tip: string) => {
+				historyCalls.set(tip, (historyCalls.get(tip) ?? 0) + 1);
+				return new Map([[path, new Date("2026-08-10T00:00:00Z")]]);
+			},
+			showFile: async (tip: string) => {
+				showCalls.set(tip, (showCalls.get(tip) ?? 0) + 1);
+				return taskMarkdown("TASK-1", "Shared task");
+			},
+		} as unknown as GitOperations;
+		const tips: GitBranchTip[] = [{ name: "feature/shared", commit, current: false }];
+		const previousCacheHome = process.env.XDG_CACHE_HOME;
+
+		try {
+			// A regular file at the cache root makes every cache directory creation fail.
+			await mkdir(repoRoot, { recursive: true });
+			process.env.XDG_CACHE_HOME = join(repoRoot, "cache-root-is-a-file");
+			await writeFile(process.env.XDG_CACHE_HOME, "not a directory", "utf8");
+			const loader = new BranchTaskLoader(git);
+
+			const first = await loader.load(tips, config, [], false);
+			expect(first.complete).toBe(true);
+			expect(first.entries.flatMap((entry) => (entry.task ? [entry.task.title] : []))).toEqual(["Shared task"]);
+			expect(treeCalls).toEqual(new Map([[commit, 1]]));
+			expect(historyCalls).toEqual(new Map([[commit, 1]]));
+			expect(showCalls).toEqual(new Map([[commit, 1]]));
+
+			const second = await loader.load(tips, config, [], false);
+			expect(second.complete).toBe(true);
+			expect(second.entries.flatMap((entry) => (entry.task ? [entry.task.title] : []))).toEqual(["Shared task"]);
+			expect(treeCalls).toEqual(new Map([[commit, 1]]));
+			expect(historyCalls).toEqual(new Map([[commit, 1]]));
+			expect(showCalls).toEqual(new Map([[commit, 1]]));
+		} finally {
+			if (previousCacheHome === undefined) delete process.env.XDG_CACHE_HOME;
+			else process.env.XDG_CACHE_HOME = previousCacheHome;
+			await safeCleanup(repoRoot);
+		}
 	});
 
 	it("ignores the disk caches while the no-cache policy is on and rewrites them for the next run", async () => {

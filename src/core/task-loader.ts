@@ -9,10 +9,11 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { DEFAULT_DIRECTORIES } from "../constants/index.ts";
+import { replaceFile } from "../file-system/atomic-write.ts";
 import type { GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseTask } from "../markdown/parser.ts";
 import type { BacklogConfig, Task } from "../types/index.ts";
@@ -76,9 +77,14 @@ function describeRef(ref: string, source: "remote" | "local-branch"): string {
 
 async function writeJsonAtomic(file: string, data: unknown): Promise<void> {
 	await mkdir(dirname(file), { recursive: true });
-	const tmp = `${file}.tmp`;
-	await writeFile(tmp, JSON.stringify(data), "utf8");
-	await rename(tmp, file);
+	const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+	try {
+		await writeFile(tmp, JSON.stringify(data), "utf8");
+		await replaceFile(tmp, file);
+	} catch (error) {
+		await rm(tmp, { force: true }).catch(() => {});
+		throw error;
+	}
 }
 
 /** Cap a cache directory's file count by deleting the oldest entries (best-effort, fire-and-forget safe). */
@@ -668,7 +674,12 @@ export class BranchTaskLoader {
 				];
 			});
 			if (root) {
-				await writeJsonAtomic(branchIndexCacheFile(root, key), result);
+				try {
+					await writeJsonAtomic(branchIndexCacheFile(root, key), result);
+				} catch (error) {
+					// Persistence is best-effort: keep the successful Git result in the in-memory cache.
+					if (process.env.DEBUG) console.debug("Failed to persist branch index cache:", error);
+				}
 				void pruneDirIfNeeded(join(root, "commit-index"), BRANCH_CACHE_MAX_INDEX_FILES);
 			}
 			logLine(
