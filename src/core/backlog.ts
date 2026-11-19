@@ -2,11 +2,11 @@ import { rename as moveFile, readFile, stat, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { DEFAULT_DIRECTORIES, DEFAULT_STATUSES, FALLBACK_STATUS } from "../constants/index.ts";
 import { milestoneKey } from "../core/milestones.ts";
-import { FileSystem, getDocumentFilename } from "../file-system/operations.ts";
+import { getTaskFilename as buildTaskFilename, FileSystem, getDocumentFilename } from "../file-system/operations.ts";
 import { type GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import { extractSection } from "../markdown/parser.ts";
-import { serializeDocument } from "../markdown/serializer.ts";
+import { serializeDocument, serializeTask } from "../markdown/serializer.ts";
 import { assertSectionInputHasNoMarkerLines } from "../markdown/structured-sections.ts";
 import {
 	type AcceptanceCriterion,
@@ -1777,7 +1777,52 @@ export class Core {
 			}
 		}
 
-		await this.fs.saveTask(task);
+		let filePath: string | null = null;
+		let renamedFrom: string | null = null;
+		let renameReferencePaths: string[] = [];
+		const sourceAbsolutePath = originalTask?.filePath;
+		if (sourceAbsolutePath && originalTask && originalTask.title !== task.title) {
+			const targetAbsolutePath = join(dirname(sourceAbsolutePath), buildTaskFilename(task));
+			if (targetAbsolutePath !== sourceAbsolutePath) {
+				const sourceProjectPath = relative(this.fs.rootDir, sourceAbsolutePath).replace(/\\/g, "/");
+				const targetProjectPath = relative(this.fs.rootDir, targetAbsolutePath).replace(/\\/g, "/");
+				const plan = buildFileRenamePlan({
+					sourcePath: sourceProjectPath,
+					targetPath: targetProjectPath,
+					sourceContent: await readFile(sourceAbsolutePath, "utf8"),
+					targetContent: serializeTask(task),
+					entityRoute: {
+						kind: "task",
+						id: originalTask.id,
+						oldTitle: originalTask.title,
+						newTitle: task.title,
+					},
+					references: await collectFileRenameReferences(
+						{
+							rootDir: this.fs.rootDir,
+							tasksDir: this.fs.tasksDir,
+							completedDir: this.fs.completedDir,
+							docsDir: this.fs.docsDir,
+							decisionsDir: this.fs.decisionsDir,
+							wikiDir: this.fs.wikiDir,
+						},
+						sourceProjectPath,
+					),
+				});
+				await applyFileRenamePlan(this.fs.rootDir, plan);
+				task.filePath = targetAbsolutePath;
+				filePath = targetAbsolutePath;
+				renamedFrom = sourceAbsolutePath;
+				renameReferencePaths = plan.changes
+					.slice(1)
+					.map((change) => join(this.fs.rootDir, ...change.sourcePath.split("/")));
+			}
+		}
+
+		if (!filePath) {
+			await this.fs.saveTask(task);
+			filePath = await getTaskPath(task.id, this);
+		}
 		// Keep any in-process ContentStore in sync for immediate UI/search freshness.
 		if (this.contentStore) {
 			const savedTask = await this.fs.loadTask(task.id);
@@ -1786,9 +1831,16 @@ export class Core {
 			}
 		}
 
-		const filePath = await getTaskPath(task.id, this);
 		if (await this.shouldAutoCommit(autoCommit)) {
-			if (filePath) {
+			if (renamedFrom && filePath) {
+				const repoRoot = await this.git.stageFileMove(renamedFrom, filePath);
+				for (const referencePath of renameReferencePaths) await this.git.addFile(referencePath);
+				await this.git.commitFiles(
+					`Update task ${task.id}`,
+					[renamedFrom, filePath, ...renameReferencePaths],
+					repoRoot,
+				);
+			} else if (filePath) {
 				await this.git.addAndCommitTaskFile(task.id, filePath, "update");
 			}
 		}

@@ -161,7 +161,7 @@ Use `backlog task edit {{TASK_ID:123}} --help` before changing unfamiliar fields
 
 `--modified-file` records project-root-relative paths of files changed by the task. Repeat the flag or use comma-separated values to record multiple files.
 
-`-t` updates only the frontmatter title; the task file keeps its creation-time name. If the filename should match the new title, rename it with `mv` (see the finalization guide).
+`-t` updates the frontmatter title and renames the task file when the sanitized filename changes. The rename preserves the task ID and directory and updates matching local references and `/task/:id/:title` title segments. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
 
 `--parent` files an existing task under another task; `--clear-parent` removes the assignment. The child keeps its own ID — only the parent edge changes. The target must exist and the change must not create a cycle, so a task can never be its own parent or sit under one of its own descendants.
 

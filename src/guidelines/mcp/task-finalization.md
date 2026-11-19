@@ -12,7 +12,7 @@
 
 **Note:** Tasks stay in the terminal status until periodic cleanup moves them to completed. Moving to the completed folder (`task_complete` or CLI cleanup) is a batch operation run occasionally, not part of finishing each task.
 
-**Title changes:** if the title was reworded during the work (for example translated or clarified at the end), `task_edit` (`title` field) only updates the frontmatter title — the task file keeps its creation-time name. Rename the file with `mv`, keeping the `<prefix>-<id> - <title-slug>` form (preserve case, spaces become hyphens, drop punctuation), so the filename matches the final title.
+**Title changes:** when `task_edit` (`title` field) changes the sanitized task filename, the task file is renamed automatically while preserving its ID and directory. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/task/:id/:title` title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
 
 **Important:** Do not use `task_archive` for completed work. Archive is only for tasks that should not be completed (duplicate, canceled, invalid).
 

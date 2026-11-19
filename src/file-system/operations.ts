@@ -49,7 +49,7 @@ import {
 	draftIdsMatchLoosely,
 	extractDraftIdFromFilename,
 	findDuplicateDraftFilenameGroups,
-	getTaskFilename,
+	getTaskFilename as findExistingTaskFilename,
 	getTaskPath,
 	normalizeTaskIdentity,
 	taskIdsEqual,
@@ -100,6 +100,11 @@ function sanitizeFilename(filename: string): string {
 
 export function getDocumentFilename(document: Pick<Document, "id" | "title">): string {
 	return `${document.id} - ${sanitizeFilename(document.title)}.md`;
+}
+
+export function getTaskFilename(task: Pick<Task, "id" | "title">, prefix = DEFAULT_TASK_PREFIX): string {
+	const taskId = normalizeId(task.id, extractAnyPrefix(task.id) ?? prefix);
+	return `${idForFilename(taskId)} - ${sanitizeFilename(task.title)}.md`;
 }
 
 const DEFAULT_CREATE_LOCK_TIMEOUT_MS = 30_000;
@@ -825,7 +830,7 @@ export class FileSystem {
 			prefix = config?.prefixes?.task ?? "task";
 		}
 		const taskId = normalizeId(task.id, prefix);
-		const filename = `${idForFilename(taskId)} - ${this.sanitizeFilename(task.title)}.md`;
+		const filename = getTaskFilename(task, prefix);
 		const tasksDir = await this.getTasksDir();
 		const shouldPreservePath = typeof task.filePath === "string" && task.filePath.trim().length > 0;
 		const filepath = shouldPreservePath ? (task.filePath as string) : join(tasksDir, filename);
@@ -1265,7 +1270,7 @@ export class FileSystem {
 			const archiveTasksDir = await this.getArchiveTasksDir();
 			const core = { filesystem: { tasksDir } };
 			const sourcePath = await getTaskPath(taskId, core as TaskPathContext);
-			const taskFile = await getTaskFilename(taskId, core as TaskPathContext);
+			const taskFile = await findExistingTaskFilename(taskId, core as TaskPathContext);
 
 			if (!sourcePath || !taskFile) return false;
 
@@ -1290,7 +1295,7 @@ export class FileSystem {
 			const completedDir = await this.getCompletedDir();
 			const core = { filesystem: { tasksDir } };
 			const sourcePath = await getTaskPath(taskId, core as TaskPathContext);
-			const taskFile = await getTaskFilename(taskId, core as TaskPathContext);
+			const taskFile = await findExistingTaskFilename(taskId, core as TaskPathContext);
 
 			if (!sourcePath || !taskFile) return false;
 

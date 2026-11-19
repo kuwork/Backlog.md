@@ -135,6 +135,9 @@ describe("Core", () => {
 			// Check if task was updated
 			const loadedTask = await core.filesystem.loadTask("task-1");
 			expect(loadedTask?.title).toBe("Updated Task");
+			expect(await Bun.file(originalTask?.filePath ?? "").exists()).toBe(false);
+			expect(await Bun.file(loadedTask?.filePath ?? "").exists()).toBe(true);
+			expect(loadedTask?.filePath).toContain("task-1 - Updated-Task.md");
 
 			const lastCommit = await core.gitOps.getLastCommitMessage();
 			// For now, just check that we have a commit (could be initialization or task)

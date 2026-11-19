@@ -129,7 +129,7 @@ Use `task_edit` to modify these fields:
 | Milestone | `milestone` |
 | Parent | `parentTaskId` |
 
-`title` updates only the frontmatter title; the task file keeps its creation-time name. If the filename should match the new title, rename it with `mv` (see the finalization guide).
+`title` updates the frontmatter title and renames the task file when the sanitized filename changes. The rename preserves the task ID and directory and updates matching local references and `/task/:id/:title` title segments. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
 
 ### Clearing List Fields
 

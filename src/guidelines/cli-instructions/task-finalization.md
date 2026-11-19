@@ -30,11 +30,7 @@ Tasks in the terminal status stay there until periodic cleanup moves them to com
 
 ### Title Changes and File Names
 
-If the title was reworded during the work (for example translated or clarified at the end), `-t` only updates the frontmatter title — the task file keeps its creation-time name. Rename the file yourself with `mv`, keeping the `<prefix>-<id> - <title-slug>` form (preserve case, spaces become hyphens, drop punctuation), so the filename matches the final title:
-
-```bash
-mv "backlog/tasks/task-42 - Old-title.md" "backlog/tasks/task-42 - New-title-slug.md"
-```
+If `-t` changes the sanitized task filename, the CLI renames the file automatically while preserving its ID and directory. Matching local relative links, structured task path fields, Wiki `source_path` values, and `/task/:id/:title` title segments are updated in the same operation. Titles that sanitize to the existing filename keep the current path. If the automatic rename fails, you can fall back to `mv` and then repair the affected references manually.
 
 ### Definition of Done Checklist
 

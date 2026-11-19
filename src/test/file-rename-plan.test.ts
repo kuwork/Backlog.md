@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { Core } from "../core/backlog.ts";
 import { applyFileRenamePlan, buildFileRenamePlan, collectFileRenameReferences } from "../core/file-rename-plan.ts";
 import { rewriteEntityTitleRoutes, rewriteFileRenameContent } from "../markdown/file-rename-references.ts";
@@ -336,5 +336,117 @@ describe("document title rename integration", () => {
 		expect(await Bun.file(oldPath).exists()).toBe(false);
 		expect(await Bun.file(join(core.filesystem.docsDir, updated.path ?? "")).exists()).toBe(true);
 		expect(await Bun.file(core.filesystem.wikiDir).exists()).toBe(false);
+	});
+});
+
+describe("task title rename integration", () => {
+	let core: Core;
+	let testDir: string;
+
+	beforeEach(async () => {
+		testDir = createUniqueTestDir("task-rename-core");
+		core = new Core(testDir);
+		await initializeFilesystemTestProject(core, "Task rename test");
+	});
+
+	afterEach(async () => {
+		await safeCleanup(testDir);
+	});
+
+	it("renames the task file and updates local references and only task title routes", async () => {
+		const { task: source } = await core.createTaskFromInput({
+			title: "Old Task Title",
+			description: "[self](task-1 - Old-Task-Title.md)\n[route](/task/task-1/old-task-title)",
+		});
+		const sourcePath = source.filePath ?? "";
+		const oldFilename = basename(sourcePath);
+		const oldProjectPath = `backlog/tasks/${oldFilename}`;
+		const newProjectPath = "backlog/tasks/task-1 - New-Task-Title.md";
+		const oldRelative = `../tasks/${oldFilename}`;
+		const active = await core.createTaskFromInput({
+			title: "Active task reference",
+			description: `[task](${oldFilename})`,
+			documentation: [oldProjectPath],
+			references: [oldProjectPath],
+			modifiedFiles: [oldProjectPath],
+		});
+		const completed = await core.createTaskFromInput({
+			title: "Completed task reference",
+			status: "Done",
+			description: `[task](${oldFilename})`,
+		});
+		const document = await core.createDocumentFromInput({
+			title: "Task routes",
+			content: `[task](${oldRelative})\n[task route](/task/task-1/old-task-title?x=1#part)\n[doc route](/documentation/doc-1/old-task-title)\n[decision route](/decisions/decision-1/old-task-title)`,
+		});
+		const decision = await core.createDecisionWithTitle("Task Reference", false);
+		await core.updateDecision({ ...decision, context: `[task](${oldRelative})` }, false);
+		const wikiPage = join(core.filesystem.wikiDir, "sources", "task.md");
+		await mkdir(dirname(wikiPage), { recursive: true });
+		await writeFile(
+			wikiPage,
+			`---\ntitle: Task\nsource_path: ${oldProjectPath}\n---\n[task](../../tasks/${oldFilename})`,
+		);
+
+		const updated = await core.updateTaskFromInput(source.id, { title: "New Task Title" }, false);
+		const newFilename = "task-1 - New-Task-Title.md";
+		expect(updated.filePath).toBe(join(core.filesystem.tasksDir, newFilename));
+		expect(await Bun.file(sourcePath).exists()).toBe(false);
+		expect(await Bun.file(updated.filePath ?? "").exists()).toBe(true);
+		const primary = await readFile(updated.filePath ?? "", "utf8");
+		expect(primary).toContain(`[self](${newFilename})`);
+		expect(primary).toContain("/task/task-1/new-task-title");
+
+		for (const reference of [active.task, completed.task]) {
+			const saved = await core.fs.loadTask(reference.id);
+			const content = await readFile(saved?.filePath ?? "", "utf8");
+			expect(content).toContain(newFilename);
+			if (reference.id === active.task.id) {
+				const parsed = parseFrontmatter(content);
+				expect(parsed.data.documentation).toEqual([newProjectPath]);
+				expect(parsed.data.references).toEqual([newProjectPath]);
+				expect(parsed.data.modified_files).toEqual([newProjectPath]);
+			}
+		}
+
+		const documentContent = await readFile(join(core.filesystem.docsDir, document.path ?? ""), "utf8");
+		expect(documentContent).toContain(`../tasks/${newFilename}`);
+		expect(documentContent).toContain("/task/task-1/new-task-title?x=1#part");
+		expect(documentContent).toContain("/documentation/doc-1/old-task-title");
+		expect(documentContent).toContain("/decisions/decision-1/old-task-title");
+		expect((await core.fs.loadDecision(decision.id))?.context).toContain(`../tasks/${newFilename}`);
+		const wikiContent = await readFile(wikiPage, "utf8");
+		expect(parseFrontmatter(wikiContent).data.source_path).toBe(newProjectPath);
+		expect(wikiContent).toContain(`../../tasks/${newFilename}`);
+	});
+
+	it("renames a task with Done status without changing its status or directory", async () => {
+		const { task } = await core.createTaskFromInput({ title: "Done Old", status: "Done" });
+		const oldPath = task.filePath ?? "";
+		const updated = await core.updateTaskFromInput(task.id, { title: "Done New" }, false);
+		expect(updated.status).toBe("Done");
+		expect(updated.filePath).toBe(join(core.filesystem.tasksDir, "task-1 - Done-New.md"));
+		expect(await Bun.file(oldPath).exists()).toBe(false);
+		expect(await Bun.file(updated.filePath ?? "").exists()).toBe(true);
+	});
+
+	it("keeps the existing path when different titles sanitize to the same filename", async () => {
+		const { task } = await core.createTaskFromInput({ title: "Same Filename" });
+		const oldPath = task.filePath ?? "";
+		const updated = await core.updateTaskFromInput(task.id, { title: "Same   Filename" }, false);
+		expect(updated.title).toBe("Same   Filename");
+		expect(updated.filePath).toBe(oldPath);
+		expect(await Bun.file(oldPath).exists()).toBe(true);
+	});
+
+	it("rejects a same-ID target conflict without changing either file", async () => {
+		const { task } = await core.createTaskFromInput({ title: "Conflict Old", description: "Original body" });
+		const sourcePath = task.filePath ?? "";
+		const targetPath = join(core.filesystem.tasksDir, "task-1 - Conflict-New.md");
+		await writeFile(targetPath, "conflicting target");
+		const sourceBefore = await readFile(sourcePath, "utf8");
+		await expect(core.updateTaskFromInput(task.id, { title: "Conflict New" }, false)).rejects.toThrow("Task not found");
+		expect(await readFile(sourcePath, "utf8")).toBe(sourceBefore);
+		expect(await readFile(targetPath, "utf8")).toBe("conflicting target");
 	});
 });
