@@ -49,20 +49,23 @@
 
 ## 5. 迁移目标（Target）
 
-- 官网源码仓库：`backlog-md-site`（纯静态站，资源用相对路径引用）。
-- 中文册 → `backlog-md-site/docs/`，英文册 → `backlog-md-site/en/docs/`，
-  每册约 6.4MB / 73 个文件 / 51 页；**剔除** `package.json` / `package-lock.json`
+- 目标即 `gh-pages` 孤儿分支的发布 worktree：`/d/git/backlog-md-pages`（纯静态站，
+  资源用相对路径引用）。HonKit 直接构建进它的 `docs/` 与 `en/docs/`，不再经过中间
+  源码仓库（历史上的本地仓库 `backlog-md-site` 已退役，其工具与配置已并入本技能）。
+- 中文册 → `backlog-md-pages/docs/`，英文册 → `backlog-md-pages/en/docs/`，
+  每册 51 页；**剔除** `package.json` / `package-lock.json`
   （honkit 的 npm 产物，非站点资源）。目标目录每次整目录覆盖，避免残留旧页。
 - 首页 `#docs` 区块的「用户手册」卡片：`index.html` 指向 `docs/`，
   `en/index.html` 指向 `docs/`（相对 `en/` 即 `en/docs/`）。
   不要指向失效的 GitHub wiki URL。
-- 构建临时目录放站点仓库之外（如 `/d/tmp/um-build`），不要污染 `backlog-md-site`。
+- 构建临时目录放 worktree 之外（如 `/d/tmp/um-build`），不要污染发布目录；
+  worktree 根的 `.gitignore` 已忽略 `__pycache__/`、`node_modules/` 等本地产物。
 
 ## 6. 部署（Deploy）
 
-- 官网通过 `gh-pages` 孤儿分支发布，发布 worktree 在 `backlog-md-pages`。
-- 同步方式：把 `backlog-md-site` 的 `index.html` 与 `docs/` 拷进 `backlog-md-pages/`，
-  再在 worktree 里提交并推送（**提交/推送由用户执行**）。
+- 官网通过 `gh-pages` 孤儿分支发布，发布 worktree 在 `backlog-md-pages`；
+  它同时是 HonKit 的 `--site` 目标，构建与 SEO 注入都原地完成，无需跨目录拷贝。
+- 在 worktree 里提交并推送即上线（**提交/推送由用户执行**）。
 - worktree 根目录已存在 `.nojekyll`，确保 `docs/gitbook/` 等不被 Jekyll 处理。
 
 ## 7. SEO 元信息（每次构建后必跑）
@@ -70,8 +73,9 @@
 - 触发原因：HonKit 产物每页都带 `<meta name="description" content="">`（空），且没有
   canonical / OG / hreflang / JSON-LD；而这些页面是站点内容主体（中英各 51 页），
   空描述在搜索结果里只会显示抓取的片段。
-- 工具：官网仓 `backlog-md-site/scripts/seo.py` + `seo.json`。构建（含 `--worktree`
-  同步）之后跑一遍；它只改自己标记块 `<!-- seo:start --> … <!-- seo:end -->` 之间的内容，
+- 工具：本技能内的 `scripts/seo.py` 与技能根的 `seo.json`。构建之后在 worktree 根
+  跑一遍（`--site . --config .agents/skills/honkit-docs-migration/seo.json`）；
+  它只改自己标记块 `<!-- seo:start --> … <!-- seo:end -->` 之间的内容，
   可重复执行。
 - 每页注入：description（取正文第一段实质内容，跳过「执行以下命令…：」这类祈使句，
   上限 158 字）、canonical（目录页折叠为 `/docs/`）、OG/Twitter、hreflang

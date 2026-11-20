@@ -1,0 +1,28 @@
+{
+	"base_url": "https://kuwork.github.io/Backlog.md",
+	"analytics": {
+		"cloudflare_token": "adfbed98f62c4f188fb26c6c082d1bb8"
+	},
+	"books": [
+		{
+			"dir": "docs",
+			"lang": "zh-Hans",
+			"og_locale": "zh_CN",
+			"label": "用户手册",
+			"book_name": "Backlog.md 用户手册",
+			"book_description": "Backlog.md 用户手册：安装与初始化、任务管理、看板、Web 界面、AI 集成，以及图谱与数据查询的完整使用说明。",
+			"brand": "Backlog.md",
+			"pair": "manual"
+		},
+		{
+			"dir": "en/docs",
+			"lang": "en",
+			"og_locale": "en_US",
+			"label": "User Manual",
+			"book_name": "Backlog.md User Manual",
+			"book_description": "The Backlog.md user manual: installation and initialization, task management, the board, the web interface, AI integration, and graph and data queries.",
+			"brand": "Backlog.md",
+			"pair": "manual"
+		}
+	]
+}

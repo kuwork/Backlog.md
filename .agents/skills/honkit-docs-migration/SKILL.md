@@ -40,25 +40,27 @@ subsite (e.g. `/docs/`, `/en/docs/`).
      --repo /d/git/Backlog.md \
      --branch wiki-tmp \
      --src backlog/wiki \
-     --site /d/git/backlog-md-site \
+     --site /d/git/backlog-md-pages \
      --docs-dir docs \
-     --work /d/tmp/um-build \
-     --worktree /d/git/backlog-md-pages
+     --work /d/tmp/um-build
    ```
 
    Parameter reference:
    - `--repo` — git repo holding the docs source.
    - `--branch` — branch/tree-ish to extract from (default `release`).
    - `--src` — book root inside the repo (`LANGS.md`, or `README.md`+`SUMMARY.md`).
-   - `--site` — target static site root.
+   - `--site` — target static site root. In this project it is the `gh-pages`
+     worktree itself, so each book is built directly into its `docs/` and
+     `en/docs/`.
    - `--docs-dir` — target subdirectory for the primary language (default `docs`).
    - `--lang-dirs` — explicit map, e.g. `usermanual=docs,usermanual-en=en/docs`.
      Default rule: `<name>-en` → `en/<docs-dir>`, everything else → `<docs-dir>`.
    - `--langs` — build only these language dirs (comma separated).
    - `--work` — persistent build workspace; preserves `node_modules/honkit` and
      keeps build output outside the site repo.
-   - `--worktree` — optional gh-pages worktree to sync the docs dirs plus
-     `index.html` / `en/index.html` into.
+   - `--worktree` — optional extra sync target, kept only for the legacy
+     two-repo layout. The current workflow builds straight into `--site` and
+     does not pass this.
 
    What the script does internally:
    - Extracts the source via `git archive <branch> <src> | tar -x` into the work
@@ -79,15 +81,19 @@ subsite (e.g. `/docs/`, `/en/docs/`).
 
 4. **Inject SEO metadata (mandatory after every build).** HonKit emits an empty
    `<meta name="description">` and no canonical/OG/hreflang, and a rebuild wipes
-   anything added by hand. Run the site's injector:
+   anything added by hand. The injector ships inside this skill; run it from the
+   site root with an explicit `--config` pointing at the skill's config:
 
    ```bash
-   python scripts/seo.py --check      # preview
-   python scripts/seo.py              # write metadata + sitemap.xml
+   python .agents/skills/honkit-docs-migration/scripts/seo.py \
+     --site . --config .agents/skills/honkit-docs-migration/seo.json --check
+   python .agents/skills/honkit-docs-migration/scripts/seo.py \
+     --site . --config .agents/skills/honkit-docs-migration/seo.json
    ```
 
-   - Script: `<site>/scripts/seo.py`, config: `<site>/seo.json` (`base_url`
-     plus one entry per language book).
+   - Script: `scripts/seo.py` inside this skill, config: `seo.json` at the skill
+     root (`base_url` plus one entry per language book). `--config` defaults to
+     `<site>/seo.json` for backwards compatibility with a config at the site root.
    - Per page it writes: description from the first substantive paragraph,
      canonical, OG/Twitter tags, `hreflang` pairs (zh ↔ en by identical path),
      `robots`, and JSON-LD `TechArticle` + `BreadcrumbList`.
@@ -107,8 +113,9 @@ subsite (e.g. `/docs/`, `/en/docs/`).
    plus one nested page each. Sidebar, search box and body text must be styled;
    an unstyled page means `gitbook/` did not land next to `index.html`.
 
-6. **Deploy (user action).** If a `--worktree` was synced, the user commits and
-   pushes it. Do not commit or push on the user's behalf unless explicitly asked.
+6. **Deploy (user action).** The user commits and pushes the `gh-pages`
+   worktree — the same directory passed as `--site`. Do not commit or push on
+   the user's behalf unless explicitly asked.
 
 ## Key constraints
 

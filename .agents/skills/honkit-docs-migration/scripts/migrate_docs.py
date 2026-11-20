@@ -21,10 +21,9 @@ Usage (multilingual, the Backlog.md case):
     --repo /d/git/Backlog.md \
     --branch wiki-tmp \
     --src backlog/wiki \
-    --site /d/git/backlog-md-site \
+    --site /d/git/backlog-md-pages \
     --docs-dir docs \
-    --work /d/tmp/um-build \
-    --worktree /d/git/backlog-md-pages
+    --work /d/tmp/um-build
 
 Usage (single book):
   python3 migrate_docs.py --repo ... --branch ... --src backlog/wiki/usermanual \
