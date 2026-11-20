@@ -1,86 +1,87 @@
-<h1 align="center">Backlog.md</h1>  
-<h1 align="center">
-  让 AI Agent 在你的代码仓库里持续工作。
-</h2>
+<a id="readme-top"></a>
 
-<h2 align="center">
-  Markdown Tasks · Git Native · Human Review · AI Memory
-</h3>  
-<p align="center">:us: <a href="./README.en.md">English</a> · :globe_with_meridians: 官网 <a href="https://kuwork.github.io/Backlog.md/">kuwork.github.io/Backlog.md</a></p>
+<div align="center">
 
-<p align="center">  
-<code>npm i -g @kuwork/backlog.md</code> 或 <code>bun add -g @kuwork/backlog.md</code> 或 <code>brew install backlog-md</code>（上游）或 <code>nix run github:MrLesk/Backlog.md</code>（上游）  
-</p>
+# Backlog.md
 
-<p align="center">  
-<a href="https://github.com/deepseek-ai/deepseek-harness"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/deepseek-harness-dark.svg" /><img src=".github/deepseek-harness-light.svg" alt="DeepSeek Harness" width="187" height="24" /></picture></a>  
-</p>
+### 让 AI Agent 在代码仓库里持续、可控、可审查地工作
 
-<p align="center">  
-也可一行命令装进 DeepSeek Harness：<code>dsh plugin --profile web add dsh-backlog.md</code>（<a href="https://github.com/kuwork/DSH-Backlog.md">插件仓库</a>）  
-</p>
+Git 原生的 Markdown 任务与看板 CLI · 人类把关审查点 · AI 知识自动沉淀
 
----
+[![npm version](https://img.shields.io/npm/v/@kuwork/backlog.md?logo=npm&label=npm)](https://www.npmjs.com/package/@kuwork/backlog.md) [![npm downloads](https://img.shields.io/npm/dm/@kuwork/backlog.md?logo=npm)](https://www.npmjs.com/package/@kuwork/backlog.md) [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![GitHub stars](https://img.shields.io/github/stars/kuwork/Backlog.md?logo=github)](https://github.com/kuwork/Backlog.md/stargazers) [![GitHub issues](https://img.shields.io/github/issues/kuwork/Backlog.md?logo=github)](https://github.com/kuwork/Backlog.md/issues)
 
+简体中文 ｜ [English](README.en.md)
 
+[功能亮点](#功能亮点) · [工作原理](#工作原理) · [快速安装](#快速安装) · [协作工作流](#协作工作流) · [Web 界面](#web-界面) · [知识库与笔记](#知识库与笔记) · [图谱查询](#图谱查询) · [MCP 集成](#mcp-集成) · [配置](#配置) · [常见问题 FAQ](#常见问题-faq) · [安全说明](#安全说明)
 
-> **AI 会写代码，但谁告诉它下一步该做什么？**
->
-> Backlog.md 把任务、验收标准、实施计划和执行记录保存为仓库里的 Markdown 文件。
->
-> AI Agent 可以从任务开始工作，人类可以在关键节点审查和批准，而每一次结对执行产生的知识，还可以继续沉淀到 LLM Wiki。
+</div>
 
-![Web Interface Screenshot](./.github/backlog-v1.52.0.gif)
+![Backlog.md Web 界面任务看板演示动图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/backlog-v1.52.0.gif)
 
-![Backlog demo GIF using: backlog board](./.github/backlog-v1.40.gif)
+![终端 backlog board 的 TUI 看板演示动图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/backlog-v1.40.gif)
 
-<p align="center">  
-  <em>从任务规划，到 AI 执行，再到项目知识沉淀</em>  
-</p>
+<p align="center"><em>Web 界面与终端 TUI 共用同一套 Markdown 任务数据 —— 从任务规划、AI 执行到知识沉淀</em></p>
+
+**Backlog.md** 是一款 Git 原生的 Markdown 任务管理与看板 CLI，把任务、验收标准、实施计划和执行记录保存为仓库里的纯 Markdown 文件，为 Claude Code、Codex、Gemini CLI、Kiro 等 AI Agent 提供规范驱动（spec-driven）的结构化工作流。数据完全保存在项目本地、离线可用：人类在规格、计划、结果三个关键节点审查，AI 负责拆解与执行，每次结对产生的知识还能沉淀进内置的 LLM Wiki。
+
+> [!NOTE]
+> npm 包：[@kuwork/backlog.md](https://www.npmjs.com/package/@kuwork/backlog.md) ｜ 官网：[kuwork.github.io/Backlog.md](https://kuwork.github.io/Backlog.md/) ｜ 仓库：[kuwork/Backlog.md](https://github.com/kuwork/Backlog.md) ｜ 安装：`npm i -g @kuwork/backlog.md`
 
 ---
 
-> **Backlog.md** 让任何含 Git 仓库的文件夹都能成为**独立的项目看板**  
-> 由纯 Markdown 文件和零配置 CLI 驱动。  
-> 为**规范驱动的 AI 开发**量身打造 —— 通过结构化任务让 AI 智能体产出可预期的结果。
+## 功能亮点
+
+- 📝 **Markdown 原生任务**：每个事项都是仓库里可读、可 Git diff、可 review 的纯 `.md` 文件，没有专有数据库，没有黑盒。
+- 🤖 **为 AI Agent 而生**：面向 Claude Code、Codex、Gemini CLI、Kiro 等支持 CLI / MCP 的助手提供结构化工作流，内置规格、计划、结果三个人类审查点。
+- 🔀 **Git 原生、本地优先**：任务与代码同库进入版本控制；无需云端账号或订阅，100% 离线，支持 macOS、Linux、Windows。
+- 📊 **终端看板与现代 Web UI**：`backlog board` 在终端实时呈现看板，`backlog browser` 启动响应式 Web 界面，含拖放看板、甘特图与多语言界面。
+- 🧠 **LLM Wiki 知识库**：AI 自动维护的结对笔记本，支持摄取、查询与健康检查，把每次结对执行沉淀为可复用知识。
+- 🕸️ **图谱与实时查询块**：对项目图谱执行只读 Cypher；在任意 Markdown 内嵌 SQLite / DuckDB / MDB / CSV / Excel 实时查询与 mermaid / ECharts 图表。
+- 📎 **办公预览与快速记录**：Web UI 高保真预览 DOCX / XLSX / PPTX / PDF，Word 与网页粘贴即 Markdown，另有 Memos 快速笔记。
+- 🔒 **隐私可控、MIT 开源**：数据不出仓库，查询严格只读，Web 服务默认仅绑定本机回环地址，个人与商业用途均免费。
+
+<details>
+<summary><b>查看完整能力清单（20 项）</b></summary>
+
+- 📝 **本地 Markdown 任务** —— 每个事项都是一份纯 `.md` 文件
+- 🤖 **为 AI 而生** —— 兼容 Claude Code、Gemini CLI、Codex、Kiro 及任何其他支持 MCP 或 CLI 的 AI 助手
+- 📊 **即时终端看板** —— `backlog board` 在终端中实时呈现看板
+- 🌐 **现代 Web 界面** —— `backlog browser` 启动精致的 Web UI，让任务管理一目了然
+- 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
+- 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
+- 🗂️ **Memos 快速笔记** —— 即想即记的第五种文件实体，信息流 / 日历 / 钉板三种视图，Markdown 与粘贴图片，可归档
+- 🕸️ **图谱查询** —— 对任务、文档、依赖与链接组成的项目图谱执行只读 Cypher 查询，与 Web UI 图谱搜索同源
+- 🎛️ **状态机可视化编辑器** —— 设置页中编辑项目状态流转，实时预览状态树
+- 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
+- 📎 **文件预览** —— Web UI 内置 DOCX / XLSX / PPTX / PDF 高保真预览，支持大纲、全屏播放与 XLSX 编辑回写
+- 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
+- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / **MDB (Access)** / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出；`mdb-query` 块读取 `.mdb` / `.accdb`（Access 库经内存 SQLite 复用同一引擎，自动处理 GBK 编码），`cypher-query` 围栏块对图谱数据库执行只读 Cypher，支持表格 / 力导向图视图与图热更新自动重跑
+- 📈 **图表块** —— 在任意 Markdown 正文用 `mermaid` / `echarts` 围栏块绘制流程图与数据图表，覆盖 ECharts 全部内置系列并跟随明暗主题；查询块可直接以图表呈现结果，图表也可通过 `fromQuery` 引用同文档内的命名查询块
+- 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
+- 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
+- ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
+- 📤 **看板导出** —— `backlog board export` 创建可共享的 Markdown 报告
+- 🔒 **100% 隐私保护与离线储存** —— backlog 完全存储在仓库内部，所有操作都在本地完成
+- 💻 **跨平台** —— 支持 macOS、Linux 和 Windows
+- 🆓 **MIT 许可证与开源** —— 个人或商业用途均免费
+
+</details>
 
 ---
 
-## Why Backlog.md?
+## 工作原理
 
-AI 编程正在改变软件开发。
+AI 编程正在改变软件开发。问题已经不再是「AI 能不能写代码？」，而是：
 
-问题已经不再只是：
+> **如何让 AI 在一个真实项目里，持续、可控、可审查地工作？**
 
-> **“AI 能不能写代码？”**
-
-而是：
-
-> **“如何让 AI 在一个真实项目里，持续、可控、可审查地工作？”**
-
-Backlog.md 用一个简单的原则解决这个问题：
+Backlog.md 用一个简单的原则回答它：
 
 ```text
 把 AI 的工作变成可以阅读、可以审查、可以追踪的任务。
 ```
 
-### 🧠 AI Native
-
-Backlog.md 为 Claude Code、Codex、Gemini CLI、Kiro 以及其他支持 CLI / MCP 的 AI Agent 提供结构化工作流。
-
-### 📝 Markdown Native
-
-每一个任务都是普通的 `.md` 文件。
-
-没有专有数据库。
-
-没有黑盒。
-
-任务可以被人阅读，也可以被 Git diff、review、commit 和追踪。
-
-### 🔀 Git Native
-
-Backlog 和代码放在同一个项目里。
+任务与代码放在同一个项目里，一起进入版本控制，没有专有数据库，也没有黑盒：
 
 ```text
 your-project/
@@ -94,21 +95,7 @@ your-project/
 └── ...
 ```
 
-任务与代码一起进入版本控制。
-
-### 🔒 Local & Offline First
-
-数据保存在项目本地。
-
-没有强制云端账号，没有订阅要求。
-
----
-
-# AI Agent 是怎样工作的？
-
-Backlog.md 不只是让 AI “接任务”。
-
-它把 AI 工作拆成几个可以被人类检查的阶段：
+Backlog.md 不只是让 AI「接任务」，而是把 AI 工作拆成几个可以被人类检查的阶段：
 
 ```mermaid
 flowchart LR
@@ -129,234 +116,107 @@ flowchart LR
 
 ### 三个关键的人类审查点
 
-**01 — Review the Spec**
+**01 — 审查规格（Review the Spec）**：AI 写代码之前，先审查任务描述、验收标准与任务边界。
 
-AI 写代码之前，先审查：
+**02 — 审查计划（Review the Plan）**：AI 研究代码库之后把实施计划写进任务，批准之后才开始编码。
 
-- 任务描述
-- 验收标准
-- 任务边界
-
-**02 — Review the Plan**
-
-AI 研究代码库之后，把实施计划写进任务。
-
-你批准之后，AI 才开始编码。
-
-**03 — Review the Result**
-
-代码完成之后：
-
-- Review diff
-- 运行测试
-- 检查验收标准
-- 验证最终结果
+**03 — 审查结果（Review the Result）**：代码完成后 review diff、运行测试、检查验收标准并验证最终结果。
 
 > **人类负责方向和判断，AI 负责拆解和执行。**
 
 ---
 
-## 功能特性
+## 快速安装
 
-- 📝 **本地 Markdown 任务** —— 每个事项都是一份纯 `.md` 文件
-- 🤖 **为 AI 而生** —— 兼容 Claude Code、Gemini CLI、Codex、Kiro 及任何其他支持 MCP 或 CLI 的 AI 助手
-- 📊 **即时终端看板** —— `backlog board` 在终端中实时呈现看板
-- 🌐 **现代 Web 界面** —— `backlog browser` 启动精致的 Web UI，让任务管理一目了然
-- 🌍 **多语言界面** —— Web UI 支持英语、日语、简体中文、繁体中文，在设置中一键切换
-- 🧠 **LLM Wiki 知识库** —— AI 自动维护的结对笔记本，支持摄取、查询与健康检查
-- 🗂️ **Memos 快速笔记** —— 即想即记的第五种文件实体，信息流 / 日历 / 钉板三种视图，Markdown 与粘贴图片，可归档
-- 🕸️ **图谱查询** —— 对任务、文档、依赖与链接组成的项目图谱执行只读 Cypher 查询，与 Web UI 图谱搜索同源
-- 🎛️ **状态机可视化编辑器** —— 设置页中编辑项目状态流转，实时预览状态树
-- 📄 **富文本粘贴与文档上传** —— 从 Word、网页直接粘贴为 Markdown，支持 `.docx` 上传与图片自动提取
-- 📎 **文件预览** —— Web UI 内置 DOCX / XLSX / PPTX / PDF 高保真预览，支持大纲、全屏播放与 XLSX 编辑回写
-- 📅 **跟踪甘特图** —— 基于 `plannedStart` / `plannedEnd` / `actualStart` / `actualEnd` 时间字段的可视化时间线，计划与实际双层对比
-- 🗄️ **实时 SQL 查询块** —— 在任意 Markdown 正文嵌入只读 SQL 查询，对项目内 SQLite / DuckDB / **MDB (Access)** / CSV / Excel 数据实时渲染，支持表格 / 列表 / 单值视图与导出；`mdb-query` 块读取 `.mdb` / `.accdb`（Access 库经内存 SQLite 复用同一引擎，自动处理 GBK 编码），`cypher-query` 围栏块对图谱数据库执行只读 Cypher，支持表格 / 力导向图视图与图热更新自动重跑
-- 📈 **图表块** —— 在任意 Markdown 正文用 `mermaid` / `echarts` 围栏块绘制流程图与数据图表，覆盖 ECharts 全部内置系列并跟随明暗主题；查询块可直接以图表呈现结果，图表也可通过 `fromQuery` 引用同文档内的命名查询块
-- 🔍 **强大的搜索功能** —— `backlog search` 可在任务、文档和决策间进行模糊搜索
-- 📋 **丰富的查询命令** —— 轻松查看、列出、筛选或归档任务
-- ✅ **完成定义默认值** —— 为每个新任务添加可复用的检查清单
-- 📤 **看板导出** —— `backlog board export` 创建可共享的 Markdown 报告
-- 🔒 **100% 隐私保护 & 离线储存** —— backlog 完全存储在您的仓库内部，所有操作都在本地完成
-- 💻 **跨平台** —— 支持 macOS、Linux 和 Windows
-- 🆓 **MIT 许可证 & 开源** —— 个人或商业用途均免费
+推荐使用 npm 全局安装，一行命令装好：
 
----
-
-## 🧠 LLM Wiki 知识库
-
-Backlog.md 内置由 LLM 自动维护的 **Wiki 知识库**，让人类与 AI 的每一次结对执行都沉淀为可复用的知识结晶。
-
-### 结对编程思路
-
-> 人类主导策略 → AI 拆解任务 → 结对执行 → 知识自动沉淀到 Wiki
-
-```
-头脑风暴 → doc → AI 规划 → tasks → 结对执行 → wiki
+```sh
+npm i -g @kuwork/backlog.md
 ```
 
-| 层级      | 载体               | 内容        | 所有者        |
-| ------- | ---------------- | --------- | ---------- |
-| **规划层** | `backlog/docs/`  | 开发策略、技术方案 | 人类主导，AI 辅助 |
-| **执行层** | `backlog/tasks/` | 具体任务、验收标准 | AI 创建，人类审核 |
-| **记忆层** | `backlog/wiki/`  | 知识结晶、模式提取 | AI 维护，人类审阅 |
+> [!TIP]
+> 安装后运行 `backlog --help`，能看到完整命令列表即表示安装成功。
 
-### 如何使用
+在任何 Git 仓库中初始化：
 
-Wiki 由 LLM 全自动维护，无需手动创建文件。
-
-#### 安装 Wiki Skill
-
-Backlog.md 将 Wiki 工作流打包成 `llm-wiki-for-backlog` skill。要让当前 AI 助手识别并使用 Wiki 触发词，先安装 skill：
-
-```bash
-backlog wiki install claude   # Claude Code / Claude Desktop
-backlog wiki install codex    # OpenAI Codex CLI
-backlog wiki install agents   # 通用 Agents 目录
-```
-
-使用 `--dry-run` 预览安装步骤，`--force` 覆盖已存在的安装。
-
-在对话中触发以下关键词，AI 即会接管：
-
-| 触发词                                      | 作用                                           |
-| ---------------------------------------- | -------------------------------------------- |
-| `build wiki` / `init wiki` / `搭建知识库`     | 初始化 Wiki 目录结构，注入工作流指引                        |
-| `ingest` / `process source` / `摄取`       | 将 backlog 源文件（tasks/docs/decisions 等）吸入 Wiki |
-| `wiki query` / `知识库查询`                   | 基于已积累的知识回答问题、生成报告                            |
-| `lint wiki` / `health check` / `检查 wiki` | 扫描矛盾、孤儿页面和过时内容                               |
-
-Wiki 遵循**非正式、轻量、AI 维护、可质疑**四大原则——它不是企业知识库，而是你和 AI 的"结对笔记本"。
-
-![Backlog 从结对执行到知识结晶](./backlog/assets/paste/Backlog从结对执行到知识结晶.png)
-
----
-
-## 🗂️ Memos 快速笔记
-
-Memos 是 Backlog.md 的第五种文件实体：即想即记、无需标题的轻量笔记，以纯 Markdown 文件保存在 `backlog/memos/` 下（`YYYYMMDD-N` 日期+序号 ID），纳入全局搜索、自动链入知识网并产生回链。
-
-- **三种视图，同一数据** —— 信息流、日历（按月定位）、WebGL 钉板随心切换
-- **完整 Markdown** —— 支持 `#标签` 与 `@任务` 内联解析、粘贴图片，⌘/Ctrl+Enter 即存
-- **全端贯通** —— Web、`backlog memo` CLI 子命令与 MCP 工具读写同一存储
-- **归档** —— 悬停卡片即可归档至 `backlog/archive/memos/`，历史不丢失
-
-![Memos 钉板视图](./.github/memos-pinboard.jpg)
-
-![Memos 信息流与日历](./.github/memos-feed-calendar.jpg)
-
----
-
-## 🕸️ 图谱查询
-
-任务、文档、决策、备忘录与它们之间的依赖 / 链接 / 标签构成一张项目图谱。`backlog graph` 让你在命令行对这张图谱执行**只读 Cypher 查询**（与 `backlog browser` 里的图谱搜索同源），适合临时分析、脚本化或把结果管道给其他工具：
-
-```bash
-# 查看图谱结构（节点 / 关系表）
-backlog graph schema
-
-# 找出被最多任务依赖（阻塞面最大）的任务
-backlog graph query default "MATCH (t:FileNode)<-[:DependsOn]-(d:FileNode) RETURN t.title, count(d) AS blocked ORDER BY blocked DESC LIMIT 10"
-```
-
-- 查询严格只读：写关键字一律拒绝，图谱与 Markdown 语料不会被修改
-- 每次调用在进程内重建图谱（约数秒）；`--json` 输出机器可读结果
-- 也可以用 `backlog graph create` / `import` 建自己的用户数据库（存于 `backlog/databases/`），导入 CSV 自定义节点与关系
-
-![数据查询页：数据库列表、只读 Cypher 与结果图谱](./.github/graph-query.jpg)
-
-### 自定义图数据库
-
-`default` 是 Markdown 语料的派生图谱（只读缓存，拒绝写入——重建会覆盖一切）。写入只发生在你自己创建的**用户数据库**里：
-
-```bash
-# 建库，写 schema 与数据
-backlog graph create people "people and their relationships"
-backlog graph insert people "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"
-backlog graph insert people "CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob', age: 41})"
-
-# 或直接导入 CSV：首列为主键，重复导入即更新（upsert）
-backlog graph import people data/people.csv --node Person
-# 同一文件也能导成边：两列端点按键匹配已有节点
-backlog graph import people data/knows.csv --rel KNOWS --from person --to friend --node Person
-
-backlog graph query people "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
-```
-
-- 用户数据库以 JSON 快照持久化在 `backlog/databases/` 下；`insert` 每句一存，`import` 在打开前校验文件、出错不动数据库
-- `list` / `describe` / `drop` 管理库的生命周期；Web UI 的 **Databases** 页列出所有数据库并可执行同样的只读 Cypher
-
-### 图例与样式设置
-
-Web UI 图谱视图的图例面板按**节点类型**配置：标题模板（`{{field}}`，留空自动猜 `name` / `title` 等字段）、基础色，以及"先匹配先生效"的着色规则——可按字段用等宽分箱、分位数、阈值、枚举值等快捷方式批量生成规则，再逐条微调。关系类型可设置线型（实线 / 虚线 / 点线 / 长线）、箭头、颜色与显示名。图例条目可单独隐藏，节点标题可全局关闭。所有设置按数据库保存在浏览器本地。
-
-![图例设置面板](./.github/graph-legend.jpg)
-
----
-
-## <img src="./.github/5-minute-tour-256.png" alt="快速入门" width="28" height="28" align="center"> 快速入门
-
-```bash
-# 安装
-bun i -g @kuwork/backlog.md
-# 或：npm i -g @kuwork/backlog.md
-# 或：brew install backlog-md
-
-# 在任何 Git 仓库中初始化
+```sh
+# 在 Git 仓库中初始化
 backlog init "My Awesome Project"
 
-# 或无 Git 初始化，用于本地/非代码项目
+# 或无 Git 初始化，用于本地 / 非代码项目
 backlog init "Personal Planning" --no-git
 ```
 
-初始化向导会询问您希望如何接入 AI 工具：
+初始化向导会询问希望如何接入 AI 工具：
 
 - **CLI 指令**（推荐）—— 创建简短的指令文件，告诉智能体运行 `backlog instructions overview`。
-- **MCP 连接器** —— 如果您更偏好 MCP，可以自动配置 Claude Code、Codex、Gemini CLI、Kiro 或 Cursor。
-- **跳过** —— 不设置 AI；仅将 Backlog.md 作为任务管理器使用。
+- **MCP 连接器** —— 如果偏好 MCP，可以自动配置 Claude Code、Codex、Gemini CLI、Kiro 或 Cursor。
+- **跳过** —— 不设置 AI，仅将 Backlog.md 作为任务管理器使用。
 
 Backlog 数据存储在项目本地的 backlog 文件夹中，例如 `backlog/`、`.backlog/`，或通过 `backlog.config.yml` 配置的项目相对路径。任务仍是可直接阅读的 Markdown 文件（例如 `task-10 - Add core search functionality.md`）。Git 是可选的：`backlog init --no-git` 创建纯文件系统项目，并禁用跨分支检查、远程操作和自动提交。
 
+<details>
+<summary><b>其他安装方式（bun / Homebrew / Nix / DeepSeek Harness）</b></summary>
+
+```sh
+# Bun
+bun add -g @kuwork/backlog.md
+
+# Homebrew（上游）
+brew install backlog-md
+
+# Nix（上游）
+nix run github:MrLesk/Backlog.md
+```
+
+<p align="center">
+<a href="https://github.com/deepseek-ai/deepseek-harness"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/deepseek-harness-dark.svg" /><img src="https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/deepseek-harness-light.svg" alt="DeepSeek Harness" width="187" height="24" /></picture></a>
+</p>
+
+也可一行命令装进 DeepSeek Harness：`dsh plugin --profile web add dsh-backlog.md`（[插件仓库](https://github.com/kuwork/DSH-Backlog.md)）。
+
+</details>
+
 ---
+
+## 协作工作流
 
 ### 与 AI 智能体协作
 
-这是针对 Claude Code、Codex、Gemini CLI、Kiro 及类似工具的推荐工作流 —— 遵循**规范驱动的 AI 开发**方法。  
-运行 `backlog init` 后，智能体应首先运行 `backlog instructions overview`，然后按以下循环工作：
+这是针对 Claude Code、Codex、Gemini CLI、Kiro 及类似工具的推荐工作流，遵循规范驱动的 AI 开发方法。运行 `backlog init` 后，智能体应首先运行 `backlog instructions overview`，然后按以下循环工作。
 
-**步骤 1 —— 描述您的想法。** 告诉智能体您想构建什么，并要求它将工作拆分为小任务，附上清晰的描述和验收标准。
+**步骤 1 —— 描述想法。** 告诉智能体想构建什么，并要求它将工作拆分为小任务，附上清晰的描述和验收标准。
 
-**🤖 询问您的 AI 智能体：**
-
+> 🤖 **询问 AI 智能体：**
+>
 > 我想为 Web 视图添加一个搜索功能，用于搜索任务、文档和决策。请将其分解为小的 Backlog.md 任务。
 
-> [!NOTE]  
+> [!NOTE]
 > **审查检查点 #1** —— 阅读任务描述和验收标准。
 
-**步骤 2 —— 一次一个任务。** 每个 AI 会话只处理一个任务，一个任务对应一个 PR。良好的任务拆分意味着每个会话可以独立工作、互不冲突。确保每个任务足够小，能在一次对话中完成，避免超出上下文窗口上限。
+**步骤 2 —— 一次一个任务。** 每个 AI 会话只处理一个任务，一个任务对应一个 PR。良好的任务拆分意味着每个会话可以独立工作、互不冲突；确保每个任务足够小，能在一次对话中完成，避免超出上下文窗口上限。
 
 **步骤 3 —— 编码前先规划。** 要求智能体调研代码库，并在任务中编写实施计划。就在实施前执行这一步，确保计划反映代码库的当前状态。
 
-**🤖 询问您的 AI 智能体：**
-
+> 🤖 **询问 AI 智能体：**
+>
 > 只处理 BACK-10。研究代码库并在任务中编写实施计划。在编码前等待我的批准。
 
-> [!NOTE]  
+> [!NOTE]
 > **审查检查点 #2** —— 阅读计划。方法是否合理？批准或要求智能体修正。
 
 **步骤 4 —— 实施和验证。** 让智能体实施任务。
 
-> [!NOTE]  
-> **审查检查点 #3** —— 审查代码、运行测试、检查代码规范，并验证结果是否符合您的预期。
+> [!NOTE]
+> **审查检查点 #3** —— 审查代码、运行测试、检查代码规范，并验证结果是否符合预期。
 
-如果结果不理想：清除计划/备注/最终总结，完善任务描述和验收标准，然后在新的会话中重新处理该任务。
-
----
+如果结果不理想：清除计划 / 备注 / 最终总结，完善任务描述和验收标准，然后在新的会话中重新处理该任务。
 
 ### 不与 AI 智能体协作
 
-直接在终端或浏览器中使用 Backlog.md 管理任务。
+直接在终端或浏览器中使用 Backlog.md 管理任务：
 
-```bash
+```sh
 # 创建和完善任务
 backlog task create "Render markdown as kanban"
 backlog task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
@@ -364,7 +224,7 @@ backlog task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
 # 跟踪工作
 backlog task list -s "To Do"
 backlog task edit BACK-1 --comment "Can we split the UI work into a separate PR?" --comment-author @sara
-backlog task edit BACK-1 --remove-comment 2  # Remove comment #2; --clear-comments removes all
+backlog task edit BACK-1 --remove-comment 2  # 删除评论 #2；--clear-comments 删除全部评论
 backlog search "kanban"
 backlog board
 
@@ -372,17 +232,17 @@ backlog board
 backlog browser
 ```
 
-您可以随时在 AI 辅助和手动工作流之间切换 —— 两者都基于相同的 Markdown 任务文件。建议通过 Backlog.md 命令（CLI/MCP/Web）修改任务，而不是手动编辑任务文件，以保持字段类型和元数据的一致性。任务可记录项目根目录下的已修改文件，之后通过 `backlog search --modified-file src/path.ts --plain` 即可找到。使用任务评论进行讨论和审阅记录；评论正文支持 Markdown，但单独的 `---` 行被保留为评论分隔符。使用执行记录跟踪执行进度，使用最终总结编写类似 PR 的完成说明。
+可以随时在 AI 辅助和手动工作流之间切换，两者都基于相同的 Markdown 任务文件。建议通过 Backlog.md 命令（CLI / MCP / Web）修改任务，而不是手动编辑任务文件，以保持字段类型和元数据的一致性。任务可记录项目根目录下的已修改文件，之后通过 `backlog search --modified-file src/path.ts --plain` 即可找到。使用任务评论进行讨论和审阅记录；评论正文支持 Markdown，但单独的 `---` 行被保留为评论分隔符。使用执行记录跟踪执行进度，使用最终总结编写类似 PR 的完成说明。
 
-**了解更多：** [CLI 参考](CLI-INSTRUCTIONS.md) | [高级配置](ADVANCED-CONFIG.md)
+**了解更多：** [CLI 参考](CLI-INSTRUCTIONS.md) ｜ [高级配置](ADVANCED-CONFIG.md)
 
 ---
 
-## <img src="./.github/web-interface-256.png" alt="Web 界面" width="28" height="28" align="center"> Web 界面
+## Web 界面
 
-启动现代、响应式的 Web 界面，用于可视化任务管理（默认仅绑定本机回环地址 `127.0.0.1`；如需局域网访问，使用 `--host 0.0.0.0`，注意 API 未认证、请谨慎在不可信网络暴露）：
+启动现代、响应式的 Web 界面可视化管理任务。默认仅绑定本机回环地址 `127.0.0.1`；局域网访问方式与安全风险见[安全说明](#安全说明)。
 
-```bash
+```sh
 # 启动 Web 服务器（自动打开浏览器，仅本机可访问）
 backlog browser
 
@@ -392,10 +252,7 @@ backlog browser --port 8080
 # 不自动打开浏览器
 backlog browser --no-open
 
-# 开放局域网访问（危险：API 未认证）
-backlog browser --host 0.0.0.0
-
-# 忽略已有缓存，从头加载（怀疑界面显示的是旧内容时使用）
+# 忽略已有缓存，从头加载（怀疑界面显示旧内容时使用）
 backlog browser --no-cache
 
 # 强制把重扫心跳钉在终端底部（--no-status-line 让它按普通行输出；BACKLOG_STATUS_LINE=1/0 等效）
@@ -409,51 +266,59 @@ BROWSER="/path/to/browser" backlog browser
 
 - 支持拖放的交互式看板
 - 带有丰富表单的任务创建和编辑
-- 带有检查清单的交互式验收标准编辑器
-- 任务与文档弹窗内的大纲（TOC）抽屉 —— scrollspy 高亮、窄屏自动悬浮
-- 所有视图的实时更新
+- 带检查清单的交互式验收标准编辑器
+- 任务与文档弹窗内的大纲（TOC）抽屉，scrollspy 高亮、窄屏自动悬浮
+- 所有视图实时更新
 - 支持桌面和移动设备的响应式设计
 - 带确认对话框的任务归档
-- 与 CLI 无缝集成 —— 所有更改与 Markdown 文件同步
+- 与 CLI 无缝集成，所有更改与 Markdown 文件同步
 
 ### 甘特图视图
 
-`backlog browser` 内置甘特图视图，支持五种时间粒度（日/周/月/季度/年），纯 React/CSS 实现，零外部依赖：
+`backlog browser` 内置甘特图视图，支持五种时间粒度（日 / 周 / 月 / 季度 / 年），纯 React / CSS 实现，零外部依赖：
 
-- **计划时间**：`plannedStart` / `plannedEnd`（`YYYY-MM-DD`）绘制计划边框
-- **实际时间**：`actualStart` / `actualEnd`（`YYYY-MM-DD HH:MM` UTC）自动随状态变更填充，绘制状态色实心条
-- **跟踪对比**：同一行叠加计划边框与实际条，延期/提前一目了然
-- **依赖箭头**：SVG 智能连接任务依赖关系
+- **计划时间**：`plannedStart` / `plannedEnd`（`YYYY-MM-DD`）绘制计划边框。
+- **实际时间**：`actualStart` / `actualEnd`（`YYYY-MM-DD HH:MM` UTC）自动随状态变更填充，绘制状态色实心条。
+- **跟踪对比**：同一行叠加计划边框与实际条，延期 / 提前一目了然。
+- **依赖箭头**：SVG 智能连接任务依赖关系。
 
 时间字段支持 CLI 直接设置或清除：
 
-```bash
+```sh
 # 计划字段（Date-only）
 backlog task edit BACK-10 --planned-start 2026-06-01 --planned-end 2026-06-07 --due-date 2026-06-10
 
 # 实际字段（Date-time UTC），状态变更时自动填充
 backlog task edit BACK-10 --status "In Progress"  # actualStart 自动设为当前时间
 
-# 清除任意时间字段
+# 清除任意任务时间字段
 backlog task edit BACK-10 --clear-due-date --clear-planned-start --clear-planned-end --clear-actual-start --clear-actual-end
 
-# 里程碑时间字段清除
+# 清除里程碑时间字段
 backlog milestone edit "Release 1.0" --clear-due-date --clear-planned-start --clear-planned-end
 ```
 
-![甘特图视图](./backlog/assets/paste/gantt.gif)
+![甘特图计划与实际时间对比演示](https://raw.githubusercontent.com/kuwork/Backlog.md/main/backlog/assets/paste/gantt.gif)
 
-![项目健康](./backlog/assets/paste/0ca49969-1353-4303-820c-ea85df1cba65.png)
+![项目健康度视图截图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/backlog/assets/paste/0ca49969-1353-4303-820c-ea85df1cba65.png)
 
 ### 大纲（TOC）抽屉
 
 任务详情、Wiki 预览、文件预览三类弹窗内置书签式大纲：窄标签从弹窗左缘探出，点击展开与弹窗等高的浮动面板，条目按分区组织（描述 / 验收标准 / 计划 / 备注 / 评论等），scrollspy 随滚动高亮、点击平滑滚动；面板左缘距视口不足 300px 时自动切换为悬浮模式，窄窗口下大纲始终可用。
 
-![大纲抽屉](./.github/toc-drawer.gif)
+![任务详情大纲抽屉演示](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/toc-drawer.gif)
 
 ### 实时 SQL 查询块
 
-任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入只读查询围栏代码块；Web UI 的阅读视图会对项目内的数据源**实时执行查询**并渲染结果，编辑态只显示源码。SQL 数据用 `sqlite-query` / `duckdb-query` / `mdb-query`：
+任意 Markdown 正文（任务、文档、决策、备忘录、Wiki 页）都可以嵌入只读查询围栏代码块；Web UI 的阅读视图会对项目内数据源**实时执行查询**并渲染结果，编辑态只显示源码。SQL 数据用 `sqlite-query` / `duckdb-query` / `mdb-query`，图谱数据库用 `cypher-query`。
+
+- `source` 为项目相对路径：`sqlite-query` 支持 `.sqlite` / `.sqlite3` / `.db`；`duckdb-query` 支持 `.duckdb`、`.csv` / `.xlsx`（开内存实例直接读文件，Excel 扩展自动装载）；`mdb-query` 支持 `.mdb` / `.accdb`（Access 库经 mdb-reader 载入内存 SQLite 后复用同一查询引擎，GBK / CP936 文本自动解码为正确中文）。
+- 只读三层保证：语句形状白名单 → 关键字黑名单 → 引擎物理只读。查询结果**默认截断为 500 行**，超出会置 `truncated` 标记而不是静默丢数；截断行数取配置项 `queryMaxRows`（默认 500，硬顶 5000）。查询块不提供分页，需要更多行时应收紧查询条件或调高该配置。
+- `view` 支持 `table`（默认）/ `list` / `value`；`duckdb-query` 还可用 `copy_to: <路径>` 把查询结果导出为项目内的 CSV / Excel 文件。
+- `cypher-query` 的语句字段是 `query` 而非 `sql`，`source` 是数据库注册名而不是路径，并额外支持 `view: graph` 力导向图视图与 `refresh: auto` 图热更新自动重跑；写关键字（`CREATE` / `MERGE` / `SET` / `DELETE` 等）一律拒绝。行数规则与 SQL 块同源：默认截断 500 行、由 `queryMaxRows` 配置（硬顶 5000），超出置 `truncated`；`view: graph` 绘制超过 3000 个节点时自动降级为表格。
+
+<details>
+<summary><b>查看查询块语法示例</b></summary>
 
 ````markdown
 ```sqlite-query
@@ -465,12 +330,6 @@ sql: |
   ORDER BY price DESC
 ```
 ````
-
-- `source` 为项目相对路径：`sqlite-query` 支持 `.sqlite` / `.sqlite3` / `.db`；`duckdb-query` 支持 `.duckdb`，以及 `.csv` / `.xlsx`（开内存实例直接读文件，Excel 扩展自动装载）；`mdb-query` 支持 `.mdb` / `.accdb`（Access 库经 mdb-reader 载入内存 SQLite 后复用同一查询引擎，GBK/CP936 文本自动解码为正确中文）
-- 只读三层保证：语句形状白名单 → 关键字黑名单 → 引擎物理只读；结果上限 500 行
-- `view` 支持 `table`（默认）/ `list` / `value`；`duckdb-query` 还可用 `copy_to: <路径>` 把查询结果导出为项目内的 CSV / Excel 文件
-
-图谱数据库（`default` 语料图与 `backlog graph create` 自建库）则用 `cypher-query` —— 语句字段是 `query` 而非 `sql`，`source` 是数据库注册名而不是路径，并额外支持 `view: graph` 力导向图视图与 `refresh: auto` 图热更新自动重跑：
 
 ````markdown
 ```cypher-query
@@ -484,79 +343,175 @@ query: |
 ```
 ````
 
-- 只读保证：`CREATE` / `MERGE` / `SET` / `DELETE` 等写关键字一律拒绝，只允许 `MATCH` / `RETURN` / `WITH` / `CALL` 只读内省；行数上限同样为 500 行（`queryMaxRows` 可调，硬顶 5000）
-- `view: graph` 由 Databases 页同款组件渲染节点 / 关系力导向图，并按库复用同一套图例配置；超过 3000 个节点自动降级为表格
-- `refresh: auto` 订阅图谱更新广播：CLI / MCP 写入或语料图重建命中所查库即自动重跑，一次变更只触发一次
+</details>
 
-![实时 SQL 查询块：表格 / 列表 / 单值 / 空态](./.github/live-query1.jpg)
+![实时 SQL 查询块的表格、列表、单值与空态视图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/live-query1.jpg)
 
-![实时 SQL 查询块：CSV 与 Excel 数据源](./.github/live-query2.jpg)
+![实时 SQL 查询块读取 CSV 与 Excel 数据源](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/live-query2.jpg)
 
-要使 Web UI 作为自动启动的本地服务持续运行，请参阅 [将 Backlog.md 作为服务运行](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md)。
+要使 Web UI 作为自动启动的本地服务持续运行，请参阅 [将 Backlog.md 作为服务运行](<backlog/docs/doc-003 - Running-Backlog-Browser-as-a-Service.md>)。
 
----
+### 办公文档预览（Office / PDF）
 
-## 📎 文件预览（Office / PDF）
+Web UI 内置高保真文件预览，无需离开应用即可审阅常见办公文档：
 
-Backlog.md 的 Web UI 内置高保真文件预览，无需离开应用即可审阅常见办公文档：
-
-- 📄 **DOCX 预览** —— 基于 `@eigenpal/docx-editor-react`（ProseMirror）在浏览器解析 OOXML，还原真实分页，保留段落 / 标题 / 表格 / 图片与样式
-- 📊 **XLSX 预览** —— 基于 `Univer 1.3.0` + `SheetJS` 渲染电子表格，并自解析 OOXML 样式（字体 / 填充 / 边框 / 数字格式）；支持只读与编辑双模式，编辑结果增量回写原文件（仅重写 sheetData 与 mergeCells，样式索引无损）
-- 📑 **PPTX 预览** —— 基于 `@aiden0z/pptx-renderer` 渲染幻灯片，支持缩略图、全屏播放与 WPS 风格快捷键
-- 📕 **PDF 预览** —— 基于 `pdf.js` 渲染 PDF，支持页面导航、缩放与大纲
+- 📄 **DOCX 预览** —— 基于 `@eigenpal/docx-editor-react`（ProseMirror）在浏览器解析 OOXML，还原真实分页，保留段落 / 标题 / 表格 / 图片与样式。
+- 📊 **XLSX 预览** —— 基于 Univer 1.3.0 + SheetJS 渲染电子表格，并自解析 OOXML 样式（字体 / 填充 / 边框 / 数字格式）；支持只读与编辑双模式，编辑结果增量回写原文件（仅重写 sheetData 与 mergeCells，样式索引无损）。
+- 📑 **PPTX 预览** —— 基于 `@aiden0z/pptx-renderer` 渲染幻灯片，支持缩略图、全屏播放与 WPS 风格快捷键。
+- 📕 **PDF 预览** —— 基于 pdf.js 渲染 PDF，支持页面导航、缩放与大纲。
 
 四类预览均内置书签式大纲：窄标签从弹窗左缘探出，点击展开与弹窗等高的浮动面板，scrollspy 随滚动高亮、点击平滑滚动；面板左缘距视口不足 300px 时自动切换为悬浮模式，窄窗口下大纲始终可用。
 
-## 🔧 MCP 集成（Model Context Protocol）
+---
 
-CLI 指令是默认的 AI 接入方式。如果您明确偏好 MCP 连接器，Backlog.md 仍支持 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手。  
-您可以运行 `backlog init`（即使您已经初始化了 Backlog.md）并选择 MCP 集成，或按照以下手动步骤操作。
+## 知识库与笔记
 
-### 客户端指南
+### LLM Wiki 知识库
+
+Backlog.md 内置由 LLM 自动维护的 **Wiki 知识库**，让人类与 AI 的每一次结对执行都沉淀为可复用的知识结晶。
+
+结对编程思路：
+
+> 人类主导策略 → AI 拆解任务 → 结对执行 → 知识自动沉淀到 Wiki
+
+```text
+头脑风暴 → doc → AI 规划 → tasks → 结对执行 → wiki
+```
+
+| 层级 | 载体 | 内容 | 所有者 |
+| --- | --- | --- | --- |
+| **规划层** | `backlog/docs/` | 开发策略、技术方案 | 人类主导，AI 辅助 |
+| **执行层** | `backlog/tasks/` | 具体任务、验收标准 | AI 创建，人类审核 |
+| **记忆层** | `backlog/wiki/` | 知识结晶、模式提取 | AI 维护，人类审阅 |
+
+Wiki 由 LLM 全自动维护，无需手动创建文件。Backlog.md 将 Wiki 工作流打包成 `llm-wiki-for-backlog` skill，安装后当前 AI 助手即可识别 Wiki 触发词：
+
+```sh
+backlog wiki install claude   # Claude Code / Claude Desktop
+backlog wiki install codex    # OpenAI Codex CLI
+backlog wiki install agents   # 通用 Agents 目录
+```
+
+使用 `--dry-run` 预览安装步骤，`--force` 覆盖已存在的安装。在对话中触发以下关键词，AI 即会接管：
+
+| 触发词 | 作用 |
+| --- | --- |
+| `build wiki` / `init wiki` / `搭建知识库` | 初始化 Wiki 目录结构，注入工作流指引 |
+| `ingest` / `process source` / `摄取` | 将 backlog 源文件（tasks / docs / decisions 等）吸入 Wiki |
+| `wiki query` / `知识库查询` | 基于已积累的知识回答问题、生成报告 |
+| `lint wiki` / `health check` / `检查 wiki` | 扫描矛盾、孤儿页面和过时内容 |
+
+Wiki 遵循**非正式、轻量、AI 维护、可质疑**四大原则——它不是企业知识库，而是你和 AI 的「结对笔记本」。
+
+![Backlog.md 从结对执行到知识沉淀的 Wiki 流程图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/backlog/assets/paste/Backlog从结对执行到知识结晶.png)
+
+### Memos 快速笔记
+
+Memos 是 Backlog.md 的第五种文件实体：即想即记、无需标题的轻量笔记，以纯 Markdown 文件保存在 `backlog/memos/` 下（`YYYYMMDD-N` 日期 + 序号 ID），纳入全局搜索、自动链入知识网并产生回链。
+
+- **三种视图，同一数据** —— 信息流、日历（按月定位）、WebGL 钉板随心切换。
+- **完整 Markdown** —— 支持 `#标签` 与 `@任务` 内联解析、粘贴图片，⌘/Ctrl+Enter 即存。
+- **全端贯通** —— Web、`backlog memo` CLI 子命令与 MCP 工具读写同一存储。
+- **归档** —— 悬停卡片即可归档至 `backlog/archive/memos/`，历史不丢失。
+
+![Memos 钉板视图截图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/memos-pinboard.jpg)
+
+![Memos 信息流与日历视图截图](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/memos-feed-calendar.jpg)
+
+---
+
+## 图谱查询
+
+任务、文档、决策、备忘录与它们之间的依赖 / 链接 / 标签构成一张项目图谱。`backlog graph` 让你在命令行对这张图谱执行**只读 Cypher 查询**（与 `backlog browser` 里的图谱搜索同源），适合临时分析、脚本化或把结果管道给其他工具：
+
+```sh
+# 查看图谱结构（节点 / 关系表）
+backlog graph schema
+
+# 找出被最多任务依赖（阻塞面最大）的任务
+backlog graph query default "MATCH (t:FileNode)<-[:DependsOn]-(d:FileNode) RETURN t.title, count(d) AS blocked ORDER BY blocked DESC LIMIT 10"
+```
+
+- 查询严格只读：写关键字一律拒绝，图谱与 Markdown 语料不会被修改。
+- 每次调用在进程内重建图谱（约数秒）；`--json` 输出机器可读结果。
+- 也可以用 `backlog graph create` / `import` 建自己的用户数据库（存于 `backlog/databases/`），导入 CSV 自定义节点与关系。
+
+![数据查询页：数据库列表、只读 Cypher 与结果图谱](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/graph-query.jpg)
 
 <details>
+<summary><b>自定义图数据库与图例设置</b></summary>
 
-<summary>  <strong>Claude Code</strong></summary>
+`default` 是 Markdown 语料的派生图谱（只读缓存，拒绝写入——重建会覆盖一切）。写入只发生在你自己创建的**用户数据库**里：
 
-```bash
+```sh
+# 建库，写 schema 与数据
+backlog graph create people "people and their relationships"
+backlog graph insert people "CREATE NODE TABLE Person(name STRING PRIMARY KEY, age INT64)"
+backlog graph insert people "CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob', age: 41})"
+
+# 或直接导入 CSV：首列为主键，重复导入即更新（upsert）
+backlog graph import people data/people.csv --node Person
+# 同一文件也能导成边：两列端点按键匹配已有节点
+backlog graph import people data/knows.csv --rel KNOWS --from person --to friend --node Person
+
+backlog graph query people "MATCH (a:Person)-[:KNOWS]->(b:Person) RETURN a.name, b.name"
+```
+
+- 用户数据库以 JSON 快照持久化在 `backlog/databases/` 下；`insert` 每句一存，`import` 在打开前校验文件、出错不动数据库。
+- `list` / `describe` / `drop` 管理库的生命周期；Web UI 的 **Databases** 页列出所有数据库并可执行同样的只读 Cypher。
+
+**图例与样式设置**：Web UI 图谱视图的图例面板按**节点类型**配置——标题模板（`{{field}}`，留空自动猜 `name` / `title` 等字段）、基础色，以及「先匹配先生效」的着色规则，可按字段用等宽分箱、分位数、阈值、枚举值等快捷方式批量生成规则，再逐条微调。关系类型可设置线型（实线 / 虚线 / 点线 / 长线）、箭头、颜色与显示名。图例条目可单独隐藏，节点标题可全局关闭，所有设置按数据库保存在浏览器本地。
+
+![图谱图例与样式设置面板](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/graph-legend.jpg)
+
+</details>
+
+---
+
+## MCP 集成
+
+CLI 指令是默认的 AI 接入方式。如果明确偏好 MCP 连接器，Backlog.md 仍支持 Claude Code、Codex、Gemini CLI 和 Kiro 等 AI 编码助手。可以运行 `backlog init`（即使已经初始化）并选择 MCP 集成，或按下面的客户端指南手动添加。
+
+<details>
+<summary><strong>Claude Code</strong></summary>
+
+```sh
 claude mcp add backlog --scope user -- backlog mcp start
 ```
 
 </details>
 
 <details>
+<summary><strong>Codex</strong></summary>
 
-<summary>  <strong>Codex</strong></summary>
-
-```bash
+```sh
 codex mcp add backlog -- backlog mcp start
 ```
 
 </details>
 
 <details>
+<summary><strong>Gemini CLI</strong></summary>
 
-<summary>  <strong>Gemini CLI</strong></summary>
-
-```bash
+```sh
 gemini mcp add backlog -s user backlog mcp start
 ```
 
 </details>
 
 <details>
+<summary><strong>Kiro</strong></summary>
 
-<summary>  <strong>Kiro</strong></summary>
-
-```bash
+```sh
 kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
 ```
 
 </details>
 
-处处统一使用 `backlog` 作为服务器名称。服务器会从客户端的 MCP roots 中查找当前项目，并在切换工作区或 worktree 时重新解析。找到项目前，它会提供 `backlog://init-required`。一个用户级服务器即可覆盖所有仓库。
+处处统一使用 `backlog` 作为服务器名称。服务器会从客户端的 MCP roots 中查找当前项目，并在切换工作区或 worktree 时重新解析；找到项目前会提供 `backlog://init-required`，一个用户级服务器即可覆盖所有仓库。
 
-### 手动配置
+<details>
+<summary><b>手动配置与 BACKLOG_CWD</b></summary>
 
 ```json
 {
@@ -572,78 +527,64 @@ kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,star
 }
 ```
 
-设置 `BACKLOG_CWD` 可将服务器固定到单个项目并停止工作区跟随。当你始终想定位同一个 backlog，或客户端无法上报 MCP roots 时使用它。  
-如果您的 IDE 支持自定义参数但不支持环境变量，您也可以使用 `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`。
+设置 `BACKLOG_CWD` 可将服务器固定到单个项目并停止工作区跟随，适合始终定位同一个 backlog、或客户端无法上报 MCP roots 的场景。如果 IDE 支持自定义参数但不支持环境变量，也可以使用 `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`。
 
-> [!IMPORTANT]  
-> 手动添加 MCP 服务器时，建议在 CLAUDE.md/AGENTS.md 文件中补充简短说明，让智能体读取 `backlog://workflow/overview`。  
-> 使用 `backlog init` 时无需此步骤，因为它会自动添加这些说明。  
-> 基于 CLI 的 setup，请使用 `backlog instructions overview` 获取当前工作流指引。
+</details>
 
-连接后，智能体可以通过 `backlog://workflow/overview` 读取 Backlog.md 工作流说明，详细指南位于 `backlog://workflow/task-creation`、`backlog://workflow/task-execution` 和 `backlog://workflow/task-finalization`。  
-在您的 AI 工具（Claude Code、Codex、Kiro）中使用 `/mcp` 命令验证连接是否正常工作。
+> [!IMPORTANT]
+> 手动添加 MCP 服务器时，建议在 CLAUDE.md / AGENTS.md 文件中补充简短说明，让智能体读取 `backlog://workflow/overview`；使用 `backlog init` 时无需此步骤，它会自动添加这些说明。基于 CLI 的设置，请运行 `backlog instructions overview` 获取当前工作流指引。
 
-
+连接后，智能体可以通过 `backlog://workflow/overview` 读取工作流说明，详细指南位于 `backlog://workflow/task-creation`、`backlog://workflow/task-execution` 和 `backlog://workflow/task-finalization`。在 AI 工具（Claude Code、Codex、Kiro）中使用 `/mcp` 命令验证连接是否正常。
 
 ---
 
-## <img src="./.github/cli-reference-256.png" alt="CLI 参考" width="28" height="28" align="center"> CLI 参考
-
-完整命令参考 —— 任务管理、搜索、看板、文档、决策等：**[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
-
-快速示例：`backlog`、`backlog instructions`、`backlog task create`、`backlog task list`、`backlog task edit`、`backlog milestone add`、`backlog milestone edit`、`backlog milestone remove`、`backlog search`、`backlog board`、`backlog browser`。
-
-完整帮助：`backlog --help`
-
----
-
-## <img src="./.github/configuration-256.png" alt="配置" width="28" height="28" align="center"> 配置
+## 配置
 
 Backlog.md 的配置按以下层次叠加（优先级从高到低）：
 
-1. CLI 参数
-2. 项目配置文件：
-   - 存在时使用 `backlog.config.yml`
-   - 否则使用 `backlog/config.yml` 或 `.backlog/config.yml`
-3. 内置默认值
+1. CLI 参数。
+2. 项目配置文件：存在时使用 `backlog.config.yml`，否则使用 `backlog/config.yml` 或 `.backlog/config.yml`。
+3. 内置默认值。
 
 ### 交互式向导（`backlog config`）
 
-不带参数运行 `backlog config` 以启动完整的交互式向导。这与在 `backlog init` 中选择开启高级设置时触发的体验相同，它会引导您完成所有配置项：
-- 跨分支准确性：`checkActiveBranches`、`remoteOperations` 和 `activeBranchDays`。
-- Git 工作流：`autoCommit` 和 `bypassGitHooks`。
-- ID 格式化：启用 `zeroPaddedIds` 或设置其长度。
-- 编辑器集成：选择一个带可用性检查的 `defaultEditor`。
-- 完成定义默认值：交互式添加/删除/重新排序/清除项目级 `definition_of_done` 检查清单项。
-- Web UI 默认值：选择 `defaultPort` 以及是否启用 `autoOpenBrowser`。
+不带参数运行 `backlog config` 启动完整交互式向导（与 `backlog init` 高级设置体验一致），引导完成全部配置项：跨分支准确性（`checkActiveBranches`、`remoteOperations`、`activeBranchDays`）、Git 工作流（`autoCommit`、`bypassGitHooks`）、ID 格式化（`zeroPaddedIds`）、编辑器集成（`defaultEditor`）、完成定义默认值、Web UI 默认值（`defaultPort`、`autoOpenBrowser`）。
 
-跳过向导（在 init 期间回答"否"）将应用 Backlog.md 内置的安全默认设置：
-- `checkActiveBranches=true`、`remoteOperations=true`、`activeBranchDays=30`。
-- `autoCommit=false`、`bypassGitHooks=false`。
-- `zeroPaddedIds` 禁用。
-- `defaultEditor` 未设置（回退到您的环境配置）。
-- `defaultPort=6420`、`autoOpenBrowser=true`。
+跳过向导时应用内置安全默认值：
 
-对于纯文件系统项目，运行 `backlog init --no-git`。Backlog.md 不会运行 `git init`，保存的配置会强制设置 `checkActiveBranches=false`、`remoteOperations=false` 和 `autoCommit=false`，以便 CLI、Web 和 MCP 本地文件工作流不依赖 Git 仓库。
+| 配置键 | 默认值 | 说明 |
+| --- | --- | --- |
+| `checkActiveBranches` | `true` | 启用跨分支准确性检查 |
+| `remoteOperations` | `true` | 允许远程操作 |
+| `activeBranchDays` | `30` | 活跃分支统计天数 |
+| `autoCommit` | `false` | 关闭每次写入自动 Git 提交 |
+| `bypassGitHooks` | `false` | 不绕过仓库 pre-commit 钩子 |
+| `zeroPaddedIds` | 禁用 | 不使用零填充任务 ID |
+| `defaultEditor` | 未设置 | 回退到环境配置的编辑器 |
+| `defaultPort` | `6420` | Web UI 默认端口 |
+| `autoOpenBrowser` | `true` | 启动 Web 服务时自动打开浏览器 |
 
-每当您重新访问 `backlog init` 或重新运行 `backlog config` 时，向导都会用您当前的值预填充提示，以便您只调整已更改的内容。
+纯文件系统项目运行 `backlog init --no-git` 时不会运行 `git init`，保存的配置会强制 `checkActiveBranches=false`、`remoteOperations=false`、`autoCommit=false`，让 CLI、Web 和 MCP 本地文件工作流不依赖 Git 仓库。重新访问 `backlog init` 或重跑 `backlog config` 时，向导会用当前值预填充提示，只需调整已更改的内容。
 
 ### autoCommit 自动提交
 
-开启后（`backlog config set autoCommit true` 或配置文件 `autoCommit: true`），以下操作会**每次写入自动产生一个 Git 提交**：任务创建/编辑/批量更新、任务归档/完成、Draft 提升/降级/归档、决策与文档的创建**和更新**、里程碑归档/重命名、以及 `backlog init` 写入的 AI 指令文件。
+开启后（`backlog config set autoCommit true` 或配置文件 `autoCommit: true`），任务创建 / 编辑 / 批量更新、任务归档 / 完成、Draft 提升 / 降级 / 归档、决策与文档的创建**和更新**、里程碑归档 / 重命名、以及 `backlog init` 写入的 AI 指令文件，都会**每次写入自动产生一个 Git 提交**。
 
-**注意事项：**
+<details>
+<summary><b>autoCommit 注意事项与提交信息约定</b></summary>
 
-- **提交只包含本次操作触碰的文件**（新文件 + 被替换/移动的旧路径），不会整目录暂存，也不会卷入或清空您预先暂存（staged）的其他改动，未跟踪（untracked）文件保持原样。
+- **提交只包含本次操作触碰的文件**（新文件 + 被替换 / 移动的旧路径），不会整目录暂存，也不会卷入或清空预先暂存（staged）的其他改动，未跟踪（untracked）文件保持原样。
 - **必须初始化 Git** 才能使用；`backlog init --no-git` 的纯文件系统项目强制禁用自动提交。
-- **提交失败不丢数据**：文件已写入磁盘，只是未提交，可用 `git status` 查看并手动补提交。里程碑归档/重命名失败时会自动回滚文件移动。
-- **`bypassGitHooks`**：默认会触发仓库 pre-commit 钩子，可能因 lint/格式化失败而阻塞提交；需要跳过时设置 `backlog config set bypassGitHooks true`。
+- **提交失败不丢数据**：文件已写入磁盘，只是未提交，可用 `git status` 查看并手动补提交；里程碑归档 / 重命名失败时会自动回滚文件移动。
+- **`bypassGitHooks`**：默认触发仓库 pre-commit 钩子，可能因 lint / 格式化失败而阻塞提交；需要跳过时设置 `backlog config set bypassGitHooks true`。
 - **提交信息**：任务按操作区分（`Create task` / `Update task` / `Archive task`）；决策与文档区分创建与更新（`Add decision` / `Update decision`、`Add document` / `Update document`）；里程碑与 Draft 使用 `backlog:` 前缀。
-- **推荐**：单人/自动化工作流开启自动提交可获得「一操作一提交」的干净历史；多人协作或需要精细控制历史时可保持关闭（默认），手动 `git add`/`git commit`——两种方式互不污染。
+- **推荐**：单人 / 自动化工作流开启可获得「一操作一提交」的干净历史；多人协作或需要精细控制历史时保持关闭（默认）手动提交，两种模式互不污染。
+
+</details>
 
 ### 完成定义默认值
 
-使用 `backlog config`（或在 `backlog init` 高级设置期间）、在 Web UI 中（设置 → 完成定义默认值），或直接编辑项目配置文件来设置项目范围的 DoD 项：
+使用 `backlog config`（或 `backlog init` 高级设置）、Web UI（设置 → 完成定义默认值），或直接编辑项目配置文件来设置项目范围的 DoD 项：
 
 ```yaml
 definition_of_done:
@@ -652,33 +593,54 @@ definition_of_done:
   - No regressions introduced
 ```
 
-当项目使用根目录配置自动发现时，请编辑 `backlog.config.yml` 而不是 `backlog/config.yml`。
+当项目使用根目录配置自动发现时，请编辑 `backlog.config.yml` 而不是 `backlog/config.yml`。这些检查项默认添加到每个新任务；创建时可用 `--dod` 添加更多，或用 `--no-dod-defaults` 为单个任务禁用默认值。
 
-这些检查项默认添加到每个新任务中。您可以在创建时使用 `--dod` 添加更多，或使用 `--no-dod-defaults` 为单个任务禁用默认值。
-
-有关完整配置参考（所有选项、命令和详细说明），请参阅 **[ADVANCED-CONFIG.md](ADVANCED-CONFIG.md)**。
+有关完整配置参考（所有选项、命令和详细说明），请参阅 [ADVANCED-CONFIG.md](ADVANCED-CONFIG.md)。完整命令参考见 [CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)，也可随时运行 `backlog --help`。
 
 ---
 
-## 🔧 故障排除
+## 常见问题 FAQ
 
-### Apple Silicon (macOS)
+### 不初始化 Git 也能用吗？
 
-在 M 系列 Mac 上，当 Node、Bun 或 Homebrew 以 Rosetta（x64 模拟）方式运行，却安装了 Intel 版而非 arm64 版二进制时，`backlog` 可能报 `illegal hardware instruction` 或 `Binary package not installed for darwin-...`。启动器会运行实际已安装的任一 darwin 变体（arm64 或 x64），但最可靠的修复方式是安装原生架构版本。
+可以。运行 `backlog init --no-git` 即可创建纯文件系统项目，它会禁用跨分支检查、远程操作和自动提交，CLI、Web 与 MCP 工作流都不依赖 Git 仓库。
+
+### 可以手动编辑任务 Markdown 文件吗？
+
+建议通过 Backlog.md 命令（CLI / MCP / Web）修改任务，而不是手动编辑文件，以保持字段类型和元数据一致。AI 辅助与手动工作流随时可切换，两者读写的是同一批 Markdown 任务文件。
+
+### 如何在局域网访问 Web 界面？
+
+使用 `backlog browser --host 0.0.0.0` 可开放局域网访问，但该 API **没有认证机制**，不要在不可信网络暴露；默认的 `127.0.0.1` 绑定仅本机可访问。完整安全边界见[安全说明](#安全说明)。
+
+### Web 界面显示的是旧内容怎么办？
+
+运行 `backlog browser --no-cache` 忽略已有缓存、从头加载即可。普通状态下 Web 视图会随文件变更实时更新。
+
+### 开启 autoCommit 后提交失败会丢数据吗？
+
+不会。文件已经写入磁盘，只是没有产生提交，可用 `git status` 查看并手动补提交；里程碑归档 / 重命名失败还会自动回滚文件移动。
+
+### Apple Silicon 上报 illegal hardware instruction 怎么办？
+
+结论：这是 Node / Bun / Homebrew 在 Rosetta 下装成了 Intel 二进制导致的架构不匹配，用原生 arm64 版本重装即可修复。
+
+<details>
+<summary><b>查看架构排查与重装命令</b></summary>
 
 先检查各工具报告的架构：
 
-```bash
+```sh
 uname -m                            # arm64 = Apple Silicon 硬件；x86_64 = Intel 或 Rosetta shell
-node -p process.arch                # 你的 Node/Bun 运行时架构
+node -p process.arch                # Node/Bun 运行时架构
 sysctl -in sysctl.proc_translated   # 1 = 当前 shell 运行于 Rosetta 之下
 which brew                          # /opt/homebrew = arm64 brew，/usr/local = Intel brew
 ```
 
 若架构不一致，用原生架构重新安装：
 
-```bash
-# Homebrew：确保 `which brew` 输出 /opt/homebrew，然后（上游）
+```sh
+# Homebrew：确保 which brew 输出 /opt/homebrew，然后（上游）
 brew reinstall backlog-md
 
 # npm
@@ -688,16 +650,37 @@ arch -arm64 npm i -g @kuwork/backlog.md
 arch -arm64 bun add -g @kuwork/backlog.md
 ```
 
-如果刻意在 Rosetta 下运行 x64 Node 也可以：`backlog` 会回退到实际已安装的任一 `backlog.md-darwin-*` 包。
+刻意在 Rosetta 下运行 x64 Node 也可以：`backlog` 会回退到实际已安装的任一 `backlog.md-darwin-*` 包。
+
+</details>
 
 ---
 
-## 🌐 社区工具
+## 安全说明
 
-- **[vscode-backlog-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-backlog-md)** - VS Code 扩展，包含事项面板、看板视图和编辑功能。([ysamlan/vscode-backlog-md](https://github.com/ysamlan/vscode-backlog-md))
+> [!CAUTION]
+> Backlog.md 本地优先、离线运行：数据保存在项目仓库内，没有强制云端账号、没有订阅，也不会把任务数据外发。但 Web 与查询能力有以下边界，请按场景评估暴露范围。
+
+- **Web 服务默认仅绑定回环地址** `127.0.0.1`，只有本机能访问；`--host 0.0.0.0` 开放局域网时 API **未做认证**，在不可信网络暴露等同于让同网段者可读写任务，需自行配合防火墙或隧道保护。
+- **实时查询块严格只读**：SQL 类块经语句形状白名单、关键字黑名单、引擎物理只读三层保证；SQL 与 Cypher 查询块默认都截断为 500 行（配置项 `queryMaxRows` 可调，硬顶 5000），超出仅置 `truncated` 标记；Cypher 块还会拒绝 `CREATE` / `MERGE` / `SET` / `DELETE` 等写关键字。
+- **`default` 图谱是只读缓存**：派生自 Markdown 语料，拒绝写入，重建会覆盖一切；只有你显式创建的用户数据库（`backlog/databases/`）允许写入。
+- **MCP 与 CLI 操作的是本地文件**：自动提交（`autoCommit`）默认关闭，开启后每次写入才会产生 Git 提交，且只包含本次触碰的文件。
 
 ---
 
-### 许可证
+## 社区工具
 
-Backlog.md 采用 **MIT 许可证**发布 —— 随意使用，只需注明出处。请参阅 [LICENSE](LICENSE)。
+- **[vscode-backlog-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-backlog-md)** —— VS Code 扩展，包含事项面板、看板视图和编辑功能。（[ysamlan/vscode-backlog-md](https://github.com/ysamlan/vscode-backlog-md)）
+- **[dsh-backlog.md](https://github.com/kuwork/DSH-Backlog.md)** —— DeepSeek Harness（DSH）bundle 插件，把 `backlog browser` 本地看板内嵌进 Harness 的侧边栏面板、对话区标签页与会话头菜单；每个工作区运行独立看板进程、端口自动避让，本机缺少 `backlog` CLI 时自动安装，不修改 Harness 本体代码。安装命令：`dsh plugin --profile web add dsh-backlog.md`（[npm 包](https://www.npmjs.com/package/dsh-backlog.md)）。
+
+![dsh-backlog.md 插件横幅：DeepSeek Harness 内嵌的 Backlog.md 侧边栏面板与任务图谱标签页](https://raw.githubusercontent.com/kuwork/Backlog.md/main/.github/dsh-backlog-banner.png)
+
+*dsh-backlog.md 在 DeepSeek Harness 中提供侧边栏常驻入口与对话区标签页，看板进程按工作区独立启停。*
+
+---
+
+## 许可证
+
+Backlog.md 采用 **MIT 许可证**发布——随意使用，只需注明出处。完整条款见 [LICENSE](LICENSE)。
+
+<p align="right"><a href="#readme-top">↑ 回到顶部</a></p>

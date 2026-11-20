@@ -1,11 +1,13 @@
 {
   "name": "@kuwork/backlog.md",
   "version": "1.53.13-CN",
+  "description": "Git-native Markdown task management and kanban CLI for spec-driven AI agent workflows: local-first tasks, boards, LLM wiki, MCP, and a built-in web UI.",
   "type": "module",
   "module": "src/cli.ts",
   "files": [
     "scripts/*.cjs",
     "README.md",
+    "README.en.md",
     "LICENSE"
   ],
   "bin": {
@@ -97,9 +99,21 @@
     "markdown",
     "kanban",
     "task",
+    "task-management",
     "project-management",
     "backlog",
-    "agents"
+    "todo",
+    "ai-agent",
+    "agents",
+    "mcp",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "local-first",
+    "git-native",
+    "wiki",
+    "gantt",
+    "developer-tools"
   ],
   "license": "MIT",
   "trustedDependencies": [
