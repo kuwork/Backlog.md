@@ -2,7 +2,7 @@
 title: 浏览器启动缓存体系
 labels: [concept, cli, core, server, performance, cache]
 created_date: 2026-11-08 23:05
-updated_date: 2026-11-08 23:05
+updated_date: 2026-11-20 11:09
 ---
 
 # 浏览器启动缓存体系
@@ -34,6 +34,12 @@ updated_date: 2026-11-08 23:05
 
 `--no-cache` 只有一个 env 开关 `BACKLOG_NO_CACHE`（`src/utils/cache-policy.ts`），所有缓存层自查，**只跳过读、保留写**：该次冷启动重建的正是它忽略的条目，下一次普通启动又回到热路径。这也让它兼作可疑缓存的修复手段。用 env 而非逐层透传参数，是为了以后新增缓存层不会因为没人接线而继续读盘。
 
+## 缓存正确性边界与图谱预热（BACK-857 / BACK-861）
+
+BACK-857 明确磁盘持久化只是优化：commit-index 写入 `EPERM` 时，已经成功的 Git 内存索引和 fingerprint 必须保留，unchanged refs 继续命中内存，不得每轮搜索重建。临时文件按 PID + 时间戳隔离，Windows rename 走共享重试。
+
+BACK-861 调整 BACK-843 的「只等首个图谱请求」策略：内容服务就绪后后台触发同一 memoized GraphService attempt，bind/首屏仍不 await。Web slot 读写与 CLI 相同的 fail-closed 图谱快照，并保存 ParseReports；快照校验失败只回退全量重建，绝不提供空图或旧图。真实仓库 graph ready 从 5859ms 降至 3240ms，但准备期间仍有主线程 jank。
+
 ## 可观测性
 
 `log.ts` 统一 `HH:MM:SS.mmm [tag]`；原本只走 WebSocket 的 loading 状态镜像到终端，新增 `[startup]` 阶段耗时、`[cache]` 每 ref restored/building（分支 + local|remote + 短哈希）、`[merge]` 三步。`ensureServicesReady()` 在 bind 后 `setTimeout(0)` 立刻启动。进度日志由 `enableProgressLogs()` 显式开启，**只有 browser 命令与 Web server 打开**，否则 `[cache] ...` 会污染 `backlog task list` / `decision list` 的纯文本断言。
@@ -53,5 +59,7 @@ updated_date: 2026-11-08 23:05
 ## Related Sources
 
 - [[sources/back-843-browser-startup-cache]] — 主实现与全部实测数据
+- [[sources/back-857-cache-write-failure-stability]] — 磁盘缓存失败时保留内存索引
+- [[sources/back-861-graph-startup-warmup-snapshot]] — 图谱后台预热与 Web 快照复用
 - [[sources/back-841-corpus-digest-gap-fixes]] — 连接时序
 - [[sources/back-553-modernize-browser-bundling]] — 更早的打包现代化

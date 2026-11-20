@@ -3,7 +3,7 @@ title: Wiki Content Catalog
 labels:
   - index
 created_date: '2026-05-12 00:00'
-updated_date: 2026-11-10 00:40
+updated_date: 2026-11-20 11:35
 ---
 
 
@@ -465,6 +465,21 @@ Read this file FIRST on any wiki operation.
 | [[sources/back-845-pptx-slide-local-media]] |  BACK-845 - PPTX 幻灯片本地媒体路径归一化 | source, web, office, pptx |
 | [[sources/back-846-mermaid-css-fullscreen]] |  BACK-846 - Mermaid 图表 CSS 全屏浏览入口 | source, web-ui, charts, mermaid |
 | [[sources/back-847-echarts-css-fullscreen]] |  BACK-847 - ECharts 图表 CSS 全屏浏览入口 | source, web-ui, charts, echarts |
+| [[sources/back-848-ci-install-test-stability]] | BACK-848 - CI 安装与测试超时治理 | source, ci, testing, bugfix |
+| [[sources/back-849-mermaid-theme-render-race]] | BACK-849 - Mermaid 主题重渲竞态修复 | source, web-ui, mermaid, theme |
+| [[sources/back-850-document-drag-move]] | BACK-850 - Web 文档拖拽移动 | source, web-ui, documentation, drag-drop |
+| [[sources/back-851-folder-drag-move]] | BACK-851 - Web 文档文件夹拖拽移动 | source, web-ui, documentation, drag-drop |
+| [[sources/back-852-web-document-decision-delete]] | BACK-852 - Web 文档与决策删除 | source, web-ui, documentation, decisions |
+| [[sources/back-853-cli-mcp-document-decision-delete]] | BACK-853 - CLI/MCP 文档与决策删除 | source, cli, mcp, documentation, decisions |
+| [[sources/back-854-document-rename-reference-repair]] | BACK-854 - 文档更名引用修复 | source, core, documentation, rename |
+| [[sources/back-855-task-title-file-rename]] | BACK-855 - 任务标题驱动文件更名 | source, cli, mcp, tasks, rename |
+| [[sources/back-856-decision-title-file-rename]] | BACK-856 - 决策标题驱动文件更名 | source, cli, mcp, decisions, rename |
+| [[sources/back-857-cache-write-failure-stability]] | BACK-857 - 磁盘缓存失败下的分支加载稳定性 | source, core, cache, windows |
+| [[sources/back-858-entity-id-update-source-selection]] | BACK-858 - 实体 ID 更新与精确源选择 | source, cli, mcp, identity, rename |
+| [[sources/back-859-task-inline-save-status]] | BACK-859 - 任务弹窗即时元数据保存状态 | source, web-ui, tasks, save-state |
+| [[sources/back-860-milestone-save-status]] | BACK-860 - 里程碑弹窗侧栏保存状态 | source, web-ui, milestones, save-state |
+| [[sources/back-861-graph-startup-warmup-snapshot]] | BACK-861 - Web 图谱后台预热与快照复用 | source, graph, web, performance, cache |
+| [[sources/doc-36-entity-id-update-design]] | doc-36 - 任务文档决策 ID 更新设计 | source, prd, identity, rename, cli, mcp |
 
 ## Execution Notes
 
@@ -501,6 +516,9 @@ Read this file FIRST on any wiki operation.
 | [[execution/browser-startup-perf-gotchas]] |  浏览器启动性能排查陷阱集 | 有无浏览器附着的归因、Windows 批量写、缓存键选择、upgrade 让回，BACK-843 提炼 |
 | [[execution/markdown-link-contract-parity]] |  跨页面 Markdown 链接契约对齐与验收步骤 | 基准检查、契约单点化、capture 拦截器、三向 fixture 与回归清单，BACK-835~838 提炼 |
 | [[execution/chart-fullscreen-overlay-gotchas]] |  图表全屏叠加层接线与陷阱 | 干净容器重渲染、按块引擎 id 定主题、canvas 显式尺寸、非 passive wheel 与 dispose，BACK-846/847 提炼 |
+| [[execution/file-rename-plan-gotchas]] | 文件更名与引用同步陷阱 | FileRenamePlan 构建/应用、逐文件相对路径、精确身份与 Wiki 边界，BACK-854~858 提炼 |
+| [[execution/mermaid-theme-render-gotchas]] | Mermaid 主题异步渲染陷阱 | render(text)、渲染代数、旧图保留与 treeView token，BACK-849 提炼 |
+| [[execution/graph-web-snapshot-gotchas]] | Web 图谱预热与快照陷阱 | 后台 memoized attempt、fail-closed hydrate、ParseReports 与冷/暖实测，BACK-861 提炼 |
 
 ## Decisions
 
@@ -593,6 +611,9 @@ Read this file FIRST on any wiki operation.
 | [[decisions/corpus-digest-over-event-version]] |  用快照内容摘要而非事件版本号抑制冗余刷新 | BACK-840 拒绝 ContentStoreEvent.version 与 rawContent-only，游标只能由全量加载器推进 |
 | [[decisions/p-prefix-for-office-page-ranges]] |  Office 页范围强制 P 前缀并让 capture 拦截器走共享解析器 | BACK-838 守住裸数字的文本行含义，修掉范围链接 404 与重复徽标 |
 | [[decisions/fresh-render-for-fullscreen-overlay]] |  图表全屏叠加层采用干净容器重新渲染 | BACK-846 拒绝克隆 SVG 与复用节点，避开 Mermaid data-processed 且让 canvas 引擎可用 |
+| [[decisions/mermaid-render-generation-guard]] | Mermaid 以渲染代数防止过期覆盖 | BACK-849 逐块 render(text)，只允许最新代数提交 SVG |
+| [[decisions/extend-update-for-entity-id-changes]] | 实体 ID 变化扩展现有 update 命令 | doc-36/BACK-858 以 --id、newId/sourcePath 复用更新与更名事务 |
+| [[decisions/best-effort-disk-cache-persistence]] | 磁盘缓存持久化采用 best-effort | BACK-857 写盘失败保留内存索引与 fingerprint，不重复全量重建 |
 
 ## Concepts
 
@@ -648,6 +669,7 @@ Read this file FIRST on any wiki operation.
 | [[concepts/chart-block-engine]] |  统一图表引擎（ChartBlock + 注册表） | fence 语言查表渲染，mermaid 与 echarts 同级；全系列注册守卫、JSON-only 安全、per-block dispose |
 | [[concepts/query-chart-binding]] |  图表与查询结果的两种绑定方式 | 紧耦合 view: echarts 与松耦合 fromQuery 的分工、占位符语义与刷新边界 |
 | [[concepts/relative-reference-resolution]] |  相对引用解析 | 两阶段 join + try_files、项目根边界、元数据/正文分道、projectPath 与 wikiRoot 分流 |
+| [[concepts/file-rename-plan]] | 文件更名计划（FileRenamePlan） | 标题/ID 更新的共享事务、逐文件相对路径、精确引用、Wiki 边界与原子回滚 |
 | [[concepts/corpus-digest]] |  语料摘要与刷新抑制 | ContentStore 快照 SHA-256、广播窗口起始采样、双游标、谁能推进游标、fail-open |
 | [[concepts/browser-startup-cache]] |  浏览器启动缓存体系 | 五段成本、branch/web-bundle/content 三层缓存、统一缓存根、--no-cache 与两处回归 |
 | [[concepts/chart-fullscreen-overlay]] |  图表全屏浏览叠加层 | 干净容器重渲染、分引擎暗色、SVG contain+可读下限与 canvas 显式盒、非 passive wheel、dispose |
@@ -704,7 +726,7 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/00-快速开始/01-安装与初始化]] | 安装与初始化 | 多种安装方式、项目初始化、配置管理 |
 | [[usermanual/00-快速开始/02-AI集成设置]] | AI 集成设置 | MCP 协议配置、CLI 指令文件、推荐工作流 |
 | [[usermanual/10-任务管理/00-任务生命周期]] | 任务生命周期 | 状态流转、任务文件结构、核心字段 |
-| [[usermanual/10-任务管理/01-创建与编辑任务]] | 创建与编辑任务 | task create/edit 命令详解 |
+| [[usermanual/10-任务管理/01-创建与编辑任务]] | 创建与编辑任务 | task create/edit、ID 更新、source-path 精确选源、标题驱动文件更名 |
 | [[usermanual/10-任务管理/02-草稿管理]] | 草稿管理 | 草稿创建、提升、降级、独立 ID 空间 |
 | [[usermanual/10-任务管理/03-子任务与依赖]] | 子任务与依赖 | 子任务创建、依赖设置、序列影响 |
 | [[usermanual/10-任务管理/04-搜索与序列]] | 搜索与序列 | search 命令、序列概念与规划意义 |
@@ -712,23 +734,23 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/20-看板与可视化/00-TUI看板]] | TUI 看板 | 终端交互式看板操作指南 |
 | [[usermanual/20-看板与可视化/01-Web看板]] | Web 看板 | 浏览器看板拖放操作与筛选 |
 | [[usermanual/20-看板与可视化/02-看板导出]] | 看板导出 | export 命令、README 嵌入、版本标注 |
-| [[usermanual/30-文档与决策/00-文档管理]] | 文档管理 | doc create/update/list/view 命令 |
-| [[usermanual/30-文档与决策/01-决策记录]] | 决策记录 | decision create/list、ADR 状态流转 |
+| [[usermanual/30-文档与决策/00-文档管理]] | 文档管理 | doc create/update/list/view/delete、文件夹删除、ID 与标题更名、引用修复 |
+| [[usermanual/30-文档与决策/01-决策记录]] | 决策记录 | decision CRUD、ADR 状态流转、ID 与标题更名、精确选源 |
 | [[usermanual/30-文档与决策/02-里程碑管理]] | 里程碑管理 | 里程碑创建、分配、归档、未分配池 |
 | [[usermanual/40-Web界面/00-启动与访问]] | 启动与访问 | browser 命令、端口、响应式与暗黑模式 |
 | [[usermanual/40-Web界面/01-看板视图]] | 看板视图 | Web 看板拖放、泳道、筛选、实时更新 |
-| [[usermanual/40-Web界面/02-任务列表]] | 任务列表 | 表格布局、多维筛选、搜索、任务跳转 |
-| [[usermanual/40-Web界面/03-里程碑管理]] | Web 里程碑管理 | 里程碑详情、任务分配、折叠区、搜索 |
-| [[usermanual/40-Web界面/04-文档与决策]] | Web 文档与决策 | 文档列表、子文件夹、决策查看 |
-| [[usermanual/40-Web界面/05-设置与主题]] | 设置与主题 | 配置编辑、DoD 默认值、MDEditor、Mermaid |
+| [[usermanual/40-Web界面/02-任务列表]] | 任务列表 | 表格与筛选、行内元数据保存 chip、标题驱动文件更名 |
+| [[usermanual/40-Web界面/03-里程碑管理]] | Web 里程碑管理 | 里程碑详情与分配、侧栏即时保存 Saving/Saved/Failed chip |
+| [[usermanual/40-Web界面/04-文档与决策]] | Web 文档与决策 | 文档/文件夹拖放、确认删除、决策编辑、标题与 ID 变更 |
+| [[usermanual/40-Web界面/05-设置与主题]] | 设置与主题 | 配置编辑、DoD 默认值、MDEditor、Pele 1.13.0 / Mermaid 12.3.0 |
 | [[usermanual/40-Web界面/06-富文本粘贴与文档上传]] | 富文本粘贴与文档上传 | Word/Google Docs 粘贴转 Markdown、.docx 上传、图片 promote |
 | [[usermanual/40-Web界面/07-Wiki浏览与编辑]] | Wiki 浏览与编辑 | Web UI Wiki 文件树导航、页面浏览与编辑、实时同步 |
 | [[usermanual/40-Web界面/08-统计页面]] | 统计页面 | 项目健康度、状态概览、优先级分布、最近活动 |
 | [[usermanual/40-Web界面/09-甘特图视图]] | 甘特图视图 | 时间线可视化、跟踪甘特图、五级粒度、依赖箭头、任务排序 |
 | [[usermanual/40-Web界面/10-全局搜索]] | 全局搜索 | Spotlight 搜索对话框、分组结果、键盘导航 |
-| [[usermanual/40-Web界面/11-图谱视图]] | 图谱视图 | /graph 任务图谱与 /knowledge 知识图谱、Cypher 搜索、RyuGraph WASM 默认后端 |
+| [[usermanual/40-Web界面/11-图谱视图]] | 图谱视图 | 双图谱、后台预热与成功快照复用、ParseReports fail-closed |
 | [[usermanual/40-Web界面/12-文档预览]] | 文档预览 | .docx/.pdf/.pptx/.xlsx 应用内预览模态框、只读/编辑、不可预览格式提示 |
-| [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven 四步工作流、工具能力、安全 |
+| [[usermanual/50-AI集成/00-MCP工作流]] | MCP 工作流 | Spec-Driven、37 个工具、精确选源与 ID 更新、文档/决策删除 |
 | [[usermanual/50-AI集成/01-支持的AI工具]] | 支持的 AI 工具 | 6 款工具的配置命令与步骤详解 |
 | [[usermanual/50-AI集成/02-代理指令文件]] | 代理指令文件 | 指令文件生成、内容、MCP vs CLI 对比 |
 | [[usermanual/50-AI集成/03-Wiki Skill 安装]] | Wiki Skill 安装 | backlog wiki install、skill 嵌入二进制、Agent 符号链接 |
@@ -745,11 +767,11 @@ Read this file FIRST on any wiki operation.
 | [[usermanual/80-图谱与数据查询/07-MDB查询块]] | MDB 查询块 | mdb-query 第四块、Access 库载入内存 SQLite、GBK 解码、与 sqlite 同构安全模型 |
 | [[usermanual/80-图谱与数据查询/03-数据库页面]] | 数据库页面 | Databases 页真实行数、Cypher 结果图谱视图、可配置图例 |
 | [[usermanual/80-图谱与数据查询/05-图例配置持久化]] | 图例配置持久化 | graph-legends.yaml 项目级存储、四个写入面、启动恢复与热更新 |
-| [[usermanual/80-图谱与数据查询/06-图表块]] | 图表块 | mermaid / echarts 围栏块、支持系列、view: echarts、fromQuery 引用、使用约定 |
+| [[usermanual/80-图谱与数据查询/06-图表块]] | 图表块 | Mermaid/ECharts、Pele 1.13.0 / Mermaid 12.3.0、主题异步竞态防护、查询直出 |
 | [[usermanual/60-配置与运维/00-配置管理]] | 配置管理 | config 命令、关键配置项、YAML 示例 |
 | [[usermanual/60-配置与运维/01-Shell补全]] | Shell 补全 | completion install、4 种 shell、动态补全 |
 | [[usermanual/60-配置与运维/02-项目概览]] | 项目概览 | CLI overview 命令、项目级统计、健康指标 |
-| [[usermanual/60-配置与运维/03-故障排查]] | 故障排查 | 端口与 autoPort、图谱 building 与锁接管、watch 不刷新、二进制架构不匹配、MCP 连接、编辑器无响应 |
+| [[usermanual/60-配置与运维/03-故障排查]] | 故障排查 | 启动与图谱预热、磁盘缓存 best-effort、端口、watch、MCP 与编辑器 |
 
 ## Developer Notes
 

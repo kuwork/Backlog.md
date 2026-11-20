@@ -2,7 +2,7 @@
 title: 统一图表引擎（ChartBlock + 注册表）
 labels: [concept, web-ui, charts, markdown]
 created_date: 2026-10-18 22:00
-updated_date: 2026-11-10 00:27
+updated_date: 2026-11-20 11:09
 ---
 
 # 统一图表引擎（ChartBlock + 注册表）
@@ -45,6 +45,12 @@ mermaid 不再是硬接线的渲染器，而是注册表里的两个 engine 之�
 暗色主题下 Pele 线条不可见的根因是 `--pele-line`/`--pele-border`/`--pele-fg` 曾被设为近黑；改为亮值（`#c9d1d9` / `#8b949e` / `#e6edf3`）后恢复。`src/web/charts/pele-engine.test.ts` 验证双引擎渲染 doc-32 的 25/25 mermaid 块。
 
 **设置在重启后失效的坑（BACK-846 修复）**：`file-system/operations.ts` 的 `parseConfig` 在 switch 里已把 `diagram_engine` 解析进 `config.diagramEngine`，但函数末尾的手写返回对象字面量漏了这个字段，解析值每次都被丢弃；且 `serializeConfig` 写出带引号的 `diagram_engine: "mermaid"`，旧的字面比较也匹配不上。补字段 + 解析时剥离引号后 `loadConfig()` 往返才稳定返回 `mermaid`。引申的通用教训：手写返回对象与解析循环很容易脱节，改配置字段时务必验一次往返。
+
+## 异步渲染与主题代数（BACK-849）
+
+Classic Mermaid 不再通过共享 `run()` 和 `data-processed` 驱动组件，而是显式完成配置切换后逐块 `render(text)`；Pele 与 MarkdownEditor 也复用同一可取消块适配器。每次渲染递增本地代数，只有最新代数的 resolve 可以提交 SVG，因此快速 light/dark 连切不会被较旧的晚完成结果覆盖。
+
+新图成功前保留旧 SVG，失败只显示错误，避免先清空容器造成闪烁。treeView 的暗色 token 以实际 SVG 属性验证：`*Color` 走原始变量，`node` 使用带 `labelBackground` 的 palette 变量。详见 [[decisions/mermaid-render-generation-guard]]。
 
 ## 安全：只吃 JSON
 
@@ -93,6 +99,7 @@ mermaid 不再是硬接线的渲染器，而是注册表里的两个 engine 之�
 - [[sources/m-17-echarts-chart-engine]] — 里程碑
 - [[sources/back-640-mermaid-rendering-fixes]] — 被替换的旧路径上的修复历史
 - [[sources/back-819-switchable-diagram-engine]] — 把 mermaid 改为可切换引擎、Pele 默认
+- [[sources/back-849-mermaid-theme-render-race]] — 异步 render、主题切换代数与 treeView 暗色修复
 - [[sources/doc-32-mermaid-diagram-gallery]] — 随本任务发布的 Mermaid 画廊（18 类 25 例）
 - [[sources/back-846-mermaid-css-fullscreen]] — 全屏叠加层与引擎设置重启修复
 - [[sources/back-847-echarts-css-fullscreen]] — 叠加层扩展到 ECharts、查询直出收敛到本组件

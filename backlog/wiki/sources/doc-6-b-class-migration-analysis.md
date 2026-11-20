@@ -2,8 +2,8 @@
 title: doc-6 - B 类上游任务迁移分析报告
 labels: [source, doc, migration]
 created_date: 2026-08-09 00:00
-updated_date: 2026-10-09 23:30
-source_path: backlog/docs/migration/doc-6 - B类上游任务迁移分析报告（v1.47.1-..-v1.48.0）.md
+updated_date: 2026-11-20 11:09
+source_path: backlog/docs/migration/doc-6 - v1.47.1-至-v1.48.0-B类上游任务迁移分析报告.md
 ---
 
 # doc-6 - B 类上游任务迁移分析报告

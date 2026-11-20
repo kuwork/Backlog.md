@@ -2,8 +2,8 @@
 title: doc-32 - Mermaid 图表画廊
 labels: [source, web-ui, charts, markdown]
 created_date: 2026-10-23 17:20
-updated_date: 2026-10-23 17:20
-source_path: backlog/docs/doc-32 - Mermaid-Diagram-Gallery.md
+updated_date: 2026-11-20 11:09
+source_path: backlog/docs/PRDS/mermaid/doc-32 - Mermaid-Diagram-Gallery.md
 ---
 
 # doc-32 - Mermaid 图表画廊

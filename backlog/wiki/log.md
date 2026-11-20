@@ -1252,3 +1252,27 @@ Chronological, append-only record of all wiki operations.
 **构建与发布产物**：用 `honkit-docs-migration` 重建双语手册，各 51 HTML / 73 文件。本批改动尚未提交，故以 `git write-tree` 生成 index tree `6fb926e…` 作为 `--branch` 传给 `migrate_docs.py`（`git archive` 接受 tree-ish），既不新建提交、又显式覆盖默认的 `release` 分支。产物迁移到 `backlog-md-site` 的 `docs/` 与 `en/docs/` 并同步 `backlog-md-pages` worktree。`seo.py` 写入 102 页元数据并重建 sitemap.xml（108 URL），带 SEO 的 docs 与 sitemap 再同步进 worktree；robots.txt 一致未动。6 处新内容在中英产物及 worktree 逐项命中，两册内页均带 `<!-- seo:start -->`。
 
 **统计**：Patterns 6→7；Sources 450、Concepts 53、Decisions 87、Execution 31、Reasoning 7 不变；用户手册仍为 50 (zh) + 50 (en) 内容页。**提交/推送**：主仓 wiki 改动已 stage；`backlog-md-site` 与 `backlog-md-pages` 两仓改动未提交，由用户执行。
+
+## [2026-11-20 11:19:22] batch-ingest | 增量摄取 BACK-848~861 与 doc-36，统一文件更名事务并补齐 Web 内容管理与图谱预热
+
+**摄取范围**：基线为 2026-11-10 00:40:40 的最近 `batch-ingest`。Git 历史与全量 source 对账后，本批处理 BACK-848~861 共 14 份已完成任务及关联 PRD doc-36；这些源在 `wiki/sources/` 中均无页面。`drafts/` 沿用完全排除规则，`wiki/` 与 `wiki_output/` 未递归处理，backlog 源文件未修改。
+
+**新建 15 个 source 页**：[[sources/back-848-ci-install-test-stability]]、[[sources/back-849-mermaid-theme-render-race]]、[[sources/back-850-document-drag-move]]、[[sources/back-851-folder-drag-move]]、[[sources/back-852-web-document-decision-delete]]、[[sources/back-853-cli-mcp-document-decision-delete]]、[[sources/back-854-document-rename-reference-repair]]、[[sources/back-855-task-title-file-rename]]、[[sources/back-856-decision-title-file-rename]]、[[sources/back-857-cache-write-failure-stability]]、[[sources/back-858-entity-id-update-source-selection]]、[[sources/back-859-task-inline-save-status]]、[[sources/back-860-milestone-save-status]]、[[sources/back-861-graph-startup-warmup-snapshot]]、[[sources/doc-36-entity-id-update-design]]。重点保留未关闭项：BACK-848 的 macOS 安装外层重试耗尽、BACK-859/860 的部分输入失败不回滚、BACK-861 的主线程 jank，均未写成「已完全解决」。
+
+**概念页**：新建 [[concepts/file-rename-plan]]，集中描述计划/执行分离、逐文件相对路径、精确身份引用、Wiki 维护边界与原子回滚。更新 [[concepts/ci-platform-contracts]]、[[concepts/chart-block-engine]]、[[concepts/web-ui-features]]、[[concepts/task-identity]]、[[concepts/browser-startup-cache]]、[[concepts/kuzu-graph]]，分别接入 CI 分层、Mermaid 渲染代数、拖放/删除/保存状态、ID 更新、缓存容错与 Web 图谱快照。
+
+**配对记忆**：新建 decisions [[decisions/mermaid-render-generation-guard]]、[[decisions/extend-update-for-entity-id-changes]]、[[decisions/best-effort-disk-cache-persistence]]；新建 execution [[execution/file-rename-plan-gotchas]]、[[execution/mermaid-theme-render-gotchas]]、[[execution/graph-web-snapshot-gotchas]]。`reasoning/` 未新增：本批是执行后摄取，不补写规划期推导；`patterns/` 未新增：跨表面与入口收敛已有页面覆盖，无未经人工确认的新模式；`retrospectives/` 未生成。
+
+**导航与总览**：`index.md` 增加 22 条新页面目录；`overview.md` 新增 BACK-848~861 主题段，串起 CI、Mermaid、Web 内容管理、FileRenamePlan、缓存与图谱预热。手册本批未改，SUMMARY 不变。
+
+**mini-lint**：全量 465 个 source 页检查 `source_path`，按 Git 改名证据修复 doc-5、doc-6、doc-18、doc-32 四个回链；config-docs/src-architecture 的目录型路径、doc-16 源已删、tracking-gantt-design-doc 的 ID 复用共 4 项沿用既有裁决，不猜测改写。32 个当时已改动页面的 wikilink 校验仅有反引号中的语法示例不解析；22 个新页 frontmatter/H1/LF/索引项检查全部通过，index 的 12 个必需章节齐全。
+
+**统计**：Sources 450→465、Concepts 53→54、Decisions 87→90、Execution notes 31→34；Entities 2、Patterns 7、Comparisons 1、Reasoning 7、Retrospectives 1、Developer notes 7、Reports 10、User manual 50 (zh) + 50 (en) 页不变。未执行 Git 提交。
+
+## [2026-11-20 11:35:00] usermanual-update | 同步 BACK-848~861 与 doc-36 的中英文用户手册
+
+**范围**：更新 `usermanual/` 与 `usermanual-en/` 各 11 个对应页面，覆盖任务创建与编辑、CLI 文档管理、CLI 决策记录、Web 任务列表、Web 里程碑、Web 文档与决策、设置与主题、图谱视图、MCP 工作流、故障排查、图表块；另清理中文任务生命周期页一处既有内部任务代号引用，共改动 23 个手册页面。
+
+**用户能力**：补充任务、文档、决策的标题更名、ID 更新与精确源文件选择；写明重复 ID、路径冲突和任务层级限制的 fail-closed 行为。加入 Web 文档/文件夹拖放与永久删除、任务行内元数据和里程碑侧栏的 Saving / Saved / Failed 反馈、Mermaid 12.3.0 主题竞态防护、Web 图谱后台预热与 ParseReports 快照复用，以及磁盘缓存写失败时保留内存 Git 索引的边界。MCP 工具目录按原分类口径更新为 37 个，其中 Documents 7 个、Decisions 4 个。事实依据承接 [[concepts/file-rename-plan]]、[[concepts/web-ui-features]]、[[concepts/chart-block-engine]]、[[concepts/browser-startup-cache]]、[[concepts/kuzu-graph]] 与 [[sources/doc-36-entity-id-update-design]]。
+
+**导航与校验**：`index.md` 顶部日期及 11 个中文手册条目摘要已同步；未新增章节或页面，两份 SUMMARY 均不变，中英文各 50 个内容页，未合并生成单一 `manual.md`。23 个改动页的 frontmatter、唯一正文 H1、LF 行尾、非代码区内部链接与 `git diff --check` 全部通过；11 组中英文页面的标题层级和代码围栏数量一致，手册目录不再包含 BACK 内部任务代号。未修改 backlog 原始任务或文档，未执行 Git 提交。

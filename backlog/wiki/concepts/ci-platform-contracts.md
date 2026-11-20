@@ -2,7 +2,7 @@
 title: CI 平台契约测试策略
 labels: [concept, ci, testing]
 created_date: 2026-08-17 23:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-11-20 11:09
 ---
 
 # CI 平台契约测试策略
@@ -48,8 +48,15 @@ Bun 测试运行器默认 5000ms 超时，在并行负载下会误杀慢速但�
 - checkout 仓库需要开发者模式或提权克隆，否则 symlink 检出失败
 - 影响 Claude agent 指南等依赖 symlink 分发的功能，需在文档中向开发者明示前置条件
 
+## 安装与测试基础设施分层（BACK-848）
+
+平台契约之外，安装和测试基础设施要分别设置故障边界：外层安装进程负责重试，CI 硬超时负责兜底，CLI 子进程套件一次构建后复用 bundle。真实构建和慢弹窗套件用显式 20 秒超时，不靠重跑掩盖 5 秒默认上限。
+
+Windows 临时目录按 worker 分桶，进程树清理由 `kill-process-tree` 负责，避免误杀同名 shell。JUnit 输出还必须合法序列化；测试恢复与依赖缓存恢复不是同一件事，macOS 安装外层重试耗尽不能在维基中记为「已关闭」。
+
 ## Related Sources
 
+- [[sources/back-848-ci-install-test-stability]] — 安装重试、测试超时与 JUnit 修复
 - [[sources/back-609-mcp-stdio-test-timeout]] — BACK-609 MCP stdio 测试超时
 - [[sources/back-610-cli-priority-filtering-test-timeouts]] — BACK-610 优先级筛选测试超时
 - [[sources/back-612-content-store-test-stabilization]] — BACK-612 ContentStore 测试稳定化
