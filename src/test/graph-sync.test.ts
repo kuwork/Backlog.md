@@ -8,6 +8,7 @@ import { DEFAULT_DATABASE } from "../graph/databases";
 import { computeFileHash, loadMetaCache, saveMetaCache } from "../graph/fingerprint";
 import { computeChangeSet, RecordCache } from "../graph/incremental";
 import { graphPaths, portSlot, TUI_SLOT } from "../graph/paths";
+import { derivedSnapshotPath } from "../graph/reconcile-once";
 import { type GraphLockInfo, GraphService } from "../graph/service";
 import { MemoryGraphStore } from "../graph/store";
 import { computeRecordReadiness, findDependencyCycles, validateCounts } from "../graph/validation";
@@ -530,6 +531,109 @@ describe("GraphService hot update", () => {
 		await service.stop();
 	});
 
+	test("a ryu cold start writes a snapshot and the next service hydrates it without rebuilding", async () => {
+		await writeFile(
+			join(root, "backlog", "tasks", "back-1 - A.md"),
+			taskMd({ id: "back-1", dependencies: ["back-2"] }),
+			"utf8",
+		);
+		await writeFile(
+			join(root, "backlog", "tasks", "back-2 - B.md"),
+			taskMd({ id: "back-2", dependencies: ["back-404"] }),
+			"utf8",
+		);
+
+		const first = new GraphService(root, { backend: "ryu", reconcileMs: 3_600_000 });
+		let firstBuilds = 0;
+		first.onGraphChanged = () => firstBuilds++;
+		expect(await first.start()).toBe(true);
+		const expected = await first.getPayload();
+		const paths = graphPaths(root);
+		const snapshotPath = derivedSnapshotPath(paths);
+		const cached = loadMetaCache(paths.metaPath);
+		expect(existsSync(snapshotPath)).toBe(true);
+		expect(cached?.snapshotFingerprint).toBeTruthy();
+		expect(firstBuilds).toBe(1);
+		await first.stop();
+
+		const second = new GraphService(root, { backend: "ryu", reconcileMs: 3_600_000 });
+		let secondBuilds = 0;
+		second.onGraphChanged = () => secondBuilds++;
+		expect(await second.start()).toBe(true);
+		const hydrated = await second.getPayload();
+		expect(hydrated.nodes).toEqual(expected.nodes);
+		expect(hydrated.edges).toEqual(expected.edges);
+		expect(hydrated.reports).toEqual(expected.reports);
+		expect(hydrated.reports.missingDependencies.some((report) => report.includes("back-404"))).toBe(true);
+		expect(secondBuilds).toBe(0); // hydration returns before the rebuild/snapshot-write path
+		expect(loadMetaCache(paths.metaPath)?.snapshotFingerprint).toBe(cached?.snapshotFingerprint);
+		await second.stop();
+	});
+
+	test("a corrupt service snapshot falls back to a rebuild and is usable on the next cold start", async () => {
+		await writeFile(join(root, "backlog", "tasks", "back-1 - A.md"), taskMd({ id: "back-1" }), "utf8");
+		const paths = graphPaths(root);
+		const snapshotPath = derivedSnapshotPath(paths);
+		const first = new GraphService(root, { backend: "ryu", reconcileMs: 3_600_000 });
+		await first.start();
+		await first.stop();
+		await writeFile(snapshotPath, "{broken snapshot", "utf8");
+
+		const second = new GraphService(root, { backend: "ryu", reconcileMs: 3_600_000 });
+		let rebuilds = 0;
+		second.onGraphChanged = () => rebuilds++;
+		expect(await second.start()).toBe(true);
+		expect((await second.getPayload()).nodeCount).toBe(1);
+		expect(rebuilds).toBe(1);
+		expect(await readFile(snapshotPath, "utf8")).not.toBe("{broken snapshot");
+		await second.stop();
+
+		const third = new GraphService(root, { backend: "ryu", reconcileMs: 3_600_000 });
+		let thirdBuilds = 0;
+		third.onGraphChanged = () => thirdBuilds++;
+		expect(await third.start()).toBe(true);
+		expect((await third.getPayload()).nodeCount).toBe(1);
+		expect(thirdBuilds).toBe(0);
+		await third.stop();
+	});
+
+	test("an incremental sync refreshes the snapshot while an unchanged sync leaves it alone", async () => {
+		await writeFile(join(root, "backlog", "tasks", "back-1 - A.md"), taskMd({ id: "back-1" }), "utf8");
+		const service = new GraphService(root, { backend: "ryu", debounceMs: 30, reconcileMs: 3_600_000 });
+		await service.start();
+		const paths = graphPaths(root);
+		const snapshotPath = derivedSnapshotPath(paths);
+		const originalSnapshot = await readFile(snapshotPath, "utf8");
+		const handle = service as unknown as { syncNow(): Promise<void> };
+		await handle.syncNow();
+		expect(await readFile(snapshotPath, "utf8")).toBe(originalSnapshot);
+
+		await writeFile(
+			join(root, "backlog", "tasks", "back-2 - B.md"),
+			taskMd({ id: "back-2", dependencies: ["back-1"] }),
+			"utf8",
+		);
+		service.notify(["seed-second-task"]);
+		await retry(async () => {
+			if ((await service.getPayload()).nodeCount !== 2) throw new Error("waiting for the incremental sync");
+		});
+		expect(await readFile(snapshotPath, "utf8")).not.toBe(originalSnapshot);
+		expect(Object.keys(loadMetaCache(paths.metaPath)?.files ?? {})).toHaveLength(2);
+		await service.stop();
+
+		const nextProcess = new GraphService(root, { backend: "ryu", reconcileMs: 3_600_000 });
+		let rebuilds = 0;
+		nextProcess.onGraphChanged = () => rebuilds++;
+		expect(await nextProcess.start()).toBe(true);
+		const hydrated = await nextProcess.getPayload();
+		expect(hydrated.nodeCount).toBe(2);
+		expect(
+			hydrated.edges.some((edge) => edge.type === "DependsOn" && edge.from === "back-2" && edge.to === "back-1"),
+		).toBe(true);
+		expect(rebuilds).toBe(0);
+		await nextProcess.stop();
+	});
+
 	test("corrupt cache triggers a full rebuild", async () => {
 		await writeFile(join(root, "backlog", "tasks", "back-1 - A.md"), taskMd({ id: "back-1" }), "utf8");
 		const service = new GraphService(root, { backend: "memory", debounceMs: 30, reconcileMs: 3_600_000 });
@@ -656,6 +760,32 @@ describe("/api/graph endpoint", () => {
 		expect(await second.start()).toBe(false);
 
 		await handle.stop();
+	});
+
+	test("kicks one graph warm-up after service initialization without awaiting the graph", async () => {
+		const { BacklogServer } = await import("../server/index");
+		const server = new BacklogServer(root);
+		const handle = server as unknown as {
+			ensureServicesReady(): Promise<void>;
+			initializeServices(): Promise<void>;
+			getGraphService(): Promise<unknown>;
+		};
+		let initialized = false;
+		let graphAttempts = 0;
+		handle.initializeServices = async () => {
+			initialized = true;
+		};
+		handle.getGraphService = () => {
+			expect(initialized).toBe(true);
+			graphAttempts++;
+			return new Promise<unknown>(() => {}); // deliberately never settles: boot must not wait for it
+		};
+
+		await handle.ensureServicesReady();
+		expect(graphAttempts).toBe(1);
+		await handle.ensureServicesReady();
+		expect(graphAttempts).toBe(1); // the memoized services-ready path does not kick another attempt
+		await server.stop();
 	});
 
 	test("lists `default` with the corpus counts the graph service actually holds", async () => {

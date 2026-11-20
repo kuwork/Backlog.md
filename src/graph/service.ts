@@ -15,6 +15,7 @@ import {
 import { applyChangeSet, changeSetIsEmpty, computeChangeSet, ensureRecordCache, RecordCache } from "./incremental";
 import type { GraphPaths, GraphSlot } from "./paths";
 import { DEFAULT_SLOT, graphPaths } from "./paths";
+import { hydrateFromSnapshot, persistSnapshot } from "./reconcile-once";
 import type { WhitelistDirs } from "./scanner";
 import { DEFAULT_WHITELIST, scanWhitelistedDirs } from "./scanner";
 import type { CypherQueryResult, GraphEdgeType, GraphKind, GraphStore } from "./store";
@@ -288,8 +289,21 @@ export class GraphService {
 
 		const previous = cached?.backend === store.backend ? cached : null;
 		const aggregate = computeAggregateFingerprint(nextFiles);
-		if (previous && previous.parserVersion === PARSER_VERSION && previous.fingerprint === aggregate && this.ready) {
-			return; // fingerprint match: nothing to do
+		if (previous && previous.parserVersion === PARSER_VERSION && previous.fingerprint === aggregate) {
+			if (this.ready) return; // fingerprint match: nothing to do
+			if (store.backend === "ryu" && previous.reports) {
+				// A new process always starts with an empty MEMFS image. Reuse the derived snapshot when
+				// its corpus/parser/schema/hash checks all pass; the reports must be present too, or the
+				// hydrated Web payload would lose the parser/relation findings. Clear first so a
+				// same-process reopen cannot mix hydrated rows with a previous MEMFS image. Any failure
+				// falls through to the full rebuild below, which clears the store again before building.
+				await store.clear();
+				if (await hydrateFromSnapshot(store, previous, this.paths, aggregate)) {
+					this.reports = previous.reports;
+					this.recordCache = new RecordCache();
+					return;
+				}
+			}
 		}
 
 		const reports = emptyParseReports();
@@ -309,12 +323,18 @@ export class GraphService {
 		}
 		this.reports = reports;
 
-		saveMetaCache(metaPath, {
-			parserVersion: PARSER_VERSION,
-			backend: store.backend,
-			fingerprint: computeAggregateFingerprint(nextFiles),
-			files: nextFiles,
-		});
+		if (store.backend === "ryu") {
+			// Keep the next process's cold start on the same snapshot path as the CLI. A no-change
+			// reconcile returned above, so this writes only after the graph actually changed.
+			await persistSnapshot(store, this.paths, nextFiles, reports);
+		} else {
+			saveMetaCache(metaPath, {
+				parserVersion: PARSER_VERSION,
+				backend: store.backend,
+				fingerprint: aggregate,
+				files: nextFiles,
+			});
+		}
 		this.onGraphChanged?.();
 	}
 

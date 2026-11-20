@@ -147,7 +147,7 @@ export function derivedSnapshotPath(paths: GraphPaths): string {
  * to the corpus in front of us. Every failed check is a reason to rebuild instead: serving a graph
  * that does not match the corpus would be worse than paying for a rebuild.
  */
-async function hydrateFromSnapshot(
+export async function hydrateFromSnapshot(
 	store: GraphStore,
 	cached: MetaCache | null,
 	paths: GraphPaths,
@@ -172,7 +172,12 @@ async function hydrateFromSnapshot(
 }
 
 /** Write the snapshot for the corpus state that was just built, and record it in the meta cache. */
-async function persistSnapshot(store: GraphStore, paths: GraphPaths, files: MetaCache["files"]): Promise<void> {
+export async function persistSnapshot(
+	store: GraphStore,
+	paths: GraphPaths,
+	files: MetaCache["files"],
+	reports?: ParseReports,
+): Promise<void> {
 	const snapshotPath = derivedSnapshotPath(paths);
 	saveSnapshot(snapshotPath, await dumpDatabase(store, DEFAULT_DATABASE));
 	saveMetaCache(paths.metaPath, {
@@ -182,5 +187,6 @@ async function persistSnapshot(store: GraphStore, paths: GraphPaths, files: Meta
 		files,
 		snapshotFingerprint: snapshotFingerprint(snapshotPath),
 		graphSchemaVersion: SCHEMA_VERSION,
+		reports,
 	});
 }

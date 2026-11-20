@@ -349,6 +349,12 @@ export class BacklogServer {
 		return this.graphAttempt;
 	}
 
+	private warmGraphService(): void {
+		// getGraphService logs cold-start failures through its callbacks; this catch only prevents
+		// the background kick from becoming an unhandled rejection.
+		void this.getGraphService().catch(() => {});
+	}
+
 	private async launchGraphService(): Promise<GraphService | null> {
 		const startAt = Date.now();
 		logLine("startup", "cold-starting graph service (RyuGraph WASM)...");
@@ -403,6 +409,10 @@ export class BacklogServer {
 				.then(() => {
 					logLine("startup", `services ready in ${Date.now() - startAt}ms`);
 					this.publishBrowserLoadingState({ type: "loaded" });
+					// Prepare both graph views in the background only after the content and search
+					// services are usable. The graph build is never awaited on the boot path, and
+					// the first /api/graph request shares this same memoized attempt.
+					this.warmGraphService();
 				})
 				.catch((error) => {
 					if (this.servicesReadyPromise === readyPromise) this.servicesReadyPromise = null;
@@ -807,11 +817,10 @@ export class BacklogServer {
 		}
 
 		// The port is only known now, and it names this session's graph cache entry. The graph
-		// service is NOT cold-started here: a full WASM graph build takes ~100s and monopolizes the
-		// event loop, which starves the browser's first page load and the initial content indexing
-		// (blank page for the whole duration). It instead starts lazily on the first /api/graph
-		// request (handled by getGraphService), so boot stays fast and the server stays responsive
-		// during normal task browsing. doc-014 §3.3.
+		// service is kicked by ensureServicesReady after the content and search services are usable,
+		// never awaited on the bind/first-paint path. A full WASM build still runs on this thread,
+		// so keeping it behind the initial content indexing avoids the blank-page starvation that
+		// an eager bind-time build caused. The first /api/graph request shares the same attempt.
 		this.graphSlot = portSlot(bindPort);
 
 		// Warm the corpus as soon as the port is bound instead of waiting for the first request.

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import type { ParseReports } from "./cold-start";
 
 /**
  * Per-file hash cache and aggregate fingerprint (doc-014 §2.1).
@@ -52,6 +53,8 @@ export interface MetaCache {
 	snapshotFingerprint?: string | null;
 	/** Graph schema version the snapshot was written with; a mismatch invalidates the snapshot. */
 	graphSchemaVersion?: number;
+	/** Parser/relation findings from the same build; the Web payload needs them after hydration. */
+	reports?: ParseReports;
 }
 
 export function computeFileHash(content: string): string {
@@ -90,6 +93,7 @@ export function loadMetaCache(sidecarPath: string): MetaCache | null {
 			files: parsed.files,
 			snapshotFingerprint: parsed.snapshotFingerprint ?? null,
 			graphSchemaVersion: typeof parsed.graphSchemaVersion === "number" ? parsed.graphSchemaVersion : undefined,
+			reports: parsed.reports,
 		};
 	} catch {
 		return null; // corrupt cache == null fingerprint == full rebuild
