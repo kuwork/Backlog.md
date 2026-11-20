@@ -2,7 +2,7 @@
 title: 共享任务身份
 labels: [concept, core, identity, git]
 created_date: 2026-08-17 23:00
-updated_date: 2026-10-09 23:30
+updated_date: 2026-11-20 11:09
 ---
 
 # 共享任务身份
@@ -73,8 +73,17 @@ Kuzu 图节点表由 `Task(id)` 改为 `FileNode(path PRIMARY KEY, id, ...)`:文
 - **canonicalise-but-preserve-stored-spelling**(BACK-707)：可解析候选仍被规范化（`358` → `BACK-358`)，但存量不可解析依赖按其磁盘拼写原样写回（`task-213` 保持 `task-213`)；比较前双方必须同方式规范化，否则容忍逻辑不触发（[[sources/back-707-dependency-gate-cycles]]）。自引用在解析后判出（`taskIdsEqual(resolved, subjectId)` → `SelfDependentTaskError`），依赖缺陷在 `doctor` 里一律按 warning 报告、退出码 0（[[decisions/doctor-dependency-defects-warning-exit-zero]]）。
 - **批量去重**(BACK-680)：批量状态移动以 canonical 身份去重（前导零坍缩、裸数字补默认前缀）,cross-branch 卡片排除在批量写集外，歧义 ID 按任务逐个 fail-closed 报错（[[sources/back-680-batch-status-move]]）。
 
+## ID 更新与精确源选择（BACK-858）
+
+实体更新把「源身份」与「目标 ID」分开：仅 ID、仅 `--source-path`、ID + source path 三种模式都保留原有 alias 与等价 ID 规则。重复旧 ID 无路径时 fail-closed；路径精确选定一个源后，其它同名文件不变。`SOURCE_MISMATCH`、`ID_CONFLICT`、`PATH_CONFLICT` 都在写入前诊断。
+
+ID 变化通过 [[concepts/file-rename-plan]] 同步文件名、精确结构化引用、相对链接和实体 slug，但不替换普通裸 ID 散文。任务另有限制：多任务更新不改 ID，跨 parent 重编号和带 children 的父 ID 更新拒绝；同 parent 子任务重编号与 reparent 是不同操作。CLI 与 MCP 的 view/update 共用该解析边界。
+
 ## Related Sources
 
+- [[sources/back-858-entity-id-update-source-selection]] — ID 更新与精确源选择
+- [[sources/doc-36-entity-id-update-design]] — 对应 PRD
+- [[sources/back-853-cli-mcp-document-decision-delete]] — 删除时的唯一源与歧义处理
 - [[sources/back-567-cross-branch-task-identity]] — 身份索引实现
 - [[sources/back-568-core-browser-task-boundary]] — 浏览器边界复用身份索引
 - [[sources/back-596-fail-closed-document-decision-identity]] — BACK-596 文档/决策 fail-closed 身份

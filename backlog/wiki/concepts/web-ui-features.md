@@ -2,7 +2,7 @@
 title: Web UI 功能
 labels: [concept]
 created_date: 2026-05-10 00:00
-updated_date: 2026-11-08 23:05
+updated_date: 2026-11-20 11:09
 ---
 
 # Web UI 功能
@@ -56,8 +56,10 @@ updated_date: 2026-11-08 23:05
 ### 文档与决策
 - **文档文件夹树**：递归渲染 `backlog/docs/` 目录结构，文件夹可展开/折叠，显示文件数量徽标
 - **文件夹操作**：hover 显示 `+` 下拉菜单，支持新建文件/文件夹
+- **文档与文件夹拖放**（BACK-850/851）：复用 rename mutation 移动完整路径；文件夹递归移动文档，自身/后代目标和同目录 no-op 在前端拒绝
+- **显式删除**（BACK-852）：文档与决策树上菜单共用确认动作；成功清选中和被删子树 dirty draft，失败保留选择与错误，空树隐藏更多菜单
 - **无独立重命名**：文档遵循 `{id} - {title}.md` 约定，重命名通过编辑标题自动完成
-- 决策记录查看
+- 决策记录查看与删除
 
 ### Wiki
 - 侧边栏可折叠文件树，反映 `backlog/wiki/` 目录结构
@@ -240,7 +242,7 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 弹窗里 references / documentation / modifiedFiles / labels / dependencies 五个列表型字段原先每加/减一个 chip 就立即 PUT。连续操作会撞上 fail-fast 的单任务文件锁（约持有 2 秒）产生「being modified by another process」409，每次成功写入又扇出两次全量 `/api/search`，10 秒客户端超时甚至让重试 PUT 撞上自己仍在跑的请求。
 
 - 五个字段各有 1000ms trailing timer，把最新值合并进**一个** pending payload，按字段记录 burst 前初值作回滚快照；`runInlineMetaFlush` 一次 PUT 倒完，promise 链串行化 flush，杜绝两个元数据 PUT 重叠。乐观更新即时发生，失败通过 `restoreInlineMetaValues` 复原；卸载前 flush pending。`Modal` 的 actions 头部槽显示三态保存 chip（旋转 / 绿勾 / 红叉），四语言新增 `common.saved`。
-- status、assignee、priority、milestone、日期、title 等**非列表型**字段保持即时单写；AC/DoD 继续用 BACK-818 的清单防抖。
+- status、assignee、priority、milestone、日期、title 等**非列表型**字段保持即时单写；AC/DoD 继续用 BACK-818 的清单防抖。BACK-859 起即时单写也复用头部 saving/saved/failed chip，但不增加 debounce；BACK-860 将同一模式用于里程碑 `saveMeta`，编辑模式 Save 按钮保持独立。失败 chip 不等于所有输入值都会回滚，日期/title 的既有缺口明确保留。
 - 副作用请求另算一笔预算：从依赖闭包 effect 移除 `tasksVersion`（它随每次语料替换自增，会让并不改闭包的文档编辑也重拉 `/api/task/:id/dependencies`），`fetchTasks` / `fetchDrafts` 改为「每次打开一次」的 ref 守卫 effect。代价是外部编辑器在弹窗打开期间改动不再自动刷新闭包，显示上次已知值直到重开。
 - `/api/search` 本身由 [[concepts/corpus-digest]] 的 L1 摘要抑制，三层互不覆盖：写入侧消 409、L1 消搜索扇出、弹窗侧消预载请求。
 
@@ -272,6 +274,11 @@ TaskDetailsModal 与 MilestoneDetailsModal 共享一整套交互惯例，新增�
 - [[sources/stable-task-modal-urls-task]] — BACK-509 稳定任务模态框 URL
 - [[sources/wiki-page-switch-edit-mode-fix]] — BACK-510 Wiki 编辑模式修复
 - [[sources/back-839-batch-inline-metadata-edits]] — 内联元数据批量写入与保存状态
+- [[sources/back-859-task-inline-save-status]] — 即时单值元数据复用保存 chip
+- [[sources/back-860-milestone-save-status]] — 里程碑侧栏即时保存 chip
+- [[sources/back-850-document-drag-move]] — 文档拖放移动
+- [[sources/back-851-folder-drag-move]] — 文件夹递归拖放移动
+- [[sources/back-852-web-document-decision-delete]] — 文档与决策删除
 - [[sources/back-842-reduce-modal-side-effect-requests]] — 弹窗副作用请求削减
 - [[sources/back-836-decision-relative-reference-resolution]] / [[sources/back-837-wiki-relative-references-entity-links]] — 共享点击契约
 - [[sources/local-url-short-aliases-task]] — BACK-511 本地 URL 短别名

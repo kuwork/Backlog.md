@@ -2,7 +2,7 @@
 title: Knowledge Base Overview
 labels: [overview]
 created_date: 2026-05-12 00:00
-updated_date: 2026-11-10 00:40
+updated_date: 2026-11-20 11:09
 ---
 
 # Knowledge Base Overview
@@ -206,6 +206,14 @@ v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代�
 
 - **模式沉淀**：本批「把已有能力补齐到所有入口」的教训落成 [[patterns/entry-convergence-for-shared-capability]]——先列产出路径、把旁路收敛成薄适配层、每条入口各加断言；与 [[patterns/cross-surface-feature-addition]] 的纵向分层遍历互补。
 
+### 实体更名事务、Web 内容管理与图谱预热（BACK-848~861，2026-11-18~20）
+
+- **CI 故障分层**（BACK-848）：安装外层进程重试、CI 硬超时、CLI bundle 复用、显式测试超时和 Windows 临时目录分桶分别处理；测试恢复不等于安装缓存故障已关闭，真实 Git 失败保持如实记录。见 [[concepts/ci-platform-contracts]]。
+- **Mermaid 主题竞态**（BACK-849）：Classic/Pele 与编辑器预览统一为逐块 `render(text)`，以渲染代数阻止旧异步结果覆盖新主题；新图成功前保留旧 SVG，treeView 暗色 token 以真实 SVG 验证。见 [[concepts/chart-block-engine]]、[[decisions/mermaid-render-generation-guard]]。
+- **Web 内容管理补齐**（BACK-850~853）：文档与文件夹拖放复用 rename API，文件夹递归移动且拒绝自身/后代目标；文档和决策删除贯通 Web/CLI/MCP，唯一源文件、歧义拒绝与 dirty draft 清理一致。任务与里程碑即时保存也复用 Saving/Saved/Failed chip（BACK-859/860），不增加 debounce。见 [[concepts/web-ui-features]]。
+- **文件更名事务统一**（BACK-854~858 / doc-36）：`FileRenamePlan` 把主文件改名、逐文件相对链接、结构化字段、Wiki `source_path` 和实体 slug 放进同一 preflight/rollback 边界；文档、任务、决策标题更新依次接入，BACK-858 再增加 ID 更新和 source path 精确选择，CLI/MCP 不另建 rename 工作流。见 [[concepts/file-rename-plan]]、[[decisions/extend-update-for-entity-id-changes]]、[[execution/file-rename-plan-gotchas]]。
+- **缓存与图谱启动韧性**（BACK-857/861）：磁盘缓存写失败保留 Git 内存索引，避免空闲轮询反复重建；Web 图谱在内容服务后后台预热，并复用带 ParseReports 的 fail-closed 快照，真实仓库 graph ready 从 5859ms 降至 3240ms，但主线程 jank 仍需如实保留。见 [[concepts/browser-startup-cache]]、[[concepts/kuzu-graph]]、[[decisions/best-effort-disk-cache-persistence]]。
+
 ### 本波其他主题（BACK-630~714）
 - **Web 实时化**（BACK-694~700）：watcher 驱动的 in-place refresh——看板/里程碑弹窗与 drafts 会话实时同步、Web 视图原地刷新替代整页重载、内容实体（文档/决策/wiki）变更广播
 - **completed-corpus 支持**（BACK-662~665）：queryTasks/SearchService 完成语料选项、只读弹窗复用 cross-branch 锁定、依赖输入接受已完成前驱、过滤栏 completed 复选框
@@ -295,11 +303,11 @@ v1.53 收尾后的一波 Web UI 能力扩展：把文档预览从 Markdown/代�
 
 ## 统计
 
-- Sources ingested: 450
-- Concepts extracted: 53
+- Sources ingested: 465
+- Concepts extracted: 54
 - Entities catalogued: 2
-- Execution notes: 31
-- Decisions recorded: 87
+- Execution notes: 34
+- Decisions recorded: 90
 - Patterns: 7
 - Comparisons: 1
 - Reasoning traces: 7

@@ -2,8 +2,8 @@
 title: doc-5 - A 类上游任务迁移分析报告
 labels: [source, doc, migration]
 created_date: 2026-08-09 00:00
-updated_date: 2026-10-09 23:30
-source_path: backlog/docs/migration/doc-5 - A类上游任务迁移分析报告.md
+updated_date: 2026-11-20 11:09
+source_path: backlog/docs/migration/doc-5 - v1.47.1-至-v1.48.0-A类上游任务迁移分析报告.md
 ---
 
 # doc-5 - A 类上游任务迁移分析报告

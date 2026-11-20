@@ -2,8 +2,8 @@
 title: doc-18 - 差异化管理机制差距分析
 labels: [source, design]
 created_date: 2026-10-03 01:10
-updated_date: 2026-10-09 23:30
-source_path: backlog/docs/differentiation/doc-18 - 差异化管理机制横向差距分析：七层模型与五个缺口（完整版）.md
+updated_date: 2026-11-20 11:09
+source_path: backlog/docs/differentiation/doc-18 - 差异化管理机制横向差距分析：七层模型与五个缺口.md
 ---
 
 # doc-18 - 差异化管理机制差距分析

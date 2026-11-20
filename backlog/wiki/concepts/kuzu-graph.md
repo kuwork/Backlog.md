@@ -2,7 +2,7 @@
 title: 任务图谱引擎
 labels: [concept, graph, ryugraph]
 created_date: 2026-09-26 14:45
-updated_date: 2026-10-28 15:22
+updated_date: 2026-11-20 11:09
 ---
 
 # 任务图谱引擎
@@ -35,6 +35,12 @@ BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯
 - 每文件指纹边车 `graph.kuzu.meta.json`：size+mtime 命中即复用缓存哈希，变化文件才重读；`git checkout` 未改动文件保持缓存温暖
 - 聚合指纹 = sha256(PARSER_VERSION + 排序后 relPath|hash)，匹配则零解析直接复用图谱（要求 `nodeCount > 0`）
 - `PARSER_VERSION` 混入指纹，解析器/扫描器升级强制重建
+
+## Web 快照复用与后台预热（BACK-861）
+
+Web slot 与 CLI/MCP 复用同一派生图谱 JSON 快照和 fail-closed 校验：corpus fingerprint、parser/schema version、snapshot hash 全部匹配才 hydrate，任何缺失或不匹配都全量重建。快照元数据同时保存 ParseReports，避免 hydrate 后丢失 missing-dependency 等报告；无 reports 的旧快照有意重建一次。
+
+内容服务就绪后后台启动共享 GraphService attempt，启动与首屏不等待。full build 和实际发生变化的 incremental sync 刷新快照，无变化不写。实测冷/暖 graph ready 为 5859ms → 3240ms，暖启动 snapshot/meta mtime 不变，节点、边和报告数量与全量构建一致。
 
 ## 热更新：core notify + 150ms 防抖
 
@@ -88,6 +94,7 @@ BACK-702 时期 kuzu 0.11.3 原生绑定在 Bun/Windows 下段错误，曾以纯
 - [[sources/m-14-graph-mcp]] — graph MCP 工具里程碑
 - [[sources/back-783-databases-real-row-counts]] — /databases 页真实行数
 - [[sources/back-823-ryugraph-wasm-memfs-handle]] — MEMFS 句柄路径与图谱文案英文化
+- [[sources/back-861-graph-startup-warmup-snapshot]] — Web 图谱后台预热与快照 hydrate
 
 ## Related Reasoning
 

@@ -2,7 +2,7 @@
 title: MCP 工作流
 labels: [usermanual]
 created_date: 2026-05-07 00:00
-updated_date: 2026-10-16 01:00
+updated_date: 2026-11-20 11:35
 ---
 
 
@@ -85,7 +85,7 @@ backlog task edit <id> -s Done
 
 ## MCP 工具能力清单
 
-通过 MCP 连接后，AI 代理可调用 **33 个工具**，按域分类如下（必填参数以（必填）标注）。
+通过 MCP 连接后，AI 代理可调用 **37 个工具**，按域分类如下（必填参数以（必填）标注）。
 
 ### 任务（7 个）
 
@@ -94,20 +94,22 @@ backlog task edit <id> -s Done
 | `task_create` | 创建新任务 | `title`（必填）、`description`、`status`、`priority`、`assignee`、`labels`、`milestone`、`dependencies`、`acceptanceCriteria`、`parentTaskId`、`dueDate` / `plannedStart` / `plannedEnd` |
 | `task_list` | 列出任务，多维过滤 | `status` / `statusExcluded`（单值或数组）、`assignee` / `unassigned`、`milestone`、`labels`、`search`、`ready`（仅可开工）、`completed`（含完成语料）、`offset` / `limit` |
 | `task_search` | 按标题/描述搜索 | `query`、`status`、`priority`、`modifiedFiles`、`completed`、`offset` / `limit` |
-| `task_view` | 查看任务详情 | `id`（必填） |
-| `task_edit` | 编辑元数据、计划/备注/评论、依赖、验收标准、任务级 DoD | `id`（必填）、`status`、`planSet` / `planAppend` / `planClear`、`notesSet` / `notesAppend` / `notesClear`、`commentsAppend`、`finalSummary`、`acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck`、`definitionOfDoneAdd` |
+| `task_view` | 查看任务详情，支持精确源文件 | `id` / `sourcePath`（至少一个；同传必须匹配） |
+| `task_edit` | 编辑 ID、标题、元数据、计划/备注/评论、依赖、验收标准、任务级 DoD | `id` / `sourcePath`、`newId`、`title`、`status`、`planSet` / `planAppend` / `planClear`、`notesSet` / `notesAppend` / `notesClear`、`commentsAppend`、`finalSummary`、`acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck`、`definitionOfDoneAdd` |
 | `task_archive` | 归档任务（软删除，腾出 ID 自动清理引用） | `id`（必填） |
 | `task_complete` | 完成清理：终态任务移入 completed/ | `id`（必填） |
 
-### 文档（5 个）
+### 文档（7 个）
 
 | 工具 | 能力 | 关键参数 |
 |------|------|----------|
 | `document_list` | 列出文档，支持子串过滤 | `search`、`offset` / `limit` |
-| `document_view` | 查看文档元数据与正文 | `id`（必填） |
+| `document_view` | 查看文档元数据与正文，支持精确源文件 | `id` / `sourcePath`（至少一个；同传必须匹配） |
 | `document_create` | 创建文档（可选 docs 子目录路径） | `title`、`content`（必填）、`type`、`path`、`tags` |
-| `document_update` | 更新内容/标题/元数据 | `id`、`content`（必填）、`title`、`appendContent`、`type`、`path`、`tags` |
+| `document_update` | 更新 ID、内容、标题、元数据 | `id` / `sourcePath`、`newId`、`content`、`title`、`appendContent`、`type`、`path`、`tags` |
 | `document_search` | 模糊搜索文档 | `query`（必填）、`offset` / `limit` |
+| `document_delete` | 永久删除唯一 ID 对应的文档 | `id`（必填） |
+| `document_delete_folder` | 永久删除文件夹及其中全部文档 | `path`（必填） |
 
 ### 里程碑（5 个）
 
@@ -131,12 +133,16 @@ backlog task edit <id> -s Done
 
 备忘工具与 CLI、Web 共享同一 ID 方案（`YYYYMMDD-N`）与文件格式，详见[快速笔记](../70-快速笔记/00-Memos简介.md)。
 
-### 决策（2 个）
+### 决策（4 个）
 
 | 工具 | 能力 | 关键参数 |
 |------|------|----------|
 | `decision_list` | 列出决策，支持状态/关键词过滤 | `status`（`proposed` / `accepted` / `rejected` / `superseded`）、`search`、`offset` / `limit` |
-| `decision_update` | 更新决策状态或正文 | `id`（必填）、`content` / `appendContent`、`status` |
+| `decision_view` | 查看决策详情，支持精确源文件 | `id` / `sourcePath`（至少一个；同传必须匹配） |
+| `decision_update` | 更新 ID、标题、状态或正文 | `id` / `sourcePath`、`newId`、`title`、`content` / `appendContent`、`status` |
+| `decision_delete` | 永久删除唯一 ID 对应的决策 | `id`（必填） |
+
+任务、文档和决策的查看/更新工具共用精确选源规则：`sourcePath` 是项目相对 Markdown 路径，提供时可省略旧 `id`；同传不一致返回 `SOURCE_MISMATCH`，裸 ID 重复返回 `AMBIGUOUS_ID` 和候选路径。`newId` 只用于更新，新 ID 或目标路径冲突分别返回 `ID_CONFLICT` / `PATH_CONFLICT`，并保证零写入。标题或 ID 更名会同步文件、结构化引用和 Wiki 回链；删除不会自动清理既有正文或任务字段引用。
 
 ### 定义完成（2 个）
 
@@ -189,8 +195,8 @@ Backlog.md MCP 服务器向客户端注册以下工作流资源，AI 代理可�
 | `backlog://workflow/task-execution` | 任务执行指南：如何计划、更新、推进任务 |
 | `backlog://workflow/task-finalization` | 任务收尾指南：如何验证、总结、完结工作 |
 | `backlog://workflow/milestones` | 里程碑指南：创建、编辑、移除、归档里程碑 |
-| `backlog://workflow/documents` | 文档管理指南：创建、更新、列出、查看项目文档 |
-| `backlog://workflow/decisions` | 决策指南：创建与列出决策，含输出模式与状态处理 |
+| `backlog://workflow/documents` | 文档管理指南：创建、更新、列出、查看、删除项目文档与文件夹 |
+| `backlog://workflow/decisions` | 决策指南：创建、查看、更新、列出与删除决策，含精确选源、输出模式与状态处理 |
 | `backlog://workflow/drafts` | 草稿指南：创建、晋级、降级、归档草稿 |
 | `backlog://workflow/memos` | 备忘指南：创建、列出、查看、更新、删除快速备忘 |
 | `backlog://workflow/graph` | 图谱指南：六个图谱 MCP 工具的参数、Cypher 查询与 CSV 导入用法 |

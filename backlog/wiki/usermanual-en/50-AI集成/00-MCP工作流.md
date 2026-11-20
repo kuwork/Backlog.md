@@ -2,7 +2,7 @@
 title: MCP Workflow
 labels: [usermanual]
 created_date: 2026-05-07 00:00
-updated_date: 2026-11-04 00:00
+updated_date: 2026-11-20 11:35
 ---
 
 # MCP Workflow
@@ -84,7 +84,7 @@ The restart loop avoids context pollution and lets the AI re-examine the require
 
 ## MCP Tool Capability List
 
-After connecting via MCP, the AI agent can call **33 tools**, categorized by domain as follows (required parameters are marked (required)).
+After connecting via MCP, the AI agent can call **37 tools**, categorized by domain as follows (required parameters are marked (required)).
 
 ### Tasks (7)
 
@@ -93,20 +93,22 @@ After connecting via MCP, the AI agent can call **33 tools**, categorized by dom
 | `task_create` | Create a new task | `title` (required), `description`, `status`, `priority`, `assignee`, `labels`, `milestone`, `dependencies`, `acceptanceCriteria`, `parentTaskId`, `dueDate` / `plannedStart` / `plannedEnd` |
 | `task_list` | List tasks with multi-dimensional filtering | `status` / `statusExcluded` (single value or array), `assignee` / `unassigned`, `milestone`, `labels`, `search`, `ready` (only ready-to-start), `completed` (include completed corpus), `offset` / `limit` |
 | `task_search` | Search by title/description | `query`, `status`, `priority`, `modifiedFiles`, `completed`, `offset` / `limit` |
-| `task_view` | View task details | `id` (required) |
-| `task_edit` | Edit metadata, plan/notes/comments, dependencies, acceptance criteria, task-level DoD | `id` (required), `status`, `planSet` / `planAppend` / `planClear`, `notesSet` / `notesAppend` / `notesClear`, `commentsAppend`, `finalSummary`, `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck`, `definitionOfDoneAdd` |
+| `task_view` | View task details with exact-source selection | `id` / `sourcePath` (at least one; must match when both are supplied) |
+| `task_edit` | Edit ID, title, metadata, plan/notes/comments, dependencies, acceptance criteria, task-level DoD | `id` / `sourcePath`, `newId`, `title`, `status`, `planSet` / `planAppend` / `planClear`, `notesSet` / `notesAppend` / `notesClear`, `commentsAppend`, `finalSummary`, `acceptanceCriteriaCheck` / `acceptanceCriteriaUncheck`, `definitionOfDoneAdd` |
 | `task_archive` | Archive a task (soft delete; frees ID and automatically cleans references) | `id` (required) |
 | `task_complete` | Complete cleanup: move terminal-status task to completed/ | `id` (required) |
 
-### Documents (5)
+### Documents (7)
 
 | Tool | Capability | Key Parameters |
 |------|------------|----------------|
 | `document_list` | List documents, supports substring filtering | `search`, `offset` / `limit` |
-| `document_view` | View document metadata and body | `id` (required) |
+| `document_view` | View document metadata and body with exact-source selection | `id` / `sourcePath` (at least one; must match when both are supplied) |
 | `document_create` | Create a document (optional docs subdirectory path) | `title`, `content` (required), `type`, `path`, `tags` |
-| `document_update` | Update content/title/metadata | `id`, `content` (required), `title`, `appendContent`, `type`, `path`, `tags` |
+| `document_update` | Update ID, content, title, and metadata | `id` / `sourcePath`, `newId`, `content`, `title`, `appendContent`, `type`, `path`, `tags` |
 | `document_search` | Fuzzy search documents | `query` (required), `offset` / `limit` |
+| `document_delete` | Permanently delete the document for a unique ID | `id` (required) |
+| `document_delete_folder` | Permanently delete a folder and all contained documents | `path` (required) |
 
 ### Milestones (5)
 
@@ -130,12 +132,16 @@ After connecting via MCP, the AI agent can call **33 tools**, categorized by dom
 
 Memo tools share the same ID scheme (`YYYYMMDD-N`) and file format with the CLI and Web. See [Memos](../70-快速笔记/00-Memos简介.md) for details.
 
-### Decisions (2)
+### Decisions (4)
 
 | Tool | Capability | Key Parameters |
 |------|------------|----------------|
 | `decision_list` | List decisions, supports status/keyword filtering | `status` (`proposed` / `accepted` / `rejected` / `superseded`), `search`, `offset` / `limit` |
-| `decision_update` | Update decision status or body | `id` (required), `content` / `appendContent`, `status` |
+| `decision_view` | View decision details with exact-source selection | `id` / `sourcePath` (at least one; must match when both are supplied) |
+| `decision_update` | Update decision ID, title, status, or body | `id` / `sourcePath`, `newId`, `title`, `content` / `appendContent`, `status` |
+| `decision_delete` | Permanently delete the decision for a unique ID | `id` (required) |
+
+Task, document, and decision view/update tools share exact-source rules: `sourcePath` is a project-relative Markdown path and allows the old `id` to be omitted. A mismatch returns `SOURCE_MISMATCH`; a duplicated bare ID returns `AMBIGUOUS_ID` with candidates. `newId` is update-only. New-ID and destination-path conflicts return `ID_CONFLICT` / `PATH_CONFLICT` with zero writes. Title or ID renames synchronize files, structured references, and Wiki back-links; deletion does not automatically clean existing body or task-field references.
 
 ### Definition of Done (2)
 
@@ -188,8 +194,8 @@ The Backlog.md MCP server registers the following workflow resources with the cl
 | `backlog://workflow/task-execution` | Task execution guide: how to plan, update, and advance tasks. |
 | `backlog://workflow/task-finalization` | Task finalization guide: how to verify, summarize, and complete work. |
 | `backlog://workflow/milestones` | Milestone guide: create, edit, remove, and archive milestones. |
-| `backlog://workflow/documents` | Document management guide: create, update, list, and view project documents. |
-| `backlog://workflow/decisions` | Decision guide: create and list decisions, including output modes and status handling. |
+| `backlog://workflow/documents` | Document management guide: create, update, list, view, and delete project documents and folders. |
+| `backlog://workflow/decisions` | Decision guide: create, view, update, list, and delete decisions, including exact-source selection, output modes, and status handling. |
 | `backlog://workflow/drafts` | Draft guide: create, promote, demote, and archive drafts. |
 | `backlog://workflow/memos` | Memo guide: create, list, view, update, and delete quick memos. |
 | `backlog://workflow/graph` | Graph guide: parameters for the six graph MCP tools, Cypher queries, and CSV import usage. |
