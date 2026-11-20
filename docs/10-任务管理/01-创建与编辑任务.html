@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"创建与编辑任务","description":"backlog task create \"任务标题\" 若当前终端支持交互式 TTY 且未提供标题，系统将自动启动创建向导，引导你填写任务详情。","inLanguage":"zh-Hans","url":"https://kuwork.github.io/Backlog.md/docs/10-%E4%BB%BB%E5%8A%A1%E7%AE%A1%E7%90%86/01-%E5%88%9B%E5%BB%BA%E4%B8%8E%E7%BC%96%E8%BE%91%E4%BB%BB%E5%8A%A1.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/docs/10-%E4%BB%BB%E5%8A%A1%E7%AE%A1%E7%90%86/01-%E5%88%9B%E5%BB%BA%E4%B8%8E%E7%BC%96%E8%BE%91%E4%BB%BB%E5%8A%A1.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://kuwork.github.io/Backlog.md/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://kuwork.github.io/Backlog.md/docs/"},{"@type":"ListItem","position":2,"name":"创建与编辑任务","item":"https://kuwork.github.io/Backlog.md/docs/10-%E4%BB%BB%E5%8A%A1%E7%AE%A1%E7%90%86/01-%E5%88%9B%E5%BB%BA%E4%B8%8E%E7%BC%96%E8%BE%91%E4%BB%BB%E5%8A%A1.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -1124,6 +1120,17 @@ backlog task list -a <span class="hljs-string">"@alice"</span> -s <span class="h
 <pre><code class="lang-bash">backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; --title <span class="hljs-string">"新标题"</span> --status <span class="hljs-string">"In Progress"</span>
 </code></pre>
 <p>若未提供任何编辑字段，且终端支持交互式 TTY，系统将启动编辑向导。</p>
+<h3 id="标题、id-与精确源文件">标题、ID 与精确源文件</h3>
+<p>任务标题变化时，文件会从 <code>&lt;旧ID&gt; - &lt;旧标题&gt;.md</code> 同步更名为 <code>&lt;旧ID&gt; - &lt;新标题&gt;.md</code>。CLI、MCP 和 Web 共用同一事务：主文件更名、frontmatter、依赖与父子字段、跨分支版本引用和 Wiki <code>source_path</code> 一起预检、执行，失败时回滚；目标文件已存在或引用歧义时不会部分写入。</p>
+<p>继续通过 <code>task edit</code> 修改 ID，不另设 <code>rename</code> 命令。<code>--id</code> 表示新 ID，位置参数仍表示旧 ID；<code>task view</code> 与 <code>task edit</code> 还可用 <code>--source-path</code> 精确选择项目相对 Markdown 路径，路径存在时可省略旧 ID：</p>
+<pre><code class="lang-bash"><span class="hljs-comment"># 只改 ID；也可以同时追加 --title 或其他元数据选项</span>
+backlog task edit back-1 --<span class="hljs-built_in">id</span> back-10
+
+<span class="hljs-comment"># 活跃与 completed 中出现重复旧 ID 时，精确选择一个文件</span>
+backlog task view --source-path <span class="hljs-string">"backlog/completed/back-1 - Old-Title.md"</span> --plain
+backlog task edit --source-path <span class="hljs-string">"backlog/completed/back-1 - Old-Title.md"</span> --<span class="hljs-built_in">id</span> back-10
+</code></pre>
+<p>同时提供旧 ID 与 <code>--source-path</code> 时二者必须匹配，否则报 <code>SOURCE_MISMATCH</code>；裸 ID 重复时报 <code>AMBIGUOUS_ID</code> 并列出候选。新 ID 冲突、目标路径冲突均在任何写入前拒绝。有子任务的任务不能直接改 ID；子任务只能在原父级内改号，跨父级移动继续使用 reparent。<code>--id</code> 和 <code>--source-path</code> 也只能用于单任务更新，不能与多 ID 批量编辑混用。文档和决策使用同名参数，详见<a href="../30-文档与决策/00-文档管理.html">文档管理</a>与<a href="../30-文档与决策/01-决策记录.html">决策记录</a>。</p>
 <h3 id="多-id-批量编辑">多 ID 批量编辑</h3>
 <p><code>task edit</code> 接受多个任务 ID，用于批量应用<strong>共享类标志</strong>：</p>
 <pre><code class="lang-bash"><span class="hljs-comment"># 将多个任务一次性移动到同一状态</span>
@@ -1152,7 +1159,17 @@ backlog task edit back-1 back-2 --add-label sprint-3
 <tbody>
 <tr>
 <td><code>-t, --title &lt;title&gt;</code></td>
-<td>修改标题</td>
+<td>修改标题，并按需同步更名任务文件</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>--id &lt;newId&gt;</code></td>
+<td>修改任务 ID；仅限单任务，不能与多 ID 批量编辑混用</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>--source-path &lt;path&gt;</code></td>
+<td>按项目相对 Markdown 路径精确选择源任务；也用于 <code>task view</code></td>
 <td>否</td>
 </tr>
 <tr>
@@ -1833,80 +1850,34 @@ backlog task edit back-10 --actual-end <span class="hljs-string">"2026-05-30 18:
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"创建与编辑任务","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-09 23:30","level":"2.2","depth":1,"next":{"title":"草稿管理","level":"2.3","depth":1,"path":"10-任务管理/02-草稿管理.md","ref":"10-任务管理/02-草稿管理.md","articles":[]},"previous":{"title":"任务生命周期","level":"2.1","depth":1,"path":"10-任务管理/00-任务生命周期.md","ref":"10-任务管理/00-任务生命周期.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"10-任务管理/01-创建与编辑任务.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"创建与编辑任务","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"2.2","depth":1,"next":{"title":"草稿管理","level":"2.3","depth":1,"path":"10-任务管理/02-草稿管理.md","ref":"10-任务管理/02-草稿管理.md","articles":[]},"previous":{"title":"任务生命周期","level":"2.1","depth":1,"path":"10-任务管理/00-任务生命周期.md","ref":"10-任务管理/00-任务生命周期.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"10-任务管理/01-创建与编辑任务.md","mtime":"2026-11-20T04:06:47.000Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:58:56.450Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

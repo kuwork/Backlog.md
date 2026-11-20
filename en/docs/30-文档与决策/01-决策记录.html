@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Decision Records","description":"Decision records (Architecture Decision Records, ADRs) track key technology and design choices in a project. Backlog.md supports the ADR format natively.","inLanguage":"en","url":"https://kuwork.github.io/Backlog.md/en/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/01-%E5%86%B3%E7%AD%96%E8%AE%B0%E5%BD%95.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/en/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/01-%E5%86%B3%E7%AD%96%E8%AE%B0%E5%BD%95.html","isPartOf":{"@type":"Book","name":"Backlog.md User Manual","url":"https://kuwork.github.io/Backlog.md/en/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"User Manual","item":"https://kuwork.github.io/Backlog.md/en/docs/"},{"@type":"ListItem","position":2,"name":"决策记录","item":"https://kuwork.github.io/Backlog.md/en/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/01-%E5%86%B3%E7%AD%96%E8%AE%B0%E5%BD%95.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -924,7 +920,7 @@ backlog decision update decision-3 --status accepted
 <span class="hljs-comment"># Change status and append content in the same commit</span>
 backlog decision update decision-3 --status superseded --append-content <span class="hljs-string">"## Supplement\n\nSuperseded by decision-7"</span>
 </code></pre>
-<p><code>--status</code> accepts free text; the convention values are <code>proposed</code> / <code>accepted</code> / <code>rejected</code> / <code>superseded</code>. An explicitly passed status takes precedence over the frontmatter value. You can also edit the decision file frontmatter directly, or edit it in the Web interface decision detail page (see <a href="../40-Web界面/04-文档与决策.html">Documents &amp; Decisions</a>). On the MCP side, the <code>decision_update</code> tool provides <code>content</code> / <code>appendContent</code> / <code>status</code> parameters. It is recommended to record the reason and time of status changes in the body to keep the audit trail complete.</p>
+<p><code>--status</code> accepts free text; the convention values are <code>proposed</code> / <code>accepted</code> / <code>rejected</code> / <code>superseded</code>. An explicitly passed status takes precedence over the frontmatter value. You can also edit the decision file frontmatter directly, or edit it in the Web interface decision detail page (see <a href="../40-Web界面/04-文档与决策.html">Documents &amp; Decisions</a>). On the MCP side, the <code>decision_update</code> tool provides <code>newId</code>, <code>sourcePath</code>, <code>title</code>, <code>content</code> / <code>appendContent</code>, and <code>status</code> parameters. It is recommended to record the reason and time of status changes in the body to keep the audit trail complete.</p>
 <h2 id="listing-decisions">Listing Decisions</h2>
 <pre><code class="lang-bash">backlog decision list
 </code></pre>
@@ -954,8 +950,20 @@ backlog decision update decision-3 --content <span class="hljs-string">"## Conte
 
 <span class="hljs-comment"># Append a section (repeatable; preserves existing body)</span>
 backlog decision update decision-3 --append-content <span class="hljs-string">"## Supplement\n\nNew considerations"</span>
+
+<span class="hljs-comment"># Change title or ID, optionally combined with status and body updates</span>
+backlog decision update decision-3 --title <span class="hljs-string">"Adopt TypeScript"</span> --<span class="hljs-built_in">id</span> decision-10 --status accepted
+
+<span class="hljs-comment"># Select one exact source file; old ID may be omitted when a path is supplied</span>
+backlog decision view --source-path <span class="hljs-string">"backlog/decisions/decision-3 - Old-Title.md"</span> --plain
+backlog decision update --source-path <span class="hljs-string">"backlog/decisions/decision-3 - Old-Title.md"</span> --<span class="hljs-built_in">id</span> decision-10
 </code></pre>
-<p><code>decision update</code> reuses structured section parsing (Context / Decision / Consequences / Alternatives). Both <code>--content</code> and <code>--append-content</code> support the same <code>\n</code> newline escapes as other commands; status is changed via <code>--status</code> (see previous section). The three options can be used individually or in combination.</p>
+<p><code>decision update</code> reuses structured section parsing (Context / Decision / Consequences / Alternatives). Both <code>--content</code> and <code>--append-content</code> support the same <code>\n</code> newline escapes as other commands, and <code>--status</code> changes status. A title change also renames the Markdown file and repairs path references, structured documentation fields, Wiki <code>source_path</code>, and <code>/decisions/:id/:title</code> links; <code>--id</code> updates the frontmatter ID as well. These changes share one preflight/rollback transaction with body and status updates, so new-ID or destination-path conflicts produce zero writes.</p>
+<p>Supply at least one of the old ID and <code>--source-path</code>; when both are present, they must match. Use an exact path when a bare ID is duplicated—the system never guesses or updates every same-ID file. MCP <code>decision_update</code> exposes <code>newId</code>, <code>sourcePath</code>, <code>title</code>, <code>content</code> / <code>appendContent</code>, and <code>status</code>; <code>decision_view</code> supports exact lookup with <code>id</code> / <code>sourcePath</code>.</p>
+<h2 id="deleting-a-decision">Deleting a Decision</h2>
+<pre><code class="lang-bash">backlog decision delete decision-3
+</code></pre>
+<p>Deletion permanently removes the Markdown file; it is not archival. The ID must resolve uniquely—duplicate candidates are rejected with their paths. The caller is responsible for confirming candidates, content, and references first. Existing task <code>documentation</code> fields and body links are not cleaned automatically and should be handled after deletion. The Web detail page provides the same confirmed deletion flow, and MCP exposes <code>decision_delete</code>.</p>
 <h2 id="adr-format-overview">ADR Format Overview</h2>
 <p>Generated decision files follow the standard ADR structure:</p>
 <pre><code class="lang-markdown">---
@@ -1046,80 +1054,34 @@ Migrate fully to TypeScript with strict mode enabled.
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Decision Records","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-04 00:00","level":"4.2","depth":1,"next":{"title":"Milestone Management","level":"4.3","depth":1,"path":"30-文档与决策/02-里程碑管理.md","ref":"30-文档与决策/02-里程碑管理.md","articles":[]},"previous":{"title":"Document Management","level":"4.1","depth":1,"path":"30-文档与决策/00-文档管理.md","ref":"30-文档与决策/00-文档管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"30-文档与决策/01-决策记录.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:47.607Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"Decision Records","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"4.2","depth":1,"next":{"title":"Milestone Management","level":"4.3","depth":1,"path":"30-文档与决策/02-里程碑管理.md","ref":"30-文档与决策/02-里程碑管理.md","articles":[]},"previous":{"title":"Document Management","level":"4.1","depth":1,"path":"30-文档与决策/00-文档管理.md","ref":"30-文档与决策/00-文档管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"30-文档与决策/01-决策记录.md","mtime":"2026-11-20T04:06:47.000Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:59:42.543Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

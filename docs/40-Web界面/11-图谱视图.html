@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"图谱视图","description":"图谱视图（Graph View）以 Neo4j 风格的力导向图展示项目中任务、草稿、里程碑之间的依赖与归属关系，以及 Wiki、文档、决策构成的知识网络。它由内置的依赖图谱服务驱动：该服务扫描 backlog/ 下的 Markdown 文件构建图数据库，随文件变更自动增量更新，无需手工维护。","inLanguage":"zh-Hans","url":"https://kuwork.github.io/Backlog.md/docs/40-Web%E7%95%8C%E9%9D%A2/11-%E5%9B%BE%E8%B0%B1%E8%A7%86%E5%9B%BE.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/docs/40-Web%E7%95%8C%E9%9D%A2/11-%E5%9B%BE%E8%B0%B1%E8%A7%86%E5%9B%BE.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://kuwork.github.io/Backlog.md/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://kuwork.github.io/Backlog.md/docs/"},{"@type":"ListItem","position":2,"name":"图谱视图","item":"https://kuwork.github.io/Backlog.md/docs/40-Web%E7%95%8C%E9%9D%A2/11-%E5%9B%BE%E8%B0%B1%E8%A7%86%E5%9B%BE.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -944,10 +940,11 @@
 </ul>
 <p>以上优化均为纯渲染层，不改变图数据、布局或交互语义。</p>
 <h2 id="图谱服务与缓存">图谱服务与缓存</h2>
-<p>图谱服务随 Web 服务器自动启动，首次构建期间 <code>/api/graph</code> 返回 <code>building</code> 状态，完成后图谱页面自动可用：</p>
+<p>图谱服务随 Web 服务器启动，并在内容服务首屏可用后于后台预热。每次成功重建都会发布图模型与导出边快照；<code>/graph</code>、<code>/knowledge</code> 以及图谱 MCP 的 <code>default</code> 查询优先复用最新成功快照，打开页面不会为了读取而再次全量重建。快照尚未就绪时 <code>/api/graph</code> 返回 <code>building</code>，直接查询路径仍可启动一次冷加载：</p>
 <ul>
 <li><strong>扫描范围</strong>：仅 <code>backlog/</code> 下的 <code>tasks</code>、<code>drafts</code>、<code>milestones</code>、<code>completed</code>（任务图谱）与 <code>wiki</code>、<code>docs</code>、<code>decisions</code>（知识图谱）；归档目录不进入图谱</li>
 <li><strong>冷启动加速</strong>：按文件指纹缓存校验，未变更的文件不重新解析；解析器或图结构版本升级会自动触发全量重建</li>
+<li><strong>健康报告延续</strong>：快照与直接加载共用同一 <code>GraphService</code>，当前 <code>ParseReports</code> 不会因复用快照而丢失，构建时按调用方 <code>includeCrossBranch</code> 生成报告；歧义或无法解析的引用继续 fail-closed，不会被静默忽略</li>
 <li><strong>热更新</strong>：CLI / TUI / Web / MCP 的任何写入都会通过钩子通知图谱服务做增量同步，另有目录监听与定期 reconciliation 兜底</li>
 <li><strong>缓存位置</strong>：图数据存放在操作系统缓存目录（而非项目树内），按项目路径哈希分槽存放，两个浏览器会话各自持有独立数据库互不争抢；可用环境变量 <code>BACKLOG_GRAPH_CACHE_DIR</code> 覆盖缓存目录。缓存目录里只有锁文件与指纹边车（<code>*.kuzu.lock</code>、<code>*.kuzu.meta.json</code>）落盘，数据库本体在 WASM 的内存文件系统里——这是设计而非残缺，图谱可由 Markdown 随时重建</li>
 <li><strong>后端</strong>：默认使用 RyuGraph WASM 后端（Kuzu 的 MIT fork 的 WebAssembly 构建，在 Bun 的 WebAssembly 运行时内执行，各平台开箱即用，无需环境变量）；原生 Kuzu 依赖已移除，<code>BACKLOG_GRAPH_BACKEND=kuzu</code> 不再是合法取值。<code>BACKLOG_GRAPH_BACKEND=memory</code> 可强制纯 JS 内存降级模式（不支持 Cypher 搜索）；ryu 初始化失败时也会自动回退到内存后端而不会崩溃。降级时终端打印一行英文告警（<code>[graph] RyuGraph (WASM) backend init failed for &lt;path&gt; ...</code>），Web 界面也原样显示服务端返回的英文错误信息</li>
@@ -996,80 +993,34 @@
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"图谱视图","labels":["usermanual"],"created_date":"2026-09-26 15:10","updated_date":"2026-10-28 15:35","level":"5.12","depth":1,"next":{"title":"文档预览","level":"5.13","depth":1,"path":"40-Web界面/12-文档预览.md","ref":"40-Web界面/12-文档预览.md","articles":[]},"previous":{"title":"全局搜索","level":"5.11","depth":1,"path":"40-Web界面/10-全局搜索.md","ref":"40-Web界面/10-全局搜索.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/11-图谱视图.md","mtime":"2026-11-09T16:42:43.832Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"图谱视图","labels":["usermanual"],"created_date":"2026-09-26 15:10","updated_date":"2026-11-20 11:35","level":"5.12","depth":1,"next":{"title":"文档预览","level":"5.13","depth":1,"path":"40-Web界面/12-文档预览.md","ref":"40-Web界面/12-文档预览.md","articles":[]},"previous":{"title":"全局搜索","level":"5.11","depth":1,"path":"40-Web界面/10-全局搜索.md","ref":"40-Web界面/10-全局搜索.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/11-图谱视图.md","mtime":"2026-11-20T07:58:13.138Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:58:56.450Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

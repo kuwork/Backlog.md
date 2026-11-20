@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"MCP 工作流","description":"Backlog.md 通过 Model Context Protocol（MCP）与 AI 编码助手深度集成。MCP 是一种标准化协议，允许 AI 代理直接调用 Backlog.md 的功能工具，无需用户手动输入 CLI 命令。借助 MCP，AI 可以像人类开发者一样阅读、创建和管理任务，实现真正的协作式项目管理。","inLanguage":"zh-Hans","url":"https://kuwork.github.io/Backlog.md/docs/50-AI%E9%9B%86%E6%88%90/00-MCP%E5%B7%A5%E4%BD%9C%E6%B5%81.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/docs/50-AI%E9%9B%86%E6%88%90/00-MCP%E5%B7%A5%E4%BD%9C%E6%B5%81.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://kuwork.github.io/Backlog.md/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://kuwork.github.io/Backlog.md/docs/"},{"@type":"ListItem","position":2,"name":"MCP工作流","item":"https://kuwork.github.io/Backlog.md/docs/50-AI%E9%9B%86%E6%88%90/00-MCP%E5%B7%A5%E4%BD%9C%E6%B5%81.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -931,7 +927,7 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </ol>
 <p>重启循环能避免上下文污染，让 AI 以更清晰的视角重新理解需求。</p>
 <h2 id="mcp-工具能力清单">MCP 工具能力清单</h2>
-<p>通过 MCP 连接后，AI 代理可调用 <strong>33 个工具</strong>，按域分类如下（必填参数以（必填）标注）。</p>
+<p>通过 MCP 连接后，AI 代理可调用 <strong>37 个工具</strong>，按域分类如下（必填参数以（必填）标注）。</p>
 <h3 id="任务（7-个）">任务（7 个）</h3>
 <table>
 <thead>
@@ -959,13 +955,13 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </tr>
 <tr>
 <td><code>task_view</code></td>
-<td>查看任务详情</td>
-<td><code>id</code>（必填）</td>
+<td>查看任务详情，支持精确源文件</td>
+<td><code>id</code> / <code>sourcePath</code>（至少一个；同传必须匹配）</td>
 </tr>
 <tr>
 <td><code>task_edit</code></td>
-<td>编辑元数据、计划/备注/评论、依赖、验收标准、任务级 DoD</td>
-<td><code>id</code>（必填）、<code>status</code>、<code>planSet</code> / <code>planAppend</code> / <code>planClear</code>、<code>notesSet</code> / <code>notesAppend</code> / <code>notesClear</code>、<code>commentsAppend</code>、<code>finalSummary</code>、<code>acceptanceCriteriaCheck</code> / <code>acceptanceCriteriaUncheck</code>、<code>definitionOfDoneAdd</code></td>
+<td>编辑 ID、标题、元数据、计划/备注/评论、依赖、验收标准、任务级 DoD</td>
+<td><code>id</code> / <code>sourcePath</code>、<code>newId</code>、<code>title</code>、<code>status</code>、<code>planSet</code> / <code>planAppend</code> / <code>planClear</code>、<code>notesSet</code> / <code>notesAppend</code> / <code>notesClear</code>、<code>commentsAppend</code>、<code>finalSummary</code>、<code>acceptanceCriteriaCheck</code> / <code>acceptanceCriteriaUncheck</code>、<code>definitionOfDoneAdd</code></td>
 </tr>
 <tr>
 <td><code>task_archive</code></td>
@@ -979,7 +975,7 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </tr>
 </tbody>
 </table>
-<h3 id="文档（5-个）">文档（5 个）</h3>
+<h3 id="文档（7-个）">文档（7 个）</h3>
 <table>
 <thead>
 <tr>
@@ -996,8 +992,8 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </tr>
 <tr>
 <td><code>document_view</code></td>
-<td>查看文档元数据与正文</td>
-<td><code>id</code>（必填）</td>
+<td>查看文档元数据与正文，支持精确源文件</td>
+<td><code>id</code> / <code>sourcePath</code>（至少一个；同传必须匹配）</td>
 </tr>
 <tr>
 <td><code>document_create</code></td>
@@ -1006,13 +1002,23 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </tr>
 <tr>
 <td><code>document_update</code></td>
-<td>更新内容/标题/元数据</td>
-<td><code>id</code>、<code>content</code>（必填）、<code>title</code>、<code>appendContent</code>、<code>type</code>、<code>path</code>、<code>tags</code></td>
+<td>更新 ID、内容、标题、元数据</td>
+<td><code>id</code> / <code>sourcePath</code>、<code>newId</code>、<code>content</code>、<code>title</code>、<code>appendContent</code>、<code>type</code>、<code>path</code>、<code>tags</code></td>
 </tr>
 <tr>
 <td><code>document_search</code></td>
 <td>模糊搜索文档</td>
 <td><code>query</code>（必填）、<code>offset</code> / <code>limit</code></td>
+</tr>
+<tr>
+<td><code>document_delete</code></td>
+<td>永久删除唯一 ID 对应的文档</td>
+<td><code>id</code>（必填）</td>
+</tr>
+<tr>
+<td><code>document_delete_folder</code></td>
+<td>永久删除文件夹及其中全部文档</td>
+<td><code>path</code>（必填）</td>
 </tr>
 </tbody>
 </table>
@@ -1091,7 +1097,7 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </tbody>
 </table>
 <p>备忘工具与 CLI、Web 共享同一 ID 方案（<code>YYYYMMDD-N</code>）与文件格式，详见<a href="../70-快速笔记/00-Memos简介.html">快速笔记</a>。</p>
-<h3 id="决策（2-个）">决策（2 个）</h3>
+<h3 id="决策（4-个）">决策（4 个）</h3>
 <table>
 <thead>
 <tr>
@@ -1107,12 +1113,23 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 <td><code>status</code>（<code>proposed</code> / <code>accepted</code> / <code>rejected</code> / <code>superseded</code>）、<code>search</code>、<code>offset</code> / <code>limit</code></td>
 </tr>
 <tr>
+<td><code>decision_view</code></td>
+<td>查看决策详情，支持精确源文件</td>
+<td><code>id</code> / <code>sourcePath</code>（至少一个；同传必须匹配）</td>
+</tr>
+<tr>
 <td><code>decision_update</code></td>
-<td>更新决策状态或正文</td>
-<td><code>id</code>（必填）、<code>content</code> / <code>appendContent</code>、<code>status</code></td>
+<td>更新 ID、标题、状态或正文</td>
+<td><code>id</code> / <code>sourcePath</code>、<code>newId</code>、<code>title</code>、<code>content</code> / <code>appendContent</code>、<code>status</code></td>
+</tr>
+<tr>
+<td><code>decision_delete</code></td>
+<td>永久删除唯一 ID 对应的决策</td>
+<td><code>id</code>（必填）</td>
 </tr>
 </tbody>
 </table>
+<p>任务、文档和决策的查看/更新工具共用精确选源规则：<code>sourcePath</code> 是项目相对 Markdown 路径，提供时可省略旧 <code>id</code>；同传不一致返回 <code>SOURCE_MISMATCH</code>，裸 ID 重复返回 <code>AMBIGUOUS_ID</code> 和候选路径。<code>newId</code> 只用于更新，新 ID 或目标路径冲突分别返回 <code>ID_CONFLICT</code> / <code>PATH_CONFLICT</code>，并保证零写入。标题或 ID 更名会同步文件、结构化引用和 Wiki 回链；删除不会自动清理既有正文或任务字段引用。</p>
 <h3 id="定义完成（2-个）">定义完成（2 个）</h3>
 <table>
 <thead>
@@ -1237,11 +1254,11 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
 </tr>
 <tr>
 <td><code>backlog://workflow/documents</code></td>
-<td>文档管理指南：创建、更新、列出、查看项目文档</td>
+<td>文档管理指南：创建、更新、列出、查看、删除项目文档与文件夹</td>
 </tr>
 <tr>
 <td><code>backlog://workflow/decisions</code></td>
-<td>决策指南：创建与列出决策，含输出模式与状态处理</td>
+<td>决策指南：创建、查看、更新、列出与删除决策，含精确选源、输出模式与状态处理</td>
 </tr>
 <tr>
 <td><code>backlog://workflow/drafts</code></td>
@@ -1329,80 +1346,34 @@ backlog task edit &lt;<span class="hljs-built_in">id</span>&gt; -s Done
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"MCP 工作流","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-16 01:00","level":"6.1","depth":1,"next":{"title":"支持的 AI 工具","level":"6.2","depth":1,"path":"50-AI集成/01-支持的AI工具.md","ref":"50-AI集成/01-支持的AI工具.md","articles":[]},"previous":{"title":"文档预览","level":"5.13","depth":1,"path":"40-Web界面/12-文档预览.md","ref":"40-Web界面/12-文档预览.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"50-AI集成/00-MCP工作流.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"MCP 工作流","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"6.1","depth":1,"next":{"title":"支持的 AI 工具","level":"6.2","depth":1,"path":"50-AI集成/01-支持的AI工具.md","ref":"50-AI集成/01-支持的AI工具.md","articles":[]},"previous":{"title":"文档预览","level":"5.13","depth":1,"path":"40-Web界面/12-文档预览.md","ref":"40-Web界面/12-文档预览.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"50-AI集成/00-MCP工作流.md","mtime":"2026-11-20T04:06:47.000Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:58:56.450Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

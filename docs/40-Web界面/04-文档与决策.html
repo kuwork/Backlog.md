@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"文档与决策","description":"Web 界面提供文档列表和决策记录的浏览功能，支持按子文件夹分组查看，方便在浏览器中阅读项目知识库内容。","inLanguage":"zh-Hans","url":"https://kuwork.github.io/Backlog.md/docs/40-Web%E7%95%8C%E9%9D%A2/04-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/docs/40-Web%E7%95%8C%E9%9D%A2/04-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://kuwork.github.io/Backlog.md/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://kuwork.github.io/Backlog.md/docs/"},{"@type":"ListItem","position":2,"name":"文档与决策","item":"https://kuwork.github.io/Backlog.md/docs/40-Web%E7%95%8C%E9%9D%A2/04-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -895,6 +891,14 @@
 <li>每个文件夹层级独立排序，文件夹始终排在文件之前</li>
 </ul>
 <p>决策区同样提供<strong>标题 / ID 排序开关</strong>，决策为平铺列表、不涉及文件夹。三个侧边栏分区（文档、Wiki、决策）共用同一控件样式。</p>
+<h3 id="拖放移动文档与文件夹">拖放移动文档与文件夹</h3>
+<p>在文档侧边栏中，可把文档拖到目标文件夹，也可把整个文件夹拖到另一个目标位置；移到根目录时放到文档根分组。拖动过程中会高亮可放置目标并显示禁止目标，展开状态保持不变。</p>
+<ul>
+<li><strong>文档移动</strong>：复用文档 rename API，只改变 <code>backlog/docs/</code> 内的位置，ID、标题、类型、标签与正文不变。</li>
+<li><strong>文件夹移动</strong>：一次性递归移动其中的文档；服务端预检全部目标路径并校验每个文档身份，成功后一次提交，失败则整组回滚。</li>
+<li><strong>安全限制</strong>：拒绝覆盖现有文件、路径逃逸，以及把文件夹移到自身或后代目录；共享或歧义 ID 不会被服务端猜测选择。</li>
+<li><strong>打开状态</strong>：移动成功后刷新当前文档 URL；整棵文件夹移动时当前详情页先关闭，再从更新后的导航重新打开。</li>
+</ul>
 <h2 id="查看文档内容">查看文档内容</h2>
 <p>在列表中点击目标文档标题，页面跳转至文档详情页。文档内容以渲染后的 Markdown 格式展示，包括：</p>
 <ul>
@@ -949,6 +953,17 @@
 <h3 id="编辑决策">编辑决策</h3>
 <p>决策详情页右上角提供 <strong>Edit</strong> 按钮：点击进入编辑模式，出现 Cancel / Save 按钮对；编辑过程中列表刷新不会打断或覆盖你的输入；<code>?edit=true</code> 深链接可直接以编辑模式打开。</p>
 <p>编辑模式下可在头部直接修改<strong>状态</strong>：下拉框列出 proposed / accepted / rejected / superseded 等标准状态（本地化显示，存储值保持原始英文），也可保留数据中已有的自由状态。只改状态不重写正文。</p>
+<h3 id="标题与-id-变更">标题与 ID 变更</h3>
+<p>决策编辑可同时修改标题和状态。标题变化后，文件从 <code>&lt;旧ID&gt; - &lt;旧标题&gt;.md</code> 更名为 <code>&lt;旧ID&gt; - &lt;新标题&gt;.md</code>，引用路径、结构化文档字段、Wiki <code>source_path</code> 和实体路由在同一事务中更新。文档通过 CLI、MCP 或移动入口更名时，已打开的 Web 页面也遵循同一引用规则。</p>
+<p>CLI 与 MCP 还可在现有 <code>update</code> / <code>edit</code> 入口中修改任务、文档和决策 ID，或用精确源路径消除重复旧 ID；新 ID 与目标路径冲突会在写入前失败，详见<a href="../10-任务管理/01-创建与编辑任务.html">创建与编辑任务</a>与<a href="../30-文档与决策/00-文档管理.html">文档管理</a>。</p>
+<h3 id="删除文档、文件夹与决策">删除文档、文件夹与决策</h3>
+<p>文档和文件夹条目的操作菜单、决策详情页均提供 <strong>Delete</strong> 入口，点击后出现确认对话框，明确显示将删除的标题或路径。</p>
+<ul>
+<li>删除文档或决策会永久移除对应 Markdown 文件，不是归档。</li>
+<li>删除文件夹会永久移除其中全部文档，服务端先检查整组目标和文档身份，成功后一次提交。</li>
+<li>ID 存在多个候选时拒绝删除并列出路径，不会任选一个。</li>
+<li>已有任务字段和正文引用不会自动清理；删除前应自行检查内容与引用，删除后按提示处理失效链接。</li>
+</ul>
 
                                 
                                 </section>
@@ -989,80 +1004,34 @@
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"文档与决策","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-08 23:05","level":"5.5","depth":1,"next":{"title":"设置与主题","level":"5.6","depth":1,"path":"40-Web界面/05-设置与主题.md","ref":"40-Web界面/05-设置与主题.md","articles":[]},"previous":{"title":"里程碑管理","level":"5.4","depth":1,"path":"40-Web界面/03-里程碑管理.md","ref":"40-Web界面/03-里程碑管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/04-文档与决策.md","mtime":"2026-11-09T16:42:43.831Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"文档与决策","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"5.5","depth":1,"next":{"title":"设置与主题","level":"5.6","depth":1,"path":"40-Web界面/05-设置与主题.md","ref":"40-Web界面/05-设置与主题.md","articles":[]},"previous":{"title":"里程碑管理","level":"5.4","depth":1,"path":"40-Web界面/03-里程碑管理.md","ref":"40-Web界面/03-里程碑管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"40-Web界面/04-文档与决策.md","mtime":"2026-11-20T07:58:13.136Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:58:56.450Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

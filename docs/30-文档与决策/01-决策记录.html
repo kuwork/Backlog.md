@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"决策记录","description":"决策记录（Architecture Decision Records，ADR）用于追踪项目中的关键技术与设计选择。Backlog.md 原生支持 ADR 格式，所有决策以 Markdown 文件形式保存在 backlog/decisions/ 目录中，包含状态元数据和完整上下文。","inLanguage":"zh-Hans","url":"https://kuwork.github.io/Backlog.md/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/01-%E5%86%B3%E7%AD%96%E8%AE%B0%E5%BD%95.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/01-%E5%86%B3%E7%AD%96%E8%AE%B0%E5%BD%95.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://kuwork.github.io/Backlog.md/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://kuwork.github.io/Backlog.md/docs/"},{"@type":"ListItem","position":2,"name":"决策记录","item":"https://kuwork.github.io/Backlog.md/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/01-%E5%86%B3%E7%AD%96%E8%AE%B0%E5%BD%95.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -924,7 +920,7 @@ backlog decision update decision-3 --status accepted
 <span class="hljs-comment"># 状态与正文同一次提交</span>
 backlog decision update decision-3 --status superseded --append-content <span class="hljs-string">"## 补充\n\n已被 decision-7 替代"</span>
 </code></pre>
-<p><code>--status</code> 接受自由文本，文档约定的值为 <code>proposed</code> / <code>accepted</code> / <code>rejected</code> / <code>superseded</code>；显式传入的状态优先于正文中 frontmatter 的值。也可直接编辑决策文件的 frontmatter，或在 Web 界面决策详情页编辑（见 <a href="../40-Web界面/04-文档与决策.html">文档与决策</a>）。MCP 侧提供 <code>decision_update</code> 工具（<code>content</code> / <code>appendContent</code> / <code>status</code> 参数）。建议在正文中记录状态变更的原因和时间，保持审计轨迹完整。</p>
+<p><code>--status</code> 接受自由文本，文档约定的值为 <code>proposed</code> / <code>accepted</code> / <code>rejected</code> / <code>superseded</code>；显式传入的状态优先于正文中 frontmatter 的值。也可直接编辑决策文件的 frontmatter，或在 Web 界面决策详情页编辑（见 <a href="../40-Web界面/04-文档与决策.html">文档与决策</a>）。MCP 侧提供 <code>decision_update</code> 工具（<code>newId</code>、<code>sourcePath</code>、<code>title</code>、<code>content</code> / <code>appendContent</code>、<code>status</code> 参数）。建议在正文中记录状态变更的原因和时间，保持审计轨迹完整。</p>
 <h2 id="列出决策">列出决策</h2>
 <pre><code class="lang-bash">backlog decision list
 </code></pre>
@@ -954,8 +950,20 @@ backlog decision update decision-3 --content <span class="hljs-string">"## 背�
 
 <span class="hljs-comment"># 追加一段内容（可重复，保留已有正文）</span>
 backlog decision update decision-3 --append-content <span class="hljs-string">"## 补充\n\n新增考量"</span>
+
+<span class="hljs-comment"># 修改标题或 ID，也可与状态、正文更新组合</span>
+backlog decision update decision-3 --title <span class="hljs-string">"采用 TypeScript"</span> --<span class="hljs-built_in">id</span> decision-10 --status accepted
+
+<span class="hljs-comment"># 精确选择一个源文件；提供路径时可省略旧 ID</span>
+backlog decision view --source-path <span class="hljs-string">"backlog/decisions/decision-3 - Old-Title.md"</span> --plain
+backlog decision update --source-path <span class="hljs-string">"backlog/decisions/decision-3 - Old-Title.md"</span> --<span class="hljs-built_in">id</span> decision-10
 </code></pre>
-<p><code>decision update</code> 复用结构化章节解析（背景 / 决策 / 后果 / 备选方案），<code>--content</code> 与 <code>--append-content</code> 都支持与其它命令一致的 <code>\n</code> 换行转义；状态通过 <code>--status</code> 修改（见上一节），三个选项可单独或组合使用。</p>
+<p><code>decision update</code> 复用结构化章节解析（背景 / 决策 / 后果 / 备选方案），<code>--content</code> 与 <code>--append-content</code> 都支持与其它命令一致的 <code>\n</code> 换行转义；状态通过 <code>--status</code> 修改（见上一节）。标题变化会同步更名 Markdown 文件，并修复路径引用、结构化文档字段、Wiki <code>source_path</code> 和 <code>/decisions/:id/:title</code> 链接；<code>--id</code> 还会更新 frontmatter ID。所有变更与正文、状态更新同属一个预检/回滚事务，新 ID 或目标路径冲突时零写入。</p>
+<p>旧 ID 与 <code>--source-path</code> 至少提供一个；同时提供时必须一致。裸 ID 重复时使用精确路径选择，系统不会猜测或同时修改其他同名文件。MCP <code>decision_update</code> 对应提供 <code>newId</code>、<code>sourcePath</code>、<code>title</code>、<code>content</code> / <code>appendContent</code>、<code>status</code>，<code>decision_view</code> 支持 <code>id</code> / <code>sourcePath</code> 精确查看。</p>
+<h2 id="删除决策">删除决策</h2>
+<pre><code class="lang-bash">backlog decision delete decision-3
+</code></pre>
+<p>删除会永久移除对应 Markdown 文件，不是归档。执行前会校验 ID 必须唯一，存在重复候选时拒绝删除并列出路径；调用方需要自行先确认候选、内容与引用。任务 <code>documentation</code>、正文链接等已有引用不会自动清理，删除后请按提示处理。Web 详情页提供同样的确认删除入口，MCP 对应 <code>decision_delete</code>。</p>
 <h2 id="adr-格式简介">ADR 格式简介</h2>
 <p>生成的决策记录文件遵循标准 ADR 结构：</p>
 <pre><code class="lang-markdown">---
@@ -1046,80 +1054,34 @@ status: proposed
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"决策记录","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-07 22:50","level":"4.2","depth":1,"next":{"title":"里程碑管理","level":"4.3","depth":1,"path":"30-文档与决策/02-里程碑管理.md","ref":"30-文档与决策/02-里程碑管理.md","articles":[]},"previous":{"title":"文档管理","level":"4.1","depth":1,"path":"30-文档与决策/00-文档管理.md","ref":"30-文档与决策/00-文档管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"30-文档与决策/01-决策记录.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"决策记录","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"4.2","depth":1,"next":{"title":"里程碑管理","level":"4.3","depth":1,"path":"30-文档与决策/02-里程碑管理.md","ref":"30-文档与决策/02-里程碑管理.md","articles":[]},"previous":{"title":"文档管理","level":"4.1","depth":1,"path":"30-文档与决策/00-文档管理.md","ref":"30-文档与决策/00-文档管理.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"30-文档与决策/01-决策记录.md","mtime":"2026-11-20T04:06:47.000Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:58:56.450Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

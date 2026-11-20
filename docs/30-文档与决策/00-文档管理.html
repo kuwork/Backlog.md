@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"文档管理","description":"Backlog.md 将项目文档作为一等公民管理。所有文档存储在 backlog/docs/ 目录下，以 Markdown 文件形式保存，支持嵌套子文件夹、全局 ID 索引和 CLI 全生命周期操作。","inLanguage":"zh-Hans","url":"https://kuwork.github.io/Backlog.md/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/00-%E6%96%87%E6%A1%A3%E7%AE%A1%E7%90%86.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/00-%E6%96%87%E6%A1%A3%E7%AE%A1%E7%90%86.html","isPartOf":{"@type":"Book","name":"Backlog.md 用户手册","url":"https://kuwork.github.io/Backlog.md/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"用户手册","item":"https://kuwork.github.io/Backlog.md/docs/"},{"@type":"ListItem","position":2,"name":"文档管理","item":"https://kuwork.github.io/Backlog.md/docs/30-%E6%96%87%E6%A1%A3%E4%B8%8E%E5%86%B3%E7%AD%96/00-%E6%96%87%E6%A1%A3%E7%AE%A1%E7%90%86.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -906,8 +902,17 @@ backlog doc update doc-5 --title <span class="hljs-string">"生产环境部署�
 
 <span class="hljs-comment"># 移动到新的子目录</span>
 backlog doc update doc-5 -p guides/production
+
+<span class="hljs-comment"># 修改 ID；可与 --title 和其他更新选项组合</span>
+backlog doc update doc-5 --<span class="hljs-built_in">id</span> doc-10
+
+<span class="hljs-comment"># 用精确项目相对路径选择源文件，可省略旧 ID</span>
+backlog doc view --source-path <span class="hljs-string">"backlog/docs/guides/doc-5 - Old-Title.md"</span> --plain
+backlog doc update --source-path <span class="hljs-string">"backlog/docs/guides/doc-5 - Old-Title.md"</span> --<span class="hljs-built_in">id</span> doc-10
 </code></pre>
-<p><code>backlog doc update</code> 采用增量更新策略：只提供需要修改的字段，未提供的字段会保持原值不变。例如仅传入 <code>--title</code> 时，文档内容和路径均不受影响。</p>
+<p><code>backlog doc update</code> 采用增量更新策略：只提供需要修改的字段，未提供的字段会保持原值不变。例如仅传入 <code>--title</code> 时，文档内容和目录位置不变，但主文件会按新标题更名。</p>
+<p>标题或 ID 导致文件名变化时，系统会在同一事务中更新主文件、任务 <code>references</code> / <code>documentation</code> 等结构化字段、其他正文中的精确路径引用、Wiki <code>source_path</code> 和实体链接 slug；引用位于不同目录或包含 <code>:行号</code> / <code>:起止行</code> 后缀时也会保留。新 ID 或目标路径冲突会在写入前失败，执行中失败会回滚，不允许留下半套引用。</p>
+<p>旧 ID 与 <code>--source-path</code> 至少提供一个；同时提供时必须匹配，否则报 <code>SOURCE_MISMATCH</code>。裸 ID 有多个候选时报 <code>AMBIGUOUS_ID</code> 并列出路径，精确路径只更新选中的文件，不会清理其他重复项。</p>
 <h3 id="多行内容与追加">多行内容与追加</h3>
 <p><code>--content</code> 支持 <code>\n</code> 换行转义，与任务的 <code>--desc</code>、<code>--plan</code>、<code>--notes</code> 行为一致：</p>
 <pre><code class="lang-bash">backlog doc update doc-5 --content <span class="hljs-string">"## 概述\n\n第一段\n第二段"</span>
@@ -919,7 +924,15 @@ backlog doc update doc-5 --append-content <span class="hljs-string">"## 附录\n
 <span class="hljs-comment"># 先替换再追加</span>
 backlog doc update doc-5 --content <span class="hljs-string">"新内容"</span> --append-content <span class="hljs-string">"附录部分"</span>
 </code></pre>
-<p>MCP 的 <code>document_update</code> 工具对应提供 <code>appendContent</code> 参数。</p>
+<p>MCP 的 <code>document_update</code> 工具对应提供 <code>appendContent</code> 参数；<code>newId</code>、<code>sourcePath</code> 与 <code>title</code> 对应上述 ID 和精确选源能力。</p>
+<h2 id="删除文档与文件夹">删除文档与文件夹</h2>
+<pre><code class="lang-bash"><span class="hljs-comment"># 删除单个文档</span>
+backlog doc delete doc-5
+
+<span class="hljs-comment"># 删除整个文件夹及其中的全部文档</span>
+backlog doc delete-folder guides/old
+</code></pre>
+<p>删除是<strong>永久移除</strong>，不是归档。单个文档只有在 ID 唯一时才允许删除；重复 ID 会拒绝并列出候选，调用方应先自行核对路径、内容与引用。文件夹删除同样拒绝覆盖身份不明的歧义文档。任务的 <code>references</code> / <code>documentation</code> 和其他正文链接不会自动清理，删除后需要按提示处理。Web 文档与文件夹条目提供确认删除入口，MCP 对应 <code>document_delete</code> 与 <code>document_delete_folder</code>。</p>
 <h2 id="列出文档">列出文档</h2>
 <pre><code class="lang-bash">backlog doc list
 </code></pre>
@@ -1089,80 +1102,34 @@ sql: |
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"文档管理","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-10-18 22:00","level":"4.1","depth":1,"next":{"title":"决策记录","level":"4.2","depth":1,"path":"30-文档与决策/01-决策记录.md","ref":"30-文档与决策/01-决策记录.md","articles":[]},"previous":{"title":"看板导出","level":"3.3","depth":1,"path":"20-看板与可视化/02-看板导出.md","ref":"20-看板与可视化/02-看板导出.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"30-文档与决策/00-文档管理.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:30.949Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"文档管理","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"4.1","depth":1,"next":{"title":"决策记录","level":"4.2","depth":1,"path":"30-文档与决策/01-决策记录.md","ref":"30-文档与决策/01-决策记录.md","articles":[]},"previous":{"title":"看板导出","level":"3.3","depth":1,"path":"20-看板与可视化/02-看板导出.md","ref":"20-看板与可视化/02-看板导出.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md 用户手册","language":"zh-hans","gitbook":"*","description":"Backlog.md 简体中文用户手册：Markdown 原生的任务管理与看板可视化工具。"},"file":{"path":"30-文档与决策/00-文档管理.md","mtime":"2026-11-20T04:06:47.000Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:58:56.450Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 

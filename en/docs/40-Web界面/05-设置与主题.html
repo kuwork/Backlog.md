@@ -27,7 +27,7 @@
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Settings & Themes","description":"The settings page centrally manages Backlog.md configuration items, Definition of Done defaults, and Web interface theme preferences.","inLanguage":"en","url":"https://kuwork.github.io/Backlog.md/en/docs/40-Web%E7%95%8C%E9%9D%A2/05-%E8%AE%BE%E7%BD%AE%E4%B8%8E%E4%B8%BB%E9%A2%98.html","mainEntityOfPage":"https://kuwork.github.io/Backlog.md/en/docs/40-Web%E7%95%8C%E9%9D%A2/05-%E8%AE%BE%E7%BD%AE%E4%B8%8E%E4%B8%BB%E9%A2%98.html","isPartOf":{"@type":"Book","name":"Backlog.md User Manual","url":"https://kuwork.github.io/Backlog.md/en/docs/"},"publisher":{"@type":"Organization","name":"Backlog.md","url":"https://kuwork.github.io/Backlog.md/"}}</script>
         <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"User Manual","item":"https://kuwork.github.io/Backlog.md/en/docs/"},{"@type":"ListItem","position":2,"name":"设置与主题","item":"https://kuwork.github.io/Backlog.md/en/docs/40-Web%E7%95%8C%E9%9D%A2/05-%E8%AE%BE%E7%BD%AE%E4%B8%8E%E4%B8%BB%E9%A2%98.html"}]}</script>
         <!-- seo:end -->
-        <meta name="generator" content="HonKit 6.2.5">
+        <meta name="generator" content="HonKit 7.0.0">
         <meta name="author" content="Backlog.md Contributors">
         
         
@@ -42,10 +42,6 @@
             
                 
                 <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
-                
-            
-                
-                <link rel="stylesheet" href="../gitbook/@honkit/honkit-plugin-fontsettings/website.css">
                 
             
         
@@ -86,7 +82,7 @@
     </head>
     <body>
         
-<div class="book honkit-cloak">
+<div class="book honkit-cloak font-size-2 font-family-1">
     <div class="book-summary">
         
             
@@ -890,7 +886,7 @@
 <li><strong>Auto-open browser (<code>autoOpenBrowser</code>)</strong>.</li>
 <li><strong>Task resolution strategy (<code>taskResolutionStrategy</code>)</strong>: conflict-resolution strategy when tasks with the same name exist in multiple branches—<code>most_recent</code> (take the most recently modified version) or <code>most_progressed</code> (take the version whose status has advanced the furthest, falling back to modification time when progress is equal); new projects default to <code>most_recent</code>.</li>
 <li><strong>Advanced Settings cross-branch toggles</strong>: below Task Resolution Strategy are Cross-Branch Tasks (<code>includeCrossBranch</code>, default off—whether scanned tasks from other branches appear in board/task list/search), Check Active Branches (<code>checkActiveBranches</code>, default on—whether to scan other local branches, also determines the candidate branch set for task ID allocation), and Active Branch Days (<code>activeBranchDays</code>, default 30 days, shown only when the scan toggle is on).</li>
-<li><strong>Diagram engine (<code>diagramEngine</code>)</strong>: which engine renders Mermaid diagrams—<code>pele</code> (default, open-sourced by the Obsidian team, zero-dependency, renders Mermaid 12.1.0 syntax to SVG) or <code>mermaid</code> (11.16.1 fallback); the choice is persisted to the <code>diagram_engine</code> key in <code>config.yml</code> and remains effective after restarting the browser. It affects only Mermaid diagrams, not ECharts data charts.</li>
+<li><strong>Diagram engine (<code>diagramEngine</code>)</strong>: which engine renders Mermaid diagrams—<code>pele</code> (default, Pele 1.13.0, open-sourced by the Obsidian team, zero-dependency, renders Mermaid 12.1.0 syntax to SVG) or <code>mermaid</code> (12.3.0 fallback); the choice is persisted to the <code>diagram_engine</code> key in <code>config.yml</code> and remains effective after restarting the browser. It affects only Mermaid diagrams, not ECharts data charts.</li>
 <li>Git-related options (see <a href="../60-配置与运维/00-配置管理.html">Configuration Management</a>).</li>
 </ul>
 <p>Click the item you want to modify, enter the new value, and click the "Save" button. Configuration changes are written back to the project configuration file immediately; some settings (such as port) take effect after restarting <code>backlog browser</code>.</p>
@@ -964,7 +960,7 @@
 </ul>
 <p>After modifying any field, click the "Save" button at the bottom of the page; the changes are written back to the Markdown file.</p>
 <h2 id="automatic-mermaid-diagram-rendering">Automatic Mermaid Diagram Rendering</h2>
-<p>If the task body contains Mermaid syntax code blocks, the Web interface automatically renders them as visual diagrams, including flowcharts, sequence diagrams, Gantt charts, etc. No extra action is needed; the diagram appears immediately after saving the task. The Pele engine is used by default; you can switch to the Mermaid 11.16.1 fallback in the Diagram Engine dropdown on the settings page (see the "Diagram engine" configuration item above).</p>
+<p>If the task body contains Mermaid syntax code blocks, the Web interface automatically renders them as visual diagrams, including flowcharts, sequence diagrams, Gantt charts, etc. No extra action is needed; the diagram appears immediately after saving the task. The Pele engine is used by default; you can switch to the Mermaid 12.3.0 fallback in the Diagram Engine dropdown on the settings page (see the "Diagram engine" configuration item above).</p>
 <h2 id="images-and-attachment-viewing">Images and Attachment Viewing</h2>
 <p>Images referenced in tasks (such as <code>![description](assets/xxx.png)</code>) are displayed directly as previews in the editor. Click a preview to view the original image in a new tab.</p>
 <p>Files under the project's <code>backlog/assets/</code> directory are automatically served by the Web server, ensuring all attachments and screenshots load normally in the Web interface.</p>
@@ -1008,80 +1004,34 @@
         
     </div>
 
-    <script>
-        var gitbook = gitbook || [];
-        gitbook.push(function() {
-            gitbook.page.hasChanged({"page":{"title":"Settings & Themes","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-10 00:40","level":"5.6","depth":1,"next":{"title":"Rich-text Paste & Document Upload","level":"5.7","depth":1,"path":"40-Web界面/06-富文本粘贴与文档上传.md","ref":"40-Web界面/06-富文本粘贴与文档上传.md","articles":[]},"previous":{"title":"Documents & Decisions","level":"5.5","depth":1,"path":"40-Web界面/04-文档与决策.md","ref":"40-Web界面/04-文档与决策.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"40-Web界面/05-设置与主题.md","mtime":"2026-11-09T16:42:41.000Z","type":"markdown"},"gitbook":{"version":"6.2.5","time":"2026-11-09T16:43:47.607Z"},"basePath":"..","book":{"language":""}});
-        });
-    </script>
+    
+    <script type="application/json" id="honkit-page-context">{"page":{"title":"Settings & Themes","labels":["usermanual"],"created_date":"2026-05-07 00:00","updated_date":"2026-11-20 11:35","level":"5.6","depth":1,"next":{"title":"Rich-text Paste & Document Upload","level":"5.7","depth":1,"path":"40-Web界面/06-富文本粘贴与文档上传.md","ref":"40-Web界面/06-富文本粘贴与文档上传.md","articles":[]},"previous":{"title":"Documents & Decisions","level":"5.5","depth":1,"path":"40-Web界面/04-文档与决策.md","ref":"40-Web界面/04-文档与决策.md","articles":[]},"dir":"ltr"},"config":{"plugins":[],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","author":"Backlog.md Contributors","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56},"embedFonts":false},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{},"title":"Backlog.md User Manual","language":"en","gitbook":"*","description":"English user manual for Backlog.md, a Markdown-native task and kanban visualization tool."},"file":{"path":"40-Web界面/05-设置与主题.md","mtime":"2026-11-20T04:06:47.000Z","type":"markdown"},"gitbook":{"version":"7.0.0","time":"2026-11-20T07:59:42.543Z"},"basePath":"..","book":{"language":""}}</script>
 </div>
 
         
     <noscript>
-        <style>
-            .honkit-cloak {
-                display: block !important;
-            }
-        </style>
+        <link rel="stylesheet" href="../gitbook/noscript.css">
     </noscript>
-    <script>
-        // Restore sidebar state as critical path for prevent layout shift
-        function __init__getSidebarState(defaultValue){
-            var baseKey = "";
-            var key = baseKey + ":sidebar";
-            try {
-                var value = localStorage[key];
-                if (value === undefined) {
-                    return defaultValue;
-                }
-                var parsed = JSON.parse(value);
-                return parsed == null ? defaultValue : parsed;
-            } catch (e) {
-                return defaultValue;
-            }
-        }
-        function __init__restoreLastSidebarState() {
-            var isMobile = window.matchMedia("(max-width: 600px)").matches;
-            if (isMobile) {
-                // Init last state if not mobile
-                return;
-            }
-            var sidebarState = __init__getSidebarState(true);
-            var book = document.querySelector(".book");
-            // Show sidebar if it enabled
-            if (sidebarState && book) {
-                book.classList.add("without-animation", "with-summary");
-            }
-        }
-
-        try {
-            __init__restoreLastSidebarState();
-        } finally {
-            var book = document.querySelector(".book");
-            book.classList.remove("honkit-cloak");
-        }
-    </script>
-    <script src="../gitbook/gitbook.js"></script>
-    <script src="../gitbook/theme.js"></script>
+    
+    <script src="../gitbook/boot.js"></script>
+    
+    <script src="../gitbook/gitbook.js" defer></script>
+    <script src="../gitbook/theme.js" defer></script>
     
         
-        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        <script src="../gitbook/gitbook-plugin-search/search.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/lunr.min.js" defer></script>
         
     
         
-        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
-        
-    
-        
-        <script src="../gitbook/@honkit/honkit-plugin-fontsettings/fontsettings.js"></script>
+        <script src="../gitbook/@honkit/honkit-plugin-lunr/search-lunr.js" defer></script>
         
     
 
