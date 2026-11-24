@@ -90,121 +90,133 @@ describe("CLI packaging", () => {
 		}
 	});
 
-	it("should build and run compiled executable", async () => {
-		const OUTFILE = join(TEST_DIR, executableName);
+	it(
+		"should build and run compiled executable",
+		async () => {
+			const OUTFILE = join(TEST_DIR, executableName);
 
-		// Read version from package.json
-		const packageJson = await Bun.file("package.json").json();
-		const version = packageJson.version;
+			// Read version from package.json
+			const packageJson = await Bun.file("package.json").json();
+			const version = packageJson.version;
 
-		try {
-			const build = Bun.spawn(["bun", "scripts/build.ts"], {
-				env: {
-					...process.env,
-					BACKLOG_BUILD_OUTFILE: OUTFILE,
-					BACKLOG_BUILD_VERSION: version,
-				},
+			try {
+				const build = Bun.spawn(["bun", "scripts/build.ts"], {
+					env: {
+						...process.env,
+						BACKLOG_BUILD_OUTFILE: OUTFILE,
+						BACKLOG_BUILD_VERSION: version,
+					},
+					stderr: "pipe",
+					stdout: "pipe",
+				});
+				const exitCode = await build.exited;
+				if (exitCode !== 0) {
+					const stderr = await new Response(build.stderr).text();
+					throw new Error(stderr);
+				}
+			} catch (error: unknown) {
+				// Skip test if build fails due to cross-filesystem issues (e.g., virtiofs)
+				// This is environment-specific and doesn't indicate a code problem
+				const err = error as { stderr?: { toString(): string } };
+				const errorMsg = err?.stderr?.toString() || String(error);
+				if (errorMsg.includes("failed to rename") || errorMsg.includes("ENOENT")) {
+					console.warn("Skipping build test due to cross-filesystem limitation");
+					return;
+				}
+				throw error;
+			}
+
+			const helpResult = await $`${OUTFILE} --help`.quiet();
+			const helpOutput = helpResult.stdout.toString();
+			expect(helpOutput).toContain("Backlog.md - Project management CLI");
+
+			// Also test version command
+			const versionResult = await $`${OUTFILE} --version`.quiet();
+			const versionOutput = versionResult.stdout.toString().trim();
+			expect(versionOutput).toBe(version);
+
+			const port = await findAvailablePort();
+			const browserServer = Bun.spawn([OUTFILE, "browser", "--no-open", "--port", String(port)], {
+				cwd: process.cwd(),
 				stderr: "pipe",
-				stdout: "pipe",
+				stdout: "ignore",
 			});
-			const exitCode = await build.exited;
-			if (exitCode !== 0) {
-				const stderr = await new Response(build.stderr).text();
-				throw new Error(stderr);
+			let browserServerExited = false;
+			void browserServer.exited.then(() => {
+				browserServerExited = true;
+			});
+
+			try {
+				const baseUrl = `http://127.0.0.1:${port}`;
+				// The compiled HTML bundle is built lazily on the first request and can take several minutes.
+				const htmlResponse = await waitForHttp(`${baseUrl}/`, () => browserServerExited, getPlatformTimeout(600000));
+				expect(htmlResponse.headers.get("cache-control")).toBe("no-store, max-age=0, must-revalidate");
+
+				const html = await htmlResponse.text();
+				const stylesheetPath = html.match(/<link rel="stylesheet"[^>]*href="([^"]+)"/)?.[1];
+				const scriptPath = html.match(/<script type="module"[^>]*src="([^"]+)"/)?.[1];
+				const faviconPath = html.match(/<link rel="icon"[^>]*href="([^"]+)"/)?.[1];
+
+				expect(stylesheetPath).toMatch(/^\/chunk-[a-z0-9]+\.css$/);
+				expect(scriptPath).toMatch(/^\/chunk-[a-z0-9]+\.js$/);
+				expect(faviconPath).toMatch(/^\/favicon-[a-z0-9]+\.png$/);
+
+				const stylesheetResponse = await fetch(`${baseUrl}${stylesheetPath}`);
+				expect(stylesheetResponse.status).toBe(200);
+				expect(stylesheetResponse.headers.get("content-type")).toContain("text/css");
+				const stylesheet = await stylesheetResponse.text();
+				expect(stylesheet).toContain(".flex{display:flex}");
+				expect(stylesheet).toContain(".wmde-markdown");
+
+				const scriptResponse = await fetch(`${baseUrl}${scriptPath}`, { method: "HEAD" });
+				expect(scriptResponse.status).toBe(200);
+				expect(scriptResponse.headers.get("content-type")).toContain("text/javascript");
+
+				const faviconResponse = await fetch(`${baseUrl}${faviconPath}`, { method: "HEAD" });
+				expect(faviconResponse.status).toBe(200);
+				expect(faviconResponse.headers.get("content-type")).toContain("image/png");
+
+				for (const assetName of ["pdf.mjs", "pdf.worker.min.mjs"]) {
+					const vendorResponse = await fetch(`${baseUrl}/vendor/${assetName}`);
+					expect(vendorResponse.status).toBe(200);
+					expect(vendorResponse.headers.get("content-type")).toContain("application/javascript");
+					expect(await vendorResponse.text()).toBe(await Bun.file(join("src", "web", "vendor", assetName)).text());
+				}
+			} finally {
+				browserServer.kill();
+				await browserServer.exited.catch(() => {});
 			}
-		} catch (error: unknown) {
-			// Skip test if build fails due to cross-filesystem issues (e.g., virtiofs)
-			// This is environment-specific and doesn't indicate a code problem
-			const err = error as { stderr?: { toString(): string } };
-			const errorMsg = err?.stderr?.toString() || String(error);
-			if (errorMsg.includes("failed to rename") || errorMsg.includes("ENOENT")) {
-				console.warn("Skipping build test due to cross-filesystem limitation");
-				return;
+
+			const timeout = getPlatformTimeout(8000);
+			let stderr = "";
+			const transport = new StdioClientTransport({
+				command: OUTFILE,
+				args: ["mcp", "start", "--cwd", process.cwd(), "--debug"],
+				cwd: process.cwd(),
+				stderr: "pipe",
+			});
+			transport.stderr?.on("data", (chunk) => {
+				stderr += chunk.toString();
+			});
+
+			const client = new Client({ name: "Compiled MCP Smoke Test", version: "1.0.0" }, { capabilities: {} });
+			try {
+				await withTimeout(client.connect(transport), "connect", timeout, () => ` stderr:\n${stderr}`);
+
+				const tools = await withTimeout(client.listTools(), "listTools", timeout, () => ` stderr:\n${stderr}`);
+				expect(tools.tools.map((tool) => tool.name)).toContain("task_list");
+
+				const resources = await withTimeout(
+					client.listResources(),
+					"listResources",
+					timeout,
+					() => ` stderr:\n${stderr}`,
+				);
+				expect(resources.resources.map((resource) => resource.uri)).toContain("backlog://workflow/overview");
+			} finally {
+				await client.close().catch(() => {});
 			}
-			throw error;
-		}
-
-		const helpResult = await $`${OUTFILE} --help`.quiet();
-		const helpOutput = helpResult.stdout.toString();
-		expect(helpOutput).toContain("Backlog.md - Project management CLI");
-
-		// Also test version command
-		const versionResult = await $`${OUTFILE} --version`.quiet();
-		const versionOutput = versionResult.stdout.toString().trim();
-		expect(versionOutput).toBe(version);
-
-		const port = await findAvailablePort();
-		const browserServer = Bun.spawn([OUTFILE, "browser", "--no-open", "--port", String(port)], {
-			cwd: process.cwd(),
-			stderr: "pipe",
-			stdout: "ignore",
-		});
-		let browserServerExited = false;
-		void browserServer.exited.then(() => {
-			browserServerExited = true;
-		});
-
-		try {
-			const baseUrl = `http://127.0.0.1:${port}`;
-			const htmlResponse = await waitForHttp(`${baseUrl}/`, () => browserServerExited, getPlatformTimeout(8000));
-			expect(htmlResponse.headers.get("cache-control")).toBe("no-store, max-age=0, must-revalidate");
-
-			const html = await htmlResponse.text();
-			const stylesheetPath = html.match(/<link rel="stylesheet"[^>]*href="([^"]+)"/)?.[1];
-			const scriptPath = html.match(/<script type="module"[^>]*src="([^"]+)"/)?.[1];
-			const faviconPath = html.match(/<link rel="icon"[^>]*href="([^"]+)"/)?.[1];
-
-			expect(stylesheetPath).toMatch(/^\/chunk-[a-z0-9]+\.css$/);
-			expect(scriptPath).toMatch(/^\/chunk-[a-z0-9]+\.js$/);
-			expect(faviconPath).toMatch(/^\/favicon-[a-z0-9]+\.png$/);
-
-			const stylesheetResponse = await fetch(`${baseUrl}${stylesheetPath}`);
-			expect(stylesheetResponse.status).toBe(200);
-			expect(stylesheetResponse.headers.get("content-type")).toContain("text/css");
-			const stylesheet = await stylesheetResponse.text();
-			expect(stylesheet).toContain(".flex{display:flex}");
-			expect(stylesheet).toContain(".wmde-markdown");
-
-			const scriptResponse = await fetch(`${baseUrl}${scriptPath}`, { method: "HEAD" });
-			expect(scriptResponse.status).toBe(200);
-			expect(scriptResponse.headers.get("content-type")).toContain("text/javascript");
-
-			const faviconResponse = await fetch(`${baseUrl}${faviconPath}`, { method: "HEAD" });
-			expect(faviconResponse.status).toBe(200);
-			expect(faviconResponse.headers.get("content-type")).toContain("image/png");
-		} finally {
-			browserServer.kill();
-			await browserServer.exited.catch(() => {});
-		}
-
-		const timeout = getPlatformTimeout(8000);
-		let stderr = "";
-		const transport = new StdioClientTransport({
-			command: OUTFILE,
-			args: ["mcp", "start", "--cwd", process.cwd(), "--debug"],
-			cwd: process.cwd(),
-			stderr: "pipe",
-		});
-		transport.stderr?.on("data", (chunk) => {
-			stderr += chunk.toString();
-		});
-
-		const client = new Client({ name: "Compiled MCP Smoke Test", version: "1.0.0" }, { capabilities: {} });
-		try {
-			await withTimeout(client.connect(transport), "connect", timeout, () => ` stderr:\n${stderr}`);
-
-			const tools = await withTimeout(client.listTools(), "listTools", timeout, () => ` stderr:\n${stderr}`);
-			expect(tools.tools.map((tool) => tool.name)).toContain("task_list");
-
-			const resources = await withTimeout(
-				client.listResources(),
-				"listResources",
-				timeout,
-				() => ` stderr:\n${stderr}`,
-			);
-			expect(resources.resources.map((resource) => resource.uri)).toContain("backlog://workflow/overview");
-		} finally {
-			await client.close().catch(() => {});
-		}
-	}, 120000);
+		},
+		getPlatformTimeout(900000),
+	);
 });

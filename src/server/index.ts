@@ -223,6 +223,10 @@ function parseOptionalBoolean(value: unknown): boolean | undefined {
 }
 
 import indexHtml from "../web/index.html";
+// @ts-expect-error Bun's file loader returns a source or embedded path string.
+import pdfJsPath from "../web/vendor/pdf.mjs" with { type: "file" };
+// @ts-expect-error Bun's file loader returns a source or embedded path string.
+import pdfWorkerPath from "../web/vendor/pdf.worker.min.mjs" with { type: "file" };
 
 const NO_STORE_HEADERS = {
 	"Cache-Control": "no-store, max-age=0, must-revalidate",
@@ -1152,7 +1156,7 @@ export class BacklogServer {
 					},
 					// Serve vendored web libraries (e.g. pdf.js) from the project source so they
 					// never pollute the user's backlog/assets data directory. Embedded into the
-					// compiled binary via static new URL(import.meta.url).
+					// compiled binary through the file imports below.
 					"/vendor/*": {
 						GET: async (req: Request) => await this.handleVendorRequest(req),
 					},
@@ -1376,12 +1380,11 @@ export class BacklogServer {
 		}
 	}
 
-	// Vendored web libraries embedded at build time. Only the files referenced here are
-	// embedded, so this stays small. pdf.js is self-hosted (not bundled) so the browser
-	// bundle stays Node-builtin-free.
-	private static readonly VENDOR_FILES: Record<string, URL> = {
-		"pdf.mjs": new URL("../web/vendor/pdf.mjs", import.meta.url),
-		"pdf.worker.min.mjs": new URL("../web/vendor/pdf.worker.min.mjs", import.meta.url),
+	// File imports resolve to source paths in development and embedded /$bunfs paths in the
+	// compiled binary, keeping pdf.js out of the browser bundle while serving it at runtime.
+	private static readonly VENDOR_FILES: Record<string, string> = {
+		"pdf.mjs": pdfJsPath,
+		"pdf.worker.min.mjs": pdfWorkerPath,
 	};
 
 	private async handleVendorRequest(req: Request): Promise<Response> {
@@ -1392,9 +1395,9 @@ export class BacklogServer {
 			if (!Object.hasOwn(BacklogServer.VENDOR_FILES, name)) {
 				return new Response("Not Found", { status: 404 });
 			}
-			const vendorUrl = BacklogServer.VENDOR_FILES[name];
-			if (!vendorUrl) return new Response("Not Found", { status: 404 });
-			const file = Bun.file(vendorUrl);
+			const vendorPath = BacklogServer.VENDOR_FILES[name];
+			if (!vendorPath) return new Response("Not Found", { status: 404 });
+			const file = Bun.file(vendorPath);
 			if (!(await file.exists())) return new Response("Not Found", { status: 404 });
 			const ext = name.toLowerCase().split(".").pop() ?? "";
 			const mime = ext === "mjs" || ext === "js" ? "application/javascript" : "application/octet-stream";
