@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Backlog.md — horizontal logo (SVG redesign)
+  The square mark keeps the shipped app icon geometry (64-unit grid) with the
+  tile in deep blue-black #161823, plus three equalizer bars.
+  Wordmark: "Backlog" in the same blue-black, ".md" in brand cyan #00C4CC.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 928 400" width="928" height="400" role="img" aria-label="Backlog.md">
+  <title>Backlog.md</title>
+
+  <!-- square app icon, geometry identical to assets/img/favicon.svg (64-grid, scaled 5x) -->
+  <svg id="app-icon" x="40" y="40" width="320" height="320" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="14" fill="#161823"/>
+    <rect x="12" y="14" width="11" height="26" rx="3" fill="#00C4CC"/>
+    <rect x="26.5" y="14" width="11" height="36" rx="3" fill="#9B9B9B"/>
+    <rect x="41" y="14" width="11" height="18" rx="3" fill="#00C4CC" opacity="0.5"/>
+  </svg>
+
+  <!-- wordmark: cap-height center aligned with the icon center (y = 200) -->
+  <text x="408" y="236"
+        font-family="'Segoe UI','Helvetica Neue','Inter',Arial,sans-serif"
+        font-size="96" font-weight="800" letter-spacing="-1.5" fill="#161823">
+    Backlog<tspan font-size="60" font-weight="700" letter-spacing="0" fill="#00C4CC" dx="4">.md</tspan>
+  </text>
+</svg>
