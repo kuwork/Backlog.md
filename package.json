@@ -1,6 +1,6 @@
 {
   "name": "@kuwork/backlog.md",
-  "version": "1.53.13-CN",
+  "version": "1.53.14-CN",
   "description": "Git-native Markdown task management and kanban CLI for spec-driven AI agent workflows: local-first tasks, boards, LLM wiki, MCP, and a built-in web UI.",
   "type": "module",
   "module": "src/cli.ts",
