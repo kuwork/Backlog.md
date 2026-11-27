@@ -84,6 +84,7 @@
 					<li><a class="nav-link title-4" href="#product">界面</a></li>
 					<li><a class="nav-link title-4" href="#features">功能特性</a></li>
 					<li><a class="nav-link title-4" href="#integrations">接入工具</a></li>
+					<li><a class="nav-link title-4" href="#adopters">采用项目</a></li>
 					<li><a class="nav-link title-4" href="#docs">文档</a></li>
 					<li><a class="nav-link title-4" href="#faq">常见问题</a></li>
 				</ul>
@@ -109,6 +110,7 @@
 				<a class="title-1" href="#memos">Memos 随手记</a>
 				<a class="title-1" href="#features">功能特性</a>
 				<a class="title-1" href="#integrations">接入工具</a>
+				<a class="title-1" href="#adopters">采用项目</a>
 				<a class="title-1" href="#docs">文档</a>
 				<a class="title-1" href="#faq">常见问题</a>
 				<a class="title-1" href="#install">安装</a>
@@ -240,96 +242,18 @@
 				</div>
 			</section>
 
-			<!-- task stream marquee -->
-			<section class="section-tight" aria-label="真实任务流">
-				<div class="marquee">
-					<div class="marquee-track">
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-208</span> Add paste as markdown support in Web UI</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--accent)"></span
-							><span class="chip-id mono">back-267</span> Add agent instruction version metadata</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-346</span> Add milestone completion archival workflow</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-347</span> Add milestone editing in Web UI</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-348</span> Redesign All Tasks page with table layout</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--accent)"></span
-							><span class="chip-id mono">back-353</span> Add documentation field to task object</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-361</span> Add label based filtering to task list views</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-367</span> Add Final Summary field to tasks</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--accent)"></span
-							><span class="chip-id mono">back-239</span> Auto link tasks to documents and decisions</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-354</span> Project Definition of Done defaults</span
-						>
-					</div>
+			<!-- verified public adopters -->
+			<section class="section-tight adopter-section" id="adopters" aria-label="公开采用项目滚动墙">
+				<div class="container-wide adopter-wall-toolbar">
+					<a class="btn btn-secondary button-sm" href="adopters.html">查看更多</a>
 				</div>
-				<div class="marquee reverse" aria-hidden="true">
-					<div class="marquee-track">
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-217</span> Create web UI for sequences with drag and drop</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-356</span> Add references field to task domain object</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--accent)"></span
-							><span class="chip-id mono">back-218</span> Update documentation and tests for sequences</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-270</span> Prevent command substitution in task inputs</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-352</span> Include subtask list in plain task output</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--accent)"></span
-							><span class="chip-id mono">back-268</span> Show agent instruction version status</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-351</span> Strengthen MCP task creation guidance</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--surface-4)"></span
-							><span class="chip-id mono">back-358</span> Rename Task Completion Guide to Finalization</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--accent)"></span
-							><span class="chip-id mono">back-359</span> Pass configured task prefix to cross branch loading</span
-						>
-						<span class="chip caption-4"
-							><span class="chip-state" style="background: var(--text-2)"></span
-							><span class="chip-id mono">back-365</span> Fix acceptance criteria insertion blank lines</span
-						>
-					</div>
+				<div class="adopter-wall" data-adopter-wall role="region" aria-label="公开采用项目无限滚动墙">
+					<noscript>
+						<p class="body-5 muted">请启用 JavaScript 查看公开采用项目滚动墙。</p>
+					</noscript>
 				</div>
+				<script src="assets/data/adopters.js"></script>
+				<script src="assets/js/adopters.js"></script>
 			</section>
 
 			<!-- tagline -->
@@ -1348,6 +1272,7 @@
 							<li><a href="#memos">Memos 随手记</a></li>
 							<li><a href="#features">功能特性</a></li>
 							<li><a href="#integrations">接入工具</a></li>
+							<li><a href="#adopters">采用项目</a></li>
 							<li><a href="#docs">文档</a></li>
 							<li><a href="#faq">常见问题</a></li>
 						</ul>

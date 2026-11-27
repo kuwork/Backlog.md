@@ -1,7 +1,7 @@
 /* Backlog.md site — v2 motion system
    Same brand tokens as v1, with a stronger motion layer:
    boot sequence, character rise, 3D tilt, pinned horizontal flow,
-   sticky frame sequence, marquee task streams, magnetic buttons. */
+   sticky frame sequence, verified adopter walls, magnetic buttons. */
 
 @font-face {
 	font-family: "Geist";
@@ -1127,33 +1127,62 @@ p code {
 	height: auto;
 }
 
-/* ---------- marquee task stream ---------- */
+/* ---------- verified public adopter wall ---------- */
 
-.marquee {
-	position: relative;
+.adopter-section {
+	width: 100%;
 	overflow: hidden;
-	padding-block: var(--sp-100);
-	mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-	-webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+	padding-inline: 0;
 }
 
-.marquee-track {
+.adopter-wall-toolbar {
 	display: flex;
-	gap: var(--sp-200);
-	width: max-content;
-	animation: slide 38s linear infinite;
+	justify-content: flex-end;
+	margin-bottom: var(--sp-300);
 }
 
-.marquee:hover .marquee-track {
+.adopter-wall {
+	--adopter-row-height: 184px;
+	width: 100%;
+	display: grid;
+	gap: var(--sp-200);
+	overflow: hidden;
+	mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+	-webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+
+.adopter-track {
+	display: flex;
+	width: max-content;
+	height: var(--adopter-row-height);
+}
+
+.adopter-group {
+	display: flex;
+	flex: 0 0 auto;
+	gap: var(--sp-200);
+	padding-right: var(--sp-200);
+	height: 100%;
+}
+
+.adopter-track-1 {
+	animation: adopter-slide-left var(--adopter-duration-1, 320s) linear infinite;
+}
+
+.adopter-track-2 {
+	animation: adopter-slide-right var(--adopter-duration-2, 360s) linear infinite;
+}
+
+.adopter-track-3 {
+	animation: adopter-slide-left var(--adopter-duration-3, 400s) linear infinite;
+}
+
+.adopter-track:hover,
+.adopter-track:focus-within {
 	animation-play-state: paused;
 }
 
-.marquee.reverse .marquee-track {
-	animation-direction: reverse;
-	animation-duration: 46s;
-}
-
-@keyframes slide {
+@keyframes adopter-slide-left {
 	from {
 		transform: translateX(0);
 	}
@@ -1162,34 +1191,313 @@ p code {
 	}
 }
 
-.chip {
+@keyframes adopter-slide-right {
+	from {
+		transform: translateX(-50%);
+	}
+	to {
+		transform: translateX(0);
+	}
+}
+
+.adopter-card {
+	width: 326px;
+	height: var(--adopter-row-height);
+	min-height: 0;
+	flex: 0 0 326px;
+	padding: 18px;
+	border: 1px solid var(--line);
+	border-radius: var(--r-2xl);
+	background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+	transition:
+		border-color var(--dur-color) var(--ease),
+		transform var(--dur-color) var(--ease),
+		box-shadow var(--dur-color) var(--ease);
+}
+
+.adopter-card:hover,
+.adopter-card:focus-visible {
+	border-color: var(--accent-line);
+	transform: translateY(-2px);
+	box-shadow: 0 0 32px rgba(0, 196, 204, 0.12);
+}
+
+.adopter-card-head {
 	display: flex;
 	align-items: center;
 	gap: var(--sp-100);
-	padding: var(--sp-100) var(--sp-200);
-	border: 1px solid var(--line);
-	border-radius: var(--r-xl);
-	background: var(--surface-1);
-	white-space: nowrap;
-	transition: border-color var(--dur-color) var(--ease), background var(--dur-color) var(--ease),
-		transform var(--dur-color) var(--ease);
+	min-width: 0;
 }
 
-.chip:hover {
-	border-color: var(--accent-line);
-	background: var(--surface-2);
-	transform: translateY(-2px);
-}
-
-.chip-state {
-	width: 8px;
-	height: 8px;
+.adopter-avatar {
+	position: relative;
+	width: 46px;
+	height: 46px;
+	flex: 0 0 46px;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
 	border-radius: 50%;
-	flex: none;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: var(--surface-3);
+	color: var(--accent);
+	font-weight: 750;
 }
 
-.chip-id {
+.adopter-avatar img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.adopter-repo-block {
+	min-width: 0;
+	flex: 1;
+}
+
+.adopter-repo {
+	font-family: var(--mono);
+	font-size: 13.5px;
+	font-weight: 650;
+	line-height: 18px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.adopter-card-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	margin-top: 4px;
 	color: var(--text-3);
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.adopter-card-meta span {
+	flex: 0 0 auto;
+}
+
+.adopter-card-star {
+	color: #ffc857;
+	font-family: var(--mono);
+}
+
+.adopter-card-type {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.adopter-intro {
+	flex: 1 0 auto;
+	min-height: 40px;
+	margin: var(--sp-75) 0 var(--sp-100);
+	color: #d8d8d8;
+	font-size: 14px;
+	line-height: 20px;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.adopter-metrics {
+	display: flex;
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
+	gap: 6px;
+	margin-top: auto;
+	overflow: hidden;
+}
+
+.adopter-metric {
+	flex: 0 0 auto;
+	padding: 4px 6px;
+	border: 1px solid var(--line-strong);
+	border-radius: var(--r-md);
+	background: rgba(0, 0, 0, 0.22);
+	color: #c9c9c9;
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+.adopter-metric strong {
+	color: var(--text);
+	font-weight: inherit;
+}
+
+.adopter-metric:first-child strong {
+	color: #ffc857;
+}
+
+.adopter-metric:last-child {
+	font-family: var(--mono);
+}
+
+/* ---------- adopter directory ---------- */
+
+.adopter-page-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--sp-200);
+	padding-block: var(--sp-300);
+	border-bottom: 1px solid var(--line);
+}
+
+.adopter-page-brand,
+.adopter-page-nav-links {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-100);
+}
+
+.adopter-page-brand {
+	color: var(--text);
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.adopter-page-nav-links {
+	gap: var(--sp-200);
+}
+
+.adopter-page-nav-links a {
+	color: var(--text-2);
+	font-size: 14px;
+	text-decoration: none;
+}
+
+.adopter-page-nav-links a:hover,
+.adopter-page-nav-links a:focus-visible {
+	color: var(--accent);
+}
+
+.adopter-directory-hero {
+	max-width: 800px;
+	padding: var(--sp-700) 0 var(--sp-400);
+}
+
+.adopter-directory-title {
+	margin: 0 0 var(--sp-200);
+	font-size: 48px;
+	line-height: 1.1;
+	letter-spacing: -0.04em;
+}
+
+.adopter-directory-subtitle {
+	margin: 0;
+	color: var(--text-2);
+	font-size: 16px;
+	line-height: 1.75;
+}
+
+.adopter-directory {
+	padding-bottom: var(--sp-900);
+}
+
+.adopter-filters {
+	display: grid;
+	grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(140px, 1fr)) auto;
+	gap: var(--sp-100);
+	align-items: end;
+	padding: var(--sp-200);
+	border: 1px solid var(--line);
+	border-radius: var(--r-2xl);
+	background: var(--surface-1);
+}
+
+.adopter-filter {
+	display: grid;
+	gap: var(--sp-100);
+	min-width: 0;
+	color: var(--text-2);
+	font-size: 12px;
+}
+
+.adopter-filter input,
+.adopter-filter select {
+	width: 100%;
+	min-width: 0;
+	height: 44px;
+	padding: 0 12px;
+	border: 1px solid var(--line-strong);
+	border-radius: var(--r-lg);
+	background: var(--surface-2);
+	color: var(--text);
+	font: inherit;
+	font-size: 14px;
+}
+
+.adopter-filter input::placeholder {
+	color: var(--text-3);
+}
+
+.adopter-filter input:focus-visible,
+.adopter-filter select:focus-visible {
+	border-color: var(--accent);
+	outline: 2px solid var(--accent-line);
+	outline-offset: 2px;
+}
+
+.adopter-filter-reset {
+	height: 44px;
+	white-space: nowrap;
+}
+
+.adopter-results-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 52px;
+}
+
+.adopter-result-count {
+	margin: 0;
+	color: var(--text-2);
+	font-size: 13px;
+}
+
+.adopter-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--sp-200);
+}
+
+.adopter-grid .adopter-card {
+	width: 100%;
+	height: 184px;
+	min-width: 0;
+	min-height: 0;
+	flex: initial;
+}
+
+.adopter-empty {
+	padding: var(--sp-700) var(--sp-300);
+	border: 1px dashed var(--line-strong);
+	border-radius: var(--r-2xl);
+	text-align: center;
+}
+
+.adopter-empty p {
+	margin: 0 0 var(--sp-200);
+	color: var(--text-2);
+}
+
+@media (min-width: 1400px) {
+	.adopter-grid {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
 }
 
 /* ---------- tagline ---------- */
@@ -1722,6 +2030,15 @@ p code {
 	.grid-4 {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
+	.adopter-filters {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.adopter-filter-search {
+		grid-column: 1 / -1;
+	}
+	.adopter-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 @media (max-width: 900px) {
@@ -1796,6 +2113,44 @@ p code {
 	.glow {
 		display: none;
 	}
+	.adopter-wall {
+		mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+		-webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+	}
+	.adopter-card {
+		width: 320px;
+		flex-basis: 320px;
+	}
+	.adopter-wall-toolbar {
+		margin-bottom: var(--sp-200);
+	}
+	.adopter-directory-title {
+		font-size: 36px;
+		line-height: 1.15;
+	}
+	.adopter-directory-hero {
+		padding-top: var(--sp-500);
+	}
+	.adopter-filters {
+		grid-template-columns: 1fr;
+		padding: var(--sp-100);
+	}
+	.adopter-filter-search {
+		grid-column: auto;
+	}
+	.adopter-filter input,
+	.adopter-filter select {
+		font-size: 16px;
+	}
+	.adopter-filter-reset {
+		width: 100%;
+	}
+	.adopter-grid {
+		grid-template-columns: 1fr;
+	}
+	.adopter-page-nav {
+		align-items: flex-start;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1812,7 +2167,6 @@ p code {
 		transform: none;
 		transition: none;
 	}
-	.marquee-track,
 	.footer-marquee-track {
 		animation: none;
 	}
@@ -1825,5 +2179,14 @@ p code {
 	*::after {
 		transition-duration: 1ms !important;
 		animation-duration: 1ms !important;
+	}
+	.adopter-track-1 {
+		animation: adopter-slide-left var(--adopter-duration-1, 320s) linear infinite !important;
+	}
+	.adopter-track-2 {
+		animation: adopter-slide-right var(--adopter-duration-2, 360s) linear infinite !important;
+	}
+	.adopter-track-3 {
+		animation: adopter-slide-left var(--adopter-duration-3, 400s) linear infinite !important;
 	}
 }

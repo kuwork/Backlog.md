@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>采用 Backlog.md 的开源项目</title>
+		<meta name="description" content="浏览和筛选 498 个采用 Backlog.md 的公开开源项目。" />
+		<link rel="canonical" href="https://kuwork.github.io/Backlog.md/adopters.html" />
+		<link rel="alternate" hreflang="en" href="https://kuwork.github.io/Backlog.md/en/adopters.html" />
+		<link rel="alternate" hreflang="zh-Hans" href="https://kuwork.github.io/Backlog.md/adopters.html" />
+		<meta name="theme-color" content="#000000" />
+		<meta name="color-scheme" content="dark" />
+		<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="favicon.ico" sizes="any" />
+		<link rel="stylesheet" href="assets/css/v2.css" />
+	</head>
+	<body>
+		<a class="skip-link button-sm" href="#main">跳到主要内容</a>
+		<div class="container-wide">
+			<nav class="adopter-page-nav" aria-label="项目目录导航">
+				<a class="adopter-page-brand" href="./" aria-label="Backlog.md 首页">
+					<img src="assets/img/apple-touch-icon.png" alt="" width="28" height="28" />
+					<span>Backlog.md</span>
+				</a>
+				<div class="adopter-page-nav-links">
+					<a href="./#adopters">返回首页</a>
+					<a href="en/adopters.html" lang="en">English</a>
+				</div>
+			</nav>
+		</div>
+
+		<main class="container-wide" id="main">
+			<section class="adopter-directory-hero" aria-labelledby="adopter-directory-title">
+				<h1 class="adopter-directory-title" id="adopter-directory-title">采用 Backlog.md 的开源项目</h1>
+				<p class="adopter-directory-subtitle">
+					收录 498 个采用 Backlog.md 的公开仓库。可以按关键词、项目类型和主要语言筛选，也可以按 Star、任务数或最近推送排序。数据核验于 2026-11-28。
+				</p>
+			</section>
+
+			<section class="adopter-directory" data-adopter-directory aria-label="开源项目目录">
+				<form class="adopter-filters" data-adopter-filters>
+					<label class="adopter-filter adopter-filter-search">
+						<span>搜索</span>
+						<input type="search" data-adopter-search placeholder="仓库名、简介或语言" autocomplete="off" />
+					</label>
+					<label class="adopter-filter">
+						<span>项目类型</span>
+						<select data-adopter-type></select>
+					</label>
+					<label class="adopter-filter">
+						<span>主要语言</span>
+						<select data-adopter-language></select>
+					</label>
+					<label class="adopter-filter">
+						<span>排序方式</span>
+						<select data-adopter-sort>
+							<option value="stars">Star 从多到少</option>
+							<option value="tasks">任务数从多到少</option>
+							<option value="recent">最近推送优先</option>
+						</select>
+					</label>
+					<button class="btn btn-secondary button-sm adopter-filter-reset" type="button" data-adopter-reset>重置</button>
+				</form>
+
+				<div class="adopter-results-bar">
+					<p class="adopter-result-count" data-adopter-count aria-live="polite"></p>
+				</div>
+				<div class="adopter-grid" data-adopter-grid></div>
+				<div class="adopter-empty" data-adopter-empty hidden>
+					<p>没有符合当前条件的项目，请减少筛选条件。</p>
+					<button class="btn btn-secondary button-sm" type="button" data-adopter-reset>清除筛选</button>
+				</div>
+				<noscript><p class="body-5 muted">请启用 JavaScript 浏览和筛选项目。</p></noscript>
+			</section>
+		</main>
+
+		<script src="assets/data/adopters.js"></script>
+		<script src="assets/js/adopters.js"></script>
+	</body>
+</html>
